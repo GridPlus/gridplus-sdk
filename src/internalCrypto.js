@@ -2,6 +2,14 @@
 const crypto = require('crypto');
 const eccrypto = require('eccrypto');
 
+
+exports.encrypt = function(data, pubKey, cb) {
+  if (typeof data == 'object') { data = JSON.stringify(data); }
+  eccrypto.encrypt(pubKey, Buffer.from(data, 'utf8'))
+  .then((encData) => { cb(null, encData); })
+  .catch((err) => { cb(err); })
+}
+
 // Decrypt a payload
 exports.decrypt = function(data, privKey, cb) {
   if (typeof data != 'object' || data.iv == undefined || data.ephemPublicKey == undefined

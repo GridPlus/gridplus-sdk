@@ -1,5 +1,8 @@
+const crypto = require('crypto');
 const eccrypto = require('eccrypto');
 const internalCrypto = require('./src/internalCrypto.js');
+const enums = require('./src/enums.js');
+const permissions = require('./src/permissions.js');
 
 class GridPlusSDK {
   constructor(opts) {
@@ -9,16 +12,48 @@ class GridPlusSDK {
       this.privKey = Buffer.from(opts.key, 'hex');
       this.pubKey = eccrypto.getPublic(privKey);
     }
-    // Devices can be indexed using whatever key the user desires.
-    this.devices = {};
+
+    this.tokens = {};
+    this.pairings = {};
   }
 
   //============================================================================
   // COMMS WITH AGENT
   //============================================================================
 
-  request(endpoint, payload, cb) {
-
+  request(endpoint, payload, device, cb) {
+    const t = this.tokens[device];
+    const id = this.ids[device];
+    if (t === null || t === undefined || id === null || id === undefined) {
+      cb('No token saved for this device. Please call getToken with the device id.');
+    } else if (this.headerKey === null || this.headerKey === undefined) {
+      cb('No header key saved. Please call getHeaderKey.');
+    } else {
+      let req = {
+        id: this.ids[device],
+        pubKey: this.pubKey,
+      }
+      let body = {
+        type: endpoint,
+        data: payload,
+      }
+      internalCrypto.ecsign(payload, this.privKey, (err, sig) => {
+        if (err) { cb(err); }
+        else {
+          body.sig = sig;
+          internalCrypto.encrypt(body, t, (err, encBody) => {
+            req.body = encBody;
+            internalCrypto.encrypt(req, this.headerKey, (err, encReq) => {
+              if (err) { cb(err); }
+              else {
+                // Send the request somewhere
+                console.log('sending out request', encReq);
+              }
+            })
+          })
+        }
+      })
+    }
   }
 
   //============================================================================
@@ -40,15 +75,16 @@ class GridPlusSDK {
   }
 
   // Get an access token once you are paired
-  getToken(cb) {
+  getToken(device, cb) {
     this.request('getToken', { pubKey: this.pubKey }, (err, encToken) => {
       if (err) { cb(err); }
       else {
+        this.ids[device] = this._hashId(encToken);
         // Returns an encrypted token
         internalCrypto.decrypt(encToken, this.privKey, (err, decToken) => {
           if (err) { cb(err); }
           else {
-            this.token = decToken;
+            this.tokens[device] = decToken;
             cb(null, decToken);
           }
         });
@@ -57,8 +93,8 @@ class GridPlusSDK {
   }
 
   // Get the response of a request given an id
-  getResponse(id, cb) {
-    this.request('getResponse', { id: id }, cb);
+  getResponse(id, device, cb) {
+    this.request('getResponse', { id: id }, device, cb);
   }
 
   //============================================================================
@@ -71,20 +107,83 @@ class GridPlusSDK {
 
   // Add a pairing
   addPairing(opts, cb) {
-    const { deviceSecret, appSecret, name } = opts;
-    pairings.add(deviceSecret, appSecret, name, this.privKey, this.request, cb);
+    const { appSecret, deviceSecret, name, device } = opts;
+    if (!deviceSecret || !appSecret || !name || !device) {
+      cb('Missing one or more parameters')
+    } else {
+      const fullSecret = `${deviceSecret}${appSecret}`;
+      internalCrypto.ecsign(fullSecret, privKey, (err, sig) => {
+        if (err) { cb(err); }
+        else {
+          const payload = [name, sig];
+          const data = enums.formatArr(payload);
+          this.request('addPairing', data, device, cb);
+        }
+      })
+    }
   }
 
   // Remove a pairing
-  deletePairing(cb) {
-    pairings.del(this.request, cb);
+  deletePairing(device, cb) {
+    if (!device) {
+      cb('Missing one or more parameters');
+    } else {
+      this.request('deletePairing', {}, device, cb);
+    }
   }
 
   // Create a permission given a pairing
   addPermission(opts, cb) {
-    const { schema, type, rules, timeLimit } = opts;
-
+    if (!opts.schema || !opts.type || !opts.rules || !opts.timeLimit || !opts.device) {
+      cb('Missing one or more parameters');
+    } else {
+      const { schema, type, rules, timeLimit, device } = opts;
+      // Check all inputs
+      const schemaErr = permissions.getSchemaErr(schema, type);
+      const rulesErr = permissions.getRulesErr(rules);
+      const timeLimitErr = permissions.getTimeLimitErr(timeLimit);
+      if (schemaErr != null) { cb(schemaErr); }
+      else if (rulesErr != null) { cb(rulesErr); }
+      else if (timeLimitErr != null) { cb(timeLimitErr); }
+      else {
+        // Format the request for the k81
+        const parsedRules = permissions.parseRules(rules);
+        const schemaIdx = enums.schemas[schema].index;
+        const typeIdx = enums.types[type].index;
+        const payload = [ schemaIdx, typeIdx, enums.formatArr(parsedRules), timeLimit ];
+        // Sign and send payload
+        internalCrypto.ecsign(enums.formatArr(payload), privKey, (err, sig) => {
+          payload.push(sig);
+          const data = enums.formatArr(payload);
+          reqFunc('addPermission', data, device, cb);
+        })
+      }
+    }
   }
 
+  // Get the number of permissions associated with your
+  getNumPermissions(device, cb) {
+    if (!device) {
+      cb('Missing one or more parameters');
+    } else {
+      this.request('getPermissionCount', {}, device, cb);
+    }
+  }
+
+  // Get a permission given an index
+  getPermission(index, device, cb) {
+    if (!index || !device) {
+      cb('Missing one or more parameters');
+    } else {
+      this.request('getPermission', { index: index }, device, cb);
+    }
+  }
+
+  // Get a unique id from an encrypted payload.
+  _hashId(token) {
+    let id = `${token.iv.toString('hex')}${token.ephemPublicKey.toString('hex')}`;
+    id = `${id}${token.ciphertext.toString('hex')}${token.mac.toString('hex')}`;
+    return id;
+  }
 
 }

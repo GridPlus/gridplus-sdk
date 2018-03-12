@@ -4,33 +4,8 @@
 const enums = require('./enums.js');
 const internalCrypto = require('./internalCrypto.js');
 
-// Add a permission
-exports.add = function(schema, type, rules, timeLimit, privKey, reqFunc, cb) {
-  // Check all inputs
-  const schemaErr = _getSchemaErr(schema, type);
-  const rulesErr = _getRulesErr(rules);
-  const timeLimitErr = _getTimeLimitErr(timeLimit);
-  if (schemaErr != null) { cb(schemaErr); }
-  else if (rulesErr != null) { cb(rulesErr); }
-  else if (timeLimitErr != null) { cb(timeLimitErr); }
-  else {
-    // Format the request for the k81
-    const parsedRules = _parseRules(rules);
-    const schemaIdx = enums.schemas[schema].index;
-    const typeIdx = enums.types[type].index;
-    const payload = [ schemaIdx, typeIdx, enums.formatArr(parsedRules), timeLimit ];
-    // Sign and send payload
-    internalCrypto.ecsign(enums.formatArr(payload), privKey, (err, sig) => {
-      payload.push(sig);
-      const data = enums.formatArr(payload);
-      reqFunc('addPermission', data, cb);
-    })
-  }
-}
-
-
 // Parse the rules
-function _parseRules(rules, schema, type, cb) {
+exports.parseRules = function(rules, schema, type, cb) {
   const fields = enums.schemas[schema].fields;
   const typeRules = enums.types[type].rules;
   const L = enums.longestSchema;
@@ -59,12 +34,8 @@ function _parseRules(rules, schema, type, cb) {
 }
 
 
-
-
-
 // Functions to check for errors in the input
-
-function _getTimeLimitErr(timeLimit) {
+exports.getTimeLimitErr = (timeLimit) {
   let err = null;
   if (typeof timeLimit != 'number') {
     err = 'Time limit must be a number'
@@ -74,7 +45,7 @@ function _getTimeLimitErr(timeLimit) {
   return err;
 }
 
-function _getSchemaErr(schema, type) {
+exports.getSchemaErr(schema, type) {
   let err = null;
   if (enums.shcemas[schema] === undefined) {
     err = 'Unsupported schema'
@@ -84,7 +55,7 @@ function _getSchemaErr(schema, type) {
   return err;
 }
 
-function _getRulesErr(rules) {
+exports.getRulesErr(rules) {
   let err = null;
   Object.keys(rules).forEach((r) => {
     if (typeof rules[r] != 'object' || rules[r].length === undefined) {
