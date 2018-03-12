@@ -2,6 +2,38 @@
 
 A SDK for managing connections to GridPlus Agent devices, permissions, and remote signing requests.
 
+### Basic Usage
+
+```
+const crypto = require('crypto');
+const GridPlusSDK = require('GridPlusSDK').default;
+
+// Create a key
+const privateKey = crypto.randombytes(32);
+
+// Initialize
+const opts = { key: privateKey };  
+const sdk = new GridPlusSDK(opts);
+
+// Look up an agent's host (you must be online to do lookup) and add it
+const host = sdk.lookupDevice('myUserName');
+const id = 'someIdentifier';  // This can be anything
+sdk.addDevice(host, id);
+
+// Get the access token for this device
+sdk.getToken(id, (err, token) => {
+  
+  // Make a request with the token (saved automatically)
+  sdk.deletePairing(id, (err) => {
+    if (err) { console.log('Error', err); }
+    else { console.log('yay'); }
+  });
+  
+});
+
+
+```
+
 # Background
 
 This SDK utilizes the GridPlus Agent's remote signing capabilities to form automated signature requests.
