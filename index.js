@@ -6,13 +6,14 @@ const permissions = require('./src/permissions.js');
 
 class GridPlusSDK {
   constructor(opts) {
-    this.host = opts.host;
     if (opts.key.length != 32) { throw new Error('Wrong key size (must be 32 bytes)'); }
     else {
       this.privKey = Buffer.from(opts.key, 'hex');
       this.pubKey = eccrypto.getPublic(privKey);
     }
-
+    // These are all indexed on the same user-defined id
+    this.hosts = {};
+    this.ids = {};
     this.tokens = {};
     this.pairings = {};
   }
@@ -20,6 +21,24 @@ class GridPlusSDK {
   //============================================================================
   // COMMS WITH AGENT
   //============================================================================
+
+  // Add a device based on a host
+  addDevice(host, id, cb) {
+    this.hosts[id] = host;
+    // In case this id is re-used, overwrite other instances
+    this.ids[id] = null;
+    this.tokens[id] = null;
+    this.pairings[id] = null;
+    // TODO Ping the device and make sure it's a valid Grid+ agent
+    cb(null);
+  }
+
+  // Look a device up via Grid+ service given a name
+  lookupDevice(name, cb) {
+    // TODO: Call comms server
+    cb(null, 'device');
+  }
+
 
   request(endpoint, payload, device, cb) {
     const t = this.tokens[device];

@@ -16,22 +16,26 @@ const opts = { key: privateKey };
 const sdk = new GridPlusSDK(opts);
 
 // Look up an agent's host (you must be online to do lookup) and add it
-const host = sdk.lookupDevice('myUserName');
-const id = 'someIdentifier';  // This can be anything
-sdk.addDevice(host, id);
+const host = sdk.lookupDevice('myUserName', (err, device) => {
+  const id = 'someIdentifier';  // This can be anything
 
-// Get the access token for this device
-sdk.getToken(id, (err, token) => {
-  
-  // Make a request with the token (saved automatically)
-  sdk.deletePairing(id, (err) => {
-    if (err) { console.log('Error', err); }
-    else { console.log('yay'); }
+  // Add a device to memory based on the host name
+  sdk.addDevice(host, id, (err) => {
+    if (err) { console.log('Could not add device', err); }
+    else {
+
+      // Get the access token for this device
+      sdk.getToken(id, (err, token) => {
+
+        // Make a request with the token (saved automatically)
+        sdk.deletePairing(id, (err) => {
+          if (err) { console.log('Error', err); }
+          else { console.log('yay'); }
+        });
+      });
+    }
   });
-  
 });
-
-
 ```
 
 # Background
