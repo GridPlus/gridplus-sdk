@@ -1,0 +1,19 @@
+{
+  "name": "gridplus-sdk",
+  "version": "0.0.0",
+  "description": "SDK for communicating with the GridPlus Agent's remote signing functionality",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GridPlus/gridplus-sdk.git"
+  },
+  "author": "Alex Miller",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/GridPlus/gridplus-sdk/issues"
+  },
+  "homepage": "https://github.com/GridPlus/gridplus-sdk#readme"
+}
