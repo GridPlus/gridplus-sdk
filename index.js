@@ -70,13 +70,20 @@ class GridPlusSDK {
   //============================================================================
 
   // Add a pairing
-  addPairing(deviceSecret, appSecret, name, cb) {
+  addPairing(opts, cb) {
+    const { deviceSecret, appSecret, name } = opts;
     pairings.add(deviceSecret, appSecret, name, this.privKey, this.request, cb);
   }
 
   // Remove a pairing
   deletePairing(cb) {
     pairings.del(this.request, cb);
+  }
+
+  // Create a permission given a pairing
+  addPermission(opts, cb) {
+    const { schema, type, rules, timeLimit } = opts;
+
   }
 
 
