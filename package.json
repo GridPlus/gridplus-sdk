@@ -1,19 +1,41 @@
 {
-  "name": "gridplus-sdk",
-  "version": "0.0.0",
-  "description": "SDK for communicating with the GridPlus Agent's remote signing functionality",
-  "main": "index.js",
+  "name": "get-docker-secrets",
+  "version": "0.0.0-development",
+  "description": "an api to receive and ingest product exports",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "commit": "git-cz",
+    "build": "babel src -d dist",
+    "lint": "eslint src __tests__",
+    "lint:fix": "eslint --fix src __tests__",
+    "precommit": "npm run lint:fix && npm run test",
+    "prepublish": "npm run build"
   },
+  "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/GridPlus/gridplus-sdk.git"
   },
-  "author": "Alex Miller",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/GridPlus/gridplus-sdk/issues"
+  "dependencies": {
+    "eccrypto": "^1.0.3"
   },
-  "homepage": "https://github.com/GridPlus/gridplus-sdk#readme"
+  "devDependencies": {
+    "babel-cli": "^6.24.1",
+    "babel-core": "^6.25.0",
+    "babel-eslint": "^8.2.2",
+    "babel-jest": "^22.4.1",
+    "babel-plugin-module-resolver": "^3.1.0",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
+    "babel-preset-env": "^1.6.0",
+    "babel-register": "^6.24.1",
+    "eslint": "^4.18.2",
+    "eslint-config-standard": "^11.0.0",
+    "eslint-plugin-import": "^2.7.0",
+    "eslint-plugin-node": "^6.0.1",
+    "eslint-plugin-promise": "^3.5.0",
+    "eslint-plugin-standard": "^3.0.1"
+  },
+  "license": "ISC"
 }
