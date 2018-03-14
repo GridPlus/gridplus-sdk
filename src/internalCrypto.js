@@ -27,5 +27,5 @@ exports.ecsign = function(data, privKey, cb) {
   const msg = crypto.createHash('sha256').update(data).digest();
   eccrypto.sign(privKey, msg)
   .then((sig) => { cb(null, sig); })
-  .catch((err) => { cb(err); }
+  .catch((err) => { cb(err); })
 }

@@ -1,16 +1,20 @@
 const crypto = require('crypto');
 const eccrypto = require('eccrypto');
-const internalCrypto = require('./src/internalCrypto.js');
-const enums = require('./src/enums.js');
-const permissions = require('./src/permissions.js');
+const internalCrypto = require('./internalCrypto.js');
+const enums = require('./enums.js');
+const permissions = require('./permissions.js');
 
 class GridPlusSDK {
   constructor(opts) {
-    if (opts.key.length != 32) { throw new Error('Wrong key size (must be 32 bytes)'); }
-    else {
+    if (typeof opts.key == 'string' && opts.key.length === 64) {
       this.privKey = Buffer.from(opts.key, 'hex');
-      this.pubKey = eccrypto.getPublic(privKey);
+    } else if (typeof opts.key == 'object' && opts.key.length === 32) {
+      this.privKey = opts.key;
+    } else {
+      throw new Error('Incorrect key. Please provide a 32 byte key.');
     }
+    this.pubKey = eccrypto.getPublic(this.privKey);
+
     // These are all indexed on the same user-defined id
     this.hosts = {};
     this.ids = {};
@@ -83,14 +87,8 @@ class GridPlusSDK {
   //============================================================================
 
   // Get the public header key to encrypt async requests
-  getHeaderKey(cb) {
-    this.request('getHeaderKey', {}, (err, key) => {
-      if (err) { cb(err); }
-      else {
-        this.headerKey = key;
-        cb(null, key);
-      }
-    });
+  getHeaderKey() {
+    return this.pubKey.toString('hex');
   }
 
   // Get an access token once you are paired
@@ -206,3 +204,5 @@ class GridPlusSDK {
   }
 
 }
+
+exports.default = GridPlusSDK;

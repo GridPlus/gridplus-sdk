@@ -35,7 +35,7 @@ exports.parseRules = function(rules, schema, type, cb) {
 
 
 // Functions to check for errors in the input
-exports.getTimeLimitErr = (timeLimit) {
+exports.getTimeLimitErr = function(timeLimit) {
   let err = null;
   if (typeof timeLimit != 'number') {
     err = 'Time limit must be a number'
@@ -45,7 +45,7 @@ exports.getTimeLimitErr = (timeLimit) {
   return err;
 }
 
-exports.getSchemaErr(schema, type) {
+exports.getSchemaErr = function(schema, type) {
   let err = null;
   if (enums.shcemas[schema] === undefined) {
     err = 'Unsupported schema'
@@ -55,7 +55,7 @@ exports.getSchemaErr(schema, type) {
   return err;
 }
 
-exports.getRulesErr(rules) {
+exports.getRulesErr = function(rules) {
   let err = null;
   Object.keys(rules).forEach((r) => {
     if (typeof rules[r] != 'object' || rules[r].length === undefined) {
