@@ -47,8 +47,10 @@ class GridPlusSDK {
       path: `/ip?serial=${serial}`,
     };
     http.get(opts, (res) => {
-      console.log(res);
-      cb(res);
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; })
+      res.on('end', () => { cb(null, JSON.parse(data)); })
+      res.on('err', (err) => { cb(err); })
     })
   }
 
