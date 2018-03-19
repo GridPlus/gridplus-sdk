@@ -10,6 +10,7 @@
     "precommit": "npm run lint:fix && npm run test",
     "prepublish": "npm run build"
   },
+  "private": true,
   "main": "dist/index.js",
   "files": [
     "dist"
