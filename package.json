@@ -1,7 +1,7 @@
 {
-  "name": "get-docker-secrets",
-  "version": "0.0.0-development",
-  "description": "an api to receive and ingest product exports",
+  "name": "gridplus-sdk",
+  "version": "0.0.0",
+  "description": "SDK to interact with GridPlus agent devices",
   "scripts": {
     "commit": "git-cz",
     "build": "babel src -d dist",

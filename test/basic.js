@@ -17,12 +17,12 @@ describe('Basic tests', () => {
     }
   });
 
-  it('Should get the public header key', (done) => {
+  /*it('Should get the public header key', (done) => {
     const key = sdk.getHeaderKey();
     assert(typeof key === 'string');
     assert(key.length === 130);
     done();
-  });
+  });*/
 
 
 })
