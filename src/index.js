@@ -3,6 +3,8 @@ const eccrypto = require('eccrypto');
 const internalCrypto = require('./internalCrypto.js');
 const enums = require('./enums.js');
 const permissions = require('./permissions.js');
+const config = require('./config.js');
+const http = require('http');
 
 class GridPlusSDK {
   constructor(opts) {
@@ -38,9 +40,16 @@ class GridPlusSDK {
   }
 
   // Look a device up via Grid+ service given a name
-  lookupDevice(name, cb) {
-    // TODO: Call comms server
-    cb(null, 'device');
+  lookupDevice(serial, cb) {
+    const opts = {
+      hostname: config.commsServer.host,
+      port: config.commsServer.port,
+      path: `/ip?serial=${serial}`,
+    };
+    http.get(opts, (res) => {
+      console.log(res);
+      cb(res);
+    })
   }
 
 
