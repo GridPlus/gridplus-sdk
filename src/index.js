@@ -5,16 +5,25 @@ const enums = require('./enums.js');
 const permissions = require('./permissions.js');
 const config = require('./config.js');
 const http = require('http');
+const ethereum = require(`${__dirname}/blockchain/ethereum.js`);
 
 class GridPlusSDK {
-  constructor(opts) {
-    if (typeof opts.key == 'string' && opts.key.length === 64) {
+  //============================================================================
+  // SETUP OBJECT
+  //============================================================================
+  constructor(opts={}) {
+    // First setup the private key. This should be stored on device and is needed
+    // to interact with the agent device
+    if (opts.key === undefined) {
+      this.privKey = crypto.randomBytes(32);
+    } else if (typeof opts.key == 'string' && opts.key.length === 64) {
       this.privKey = Buffer.from(opts.key, 'hex');
     } else if (typeof opts.key == 'object' && opts.key.length === 32) {
       this.privKey = opts.key;
     } else {
       throw new Error('Incorrect key. Please provide a 32 byte key.');
     }
+    // Public key is pointwise operation on the private key on the secp256k1 curve
     this.pubKey = eccrypto.getPublic(this.privKey);
 
     // These are all indexed on the same user-defined id
@@ -22,7 +31,38 @@ class GridPlusSDK {
     this.ids = {};
     this.tokens = {};
     this.pairings = {};
+
+    // If an ETH provider is included in opts, connect to the provider automatically
+    if (opts.ethProvider !== undefined) this.connectToEth(opts.ethProvider);
   }
+
+  //============================================================================
+  // FUNCTIONALITY TO INTERACT WITH VARIOUS BLOCKCHAINS
+  // We need to query both Bitcoin and Ethereum blockchains to get relevent
+  // account data. This means connecting to nodes
+  //============================================================================
+  
+  // Initialize a connection to an Ethereum node. 
+  // @param [provider] {string} - of form `${protocol}://${host}:${port}`, where `protocol` is 'ws' or 'http'
+  // @returns          {Error}  - may be null
+  connectToEth(provider=null) {
+    if (provider === null) return ethereum.initEth()
+    else                   return ethereum.initEth(provider)
+  }
+
+  // Get a token balance, returns a promise
+  // @param [addr]      {string}  - The account we are querying
+  // @param [ERC20Addr] {string}  - Address of the ERC20 token we are asking about
+  // @returns           {Promise} - Contains the balance in full units (i.e. with decimals divided in)
+  getEthBalance(addr, ERC20Addr=null) {
+    return ethereum.getBalance(addr, ERC20Addr);
+  }
+
+
+
+  /*
+  NOTE: All comms with agent need to be overhauled based on changes made to the agent API
+
 
   //============================================================================
   // COMMS WITH AGENT
@@ -213,7 +253,7 @@ class GridPlusSDK {
     id = `${id}${token.ciphertext.toString('hex')}${token.mac.toString('hex')}`;
     return id;
   }
-
+*/
 }
 
 exports.default = GridPlusSDK;
