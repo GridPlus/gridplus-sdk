@@ -58,6 +58,11 @@ class GridPlusSDK {
     return ethereum.getBalance(addr, ERC20Addr);
   }
 
+  // Get the web3 connection for advanced functionality
+  getWeb3() {
+    return ethereum.web3();
+  }
+
 
 
   /*

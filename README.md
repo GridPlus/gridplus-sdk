@@ -330,3 +330,9 @@ Callback either an error or a `signatureRequestId` (64 byte hash, hex), which is
 
 The raw signature, encrypted in the paired requesters public key. This is only
 included with signature request responses
+
+
+# Testing
+We recommend using a lightweight node such as [Ganache](http://truffleframework.com/ganache/)
+and copying the first account's address and private key in `config.testing.ethHolder` (in `src/config.js`). 
+We need one hot account for testing purposes, but it will not be used in the SDK itself. This is because the SDK only displays static data and makes requests to external wallets.
