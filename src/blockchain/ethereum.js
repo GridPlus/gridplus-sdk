@@ -34,6 +34,9 @@ exports.initEth = function(_provider=config.defaultWeb3Provider) {
   }
 }
 
+// Expose the web3 interface for advanced functionality
+exports.web3 = function() { return web3; }
+
 // Get the balance of an Ethereum account. This can be an ERC20 or ETH balance.
 // @param [addr]      {string}  - The account we are querying
 // @param [ERC20Addr] {string}  - Address of the ERC20 token we are asking about
