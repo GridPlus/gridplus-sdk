@@ -44,16 +44,17 @@ exports.web3 = function() { return web3; }
 exports.getBalance = function(addr, ERC20Addr=null) {
   return new Promise((resolve, reject) => {
     if (ERC20Addr !== null) {
-      if (erc20decimals[ERC20Addr] === undefined) {
+      if (erc20Decimals[ERC20Addr] === undefined) {
         // Cache the number of decimals for the token if it is not already saved.
         // This will make future balance requests more efficient.
         web3.eth.call({ to: ERC20Addr, data: config.erc20.decimals() })
         .then((decimals) => {
           erc20Decimals[ERC20Addr] = parseInt(decimals);
           // Get the balance
+          console.log('thing', config.erc20.balanceOf(addr));
           return web3.eth.call({ to: ERC20Addr, data: config.erc20.balanceOf(addr) })
         })
-        .then((balance) => { return resolve(parseInt(balance) / 10 ** erc20Decimals[ERC20Addr]); })
+        .then((balance) => { console.log('got balance', balance); return resolve(parseInt(balance) / 10 ** erc20Decimals[ERC20Addr]); })
         .catch((err) => { return reject(err); });
       } else {
         // If the decimals are cached, we can just query the balance

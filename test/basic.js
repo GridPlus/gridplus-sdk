@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const Tx = require('ethereumjs-tx');
 const config = require(`${__dirname}/../src/config.js`);
 const GridPlusSDK = require('../src/index.js').default;
-let sdk, privKey, addr, web3;
+let sdk, privKey, addr, web3, erc20Addr, sender;
 
 // Handle all promise rejections
 process.on('unhandledRejection', e => { throw e; });
@@ -44,11 +44,11 @@ describe('Basic tests', () => {
   const toSend = 10 ** 18;
   it('Should transfer ETH to the random address', (done) => {
     web3 = sdk.getWeb3();
-    const sender = config.testing.ethHolder;
+    sender = config.testing.ethHolder;
     web3.eth.getTransactionCount(sender.address)
     .then((nonce) => {
       // Setup a transaction to send 1 ETH (10**18 wei) to our random address
-      const priv = new Buffer(sender.privKey, 'hex');
+      privKey = new Buffer(sender.privKey, 'hex');
       const rawTx = {
         nonce,
         to: addr,
@@ -56,7 +56,7 @@ describe('Basic tests', () => {
         value: toSend
       };
       const tx = new Tx(rawTx);
-      tx.sign(priv);
+      tx.sign(privKey);
       const serTx = tx.serialize();
       return web3.eth.sendSignedTransaction(`0x${serTx.toString('hex')}`)
     })
@@ -78,11 +78,76 @@ describe('Basic tests', () => {
     });
   });
 
-  it('Should deploy an ERC20 token');
+  it('Should deploy an ERC20 token', (done) => {
+    web3.eth.getTransactionCount(sender.address)
+    .then((nonce) => {
+      const rawTx = {
+        nonce,
+        gasLimit: '0x1e8480',
+        value: 0,
+        data: config.testing.erc20Src,
+      };
+      const tx = new Tx(rawTx);
+      tx.sign(privKey);
+      const serTx = tx.serialize();
+      return web3.eth.sendSignedTransaction(`0x${serTx.toString('hex')}`)
+    })
+    .then((receipt) => {
+      assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
+      erc20Addr = receipt.contractAddress;
+      done(); 
+    })
+    .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
+  });
 
-  it('Should find a zero token balance for the address');
+  it('Should find a zero token balance for the address', (done) => {
+    sdk.getEthBalance(addr, erc20Addr)
+    .then((balance) => {
+      assert(typeof balance === 'number');
+      assert(balance === 0);
+      done();
+    })
+    .catch((err) => {
+      assert(err === null, err);
+      done();
+    });
+  });
 
-  it('Should transfer some ERC20 tokens to the address');
+  it('Should find a non-zero balance for the sender', (done) => {
+    sdk.getEthBalance(sender.address, erc20Addr)
+    .then((balance) => {
+      assert(typeof balance === 'number');
+      assert(balance > 0, `Sender balance should be >0, but is ${balance}`);
+      done();
+    })
+    .catch((err) => {
+      assert(err === null, err);
+      done();
+    });
+  });
+
+  it('Should transfer some ERC20 tokens to the address', (done) => {
+    web3.eth.getTransactionCount(sender.address)
+    .then((nonce) => {
+      const rawTx = {
+        nonce,
+        gasLimit: '0x186a0',
+        data: config.erc20.transfer(addr, 1)
+      };
+      console.log('rawtx', rawTx);
+      const tx = new Tx(rawTx);
+      tx.sign(privKey);
+      const serTx = tx.serialize();
+      console.log(serTx.toString('hex'))
+      return web3.eth.sendSignedTransaction(`0x${serTx.toString('hex')}`)
+    })
+    .then((receipt) => {
+      assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
+      erc20Addr = receipt.contractAddress;
+      done(); 
+    })
+    .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
+  });
 
   it('Should find a non-zero token balance for the address');
 
