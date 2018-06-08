@@ -15,27 +15,14 @@ const privateKey = crypto.randombytes(32);
 const opts = { key: privateKey };  
 const sdk = new GridPlusSDK(opts);
 
-// Look up an agent's host (you must be online to do lookup) and add it
-const host = sdk.lookupDevice('myUserName', (err, device) => {
-  const id = 'someIdentifier';  // This can be anything
-
-  // Add a device to memory based on the host name
-  sdk.addDevice(host, id, (err) => {
-    if (err) { console.log('Could not add device', err); }
-    else {
-
-      // Get the access token for this device
-      sdk.getToken(id, (err, token) => {
-
-        // Make a request with the token (saved automatically)
-        sdk.deletePairing(id, (err) => {
-          if (err) { console.log('Error', err); }
-          else { console.log('yay'); }
-        });
-      });
-    }
-  });
-});
+// Lookup an ETH balance
+sdk.getBalance('ETH', myAddress)
+  .then((balance) => {
+    // Lookup token transfer logs
+    return sdk.getTransactionHistory('ERC20', myAddress, ERC20_Token_Address)
+  })
+  .then((history) => {})
+  .catch((err) => {})
 ```
 
 # Background
@@ -46,6 +33,18 @@ This SDK utilizes the GridPlus Agent's remote signing capabilities to form autom
 
 Because the agent can function as an always-online hardware device, we can leverage its availability to request automated signatures for any type of application. Broadly, each application defines one or more signature schema and passes those to the agent. The user must pin into the physical device and allow the automated schema (the user may configure a max number of signatures and/or a rate limit), after which the application may request signatures on the allowed schema and receive automated signatures.
 
+# API
+
+TODO
+
+# Testing
+We recommend using a lightweight node such as [Ganache](http://truffleframework.com/ganache/)
+and copying the first account's address and private key in `config.testing.ethHolder` (in `src/config.js`). 
+We need one hot account for testing purposes, but it will not be used in the SDK itself. This is because the SDK only displays static data and makes requests to external wallets.
+
+
+# OLD reference
+**Please ignore while ths functionality is added back in. The below reference is not currently usable.**
 
 ## Pairing with a Device
 
@@ -200,139 +199,3 @@ Each rule contains 3 fields: `[ruleName, param1, param2]`. Note that `param2` ma
 **cb** `(<Error>)`
 
 **response**:
-
-
-
-
-=============================================================================================================
-OLD/REFERENCE
-
-### removePairing(ts, sig, cb)
-
-*An app may delete its pairing with a signature on a pre-determined piece of data.
-This data will be publicly available, but for now it can be thought of as the
-hash of `"delete"`.*
-
-**ts** `<int>`:
-
-UNIX timestamp (seconds since epoch), which must be <24 hours old. This is the data to be signed.
-
-**sig** `<object>`:
-```
-{                    // signature on keccak256(ts)
-  v: <uint>,         // 27 or 28
-  r: <string>,
-  s: <string>
-}
-```
-**cb**: returns `(err <Error>, reqId <string>)`
-
-
-
-### deletePermission(opts, cb)
-
-*Delete a permission given an index for a specified pairing*
-
-**opts** `<object>`:
-```
-{
-  'index': <int>,     // index of permission for the pairing (see: getPermissions)
-  'sig': {
-    'v': <int>,       // 27 or 28
-    'r': <string>,
-    's': <string>
-  }
-}
-```
-
-
-### checkPairingRequest(id, cb)
-
-*Check the status of a pairing request.*
-
-**id** `<int>`: id of pairing request returned from `addPairing`
-
-**cb** `(<Error>, <Status>)`
-
-***Error codes:***
-
-* `1` - no record of request id
-
-***Status codes:***
-
-* `1` - pairing successfully added
-* `2` - pairing failed manual authorization
-* `3` - pairing still pending manual authorization
-
-
-
-## Signature requests
-
-### requestPermissionedSig(opts, cb)
-
-*Request a signature on a piece of data, referencing a particular permission.*
-
-**opts** `<object>`:
-```
-{
-  'permissionIndex': <bool>   // Index of relevant permission for requesting app
-  'schema': <string>          // same as addPermission()
-  'type': <string>            // same as addPermission()
-  'data': <array>             // array of the parameters to be signed. All values must be filled in or an invalid signature may result.
-  'sig': <object>             // v,r,s parameters of signature on concatenated schema+type+data
-}
-```
-
-**cb** `(<Error>, <string>)`
-
-Callback either an error or a `signatureRequestId` (64 byte hash, hex), which is valid for 48 hours.
-
-***Error codes:***
-
-* `1` - data did not conform to schema + type definition
-* `2` - no corresponding permission (only occurs if `permissioned == true`)
-* `3` - error recovering requester signature
-* `4` - requester not paired
-* `5` - rule violated
-* `6` - time limit violated
-
-## General Requests
-
-### getResponse(opts, cb)
-
-*Check the status of a signature request.*
-
-**opts** `<object>`:
-```
-{
-  'id': <string>        // Request id to check
-  'sig': {              // Signature of keccak256(id)
-    'v': <int>,
-    'r': <string>,
-    's': <string>
-  }
-}
-```
-
-**cb** `(<Error>, <Status>, sig <string>)`
-
-***Error codes:***
-
-* `1` - no record of request id
-
-***Status codes:***
-
-* `1` - request successfully made - signature attached
-* `2` - request failed manual authorization
-* `3` - request still pending manual authorization
-
-***sig:***
-
-The raw signature, encrypted in the paired requesters public key. This is only
-included with signature request responses
-
-
-# Testing
-We recommend using a lightweight node such as [Ganache](http://truffleframework.com/ganache/)
-and copying the first account's address and private key in `config.testing.ethHolder` (in `src/config.js`). 
-We need one hot account for testing purposes, but it will not be used in the SDK itself. This is because the SDK only displays static data and makes requests to external wallets.

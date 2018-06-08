@@ -50,7 +50,7 @@ class GridPlusSDK {
     else                   return ethereum.initEth(provider)
   }
 
-  // Get a balance for an account
+  // Get a balance for an account. RETURNS A PROMISE!
   // @param [currency]  {string}  - "ETH", "ERC20", or "BTC"
   // @param [addr]      {string}  - The account we are querying
   // @param [ERC20Addr] {string}  - (optional) Address of the ERC20 token we are asking about
@@ -65,6 +65,7 @@ class GridPlusSDK {
         break;
       default:
         return;
+        break;
     }
   }
 
@@ -73,6 +74,25 @@ class GridPlusSDK {
     return ethereum.web3();
   }
 
+  // Get a history of transfers for the desired currency. RETURNS A PROMISE!
+  // @param [currency]  {string}  - "ETH", "ERC20", or "BTC"
+  // @param [addr]      {string}  - The account we are querying
+  // @param [ERC20Addr] {string}  - (optional) Address of the ERC20 token we are asking about
+  // @returns           {Promise} - Contains an object of form: { in: <Array> , out: <Array> }
+  //                                See API documentation for schema of the nested arrays.
+  getTransactionHistory(currency, user, ERC20Addr=null) {
+    switch(currency) {
+      case 'ETH':
+        return []; // Todo, need to figure out a way to pull in simple transfers
+        break;
+      case 'ERC20':
+        return ethereum.getERC20TransferHistory(user, ERC20Addr);
+        break;
+      default:
+        return;
+        break;
+    }
+  }
 
 
   /*
