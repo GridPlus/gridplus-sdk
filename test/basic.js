@@ -47,7 +47,8 @@ describe('Basic tests', () => {
     web3 = sdk.getWeb3();
     sender = config.testing.ethHolder;
     senderPriv = new Buffer(sender.privKey, 'hex');
-    web3.eth.getTransactionCount(sender.address)
+    // web3.eth.getTransactionCount(sender.address)
+    sdk.getTransactionCount('ETH', sender.address)
     .then((nonce) => {
       // Setup a transaction to send 1 ETH (10**18 wei) to our random address
       const rawTx = {
@@ -80,7 +81,7 @@ describe('Basic tests', () => {
   });
 
   it('Should deploy an ERC20 token', (done) => {
-    web3.eth.getTransactionCount(sender.address)
+    sdk.getTransactionCount('ETH', sender.address)
     .then((nonce) => {
       const rawTx = {
         nonce,
@@ -128,7 +129,7 @@ describe('Basic tests', () => {
   });
 
   it('Should transfer some ERC20 tokens to the address', (done) => {
-    web3.eth.getTransactionCount(sender.address)
+    sdk.getTransactionCount('ETH', sender.address)
     .then((nonce) => {
       const rawTx = {
         nonce,
@@ -166,6 +167,18 @@ describe('Basic tests', () => {
     .then((events) => {
       assert(events.in.length === 1, `Number of inbound transfers should be 1, but got ${events.in.length}`);
       assert(events.out.length === 0, `Number of outbound transfers should be 0, but got ${events.out.length}`);      
+      done();
+    })
+    .catch((err) => {
+      assert(err === null, err);
+      done();
+    })
+  });
+
+  it('Should get the nonce of the recipient account', (done) => {
+    sdk.getTransactionCount('ETH', addr)
+    .then((nonce) => {
+      assert(nonce === 0, `User should not have sent any transactions, but got nonce of ${nonce}`);
       done();
     })
     .catch((err) => {

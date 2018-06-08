@@ -50,6 +50,11 @@ class GridPlusSDK {
     else                   return ethereum.initEth(provider)
   }
 
+  // Get the web3 connection for advanced functionality
+  getWeb3() {
+    return ethereum.web3();
+  }
+
   // Get a balance for an account. RETURNS A PROMISE!
   // @param [currency]  {string}  - "ETH", "ERC20", or "BTC"
   // @param [addr]      {string}  - The account we are querying
@@ -69,11 +74,6 @@ class GridPlusSDK {
     }
   }
 
-  // Get the web3 connection for advanced functionality
-  getWeb3() {
-    return ethereum.web3();
-  }
-
   // Get a history of transfers for the desired currency. RETURNS A PROMISE!
   // @param [currency]  {string}  - "ETH", "ERC20", or "BTC"
   // @param [addr]      {string}  - The account we are querying
@@ -87,6 +87,22 @@ class GridPlusSDK {
         break;
       case 'ERC20':
         return ethereum.getERC20TransferHistory(user, ERC20Addr);
+        break;
+      default:
+        return;
+        break;
+    }
+  }
+
+  // Get the number of transactions an address has made. This is needed for building ETH
+  // transactions and may be useful for BTC as well
+  // @param [system]  {string}  - "ETH" or "BTC"
+  // @param [user]    {string}  - Account we are querying
+  // @returns         {Promise} - Contains a number
+  getTransactionCount(system, user) {
+    switch (system) {
+      case 'ETH':
+        return ethereum.getNonce(user);
         break;
       default:
         return;
