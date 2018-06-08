@@ -73,20 +73,20 @@ exports.getBalance = function(addr, ERC20Addr=null) {
 // Get a history of ERC20 transfers to and from an account
 // @param [addr]         {string}  - The account we are looking up
 // @param [startBlock]   {int}     -   
-exports.getTransferHistory = function(user, contractAddr) {
+exports.getERC20TransferHistory = function(user, contractAddr) {
   return new Promise((resolve, reject) => {
     if (erc20Contracts[contractAddr] === undefined) _initContract(contractAddr);
-    const C = erc20Contracts[contractAddr];
+    const C = erc20Contracts[contractAddr].contract;
     let events = {}
     // Get transfer "out" events
     _getEvents(C, { from: user })
     .then((outEvents) => {
       events.out = outEvents;
-      return _getEvents(c, { to: user })
+      return _getEvents(C, { to: user })
     })
     .then((inEvents) => {
       events.in = inEvents;
-      return resolve(events);
+      return resolve(_parseTransferLogs(events, 'ERC20', erc20Contracts[contractAddr].decimals));
     })
     .catch((err) => { return reject(err); })
   });
@@ -109,4 +109,32 @@ function _getEvents(contract, filter, type='Transfer', fromBlock=0, toBlock='lat
     .then((events) => { return resolve(events); })
     .catch((err) => { return reject(err); })
   });
+}
+
+function _parseTransferLogs(logs, type, decimals=0) {
+  let newLogs = { in: [], out: [] };
+  logs.out.forEach((log) => {
+    newLogs.out.push(_parseLog(log, type, decimals));
+  });
+  logs.in.forEach((log) => {
+    newLogs.in.push(_parseLog(log, type, decimals));
+  });
+  return newLogs;
+}
+
+function _parseLog(log, type, decimals=0) {
+  switch (type) {
+    case 'ERC20':
+      return {
+        transactionHash: log.transactionHash,
+        contract: log.address,
+        from: log.returnValues.from,
+        to: log.returnValues.to,
+        value: parseInt(log.returnValues.value) / (10 ** decimals),
+      };
+      break;
+    default:
+      return {};
+      break;
+  }
 }

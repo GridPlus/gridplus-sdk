@@ -143,7 +143,6 @@ describe('Basic tests', () => {
     })
     .then((receipt) => {
       assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
-      erc20Addr = receipt.contractAddress;
       done(); 
     })
     .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
@@ -162,8 +161,17 @@ describe('Basic tests', () => {
     });
   });
 
-  // it('Should get the token transfer history for the user', (done) => {
-    // sdk.get
-  // })
+  it('Should get the token transfer history for the user', (done) => {
+    sdk.getTransactionHistory('ERC20', addr, erc20Addr)
+    .then((events) => {
+      assert(events.in.length === 1, `Number of inbound transfers should be 1, but got ${events.in.length}`);
+      assert(events.out.length === 0, `Number of outbound transfers should be 0, but got ${events.out.length}`);      
+      done();
+    })
+    .catch((err) => {
+      assert(err === null, err);
+      done();
+    })
+  })
 
 })
