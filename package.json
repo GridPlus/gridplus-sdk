@@ -8,7 +8,8 @@
     "lint": "eslint src __tests__",
     "lint:fix": "eslint --fix src __tests__",
     "precommit": "npm run lint:fix && npm run test",
-    "prepublish": "npm run build"
+    "prepublish": "npm run build",
+    "postinstall": "npm run build"
   },
   "private": true,
   "main": "dist/index.js",
