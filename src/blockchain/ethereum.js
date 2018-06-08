@@ -1,7 +1,7 @@
 // Integrations to query the Ethereum blockchain for relevant account data
 const config = require(`${__dirname}/../config.js`);
 const Web3 = require('web3');
-let erc20Decimals = {};
+let erc20Contracts = {};
 let web3;
 
 // Instantiate the Ethereum query service. In this case, it is a web3 instance.
@@ -34,6 +34,9 @@ exports.initEth = function(_provider=config.defaultWeb3Provider) {
   }
 }
 
+// Expose the web3 interface for advanced functionality
+exports.web3 = function() { return web3; }
+
 // Get the balance of an Ethereum account. This can be an ERC20 or ETH balance.
 // @param [addr]      {string}  - The account we are querying
 // @param [ERC20Addr] {string}  - Address of the ERC20 token we are asking about
@@ -41,21 +44,21 @@ exports.initEth = function(_provider=config.defaultWeb3Provider) {
 exports.getBalance = function(addr, ERC20Addr=null) {
   return new Promise((resolve, reject) => {
     if (ERC20Addr !== null) {
-      if (erc20decimals[ERC20Addr] === undefined) {
-        // Cache the number of decimals for the token if it is not already saved.
-        // This will make future balance requests more efficient.
+      if (erc20Contracts[ERC20Addr] === undefined) {
+        // Save the contract as an object
         web3.eth.call({ to: ERC20Addr, data: config.erc20.decimals() })
         .then((decimals) => {
-          erc20Decimals[ERC20Addr] = parseInt(decimals);
+          const C = _initContract(ERC20Addr);
+          erc20Contracts[ERC20Addr].decimals = parseInt(decimals);
           // Get the balance
           return web3.eth.call({ to: ERC20Addr, data: config.erc20.balanceOf(addr) })
         })
-        .then((balance) => { return resolve(parseInt(balance) / 10 ** erc20Decimals[ERC20Addr]); })
+        .then((balance) => { return resolve(parseInt(balance) / 10 ** erc20Contracts[ERC20Addr].decimals); })
         .catch((err) => { return reject(err); });
       } else {
         // If the decimals are cached, we can just query the balance
         web3.eth.call({ to: ERC20Addr, data: config.erc20.balanceOf(addr) })
-        .then((balance) => { return resolve(parseInt(balance) / 10 ** erc20Decimals[ERC20Addr]); })
+        .then((balance) => { return resolve(parseInt(balance) / 10 ** erc20Contracts[ERC20Addr].decimals); })
         .catch((err) => { return reject(err); });
       }
     } else {
@@ -65,4 +68,83 @@ exports.getBalance = function(addr, ERC20Addr=null) {
       .catch((err) => { return reject(err); })
     }
   })
+}
+
+// Get a history of ERC20 transfers to and from an account
+// @param [addr]         {string}  - The account we are looking up
+// @param [contractAddr] {string}  - Address of the deployed ERC20 contract  
+exports.getERC20TransferHistory = function(user, contractAddr) {
+  return new Promise((resolve, reject) => {
+    if (erc20Contracts[contractAddr] === undefined) _initContract(contractAddr);
+    const C = erc20Contracts[contractAddr].contract;
+    let events = {}
+    // Get transfer "out" events
+    _getEvents(C, { from: user })
+    .then((outEvents) => {
+      events.out = outEvents;
+      return _getEvents(C, { to: user })
+    })
+    .then((inEvents) => {
+      events.in = inEvents;
+      return resolve(_parseTransferLogs(events, 'ERC20', erc20Contracts[contractAddr].decimals));
+    })
+    .catch((err) => { return reject(err); })
+  });
+}
+
+// Get the nonce (i.e. the number of transactions an account has sent)
+// @param [addr]    {string}  - The account we are looking up
+exports.getNonce = function(user) {
+  return new Promise((resolve, reject) => {
+    web3.eth.getTransactionCount(user)
+    .then((nonce) => { return resolve(nonce); })
+    .catch((err) => { return reject(err); })
+  });
+}
+
+
+// Initialize a web3 instance of a contract. By default, this will be an
+// ERC20 contract, but others are allowed if an ABI is provided.
+function _initContract(addr, abi=config.erc20.abi) {
+  const C = new web3.eth.Contract(abi, addr);
+  if (abi === config.erc20.abi) erc20Contracts[addr] = { contract: C };
+  return C;
+}
+
+
+// Get a set of event logs
+function _getEvents(contract, filter, type='Transfer', fromBlock=0, toBlock='latest') {
+  return new Promise((resolve, reject) => {
+    contract.getPastEvents(type, { filter,  fromBlock, toBlock })
+    .then((events) => { return resolve(events); })
+    .catch((err) => { return reject(err); })
+  });
+}
+
+function _parseTransferLogs(logs, type, decimals=0) {
+  let newLogs = { in: [], out: [] };
+  logs.out.forEach((log) => {
+    newLogs.out.push(_parseLog(log, type, decimals));
+  });
+  logs.in.forEach((log) => {
+    newLogs.in.push(_parseLog(log, type, decimals));
+  });
+  return newLogs;
+}
+
+function _parseLog(log, type, decimals=0) {
+  switch (type) {
+    case 'ERC20':
+      return {
+        transactionHash: log.transactionHash,
+        contract: log.address,
+        from: log.returnValues.from,
+        to: log.returnValues.to,
+        value: parseInt(log.returnValues.value) / (10 ** decimals),
+      };
+      break;
+    default:
+      return {};
+      break;
+  }
 }
