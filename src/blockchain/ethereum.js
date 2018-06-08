@@ -51,10 +51,9 @@ exports.getBalance = function(addr, ERC20Addr=null) {
         .then((decimals) => {
           erc20Decimals[ERC20Addr] = parseInt(decimals);
           // Get the balance
-          console.log('thing', config.erc20.balanceOf(addr));
           return web3.eth.call({ to: ERC20Addr, data: config.erc20.balanceOf(addr) })
         })
-        .then((balance) => { console.log('got balance', balance); return resolve(parseInt(balance) / 10 ** erc20Decimals[ERC20Addr]); })
+        .then((balance) => { return resolve(parseInt(balance) / 10 ** erc20Decimals[ERC20Addr]); })
         .catch((err) => { return reject(err); });
       } else {
         // If the decimals are cached, we can just query the balance

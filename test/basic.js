@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const Tx = require('ethereumjs-tx');
 const config = require(`${__dirname}/../src/config.js`);
 const GridPlusSDK = require('../src/index.js').default;
-let sdk, privKey, addr, web3, erc20Addr, sender;
+let sdk, privKey, addr, web3, erc20Addr, sender, senderPriv;
 
 // Handle all promise rejections
 process.on('unhandledRejection', e => { throw e; });
@@ -29,6 +29,7 @@ describe('Basic tests', () => {
 
   it('Should get a zero ETH balance for a random address', (done) => {
     addr = '0x' + crypto.randomBytes(20).toString('hex');
+    console.log('Address to receive ETH and Tokens: ', addr);
     sdk.getEthBalance(addr)
     .then((balance) => {
       assert(typeof balance === 'number');
@@ -45,10 +46,10 @@ describe('Basic tests', () => {
   it('Should transfer ETH to the random address', (done) => {
     web3 = sdk.getWeb3();
     sender = config.testing.ethHolder;
+    senderPriv = new Buffer(sender.privKey, 'hex');
     web3.eth.getTransactionCount(sender.address)
     .then((nonce) => {
       // Setup a transaction to send 1 ETH (10**18 wei) to our random address
-      privKey = new Buffer(sender.privKey, 'hex');
       const rawTx = {
         nonce,
         to: addr,
@@ -56,7 +57,7 @@ describe('Basic tests', () => {
         value: toSend
       };
       const tx = new Tx(rawTx);
-      tx.sign(privKey);
+      tx.sign(senderPriv);
       const serTx = tx.serialize();
       return web3.eth.sendSignedTransaction(`0x${serTx.toString('hex')}`)
     })
@@ -88,7 +89,7 @@ describe('Basic tests', () => {
         data: config.testing.erc20Src,
       };
       const tx = new Tx(rawTx);
-      tx.sign(privKey);
+      tx.sign(senderPriv);      
       const serTx = tx.serialize();
       return web3.eth.sendSignedTransaction(`0x${serTx.toString('hex')}`)
     })
@@ -131,14 +132,13 @@ describe('Basic tests', () => {
     .then((nonce) => {
       const rawTx = {
         nonce,
+        to: erc20Addr,
         gasLimit: '0x186a0',
         data: config.erc20.transfer(addr, 1)
       };
-      console.log('rawtx', rawTx);
       const tx = new Tx(rawTx);
-      tx.sign(privKey);
+      tx.sign(senderPriv);      
       const serTx = tx.serialize();
-      console.log(serTx.toString('hex'))
       return web3.eth.sendSignedTransaction(`0x${serTx.toString('hex')}`)
     })
     .then((receipt) => {
@@ -149,6 +149,17 @@ describe('Basic tests', () => {
     .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
   });
 
-  it('Should find a non-zero token balance for the address');
+  it('Should find a zero token balance for the address', (done) => {
+    sdk.getEthBalance(addr, erc20Addr)
+    .then((balance) => {
+      assert(typeof balance === 'number');
+      assert(balance > 0);
+      done();
+    })
+    .catch((err) => {
+      assert(err === null, err);
+      done();
+    });
+  });
 
 })
