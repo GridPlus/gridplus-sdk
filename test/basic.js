@@ -30,7 +30,7 @@ describe('Basic tests', () => {
   it('Should get a zero ETH balance for a random address', (done) => {
     addr = '0x' + crypto.randomBytes(20).toString('hex');
     console.log('Address to receive ETH and Tokens: ', addr);
-    sdk.getEthBalance(addr)
+    sdk.getBalance('ETH', addr)
     .then((balance) => {
       assert(typeof balance === 'number');
       assert(balance === 0);
@@ -66,7 +66,7 @@ describe('Basic tests', () => {
   });
 
   it('Should find a non-zero ETH balance for the random address', (done) => {
-    sdk.getEthBalance(addr)
+    sdk.getBalance('ETH', addr)
     .then((balance) => {
       assert(typeof balance === 'number');
       // Note that balances are returned in whole units
@@ -102,7 +102,7 @@ describe('Basic tests', () => {
   });
 
   it('Should find a zero token balance for the address', (done) => {
-    sdk.getEthBalance(addr, erc20Addr)
+    sdk.getBalance('ERC20', addr, erc20Addr)
     .then((balance) => {
       assert(typeof balance === 'number');
       assert(balance === 0);
@@ -115,7 +115,7 @@ describe('Basic tests', () => {
   });
 
   it('Should find a non-zero balance for the sender', (done) => {
-    sdk.getEthBalance(sender.address, erc20Addr)
+    sdk.getBalance('ETH', sender.address, erc20Addr)
     .then((balance) => {
       assert(typeof balance === 'number');
       assert(balance > 0, `Sender balance should be >0, but is ${balance}`);
@@ -150,7 +150,7 @@ describe('Basic tests', () => {
   });
 
   it('Should find a zero token balance for the address', (done) => {
-    sdk.getEthBalance(addr, erc20Addr)
+    sdk.getBalance('ERC20', addr, erc20Addr)
     .then((balance) => {
       assert(typeof balance === 'number');
       assert(balance > 0);
@@ -161,5 +161,9 @@ describe('Basic tests', () => {
       done();
     });
   });
+
+  // it('Should get the token transfer history for the user', (done) => {
+    // sdk.get
+  // })
 
 })

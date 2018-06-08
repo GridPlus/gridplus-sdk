@@ -50,12 +50,22 @@ class GridPlusSDK {
     else                   return ethereum.initEth(provider)
   }
 
-  // Get a token balance, returns a promise
+  // Get a balance for an account
+  // @param [currency]  {string}  - "ETH", "ERC20", or "BTC"
   // @param [addr]      {string}  - The account we are querying
-  // @param [ERC20Addr] {string}  - Address of the ERC20 token we are asking about
+  // @param [ERC20Addr] {string}  - (optional) Address of the ERC20 token we are asking about
   // @returns           {Promise} - Contains the balance in full units (i.e. with decimals divided in)
-  getEthBalance(addr, ERC20Addr=null) {
-    return ethereum.getBalance(addr, ERC20Addr);
+  getBalance(currency, addr, ERC20Addr=null) {
+    switch(currency) {
+      case 'ETH': 
+        return ethereum.getBalance(addr);
+        break;
+      case 'ERC20':
+        return ethereum.getBalance(addr, ERC20Addr);
+        break;
+      default:
+        return;
+    }
   }
 
   // Get the web3 connection for advanced functionality

@@ -44,22 +44,21 @@ exports.web3 = function() { return web3; }
 exports.getBalance = function(addr, ERC20Addr=null) {
   return new Promise((resolve, reject) => {
     if (ERC20Addr !== null) {
-      if (erc20Decimals[ERC20Addr] === undefined) {
-        // Cache the number of decimals for the token if it is not already saved.
-        // This will make future balance requests more efficient.
+      if (erc20Contracts[ERC20Addr] === undefined) {
+        // Save the contract as an object
         web3.eth.call({ to: ERC20Addr, data: config.erc20.decimals() })
         .then((decimals) => {
-
-          erc20Decimals[ERC20Addr] = parseInt(decimals);
+          const C = _initContract(ERC20Addr);
+          erc20Contracts[ERC20Addr].decimals = parseInt(decimals);
           // Get the balance
           return web3.eth.call({ to: ERC20Addr, data: config.erc20.balanceOf(addr) })
         })
-        .then((balance) => { return resolve(parseInt(balance) / 10 ** erc20Decimals[ERC20Addr]); })
+        .then((balance) => { return resolve(parseInt(balance) / 10 ** erc20Contracts[ERC20Addr].decimals); })
         .catch((err) => { return reject(err); });
       } else {
         // If the decimals are cached, we can just query the balance
         web3.eth.call({ to: ERC20Addr, data: config.erc20.balanceOf(addr) })
-        .then((balance) => { return resolve(parseInt(balance) / 10 ** erc20Decimals[ERC20Addr]); })
+        .then((balance) => { return resolve(parseInt(balance) / 10 ** erc20Contracts[ERC20Addr].decimals); })
         .catch((err) => { return reject(err); });
       }
     } else {
@@ -74,11 +73,40 @@ exports.getBalance = function(addr, ERC20Addr=null) {
 // Get a history of ERC20 transfers to and from an account
 // @param [addr]         {string}  - The account we are looking up
 // @param [startBlock]   {int}     -   
+exports.getTransferHistory = function(user, contractAddr) {
+  return new Promise((resolve, reject) => {
+    if (erc20Contracts[contractAddr] === undefined) _initContract(contractAddr);
+    const C = erc20Contracts[contractAddr];
+    let events = {}
+    // Get transfer "out" events
+    _getEvents(C, { from: user })
+    .then((outEvents) => {
+      events.out = outEvents;
+      return _getEvents(c, { to: user })
+    })
+    .then((inEvents) => {
+      events.in = inEvents;
+      return resolve(events);
+    })
+    .catch((err) => { return reject(err); })
+  });
+}
 
 
-
+// Initialize a web3 instance of a contract. By default, this will be an
+// ERC20 contract, but others are allowed if an ABI is provided.
 function _initContract(addr, abi=config.erc20.abi) {
   const C = new web3.eth.Contract(abi, addr);
-  if (abi === config.erc20.abi) erc20Contracts[addr] = C;
+  if (abi === config.erc20.abi) erc20Contracts[addr] = { contract: C };
   return C;
+}
+
+
+// Get a set of event logs
+function _getEvents(contract, filter, type='Transfer', fromBlock=0, toBlock='latest') {
+  return new Promise((resolve, reject) => {
+    contract.getPastEvents(type, { filter,  fromBlock, toBlock })
+    .then((events) => { return resolve(events); })
+    .catch((err) => { return reject(err); })
+  });
 }
