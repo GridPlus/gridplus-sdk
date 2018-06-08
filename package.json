@@ -13,9 +13,6 @@
   },
   "private": true,
   "main": "dist/index.js",
-  "files": [
-    "dist"
-  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/GridPlus/gridplus-sdk.git"
