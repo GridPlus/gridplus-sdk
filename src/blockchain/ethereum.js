@@ -72,7 +72,7 @@ exports.getBalance = function(addr, ERC20Addr=null) {
 
 // Get a history of ERC20 transfers to and from an account
 // @param [addr]         {string}  - The account we are looking up
-// @param [startBlock]   {int}     -   
+// @param [contractAddr] {string}  - Address of the deployed ERC20 contract  
 exports.getERC20TransferHistory = function(user, contractAddr) {
   return new Promise((resolve, reject) => {
     if (erc20Contracts[contractAddr] === undefined) _initContract(contractAddr);
@@ -88,6 +88,16 @@ exports.getERC20TransferHistory = function(user, contractAddr) {
       events.in = inEvents;
       return resolve(_parseTransferLogs(events, 'ERC20', erc20Contracts[contractAddr].decimals));
     })
+    .catch((err) => { return reject(err); })
+  });
+}
+
+// Get the nonce (i.e. the number of transactions an account has sent)
+// @param [addr]    {string}  - The account we are looking up
+exports.getNonce = function(user) {
+  return new Promise((resolve, reject) => {
+    web3.eth.getTransactionCount(user)
+    .then((nonce) => { return resolve(nonce); })
     .catch((err) => { return reject(err); })
   });
 }
