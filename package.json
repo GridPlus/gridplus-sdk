@@ -40,5 +40,8 @@
     "eslint-plugin-promise": "^3.5.0",
     "eslint-plugin-standard": "^3.0.1"
   },
-  "license": "ISC"
+  "license": "ISC",
+  "publishConfig": {
+    "registry": "https://nexus.gridpl.us/repository/npm-private/"
+  }
 }
