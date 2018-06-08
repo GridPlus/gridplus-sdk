@@ -1,7 +1,7 @@
 // Integrations to query the Ethereum blockchain for relevant account data
 const config = require(`${__dirname}/../config.js`);
 const Web3 = require('web3');
-let erc20Decimals = {};
+let erc20Contracts = {};
 let web3;
 
 // Instantiate the Ethereum query service. In this case, it is a web3 instance.
@@ -49,6 +49,7 @@ exports.getBalance = function(addr, ERC20Addr=null) {
         // This will make future balance requests more efficient.
         web3.eth.call({ to: ERC20Addr, data: config.erc20.decimals() })
         .then((decimals) => {
+
           erc20Decimals[ERC20Addr] = parseInt(decimals);
           // Get the balance
           return web3.eth.call({ to: ERC20Addr, data: config.erc20.balanceOf(addr) })
@@ -68,4 +69,16 @@ exports.getBalance = function(addr, ERC20Addr=null) {
       .catch((err) => { return reject(err); })
     }
   })
+}
+
+// Get a history of ERC20 transfers to and from an account
+// @param [addr]         {string}  - The account we are looking up
+// @param [startBlock]   {int}     -   
+
+
+
+function _initContract(addr, abi=config.erc20.abi) {
+  const C = new web3.eth.Contract(abi, addr);
+  if (abi === config.erc20.abi) erc20Contracts[addr] = C;
+  return C;
 }
