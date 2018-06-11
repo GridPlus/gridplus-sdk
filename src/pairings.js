@@ -1,3 +1,4 @@
+/*
 // Add, update, delete, or get pairings with devices
 const internalCrypto = require('./internalCrypto.js');
 const enums = require('./enums.js');
@@ -20,3 +21,4 @@ exports.add = function(opts, privKey, reqFunc, cb) {
 exports.del = function(device, reqFunc, cb) {
   reqFunc('delPairing', {}, device, cb);
 }
+*/

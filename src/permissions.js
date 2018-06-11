@@ -1,7 +1,7 @@
 // Add, update, delete permissions given a pairing
 // Permissions are sets of rules mapping a pairing to a wallet and a remote
 // signing scheme.
-const enums = require('./enums.js');
+/*const enums = require('./enums.js');
 const internalCrypto = require('./internalCrypto.js');
 
 // Parse the rules
@@ -68,3 +68,4 @@ exports.getRulesErr = function(rules) {
   });
   return err;
 }
+*/

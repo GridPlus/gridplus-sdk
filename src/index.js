@@ -1,8 +1,8 @@
 const EC = require('elliptic').ec;
 const EC_K = new EC('secp256k1');
-const internalCrypto = require('./internalCrypto.js');
-const enums = require('./enums.js');
-const permissions = require('./permissions.js');
+// const internalCrypto = require('./internalCrypto.js');
+// const enums = require('./enums.js');
+// const permissions = require('./permissions.js');
 const config = require('./config.js');
 const ethereum = require(`${__dirname}/blockchain/ethereum.js`);
 

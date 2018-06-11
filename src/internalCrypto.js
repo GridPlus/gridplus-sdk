@@ -1,5 +1,5 @@
 // Encrypt and decrypt payloads
-const crypto = require('crypto');
+/*const crypto = require('crypto');
 const eccrypto = require('eccrypto');
 
 
@@ -29,3 +29,4 @@ exports.ecsign = function(data, privKey, cb) {
   .then((sig) => { cb(null, sig); })
   .catch((err) => { cb(err); })
 }
+*/
