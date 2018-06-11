@@ -4,7 +4,6 @@ const internalCrypto = require('./internalCrypto.js');
 const enums = require('./enums.js');
 const permissions = require('./permissions.js');
 const config = require('./config.js');
-const http = require('http');
 const ethereum = require(`${__dirname}/blockchain/ethereum.js`);
 
 class GridPlusSDK {
