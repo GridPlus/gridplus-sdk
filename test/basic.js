@@ -1,6 +1,5 @@
 // Basic tests for atomic SDK functionality
 const assert = require('assert');
-const crypto = require('crypto');
 const Tx = require('ethereumjs-tx');
 const config = require(`${__dirname}/../src/config.js`);
 const GridPlusSDK = require('../src/index.js').default;
@@ -12,8 +11,7 @@ process.on('unhandledRejection', e => { throw e; });
 describe('Basic tests', () => {
   it('Should instantiate an SDK object', (done) => {
     try {
-      privKey = crypto.randomBytes(32).toString('hex');
-      sdk = new GridPlusSDK({ key: privKey });
+      sdk = new GridPlusSDK();
       done();
     } catch (err) {
       assert(err === null, err);
@@ -28,7 +26,8 @@ describe('Basic tests', () => {
   });
 
   it('Should get a zero ETH balance for a random address', (done) => {
-    addr = '0x' + crypto.randomBytes(20).toString('hex');
+    // addr = '0x' + crypto.randomBytes(20).toString('hex');
+    addr = `0x${sdk.key.priv.toString('hex').substr(0, 40)}`;
     console.log('Address to receive ETH and Tokens: ', addr);
     sdk.getBalance('ETH', addr)
     .then((balance) => {

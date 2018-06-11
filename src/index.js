@@ -1,5 +1,5 @@
-const crypto = require('crypto');
-const eccrypto = require('eccrypto');
+const EC = require('elliptic').ec;
+const EC_K = new EC('secp256k1');
 const internalCrypto = require('./internalCrypto.js');
 const enums = require('./enums.js');
 const permissions = require('./permissions.js');
@@ -12,25 +12,8 @@ class GridPlusSDK {
   // SETUP OBJECT
   //============================================================================
   constructor(opts={}) {
-    // First setup the private key. This should be stored on device and is needed
-    // to interact with the agent device
-    if (opts.key === undefined) {
-      this.privKey = crypto.randomBytes(32);
-    } else if (typeof opts.key == 'string' && opts.key.length === 64) {
-      this.privKey = Buffer.from(opts.key, 'hex');
-    } else if (typeof opts.key == 'object' && opts.key.length === 32) {
-      this.privKey = opts.key;
-    } else {
-      throw new Error('Incorrect key. Please provide a 32 byte key.');
-    }
-    // Public key is pointwise operation on the private key on the secp256k1 curve
-    this.pubKey = eccrypto.getPublic(this.privKey);
-
-    // These are all indexed on the same user-defined id
-    this.hosts = {};
-    this.ids = {};
-    this.tokens = {};
-    this.pairings = {};
+    // Create a keypair either with existing entropy or system-based randomness
+    this._initKeyPair(opts);
 
     // If an ETH provider is included in opts, connect to the provider automatically
     if (opts.ethProvider !== undefined) this.connectToEth(opts.ethProvider);
@@ -305,6 +288,22 @@ class GridPlusSDK {
     return id;
   }
 */
+
+  // Create an EC keypair. Optionally, a passphrase may be provided as opts.entropy
+  _initKeyPair(opts) {
+    // Create the keypair
+    if (opts.entropy === undefined) {
+      this.key = EC_K.genKeyPair();
+    } else {
+      if (opts.entropy.length < 20) {
+        console.log('WARNING: Passphrase should be at least 20 characters. Please consider using a longer one.');
+        for (let i = 0; i < 20 - opts.entropy.length; i++) opts.entropy += 'x';
+        this.key = EC_K.genKeyPair({ entropy: opts.entropy });
+      }
+    }
+    // Add the public key
+    this.key.pub = this.key.getPublic();
+  }
 }
 
 exports.default = GridPlusSDK;
