@@ -3,7 +3,7 @@ const assert = require('assert');
 const Tx = require('ethereumjs-tx');
 const config = require(`${__dirname}/../src/config.js`);
 const GridPlusSDK = require('../src/index.js').default;
-let sdk, privKey, addr, web3, erc20Addr, sender, senderPriv;
+let sdk, privKey, addr, provider, erc20Addr, sender, senderPriv;
 
 // Handle all promise rejections
 process.on('unhandledRejection', e => { throw e; });
@@ -43,10 +43,10 @@ describe('Basic tests', () => {
 
   const toSend = 10 ** 18;
   it('Should transfer ETH to the random address', (done) => {
-    web3 = sdk.getWeb3();
+    provider = sdk.getProvider();
     sender = config.testing.ethHolder;
     senderPriv = new Buffer(sender.privKey, 'hex');
-    // web3.eth.getTransactionCount(sender.address)
+    // provider.eth.getTransactionCount(sender.address)
     sdk.getTransactionCount('ETH', sender.address)
     .then((nonce) => {
       // Setup a transaction to send 1 ETH (10**18 wei) to our random address
@@ -59,7 +59,7 @@ describe('Basic tests', () => {
       const tx = new Tx(rawTx);
       tx.sign(senderPriv);
       const serTx = tx.serialize();
-      return web3.eth.sendSignedTransaction(`0x${serTx.toString('hex')}`)
+      return provider.sendTransaction(`0x${serTx.toString('hex')}`)
     })
     .then(() => { done(); })
     .catch((err) => { assert(err === null, err); done(); });
@@ -91,7 +91,10 @@ describe('Basic tests', () => {
       const tx = new Tx(rawTx);
       tx.sign(senderPriv);      
       const serTx = tx.serialize();
-      return web3.eth.sendSignedTransaction(`0x${serTx.toString('hex')}`)
+      return provider.sendTransaction(`0x${serTx.toString('hex')}`)
+    })
+    .then((txHash) => {
+      return provider.getTransactionReceipt(txHash);
     })
     .then((receipt) => {
       assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
@@ -139,11 +142,14 @@ describe('Basic tests', () => {
       const tx = new Tx(rawTx);
       tx.sign(senderPriv);      
       const serTx = tx.serialize();
-      return web3.eth.sendSignedTransaction(`0x${serTx.toString('hex')}`)
+      return provider.sendTransaction(`0x${serTx.toString('hex')}`)
+    })
+    .then((txHash) => {
+      return provider.getTransactionReceipt(txHash);
     })
     .then((receipt) => {
-      assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
-      done(); 
+      assert(receipt.logs.length > 0, 'Transaction did not emit any logs.');
+      done();
     })
     .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
   });
