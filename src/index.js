@@ -33,8 +33,8 @@ class GridPlusSDK {
   }
 
   // Get the web3 connection for advanced functionality
-  getWeb3() {
-    return ethereum.web3();
+  getProvider() {
+    return ethereum.getProvider();
   }
 
   // Get a balance for an account. RETURNS A PROMISE!
