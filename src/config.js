@@ -9,6 +9,10 @@ exports.erc20 = {
   decimals: function() { return `0x313ce567` },
 };
 
+exports.api = {
+  baseUrl: 'http://localhost:3001',
+}
+
 // For testing purposes
 exports.testing = {
   // An account which holds some ether. This corresponds with the following mnemonic:
