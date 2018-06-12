@@ -1,5 +1,6 @@
 const EC = require('elliptic').ec;
 const EC_K = new EC('secp256k1');
+const request = require('superagent');
 // const internalCrypto = require('./internalCrypto.js');
 // const enums = require('./enums.js');
 // const permissions = require('./permissions.js');
@@ -13,6 +14,7 @@ class GridPlusSDK {
   constructor(opts={}) {
     // Create a keypair either with existing entropy or system-based randomness
     this._initKeyPair(opts);
+    this.headerKey = null;
 
     // If an ETH provider is included in opts, connect to the provider automatically
     if (opts.ethProvider !== undefined) this.connectToEth(opts.ethProvider);
@@ -92,15 +94,30 @@ class GridPlusSDK {
     }
   }
 
-
-  /*
-  NOTE: All comms with agent need to be overhauled based on changes made to the agent API
-
-
   //============================================================================
   // COMMS WITH AGENT
   //============================================================================
 
+  // Initiate comms with a particular agent
+  connect(id) {
+    return new Promise((resolve, reject) => {
+      const url = `${config.api.baseUrl}/headerKey`;
+      request.post(url)
+      .then((res) => {
+        if (!res.body) return reject(`No body returned from ${url}`)
+        else if (!res.body.headerKey) return reject(`Incorrect response body from ${url}`)
+        else {
+          this.headerKey = res.body.headerKey;
+          return resolve(true);
+        }
+      })
+      .catch((err) => {
+        return reject(err);
+      })
+    })
+  }
+
+/*
   // Add a device based on a host
   addDevice(host, id, cb) {
     this.hosts[id] = host;
