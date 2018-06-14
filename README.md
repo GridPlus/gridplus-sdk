@@ -38,10 +38,37 @@ Because the agent can function as an always-online hardware device, we can lever
 TODO
 
 # Testing
+You can run the test suite with:
+
+```
+npm run test
+```
+
+This requires you to have access to an Ethereum and Bitcoin node. For testing purposes, these should be running testnets locally.
+
+#### Ethereum Nodes
 We recommend using a lightweight node such as [Ganache](http://truffleframework.com/ganache/)
 and copying the first account's address and private key in `config.testing.ethHolder` (in `src/config.js`). 
 We need one hot account for testing purposes, but it will not be used in the SDK itself. This is because the SDK only displays static data and makes requests to external wallets.
 
+#### Bitcoin Nodes
+We recommend using `bitcoind`, which can be installed on OSX with:
+
+```
+brew install bitcoin
+```
+
+This installs a series of tools, including `bitcoind`. Once installed, please connect and sync to the test network with the following:
+
+```
+bitcoind -testnet -server
+```
+
+If you would like to view the console output (recommended), you can stream the logs with:
+
+```
+tail -f ~/Library/Application Support/Bitcoin/testnet3/debug.log
+```
 
 # OLD reference
 **Please ignore while ths functionality is added back in. The below reference is not currently usable.**
