@@ -4,6 +4,9 @@ const { Network } = require('bcoin');
 const config = require('../config.js');
 let client;
 
+// Initialize a connection to a Bitcoin node. Uses params in config.js by default.
+// @param [options] {object}  - may contain `network` and `port` params
+// @returns         {Promise}  - contains `info` Object or error
 exports.initBitcoin = function(options={}) {
   return new Promise((resolve, reject) => {
     try {
@@ -25,28 +28,44 @@ exports.initBitcoin = function(options={}) {
   })
 }
 
+// Get the balance (and the set of UTXOs) belonging to a given address (or addresses)
+// @param [addr] {string or object}  - single or array of addresses to query 
+// @returns      {Promise}           - contains object { balance: <number>, utxos: <Array> } or error
 exports.getBalance = function(addr) {
   return new Promise((resolve, reject) => {
-    // client.getBalance('2N6en3ZNerpFKf69KfsLveTNUosA45i4EXQ')
-    // client.getBalance({ account: '*', minconf: 0 })
-    // .then((balance) => {
-    //   console.log('balance', balance);
-    //   return resolve(balance);
-    // })
-    // .catch((err) => {
-    //   console.log('found err', err)
-    //   return reject(err);
-    // })
-    // client.getTransactionByHash('32bbd7cc8550d64fc932bf77940fd15a156e0a08b904af3e9275bbb824956b19')
-    console.log(client.listUnspent, '\n\n\n\n')
-    client.listUnspent()
-    .then((foo) => {
-      console.log('got foo', foo)
-      return resolve(foo);
+    getUtxos(addr)
+    .then((utxos) => {
+      const toReturn = {
+        utxos: utxos,
+        balance: sumBalance(utxos),
+      };
+      return resolve(toReturn);
     })
     .catch((err) => {
-      console.log('found err', err);
       return reject(err);
     })
-  })
+  });
+}
+
+// Get all of the UTXOs for a given address
+// @param [addr] {string}  - single address to query
+// @returns      {Array}   - array of UTXO objects
+function getUtxos(addr) {
+  return new Promise((resolve, reject) => {
+    client.getCoinsByAddress(addr)
+    .then((utxos) => { return resolve(utxos); })
+    .catch((err) => { return reject(err); })
+  });
+}
+
+// Total the balance given a set of UTXO objects
+// @param [utxos] {Array}  - array of UTXO objects
+// @param [sat]   {bool}   - [optional] if true, return the balance in satoshis
+function sumBalance(utxos, sat=true) {
+  let balance = 0;
+  utxos.forEach((u) => {
+    balance += u.value;
+  });
+  if (sat === true) return balance
+  else              return balance / 10 ** 8;   // 1 bitcoin = 10**8 satoshis
 }
