@@ -8,12 +8,14 @@ let erc20Decimals = {};
 
 // Instantiate the Ethereum query service. In this case, it is a web3 instance.
 exports.initEth = function(_provider=config.defaultWeb3Provider) {
-  try {  
-    provider =  new ethers.providers.JsonRpcProvider(_provider);
-    return null;
-  } catch (err) {
-    return new Error(err);
-  }
+  return new Promise((resolve, reject) => {
+    try {  
+      provider =  new ethers.providers.JsonRpcProvider(_provider);
+      return resolve(true);
+    } catch (err) {
+      return reject(err);
+    }
+  })
 }
 
 // Expose the web3 interface for advanced functionality

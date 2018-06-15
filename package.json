@@ -18,6 +18,7 @@
     "url": "git+https://github.com/GridPlus/gridplus-sdk.git"
   },
   "dependencies": {
+    "bitcoin-core": "^2.0.0",
     "eccrypto": "^1.0.3",
     "elliptic": "^6.4.0",
     "ethers": "^3.0.21",
