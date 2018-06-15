@@ -61,7 +61,7 @@ brew install bitcoin
 This installs a series of tools, including `bitcoind`. Once installed, please connect and sync to the test network with the following:
 
 ```
-bitcoind -testnet -server
+bitcoind -testnet -server -rpcuser=test -rpcpassword=password -rest
 ```
 
 If you would like to view the console output (recommended), you can stream the logs with:

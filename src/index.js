@@ -5,6 +5,7 @@ const request = require('superagent');
 // const enums = require('./enums.js');
 // const permissions = require('./permissions.js');
 const config = require('./config.js');
+const bitcoin = require('./blockchain/bitcoin.js');
 const ethereum = require('./blockchain/ethereum.js');
 
 class GridPlusSDK {
@@ -32,6 +33,13 @@ class GridPlusSDK {
   connectToEth(provider=null) {
     if (provider === null) return ethereum.initEth()
     else                   return ethereum.initEth(provider)
+  }
+
+  // Initialize a connection to Bitcoin node. 
+  // @param [options] {object}
+  // @returns         {Promise}
+  connectToBtc(options={}) {
+    return bitcoin.initBitcoin(options)
   }
 
   // Get the web3 connection for advanced functionality

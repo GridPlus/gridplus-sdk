@@ -13,6 +13,14 @@ exports.api = {
   baseUrl: 'http://localhost:3001',
 }
 
+exports.bitcoinNode = {
+  host: 'localhost',
+  port: 18332, 
+  password: 'password', 
+  username: 'test', 
+  version: '0.16.0'
+}
+
 // For testing purposes
 exports.testing = {
   // An account which holds some ether. This corresponds with the following mnemonic:

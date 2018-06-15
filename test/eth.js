@@ -20,9 +20,15 @@ describe('Basic tests', () => {
   });
 
   it('Should connect to an ETH node', (done) => {
-    const e = sdk.connectToEth();
-    assert(e === null);
-    done();
+    sdk.connectToEth()
+    .then((success) => {
+      assert(success === true);
+      done();
+    })
+    .catch((err) => {
+      assert(err === null, err);
+      done();
+    })
   });
 
   it('Should get a zero ETH balance for a random address', (done) => {
