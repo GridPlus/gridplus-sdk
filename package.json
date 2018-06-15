@@ -20,7 +20,6 @@
   "dependencies": {
     "bclient": "^0.1.0",
     "bcoin": "^1.0.0-beta.15",
-    "bitcoinjs-lib": "^3.3.2",
     "eccrypto": "^1.0.3",
     "elliptic": "^6.4.0",
     "ethers": "^3.0.21",
@@ -36,13 +35,14 @@
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-preset-env": "^1.6.0",
     "babel-register": "^6.24.1",
+    "bitcoinjs-lib": "^3.3.2",
     "eslint": "^4.18.2",
     "eslint-config-standard": "^11.0.0",
     "eslint-plugin-import": "^2.7.0",
     "eslint-plugin-node": "^6.0.1",
     "eslint-plugin-promise": "^3.5.0",
     "eslint-plugin-standard": "^3.0.1",
-    "ethereumjs-tx": "^1.3.4",
+    "ethereumjs-tx": "^1.3.4"
   },
   "license": "ISC",
   "publishConfig": {

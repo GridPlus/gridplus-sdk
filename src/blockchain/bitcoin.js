@@ -50,7 +50,7 @@ exports.getBalance = function(addr) {
 // Get all of the UTXOs for a given address
 // @param [addr] {string}  - single address to query
 // @returns      {Array}   - array of UTXO objects
-function getUtxos(addr) {
+function getUtxos(addr, checkedAddrs=[]) {
   return new Promise((resolve, reject) => {
     client.getCoinsByAddress(addr)
     .then((utxos) => { return resolve(utxos); })

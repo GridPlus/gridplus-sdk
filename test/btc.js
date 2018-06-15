@@ -32,9 +32,12 @@ describe('Bitcoin', () => {
     })
   });
 
-  // This address needs to have some BTC in it
-  it('Should check the balance of the config testnet address', (done) => {
-    sdk.getBalance('BTC', config.testing.btcHolder.address)
+  it('Should check the balance of a single address', (done) => {
+    // This address received some bitcoins in block ~58k in testnet3
+    const holderAddr = 'mkL6Q7fYkSpWNLnHCCd8Gig6VZYD5yAazB';
+    // Look for the balance and any unspent transaction outputs
+    // sdk.getBalance('BTC', config.testing.btcHolder.address)
+    sdk.getBalance('BTC', holderAddr)
     .then((d) => {
       assert(d.balance > 0, 'Address in config.js must have >0 BTC in order to run the tests.')
       assert(d.utxos.length > 0, 'Found zero UTXOs, but we need to spend at least one')
@@ -47,6 +50,21 @@ describe('Bitcoin', () => {
       done();
     })
   });
+
+  it('Should check the balance of multiple addresses', (done) => {
+    const addrs = [ 'muM9XjWgXhF2zHWVQqZxnmqsgfPfJd84Lv' , 'mkL6Q7fYkSpWNLnHCCd8Gig6VZYD5yAazB' ];
+    sdk.getBalance('BTC', addrs)
+    .then((d) => {
+      done();
+    })
+    .catch((err) => {
+      assert(err === null, err);
+      done();
+    })
+  })
+/*
+  Actually, we don't need these. These tests should simply check for UTXOs in a given address.
+  I'm going to keep them commented out in case we need a reference to rehydrating WIF keys
 
   it('Should create a new testnet address', (done) => {
     testKeyPair = bitcoin.ECPair.makeRandom({ network: bitcoin.networks.testnet });
@@ -69,5 +87,5 @@ describe('Bitcoin', () => {
       done();
     }
   });
-  
+*/
 })
