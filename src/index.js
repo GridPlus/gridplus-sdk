@@ -54,6 +54,9 @@ class GridPlusSDK {
   // @returns           {Promise} - Contains the balance in full units (i.e. with decimals divided in)
   getBalance(currency, addr, ERC20Addr=null) {
     switch(currency) {
+      case 'BTC':
+        return bitcoin.getBalance(addr);
+        break;
       case 'ETH': 
         return ethereum.getBalance(addr);
         break;
