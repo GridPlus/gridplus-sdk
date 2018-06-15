@@ -51,24 +51,31 @@ We recommend using a lightweight node such as [Ganache](http://truffleframework.
 and copying the first account's address and private key in `config.testing.ethHolder` (in `src/config.js`). 
 We need one hot account for testing purposes, but it will not be used in the SDK itself. This is because the SDK only displays static data and makes requests to external wallets.
 
+Once all Ethereum software is installed and the Ganache simulated network is running, you can run the tests with `mocha test/eth.js`.
+
 #### Bitcoin Nodes
 We recommend using `bitcoind`, which can be installed on OSX with:
 
 ```
-brew install bitcoin
+npm install -g bcoin
 ```
 
-This installs a series of tools, including `bitcoind`. Once installed, please connect and sync to the test network with the following:
+This installs a bitcoin client called `bcoin`. This is the easiest full node client to query via RPC. You should create a configuration file in `~/.bcoin/bcoin.conf` and put this in it:
 
 ```
-bitcoind -testnet -server -rpcuser=test -rpcpassword=password -rest
+network :  testnet
+log-level: debug
+index-address: true
+index-tx: true
 ```
 
-If you would like to view the console output (recommended), you can stream the logs with:
+Now run the client with:
 
 ```
-tail -f ~/Library/Application Support/Bitcoin/testnet3/debug.log
+bcoin --index-address=true --index-tx=true
 ```
+
+Once it syncs, you can run the tests with `mocha test/btc.js`.
 
 # OLD reference
 **Please ignore while ths functionality is added back in. The below reference is not currently usable.**

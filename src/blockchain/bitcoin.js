@@ -1,24 +1,52 @@
-const Client = require('bitcoin-core');
+const { NodeClient } = require('bclient');
+const { Network } = require('bcoin');
+
 const config = require('../config.js');
 let client;
 
 exports.initBitcoin = function(options={}) {
   return new Promise((resolve, reject) => {
     try {
-      client = new Client({
-        host: options.host | config.bitcoinNode.host,
-        port: options.port | config.bitcoinNode.port, 
-        password: options.password | config.bitcoinNode.password, 
-        username: options.username | config.bitcoinNode.username, 
-        version: options.version | config.bitcoinNode.version, 
+      client = new NodeClient({
+        network: options.network | config.bitcoinNode.network,
+        port: options.port | config.bitcoinNode.port,
       });
-      client.getBlockchainInformation((err, data) => {
-        if (err) return reject(err)
-        else if (!data.blocks) return reject ('Error connecting to bitcoin node')
-        else return resolve(true);
+      client.getInfo()
+      .then((info) => {
+        if (!info || !info.network) return reject('Could not connect to node')
+        return resolve(info);
+      })
+      .catch((err) => {
+        return reject(err);
       })
     } catch (err) {
       return reject(err);
     }
+  })
+}
+
+exports.getBalance = function(addr) {
+  return new Promise((resolve, reject) => {
+    // client.getBalance('2N6en3ZNerpFKf69KfsLveTNUosA45i4EXQ')
+    // client.getBalance({ account: '*', minconf: 0 })
+    // .then((balance) => {
+    //   console.log('balance', balance);
+    //   return resolve(balance);
+    // })
+    // .catch((err) => {
+    //   console.log('found err', err)
+    //   return reject(err);
+    // })
+    // client.getTransactionByHash('32bbd7cc8550d64fc932bf77940fd15a156e0a08b904af3e9275bbb824956b19')
+    console.log(client.listUnspent, '\n\n\n\n')
+    client.listUnspent()
+    .then((foo) => {
+      console.log('got foo', foo)
+      return resolve(foo);
+    })
+    .catch((err) => {
+      console.log('found err', err);
+      return reject(err);
+    })
   })
 }
