@@ -3,7 +3,6 @@ const assert = require('assert');
 const bitcoin = require('bitcoinjs-lib');
 const config = require('../src/config.js');
 const GridPlusSDK = require('../src/index.js').default;
-const wif = require('wif');
 let startBal, startUtxos, testAddr, testKeyPair;
 
 // Handle all promise rejections
@@ -32,7 +31,6 @@ describe('Bitcoin', () => {
       done();
     })
   });
-
 
   it('Should check the balance of a single address', (done) => {
     // This address received some bitcoins in block ~58k in testnet3

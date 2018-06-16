@@ -14,6 +14,7 @@ exports.api = {
 }
 
 exports.bitcoinNode = {
+  host: 'localhost',
   network: 'testnet',
   port: 18332,
 }

@@ -11,8 +11,9 @@ exports.initBitcoin = function(options={}) {
   return new Promise((resolve, reject) => {
     try {
       client = new NodeClient({
-        network: options.network | config.bitcoinNode.network,
-        port: options.port | config.bitcoinNode.port,
+        host: options.host || config.bitcoinNode.host,
+        network: options.network || config.bitcoinNode.network,
+        port: options.port || config.bitcoinNode.port,
       });
       client.getInfo()
       .then((info) => {
