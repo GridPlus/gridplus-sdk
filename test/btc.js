@@ -24,6 +24,7 @@ describe('Bitcoin', () => {
     sdk.connectToBtc()
     .then((info) => {
       assert(info.network === 'testnet', 'Did not connect to testnet');
+      assert(info.chain.height > 59000, `Node must be synced to at least block 5900: got ${info.chain.height}`);
       done();
     })
     .catch((err) => {
@@ -31,6 +32,7 @@ describe('Bitcoin', () => {
       done();
     })
   });
+
 
   it('Should check the balance of a single address', (done) => {
     // This address received some bitcoins in block ~58k in testnet3
@@ -55,6 +57,10 @@ describe('Bitcoin', () => {
     const addrs = [ 'muM9XjWgXhF2zHWVQqZxnmqsgfPfJd84Lv' , 'mkL6Q7fYkSpWNLnHCCd8Gig6VZYD5yAazB' ];
     sdk.getBalance('BTC', addrs)
     .then((d) => {
+      assert(d[addrs[0]].balance > 0);
+      assert(d[addrs[1]].balance > 0);
+      assert(d[addrs[0]].utxos.length === 1);
+      assert(d[addrs[1]].utxos.length > 1);
       done();
     })
     .catch((err) => {
