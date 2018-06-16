@@ -33,9 +33,60 @@ This SDK utilizes the GridPlus Agent's remote signing capabilities to form autom
 
 Because the agent can function as an always-online hardware device, we can leverage its availability to request automated signatures for any type of application. Broadly, each application defines one or more signature schema and passes those to the agent. The user must pin into the physical device and allow the automated schema (the user may configure a max number of signatures and/or a rate limit), after which the application may request signatures on the allowed schema and receive automated signatures.
 
+# Getting Started
+
+The GridPlus SDK can be used to connect to a user's agent device, create permissions, and view addresses against which you can request transactions. 
+
+### Instantiate
+
+Before doing anything, you must instantiate a new `GridPlusSDK` object with your desired configuration:
+
+```
+const GridPlusSDK = require('../src/index.js').default;
+let sdk = new GridPlusSDK();
+```
+
+### Connecting to BTC and ETH nodes
+
+Once instantiated, you can use the SDK to establish a connection to a Bitcoin or Ethereum node. This allows you to query the blockchain(s) for state data associated with a user's address(es). As with most functionality (see `API` for specifics), connections are **promisified**:
+
+**Bitcoin:**
+
+```
+sdk.connectToBtc({ network: 'testnet', port: 18332, host: 'localhost' })
+.then((info) => {
+  // Get info about the node
+})
+.catch((err) => {
+  // Catch any errors with connecting
+})
+```
+
+**Ethereum:**
+
+```
+const provider = 'http://localhost:8545';
+sdk.connectoToEth(provider)
+.then((success) => {
+  // Only returns a boolean indicating whether the connection was successful
+})
+.catch((err) => {
+  // Catch any errors
+})
+```
+
+### Connecting to a user's agent device
+
+Before reading addresses or requesting signatures, you must connect to the user's agent. This can either be done at setup by using a set of options or it can be done once the SDK object is instantiated.
+
+**TODO. This functionality does not yet exist**
+
 # API
 
-TODO
+A full set of API functions is described below.
+
+###  
+
 
 # Testing
 You can run the test suite with:
