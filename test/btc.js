@@ -65,7 +65,9 @@ describe('Bitcoin', () => {
       assert(err === null, err);
       done();
     })
-  })
+  });
+
+  it('Should form a transaction to spend one of those UTXOs');
 /*
   Actually, we don't need these. These tests should simply check for UTXOs in a given address.
   I'm going to keep them commented out in case we need a reference to rehydrating WIF keys
