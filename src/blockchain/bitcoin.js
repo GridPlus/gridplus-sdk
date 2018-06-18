@@ -29,26 +29,32 @@ exports.initBitcoin = function(options={}) {
   })
 }
 
-// Get the balance (and the set of UTXOs) belonging to a given address (or addresses)
-// @param [addr] {string or object}  - single or array of addresses to query 
-// @returns      {Promise}           - contains object { balance: <number>, utxos: <Array> } or error
+// Get all of the UTXOs for a given address
+// @param [_addr] {string or Array}  - address[es] to query
+// @returns       {Array}             - array of UTXO objects
 exports.getBalance = function(addr) {
   return new Promise((resolve, reject) => {
-    // Copy the addresses in case it's an object and gets modified
-    const addrCopy = JSON.parse(JSON.stringify(addr));
-    getUtxos(addrCopy)
+    if (typeof addr === 'string') {
+      getUtxosSingleAddr(addr)
+      .then((utxos) => { return resolve(addBalanceSingle(utxos)); })
+      .catch((err) => { return reject(err); })
+    } else {
+      console.log(1)
+      getUtxosMultipleAddrs(addr)
+      .then((utxos) => { return resolve(addBalanceMultiple(utxos)); })
+      .catch((err) => { return reject(err); })
+    }
+  });
+}
+
+// Get a set of UTXOs for a single address
+// @param [addr] {String}  -  Address to look for UTXOs of
+// @returns      {Array}   -  Contains set of UTXO object
+function getUtxosSingleAddr(addr) {
+  return new Promise((resolve, reject) => {
+    client.getCoinsByAddress(addr)
     .then((utxos) => {
-      let toReturn = {};
-      if (utxos.length === undefined) {
-        // Multiple addresses to check
-        Object.keys(utxos).forEach((user) => {
-          toReturn[user] = { utxos: utxos[user], balance: sumBalance(utxos[user]) };
-        });
-      } else {
-        // Single address to check
-        toReturn = { utxos: utxos, balance: sumBalance(utxos) };
-      }
-      return resolve(toReturn);
+      return resolve(utxos);
     })
     .catch((err) => {
       return reject(err);
@@ -56,55 +62,52 @@ exports.getBalance = function(addr) {
   });
 }
 
-// Get all of the UTXOs for a given address
-// @param [_addr] {string or Array}  - address[es] to query
-// @returns       {Array}             - array of UTXO objects
-function getUtxos(_addr, checkedAddrs={}, outerResolve=null) {
+// Get a set of UTXOs for a set of addresses
+// @param [addrs] {Array}   -  list of addresses to look up
+// @returns       {Object}  -  Contains UTXOs:  { addr1: [utxo1, utxo2], ... }
+function getUtxosMultipleAddrs(addrs) {
   return new Promise((resolve, reject) => {
-    let addr = _addr; // assume it's a string
-    // If it isn't a string (i.e. multiple addresses, pop the last one)
-    const isObj = typeof _addr === 'object';
-    if (isObj === true) {
-      addr = _addr.pop();
-      // Capture the outer resolve statement if not captured
-      if (outerResolve === null) outerResolve = resolve;
-    }
-    // Lookup UTXOs
-    client.getCoinsByAddress(addr)
-    .then((utxos) => { 
-      if (isObj === true) {
-        // For multiple addresses 
-        checkedAddrs[addr] = utxos;
-        if (_addr.length > 0) {
-          return getUtxos(_addr, checkedAddrs, outerResolve) 
-        } else {
-          // Reformat the object and return it
-          let toReturn = {};
-          Object.keys(checkedAddrs).forEach((user) => {
-            toReturn[user] = { utxos: checkedAddrs[user] }
-          });
-          return outerResolve(checkedAddrs);
-        }
-      } else {
-        // For single addresses
-        return resolve(utxos); 
-      }
+    let utxos = {}
+    // Make sure there is a list for UTXOs of each address
+    addrs.forEach((a) => {
+      if (utxos[a] === undefined) utxos[a] = [];
+    });
+    client.getCoinsByAddresses(addrs)
+    .then((bulkUtxos) => {
+      // Reconstruct data, indexed by address
+      bulkUtxos.forEach((u) => {
+        utxos[u.address].push(u);
+      });
+      return resolve(utxos);
     })
-    .catch((err) => { 
-      return reject(err); 
+    .catch((err) => {
+      return reject(err);
     })
-  });
+  })
 }
 
 // Total the balance given a set of UTXO objects
-// @param [utxos] {Array or Object}  - array of UTXO objects (or object containing multiple arrays)
+// @param [utxos] {Array}  - array of UTXO objects (or object containing multiple arrays)
 // @param [sat]   {bool}   - [optional] if true, return the balance in satoshis
-function sumBalance(utxos, sat=true) {
+// @returns       {Object}  - of form  { utxos: <Array>, balance: <Number> }
+
+function addBalanceSingle(utxos, sat=true) {
   let balance = 0;
-  if (typeof utxos === 'object') {}
   utxos.forEach((u) => {
     balance += u.value;
   });
-  if (sat === true) return balance
-  else              return balance / 10 ** 8;   // 1 bitcoin = 10**8 satoshis
+  if (sat !== true) balance /= 10 ** 8;
+  return { utxos, balance };
+}
+
+// Add the balances to the UTXOs object for multiple addresses
+// @param [utxos] {Object}  - object full of UTXO arrays, indexed on address
+// @param [sat]   {bool}    - [optional] if true, return the balance in satoshis (false=BTC)
+// @returns       {Object}  - of form  { user1: { utxos: <Array>, balance: <Number> } }
+function addBalanceMultiple(utxos, sat=true) {
+  let d = {};
+  Object.keys(utxos).forEach((u) => {
+    d[u] = addBalanceSingle(utxos[u], sat);
+  });
+  return d;
 }
