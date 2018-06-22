@@ -1,7 +1,7 @@
 const { NodeClient } = require('bclient');
 const { Network } = require('bcoin');
 
-const config = require('../config.js');
+const config = require('../../config.js');
 let client;
 
 // Initialize a connection to a Bitcoin node. Uses params in config.js by default.

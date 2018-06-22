@@ -1,8 +1,8 @@
 // Basic tests for atomic SDK functionality
 const assert = require('assert');
 const Tx = require('ethereumjs-tx');
-const config = require(`${__dirname}/../src/config.js`);
-const GridPlusSDK = require('../src/index.js').default;
+const config = require('./../config.js');
+const GridPlusSDK = require('./../index.js').default;
 let sdk, privKey, addr, provider, erc20Addr, sender, senderPriv;
 
 // Handle all promise rejections
