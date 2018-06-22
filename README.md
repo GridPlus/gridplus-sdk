@@ -111,22 +111,31 @@ We recommend using `bitcoind`, which can be installed on OSX with:
 npm install -g bcoin
 ```
 
-This installs a bitcoin client called `bcoin`. This is the easiest full node client to query via RPC. You should create a configuration file in `~/.bcoin/bcoin.conf` and put this in it:
+This installs a bitcoin client called `bcoin`. This is the easiest full node client to query via RPC. For testing, you should create a configuration file in `~/.bcoin/bcoin.conf` and put this in it:
 
 ```
-network :  testnet
+network: regtest
+coinbase-address: moVVsb2KUaQKgigofdap3Cep183Rwjn5yK
 log-level: debug
 index-address: true
 index-tx: true
 ```
 
-Now run the client with:
+*NOTE: The `regtest` option is used to run a local Bitcoin network. The tests are built to spend bitcoins with `moVVsb2KUaQKgigofdap3Cep183Rwjn5yK`, but if you want to use your own address make sure you update `config.js`*
+
+You can now run the client with:
 
 ```
 bcoin --index-address=true --index-tx=true
 ```
 
-Once it syncs, you can run the tests with `mocha test/btc.js`.
+And start the tests with:
+
+```
+mocha test/btc.js
+```
+
+=====================================================
 
 # OLD reference
 **Please ignore while ths functionality is added back in. The below reference is not currently usable.**
