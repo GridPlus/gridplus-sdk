@@ -1,7 +1,7 @@
 // Integrations to query the Ethereum blockchain for relevant account data
 const ethers = require('ethers');
 let provider;
-const config = require('../config.js');
+const config = require('../../config.js');
 const { pad64, unpad } = require('../util.js');
 let erc20Decimals = {};
 

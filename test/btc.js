@@ -1,8 +1,8 @@
 // Basic tests for atomic SDK functionality
 const assert = require('assert');
 const bitcoin = require('bitcoinjs-lib');
-const config = require('../src/config.js');
-const GridPlusSDK = require('../src/index.js').default;
+const config = require('../config.js');
+const GridPlusSDK = require('../index.js').default;
 let startBal, startUtxos, testAddr, testKeyPair;
 
 // Handle all promise rejections

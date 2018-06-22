@@ -1,12 +1,9 @@
 const EC = require('elliptic').ec;
 const EC_K = new EC('secp256k1');
 const request = require('superagent');
-// const internalCrypto = require('./internalCrypto.js');
-// const enums = require('./enums.js');
-// const permissions = require('./permissions.js');
 const config = require('./config.js');
-const bitcoin = require('./blockchain/bitcoin.js');
-const ethereum = require('./blockchain/ethereum.js');
+const bitcoin = require('./src/blockchain/bitcoin.js');
+const ethereum = require('./src/blockchain/ethereum.js');
 
 class GridPlusSDK {
   //============================================================================
