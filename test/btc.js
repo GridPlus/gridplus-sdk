@@ -81,6 +81,17 @@ describe('Bitcoin', () => {
     });
   });
 
-  it('Should form a transaction to spend one of those UTXOs');
+  it('Should make a connection to an agent');
 
+  // We should be able to send some kind of signal to the agent instance to accept requests
+  // (only in test mode)
+  it('Should create a read-only permission');
+
+  it('Should get the first 2 addresses associated with the permission');
+
+  it('Should scan the addresses and find that the first one is the receiving address (i.e. has 0 balance)');
+
+  it('Should form a transaction and send BTC to address 0');
+
+  it('Should register the updated balance and recognize address 1 as the new receiving address');
 })
