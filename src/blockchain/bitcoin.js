@@ -39,7 +39,6 @@ exports.getBalance = function(addr) {
       .then((utxos) => { return resolve(addBalanceSingle(utxos)); })
       .catch((err) => { return reject(err); })
     } else {
-      console.log(1)
       getUtxosMultipleAddrs(addr)
       .then((utxos) => { return resolve(addBalanceMultiple(utxos)); })
       .catch((err) => { return reject(err); })
@@ -54,7 +53,8 @@ function getUtxosSingleAddr(addr) {
   return new Promise((resolve, reject) => {
     client.getCoinsByAddress(addr)
     .then((utxos) => {
-      return resolve(utxos);
+      const sortedUtxos = _sortUtxos(utxos);
+      return resolve(sortedUtxos);
     })
     .catch((err) => {
       return reject(err);
@@ -110,4 +110,11 @@ function addBalanceMultiple(utxos, sat=true) {
     d[u] = addBalanceSingle(utxos[u], sat);
   });
   return d;
+}
+
+// Sort a set of UTXOs based on the block height (earlier blocks first)
+function _sortUtxos(_utxos) {
+  return _utxos.sort((a, b) => { 
+    return (a.height > b.height) ? 1 : ((b.height > a.height) ? -1 : 0) 
+  });
 }
