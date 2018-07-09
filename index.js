@@ -6,10 +6,10 @@ const config = require('./config.js');
 const bitcoin = require('./src/blockchain/bitcoin.js');
 const ethereum = require('./src/blockchain/ethereum.js');
 const util = require('./src/util.js');
-const AgentRestClient = require('@gridplus/agent-rest-client').default;
+const RestClient = require('./src/rest/restClient.js').default;
 const DEFAULT_COUNTER = 5;
 
-class GridPlusSDK extends AgentRestClient{
+class GridPlusSDK extends RestClient{
   //============================================================================
   // SETUP OBJECT
   //============================================================================

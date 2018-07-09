@@ -9,7 +9,11 @@
     "lint:fix": "eslint --fix src __tests__",
     "precommit": "npm run lint:fix && npm run test",
     "prepublish": "npm run build",
-    "postinstall": "npm run build"
+    "postinstall": "npm run build",
+    "test": "NODE_ENV=test jest --config jest.json --verbose",
+    "test:watch": "NODE_ENV=test jest --config jest.json --watch --coverage --verbose",
+    "test:integration": "NODE_ENV=test jest --config jest.integration.json --coverage --verbose",
+    "test:integration:watch": "NODE_ENV=test jest --config jest.integration.json --watch --coverage --verbose"
   },
   "private": true,
   "main": "dist/index.js",
