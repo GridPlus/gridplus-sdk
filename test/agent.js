@@ -2,6 +2,7 @@
 const assert = require('assert');
 const config = require(`${__dirname}/../config.js`);
 const GridPlusSDK = require('../index.js').default;
+const request = require('superagent');
 let sdk, privKey, addr, provider, erc20Addr, sender, senderPriv;
 
 // Handle all promise rejections
@@ -41,7 +42,36 @@ describe('Basic tests', () => {
     .catch((err) => {
       assert(err === null, err);
       done();
+    });
+  });
+
+  it('Should start the pairing process on the agent', (done) => {
+    const secret = sdk.genSecret();
+    request.post(`${config.api.baseUrl}/setupPairing`).send({ secret })
+    .then((res) => {
+      assert(res.status === 200);
+      done();
     })
-  })
+    .catch((err) => {
+      assert(err === null, err);
+      done();
+    })
+  });
+
+  it('Should pair with the agent', (done) => {
+    sdk.pair()
+    .then((res) => {
+      console.log(res)
+      done();
+    })
+    .catch((err) => {
+      assert(err === null, err);
+      done();
+    })
+  });
+
+  it('Should create a manual permission');
+
+  it('Should get the Bitcoin addresses of the manual permission')
 
 });
