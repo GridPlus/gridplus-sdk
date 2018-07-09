@@ -19,55 +19,27 @@ describe('Basic tests', () => {
     }
   });
 
-  it('Should fail to connect to a bad API URL', (done) => {
-    sdk.connect(123, 'foo')
-    .then((res) => {
-      assert(res === null)
-      done();
-    })
-    .catch((err) => {
-      assert(err !== null);
-      done();
-    });
-  });
-
   it('Should connect to an agent', (done) => {
-    const serial = 'agent-0';
-    sdk.connect(serial, config.api.baseUrl)
-    .then((res) => {
-      assert(res.result !== undefined)
-      assert(res.result.status === 200);
-      done()
-    })
-    .catch((err) => {
+    sdk.connect((err, res) => {
       assert(err === null, err);
-      done();
+      assert(sdk.ecdhPub === res.key, 'Mismatched key on response')
+      done()
     });
   });
 
   it('Should start the pairing process on the agent', (done) => {
-    const secret = sdk.genSecret();
-    request.post(`${config.api.baseUrl}/setupPairing`).send({ secret })
-    .then((res) => {
+    sdk.setupPairing((err, res) => {
+      assert(err === null, err);
       assert(res.status === 200);
       done();
-    })
-    .catch((err) => {
-      assert(err === null, err);
-      done();
-    })
+    });
   });
 
   it('Should pair with the agent', (done) => {
-    sdk.pair()
-    .then((res) => {
-      console.log(res)
+    sdk.pair(sdk.name, (err, res) => {
+      assert(err === null, err)
       done();
-    })
-    .catch((err) => {
-      assert(err === null, err);
-      done();
-    })
+    });
   });
 
   it('Should create a manual permission');
