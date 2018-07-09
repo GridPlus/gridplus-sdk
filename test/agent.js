@@ -42,8 +42,41 @@ describe('Basic tests', () => {
     });
   });
 
-  it('Should create a manual permission');
+  it('Should create a manual permission', (done) => {
+    sdk.addManualPermission((err, res) => {
+      assert(err === null, err);
+      assert(res.result.status === 200);
+      done();
+    })
+  });
 
-  it('Should get the Bitcoin addresses of the manual permission')
+  it('Should get the Bitcoin addresses of the manual permission', (done) => {
+    const req = {
+      permissionIndex: 0,
+      isManual: true,
+      total: 3,
+    }
+    sdk.addresses(req, (err, res) => {
+      assert(err === null, err);
+      assert(res.result.data.addresses.length === 3);
+      assert(res.result.data.addresses[0].slice(0, 1) === '3', 'Not a segwit address');
+      done();
+    })
+  });
+
+  it('Should get testnet addresses', (done) => {
+    const req = {
+      permissionIndex: 0,
+      isManual: true,
+      total: 3,
+      network: 'testnet'
+    }
+    sdk.addresses(req, (err, res) => {
+      assert(err === null, err);
+      assert(res.result.data.addresses.length === 3);
+      assert(res.result.data.addresses[0].slice(0, 1) === '2', 'Not a testnet address');
+      done();
+    })
+  });
 
 });

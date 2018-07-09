@@ -1,8 +1,20 @@
 // Static utility functions
 const aes = require('aes-js');
 const leftPad = require('left-pad');
-const EC = require('elliptic').ec;
+const elliptic = require('elliptic');
+const EC = elliptic.ec;
 const ec = new EC('curve25519');
+
+exports.ecdsaKeyPair = function(privKey) {
+  const curve = new EC('secp256k1');
+  const key = curve.keyFromPrivate(privKey, 'hex');
+  key.getPublic();
+  return key;
+}
+
+exports.ecdhKeyPair = function(priv) {
+  return ec.keyFromPrivate(priv, 'hex');
+}
 
 // left-pad with zeros up to 64 bytes
 exports.pad64 = function(x) { 
@@ -30,7 +42,7 @@ exports.deriveSecret = function(privKey, pubKey) {
 }
 
 // Decrypt using an AES secret and a counter
-exports.decrypt = function(secret, payload, counter=5) {
+exports.decrypt = function(payload, secret, counter=5) {
   if (typeof secret === 'string') secret = Buffer.from(secret, 'hex');
   const b = aes.utils.hex.toBytes(payload);
   const aesCtr = new aes.ModeOfOperation.ctr(secret, new aes.Counter(counter));
@@ -38,7 +50,7 @@ exports.decrypt = function(secret, payload, counter=5) {
   return aes.utils.utf8.fromBytes(dec);
 }
 
-exports.encrypt = function(secret, payload, counter=5) {
+exports.encrypt = function(payload, secret, counter=5) {
   if (typeof secret === 'string') secret = Buffer.from(secret, 'hex');
   const b = aes.utils.utf8.toBytes(payload);
   const aesCtr = new aes.ModeOfOperation.ctr(secret, new aes.Counter(counter));
