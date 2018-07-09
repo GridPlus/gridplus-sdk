@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const EC = require('elliptic').ec;
 const EC_K = new EC('secp256k1');
 const request = require('superagent');
@@ -13,7 +14,6 @@ class GridPlusSDK {
     // Create a keypair either with existing entropy or system-based randomness
     this._initKeyPair(opts);
     this.headerKey = null;
-
     // If an ETH provider is included in opts, connect to the provider automatically
     if (opts.ethProvider !== undefined) this.connectToEth(opts.ethProvider);
   }
@@ -107,17 +107,26 @@ class GridPlusSDK {
   //============================================================================
 
   // Initiate comms with a particular agent
-  connect(id) {
+  connect(serial, url=config.api.baseUrl) {
     return new Promise((resolve, reject) => {
-      const url = `${config.api.baseUrl}/headerKey`;
-      request.post(url)
+      // First connect to the API
+      const ecdhPub = this.ecdhKey.getPublic().encode('hex');
+      request.get(url)
       .then((res) => {
-        if (!res.body) return reject(`No body returned from ${url}`)
-        else if (!res.body.headerKey) return reject(`Incorrect response body from ${url}`)
-        else {
-          this.headerKey = res.body.headerKey;
-          return resolve(true);
-        }
+        if (!res.body) return reject(`Could not connect to API at ${url}`)
+        else if (res.status !== 200) return reject(`Could not connect to API at ${url}`)
+        return;
+      })
+      .then(() => {
+        return request.post(`${url}/connect`).send({ key: ecdhPub });
+      })
+      .then((res) => {
+        if (!res.body) return reject(`Could not connect to agent ${serial}`)
+        else if (res.status !== 200) return reject(`Could not connect to agent ${serial}`)
+        else if (res.body.key != ecdhPub) return reject(`connect response returned wrong ECDH key: ${res.body.key}`)
+        this.headerKey = res.body.result.headerKey;
+        this.usageToken = res.body.result.newToken;
+        return resolve(res.body);
       })
       .catch((err) => {
         return reject(err);
@@ -127,19 +136,15 @@ class GridPlusSDK {
 
   // Create an EC keypair. Optionally, a passphrase may be provided as opts.entropy
   _initKeyPair(opts) {
-    // Create the keypair
-    if (opts.entropy === undefined) {
-      this.key = EC_K.genKeyPair();
-    } else {
-      if (opts.entropy.length < 20) {
-        console.log('WARNING: Passphrase should be at least 20 characters. Please consider using a longer one.');
-        for (let i = 0; i < 20 - opts.entropy.length; i++) opts.entropy += 'x';
-        this.key = EC_K.genKeyPair({ entropy: opts.entropy });
-      }
-    }
-    // Add the public key
-    this.key.pub = this.key.getPublic();
+    const privKey = opts.privKey ? opts.privKey : crypto.randomBytes(32).toString('hex');
+    // Generate ECDH key for encrypting/decrypting outer requests
+    const ECDH = new EC('curve25519');
+    this.ecdhKey = ECDH.keyFromPrivate(privKey, 'hex');
+    // Generate ECDSA key for signing
+    const ECDSA = new EC('secp256k1');
+    this.ecdsaKey = ECDSA.keyFromPrivate(privKey, 'hex');
   }
+
 }
 
 exports.default = GridPlusSDK;
