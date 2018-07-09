@@ -13,14 +13,14 @@ class GridPlusSDK extends AgentRestClient{
   //============================================================================
   // SETUP OBJECT
   //============================================================================
-  constructor({ url = config.api.baseUrl, name = 'app-0', privKey = crypto.randomBytes(32) } = {}) {
+  constructor({ url = config.api.baseUrl, name = 'app-0', privKey = crypto.randomBytes(32),  } = {}) {
     super({ baseUrl: url, privKey });
     // Create a keypair either with existing entropy or system-based randomness
     // this._initKeyPair(opts);
     this.headerSecret = null;
-    this.name = opts.name ? opts.name : 'app-0';
+    this.name = name
     // If an ETH provider is included in opts, connect to the provider automatically
-    if (opts.ethProvider !== undefined) this.connectToEth(opts.ethProvider);
+    // if (opts.ethProvider !== undefined) this.connectToEth(opts.ethProvider);
   }
 
   //============================================================================
@@ -106,121 +106,6 @@ class GridPlusSDK extends AgentRestClient{
         break;
     }
   }
-
-  //============================================================================
-  // COMMS WITH AGENT
-  //============================================================================
-
-  // Initiate comms with a particular agent
-  connect(serial, url=config.api.baseUrl) {
-    return new Promise((resolve, reject) => {
-      // First connect to the API
-      const ecdhPub = this.ecdhKey.getPublic().encode('hex');
-      request.get(url)
-      .then((res) => {
-        if (!res.body) return reject(`Could not connect to API at ${url}`)
-        else if (res.status !== 200) return reject(`Could not connect to API at ${url}`)
-        this.url = url;
-        return;
-      })
-      .then(() => {
-        return request.post(`${url}/connect`).send({ key: ecdhPub });
-      })
-      .then((res) => {
-        if (!res.body) return reject(`Could not connect to agent ${serial}`)
-        else if (res.status !== 200) return reject(`Could not connect to agent ${serial}`)
-        else if (res.body.key != ecdhPub) return reject(`connect response returned wrong ECDH key: ${res.body.key}`)
-        // Generate a header secret using the returned headerKey and your ECDH key
-        this.headerSecret = util.deriveSecret(this.privKey, res.body.result.headerKey);
-        this._setNewUsageToken(res.body.result.newToken);
-        return resolve(res.body);
-      })
-      .catch((err) => {
-        return reject(err);
-      })
-    })
-  }
-
-  // Generate an app secret. This should be displayed by your app and typed into the agent
-  genSecret() {
-    this.appSecret = crypto.randomBytes(8).toString('hex');
-    return this.appSecret;
-  }
-
-  pair() {
-    return new Promise((resolve, reject) => {
-      const preImage = `${this.tmpSharedSecret}${this.appSecret}`;
-      const msg = crypto.createHash('sha256').update(preImage).digest();
-      const data = {
-        name: this.name,
-        sig: this.ecdsaKey.sign(msg).toDER(),
-      };
-      this._agentRequest('addPairing', data)
-      .then((res) => {
-        return resolve(res)
-      })
-      .catch((err) => {
-        return reject(err);
-      })
-    })
-  }
-
-/*
-  // Create an EC keypair. Optionally, a passphrase may be provided as opts.entropy
-  _initKeyPair(opts) {
-    this.privKey = opts.privKey ? opts.privKey : crypto.randomBytes(32).toString('hex');
-    // Generate ECDH key for encrypting/decrypting outer requests
-    const ECDH = new EC('curve25519');
-    this.ecdhKey = ECDH.keyFromPrivate(this.privKey, 'hex');
-    // Generate ECDSA key for signing
-    const ECDSA = new EC('secp256k1');
-    this.ecdsaKey = ECDSA.keyFromPrivate(this.privKey, 'hex');
-  }
-*/
-  _setNewUsageToken(_token) {
-    // NOTE: DEFAULT_COUNTER is used here with the header secret. Ideally, we could
-    // rotate the counter every time the header key is used, but it's fine to be
-    // constant for now
-    const dec = util.decrypt(this.headerSecret, _token, DEFAULT_COUNTER);
-    const token = JSON.parse(dec);
-    this.tmpSharedSecret = util.deriveSecret(this.privKey, token.data.ephemPublicKey, token.data.counter);
-  }
-
-  // Decrypt a new usage token
-  _unpackUsageToken(token) {
-
-  }
-
-  // Send a request and capture the new shared secret
-  _agentRequest(route, data) {
-    return new Promise((resolve, reject) => {
-      // First, encrypt req.body.data if it exists
-      const encData = util.encrypt(this.tmpSharedSecret, JSON.stringify(data), DEFAULT_COUNTER);
-      // Second, build the body and encrypt it
-      const body = {
-        type: route,
-        data: encData,
-
-      }
-      const encReq = util.encrypt(this.headerSecret, req, DEFAULT_COUNTER);
-      // Now make the request
-      console.log('encreq', encReq)
-      request.post(`${this.url}/${route}`).send({ req: encReq})
-      .then((res) => {
-        const ecdhPub = this.ecdhKey.getPublic().encode('hex');      
-        console.log(ecdhPub)
-        if (!res.body) return reject(`Did not get a response body from /${route}`)
-        else if (res.status !== 200) return reject(`Error from /${route}: ${res.status}`)
-        else if (res.body.key != ecdhPub) return reject(`Returned wrong ECDH key: ${res.body.key}`)
-        return resolve(req.body);
-      })
-      .catch((err) => {
-        return reject(err);
-      })
-    })
-  }
-
-
 }
 
 exports.default = GridPlusSDK;
