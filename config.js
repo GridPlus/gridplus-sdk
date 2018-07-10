@@ -10,7 +10,7 @@ exports.erc20 = {
 };
 
 exports.api = {
-  baseUrl: 'http://localhost:80',
+  baseUrl: 'http://localhost:3001',
 }
 
 exports.bitcoinNode = {
