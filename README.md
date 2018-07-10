@@ -105,7 +105,7 @@ We need one hot account for testing purposes, but it will not be used in the SDK
 Once all Ethereum software is installed and the Ganache simulated network is running, you can run the tests with `mocha test/eth.js`.
 
 #### Bitcoin Nodes
-We recommend using `bitcoind`, which can be installed on OSX with:
+We recommend using `bcoin`, which can be installed on OSX with:
 
 ```
 npm install -g bcoin
