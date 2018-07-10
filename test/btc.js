@@ -16,7 +16,7 @@ const client = new NodeClient({
 });
 
 // Receiving addresses
-let receiving = []; // = '2NGHjvjw83pcVFgMcA7QvSMh2c246rxLVz9';
+let receiving = [];
 
 // Mine enough blocks so that the holder can spend the earliest
 // coinbse transaction 
