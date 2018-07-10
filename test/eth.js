@@ -3,7 +3,7 @@ const assert = require('assert');
 const Tx = require('ethereumjs-tx');
 const config = require('./../config.js');
 const GridPlusSDK = require('./../index.js').default;
-let sdk, privKey, addr, provider, erc20Addr, sender, senderPriv;
+let sdk, privKey, addr, provider, erc20Addr, sender, senderPriv, balance;
 
 // Handle all promise rejections
 process.on('unhandledRejection', e => { throw e; });
@@ -31,28 +31,61 @@ describe('Basic tests', () => {
     })
   });
 
-  it('Should get a zero ETH balance for a random address', (done) => {
-    // addr = '0x' + crypto.randomBytes(20).toString('hex');
-    addr = `0x${sdk.key.priv.toString('hex').substr(0, 40)}`;
-    console.log('Address to receive ETH and Tokens: ', addr);
-    sdk.getBalance('ETH', addr)
-    .then((balance) => {
-      assert(typeof balance === 'number');
-      assert(balance === 0);
-      done();
-    })
-    .catch((err) => {
+  it('Should connect to an agent', (done) => {
+    sdk.connect((err, res) => {
       assert(err === null, err);
+      assert(sdk.ecdhPub === res.key, 'Mismatched key on response')
+      done()
+    });
+  });
+
+  it('Should start the pairing process on the agent', (done) => {
+    sdk.setupPairing((err, res) => {
+      assert(err === null, err);
+      assert(res.status === 200);
       done();
     });
   });
 
+  it('Should pair with the agent', (done) => {
+    sdk.pair(sdk.name, (err, res) => {
+      assert(err === null, err)
+      done();
+    });
+  });
+
+  it('Should create a manual permission', (done) => {
+    sdk.addManualPermission((err, res) => {
+      assert(err === null, err);
+      assert(res.result.status === 200);
+      done();
+    })
+  });
+
+  it('Should get the ETH address', (done) => {
+    const req = {
+      permissionIndex: 0,
+      isManual: true,
+      total: 1,
+      coin_type: "60'"
+    }
+    sdk.addresses(req, (err, res) => {
+      assert(err === null, err);
+      addr = res.result.data.addresses;
+      sdk.getBalance('ETH', addr)
+      .then((_balance) => {
+        balance = _balance;
+        done();
+      });
+    });
+  });
+
+
   const toSend = 10 ** 18;
-  it('Should transfer ETH to the random address', (done) => {
+  it('Should transfer ETH to the address', (done) => {
     provider = sdk.getProvider();
     sender = config.testing.ethHolder;
-    senderPriv = new Buffer(sender.privKey, 'hex');
-    // provider.eth.getTransactionCount(sender.address)
+    senderPriv = Buffer.from(sender.privKey, 'hex');
     sdk.getTransactionCount('ETH', sender.address)
     .then((nonce) => {
       // Setup a transaction to send 1 ETH (10**18 wei) to our random address
@@ -71,12 +104,12 @@ describe('Basic tests', () => {
     .catch((err) => { assert(err === null, err); done(); });
   });
 
-  it('Should find a non-zero ETH balance for the random address', (done) => {
+  it('Should find a non-zero ETH balance for the address', (done) => {
     sdk.getBalance('ETH', addr)
-    .then((balance) => {
-      assert(typeof balance === 'number');
-      // Note that balances are returned in whole units
-      assert(balance * 10**18 === toSend, `Expected balance of ${toSend}, but got ${balance}`);
+    .then((_balance) => {
+      assert(typeof _balance === 'number');
+      // Note that _balances are returned in whole units (ether)
+      assert(_balance * 10**18 === (balance * 10**18) + toSend, `Expected balance of ${toSend}, but got ${_balance}`);
       done();
     })
     .catch((err) => {
@@ -110,6 +143,8 @@ describe('Basic tests', () => {
     .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
   });
 
+  // A freshly deployed ERC20 token should have a new address, so the balance will be 0
+  // (unlike ETH, which may have been sent in previous tests)
   it('Should find a zero token balance for the address', (done) => {
     sdk.getBalance('ERC20', addr, erc20Addr)
     .then((balance) => {
@@ -195,7 +230,11 @@ describe('Basic tests', () => {
     .catch((err) => {
       assert(err === null, err);
       done();
-    })
-  })
+    });
+  });
+
+  it('Should transfer ETH out of the agent account');
+
+  it('Should transfer the ERC20 token out of the agent account');
 
 })
