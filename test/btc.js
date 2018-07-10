@@ -15,8 +15,8 @@ const client = new NodeClient({
   port: config.bitcoinNode.port,
 });
 
-const REC_ADDR = '2NGHjvjw83pcVFgMcA7QvSMh2c246rxLVz9';
-let recAddrBase;
+// Receiving addresses
+let receiving = []; // = '2NGHjvjw83pcVFgMcA7QvSMh2c246rxLVz9';
 
 // Mine enough blocks so that the holder can spend the earliest
 // coinbse transaction 
@@ -73,19 +73,6 @@ describe('Bitcoin', () => {
     });
   });
 
-  it('Should check the balance of the receiving address to set a baseline', (done) => {
-    // Look for the balance and any unspent transaction outputs
-    sdk.getBalance('BTC', REC_ADDR)
-    .then((d) => {
-      recAddrBase = d.balance;
-      done();
-    })
-    .catch((err) => {
-      assert(err === null, err);
-      done();
-    });
-  });
-
   it('Should mine a block', (done) => {
     client.execute('generate', [ 1 ])
     .then((blocks) => {
@@ -113,15 +100,61 @@ describe('Bitcoin', () => {
     });
   });
 
-  it('Should make a connection to an agent');
+  it('Should connect to an agent', (done) => {
+    sdk.connect((err, res) => {
+      assert(err === null, err);
+      assert(sdk.ecdhPub === res.key, 'Mismatched key on response')
+      done()
+    });
+  });
 
-  // We should be able to send some kind of signal to the agent instance to accept requests
-  // (only in test mode)
-  it('Should create a read-only permission');
+  it('Should start the pairing process on the agent', (done) => {
+    sdk.setupPairing((err, res) => {
+      assert(err === null, err);
+      assert(res.status === 200);
+      done();
+    });
+  });
 
-  it('Should get the first 2 addresses associated with the permission');
+  it('Should pair with the agent', (done) => {
+    sdk.pair(sdk.name, (err, res) => {
+      assert(err === null, err)
+      done();
+    });
+  });
 
-  it('Should scan the addresses and find that the first one is the receiving address (i.e. has 0 balance)');
+  it('Should create a manual permission', (done) => {
+    sdk.addManualPermission((err, res) => {
+      assert(err === null, err);
+      assert(res.result.status === 200);
+      done();
+    })
+  });
+
+  it('Should get the first 2 Bitcoin addresses of the manual permission and log address 0', (done) => {
+    const req = {
+      permissionIndex: 0,
+      isManual: true,
+      total: 2,
+      network: 'testnet'
+    }
+    sdk.addresses(req, (err, res) => {
+      assert(err === null, err);
+      assert(res.result.data.addresses.length === 2);
+      assert(res.result.data.addresses[0].slice(0, 1) === '2', 'Not a testnet address');
+      const addrs = res.result.data.addresses;
+      // Get the baseline balance for the addresses
+      sdk.getBalance('BTC', addrs[0])
+      .then((d) => {
+        receiving.push([addrs[0], d.balance]);
+        return sdk.getBalance('BTC', addrs[1])
+      })
+      .then((d) => {
+        receiving.push([addrs[1], d.balance]);
+        done();
+      });
+    });
+  });
 
   it('Should form a transaction and send 0.1 BTC to address 0', (done) => {
     const signer = bitcoin.ECPair.fromWIF(config.testing.btcHolder.wif, bitcoin.networks.testnet);
@@ -132,7 +165,7 @@ describe('Bitcoin', () => {
       txb.addInput(utxo.hash, utxo.index);
       // Note; this will throw if the address does not conform to the testnet
       // Need to figure out if regtest emulates the mainnet
-      txb.addOutput(REC_ADDR, 1e7);
+      txb.addOutput(receiving[0][0], 1e7);
       txb.addOutput(config.testing.btcHolder.address, utxo.value - 1e7 - 1e3);
       txb.sign(0, signer);
       const tx = txb.build().toHex();
@@ -159,10 +192,10 @@ describe('Bitcoin', () => {
     })
     .then((block) => {
       assert(block.tx.length > 1, 'Block did not include spend transaction')
-      return sdk.getBalance('BTC', REC_ADDR)
+      return sdk.getBalance('BTC', receiving[0][0])
     })
     .then((d) => {
-      const expectedBal = recAddrBase + 1e7;
+      const expectedBal = receiving[0][1] + 1e7;
       assert(d.balance === expectedBal, `Expected balance of ${expectedBal}, got ${d.balance}`);
       done();
     })
