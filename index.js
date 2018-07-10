@@ -1,21 +1,26 @@
+const crypto = require('crypto');
 const EC = require('elliptic').ec;
 const EC_K = new EC('secp256k1');
 const request = require('superagent');
 const config = require('./config.js');
 const bitcoin = require('./src/blockchain/bitcoin.js');
 const ethereum = require('./src/blockchain/ethereum.js');
+const util = require('./src/util.js');
+const RestClient = require('./src/rest/restClient.js').default;
+const DEFAULT_COUNTER = 5;
 
-class GridPlusSDK {
+class GridPlusSDK extends RestClient{
   //============================================================================
   // SETUP OBJECT
   //============================================================================
-  constructor(opts={}) {
+  constructor({ url = config.api.baseUrl, name = 'app-0', privKey = crypto.randomBytes(32),  } = {}) {
+    super({ baseUrl: url, privKey });
     // Create a keypair either with existing entropy or system-based randomness
-    this._initKeyPair(opts);
-    this.headerKey = null;
-
+    // this._initKeyPair(opts);
+    this.headerSecret = null;
+    this.name = name
     // If an ETH provider is included in opts, connect to the provider automatically
-    if (opts.ethProvider !== undefined) this.connectToEth(opts.ethProvider);
+    // if (opts.ethProvider !== undefined) this.connectToEth(opts.ethProvider);
   }
 
   //============================================================================
@@ -100,45 +105,6 @@ class GridPlusSDK {
         return;
         break;
     }
-  }
-
-  //============================================================================
-  // COMMS WITH AGENT
-  //============================================================================
-
-  // Initiate comms with a particular agent
-  connect(id) {
-    return new Promise((resolve, reject) => {
-      const url = `${config.api.baseUrl}/headerKey`;
-      request.post(url)
-      .then((res) => {
-        if (!res.body) return reject(`No body returned from ${url}`)
-        else if (!res.body.headerKey) return reject(`Incorrect response body from ${url}`)
-        else {
-          this.headerKey = res.body.headerKey;
-          return resolve(true);
-        }
-      })
-      .catch((err) => {
-        return reject(err);
-      })
-    })
-  }
-
-  // Create an EC keypair. Optionally, a passphrase may be provided as opts.entropy
-  _initKeyPair(opts) {
-    // Create the keypair
-    if (opts.entropy === undefined) {
-      this.key = EC_K.genKeyPair();
-    } else {
-      if (opts.entropy.length < 20) {
-        console.log('WARNING: Passphrase should be at least 20 characters. Please consider using a longer one.');
-        for (let i = 0; i < 20 - opts.entropy.length; i++) opts.entropy += 'x';
-        this.key = EC_K.genKeyPair({ entropy: opts.entropy });
-      }
-    }
-    // Add the public key
-    this.key.pub = this.key.getPublic();
   }
 }
 
