@@ -3,7 +3,7 @@ const assert = require('assert');
 const bitcoin = require('bitcoinjs-lib');
 const config = require('../config.js');
 const GridPlusSDK = require('../index.js').default;
-let startBal, startUtxos, testAddr, testKeyPair;
+let startBal, startUtxos, testAddr, testKeyPair, balance;
 
 // Start bcoin client. There is also one running through the SDK,
 // but we will use this instance to mine blocks
@@ -14,6 +14,9 @@ const client = new NodeClient({
   network: config.bitcoinNode.network,
   port: config.bitcoinNode.port,
 });
+
+const REC_ADDR = '2NGHjvjw83pcVFgMcA7QvSMh2c246rxLVz9';
+let recAddrBase;
 
 // Mine enough blocks so that the holder can spend the earliest
 // coinbse transaction 
@@ -29,7 +32,6 @@ function mineIfNeeded(oldestUtxoHeight, done) {
     }
   })
 }
-
 
 // Handle all promise rejections
 process.on('unhandledRejection', e => { throw e; });
@@ -71,6 +73,19 @@ describe('Bitcoin', () => {
     });
   });
 
+  it('Should check the balance of the receiving address to set a baseline', (done) => {
+    // Look for the balance and any unspent transaction outputs
+    sdk.getBalance('BTC', REC_ADDR)
+    .then((d) => {
+      recAddrBase = d.balance;
+      done();
+    })
+    .catch((err) => {
+      assert(err === null, err);
+      done();
+    });
+  });
+
   it('Should mine a block', (done) => {
     client.execute('generate', [ 1 ])
     .then((blocks) => {
@@ -88,7 +103,8 @@ describe('Bitcoin', () => {
     sdk.getBalance('BTC', config.testing.btcHolder.address)
     .then((d) => {
       assert(d.utxos.length === startUtxos.length + 1, 'Block did not mine to correct coinbase');
-      assert(d.balance === startBal + 50e8, `Expected balance of ${startBal + 50e8}, got ${d.balance}`);
+      assert(d.balance > startBal, 'Balance did not increase. Try removing your chaindata: ~/.bcoin/regtest/chain.ldb');
+      balance = d.balance;
       mineIfNeeded(d.utxos[0].height, done);
     })
     .catch((err) => {
@@ -108,7 +124,6 @@ describe('Bitcoin', () => {
   it('Should scan the addresses and find that the first one is the receiving address (i.e. has 0 balance)');
 
   it('Should form a transaction and send 0.1 BTC to address 0', (done) => {
-    const addr = '2NGHjvjw83pcVFgMcA7QvSMh2c246rxLVz9';
     const signer = bitcoin.ECPair.fromWIF(config.testing.btcHolder.wif, bitcoin.networks.testnet);
     sdk.getBalance('BTC', config.testing.btcHolder.address)
     .then((d) => {
@@ -117,8 +132,8 @@ describe('Bitcoin', () => {
       txb.addInput(utxo.hash, utxo.index);
       // Note; this will throw if the address does not conform to the testnet
       // Need to figure out if regtest emulates the mainnet
-      txb.addOutput(addr, 1e7);
-      txb.addOutput(config.testing.btcHolder.address, 50e8 - 1e7);
+      txb.addOutput(REC_ADDR, 1e7);
+      // txb.addOutput(config.testing.btcHolder.address, balance - 1e7 - 1e9);
       txb.sign(0, signer);
       const tx = txb.build().toHex();
       return client.broadcast(tx);
@@ -128,7 +143,7 @@ describe('Bitcoin', () => {
       return client.getMempool();
     })
     .then((mempool) => {
-      console.log('mempool', mempool)
+      assert(mempool.length === 1, `Found empty mempool: ${mempool}`)
       done();
     })
     .catch((err) => {
@@ -136,15 +151,20 @@ describe('Bitcoin', () => {
       done();
     });
   });
-
+/*
   it('Should register the updated balance and recognize address 1 as the new receiving address', (done) => {
-    const addr = '2NGHjvjw83pcVFgMcA7QvSMh2c246rxLVz9';
     client.execute('generate', [ 1 ])
-    .then(() => {
-      return sdk.getBalance('BTC', config.testing.btcHolder.address)
+    .then((blocks) => {
+      console.log('block', blocks)
+      return client.execute('getblock', [blocks[0]])
+    })
+    .then((block) => {
+      console.log('block', block)
+      return sdk.getBalance('BTC', REC_ADDR)
     })
     .then((d) => {
-      const expectedBal = startBal + 100e8 - 1e7;
+      const expectedBal = recAddrBase + 1e7;
+      console.log('new balance', d.balance)
       assert(d.balance === expectedBal, `Expected balance of ${expectedBal}, got ${d.balance}`);
       done();
     })
@@ -153,4 +173,5 @@ describe('Bitcoin', () => {
       done();
     });
   });
+*/
 })

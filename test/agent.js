@@ -160,6 +160,48 @@ describe('Basic tests', () => {
     });
   });
 
-  it('Should create an automated Bitcoin transaction')
+  it('Should create an automated Bitcoin transaction', (done) => {
+    const req1 = {
+      permissionIndex: 0,
+      isManual: false,
+      coin_type: "0'"
+    };
+    // Build inputs: [ txHash, outIndex, scriptType, spendAccountIndex ]
+    let params = [ 1, 0, '3EdCNnLV17fcR13aSjPCR4YWjX2wJYbjYu', 12000, 0 ];
+    const inputs = [
+      'b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c', // txHash
+      0,                                                                  // outIndex
+      'p2sh(p2wpkh)',                                                     // scriptType
+      0,                                                                  // spend account sub-index
+      0,                                                                  // spend account index
+      12000,                                                              // input value
+    ];
+    params = params.concat(inputs);
+    // Build the request
+    const req2 = {
+      schemaIndex: 1,
+      typeIndex: 2,
+      params: params,
+    };
+    sdk.addresses(req1, (err, res) => {
+      const addr = res.result.data.addresses;
+      sdk.signAutomated(req2, (err, res) => {
+        assert(err === null, err);
+        // Make sure the signature came out of the right pubkey
+        const sigData = res.result.data.sigData.split(config.api.SPLIT_BUF);
+        /*const preImage = Buffer.from(sigData[0], 'hex');
+        const msg = crypto.createHash('sha256').digest(preImage);
+        const sig = sigData[1];
+        // Deconstruct the signature and ensure the signer is the key associated
+        // with the permission
+        const sr = Buffer.from(sig.substr(0, sig.length - 1), 'hex');
+        const v = parseInt(sig.slice(-1));
+        const signer = secp256k1.recover(msg, sr, v, false);
+        console.log(res)
+        */
+        done()
+      });
+    });
+  });
 
 });
