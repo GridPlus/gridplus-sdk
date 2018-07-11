@@ -1,7 +1,8 @@
 // Basic tests for atomic SDK functionality
 const assert = require('assert');
 const Tx = require('ethereumjs-tx');
-const config = require('./../config.js');
+const EthUtil = require('ethereumjs-util');
+const config = require('../config.js');
 const GridPlusSDK = require('./../index.js').default;
 let sdk, privKey, addr, provider, erc20Addr, sender, senderPriv, balance;
 
@@ -80,23 +81,18 @@ describe('Basic tests', () => {
     });
   });
 
-
   const toSend = 10 ** 18;
   it('Should transfer ETH to the address', (done) => {
     provider = sdk.getProvider();
     sender = config.testing.ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
-    sdk.getTransactionCount('ETH', sender.address)
-    .then((nonce) => {
-      // Setup a transaction to send 1 ETH (10**18 wei) to our random address
-      const rawTx = {
-        nonce,
-        to: addr,
-        gasLimit: '0x186a0',
-        value: toSend
-      };
-      const tx = new Tx(rawTx);
+    // Build a tx for the sender
+    sdk.buildTx('ETH', sender.address, addr, toSend)
+    .then((_tx) => {
+      const tx = new Tx({ nonce: _tx[0], gasPrice: _tx[1], gasLimit: _tx[2], to: _tx[3], value: _tx[4], data: _tx[5] });
+      console.log(1, tx)
       tx.sign(senderPriv);
+      console.log(2, tx)
       const serTx = tx.serialize();
       return provider.sendTransaction(`0x${serTx.toString('hex')}`)
     })
@@ -119,14 +115,16 @@ describe('Basic tests', () => {
   });
 
   it('Should deploy an ERC20 token', (done) => {
-    sdk.getTransactionCount('ETH', sender.address)
-    .then((nonce) => {
+    sdk.buildTx('ETH', sender.address, addr, 0)
+    // sdk.getTransactionCount('ETH', sender.address)
+    .then((_tx) => {
       const rawTx = {
-        nonce,
+        nonce: _tx[0],
+        gasPrice: _tx[1],
         gasLimit: '0x1e8480',
         value: 0,
         data: config.testing.erc20Src,
-      };
+      }
       const tx = new Tx(rawTx);
       tx.sign(senderPriv);      
       const serTx = tx.serialize();
@@ -172,15 +170,9 @@ describe('Basic tests', () => {
   });
 
   it('Should transfer some ERC20 tokens to the address', (done) => {
-    sdk.getTransactionCount('ETH', sender.address)
-    .then((nonce) => {
-      const rawTx = {
-        nonce,
-        to: erc20Addr,
-        gasLimit: '0x186a0',
-        data: config.erc20.transfer(addr, 1)
-      };
-      const tx = new Tx(rawTx);
+    sdk.buildTx('ETH', sender.address, addr, 1, { ERC20Token: erc20Addr})
+    .then((_tx) => {
+      const tx = new Tx(_tx);
       tx.sign(senderPriv);      
       const serTx = tx.serialize();
       return provider.sendTransaction(`0x${serTx.toString('hex')}`)
@@ -221,19 +213,58 @@ describe('Basic tests', () => {
     })
   });
 
-  it('Should get the nonce of the recipient account', (done) => {
-    sdk.getTransactionCount('ETH', addr)
-    .then((nonce) => {
-      assert(nonce === 0, `User should not have sent any transactions, but got nonce of ${nonce}`);
-      done();
-    })
-    .catch((err) => {
-      assert(err === null, err);
-      done();
-    });
-  });
+  // it('Should get the nonce of the recipient account', (done) => {
+  //   sdk.getTransactionCount('ETH', addr)
+  //   .then((nonce) => {
+  //     assert(nonce === 0, `User should not have sent any transactions, but got nonce of ${nonce}`);
+  //     done();
+  //   })
+  //   .catch((err) => {
+  //     assert(err === null, err);
+  //     done();
+  //   });
+  // });
 
-  it('Should transfer ETH out of the agent account');
+  it('Should transfer ETH out of the agent account', (done) => {
+    const randAddr = '0xdde20a2810ff23775585cf2d87991c7f5ddb8c22'
+    sdk.buildTx('ETH', addr, randAddr, 10000)
+    .then((tx) => {
+      const params = {
+        schemaIndex: 0,
+        typeIndex: 0,
+        params: tx
+      };
+      sdk.signManual(params, (err, res) => {
+        assert(err === null, err);
+        assert(res.result.status === 200);
+        const sigData = res.result.data.sigData.split(config.SPLIT_BUF);
+        const msg = EthUtil.sha3(sigData[0]);
+        const sig = sigData[1];
+        const v = 27 + parseInt(sig.slice(-1));
+        const vrs = [ v.toString(16), Buffer.from(sig.slice(0, 64), 'hex'), Buffer.from(sig.slice(64, 128), 'hex'),  ];
+        // Check that the signer is correct
+        const signer = EthUtil.pubToAddress(EthUtil.ecrecover(Buffer.from(msg, 'hex'), v, vrs[1], vrs[2]));
+        console.log('signer', signer.toString('hex'))
+        console.log('addr', addr)
+        const newTx = new Tx(tx.concat(vrs));
+        return provider.sendTransaction(`0x${newTx.serialize().toString('hex')}`)
+        .then((txHash) => {
+          console.log('txHash', txHash)
+          done()
+        })
+        .catch((err) => {
+          assert(err === null, err);
+        })
+      })
+    })
+    /*.then((txHash) => {
+      return provider.getTransactionReceipt(txHash);
+    })
+    .then((receipt) => {
+      assert(receipt.logs.length > 0, 'Transaction did not emit any logs.');
+      done();
+    })*/
+  });
 
   it('Should transfer the ERC20 token out of the agent account');
 

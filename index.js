@@ -91,15 +91,17 @@ class GridPlusSDK extends RestClient{
     }
   }
 
-  // Get the number of transactions an address has made. This is needed for building ETH
-  // transactions and may be useful for BTC as well
-  // @param [system]  {string}  - "ETH" or "BTC"
-  // @param [user]    {string}  - Account we are querying
-  // @returns         {Promise} - Contains a number
-  getTransactionCount(system, user) {
+  // Build a transaction
+  // @param [system]  {string}          - "ETH" or "BTC"
+  // @param [to]      {string}          - Receiving address
+  // @param [from]    {string | array}  - Sending address (or addresses for BTC)
+  // @param [value]   {number}          - number of tokens to send in the tx
+  // @param [opts]    {Object}          - (optional) parameterization options, including ERC20 address
+  // @returns         {Promise}         - Contains a transaction object
+  buildTx(system, from, to, value, opts={}) {
     switch (system) {
       case 'ETH':
-        return ethereum.getNonce(user);
+        return ethereum.buildTx(from, to, value, opts);
         break;
       default:
         return;
