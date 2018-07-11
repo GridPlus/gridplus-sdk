@@ -229,13 +229,11 @@ describe('Bitcoin', () => {
         utxo.value,
       ];
       req.params = params.concat(inputs);
-      console.log('req', req)
       // Build a transaction and sign it in the k81
       sdk.signManual(req, (err, res) => {
         assert(err === null, err);
         const sigData = res.result.data.sigData.split(config.SPLIT_BUF);
         const tx = sigData[0];
-        console.log('tx', tx)
         // Broadcast the transaction
         client.broadcast(tx)
         .then((success) => {
@@ -255,7 +253,7 @@ describe('Bitcoin', () => {
         })
         .then((block) => {
           console.log('block', block);
-      
+
           return sdk.getBalance('BTC', receiving[1][0])
         })
         .then((d) => {
