@@ -169,6 +169,7 @@ describe('Bitcoin', () => {
       txb.addOutput(config.testing.btcHolder.address, utxo.value - 1e7 - 1e3);
       txb.sign(0, signer);
       const tx = txb.build().toHex();
+      console.log('tx', tx)
       return client.broadcast(tx);
     })
     .then((result) => {
@@ -204,5 +205,70 @@ describe('Bitcoin', () => {
       done();
     });
   });
+
+  it('Should spend out of the first address to the second one', (done) => {
+    const req = {
+      schemaIndex: 1,
+      typeIndex: 2,
+      fetchAccountIndex: 2,
+      network: 'testnet',
+    }
+    sdk.getBalance('BTC', receiving[0][0])
+    .then((d) => {
+      const utxo = d.utxos[0];
+      // Create the transaction. Here we will take change of 9000 sats and pay a mining fee of 1000 sats
+      // [ version, lockTime, to, value, changeVal ]
+      const params = [ 1, 0, receiving[1][0], utxo.value - 10000, 9000]
+      // Parameterize the k81 request with the input
+      const inputs = [
+        utxo.hash,
+        utxo.index,
+        'p2sh(p2wpkh)',
+        0,
+        0,
+        utxo.value,
+      ];
+      req.params = params.concat(inputs);
+      console.log('req', req)
+      // Build a transaction and sign it in the k81
+      sdk.signManual(req, (err, res) => {
+        assert(err === null, err);
+        const sigData = res.result.data.sigData.split(config.SPLIT_BUF);
+        const tx = sigData[0];
+        console.log('tx', tx)
+        // Broadcast the transaction
+        client.broadcast(tx)
+        .then((success) => {
+          assert(success.success === true, 'Failed to broadcast transaction')
+          // Check the mempool
+          return client.getMempool()
+        })
+        .then((mempool) => {
+          assert(mempool.length > 0, 'Found empty mempool')
+          console.log('mempool', mempool)
+          // Mine a block
+          return client.execute('generate', [ 1 ])
+        })
+        .then((blocks) => {
+          console.log('blocks', blocks)
+          return client.execute('getblock', [blocks[0]])
+        })
+        .then((block) => {
+          console.log('block', block);
+      
+          return sdk.getBalance('BTC', receiving[1][0])
+        })
+        .then((d) => {
+          console.log('d', d)
+          done();
+        })
+        .catch((err) => {
+          assert(err === null, err);
+          done();
+        })
+      })
+    })
+
+  })
 
 })
