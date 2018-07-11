@@ -1,0 +1,49 @@
+version: '3.4'
+
+services:
+
+  bcoin:
+    image: purse/bcoin
+    restart: unless-stopped
+    ports:
+      - "48332:48332"
+      - "48333:48333"
+    environment:
+      BCOIN_CONFIG: /data/bcoin.conf
+      VIRTUAL_HOST: localhost
+      VIRTUAL_PORT: 48332
+    volumes:
+      - ./.bcoin:/data
+      - ./support/bcoin/bcoin.conf:/data/bcoin.conf
+
+  ganache:
+    container_name: ganache
+    image: trufflesuite/ganache-cli:latest
+    ports:
+      - 8545:8545
+
+  # install:
+  #   image: node:9-alpine
+  #   environment:
+  #     - NPM_TOKEN=${NPM_TOKEN}
+  #   volumes:
+  #     - .:/usr/src/service
+  #     # - /usr/local/lib/node_modules:/usr/local/lib/node_modules
+  #     # - /usr/local/lib/node_modules/@gridplus/mqtt-client:/usr/local/lib/node_modules/@gridplus/mqtt-client
+  #   working_dir: /usr/src/service
+  #   privileged: true
+  #   user: node
+  #   command: /usr/local/bin/npm i
+
+  # test:
+  #   image: node:9-alpine
+  #   environment:
+  #     - NPM_TOKEN=${NPM_TOKEN}
+  #   volumes:
+  #     - .:/usr/src/service
+  #     # - /usr/local/lib/node_modules:/usr/local/lib/node_modules
+  #     # - /usr/local/lib/node_modules/@gridplus/mqtt-client:/usr/local/lib/node_modules/@gridplus/mqtt-client
+  #   working_dir: /usr/src/service
+  #   privileged: true
+  #   user: node
+  #   command: /usr/local/bin/npm test
