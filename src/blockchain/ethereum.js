@@ -84,6 +84,51 @@ exports.getNonce = function(user) {
   });
 }
 
+// Build an Ethereum transaction object
+// @returns {array}  - array of form [ nonce, gasPrice, gas, to, value, data ]
+exports.buildTx = function(from, to, value, opts={}) {
+  return new Promise((resolve, reject) => {
+    if (typeof from !== 'string') {
+      return reject('Please specify a single address to transfer from');
+    } else {
+      exports.getNonce(from)
+      .then((nonce) => {
+        let tx = [ nonce, null, null, to, null, null ];
+        // Fill in `value` and `data` if this is an ERC20 transfer
+        if (opts.ERC20Token !== undefined) {
+          tx[5] = config.erc20.transfer(to, value);
+          tx[4] = 0;
+          tx[3] = opts.ERC20Token;
+          tx[2] = 100000; // gas=100,000 to be safe
+        } else {
+          tx[5] = '';
+          tx[4] = value;
+          tx[2] = 22000; // gas=22000 for ETH transfers
+        }
+        // Check for a specified gas price (should be in decimal)
+        if (opts.gasPrice !== undefined) {
+          tx[1] = opts.gasPrice;
+        } else {
+          tx[1] = config.defaults.gasPrice;
+        }
+        return resolve(tx);
+      })
+      .catch((err) => {
+        return reject(err);
+      });
+    }
+  });
+}
+
+exports.broadcast = function(system, tx) {
+  switch (system) {
+    case 'ETH':
+      break;
+    default:
+      break;
+  }
+}
+
 // Get a set of event logs
 function _getEvents(address, topics, fromBlock=0, toBlock='latest') {
   return new Promise((resolve, reject) => {
