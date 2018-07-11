@@ -45,7 +45,6 @@ exports.getBalance = function(addr, ERC20Addr=null) {
         .catch((err) => { return reject(err); });
       }
     } else {
-      console.log('here', addr)
       // Otherwise query for the ETH balance
       provider.getBalance(addr)
       .then((balance) => { return resolve(parseInt(balance) / 10 ** 18); })
