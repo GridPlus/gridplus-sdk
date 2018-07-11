@@ -104,6 +104,7 @@ describe('Basic tests', () => {
       assert(typeof _balance === 'number');
       // Note that _balances are returned in whole units (ether)
       assert(_balance * 10**18 === (balance * 10**18) + toSend, `Expected balance of ${toSend}, but got ${_balance}`);
+      balance = _balance;
       done();
     })
     .catch((err) => {
@@ -211,18 +212,6 @@ describe('Basic tests', () => {
     })
   });
 
-  // it('Should get the nonce of the recipient account', (done) => {
-  //   sdk.getTransactionCount('ETH', addr)
-  //   .then((nonce) => {
-  //     assert(nonce === 0, `User should not have sent any transactions, but got nonce of ${nonce}`);
-  //     done();
-  //   })
-  //   .catch((err) => {
-  //     assert(err === null, err);
-  //     done();
-  //   });
-  // });
-
   it('Should transfer ETH out of the agent account', (done) => {
     const randAddr = '0xdde20a2810ff23775585cf2d87991c7f5ddb8c22'
     sdk.buildTx('ETH', addr, randAddr, 10000)
@@ -255,6 +244,10 @@ describe('Basic tests', () => {
         })
         .then((receipt) => {
           assert(receipt.blockNumber > 0, 'Transaction not included in block');
+          return sdk.getBalance('ETH', addr)
+        })
+        .then((newBal) => {
+          assert(newBal < balance, 'Balance did not reduce');
           done();
         })
         .catch((err) => {
@@ -264,6 +257,40 @@ describe('Basic tests', () => {
     });
   });
 
-  it('Should transfer the ERC20 token out of the agent account');
+  it('Should transfer the ERC20 token out of the agent account', (done) => {
+    const randAddr = '0xdde20a2810ff23775585cf2d87991c7f5ddb8c22';
+    sdk.buildTx('ETH', addr, randAddr, 1, { ERC20Token: erc20Addr})
+    .then((tx) => {
+      const params = {
+        schemaIndex: 0,
+        typeIndex: 1,
+        params: tx
+      };
+      sdk.signManual(params, (err, res) => {
+        assert(err === null, err);
+        const sigData = res.result.data.sigData.split(config.SPLIT_BUF);
+        const sig = sigData[1];
+        const v = parseInt(sig.slice(-1)) + 27;
+        const vrs = [ v, Buffer.from(sig.slice(0, 64), 'hex'), Buffer.from(sig.slice(64, 128), 'hex'),  ];
+        const newTx = new Tx(tx.concat(vrs));
+        provider.sendTransaction(`0x${newTx.serialize().toString('hex')}`)
+        .then((txHash) => {
+          return provider.getTransaction(txHash);
+        })
+        .then((receipt) => {
+          assert(receipt.blockNumber > 0, 'Transaction not included in block');
+          return sdk.getTransactionHistory('ERC20', addr, erc20Addr)
+          done();
+        })
+        .then((events) => {
+          assert(events.out.length > 0);
+          done();
+        })
+        .catch((err) => {
+          assert(err === null, err);
+        })
+      });
+    });
+  });
 
 })
