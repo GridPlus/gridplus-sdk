@@ -90,9 +90,7 @@ describe('Basic tests', () => {
     sdk.buildTx('ETH', sender.address, addr, toSend)
     .then((_tx) => {
       const tx = new Tx({ nonce: _tx[0], gasPrice: _tx[1], gasLimit: _tx[2], to: _tx[3], value: _tx[4], data: _tx[5] });
-      console.log(1, tx)
       tx.sign(senderPriv);
-      console.log(2, tx)
       const serTx = tx.serialize();
       return provider.sendTransaction(`0x${serTx.toString('hex')}`)
     })
@@ -238,32 +236,32 @@ describe('Basic tests', () => {
         assert(err === null, err);
         assert(res.result.status === 200);
         const sigData = res.result.data.sigData.split(config.SPLIT_BUF);
-        const msg = EthUtil.sha3(sigData[0]);
+        const msg = EthUtil.sha3(Buffer.from(sigData[0], 'hex'));
+        const test = new Tx(tx.concat([null, null, null]));
+        test.raw = test.raw.slice(0, test.raw.length - 3);
+        
         const sig = sigData[1];
-        const v = 27 + parseInt(sig.slice(-1));
-        const vrs = [ v.toString(16), Buffer.from(sig.slice(0, 64), 'hex'), Buffer.from(sig.slice(64, 128), 'hex'),  ];
+        const v = parseInt(sig.slice(-1)) + 27;
+        const vrs = [ v, Buffer.from(sig.slice(0, 64), 'hex'), Buffer.from(sig.slice(64, 128), 'hex'),  ];
         // Check that the signer is correct
-        const signer = EthUtil.pubToAddress(EthUtil.ecrecover(Buffer.from(msg, 'hex'), v, vrs[1], vrs[2]));
-        console.log('signer', signer.toString('hex'))
-        console.log('addr', addr)
+        const signer = '0x' + EthUtil.pubToAddress(EthUtil.ecrecover(Buffer.from(msg, 'hex'), v, vrs[1], vrs[2])).toString('hex');
+        assert(signer === addr, `Expected signer to be ${addr}, got ${signer}`);
+        
+        // Create a new transaction with the returned signature
         const newTx = new Tx(tx.concat(vrs));
-        return provider.sendTransaction(`0x${newTx.serialize().toString('hex')}`)
+        provider.sendTransaction(`0x${newTx.serialize().toString('hex')}`)
         .then((txHash) => {
-          console.log('txHash', txHash)
-          done()
+          return provider.getTransaction(txHash);
+        })
+        .then((receipt) => {
+          assert(receipt.blockNumber > 0, 'Transaction not included in block');
+          done();
         })
         .catch((err) => {
           assert(err === null, err);
         })
-      })
-    })
-    /*.then((txHash) => {
-      return provider.getTransactionReceipt(txHash);
-    })
-    .then((receipt) => {
-      assert(receipt.logs.length > 0, 'Transaction did not emit any logs.');
-      done();
-    })*/
+      });
+    });
   });
 
   it('Should transfer the ERC20 token out of the agent account');
