@@ -17,10 +17,10 @@ services:
       - ./support/bcoin/bcoin.conf:/data/bcoin.conf
 
   ganache:
-    container_name: ganache
     image: trufflesuite/ganache-cli:latest
     ports:
-      - 8545:8545
+      - "8545:8545"
+    command: "--host 0.0.0.0"
 
   # install:
   #   image: node:9-alpine
