@@ -76,7 +76,9 @@ describe('Basic tests', () => {
       .then((_balance) => {
         balance = _balance;
         done();
-      });
+      }).catch((err) => {
+        assert.equal(err, null, err);
+      });;
     });
   });
 
@@ -128,7 +130,7 @@ describe('Basic tests', () => {
         data: config.testing.erc20Src,
       };
       const tx = new Tx(rawTx);
-      tx.sign(senderPriv);      
+      tx.sign(senderPriv);
       const serTx = tx.serialize();
       return provider.sendTransaction(`0x${serTx.toString('hex')}`)
     })
@@ -138,7 +140,7 @@ describe('Basic tests', () => {
     .then((receipt) => {
       assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
       erc20Addr = receipt.contractAddress;
-      done(); 
+      done();
     })
     .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
   });
@@ -181,7 +183,7 @@ describe('Basic tests', () => {
         data: config.erc20.transfer(addr, 1)
       };
       const tx = new Tx(rawTx);
-      tx.sign(senderPriv);      
+      tx.sign(senderPriv);
       const serTx = tx.serialize();
       return provider.sendTransaction(`0x${serTx.toString('hex')}`)
     })
@@ -212,7 +214,7 @@ describe('Basic tests', () => {
     sdk.getTransactionHistory('ERC20', addr, erc20Addr)
     .then((events) => {
       assert(events.in.length === 1, `Number of inbound transfers should be 1, but got ${events.in.length}`);
-      assert(events.out.length === 0, `Number of outbound transfers should be 0, but got ${events.out.length}`);      
+      assert(events.out.length === 0, `Number of outbound transfers should be 0, but got ${events.out.length}`);
       done();
     })
     .catch((err) => {
