@@ -3,24 +3,26 @@ version: '3.4'
 services:
 
   bcoin:
-    image: purse/bcoin
-    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: bcoin.Dockerfile
+    restart: always
     ports:
       - "48332:48332"
       - "48333:48333"
     environment:
-      BCOIN_CONFIG: /data/bcoin.conf
+      BCOIN_CONFIG: /conf/bcoin.conf
       VIRTUAL_HOST: localhost
       VIRTUAL_PORT: 48332
     volumes:
       - ./.bcoin:/data
-      - ./support/bcoin/bcoin.conf:/data/bcoin.conf
+      - ./support/bcoin/bcoin.conf:/conf/bcoin.conf
 
   ganache:
     image: trufflesuite/ganache-cli:latest
     ports:
       - "8545:8545"
-    command: "--host 0.0.0.0"
+    command: "--host 0.0.0.0 --mnemonic \"finish oppose decorate face calm tragic certain desk hour urge dinosaur mango\""
 
   # install:
   #   image: node:9-alpine
