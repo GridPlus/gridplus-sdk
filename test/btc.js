@@ -19,6 +19,7 @@ const client = new NodeClient({
 // Receiving addresses
 let receiving = [];
 
+
 // Mine enough blocks so that the holder can spend the earliest
 // coinbse transaction
 function mineIfNeeded(oldestUtxoHeight, done) {
@@ -168,6 +169,7 @@ describe('Bitcoin', () => {
       // Need to figure out if regtest emulates the mainnet
       txb.addOutput(receiving[0][0], 1e7);
       txb.addOutput(config.testing.btcHolder.address, utxo.value - 1e7 - 1e3);
+
       txb.sign(0, signer);
       const tx = txb.build().toHex();
       return client.broadcast(tx);
@@ -197,6 +199,7 @@ describe('Bitcoin', () => {
     })
     .then((d) => {
       const expectedBal = receiving[0][1] + 1e7;
+
       assert(d.balance === expectedBal, `Expected balance of ${expectedBal}, got ${d.balance}`);
       done();
     })
@@ -205,6 +208,7 @@ describe('Bitcoin', () => {
       done();
     });
   });
+
 
   it('Should spend out of the first address to the second one', (done) => {
     const req = {
@@ -287,3 +291,4 @@ describe('Bitcoin', () => {
   })
 
 })
+

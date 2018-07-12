@@ -17,6 +17,7 @@ exports.erc20 = {
 
 exports.api = {
   baseUrl: 'http://localhost:80',
+  SPLIT_BUF: "22222222222222222222222222222222",
 }
 
 exports.bitcoinNode = {
