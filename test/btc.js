@@ -3,7 +3,8 @@ const assert = require('assert');
 const bitcoin = require('bitcoinjs-lib');
 const config = require('../config.js');
 const GridPlusSDK = require('../index.js').default;
-let startBal, startUtxos, testAddr, testKeyPair, balance;
+let startBal, startUtxos, testAddr, testKeyPair, balance, TX_VALUE;
+const CHANGE_INDEX = 3, CHANGE_AMOUNT = 9000;
 
 // Start bcoin client. There is also one running through the SDK,
 // but we will use this instance to mine blocks
@@ -169,7 +170,6 @@ describe('Bitcoin', () => {
       txb.addOutput(config.testing.btcHolder.address, utxo.value - 1e7 - 1e3);
       txb.sign(0, signer);
       const tx = txb.build().toHex();
-      console.log('tx', tx)
       return client.broadcast(tx);
     })
     .then((result) => {
@@ -177,7 +177,7 @@ describe('Bitcoin', () => {
       return client.getMempool();
     })
     .then((mempool) => {
-      assert(mempool.length === 1, `Found empty mempool: ${mempool}`)
+      assert(mempool.length > 0, `Found empty mempool: ${mempool}`)
       done();
     })
     .catch((err) => {
@@ -210,15 +210,16 @@ describe('Bitcoin', () => {
     const req = {
       schemaIndex: 1,
       typeIndex: 2,
-      fetchAccountIndex: 2,
+      fetchAccountIndex: CHANGE_INDEX,   // the account index where we'd like the change to go
       network: 'testnet',
     }
     sdk.getBalance('BTC', receiving[0][0])
     .then((d) => {
       const utxo = d.utxos[0];
+      TX_VALUE = utxo.value - 10000;
       // Create the transaction. Here we will take change of 9000 sats and pay a mining fee of 1000 sats
       // [ version, lockTime, to, value, changeVal ]
-      const params = [ 1, 0, receiving[1][0], utxo.value - 10000, 9000]
+      const params = [ 1, 0, receiving[1][0], TX_VALUE, CHANGE_AMOUNT]
       // Parameterize the k81 request with the input
       const inputs = [
         utxo.hash,
@@ -243,30 +244,46 @@ describe('Bitcoin', () => {
         })
         .then((mempool) => {
           assert(mempool.length > 0, 'Found empty mempool')
-          console.log('mempool', mempool)
           // Mine a block
           return client.execute('generate', [ 1 ])
         })
-        .then((blocks) => {
-          console.log('blocks', blocks)
-          return client.execute('getblock', [blocks[0]])
+        .then((blocks) => {          
+          return client.getMempool()
         })
-        .then((block) => {
-          console.log('block', block);
-
+        .then((mempool) => {
+          assert(mempool.length === 0, `Mempool not empty: ${mempool}`)
           return sdk.getBalance('BTC', receiving[1][0])
         })
         .then((d) => {
-          console.log('d', d)
+          // Check the balance of the receiving address
+          const prevBal = receiving[1][1];
+          const newBal = d.balance;
+          assert(newBal === TX_VALUE + prevBal, `Expected new balance of ${TX_VALUE + prevBal}, got ${newBal}`);
           done();
         })
         .catch((err) => {
           assert(err === null, err);
           done();
-        })
-      })
-    })
+        });
+      });
+    });
+  });
 
+  it('Should ensure the correct change address got the change', (done) => {
+    const req = {
+      permissionIndex: 0,
+      isManual: true,
+      total: 4,
+      network: 'testnet'
+    }
+    sdk.addresses(req, (err, res) => {
+      sdk.getBalance('BTC', res.result.data.addresses[CHANGE_INDEX])
+      .then((d) => {
+        assert(d.utxos.length > 0, 'Did not find any change outputs')
+        assert(d.utxos[d.utxos.length - 1].value === CHANGE_AMOUNT, 'Change output was wrong')
+        done();
+      });
+    });
   })
 
 })
