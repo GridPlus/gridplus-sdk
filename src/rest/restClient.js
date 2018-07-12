@@ -1,14 +1,14 @@
-const crypto = require('crypto');
-const superagent = require('superagent');
-const {
+import crypto from 'crypto';
+import superagent from 'superagent';
+import {
   decrypt,
   encrypt,
   deriveSecret,
   ecdhKeyPair,
   ecdsaKeyPair,
-} = require('../util.js');
+} from '../util';
 
-class RestClient {
+export default class RestClient {
   constructor({ baseUrl, privKey = crypto.randomBytes(32).toString('hex') } = {}) {
     if (!baseUrl) throw new Error('baseUrl is required');
 
@@ -197,5 +197,3 @@ class RestClient {
       .catch(err => cb(err));
   }
 }
-
-exports.default = RestClient;

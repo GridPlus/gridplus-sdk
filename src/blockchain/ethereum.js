@@ -1,13 +1,22 @@
-// Integrations to query the Ethereum blockchain for relevant account data
-const ethers = require('ethers');
+import ethers from 'ethers';
+import config from '../config.js';
+import { pad64, unpad } from '../util.js';
+
 let provider;
-const config = require('../../config.js');
-const { pad64, unpad } = require('../util.js');
 let erc20Decimals = {};
 
+export default {
+  broadcast,
+  buildTx,
+  getBalance,
+  getERC20TransferHistory,
+  getNonce,
+  getProvider,
+  initEth,
+}
 
 // Instantiate the Ethereum query service. In this case, it is a web3 instance.
-exports.initEth = function(_provider=config.defaultWeb3Provider) {
+export function initEth (_provider=config.defaultWeb3Provider) {
   return new Promise((resolve, reject) => {
     try {
       provider =  new ethers.providers.JsonRpcProvider(_provider);
@@ -19,13 +28,13 @@ exports.initEth = function(_provider=config.defaultWeb3Provider) {
 }
 
 // Expose the web3 interface for advanced functionality
-exports.getProvider = function() { return provider; }
+export function getProvider () { return provider; }
 
 // Get the balance of an Ethereum account. This can be an ERC20 or ETH balance.
 // @param [addr]      {string}  - The account we are querying
 // @param [ERC20Addr] {string}  - Address of the ERC20 token we are asking about
 // @returns           {Promise} - Contains the balance in full units (i.e. with decimals divided in)
-exports.getBalance = function(addr, ERC20Addr=null) {
+export function getBalance (addr, ERC20Addr=null) {
   return new Promise((resolve, reject) => {
     if (ERC20Addr !== null) {
       if (erc20Decimals[ERC20Addr] === undefined) {
@@ -56,7 +65,7 @@ exports.getBalance = function(addr, ERC20Addr=null) {
 // Get a history of ERC20 transfers to and from an account
 // @param [addr]         {string}  - The account we are looking up
 // @param [contractAddr] {string}  - Address of the deployed ERC20 contract
-exports.getERC20TransferHistory = function(user, contractAddr) {
+export function getERC20TransferHistory (user, contractAddr) {
   return new Promise((resolve, reject) => {
     let events = {}
     // Get transfer "out" events
@@ -75,7 +84,7 @@ exports.getERC20TransferHistory = function(user, contractAddr) {
 
 // Get the nonce (i.e. the number of transactions an account has sent)
 // @param [addr]    {string}  - The account we are looking up
-exports.getNonce = function(user) {
+export function getNonce (user) {
   return new Promise((resolve, reject) => {
     provider.getTransactionCount(user)
     .then((nonce) => { return resolve(nonce); })
@@ -85,12 +94,12 @@ exports.getNonce = function(user) {
 
 // Build an Ethereum transaction object
 // @returns {array}  - array of form [ nonce, gasPrice, gas, to, value, data ]
-exports.buildTx = function(from, to, value, opts={}) {
+export function buildTx (from, to, value, opts={}) {
   return new Promise((resolve, reject) => {
     if (typeof from !== 'string') {
       return reject('Please specify a single address to transfer from');
     } else {
-      exports.getNonce(from)
+      getNonce(from)
       .then((nonce) => {
         let tx = [ nonce, null, null, to, null, null ];
         // Fill in `value` and `data` if this is an ERC20 transfer
@@ -119,7 +128,7 @@ exports.buildTx = function(from, to, value, opts={}) {
   });
 }
 
-exports.broadcast = function(system, tx) {
+export function broadcast (system, tx) {
   switch (system) {
     case 'ETH':
       break;

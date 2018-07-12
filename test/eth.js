@@ -1,13 +1,13 @@
 // Basic tests for atomic SDK functionality
-const assert = require('assert');
-const Tx = require('ethereumjs-tx');
-const EthUtil = require('ethereumjs-util');
-const config = require('../config.js');
-const GridPlusSDK = require('./../index.js').default;
-let sdk, privKey, addr, provider, erc20Addr, sender, senderPriv, balance;
+import assert from 'assert';
+import EthUtil from 'ethereumjs-util';
+import Tx from 'ethereumjs-tx';
+import { SPLIT_BUF, testing } from '../src/config';
+import GridPlusSDK from 'index';
 
-// Handle all promise rejections
-process.on('unhandledRejection', e => { throw e; });
+const { erc20Src, ethHolder } = testing;
+
+let sdk, privKey, addr, provider, erc20Addr, sender, senderPriv, balance;
 
 describe('Basic tests', () => {
   it('Should instantiate an SDK object', (done) => {
@@ -86,7 +86,7 @@ describe('Basic tests', () => {
   const toSend = 10 ** 18;
   it('Should transfer ETH to the address', (done) => {
     provider = sdk.getProvider();
-    sender = config.testing.ethHolder;
+    sender = ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
     // Build a tx for the sender
     sdk.buildTx('ETH', sender.address, addr, toSend)
@@ -124,7 +124,7 @@ describe('Basic tests', () => {
         gasPrice: _tx[1],
         gasLimit: '0x1e8480',
         value: 0,
-        data: config.testing.erc20Src,
+        data: erc20Src,
       }
       const tx = new Tx(rawTx);
       tx.sign(senderPriv);
@@ -226,7 +226,7 @@ describe('Basic tests', () => {
       sdk.signManual(params, (err, res) => {
         assert(err === null, err);
         assert(res.result.status === 200);
-        const sigData = res.result.data.sigData.split(config.SPLIT_BUF);
+        const sigData = res.result.data.sigData.split(SPLIT_BUF);
         const msg = EthUtil.sha3(Buffer.from(sigData[0], 'hex'));
         const test = new Tx(tx.concat([null, null, null]));
         test.raw = test.raw.slice(0, test.raw.length - 3);
@@ -270,7 +270,7 @@ describe('Basic tests', () => {
       };
       sdk.signManual(params, (err, res) => {
         assert(err === null, err);
-        const sigData = res.result.data.sigData.split(config.SPLIT_BUF);
+        const sigData = res.result.data.sigData.split(SPLIT_BUF);
         const sig = sigData[1];
         const v = parseInt(sig.slice(-1)) + 27;
         const vrs = [ v, Buffer.from(sig.slice(0, 64), 'hex'), Buffer.from(sig.slice(64, 128), 'hex'),  ];
