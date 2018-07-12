@@ -36,6 +36,14 @@ ensure-serial:
 		exit 1; \
 	fi
 
+install:
+	npm i
+
+test:
+	BASE_URL=$(BASE_URL) \
+	ETHEREUM_NODE_URI=$(ETHEREUM_NODE_URI) \
+	npm test
+
 up-agent: ensure-serial
 	AGENT_SERIAL=$(AGENT_SERIAL) \
 	DEBUG=$(DEBUG) \
@@ -48,11 +56,6 @@ up-agent-staging-mqtt: ensure-serial
 	NPM_TOKEN=$(NPM_TOKEN) \
 	RABBIT_MQTT_URL=$(RABBIT_MQTT_STAGING_URL) \
 	docker-compose -f docker-compose.mac.yml up
-
-test:
-	BASE_URL=$(BASE_URL) \
-	ETHEREUM_NODE_URI=$(ETHEREUM_NODE_URI) \
-	npm test
 
 up-bitcoin:
 	docker-compose -f docker-compose.mac.yml up bcoin
