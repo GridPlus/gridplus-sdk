@@ -77,7 +77,9 @@ describe('Basic tests', () => {
       .then((_balance) => {
         balance = _balance;
         done();
-      });
+      }).catch((err) => {
+        assert.equal(err, null, err);
+      });;
     });
   });
 
@@ -125,7 +127,7 @@ describe('Basic tests', () => {
         data: config.testing.erc20Src,
       }
       const tx = new Tx(rawTx);
-      tx.sign(senderPriv);      
+      tx.sign(senderPriv);
       const serTx = tx.serialize();
       return provider.sendTransaction(`0x${serTx.toString('hex')}`)
     })
@@ -135,7 +137,7 @@ describe('Basic tests', () => {
     .then((receipt) => {
       assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
       erc20Addr = receipt.contractAddress;
-      done(); 
+      done();
     })
     .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
   });
@@ -172,7 +174,7 @@ describe('Basic tests', () => {
     sdk.buildTx('ETH', sender.address, addr, 1, { ERC20Token: erc20Addr})
     .then((_tx) => {
       const tx = new Tx(_tx);
-      tx.sign(senderPriv);      
+      tx.sign(senderPriv);
       const serTx = tx.serialize();
       return provider.sendTransaction(`0x${serTx.toString('hex')}`)
     })
@@ -203,7 +205,7 @@ describe('Basic tests', () => {
     sdk.getTransactionHistory('ERC20', addr, erc20Addr)
     .then((events) => {
       assert(events.in.length === 1, `Number of inbound transfers should be 1, but got ${events.in.length}`);
-      assert(events.out.length === 0, `Number of outbound transfers should be 0, but got ${events.out.length}`);      
+      assert(events.out.length === 0, `Number of outbound transfers should be 0, but got ${events.out.length}`);
       done();
     })
     .catch((err) => {
@@ -228,14 +230,14 @@ describe('Basic tests', () => {
         const msg = EthUtil.sha3(Buffer.from(sigData[0], 'hex'));
         const test = new Tx(tx.concat([null, null, null]));
         test.raw = test.raw.slice(0, test.raw.length - 3);
-        
+
         const sig = sigData[1];
         const v = parseInt(sig.slice(-1)) + 27;
         const vrs = [ v, Buffer.from(sig.slice(0, 64), 'hex'), Buffer.from(sig.slice(64, 128), 'hex'),  ];
         // Check that the signer is correct
         const signer = '0x' + EthUtil.pubToAddress(EthUtil.ecrecover(Buffer.from(msg, 'hex'), v, vrs[1], vrs[2])).toString('hex');
         assert(signer === addr, `Expected signer to be ${addr}, got ${signer}`);
-        
+
         // Create a new transaction with the returned signature
         const newTx = new Tx(tx.concat(vrs));
         provider.sendTransaction(`0x${newTx.serialize().toString('hex')}`)

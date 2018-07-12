@@ -9,7 +9,7 @@ let erc20Decimals = {};
 // Instantiate the Ethereum query service. In this case, it is a web3 instance.
 exports.initEth = function(_provider=config.defaultWeb3Provider) {
   return new Promise((resolve, reject) => {
-    try {  
+    try {
       provider =  new ethers.providers.JsonRpcProvider(_provider);
       return resolve(true);
     } catch (err) {
@@ -55,7 +55,7 @@ exports.getBalance = function(addr, ERC20Addr=null) {
 
 // Get a history of ERC20 transfers to and from an account
 // @param [addr]         {string}  - The account we are looking up
-// @param [contractAddr] {string}  - Address of the deployed ERC20 contract  
+// @param [contractAddr] {string}  - Address of the deployed ERC20 contract
 exports.getERC20TransferHistory = function(user, contractAddr) {
   return new Promise((resolve, reject) => {
     let events = {}
