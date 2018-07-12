@@ -119,6 +119,10 @@ coinbase-address: moVVsb2KUaQKgigofdap3Cep183Rwjn5yK
 log-level: debug
 index-address: true
 index-tx: true
+selfish: true
+listen: false
+log-level: warning
+premature-witness: true
 ```
 
 *NOTE: The `regtest` option is used to run a local Bitcoin network. The tests are built to spend bitcoins with `moVVsb2KUaQKgigofdap3Cep183Rwjn5yK`, but if you want to use your own address make sure you update `config.js`*
