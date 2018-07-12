@@ -1,24 +1,28 @@
 // Basic tests for atomic SDK functionality
-const assert = require('assert');
-const bitcoin = require('bitcoinjs-lib');
-const config = require('../config.js');
-const GridPlusSDK = require('../index.js').default;
+import { Network } from 'bcoin';
+import { NodeClient } from 'bclient';
+import assert from 'assert';
+import bitcoin from 'bitcoinjs-lib';
+import { bitcoinNode, SPLIT_BUF, testing } from '../src/config';
+import GridPlusSDK from 'index';
+
 let startBal, startUtxos, testAddr, testKeyPair, balance, TX_VALUE;
 const CHANGE_INDEX = 3, CHANGE_AMOUNT = 9000;
 
+const { host, network, port } = bitcoinNode;
+const { btcHolder } = testing;
+const { address, wif } = btcHolder;
 // Start bcoin client. There is also one running through the SDK,
 // but we will use this instance to mine blocks
-const { NodeClient } = require('bclient');
-const { Network } = require('bcoin');
 const client = new NodeClient({
-  host: config.bitcoinNode.host,
-  network: config.bitcoinNode.network,
-  port: config.bitcoinNode.port,
+  host,
+  network,
+  port,
 });
 
 // Receiving addresses
 let receiving = [];
-
+let sdk;
 
 // Mine enough blocks so that the holder can spend the earliest
 // coinbse transaction
@@ -34,9 +38,6 @@ function mineIfNeeded(oldestUtxoHeight, done) {
     }
   })
 }
-
-// Handle all promise rejections
-process.on('unhandledRejection', e => { throw e; });
 
 describe('Bitcoin', () => {
   it('Should instantiate an SDK object', (done) => {
@@ -63,7 +64,7 @@ describe('Bitcoin', () => {
 
   it('Should check the balance of a single address and set a baseline', (done) => {
     // Look for the balance and any unspent transaction outputs
-    sdk.getBalance('BTC', config.testing.btcHolder.address)
+    sdk.getBalance('BTC', address)
     .then((d) => {
       startUtxos = d.utxos;
       startBal = d.balance;
@@ -89,7 +90,7 @@ describe('Bitcoin', () => {
 
   it('Should register a balance increase', (done) => {
     // Look for the balance and any unspent transaction outputs
-    sdk.getBalance('BTC', config.testing.btcHolder.address)
+    sdk.getBalance('BTC', address)
     .then((d) => {
       assert(d.utxos.length === startUtxos.length + 1, 'Block did not mine to correct coinbase');
       assert(d.balance > startBal, 'Balance did not increase. Try removing your chaindata: ~/.bcoin/regtest/chain.ldb');
@@ -159,8 +160,8 @@ describe('Bitcoin', () => {
   });
 
   it('Should form a transaction and send 0.1 BTC to address 0', (done) => {
-    const signer = bitcoin.ECPair.fromWIF(config.testing.btcHolder.wif, bitcoin.networks.testnet);
-    sdk.getBalance('BTC', config.testing.btcHolder.address)
+    const signer = bitcoin.ECPair.fromWIF(wif, bitcoin.networks.testnet);
+    sdk.getBalance('BTC', address)
     .then((d) => {
       const utxo = d.utxos[0];
       const txb = new bitcoin.TransactionBuilder(bitcoin.networks.testnet);
@@ -168,7 +169,7 @@ describe('Bitcoin', () => {
       // Note; this will throw if the address does not conform to the testnet
       // Need to figure out if regtest emulates the mainnet
       txb.addOutput(receiving[0][0], 1e7);
-      txb.addOutput(config.testing.btcHolder.address, utxo.value - 1e7 - 1e3);
+      txb.addOutput(address, utxo.value - 1e7 - 1e3);
 
       txb.sign(0, signer);
       const tx = txb.build().toHex();
@@ -237,7 +238,7 @@ describe('Bitcoin', () => {
       // Build a transaction and sign it in the k81
       sdk.signManual(req, (err, res) => {
         assert(err === null, err);
-        const sigData = res.result.data.sigData.split(config.SPLIT_BUF);
+        const sigData = res.result.data.sigData.split(SPLIT_BUF);
         const tx = sigData[0];
         // Broadcast the transaction
         client.broadcast(tx)
@@ -251,7 +252,7 @@ describe('Bitcoin', () => {
           // Mine a block
           return client.execute('generate', [ 1 ])
         })
-        .then((blocks) => {          
+        .then((blocks) => {
           return client.getMempool()
         })
         .then((mempool) => {

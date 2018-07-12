@@ -1,28 +1,29 @@
 // Static utility functions
-const aes = require('aes-js');
-const leftPad = require('left-pad');
-const elliptic = require('elliptic');
+import aes from 'aes-js';
+import leftPad from 'left-pad';
+import elliptic from 'elliptic';
+
 const EC = elliptic.ec;
 const ec = new EC('curve25519');
 
-exports.ecdsaKeyPair = function(privKey) {
+export function ecdsaKeyPair (privKey) {
   const curve = new EC('secp256k1');
   const key = curve.keyFromPrivate(privKey, 'hex');
   key.getPublic();
   return key;
 }
 
-exports.ecdhKeyPair = function(priv) {
+export function ecdhKeyPair (priv) {
   return ec.keyFromPrivate(priv, 'hex');
 }
 
 // left-pad with zeros up to 64 bytes
-exports.pad64 = function(x) { 
-  return leftPad(x.substr(0, 2) === '0x' ? x.slice(2) : x, 64, '0'); 
+export function pad64 (x) {
+  return leftPad(x.substr(0, 2) === '0x' ? x.slice(2) : x, 64, '0');
 }
 
 // Remove all leading zeros in piece of data
-exports.unpad = function(x) { 
+export function unpad (x) {
   if (x.substr(0, 2) === '0x') x = x.slice(2);
   let _i = 0;
   for (let i = 0; i < x.length; i++) {
@@ -33,7 +34,7 @@ exports.unpad = function(x) {
 }
 
 // Derive a shared secret using ECDH via curve25519
-exports.deriveSecret = function(privKey, pubKey) {
+export function deriveSecret (privKey, pubKey) {
   if (typeof privKey !== 'string') privKey = privKey.toString('hex');
   if (typeof pubKey !== 'string') pubKey = pubKey.toString('hex');
   const privInst = ec.keyFromPrivate(privKey, 'hex');
@@ -42,7 +43,7 @@ exports.deriveSecret = function(privKey, pubKey) {
 }
 
 // Decrypt using an AES secret and a counter
-exports.decrypt = function(payload, secret, counter=5) {
+export function decrypt (payload, secret, counter=5) {
   if (typeof secret === 'string') secret = Buffer.from(secret, 'hex');
   const b = aes.utils.hex.toBytes(payload);
   const aesCtr = new aes.ModeOfOperation.ctr(secret, new aes.Counter(counter));
@@ -50,7 +51,7 @@ exports.decrypt = function(payload, secret, counter=5) {
   return aes.utils.utf8.fromBytes(dec);
 }
 
-exports.encrypt = function(payload, secret, counter=5) {
+export function encrypt (payload, secret, counter=5) {
   if (typeof secret === 'string') secret = Buffer.from(secret, 'hex');
   const b = aes.utils.utf8.toBytes(payload);
   const aesCtr = new aes.ModeOfOperation.ctr(secret, new aes.Counter(counter));
