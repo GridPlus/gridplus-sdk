@@ -1,11 +1,34 @@
 AGENT_SERIAL?=agent-0
 BASE_URL?=http://localhost:80
 DEBUG?=debug,info,warn,error,fatal
-DOCKER_PASS?=
-DOCKER_USER?=
+ETHEREUM_NODE_URI?=http://localhost:8545
 NPM_TOKEN?=`sed -n -e '/\/\/nexus.gridpl.us\/repository\/npm-group\/:_authToken=/ s/.*\= *//p' ~/.npmrc` #grabbing NPM_TOKEN from ~/.npmrc if its not already set as an env var
 RABBIT_MQTT_STAGING_URL?=
 RABBIT_MQTT_URL?=mqtt://rabbitmq:1883 #assumes you're running a servicebus stack locally
+
+build:
+	npm run build
+
+build-image:
+	docker build -f Dockerfile .
+
+down:
+	docker-compose -f docker-compose.mac.yml down
+
+down-bitcoin:
+	docker-compose -f docker-compose.mac.yml down
+
+down-bitcoin-and-ethereum:
+	docker-compose -f docker-compose.mac.yml down
+
+down-ethereum:
+	docker-compose -f docker-compose.mac.yml down
+
+clean-agent:
+	docker-compose -f docker-compose.mac.yml down --remove-orphans
+
+down-agent:
+	docker-compose -f docker-compose.mac.yml down
 
 ensure-serial:
 	@if [ "$(AGENT_SERIAL)" = "" ]; then \
@@ -13,22 +36,13 @@ ensure-serial:
 		exit 1; \
 	fi
 
-build-builder:
-	docker build -f Dockerfile .
-
-clean-mac:
-	docker-compose -f docker-compose.mac.yml down --remove-orphans
-
-down-mac:
-	docker-compose -f docker-compose.mac.yml down
-
-up-mac: ensure-serial
+up-agent: ensure-serial
 	AGENT_SERIAL=$(AGENT_SERIAL) \
 	DEBUG=$(DEBUG) \
 	RABBIT_MQTT_URL=$(RABBIT_MQTT_URL) \
 	docker-compose -f docker-compose.mac.yml up
 
-up-mac-staging-mqtt: ensure-serial
+up-agent-staging-mqtt: ensure-serial
 	AGENT_SERIAL=$(AGENT_SERIAL) \
 	DEBUG=$(DEBUG) \
 	NPM_TOKEN=$(NPM_TOKEN) \
@@ -37,6 +51,30 @@ up-mac-staging-mqtt: ensure-serial
 
 test:
 	BASE_URL=$(BASE_URL) \
-	npm run test
+	ETHEREUM_NODE_URI=$(ETHEREUM_NODE_URI) \
+	npm test
 
-.PHONY : test
+up-bitcoin:
+	docker-compose -f docker-compose.mac.yml up bcoin
+
+up-bitcoin-and-ethereum:
+	docker-compose -f docker-compose.mac.yml up bcoin ganache
+
+up-ethereum:
+	docker-compose -f docker-compose.mac.yml up ganache
+
+up:
+	AGENT_SERIAL=$(AGENT_SERIAL) \
+	DEBUG=$(DEBUG) \
+	NPM_TOKEN=$(NPM_TOKEN) \
+	RABBIT_MQTT_URL=$(RABBIT_MQTT_URL) \
+	docker-compose -f docker-compose.mac.yml up # start all services
+
+up-staging-mqtt:
+	AGENT_SERIAL=$(AGENT_SERIAL) \
+	DEBUG=$(DEBUG) \
+	NPM_TOKEN=$(NPM_TOKEN) \
+	RABBIT_MQTT_URL=$(RABBIT_MQTT_STAGING_URL) \
+	docker-compose -f docker-compose.mac.yml up # start all services
+
+.PHONY: test

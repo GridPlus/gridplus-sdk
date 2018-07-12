@@ -1,26 +1,35 @@
 // Basic tests for atomic SDK functionality
-const assert = require('assert');
-const bitcoin = require('bitcoinjs-lib');
-const config = require('../config.js');
-const GridPlusSDK = require('../index.js').default;
-let startBal, startUtxos, testAddr, testKeyPair;
+import { Network } from 'bcoin';
+import { NodeClient } from 'bclient';
+import assert from 'assert';
+import bitcoin from 'bitcoinjs-lib';
+import { bitcoinNode, SPLIT_BUF, testing } from '../src/config';
+import GridPlusSDK from 'index';
 
+let startBal, startUtxos, testAddr, testKeyPair, balance, TX_VALUE;
+const CHANGE_INDEX = 3, CHANGE_AMOUNT = 9000;
+
+const { host, network, port } = bitcoinNode;
+const { btcHolder } = testing;
+const { address, wif } = btcHolder;
 // Start bcoin client. There is also one running through the SDK,
 // but we will use this instance to mine blocks
-const { NodeClient } = require('bclient');
-const { Network } = require('bcoin');
 const client = new NodeClient({
-  host: config.bitcoinNode.host,
-  network: config.bitcoinNode.network,
-  port: config.bitcoinNode.port,
+  host,
+  network,
+  port,
 });
 
+// Receiving addresses
+let receiving = [];
+let sdk;
+
 // Mine enough blocks so that the holder can spend the earliest
-// coinbse transaction 
+// coinbse transaction
 function mineIfNeeded(oldestUtxoHeight, done) {
   client.execute('getblockcount')
   .then((b) => {
-    const numNeeded = b - oldestUtxoHeight;
+    const numNeeded = 101 - b - oldestUtxoHeight;
     if (numNeeded > 0) {
       client.execute('generate', [ numNeeded ])
       .then(() => { done(); })
@@ -29,10 +38,6 @@ function mineIfNeeded(oldestUtxoHeight, done) {
     }
   })
 }
-
-
-// Handle all promise rejections
-process.on('unhandledRejection', e => { throw e; });
 
 describe('Bitcoin', () => {
   it('Should instantiate an SDK object', (done) => {
@@ -59,7 +64,7 @@ describe('Bitcoin', () => {
 
   it('Should check the balance of a single address and set a baseline', (done) => {
     // Look for the balance and any unspent transaction outputs
-    sdk.getBalance('BTC', config.testing.btcHolder.address)
+    sdk.getBalance('BTC', address)
     .then((d) => {
       startUtxos = d.utxos;
       startBal = d.balance;
@@ -85,10 +90,11 @@ describe('Bitcoin', () => {
 
   it('Should register a balance increase', (done) => {
     // Look for the balance and any unspent transaction outputs
-    sdk.getBalance('BTC', config.testing.btcHolder.address)
+    sdk.getBalance('BTC', address)
     .then((d) => {
       assert(d.utxos.length === startUtxos.length + 1, 'Block did not mine to correct coinbase');
-      assert(d.balance === startBal + 50e8, `Expected balance of ${startBal + 50e8}, got ${d.balance}`);
+      assert(d.balance > startBal, 'Balance did not increase. Try removing your chaindata: ~/.bcoin/regtest/chain.ldb');
+      balance = d.balance;
       mineIfNeeded(d.utxos[0].height, done);
     })
     .catch((err) => {
@@ -97,28 +103,74 @@ describe('Bitcoin', () => {
     });
   });
 
-  it('Should make a connection to an agent');
+  it('Should connect to an agent', (done) => {
+    sdk.connect((err, res) => {
+      assert(err === null, err);
+      assert(sdk.ecdhPub === res.key, 'Mismatched key on response')
+      done()
+    });
+  });
 
-  // We should be able to send some kind of signal to the agent instance to accept requests
-  // (only in test mode)
-  it('Should create a read-only permission');
+  it('Should start the pairing process on the agent', (done) => {
+    sdk.setupPairing((err, res) => {
+      assert(err === null, err);
+      assert(res.status === 200);
+      done();
+    });
+  });
 
-  it('Should get the first 2 addresses associated with the permission');
+  it('Should pair with the agent', (done) => {
+    sdk.pair(sdk.name, (err, res) => {
+      assert(err === null, err)
+      done();
+    });
+  });
 
-  it('Should scan the addresses and find that the first one is the receiving address (i.e. has 0 balance)');
+  it('Should create a manual permission', (done) => {
+    sdk.addManualPermission((err, res) => {
+      assert(err === null, err);
+      assert(res.result.status === 200);
+      done();
+    })
+  });
+
+  it('Should get the first 2 Bitcoin addresses of the manual permission and log address 0', (done) => {
+    const req = {
+      permissionIndex: 0,
+      isManual: true,
+      total: 2,
+      network: 'testnet'
+    }
+    sdk.addresses(req, (err, res) => {
+      assert(err === null, err);
+      assert(res.result.data.addresses.length === 2);
+      assert(res.result.data.addresses[0].slice(0, 1) === '2', 'Not a testnet address');
+      const addrs = res.result.data.addresses;
+      // Get the baseline balance for the addresses
+      sdk.getBalance('BTC', addrs[0])
+      .then((d) => {
+        receiving.push([addrs[0], d.balance]);
+        return sdk.getBalance('BTC', addrs[1])
+      })
+      .then((d) => {
+        receiving.push([addrs[1], d.balance]);
+        done();
+      });
+    });
+  });
 
   it('Should form a transaction and send 0.1 BTC to address 0', (done) => {
-    const addr = '2NGHjvjw83pcVFgMcA7QvSMh2c246rxLVz9';
-    const signer = bitcoin.ECPair.fromWIF(config.testing.btcHolder.wif, bitcoin.networks.testnet);
-    sdk.getBalance('BTC', config.testing.btcHolder.address)
+    const signer = bitcoin.ECPair.fromWIF(wif, bitcoin.networks.testnet);
+    sdk.getBalance('BTC', address)
     .then((d) => {
       const utxo = d.utxos[0];
       const txb = new bitcoin.TransactionBuilder(bitcoin.networks.testnet);
       txb.addInput(utxo.hash, utxo.index);
       // Note; this will throw if the address does not conform to the testnet
       // Need to figure out if regtest emulates the mainnet
-      txb.addOutput(addr, 1e7);
-      txb.addOutput(config.testing.btcHolder.address, 50e8 - 1e7);
+      txb.addOutput(receiving[0][0], 1e7);
+      txb.addOutput(address, utxo.value - 1e7 - 1e3);
+
       txb.sign(0, signer);
       const tx = txb.build().toHex();
       return client.broadcast(tx);
@@ -128,7 +180,7 @@ describe('Bitcoin', () => {
       return client.getMempool();
     })
     .then((mempool) => {
-      console.log('mempool', mempool)
+      assert(mempool.length > 0, `Found empty mempool: ${mempool}`)
       done();
     })
     .catch((err) => {
@@ -138,13 +190,17 @@ describe('Bitcoin', () => {
   });
 
   it('Should register the updated balance and recognize address 1 as the new receiving address', (done) => {
-    const addr = '2NGHjvjw83pcVFgMcA7QvSMh2c246rxLVz9';
     client.execute('generate', [ 1 ])
-    .then(() => {
-      return sdk.getBalance('BTC', config.testing.btcHolder.address)
+    .then((blocks) => {
+      return client.execute('getblock', [blocks[0]])
+    })
+    .then((block) => {
+      assert(block.tx.length > 1, 'Block did not include spend transaction')
+      return sdk.getBalance('BTC', receiving[0][0])
     })
     .then((d) => {
-      const expectedBal = startBal + 100e8 - 1e7;
+      const expectedBal = receiving[0][1] + 1e7;
+
       assert(d.balance === expectedBal, `Expected balance of ${expectedBal}, got ${d.balance}`);
       done();
     })
@@ -153,4 +209,87 @@ describe('Bitcoin', () => {
       done();
     });
   });
+
+
+  it('Should spend out of the first address to the second one', (done) => {
+    const req = {
+      schemaIndex: 1,
+      typeIndex: 2,
+      fetchAccountIndex: CHANGE_INDEX,   // the account index where we'd like the change to go
+      network: 'testnet',
+    }
+    sdk.getBalance('BTC', receiving[0][0])
+    .then((d) => {
+      const utxo = d.utxos[0];
+      TX_VALUE = utxo.value - 10000;
+      // Create the transaction. Here we will take change of 9000 sats and pay a mining fee of 1000 sats
+      // [ version, lockTime, to, value, changeVal ]
+      const params = [ 1, 0, receiving[1][0], TX_VALUE, CHANGE_AMOUNT]
+      // Parameterize the k81 request with the input
+      const inputs = [
+        utxo.hash,
+        utxo.index,
+        'p2sh(p2wpkh)',
+        0,
+        0,
+        utxo.value,
+      ];
+      req.params = params.concat(inputs);
+      // Build a transaction and sign it in the k81
+      sdk.signManual(req, (err, res) => {
+        assert(err === null, err);
+        const sigData = res.result.data.sigData.split(SPLIT_BUF);
+        const tx = sigData[0];
+        // Broadcast the transaction
+        client.broadcast(tx)
+        .then((success) => {
+          assert(success.success === true, 'Failed to broadcast transaction')
+          // Check the mempool
+          return client.getMempool()
+        })
+        .then((mempool) => {
+          assert(mempool.length > 0, 'Found empty mempool')
+          // Mine a block
+          return client.execute('generate', [ 1 ])
+        })
+        .then((blocks) => {
+          return client.getMempool()
+        })
+        .then((mempool) => {
+          assert(mempool.length === 0, `Mempool not empty: ${mempool}`)
+          return sdk.getBalance('BTC', receiving[1][0])
+        })
+        .then((d) => {
+          // Check the balance of the receiving address
+          const prevBal = receiving[1][1];
+          const newBal = d.balance;
+          assert(newBal === TX_VALUE + prevBal, `Expected new balance of ${TX_VALUE + prevBal}, got ${newBal}`);
+          done();
+        })
+        .catch((err) => {
+          assert(err === null, err);
+          done();
+        });
+      });
+    });
+  });
+
+  it('Should ensure the correct change address got the change', (done) => {
+    const req = {
+      permissionIndex: 0,
+      isManual: true,
+      total: 4,
+      network: 'testnet'
+    }
+    sdk.addresses(req, (err, res) => {
+      sdk.getBalance('BTC', res.result.data.addresses[CHANGE_INDEX])
+      .then((d) => {
+        assert(d.utxos.length > 0, 'Did not find any change outputs')
+        assert(d.utxos[d.utxos.length - 1].value === CHANGE_AMOUNT, 'Change output was wrong')
+        done();
+      });
+    });
+  })
+
 })
+

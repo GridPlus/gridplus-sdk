@@ -10,7 +10,11 @@
     "precommit": "npm run lint:fix && npm run test",
     "prepublish": "npm run build",
     "postinstall": "npm run build",
-    "test": "mocha -R spec --compilers js:babel-core/register test --recursive"
+    "test": "mocha -R spec --compilers js:babel-core/register test --recursive --exit",
+    "test:jest": "NODE_ENV=test jest --config jest.json --verbose",
+    "test:watch": "NODE_ENV=test jest --config jest.json --watch --coverage --verbose",
+    "test:integration": "NODE_ENV=test jest --config jest.integration.json --coverage --verbose",
+    "test:integration:watch": "NODE_ENV=test jest --config jest.integration.json --watch --coverage --verbose"
   },
   "private": true,
   "main": "dist/index.js",
@@ -19,8 +23,10 @@
     "url": "git+https://github.com/GridPlus/gridplus-sdk.git"
   },
   "dependencies": {
+    "@gridplus/agent-rest-client": "^1.0.3",
+    "aes-js": "^3.1.1",
     "bclient": "^0.1.0",
-    "bcoin": "^1.0.0-beta.15",
+    "bcoin": "git+https://git@github.com/gridplus/bcoin.git",
     "eccrypto": "^1.0.3",
     "elliptic": "^6.4.0",
     "ethers": "^3.0.21",
@@ -44,7 +50,11 @@
     "eslint-plugin-node": "^6.0.1",
     "eslint-plugin-promise": "^3.5.0",
     "eslint-plugin-standard": "^3.0.1",
-    "ethereumjs-tx": "^1.3.4"
+    "ethereumjs-tx": "^1.3.4",
+    "jest": "^23.4.0",
+    "mocha": "^5.2.0",
+    "ethereumjs-util": "^5.2.0",
+    "secp256k1": "^3.5.0"
   },
   "license": "ISC",
   "publishConfig": {

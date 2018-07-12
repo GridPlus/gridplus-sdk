@@ -1,21 +1,28 @@
-const EC = require('elliptic').ec;
-const EC_K = new EC('secp256k1');
-const request = require('superagent');
-const config = require('./config.js');
-const bitcoin = require('./src/blockchain/bitcoin.js');
-const ethereum = require('./src/blockchain/ethereum.js');
+import crypto from 'crypto';
+import request from 'superagent';
+import config from './config';
+import bitcoin from './blockchain/bitcoin';
+import ethereum from './blockchain/ethereum';
+import util from './util';
+import RestClient from './rest/restClient';
+import elliptic from 'elliptic';
 
-class GridPlusSDK {
+const EC = elliptic.ec;
+const EC_K = new EC('secp256k1');
+const DEFAULT_COUNTER = 5;
+
+export default class GridPlusSDK extends RestClient {
   //============================================================================
   // SETUP OBJECT
   //============================================================================
-  constructor(opts={}) {
+  constructor({ url = config.api.baseUrl, name = 'app-0', privKey = crypto.randomBytes(32),  } = {}) {
+    super({ baseUrl: url, privKey });
     // Create a keypair either with existing entropy or system-based randomness
-    this._initKeyPair(opts);
-    this.headerKey = null;
-
+    // this._initKeyPair(opts);
+    this.headerSecret = null;
+    this.name = name
     // If an ETH provider is included in opts, connect to the provider automatically
-    if (opts.ethProvider !== undefined) this.connectToEth(opts.ethProvider);
+    // if (opts.ethProvider !== undefined) this.connectToEth(opts.ethProvider);
   }
 
   //============================================================================
@@ -23,8 +30,8 @@ class GridPlusSDK {
   // We need to query both Bitcoin and Ethereum blockchains to get relevent
   // account data. This means connecting to nodes
   //============================================================================
-  
-  // Initialize a connection to an Ethereum node. 
+
+  // Initialize a connection to an Ethereum node.
   // @param [provider] {string} - of form `${protocol}://${host}:${port}`, where `protocol` is 'ws' or 'http'
   // @returns          {Error}  - may be null
   connectToEth(provider=null) {
@@ -32,7 +39,7 @@ class GridPlusSDK {
     else                   return ethereum.initEth(provider)
   }
 
-  // Initialize a connection to Bitcoin node. 
+  // Initialize a connection to Bitcoin node.
   // @param [options] {object}
   // @returns         {Promise}
   connectToBtc(options={}) {
@@ -54,7 +61,7 @@ class GridPlusSDK {
       case 'BTC':
         return bitcoin.getBalance(addr);
         break;
-      case 'ETH': 
+      case 'ETH':
         return ethereum.getBalance(addr);
         break;
       case 'ERC20':
@@ -86,60 +93,21 @@ class GridPlusSDK {
     }
   }
 
-  // Get the number of transactions an address has made. This is needed for building ETH
-  // transactions and may be useful for BTC as well
-  // @param [system]  {string}  - "ETH" or "BTC"
-  // @param [user]    {string}  - Account we are querying
-  // @returns         {Promise} - Contains a number
-  getTransactionCount(system, user) {
+  // Build a transaction
+  // @param [system]  {string}          - "ETH" or "BTC"
+  // @param [to]      {string}          - Receiving address
+  // @param [from]    {string | array}  - Sending address (or addresses for BTC)
+  // @param [value]   {number}          - number of tokens to send in the tx
+  // @param [opts]    {Object}          - (optional) parameterization options, including ERC20 address
+  // @returns         {Promise}         - Contains a transaction object
+  buildTx(system, from, to, value, opts={}) {
     switch (system) {
       case 'ETH':
-        return ethereum.getNonce(user);
+        return ethereum.buildTx(from, to, value, opts);
         break;
       default:
         return;
         break;
     }
   }
-
-  //============================================================================
-  // COMMS WITH AGENT
-  //============================================================================
-
-  // Initiate comms with a particular agent
-  connect(id) {
-    return new Promise((resolve, reject) => {
-      const url = `${config.api.baseUrl}/headerKey`;
-      request.post(url)
-      .then((res) => {
-        if (!res.body) return reject(`No body returned from ${url}`)
-        else if (!res.body.headerKey) return reject(`Incorrect response body from ${url}`)
-        else {
-          this.headerKey = res.body.headerKey;
-          return resolve(true);
-        }
-      })
-      .catch((err) => {
-        return reject(err);
-      })
-    })
-  }
-
-  // Create an EC keypair. Optionally, a passphrase may be provided as opts.entropy
-  _initKeyPair(opts) {
-    // Create the keypair
-    if (opts.entropy === undefined) {
-      this.key = EC_K.genKeyPair();
-    } else {
-      if (opts.entropy.length < 20) {
-        console.log('WARNING: Passphrase should be at least 20 characters. Please consider using a longer one.');
-        for (let i = 0; i < 20 - opts.entropy.length; i++) opts.entropy += 'x';
-        this.key = EC_K.genKeyPair({ entropy: opts.entropy });
-      }
-    }
-    // Add the public key
-    this.key.pub = this.key.getPublic();
-  }
 }
-
-exports.default = GridPlusSDK;
