@@ -20,7 +20,7 @@ const client = new NodeClient({
 let receiving = [];
 
 // Mine enough blocks so that the holder can spend the earliest
-// coinbse transaction 
+// coinbse transaction
 function mineIfNeeded(oldestUtxoHeight, done) {
   client.execute('getblockcount')
   .then((b) => {
