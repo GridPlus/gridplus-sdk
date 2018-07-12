@@ -15,20 +15,8 @@ build-image:
 down:
 	docker-compose -f docker-compose.mac.yml down
 
-down-bitcoin:
-	docker-compose -f docker-compose.mac.yml down
-
-down-bitcoin-and-ethereum:
-	docker-compose -f docker-compose.mac.yml down
-
-down-ethereum:
-	docker-compose -f docker-compose.mac.yml down
-
 clean-agent:
 	docker-compose -f docker-compose.mac.yml down --remove-orphans
-
-down-agent:
-	docker-compose -f docker-compose.mac.yml down
 
 ensure-serial:
 	@if [ "$(AGENT_SERIAL)" = "" ]; then \
