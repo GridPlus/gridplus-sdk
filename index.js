@@ -39,9 +39,13 @@ class GridPlusSDK extends RestClient{
 
   // Initialize a connection to Bitcoin node. 
   // @param [options] {object}
-  // @returns         {Promise}
-  connectToBtc(options={}) {
-    return bitcoin.initBitcoin(options)
+  // @callback        err (Error), info (object) 
+  connectToBtc(options={}, cb) {
+    if (typeof options === 'function') {
+      cb = options;
+      options = {};
+    }
+    bitcoin.initBitcoin(options, cb)
   }
 
   // Get the web3 connection for advanced functionality
@@ -53,21 +57,22 @@ class GridPlusSDK extends RestClient{
   // @param [currency]  {string}  - "ETH", "ERC20", or "BTC"
   // @param [addr]      {string}  - The account we are querying
   // @param [ERC20Addr] {string}  - (optional) Address of the ERC20 token we are asking about
-  // @returns           {Promise} - Contains the balance in full units (i.e. with decimals divided in)
-  getBalance(currency, addr, ERC20Addr=null) {
-    switch(currency) {
-      case 'BTC':
-        return bitcoin.getBalance(addr);
-        break;
-      case 'ETH': 
-        return ethereum.getBalance(addr);
-        break;
-      case 'ERC20':
-        return ethereum.getBalance(addr, ERC20Addr);
-        break;
-      default:
-        return;
-        break;
+  // @callback                    - err (Error), data (object)
+  getBalance(currency, addr, ERC20Addr=null, cb) {
+    if (typeof ERC20Addr === 'function') {
+      cb = ERC20Addr;
+      ERC20Addr = null;
+    }
+    if (currency === 'BTC') {
+      return bitcoin.getBalance(addr)
+      .then((b) => { cb(null, b); })
+      .catch((err) => { cb(err); })
+    } else if (currency === 'ETH') {
+      return ethereum.getBalance(addr);
+    } else if (currency === 'ERC20' && typeof ERC20Addr === 'string') {
+      return ethereum.getBalance(addr, ERC20Addr);
+    } else {
+      cb('Unsupported currency specified or params not formatted properly')
     }
   }
 

@@ -6,27 +6,25 @@ let client;
 
 // Initialize a connection to a Bitcoin node. Uses params in config.js by default.
 // @param [options] {object}  - may contain `network` and `port` params
-// @returns         {Promise}  - contains `info` Object or error
-exports.initBitcoin = function(options={}) {
-  return new Promise((resolve, reject) => {
-    try {
-      client = new NodeClient({
-        host: options.host || config.bitcoinNode.host,
-        network: options.network || config.bitcoinNode.network,
-        port: options.port || config.bitcoinNode.port,
-      });
-      client.getInfo()
-      .then((info) => {
-        if (!info || !info.network) return reject('Could not connect to node')
-        return resolve(info);
-      })
-      .catch((err) => {
-        return reject(err);
-      })
-    } catch (err) {
-      return reject(err);
-    }
-  })
+// @callback                  - err (Error), info (object)
+exports.initBitcoin = function(options={}, cb) {
+  try {
+    client = new NodeClient({
+      host: options.host || config.bitcoinNode.host,
+      network: options.network || config.bitcoinNode.network,
+      port: options.port || config.bitcoinNode.port,
+    });
+    client.getInfo()
+    .then((info) => {
+      if (!info || !info.network) return reject('Could not connect to node')
+      cb(null, info);
+    })
+    .catch((err) => {
+      cb(err);
+    })
+  } catch (err) {
+    cb(err);
+  }
 }
 
 // Get all of the UTXOs for a given address

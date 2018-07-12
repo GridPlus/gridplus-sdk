@@ -11,6 +11,7 @@ let sdk, privKey, addr, provider, erc20Addr, sender, senderPriv;
 process.on('unhandledRejection', e => { throw e; });
 
 describe('Basic tests', () => {
+  /*
   it('Should instantiate an SDK object', (done) => {
     try {
       sdk = new GridPlusSDK();
@@ -189,19 +190,9 @@ describe('Basic tests', () => {
         assert(err === null, err);
         // Make sure the signature came out of the right pubkey
         const sigData = res.result.data.sigData.split(config.api.SPLIT_BUF);
-        /*const preImage = Buffer.from(sigData[0], 'hex');
-        const msg = crypto.createHash('sha256').digest(preImage);
-        const sig = sigData[1];
-        // Deconstruct the signature and ensure the signer is the key associated
-        // with the permission
-        const sr = Buffer.from(sig.substr(0, sig.length - 1), 'hex');
-        const v = parseInt(sig.slice(-1));
-        const signer = secp256k1.recover(msg, sr, v, false);
-        console.log(res)
-        */
         done()
       });
     });
   });
-
+*/
 });
