@@ -50,29 +50,21 @@ describe('Bitcoin', () => {
   });
 
   it('Should connect to an BTC node', (done) => {
-    sdk.connectToBtc()
-    .then((info) => {
+    sdk.connectToBtc((err, info) => {
+      assert(err === null, err);
       assert(info.network === 'regtest', 'Did not connect to testnet');
       done();
     })
-    .catch((err) => {
-      assert(err === null, err);
-      done();
-    });
   });
 
   it('Should check the balance of a single address and set a baseline', (done) => {
     // Look for the balance and any unspent transaction outputs
-    sdk.getBalance('BTC', config.testing.btcHolder.address)
-    .then((d) => {
+    sdk.getBalance('BTC', config.testing.btcHolder.address, (err, d) => {
+      assert(err === null, err);
       startUtxos = d.utxos;
       startBal = d.balance;
       done();
     })
-    .catch((err) => {
-      assert(err === null, err);
-      done();
-    });
   });
 
   it('Should mine a block', (done) => {
