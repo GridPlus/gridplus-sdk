@@ -53,7 +53,7 @@ class GridPlusSDK extends RestClient{
     return ethereum.getProvider();
   }
 
-  // Get a balance for an account. RETURNS A PROMISE!
+  // Get a balance for an account.
   // @param [currency]  {string}  - "ETH", "ERC20", or "BTC"
   // @param [addr]      {string}  - The account we are querying
   // @param [ERC20Addr] {string}  - (optional) Address of the ERC20 token we are asking about
@@ -65,32 +65,10 @@ class GridPlusSDK extends RestClient{
     }
     if (currency === 'BTC') {
       bitcoin.getBalance(addr, cb)
-    } else if (currency === 'ETH') {
-      return ethereum.getBalance(addr);
-    } else if (currency === 'ERC20' && typeof ERC20Addr === 'string') {
-      return ethereum.getBalance(addr, ERC20Addr);
+    } else if (currency === 'ETH' || (currency === 'ERC20' && typeof ERC20Addr === 'string')) {
+      ethereum.getBalance(addr, ERC20Addr, cb);
     } else {
       cb('Unsupported currency specified or params not formatted properly')
-    }
-  }
-
-  // Get a history of transfers for the desired currency. RETURNS A PROMISE!
-  // @param [currency]  {string}  - "ETH", "ERC20", or "BTC"
-  // @param [addr]      {string}  - The account we are querying
-  // @param [ERC20Addr] {string}  - (optional) Address of the ERC20 token we are asking about
-  // @returns           {Promise} - Contains an object of form: { in: <Array> , out: <Array> }
-  //                                See API documentation for schema of the nested arrays.
-  getTransactionHistory(currency, user, ERC20Addr=null) {
-    switch(currency) {
-      case 'ETH':
-        return []; // Todo, need to figure out a way to pull in simple transfers
-        break;
-      case 'ERC20':
-        return ethereum.getERC20TransferHistory(user, ERC20Addr);
-        break;
-      default:
-        return;
-        break;
     }
   }
 
@@ -100,17 +78,17 @@ class GridPlusSDK extends RestClient{
   // @param [from]    {string | array}  - Sending address (or addresses for BTC)
   // @param [value]   {number}          - number of tokens to send in the tx
   // @param [opts]    {Object}          - (optional) parameterization options, including ERC20 address
-  // @returns         {Promise}         - Contains a transaction object
-  buildTx(system, from, to, value, opts={}) {
-    switch (system) {
-      case 'ETH':
-        return ethereum.buildTx(from, to, value, opts);
-        break;
-      default:
-        return;
-        break;
+  // @callback                          - err (Error), data (object)
+  buildTx(system, from, to, value, opts={}, cb) {
+    if (typeof opts === 'function') {
+      cb = opts;
+      opts = {}
+    }
+    if (system = 'ETH') {
+      ethereum.buildTx(from, to, value, opts, cb);
     }
   }
+  
 }
 
 exports.default = GridPlusSDK;
