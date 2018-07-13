@@ -32,10 +32,6 @@ export default class Client {
     this.timeoutMs = 5000;
   }
 
-  connect(cb) {
-    return this.request('connect', cb);
-  }
-
   pair(cb) {
     const id = this._newId();
     const type = 'addPairing';

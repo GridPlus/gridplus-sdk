@@ -3,28 +3,28 @@ import assert from 'assert';
 import secp256k1 from 'secp256k1';
 import { sha3, pubToAddress } from 'ethereumjs-util';
 import { api } from './../src/config.js';
-import GridPlusSDK from 'index';
+import { Client } from 'index';
 
 const { SPLIT_BUF } = api;
 
-let sdk;
+let client;
 
-describe('Basic tests', () => {
+describe('basic tests', () => {
 
   before(() => {
-    sdk = new GridPlusSDK({ clientConfig: { name: 'basic-test' }});
+    client = new Client({ clientConfig: { name: 'basic-test' }});
   });
 
   it('Should connect to an agent', (done) => {
-    sdk.connect((err, res) => {
+    client.connect((err, res) => {
       assert(err === null, err);
-      assert(sdk.client.ecdhPub === res.key, 'Mismatched key on response')
+      assert(client.client.ecdhPub === res.key, 'Mismatched key on response')
       done()
     });
   });
 
   it('Should start the pairing process on the agent', (done) => {
-    sdk.setupPairing((err, res) => {
+    client.setupPairing((err, res) => {
       assert(err === null, err);
       assert(res.status === 200);
       done();
@@ -32,14 +32,14 @@ describe('Basic tests', () => {
   });
 
   it('Should pair with the agent', (done) => {
-    sdk.pair((err) => {
+    client.pair((err) => {
       assert(err === null, err)
       done();
     });
   });
 
   it('Should create a manual permission', (done) => {
-    sdk.addManualPermission((err, res) => {
+    client.addManualPermission((err, res) => {
       assert(err === null, err);
       assert(res.result.status === 200);
       done();
@@ -52,7 +52,7 @@ describe('Basic tests', () => {
       isManual: true,
       total: 3,
     }
-    sdk.addresses(req, (err, res) => {
+    client.addresses(req, (err, res) => {
       assert(err === null, err);
       assert(res.result.data.addresses.length === 3);
       assert(res.result.data.addresses[0].slice(0, 1) === '3', 'Not a segwit address');
@@ -67,7 +67,7 @@ describe('Basic tests', () => {
       total: 3,
       network: 'testnet'
     }
-    sdk.addresses(req, (err, res) => {
+    client.addresses(req, (err, res) => {
       assert(err === null, err);
       assert(res.result.data.addresses.length === 3);
       assert(res.result.data.addresses[0].slice(0, 1) === '2', 'Not a testnet address');
@@ -90,7 +90,7 @@ describe('Basic tests', () => {
       timeLimit: 10000
     };
 
-    sdk.addPermission(req, (err, res) => {
+    client.addPermission(req, (err, res) => {
       assert(err === null, err);
       assert(res.result.status === 200);
       done();
@@ -109,10 +109,10 @@ describe('Basic tests', () => {
       params: [ 1, 100000000, 100000, '0x39765400baa16dbcd1d7b473bac4d55dd5a7cffb', 1000, '' ]
     }
 
-    sdk.addresses(req1, (err, res) => {
+    client.addresses(req1, (err, res) => {
       assert(err === null, err);
       const addr = res.result.data.addresses;
-      sdk.signAutomated(req2, (err, res) => {
+      client.signAutomated(req2, (err, res) => {
         assert(err === null, err);
         assert(res.result.status === 200);
         // The message includes the preImage payload concatenated to a signature,
@@ -147,7 +147,7 @@ describe('Basic tests', () => {
       timeLimit: 0,
     };
 
-    sdk.addPermission(req, (err, res) => {
+    client.addPermission(req, (err, res) => {
       assert(err === null, err);
       assert(res.result.status === 200);
       done();
@@ -177,9 +177,9 @@ describe('Basic tests', () => {
       typeIndex: 2,
       params: params,
     };
-    sdk.addresses(req1, (err, res) => {
+    client.addresses(req1, (err, res) => {
       const addr = res.result.data.addresses;
-      sdk.signAutomated(req2, (err, res) => {
+      client.signAutomated(req2, (err, res) => {
         assert(err === null, err);
         // Make sure the signature came out of the right pubkey
         const sigData = res.result.data.sigData.split(api.SPLIT_BUF);
