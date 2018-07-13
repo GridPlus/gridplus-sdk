@@ -1,0 +1,62 @@
+{
+  "env": {
+    "browser": true,
+    "es6": true,
+    "jest": true,
+    "node": true,
+    "jest/globals": true
+  },
+  "parser": "babel-eslint",
+  "extends": [
+    "eslint:recommended"
+  ],
+  "parserOptions": {
+    "ecmaFeatures": {
+      "experimentalObjectRestSpread": true,
+      "jsx": true,
+      "impliedStrict": true
+    },
+    "sourceType": "module"
+  },
+  "globals":{
+    "expect":true,
+    "shallow":true,
+    "render":true,
+    "mount":true,
+    "jest":true,
+    "beforeAll":true,
+    "cy":true
+  },
+  "plugins": [
+    "jest"
+  ],
+  "rules": {
+    "eqeqeq": [
+      "error"
+    ],
+    "no-var": [
+      "warn"
+    ],
+    "no-duplicate-imports": [
+      "error"
+    ],
+    "prefer-const": [
+      "error"
+    ],
+    "prefer-spread": [
+      "error"
+    ],
+    "no-console": [
+      "off"
+    ],
+    "quotes": [
+      "error", "single"
+    ],
+    "react/react-in-jsx-scope": "off",
+    "jest/no-disabled-tests": "warn",
+    "jest/no-focused-tests": "error",
+    "jest/no-identical-title": "error",
+    "jest/prefer-to-have-length": "warn",
+    "jest/valid-expect": "error"
+  }
+}

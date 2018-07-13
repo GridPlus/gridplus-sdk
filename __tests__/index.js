@@ -1,5 +1,4 @@
 import assert from 'assert';
-import crypto from 'crypto';
 import { sha3, pubToAddress } from 'ethereumjs-util';
 import secp256k1 from 'secp256k1';
 import Client from '../src/index';
@@ -45,10 +44,10 @@ describe('integration tests', () => {
 
     it('should connect and pair an app', (done) => {
       const client = new Client({ baseUrl });
-      client.setupPairing((err, res) => {
+      client.setupPairing((err) => {
         if (err) return done(err);
         // sut
-        client.connect((err, res) => {
+        client.connect((err) => {
           if (err) return done(err);
           const name = 'my-app';
           // sut
@@ -80,12 +79,12 @@ describe('integration tests', () => {
 
     beforeAll((done) => {
       client = new Client({ baseUrl });
-      client.setupPairing((err, res) => {
+      client.setupPairing((err) => {
         if (err) return done(err);
         client.connect((err) => {
           if (err) return done(err);
           const name = 'my-app-2';
-          client.pair(name, (err, res) => {
+          client.pair(name, (err) => {
             if (err) return done(err);
             done(err);
           });
@@ -129,7 +128,7 @@ describe('integration tests', () => {
     });
 
     it('should get the address of the account associated with the permission', (done) => {
-      const req = { permissionIndex: 0, isManual: false, coin_type: "60'" };
+      const req = { permissionIndex: 0, isManual: false, coin_type: '60\'' };
       client.addresses(req, (err, res) => {
         if (err) return done(err);
         assert.notEqual(res.id, null);
@@ -153,7 +152,7 @@ describe('integration tests', () => {
     });
 
     it('should make a remote signing request', (done) => {
-      const req = { permissionIndex: 0, isManual: false, coin_type: "60'" };
+      const req = { permissionIndex: 0, isManual: false, coin_type: '60\'' };
       // grab address to perform comparison in signAutomated
       client.addresses(req, (err, res) => {
         if (err) return done(err);
@@ -207,12 +206,12 @@ describe('integration tests', () => {
 
     beforeAll((done) => {
       mqttMessagingClient = new Client({ baseUrl });
-      mqttMessagingClient.setupPairing((err, res) => {
+      mqttMessagingClient.setupPairing((err) => {
         if (err) return done(err);
         mqttMessagingClient.connect((err) => {
           if (err) return done(err);
           const name = 'my-app-2';
-          mqttMessagingClient.pair(name, (err, res) => {
+          mqttMessagingClient.pair(name, (err) => {
             if (err) return done(err);
             done(err);
           });
@@ -257,10 +256,10 @@ describe('integration tests', () => {
         timeLimit: 10000,
       };
       // add permission, so we can grab an address
-      mqttMessagingClient.addPermission(req, (err, res) => {
+      mqttMessagingClient.addPermission(req, (err) => {
         if (err) return done(err);
 
-        const req = { permissionIndex: 0, isManual: false, coin_type: "60'" };
+        const req = { permissionIndex: 0, isManual: false, coin_type: '60\'' };
         // grab address to perform comparison in signAutomated
         mqttMessagingClient.addresses(req, (err, res) => {
           if (err) return done(err);

@@ -1,5 +1,4 @@
 import { NodeClient } from 'bclient';
-import { Network } from 'bcoin';
 import config from '../config.js';
 
 export default {
@@ -19,14 +18,14 @@ export function initBitcoin (options={}, cb) {
     });
     client.getInfo()
     .then((info) => {
-      if (!info || !info.network) return reject('Could not connect to node')
+      if (!info || !info.network) return cb(new Error('Could not connect to node'));
       cb(null, client, info);
     })
     .catch((err) => {
-      cb(err);
+      return cb(err);
     })
   } catch (err) {
-    cb(err);
+    return cb(err);
   }
 }
 
@@ -70,7 +69,7 @@ function getUtxosSingleAddr(client, addr) {
 // @returns       {Object}  -  Contains UTXOs:  { addr1: [utxo1, utxo2], ... }
 function getUtxosMultipleAddrs(client, addrs) {
   return new Promise((resolve, reject) => {
-    let utxos = {}
+    const utxos = {}
     // Make sure there is a list for UTXOs of each address
     addrs.forEach((a) => {
       if (utxos[a] === undefined) utxos[a] = [];
@@ -108,7 +107,7 @@ function addBalanceSingle(utxos, sat=true) {
 // @param [sat]   {bool}    - [optional] if true, return the balance in satoshis (false=BTC)
 // @returns       {Object}  - of form  { user1: { utxos: <Array>, balance: <Number> } }
 function addBalanceMultiple(utxos, sat=true) {
-  let d = {};
+  const d = {};
   Object.keys(utxos).forEach((u) => {
     d[u] = addBalanceSingle(utxos[u], sat);
   });

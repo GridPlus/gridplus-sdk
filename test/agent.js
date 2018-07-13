@@ -2,13 +2,12 @@
 import assert from 'assert';
 import secp256k1 from 'secp256k1';
 import { sha3, pubToAddress } from 'ethereumjs-util';
-import request from 'superagent';
 import { api } from './../src/config.js';
 import GridPlusSDK from 'index';
 
 const { SPLIT_BUF } = api;
 
-let sdk, privKey, addr, provider, erc20Addr, sender, senderPriv;
+let sdk;
 
 describe('Basic tests', () => {
   it('Should instantiate an SDK object', (done) => {
@@ -38,7 +37,7 @@ describe('Basic tests', () => {
   });
 
   it('Should pair with the agent', (done) => {
-    sdk.pair(sdk.name, (err, res) => {
+    sdk.pair(sdk.name, (err) => {
       assert(err === null, err)
       done();
     });
@@ -107,7 +106,7 @@ describe('Basic tests', () => {
     const req1 = {
       permissionIndex: 0,
       isManual: false,
-      coin_type: "60'"
+      coin_type: '60\''
     };
     const req2 = {
       schemaIndex: 0,
@@ -164,7 +163,7 @@ describe('Basic tests', () => {
     const req1 = {
       permissionIndex: 0,
       isManual: false,
-      coin_type: "0'"
+      coin_type: '0\''
     };
     // Build inputs: [ txHash, outIndex, scriptType, spendAccountIndex ]
     let params = [ 1, 0, '3EdCNnLV17fcR13aSjPCR4YWjX2wJYbjYu', 12000, 0 ];
@@ -189,6 +188,7 @@ describe('Basic tests', () => {
         assert(err === null, err);
         // Make sure the signature came out of the right pubkey
         const sigData = res.result.data.sigData.split(api.SPLIT_BUF);
+        // TODO: test sigData
         done()
       });
     });
