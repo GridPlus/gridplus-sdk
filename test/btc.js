@@ -81,16 +81,12 @@ describe('Bitcoin', () => {
 
   it('Should register a balance increase', (done) => {
     // Look for the balance and any unspent transaction outputs
-    sdk.getBalance('BTC', config.testing.btcHolder.address)
-    .then((d) => {
+    sdk.getBalance('BTC', config.testing.btcHolder.address, (err, d) => {
+      assert(err === null, err);
       assert(d.utxos.length === startUtxos.length + 1, 'Block did not mine to correct coinbase');
       assert(d.balance > startBal, 'Balance did not increase. Try removing your chaindata: ~/.bcoin/regtest/chain.ldb');
       balance = d.balance;
       mineIfNeeded(d.utxos[0].height, done);
-    })
-    .catch((err) => {
-      assert(err === null, err);
-      done();
     });
   });
 
@@ -138,22 +134,22 @@ describe('Bitcoin', () => {
       assert(res.result.data.addresses[0].slice(0, 1) === '2', 'Not a testnet address');
       const addrs = res.result.data.addresses;
       // Get the baseline balance for the addresses
-      sdk.getBalance('BTC', addrs[0])
-      .then((d) => {
+      sdk.getBalance('BTC', addrs[0], (err, d) => {
+        assert(err === null, err);
         receiving.push([addrs[0], d.balance]);
-        return sdk.getBalance('BTC', addrs[1])
-      })
-      .then((d) => {
-        receiving.push([addrs[1], d.balance]);
-        done();
+        sdk.getBalance('BTC', addrs[1], (err, d) => {
+          assert(err === null, err);
+          receiving.push([addrs[1], d.balance]);
+          done();
+        });
       });
     });
   });
 
   it('Should form a transaction and send 0.1 BTC to address 0', (done) => {
     const signer = bitcoin.ECPair.fromWIF(config.testing.btcHolder.wif, bitcoin.networks.testnet);
-    sdk.getBalance('BTC', config.testing.btcHolder.address)
-    .then((d) => {
+    sdk.getBalance('BTC', config.testing.btcHolder.address, (err, d) => {
+      assert(err === null, err);
       const utxo = d.utxos[0];
       const txb = new bitcoin.TransactionBuilder(bitcoin.networks.testnet);
       txb.addInput(utxo.hash, utxo.index);
@@ -164,19 +160,19 @@ describe('Bitcoin', () => {
 
       txb.sign(0, signer);
       const tx = txb.build().toHex();
-      return client.broadcast(tx);
-    })
-    .then((result) => {
-      assert(result.success === true, 'Could not broadcast transaction');
-      return client.getMempool();
-    })
-    .then((mempool) => {
-      assert(mempool.length > 0, `Found empty mempool: ${mempool}`)
-      done();
-    })
-    .catch((err) => {
-      assert(err === null, err);
-      done();
+      client.broadcast(tx)
+      .then((result) => {
+        assert(result.success === true, 'Could not broadcast transaction');
+        return client.getMempool();
+      })
+      .then((mempool) => {
+        assert(mempool.length > 0, `Found empty mempool: ${mempool}`)
+        done();
+      })
+      .catch((err) => {
+        assert(err === null, err);
+        done();
+      });
     });
   });
 
@@ -187,13 +183,12 @@ describe('Bitcoin', () => {
     })
     .then((block) => {
       assert(block.tx.length > 1, 'Block did not include spend transaction')
-      return sdk.getBalance('BTC', receiving[0][0])
-    })
-    .then((d) => {
-      const expectedBal = receiving[0][1] + 1e7;
-
-      assert(d.balance === expectedBal, `Expected balance of ${expectedBal}, got ${d.balance}`);
-      done();
+      sdk.getBalance('BTC', receiving[0][0], (err, d) => {
+        assert(err === null, err);
+        const expectedBal = receiving[0][1] + 1e7;
+        assert(d.balance === expectedBal, `Expected balance of ${expectedBal}, got ${d.balance}`);
+        done();
+      });
     })
     .catch((err) => {
       assert(err === null, err);
@@ -209,8 +204,8 @@ describe('Bitcoin', () => {
       fetchAccountIndex: CHANGE_INDEX,   // the account index where we'd like the change to go
       network: 'testnet',
     }
-    sdk.getBalance('BTC', receiving[0][0])
-    .then((d) => {
+    sdk.getBalance('BTC', receiving[0][0], (err, d) => {
+      assert(err === null, err);
       const utxo = d.utxos[0];
       TX_VALUE = utxo.value - 10000;
       // Create the transaction. Here we will take change of 9000 sats and pay a mining fee of 1000 sats
@@ -248,14 +243,13 @@ describe('Bitcoin', () => {
         })
         .then((mempool) => {
           assert(mempool.length === 0, `Mempool not empty: ${mempool}`)
-          return sdk.getBalance('BTC', receiving[1][0])
-        })
-        .then((d) => {
-          // Check the balance of the receiving address
-          const prevBal = receiving[1][1];
-          const newBal = d.balance;
-          assert(newBal === TX_VALUE + prevBal, `Expected new balance of ${TX_VALUE + prevBal}, got ${newBal}`);
-          done();
+          sdk.getBalance('BTC', receiving[1][0], (err, d) => {
+            // Check the balance of the receiving address
+            const prevBal = receiving[1][1];
+            const newBal = d.balance;
+            assert(newBal === TX_VALUE + prevBal, `Expected new balance of ${TX_VALUE + prevBal}, got ${newBal}`);
+            done();
+          })
         })
         .catch((err) => {
           assert(err === null, err);
@@ -273,8 +267,9 @@ describe('Bitcoin', () => {
       network: 'testnet'
     }
     sdk.addresses(req, (err, res) => {
-      sdk.getBalance('BTC', res.result.data.addresses[CHANGE_INDEX])
-      .then((d) => {
+      assert(err === null, err);
+      sdk.getBalance('BTC', res.result.data.addresses[CHANGE_INDEX], (err, d) => {
+        assert(err === null, err);
         assert(d.utxos.length > 0, 'Did not find any change outputs')
         assert(d.utxos[d.utxos.length - 1].value === CHANGE_AMOUNT, 'Change output was wrong')
         done();

@@ -30,18 +30,16 @@ exports.initBitcoin = function(options={}, cb) {
 // Get all of the UTXOs for a given address
 // @param [_addr] {string or Array}  - address[es] to query
 // @returns       {Array}             - array of UTXO objects
-exports.getBalance = function(addr) {
-  return new Promise((resolve, reject) => {
-    if (typeof addr === 'string') {
-      getUtxosSingleAddr(addr)
-      .then((utxos) => { return resolve(addBalanceSingle(utxos)); })
-      .catch((err) => { return reject(err); })
-    } else {
-      getUtxosMultipleAddrs(addr)
-      .then((utxos) => { return resolve(addBalanceMultiple(utxos)); })
-      .catch((err) => { return reject(err); })
-    }
-  });
+exports.getBalance = function(addr, cb) {
+  if (typeof addr === 'string') {
+    getUtxosSingleAddr(addr)
+    .then((utxos) => { cb(null, addBalanceSingle(utxos)); })
+    .catch((err) => { cb(err); })
+  } else {
+    getUtxosMultipleAddrs(addr)
+    .then((utxos) => { cb(null, addBalanceMultiple(utxos)); })
+    .catch((err) => { cb(err); })
+  }
 }
 
 // Get a set of UTXOs for a single address
