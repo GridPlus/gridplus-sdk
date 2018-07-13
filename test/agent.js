@@ -11,7 +11,6 @@ let sdk, privKey, addr, provider, erc20Addr, sender, senderPriv;
 process.on('unhandledRejection', e => { throw e; });
 
 describe('Basic tests', () => {
-  /*
   it('Should instantiate an SDK object', (done) => {
     try {
       sdk = new GridPlusSDK();
@@ -194,5 +193,4 @@ describe('Basic tests', () => {
       });
     });
   });
-*/
 });

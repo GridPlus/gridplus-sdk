@@ -18,9 +18,11 @@ class GridPlusSDK extends RestClient{
     // Create a keypair either with existing entropy or system-based randomness
     // this._initKeyPair(opts);
     this.headerSecret = null;
-    this.name = name
-    // If an ETH provider is included in opts, connect to the provider automatically
-    // if (opts.ethProvider !== undefined) this.connectToEth(opts.ethProvider);
+    this.name = name;
+    this.providers = {
+      bitcoin: null,
+      ethereum: null,
+    }
   }
 
   //============================================================================
@@ -38,9 +40,23 @@ class GridPlusSDK extends RestClient{
       provider = null;
     }
     if (provider === null) {
-      ethereum.initEth(null, cb);
+      ethereum.initEth(null, (err, provider) => {
+        if (err) {
+          cb(err)
+        } else {
+          this.providers.ethereum = provider;
+          cb(null, provider);
+        }
+      });
     } else {
-      ethereum.initEth(provider, cb);
+      ethereum.initEth(provider, (err, provider) => {
+        if (err) {
+          cb(err);
+        } else {
+          this.providers.ethereum = provider;
+          cb(null, provider);
+        }
+      });
     }
   }
 
@@ -52,12 +68,14 @@ class GridPlusSDK extends RestClient{
       cb = options;
       options = {};
     }
-    bitcoin.initBitcoin(options, cb)
-  }
-
-  // Get the web3 connection for advanced functionality
-  getProvider() {
-    return ethereum.getProvider();
+    bitcoin.initBitcoin(options, (err, client, info) => {
+      if (err) {
+        cb(err);
+      } else {
+        this.providers.bitcoin = client;
+        cb(null, info);
+      }
+    })
   }
 
   // Get a balance for an account.
@@ -71,9 +89,9 @@ class GridPlusSDK extends RestClient{
       ERC20Addr = null;
     }
     if (currency === 'BTC') {
-      bitcoin.getBalance(addr, cb)
+      bitcoin.getBalance(this.providers.bitcoin, addr, cb)
     } else if (currency === 'ETH' || (currency === 'ERC20' && typeof ERC20Addr === 'string')) {
-      ethereum.getBalance(addr, ERC20Addr, cb);
+      ethereum.getBalance(this.providers.ethereum, addr, ERC20Addr, cb);
     } else {
       cb('Unsupported currency specified or params not formatted properly')
     }
@@ -92,7 +110,7 @@ class GridPlusSDK extends RestClient{
       opts = {}
     }
     if (system = 'ETH') {
-      ethereum.buildTx(from, to, value, opts, cb);
+      ethereum.buildTx(this.providers.ethereum, from, to, value, opts, cb);
     }
   }
 

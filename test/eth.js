@@ -9,7 +9,7 @@ let sdk, privKey, addr, provider, erc20Addr, sender, senderPriv, balance;
 // Handle all promise rejections
 process.on('unhandledRejection', e => { throw e; });
 
-describe('Basic tests', () => {
+describe('Ethereum', () => {
   
   it('Should instantiate an SDK object', (done) => {
     try {
@@ -80,7 +80,7 @@ describe('Basic tests', () => {
 
   const toSend = 10 ** 18;
   it('Should transfer ETH to the address', (done) => {
-    provider = sdk.getProvider();
+    provider = sdk.providers.ethereum;
     sender = config.testing.ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
     // Build a tx for the sender
