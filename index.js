@@ -64,9 +64,7 @@ class GridPlusSDK extends RestClient{
       ERC20Addr = null;
     }
     if (currency === 'BTC') {
-      return bitcoin.getBalance(addr)
-      .then((b) => { cb(null, b); })
-      .catch((err) => { cb(err); })
+      bitcoin.getBalance(addr, cb)
     } else if (currency === 'ETH') {
       return ethereum.getBalance(addr);
     } else if (currency === 'ERC20' && typeof ERC20Addr === 'string') {
