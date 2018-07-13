@@ -26,40 +26,45 @@ export default class GridPlusSDK {
     }
   }
 
+  addresses(param, cb) {
+    const type = 'addresses';
+    return this.client.pairedRequest('addresses', { param, type }, cb);
+  }
+
+  addManualPermission(cb) {
+    const type = 'addManualPermission';
+    return this.client.pairedRequest('addManualPermission', { type }, cb);
+  }
+
+  addPermission(param, cb) {
+    const type = 'addPermission';
+    return this.client.pairedRequest('addPermission', { param, type }, cb);
+  }
+
   /*
     connects to all configured network providers, returning the first of any encountered errors.
     else continues via supplied callback when done.
   */
   connect(cb) {
-    return this.client.connect(cb);
-  }
-
-  addresses(param, cb) {
-    return this.client.addresses(param, cb);
-  }
-
-  addPermission(param, cb) {
-    return this.client.addPermission(param, cb);
-  }
-
-  addManualPermission(cb) {
-    return this.client.addManualPermission(cb);
+    return this.client.request('connect', cb);
   }
 
   pair(name, cb) {
     return this.client.pair(name, cb);
   }
 
-  setupPairing(cb) {
-    return this.client.setupPairing(cb);
-  }
-
   signAutomated(param, cb) {
-    return this.client.signAutomated(param, cb);
+    const type = 'signAutomated';
+    return this.client.pairedRequest('signAutomated', { param, type }, cb);
   }
 
   signManual(param, cb) {
-    return this.client.signManual(param, cb);
+    const type = 'signManual';
+    return this.client.pairedRequest('signManual', { param, type }, cb);
+  }
+
+  setupPairing(cb) {
+    return this.client.setupPairing(cb);
   }
 
   //============================================================================

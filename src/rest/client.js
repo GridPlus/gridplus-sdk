@@ -32,36 +32,6 @@ export default class Client {
     this.timeoutMs = 5000;
   }
 
-  genAppSecret() {
-    this.appSecret = crypto.randomBytes(6).toString('hex');
-    return this.appSecret;
-  }
-
-  addresses(param, cb) {
-    const type = 'addresses';
-    return this.pairedRequest('addresses', { param, type }, cb);
-  }
-
-  addManualPermission(cb) {
-    const type = 'addManualPermission';
-    return this.pairedRequest('addManualPermission', { type }, cb);
-  }
-
-  addPermission(param, cb) {
-    const type = 'addPermission';
-    return this.pairedRequest('addPermission', { param, type }, cb);
-  }
-
-  signAutomated(param, cb) {
-    const type = 'signAutomated';
-    return this.pairedRequest('signAutomated', { param, type }, cb);
-  }
-
-  signManual(param, cb) {
-    const type = 'signManual';
-    return this.pairedRequest('signManual', { param, type }, cb);
-  }
-
   connect(cb) {
     return this.request('connect', cb);
   }
@@ -127,7 +97,7 @@ export default class Client {
   // back to individual agents. It will need to be updated to request with a
   // serial, and response back to an id.
   setupPairing(cb) {
-    if (this.appSecret === undefined) this.genAppSecret();
+    if (this.appSecret === undefined) this._genAppSecret();
     const param = { secret: this.appSecret };
     return this._request({ method: 'setupPairing', param }, cb);
   }
@@ -158,6 +128,11 @@ export default class Client {
       return cb(err);
     }
     return cb(null, res);
+  }
+
+  _genAppSecret() {
+    this.appSecret = crypto.randomBytes(6).toString('hex');
+    return this.appSecret;
   }
 
   _newId() {
