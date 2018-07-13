@@ -2,14 +2,13 @@ const { NodeClient } = require('bclient');
 const { Network } = require('bcoin');
 
 const config = require('../../config.js');
-let client;
 
 // Initialize a connection to a Bitcoin node. Uses params in config.js by default.
 // @param [options] {object}  - may contain `network` and `port` params
 // @callback                  - err (Error), info (object)
 exports.initBitcoin = function(options={}, cb) {
   try {
-    client = new NodeClient({
+    const client = new NodeClient({
       host: options.host || config.bitcoinNode.host,
       network: options.network || config.bitcoinNode.network,
       port: options.port || config.bitcoinNode.port,
@@ -17,7 +16,7 @@ exports.initBitcoin = function(options={}, cb) {
     client.getInfo()
     .then((info) => {
       if (!info || !info.network) return reject('Could not connect to node')
-      cb(null, info);
+      cb(null, client, info);
     })
     .catch((err) => {
       cb(err);
@@ -30,13 +29,13 @@ exports.initBitcoin = function(options={}, cb) {
 // Get all of the UTXOs for a given address
 // @param [_addr] {string or Array}  - address[es] to query
 // @returns       {Array}             - array of UTXO objects
-exports.getBalance = function(addr, cb) {
+exports.getBalance = function(client, addr, cb) {
   if (typeof addr === 'string') {
-    getUtxosSingleAddr(addr)
+    getUtxosSingleAddr(client, addr)
     .then((utxos) => { cb(null, addBalanceSingle(utxos)); })
     .catch((err) => { cb(err); })
   } else {
-    getUtxosMultipleAddrs(addr)
+    getUtxosMultipleAddrs(client, addr)
     .then((utxos) => { cb(null, addBalanceMultiple(utxos)); })
     .catch((err) => { cb(err); })
   }
@@ -45,7 +44,7 @@ exports.getBalance = function(addr, cb) {
 // Get a set of UTXOs for a single address
 // @param [addr] {String}  -  Address to look for UTXOs of
 // @returns      {Array}   -  Contains set of UTXO object
-function getUtxosSingleAddr(addr) {
+function getUtxosSingleAddr(client, addr) {
   return new Promise((resolve, reject) => {
     client.getCoinsByAddress(addr)
     .then((utxos) => {
@@ -61,7 +60,7 @@ function getUtxosSingleAddr(addr) {
 // Get a set of UTXOs for a set of addresses
 // @param [addrs] {Array}   -  list of addresses to look up
 // @returns       {Object}  -  Contains UTXOs:  { addr1: [utxo1, utxo2], ... }
-function getUtxosMultipleAddrs(addrs) {
+function getUtxosMultipleAddrs(client, addrs) {
   return new Promise((resolve, reject) => {
     let utxos = {}
     // Make sure there is a list for UTXOs of each address
