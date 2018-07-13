@@ -2,8 +2,7 @@ import ethers from 'ethers';
 import config from '../config.js';
 import { pad64, unpad } from '../util.js';
 
-let provider;
-let erc20Decimals = {};
+const erc20Decimals = {};
 
 export default {
   buildTx,
@@ -19,7 +18,7 @@ export function buildTx (provider, from, to, value, opts={}, cb) {
   } else {
     getNonce(provider, from)
     .then((nonce) => {
-      let tx = [ nonce, null, null, to, null, null ];
+      const tx = [ nonce, null, null, to, null, null ];
       // Fill in `value` and `data` if this is an ERC20 transfer
       if (opts.ERC20Token !== undefined) {
         tx[5] = config.erc20.transfer(to, value);
@@ -42,7 +41,7 @@ export function buildTx (provider, from, to, value, opts={}, cb) {
     .catch((err) => {
       cb(err);
     });
-  } 
+  }
 }
 
 // Get the balance of an Ethereum account. This can be an ERC20 or ETH balance.
@@ -51,56 +50,54 @@ export function buildTx (provider, from, to, value, opts={}, cb) {
 // @param [ERC20Addr] {string}  - Address of the ERC20 token we are asking about
 // @returns           {Promise} - Contains the balance in full units (i.e. with decimals divided in)
 export function getBalance (provider, addr, ERC20Addr=null, cb) {
-  return new Promise((resolve, reject) => {
-    let data = {
-      balance: 0,
-      transfers: {}
-    };
-    if (ERC20Addr !== null) {
-      if (erc20Decimals[ERC20Addr] === undefined) {
-        // Save the contract as an object
-        provider.call({ to: ERC20Addr, data: config.erc20.decimals() })
-        .then((decimals) => {
-          erc20Decimals[ERC20Addr] = parseInt(decimals);
-          // Get the balance
-          return provider.call({ to: ERC20Addr, data: config.erc20.balanceOf(addr) })
-        })
-        .then((balance) => { 
-          data.balance = parseInt(balance) / 10 ** erc20Decimals[ERC20Addr];
-          return getTransfers(provider, addr, ERC20Addr)
-        })
-        .then((transfers) => {
-          data.transfers = transfers;
-          cb(null, data);
-         })
-        .catch((err) => { cb(err); });
-      } else {
-        // If the decimals are cached, we can just query the balance
-        provider.call({ to: ERC20Addr, data: config.erc20.balanceOf(addr) })
-        .then((balance) => { 
-          data.balance = parseInt(balance) / 10 ** erc20Decimals[ERC20Addr];
-          return getTransfers(provider, addr, ERC20Addr);
-        })
-        .then((transfers) => {
-          data.transfers = transfers;
-          cb(null, data);
-        })
-        .catch((err) => { cb(err); });
-      }
-    } else {
-      // Otherwise query for the ETH balance
-      provider.getBalance(addr)
-      .then((balance) => { 
-        data.balance = parseInt(balance) / 10 ** 18;
+  const data = {
+    balance: 0,
+    transfers: {}
+  };
+  if (ERC20Addr !== null) {
+    if (erc20Decimals[ERC20Addr] === undefined) {
+      // Save the contract as an object
+      provider.call({ to: ERC20Addr, data: config.erc20.decimals() })
+      .then((decimals) => {
+        erc20Decimals[ERC20Addr] = parseInt(decimals);
+        // Get the balance
+        return provider.call({ to: ERC20Addr, data: config.erc20.balanceOf(addr) })
+      })
+      .then((balance) => {
+        data.balance = parseInt(balance) / 10 ** erc20Decimals[ERC20Addr];
         return getTransfers(provider, addr, ERC20Addr)
       })
       .then((transfers) => {
         data.transfers = transfers;
         cb(null, data);
+        })
+      .catch((err) => { cb(err); });
+    } else {
+      // If the decimals are cached, we can just query the balance
+      provider.call({ to: ERC20Addr, data: config.erc20.balanceOf(addr) })
+      .then((balance) => {
+        data.balance = parseInt(balance) / 10 ** erc20Decimals[ERC20Addr];
+        return getTransfers(provider, addr, ERC20Addr);
       })
-      .catch((err) => { cb(err); })
+      .then((transfers) => {
+        data.transfers = transfers;
+        cb(null, data);
+      })
+      .catch((err) => { cb(err); });
     }
-  })
+  } else {
+    // Otherwise query for the ETH balance
+    provider.getBalance(addr)
+    .then((balance) => {
+      data.balance = parseInt(balance) / 10 ** 18;
+      return getTransfers(provider, addr, ERC20Addr)
+    })
+    .then((transfers) => {
+      data.transfers = transfers;
+      cb(null, data);
+    })
+    .catch((err) => { cb(err); })
+  }
 }
 
 // Instantiate the Ethereum query service. In this case, it is a web3 instance.
@@ -136,7 +133,7 @@ function getTransfers(provider, addr, ERC20Addr=null) {
 // @param [contractAddr] {string}  - Address of the deployed ERC20 contract
 function getERC20TransferHistory(provider, user, contractAddr) {
   return new Promise((resolve, reject) => {
-    let events = {}
+    const events = {}
     // Get transfer "out" events
     _getEvents(provider, contractAddr, [ null, `0x${pad64(user)}`, null ])
     .then((outEvents) => {
@@ -173,7 +170,7 @@ function _getEvents(provider, address, topics, fromBlock=0, toBlock='latest') {
 }
 
 function _parseTransferLogs(logs, type, decimals=0) {
-  let newLogs = { in: [], out: [] };
+  const newLogs = { in: [], out: [] };
   logs.out.forEach((log) => {
     newLogs.out.push(_parseLog(log, type, decimals));
   });
@@ -193,9 +190,7 @@ function _parseLog(log, type, decimals=0) {
         to: `0x${unpad(log.topics[2])}`,
         value: parseInt(log.data) / (10 ** decimals),
       };
-      break;
     default:
       return {};
-      break;
   }
 }

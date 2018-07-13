@@ -5,12 +5,12 @@ import Tx from 'ethereumjs-tx';
 import { SPLIT_BUF, testing } from '../src/config.js';
 import GridPlusSDK from 'index';
 
-const { erc20Src, ethHolder } = testing;
+const { erc20Src } = testing;
 
-let sdk, privKey, addr, provider, erc20Addr, sender, senderPriv, balance;
+let sdk, addr, provider, erc20Addr, sender, senderPriv, balance;
 
 describe('Ethereum', () => {
-  
+
   it('Should instantiate an SDK object', (done) => {
     try {
       sdk = new GridPlusSDK();
@@ -46,7 +46,7 @@ describe('Ethereum', () => {
   });
 
   it('Should pair with the agent', (done) => {
-    sdk.pair(sdk.name, (err, res) => {
+    sdk.pair(sdk.name, (err) => {
       assert(err === null, err)
       done();
     });
@@ -65,7 +65,7 @@ describe('Ethereum', () => {
       permissionIndex: 0,
       isManual: true,
       total: 1,
-      coin_type: "60'"
+      coin_type: '60\''
     }
     sdk.addresses(req, (err, res) => {
       assert(err === null, err);
@@ -168,15 +168,6 @@ describe('Ethereum', () => {
         done();
       })
       .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
-    });
-  });
-
-  it('Should find a zero token balance for the address', (done) => {
-    sdk.getBalance('ERC20', addr, erc20Addr, (err, data) => {
-      assert(err === null, err);
-      assert(typeof data.balance === 'number');
-      assert(data.balance > 0);
-      done();
     });
   });
 

@@ -1,17 +1,16 @@
 // Basic tests for atomic SDK functionality
-import { Network } from 'bcoin';
 import { NodeClient } from 'bclient';
 import assert from 'assert';
 import bitcoin from 'bitcoinjs-lib';
 import { bitcoinNode, SPLIT_BUF, testing } from '../src/config.js';
 import GridPlusSDK from 'index';
 
-let startBal, startUtxos, testAddr, testKeyPair, balance, TX_VALUE;
+let startBal, startUtxos, TX_VALUE;
 const CHANGE_INDEX = 3, CHANGE_AMOUNT = 9000;
 
 const { host, network, port } = bitcoinNode;
 const { btcHolder } = testing;
-const { address, wif } = btcHolder;
+const { address } = btcHolder;
 // Start bcoin client. There is also one running through the SDK,
 // but we will use this instance to mine blocks
 const client = new NodeClient({
@@ -21,7 +20,7 @@ const client = new NodeClient({
 });
 
 // Receiving addresses
-let receiving = [];
+const receiving = [];
 let sdk;
 
 // Mine enough blocks so that the holder can spend the earliest
@@ -86,7 +85,9 @@ describe('Bitcoin', () => {
       assert(err === null, err);
       assert(d.utxos.length === startUtxos.length + 1, 'Block did not mine to correct coinbase');
       assert(d.balance > startBal, 'Balance did not increase. Try removing your chaindata: ~/.bcoin/regtest/chain.ldb');
-      balance = d.balance;
+      const balance = d.balance;
+      // TODO: test balance
+      assert.notEqual(balance, null);
       mineIfNeeded(d.utxos[0].height, done);
     });
   });
@@ -108,7 +109,7 @@ describe('Bitcoin', () => {
   });
 
   it('Should pair with the agent', (done) => {
-    sdk.pair(sdk.name, (err, res) => {
+    sdk.pair(sdk.name, (err) => {
       assert(err === null, err)
       done();
     });
@@ -239,7 +240,7 @@ describe('Bitcoin', () => {
           // Mine a block
           return client.execute('generate', [ 1 ])
         })
-        .then((blocks) => {
+        .then(() => {
           return client.getMempool()
         })
         .then((mempool) => {

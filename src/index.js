@@ -1,15 +1,8 @@
 import crypto from 'crypto';
-import request from 'superagent';
 import config from './config';
 import bitcoin from './blockchain/bitcoin';
 import ethereum from './blockchain/ethereum';
-import util from './util';
 import RestClient from './rest/restClient';
-import elliptic from 'elliptic';
-
-const EC = elliptic.ec;
-const EC_K = new EC('secp256k1');
-const DEFAULT_COUNTER = 5;
 
 export default class GridPlusSDK extends RestClient {
   //============================================================================
@@ -64,7 +57,7 @@ export default class GridPlusSDK extends RestClient {
 
   // Initialize a connection to Bitcoin node.
   // @param [options] {object}
-  // @callback        err (Error), info (object) 
+  // @callback        err (Error), info (object)
   connectToBtc(options={}, cb) {
     if (typeof options === 'function') {
       cb = options;
@@ -111,7 +104,7 @@ export default class GridPlusSDK extends RestClient {
       cb = opts;
       opts = {}
     }
-    if (system = 'ETH') {
+    if (system === 'ETH') {
       ethereum.buildTx(this.providers.ethereum, from, to, value, opts, cb);
     }
   }
