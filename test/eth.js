@@ -22,13 +22,9 @@ describe('Basic tests', () => {
   });
 
   it('Should connect to an ETH node', (done) => {
-    sdk.connectToEth()
-    .then((success) => {
-      assert(success === true);
-      done();
-    })
-    .catch((err) => {
+    sdk.connectToEth((err, provider) => {
       assert(err === null, err);
+      assert(typeof provider === 'object');
       done();
     })
   });

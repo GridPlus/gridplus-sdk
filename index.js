@@ -32,9 +32,16 @@ class GridPlusSDK extends RestClient{
   // Initialize a connection to an Ethereum node. 
   // @param [provider] {string} - of form `${protocol}://${host}:${port}`, where `protocol` is 'ws' or 'http'
   // @returns          {Error}  - may be null
-  connectToEth(provider=null) {
-    if (provider === null) return ethereum.initEth()
-    else                   return ethereum.initEth(provider)
+  connectToEth(provider=null, cb) {
+    if (typeof provider === 'function') {
+      cb = provider;
+      provider = null;
+    }
+    if (provider === null) {
+      ethereum.initEth(null, cb);
+    } else {
+      ethereum.initEth(provider, cb);
+    }
   }
 
   // Initialize a connection to Bitcoin node. 
@@ -88,7 +95,7 @@ class GridPlusSDK extends RestClient{
       ethereum.buildTx(from, to, value, opts, cb);
     }
   }
-  
+
 }
 
 exports.default = GridPlusSDK;
