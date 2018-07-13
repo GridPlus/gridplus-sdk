@@ -20,9 +20,11 @@ export default class GridPlusSDK extends RestClient {
     // Create a keypair either with existing entropy or system-based randomness
     // this._initKeyPair(opts);
     this.headerSecret = null;
-    this.name = name
-    // If an ETH provider is included in opts, connect to the provider automatically
-    // if (opts.ethProvider !== undefined) this.connectToEth(opts.ethProvider);
+    this.name = name;
+    this.providers = {
+      bitcoin: null,
+      ethereum: null,
+    }
   }
 
   //============================================================================
@@ -34,62 +36,66 @@ export default class GridPlusSDK extends RestClient {
   // Initialize a connection to an Ethereum node.
   // @param [provider] {string} - of form `${protocol}://${host}:${port}`, where `protocol` is 'ws' or 'http'
   // @returns          {Error}  - may be null
-  connectToEth(provider=null) {
-    if (provider === null) return ethereum.initEth()
-    else                   return ethereum.initEth(provider)
+  connectToEth(provider=null, cb) {
+    if (typeof provider === 'function') {
+      cb = provider;
+      provider = null;
+    }
+    if (provider === null) {
+      ethereum.initEth(null, (err, provider) => {
+        if (err) {
+          cb(err)
+        } else {
+          this.providers.ethereum = provider;
+          cb(null, provider);
+        }
+      });
+    } else {
+      ethereum.initEth(provider, (err, provider) => {
+        if (err) {
+          cb(err);
+        } else {
+          this.providers.ethereum = provider;
+          cb(null, provider);
+        }
+      });
+    }
   }
 
   // Initialize a connection to Bitcoin node.
   // @param [options] {object}
-  // @returns         {Promise}
-  connectToBtc(options={}) {
-    return bitcoin.initBitcoin(options)
-  }
-
-  // Get the web3 connection for advanced functionality
-  getProvider() {
-    return ethereum.getProvider();
-  }
-
-  // Get a balance for an account. RETURNS A PROMISE!
-  // @param [currency]  {string}  - "ETH", "ERC20", or "BTC"
-  // @param [addr]      {string}  - The account we are querying
-  // @param [ERC20Addr] {string}  - (optional) Address of the ERC20 token we are asking about
-  // @returns           {Promise} - Contains the balance in full units (i.e. with decimals divided in)
-  getBalance(currency, addr, ERC20Addr=null) {
-    switch(currency) {
-      case 'BTC':
-        return bitcoin.getBalance(addr);
-        break;
-      case 'ETH':
-        return ethereum.getBalance(addr);
-        break;
-      case 'ERC20':
-        return ethereum.getBalance(addr, ERC20Addr);
-        break;
-      default:
-        return;
-        break;
+  // @callback        err (Error), info (object) 
+  connectToBtc(options={}, cb) {
+    if (typeof options === 'function') {
+      cb = options;
+      options = {};
     }
+    bitcoin.initBitcoin(options, (err, client, info) => {
+      if (err) {
+        cb(err);
+      } else {
+        this.providers.bitcoin = client;
+        cb(null, info);
+      }
+    })
   }
 
-  // Get a history of transfers for the desired currency. RETURNS A PROMISE!
+  // Get a balance for an account.
   // @param [currency]  {string}  - "ETH", "ERC20", or "BTC"
   // @param [addr]      {string}  - The account we are querying
   // @param [ERC20Addr] {string}  - (optional) Address of the ERC20 token we are asking about
-  // @returns           {Promise} - Contains an object of form: { in: <Array> , out: <Array> }
-  //                                See API documentation for schema of the nested arrays.
-  getTransactionHistory(currency, user, ERC20Addr=null) {
-    switch(currency) {
-      case 'ETH':
-        return []; // Todo, need to figure out a way to pull in simple transfers
-        break;
-      case 'ERC20':
-        return ethereum.getERC20TransferHistory(user, ERC20Addr);
-        break;
-      default:
-        return;
-        break;
+  // @callback                    - err (Error), data (object)
+  getBalance(currency, addr, ERC20Addr=null, cb) {
+    if (typeof ERC20Addr === 'function') {
+      cb = ERC20Addr;
+      ERC20Addr = null;
+    }
+    if (currency === 'BTC') {
+      bitcoin.getBalance(this.providers.bitcoin, addr, cb)
+    } else if (currency === 'ETH' || (currency === 'ERC20' && typeof ERC20Addr === 'string')) {
+      ethereum.getBalance(this.providers.ethereum, addr, ERC20Addr, cb);
+    } else {
+      cb('Unsupported currency specified or params not formatted properly')
     }
   }
 
@@ -99,15 +105,17 @@ export default class GridPlusSDK extends RestClient {
   // @param [from]    {string | array}  - Sending address (or addresses for BTC)
   // @param [value]   {number}          - number of tokens to send in the tx
   // @param [opts]    {Object}          - (optional) parameterization options, including ERC20 address
-  // @returns         {Promise}         - Contains a transaction object
-  buildTx(system, from, to, value, opts={}) {
-    switch (system) {
-      case 'ETH':
-        return ethereum.buildTx(from, to, value, opts);
-        break;
-      default:
-        return;
-        break;
+  // @callback                          - err (Error), data (object)
+  buildTx(system, from, to, value, opts={}, cb) {
+    if (typeof opts === 'function') {
+      cb = opts;
+      opts = {}
+    }
+    if (system = 'ETH') {
+      ethereum.buildTx(this.providers.ethereum, from, to, value, opts, cb);
     }
   }
+
 }
+
+exports.default = GridPlusSDK;
