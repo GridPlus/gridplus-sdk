@@ -2,7 +2,7 @@
 import assert from 'assert';
 import EthUtil from 'ethereumjs-util';
 import Tx from 'ethereumjs-tx';
-import { SPLIT_BUF, testing } from '../src/config';
+import { SPLIT_BUF, testing } from '../src/config.js';
 import GridPlusSDK from 'index';
 
 const { erc20Src, ethHolder } = testing;
@@ -81,7 +81,7 @@ describe('Ethereum', () => {
   const toSend = 10 ** 18;
   it('Should transfer ETH to the address', (done) => {
     provider = sdk.providers.ethereum;
-    sender = config.testing.ethHolder;
+    sender = testing.ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
     // Build a tx for the sender
     sdk.buildTx('ETH', sender.address, addr, toSend, (err, _tx) => {
@@ -263,4 +263,4 @@ describe('Ethereum', () => {
     });
   });
 
-})
+});
