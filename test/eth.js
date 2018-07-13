@@ -2,14 +2,15 @@
 import assert from 'assert';
 import EthUtil from 'ethereumjs-util';
 import Tx from 'ethereumjs-tx';
-import { SPLIT_BUF, testing } from '../src/config';
+import { SPLIT_BUF, testing } from '../src/config.js';
 import GridPlusSDK from 'index';
 
 const { erc20Src, ethHolder } = testing;
 
 let sdk, privKey, addr, provider, erc20Addr, sender, senderPriv, balance;
 
-describe('Basic tests', () => {
+describe('Ethereum', () => {
+  
   it('Should instantiate an SDK object', (done) => {
     try {
       sdk = new GridPlusSDK();
@@ -21,13 +22,9 @@ describe('Basic tests', () => {
   });
 
   it('Should connect to an ETH node', (done) => {
-    sdk.connectToEth()
-    .then((success) => {
-      assert(success === true);
-      done();
-    })
-    .catch((err) => {
+    sdk.connectToEth((err, provider) => {
       assert(err === null, err);
+      assert(typeof provider === 'object');
       done();
     })
   });
@@ -73,52 +70,46 @@ describe('Basic tests', () => {
     sdk.addresses(req, (err, res) => {
       assert(err === null, err);
       addr = res.result.data.addresses;
-      sdk.getBalance('ETH', addr)
-      .then((_balance) => {
-        balance = _balance;
-        done();
-      }).catch((err) => {
+      sdk.getBalance('ETH', addr, (err, data) => {
         assert.equal(err, null, err);
-      });;
+        balance = data.balance;
+        done();
+      });
     });
   });
 
   const toSend = 10 ** 18;
   it('Should transfer ETH to the address', (done) => {
-    provider = sdk.getProvider();
-    sender = ethHolder;
+    provider = sdk.providers.ethereum;
+    sender = testing.ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
     // Build a tx for the sender
-    sdk.buildTx('ETH', sender.address, addr, toSend)
-    .then((_tx) => {
+    sdk.buildTx('ETH', sender.address, addr, toSend, (err, _tx) => {
+      assert(err === null, err);
       const tx = new Tx({ nonce: _tx[0], gasPrice: _tx[1], gasLimit: _tx[2], to: _tx[3], value: _tx[4], data: _tx[5] });
       tx.sign(senderPriv);
       const serTx = tx.serialize();
       return provider.sendTransaction(`0x${serTx.toString('hex')}`)
+      .then(() => { done(); })
+      .catch((err) => { assert(err === null, err); })
     })
-    .then(() => { done(); })
-    .catch((err) => { assert(err === null, err); done(); });
   });
 
   it('Should find a non-zero ETH balance for the address', (done) => {
-    sdk.getBalance('ETH', addr)
-    .then((_balance) => {
+    sdk.getBalance('ETH', addr, (err, data) => {
+      assert(err === null, err);
+      const _balance = data.balance;
       assert(typeof _balance === 'number');
       // Note that _balances are returned in whole units (ether)
       assert(_balance * 10**18 === (balance * 10**18) + toSend, `Expected balance of ${toSend}, but got ${_balance}`);
       balance = _balance;
       done();
-    })
-    .catch((err) => {
-      assert(err === null, err);
-      done();
     });
   });
 
   it('Should deploy an ERC20 token', (done) => {
-    sdk.buildTx('ETH', sender.address, addr, 0)
-    // sdk.getTransactionCount('ETH', sender.address)
-    .then((_tx) => {
+    sdk.buildTx('ETH', sender.address, addr, 0, (err, _tx) => {
+      assert(err === null, err);
       const rawTx = {
         nonce: _tx[0],
         gasPrice: _tx[1],
@@ -130,94 +121,78 @@ describe('Basic tests', () => {
       tx.sign(senderPriv);
       const serTx = tx.serialize();
       return provider.sendTransaction(`0x${serTx.toString('hex')}`)
-    })
-    .then((txHash) => {
-      return provider.getTransactionReceipt(txHash);
-    })
-    .then((receipt) => {
-      assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
-      erc20Addr = receipt.contractAddress;
-      done();
-    })
-    .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
+      .then((txHash) => {
+        return provider.getTransactionReceipt(txHash);
+      })
+      .then((receipt) => {
+        assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
+        erc20Addr = receipt.contractAddress;
+        done();
+      })
+      .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
+    });
   });
 
   // A freshly deployed ERC20 token should have a new address, so the balance will be 0
   // (unlike ETH, which may have been sent in previous tests)
   it('Should find a zero token balance for the address', (done) => {
-    sdk.getBalance('ERC20', addr, erc20Addr)
-    .then((balance) => {
-      assert(typeof balance === 'number');
-      assert(balance === 0);
-      done();
-    })
-    .catch((err) => {
+    sdk.getBalance('ERC20', addr, erc20Addr, (err, data) => {
       assert(err === null, err);
+      assert(typeof data.balance === 'number');
+      assert(data.balance === 0);
       done();
     });
   });
 
   it('Should find a non-zero balance for the sender', (done) => {
-    sdk.getBalance('ETH', sender.address, erc20Addr)
-    .then((balance) => {
-      assert(typeof balance === 'number');
-      assert(balance > 0, `Sender balance should be >0, but is ${balance}`);
-      done();
-    })
-    .catch((err) => {
+    sdk.getBalance('ETH', sender.address, erc20Addr, (err, data) => {
       assert(err === null, err);
+      assert(typeof data.balance === 'number');
+      assert(data.balance > 0, `Sender balance should be >0, but is ${data.balance}`);
       done();
     });
   });
 
   it('Should transfer some ERC20 tokens to the address', (done) => {
-    sdk.buildTx('ETH', sender.address, addr, 1, { ERC20Token: erc20Addr})
-    .then((_tx) => {
+    sdk.buildTx('ETH', sender.address, addr, 1, { ERC20Token: erc20Addr}, (err, _tx) => {
+      assert(err === null, err);
       const tx = new Tx(_tx);
       tx.sign(senderPriv);
       const serTx = tx.serialize();
       return provider.sendTransaction(`0x${serTx.toString('hex')}`)
-    })
-    .then((txHash) => {
-      return provider.getTransactionReceipt(txHash);
-    })
-    .then((receipt) => {
-      assert(receipt.logs.length > 0, 'Transaction did not emit any logs.');
-      done();
-    })
-    .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
+      .then((txHash) => {
+        return provider.getTransactionReceipt(txHash);
+      })
+      .then((receipt) => {
+        assert(receipt.logs.length > 0, 'Transaction did not emit any logs.');
+        done();
+      })
+      .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
+    });
   });
 
   it('Should find a zero token balance for the address', (done) => {
-    sdk.getBalance('ERC20', addr, erc20Addr)
-    .then((balance) => {
-      assert(typeof balance === 'number');
-      assert(balance > 0);
-      done();
-    })
-    .catch((err) => {
+    sdk.getBalance('ERC20', addr, erc20Addr, (err, data) => {
       assert(err === null, err);
+      assert(typeof data.balance === 'number');
+      assert(data.balance > 0);
       done();
     });
   });
 
   it('Should get the token transfer history for the user', (done) => {
-    sdk.getTransactionHistory('ERC20', addr, erc20Addr)
-    .then((events) => {
-      assert(events.in.length === 1, `Number of inbound transfers should be 1, but got ${events.in.length}`);
-      assert(events.out.length === 0, `Number of outbound transfers should be 0, but got ${events.out.length}`);
-      done();
-    })
-    .catch((err) => {
+    sdk.getBalance('ERC20', addr, erc20Addr, (err, data) => {
       assert(err === null, err);
+      assert(data.transfers.in.length === 1, `Number of inbound transfers should be 1, but got ${data.transfers.in.length}`);
+      assert(data.transfers.out.length === 0, `Number of outbound transfers should be 0, but got ${data.transfers.out.length}`);
       done();
-    })
+    });
   });
 
   it('Should transfer ETH out of the agent account', (done) => {
     const randAddr = '0xdde20a2810ff23775585cf2d87991c7f5ddb8c22'
-    sdk.buildTx('ETH', addr, randAddr, 10000)
-    .then((tx) => {
+    sdk.buildTx('ETH', addr, randAddr, 10000, (err, tx) => {
+      assert(err === null, err);
       const params = {
         schemaIndex: 0,
         typeIndex: 0,
@@ -246,23 +221,20 @@ describe('Basic tests', () => {
         })
         .then((receipt) => {
           assert(receipt.blockNumber > 0, 'Transaction not included in block');
-          return sdk.getBalance('ETH', addr)
-        })
-        .then((newBal) => {
-          assert(newBal < balance, 'Balance did not reduce');
-          done();
-        })
-        .catch((err) => {
-          assert(err === null, err);
-        })
+          sdk.getBalance('ETH', addr, (err, data) => {
+            assert(err === null, err);
+            assert(data.balance < balance, 'Balance did not reduce');
+            done();
+          });
+        });
       });
     });
   });
 
   it('Should transfer the ERC20 token out of the agent account', (done) => {
     const randAddr = '0xdde20a2810ff23775585cf2d87991c7f5ddb8c22';
-    sdk.buildTx('ETH', addr, randAddr, 1, { ERC20Token: erc20Addr})
-    .then((tx) => {
+    sdk.buildTx('ETH', addr, randAddr, 1, { ERC20Token: erc20Addr}, (err, tx) => {
+      assert(err === null, err);
       const params = {
         schemaIndex: 0,
         typeIndex: 1,
@@ -281,18 +253,14 @@ describe('Basic tests', () => {
         })
         .then((receipt) => {
           assert(receipt.blockNumber > 0, 'Transaction not included in block');
-          return sdk.getTransactionHistory('ERC20', addr, erc20Addr)
-          done();
-        })
-        .then((events) => {
-          assert(events.out.length > 0);
-          done();
-        })
-        .catch((err) => {
-          assert(err === null, err);
-        })
+          sdk.getBalance('ERC20', addr, erc20Addr, (err, data) => {
+            assert(err === null, err);
+            assert(data.transfers.out.length > 0);
+            done();
+          });
+        });
       });
     });
   });
 
-})
+});

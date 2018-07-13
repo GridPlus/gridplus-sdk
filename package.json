@@ -12,7 +12,7 @@
     "precommit": "npm run lint:fix && npm run test",
     "prepublish": "npm run build",
     "postinstall": "npm run build",
-    "test": "mocha -R spec --compilers js:babel-core/register test --recursive --exit",
+    "test": "mocha -R spec --require babel-core/register test --recursive --exit",
     "test:jest": "NODE_ENV=test jest --config jest.json --verbose",
     "test:watch": "NODE_ENV=test jest --config jest.json --watch --coverage --verbose",
     "test:integration": "NODE_ENV=test jest --config jest.integration.json --coverage --verbose",

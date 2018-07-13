@@ -6,36 +6,56 @@ let provider;
 let erc20Decimals = {};
 
 export default {
-  broadcast,
   buildTx,
   getBalance,
-  getERC20TransferHistory,
-  getNonce,
-  getProvider,
   initEth,
 }
 
-// Instantiate the Ethereum query service. In this case, it is a web3 instance.
-export function initEth (_provider=config.defaultWeb3Provider) {
-  return new Promise((resolve, reject) => {
-    try {
-      provider =  new ethers.providers.JsonRpcProvider(_provider);
-      return resolve(true);
-    } catch (err) {
-      return reject(err);
-    }
-  })
+// Build an Ethereum transaction object
+// @returns {array}  - array of form [ nonce, gasPrice, gas, to, value, data ]
+export function buildTx (provider, from, to, value, opts={}, cb) {
+  if (typeof from !== 'string') {
+    cb('Please specify a single address to transfer from');
+  } else {
+    getNonce(provider, from)
+    .then((nonce) => {
+      let tx = [ nonce, null, null, to, null, null ];
+      // Fill in `value` and `data` if this is an ERC20 transfer
+      if (opts.ERC20Token !== undefined) {
+        tx[5] = config.erc20.transfer(to, value);
+        tx[4] = 0;
+        tx[3] = opts.ERC20Token;
+        tx[2] = 100000; // gas=100,000 to be safe
+      } else {
+        tx[5] = '';
+        tx[4] = value;
+        tx[2] = 22000; // gas=22000 for ETH transfers
+      }
+      // Check for a specified gas price (should be in decimal)
+      if (opts.gasPrice !== undefined) {
+        tx[1] = opts.gasPrice;
+      } else {
+        tx[1] = config.defaults.gasPrice;
+      }
+      cb(null, tx);
+    })
+    .catch((err) => {
+      cb(err);
+    });
+  } 
 }
 
-// Expose the web3 interface for advanced functionality
-export function getProvider () { return provider; }
-
 // Get the balance of an Ethereum account. This can be an ERC20 or ETH balance.
+// @param [provider]  {object}  - Provider engine via ethers.js
 // @param [addr]      {string}  - The account we are querying
 // @param [ERC20Addr] {string}  - Address of the ERC20 token we are asking about
 // @returns           {Promise} - Contains the balance in full units (i.e. with decimals divided in)
-export function getBalance (addr, ERC20Addr=null) {
+export function getBalance (provider, addr, ERC20Addr=null, cb) {
   return new Promise((resolve, reject) => {
+    let data = {
+      balance: 0,
+      transfers: {}
+    };
     if (ERC20Addr !== null) {
       if (erc20Decimals[ERC20Addr] === undefined) {
         // Save the contract as an object
@@ -45,34 +65,83 @@ export function getBalance (addr, ERC20Addr=null) {
           // Get the balance
           return provider.call({ to: ERC20Addr, data: config.erc20.balanceOf(addr) })
         })
-        .then((balance) => { return resolve(parseInt(balance) / 10 ** erc20Decimals[ERC20Addr]); })
-        .catch((err) => { return reject(err); });
+        .then((balance) => { 
+          data.balance = parseInt(balance) / 10 ** erc20Decimals[ERC20Addr];
+          return getTransfers(provider, addr, ERC20Addr)
+        })
+        .then((transfers) => {
+          data.transfers = transfers;
+          cb(null, data);
+         })
+        .catch((err) => { cb(err); });
       } else {
         // If the decimals are cached, we can just query the balance
         provider.call({ to: ERC20Addr, data: config.erc20.balanceOf(addr) })
-        .then((balance) => { return resolve(parseInt(balance) / 10 ** erc20Decimals[ERC20Addr]); })
-        .catch((err) => { return reject(err); });
+        .then((balance) => { 
+          data.balance = parseInt(balance) / 10 ** erc20Decimals[ERC20Addr];
+          return getTransfers(provider, addr, ERC20Addr);
+        })
+        .then((transfers) => {
+          data.transfers = transfers;
+          cb(null, data);
+        })
+        .catch((err) => { cb(err); });
       }
     } else {
       // Otherwise query for the ETH balance
       provider.getBalance(addr)
-      .then((balance) => { return resolve(parseInt(balance) / 10 ** 18); })
-      .catch((err) => { return reject(err); })
+      .then((balance) => { 
+        data.balance = parseInt(balance) / 10 ** 18;
+        return getTransfers(provider, addr, ERC20Addr)
+      })
+      .then((transfers) => {
+        data.transfers = transfers;
+        cb(null, data);
+      })
+      .catch((err) => { cb(err); })
     }
   })
 }
 
+// Instantiate the Ethereum query service. In this case, it is a web3 instance.
+export function initEth (_provider=config.defaultWeb3Provider, cb) {
+  try {
+    const provider = new ethers.providers.JsonRpcProvider(_provider);
+    cb(null, provider);
+  } catch (err) {
+    cb(err);
+  }
+}
+
+//=====================
+// INTERNAL
+//=====================
+
+function getTransfers(provider, addr, ERC20Addr=null) {
+  return new Promise((resolve, reject) => {
+    if (ERC20Addr === null) {
+      // TODO: Need to figure out how to pull transfers for ETH
+      return resolve({})
+    } else {
+      getERC20TransferHistory(provider, addr, ERC20Addr)
+      .then((transfers) =>  { return resolve(transfers); })
+      .catch((err) => { return reject(err); })
+    }
+  });
+}
+
 // Get a history of ERC20 transfers to and from an account
+// @param [provider]     {object}  - Provider engine via ethers.js
 // @param [addr]         {string}  - The account we are looking up
 // @param [contractAddr] {string}  - Address of the deployed ERC20 contract
-export function getERC20TransferHistory (user, contractAddr) {
+function getERC20TransferHistory(provider, user, contractAddr) {
   return new Promise((resolve, reject) => {
     let events = {}
     // Get transfer "out" events
-    _getEvents(contractAddr, [ null, `0x${pad64(user)}`, null ])
+    _getEvents(provider, contractAddr, [ null, `0x${pad64(user)}`, null ])
     .then((outEvents) => {
       events.out = outEvents;
-      return _getEvents(contractAddr, [ null, null, `0x${pad64(user)}` ])
+      return _getEvents(provider, contractAddr, [ null, null, `0x${pad64(user)}` ])
     })
     .then((inEvents) => {
       events.in = inEvents;
@@ -83,8 +152,10 @@ export function getERC20TransferHistory (user, contractAddr) {
 }
 
 // Get the nonce (i.e. the number of transactions an account has sent)
+// @param [provider]  {object}  - Provider engine via ethers.js
+// @param [addr]      {string}  - The account we are looking up
 // @param [addr]    {string}  - The account we are looking up
-export function getNonce (user) {
+function getNonce (provider, user) {
   return new Promise((resolve, reject) => {
     provider.getTransactionCount(user)
     .then((nonce) => { return resolve(nonce); })
@@ -92,53 +163,8 @@ export function getNonce (user) {
   });
 }
 
-// Build an Ethereum transaction object
-// @returns {array}  - array of form [ nonce, gasPrice, gas, to, value, data ]
-export function buildTx (from, to, value, opts={}) {
-  return new Promise((resolve, reject) => {
-    if (typeof from !== 'string') {
-      return reject('Please specify a single address to transfer from');
-    } else {
-      getNonce(from)
-      .then((nonce) => {
-        let tx = [ nonce, null, null, to, null, null ];
-        // Fill in `value` and `data` if this is an ERC20 transfer
-        if (opts.ERC20Token !== undefined) {
-          tx[5] = config.erc20.transfer(to, value);
-          tx[4] = 0;
-          tx[3] = opts.ERC20Token;
-          tx[2] = 100000; // gas=100,000 to be safe
-        } else {
-          tx[5] = '';
-          tx[4] = value;
-          tx[2] = 22000; // gas=22000 for ETH transfers
-        }
-        // Check for a specified gas price (should be in decimal)
-        if (opts.gasPrice !== undefined) {
-          tx[1] = opts.gasPrice;
-        } else {
-          tx[1] = config.defaults.gasPrice;
-        }
-        return resolve(tx);
-      })
-      .catch((err) => {
-        return reject(err);
-      });
-    }
-  });
-}
-
-export function broadcast (system, tx) {
-  switch (system) {
-    case 'ETH':
-      break;
-    default:
-      break;
-  }
-}
-
 // Get a set of event logs
-function _getEvents(address, topics, fromBlock=0, toBlock='latest') {
+function _getEvents(provider, address, topics, fromBlock=0, toBlock='latest') {
   return new Promise((resolve, reject) => {
     provider.getLogs({ address, topics, fromBlock, toBlock })
     .then((events) => { return resolve(events); })

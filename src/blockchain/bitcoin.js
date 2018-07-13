@@ -2,8 +2,6 @@ import { NodeClient } from 'bclient';
 import { Network } from 'bcoin';
 import config from '../config.js';
 
-let client;
-
 export default {
   initBitcoin,
   getBalance,
@@ -11,50 +9,50 @@ export default {
 
 // Initialize a connection to a Bitcoin node. Uses params in config.js by default.
 // @param [options] {object}  - may contain `network` and `port` params
-// @returns         {Promise}  - contains `info` Object or error
-export function initBitcoin (options={}) {
-  return new Promise((resolve, reject) => {
-    try {
-      client = new NodeClient({
-        host: options.host || config.bitcoinNode.host,
-        network: options.network || config.bitcoinNode.network,
-        port: options.port || config.bitcoinNode.port,
-      });
-      client.getInfo()
-      .then((info) => {
-        if (!info || !info.network) return reject('Could not connect to node')
-        return resolve(info);
-      })
-      .catch((err) => {
-        return reject(err);
-      })
-    } catch (err) {
-      return reject(err);
-    }
-  })
+// @callback                  - err (Error), info (object)
+export function initBitcoin (options={}, cb) {
+  try {
+    const client = new NodeClient({
+      host: options.host || config.bitcoinNode.host,
+      network: options.network || config.bitcoinNode.network,
+      port: options.port || config.bitcoinNode.port,
+    });
+    client.getInfo()
+    .then((info) => {
+      if (!info || !info.network) return reject('Could not connect to node')
+      cb(null, client, info);
+    })
+    .catch((err) => {
+      cb(err);
+    })
+  } catch (err) {
+    cb(err);
+  }
 }
 
 // Get all of the UTXOs for a given address
 // @param [_addr] {string or Array}  - address[es] to query
 // @returns       {Array}             - array of UTXO objects
-export function getBalance (addr) {
-  return new Promise((resolve, reject) => {
-    if (typeof addr === 'string') {
-      getUtxosSingleAddr(addr)
-      .then((utxos) => { return resolve(addBalanceSingle(utxos)); })
-      .catch((err) => { return reject(err); })
-    } else {
-      getUtxosMultipleAddrs(addr)
-      .then((utxos) => { return resolve(addBalanceMultiple(utxos)); })
-      .catch((err) => { return reject(err); })
-    }
-  });
+export function getBalance (client, addr, cb) {
+  if (typeof addr === 'string') {
+    getUtxosSingleAddr(client, addr)
+    .then((utxos) => { cb(null, addBalanceSingle(utxos)); })
+    .catch((err) => { cb(err); })
+  } else {
+    getUtxosMultipleAddrs(client, addr)
+    .then((utxos) => { cb(null, addBalanceMultiple(utxos)); })
+    .catch((err) => { cb(err); })
+  }
 }
+
+//=====================
+// INTERNAL
+//=====================
 
 // Get a set of UTXOs for a single address
 // @param [addr] {String}  -  Address to look for UTXOs of
 // @returns      {Array}   -  Contains set of UTXO object
-function getUtxosSingleAddr(addr) {
+function getUtxosSingleAddr(client, addr) {
   return new Promise((resolve, reject) => {
     client.getCoinsByAddress(addr)
     .then((utxos) => {
@@ -70,7 +68,7 @@ function getUtxosSingleAddr(addr) {
 // Get a set of UTXOs for a set of addresses
 // @param [addrs] {Array}   -  list of addresses to look up
 // @returns       {Object}  -  Contains UTXOs:  { addr1: [utxo1, utxo2], ... }
-function getUtxosMultipleAddrs(addrs) {
+function getUtxosMultipleAddrs(client, addrs) {
   return new Promise((resolve, reject) => {
     let utxos = {}
     // Make sure there is a list for UTXOs of each address
