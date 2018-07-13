@@ -1,15 +1,17 @@
-const crypto = require('crypto');
-const EC = require('elliptic').ec;
+import crypto from 'crypto';
+import request from 'superagent';
+import config from './config';
+import bitcoin from './blockchain/bitcoin';
+import ethereum from './blockchain/ethereum';
+import util from './util';
+import RestClient from './rest/restClient';
+import elliptic from 'elliptic';
+
+const EC = elliptic.ec;
 const EC_K = new EC('secp256k1');
-const request = require('superagent');
-const config = require('./config.js');
-const bitcoin = require('./src/blockchain/bitcoin.js');
-const ethereum = require('./src/blockchain/ethereum.js');
-const util = require('./src/util.js');
-const RestClient = require('./src/rest/restClient.js').default;
 const DEFAULT_COUNTER = 5;
 
-class GridPlusSDK extends RestClient{
+export default class GridPlusSDK extends RestClient {
   //============================================================================
   // SETUP OBJECT
   //============================================================================
@@ -30,8 +32,8 @@ class GridPlusSDK extends RestClient{
   // We need to query both Bitcoin and Ethereum blockchains to get relevent
   // account data. This means connecting to nodes
   //============================================================================
-  
-  // Initialize a connection to an Ethereum node. 
+
+  // Initialize a connection to an Ethereum node.
   // @param [provider] {string} - of form `${protocol}://${host}:${port}`, where `protocol` is 'ws' or 'http'
   // @returns          {Error}  - may be null
   connectToEth(provider=null, cb) {
@@ -60,13 +62,45 @@ class GridPlusSDK extends RestClient{
     }
   }
 
-  // Initialize a connection to Bitcoin node. 
+  // Initialize a connection to Bitcoin node.
   // @param [options] {object}
+<<<<<<< HEAD:index.js
   // @callback        err (Error), info (object) 
   connectToBtc(options={}, cb) {
     if (typeof options === 'function') {
       cb = options;
       options = {};
+=======
+  // @returns         {Promise}
+  connectToBtc(options={}) {
+    return bitcoin.initBitcoin(options)
+  }
+
+  // Get the web3 connection for advanced functionality
+  getProvider() {
+    return ethereum.getProvider();
+  }
+
+  // Get a balance for an account. RETURNS A PROMISE!
+  // @param [currency]  {string}  - "ETH", "ERC20", or "BTC"
+  // @param [addr]      {string}  - The account we are querying
+  // @param [ERC20Addr] {string}  - (optional) Address of the ERC20 token we are asking about
+  // @returns           {Promise} - Contains the balance in full units (i.e. with decimals divided in)
+  getBalance(currency, addr, ERC20Addr=null) {
+    switch(currency) {
+      case 'BTC':
+        return bitcoin.getBalance(addr);
+        break;
+      case 'ETH':
+        return ethereum.getBalance(addr);
+        break;
+      case 'ERC20':
+        return ethereum.getBalance(addr, ERC20Addr);
+        break;
+      default:
+        return;
+        break;
+>>>>>>> 6130118efc244113b478601cfe65a62cbcb735f8:src/index.js
     }
     bitcoin.initBitcoin(options, (err, client, info) => {
       if (err) {
@@ -113,7 +147,11 @@ class GridPlusSDK extends RestClient{
       ethereum.buildTx(this.providers.ethereum, from, to, value, opts, cb);
     }
   }
+<<<<<<< HEAD:index.js
 
 }
 
 exports.default = GridPlusSDK;
+=======
+}
+>>>>>>> 6130118efc244113b478601cfe65a62cbcb735f8:src/index.js

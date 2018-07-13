@@ -1,17 +1,48 @@
-// Integrations to query the Ethereum blockchain for relevant account data
-const ethers = require('ethers');
-const config = require('../../config.js');
-const { pad64, unpad } = require('../util.js');
+import ethers from 'ethers';
+import config from '../config.js';
+import { pad64, unpad } from '../util.js';
+
+let provider;
 let erc20Decimals = {};
 
-// Instantiate the Ethereum query service. In this case, it is a web3 instance.
-exports.initEth = function(_provider=config.defaultWeb3Provider, cb) {
-  try {
-    const provider = new ethers.providers.JsonRpcProvider(_provider);
-    cb(null, provider);
-  } catch (err) {
-    cb(err);
-  }
+export default {
+  buildTx,
+  getBalance,
+  initEth,
+}
+
+// Build an Ethereum transaction object
+// @returns {array}  - array of form [ nonce, gasPrice, gas, to, value, data ]
+export function buildTx (provider, from, to, value, opts={}, cb) {
+  if (typeof from !== 'string') {
+    cb('Please specify a single address to transfer from');
+  } else {
+    exports.getNonce(provider, from)
+    .then((nonce) => {
+      let tx = [ nonce, null, null, to, null, null ];
+      // Fill in `value` and `data` if this is an ERC20 transfer
+      if (opts.ERC20Token !== undefined) {
+        tx[5] = config.erc20.transfer(to, value);
+        tx[4] = 0;
+        tx[3] = opts.ERC20Token;
+        tx[2] = 100000; // gas=100,000 to be safe
+      } else {
+        tx[5] = '';
+        tx[4] = value;
+        tx[2] = 22000; // gas=22000 for ETH transfers
+      }
+      // Check for a specified gas price (should be in decimal)
+      if (opts.gasPrice !== undefined) {
+        tx[1] = opts.gasPrice;
+      } else {
+        tx[1] = config.defaults.gasPrice;
+      }
+      cb(null, tx);
+    })
+    .catch((err) => {
+      cb(err);
+    });
+  } 
 }
 
 // Get the balance of an Ethereum account. This can be an ERC20 or ETH balance.
@@ -19,7 +50,7 @@ exports.initEth = function(_provider=config.defaultWeb3Provider, cb) {
 // @param [addr]      {string}  - The account we are querying
 // @param [ERC20Addr] {string}  - Address of the ERC20 token we are asking about
 // @returns           {Promise} - Contains the balance in full units (i.e. with decimals divided in)
-exports.getBalance = function(provider, addr, ERC20Addr=null, cb) {
+export function getBalance (provider, addr, ERC20Addr=null, cb) {
   return new Promise((resolve, reject) => {
     let data = {
       balance: 0,
@@ -72,6 +103,19 @@ exports.getBalance = function(provider, addr, ERC20Addr=null, cb) {
   })
 }
 
+// Instantiate the Ethereum query service. In this case, it is a web3 instance.
+export function initEth (_provider=config.defaultWeb3Provider, cb) {
+  try {
+    const provider = new ethers.providers.JsonRpcProvider(_provider);
+    cb(null, provider);
+  } catch (err) {
+    cb(err);
+  }
+}
+
+//=====================
+// INTERNAL
+//=====================
 
 function getTransfers(provider, addr, ERC20Addr=null) {
   return new Promise((resolve, reject) => {
@@ -85,7 +129,6 @@ function getTransfers(provider, addr, ERC20Addr=null) {
     }
   });
 }
-
 
 // Get a history of ERC20 transfers to and from an account
 // @param [provider]     {object}  - Provider engine via ethers.js
@@ -111,46 +154,13 @@ function getERC20TransferHistory(provider, user, contractAddr) {
 // Get the nonce (i.e. the number of transactions an account has sent)
 // @param [provider]  {object}  - Provider engine via ethers.js
 // @param [addr]      {string}  - The account we are looking up
-exports.getNonce = function(provider, user) {
+// @param [addr]    {string}  - The account we are looking up
+function getNonce (user) {
   return new Promise((resolve, reject) => {
     provider.getTransactionCount(user)
     .then((nonce) => { return resolve(nonce); })
     .catch((err) => { return reject(err); })
   });
-}
-
-// Build an Ethereum transaction object
-// @returns {array}  - array of form [ nonce, gasPrice, gas, to, value, data ]
-exports.buildTx = function(provider, from, to, value, opts={}, cb) {
-  if (typeof from !== 'string') {
-    cb('Please specify a single address to transfer from');
-  } else {
-    exports.getNonce(provider, from)
-    .then((nonce) => {
-      let tx = [ nonce, null, null, to, null, null ];
-      // Fill in `value` and `data` if this is an ERC20 transfer
-      if (opts.ERC20Token !== undefined) {
-        tx[5] = config.erc20.transfer(to, value);
-        tx[4] = 0;
-        tx[3] = opts.ERC20Token;
-        tx[2] = 100000; // gas=100,000 to be safe
-      } else {
-        tx[5] = '';
-        tx[4] = value;
-        tx[2] = 22000; // gas=22000 for ETH transfers
-      }
-      // Check for a specified gas price (should be in decimal)
-      if (opts.gasPrice !== undefined) {
-        tx[1] = opts.gasPrice;
-      } else {
-        tx[1] = config.defaults.gasPrice;
-      }
-      cb(null, tx);
-    })
-    .catch((err) => {
-      cb(err);
-    });
-  } 
 }
 
 // Get a set of event logs

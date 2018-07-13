@@ -1,12 +1,16 @@
-const { NodeClient } = require('bclient');
-const { Network } = require('bcoin');
+import { NodeClient } from 'bclient';
+import { Network } from 'bcoin';
+import config from '../config.js';
 
-const config = require('../../config.js');
+export default {
+  initBitcoin,
+  getBalance,
+}
 
 // Initialize a connection to a Bitcoin node. Uses params in config.js by default.
 // @param [options] {object}  - may contain `network` and `port` params
 // @callback                  - err (Error), info (object)
-exports.initBitcoin = function(options={}, cb) {
+export function initBitcoin (options={}, cb) {
   try {
     const client = new NodeClient({
       host: options.host || config.bitcoinNode.host,
@@ -29,7 +33,7 @@ exports.initBitcoin = function(options={}, cb) {
 // Get all of the UTXOs for a given address
 // @param [_addr] {string or Array}  - address[es] to query
 // @returns       {Array}             - array of UTXO objects
-exports.getBalance = function(client, addr, cb) {
+export function getBalance (client, addr, cb) {
   if (typeof addr === 'string') {
     getUtxosSingleAddr(client, addr)
     .then((utxos) => { cb(null, addBalanceSingle(utxos)); })
@@ -40,6 +44,10 @@ exports.getBalance = function(client, addr, cb) {
     .catch((err) => { cb(err); })
   }
 }
+
+//=====================
+// INTERNAL
+//=====================
 
 // Get a set of UTXOs for a single address
 // @param [addr] {String}  -  Address to look for UTXOs of
@@ -109,7 +117,7 @@ function addBalanceMultiple(utxos, sat=true) {
 
 // Sort a set of UTXOs based on the block height (earlier blocks first)
 function _sortUtxos(_utxos) {
-  return _utxos.sort((a, b) => { 
-    return (a.height > b.height) ? 1 : ((b.height > a.height) ? -1 : 0) 
+  return _utxos.sort((a, b) => {
+    return (a.height > b.height) ? 1 : ((b.height > a.height) ? -1 : 0)
   });
 }
