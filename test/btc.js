@@ -1,24 +1,28 @@
 // Basic tests for atomic SDK functionality
-const assert = require('assert');
-const bitcoin = require('bitcoinjs-lib');
-const config = require('../config.js');
-const GridPlusSDK = require('../index.js').default;
+import { Network } from 'bcoin';
+import { NodeClient } from 'bclient';
+import assert from 'assert';
+import bitcoin from 'bitcoinjs-lib';
+import { bitcoinNode, SPLIT_BUF, testing } from '../src/config';
+import GridPlusSDK from 'index';
+
 let startBal, startUtxos, testAddr, testKeyPair, balance, TX_VALUE;
 const CHANGE_INDEX = 3, CHANGE_AMOUNT = 9000;
 
+const { host, network, port } = bitcoinNode;
+const { btcHolder } = testing;
+const { address, wif } = btcHolder;
 // Start bcoin client. There is also one running through the SDK,
 // but we will use this instance to mine blocks
-const { NodeClient } = require('bclient');
-const { Network } = require('bcoin');
 const client = new NodeClient({
-  host: config.bitcoinNode.host,
-  network: config.bitcoinNode.network,
-  port: config.bitcoinNode.port,
+  host,
+  network,
+  port,
 });
 
 // Receiving addresses
 let receiving = [];
-
+let sdk;
 
 // Mine enough blocks so that the holder can spend the earliest
 // coinbse transaction
@@ -34,9 +38,6 @@ function mineIfNeeded(oldestUtxoHeight, done) {
     }
   })
 }
-
-// Handle all promise rejections
-process.on('unhandledRejection', e => { throw e; });
 
 describe('Bitcoin', () => {
   it('Should instantiate an SDK object', (done) => {
@@ -156,7 +157,7 @@ describe('Bitcoin', () => {
       // Note; this will throw if the address does not conform to the testnet
       // Need to figure out if regtest emulates the mainnet
       txb.addOutput(receiving[0][0], 1e7);
-      txb.addOutput(config.testing.btcHolder.address, utxo.value - 1e7 - 1e3);
+      txb.addOutput(address, utxo.value - 1e7 - 1e3);
 
       txb.sign(0, signer);
       const tx = txb.build().toHex();
@@ -224,7 +225,7 @@ describe('Bitcoin', () => {
       // Build a transaction and sign it in the k81
       sdk.signManual(req, (err, res) => {
         assert(err === null, err);
-        const sigData = res.result.data.sigData.split(config.SPLIT_BUF);
+        const sigData = res.result.data.sigData.split(SPLIT_BUF);
         const tx = sigData[0];
         // Broadcast the transaction
         client.broadcast(tx)
@@ -238,7 +239,7 @@ describe('Bitcoin', () => {
           // Mine a block
           return client.execute('generate', [ 1 ])
         })
-        .then((blocks) => {          
+        .then((blocks) => {
           return client.getMempool()
         })
         .then((mempool) => {

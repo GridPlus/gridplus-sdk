@@ -1,14 +1,14 @@
 // Tests on communications with simulated agent devices
-const assert = require('assert');
-const config = require(`${__dirname}/../config.js`);
-const secp256k1 = require('secp256k1');
-const { sha3, pubToAddress } = require('ethereumjs-util');
-const GridPlusSDK = require('../index.js').default;
-const request = require('superagent');
-let sdk, privKey, addr, provider, erc20Addr, sender, senderPriv;
+import assert from 'assert';
+import secp256k1 from 'secp256k1';
+import { sha3, pubToAddress } from 'ethereumjs-util';
+import request from 'superagent';
+import { api } from './../src/config';
+import GridPlusSDK from 'index';
 
-// Handle all promise rejections
-process.on('unhandledRejection', e => { throw e; });
+const { SPLIT_BUF } = api;
+
+let sdk, privKey, addr, provider, erc20Addr, sender, senderPriv;
 
 describe('Basic tests', () => {
   it('Should instantiate an SDK object', (done) => {
@@ -123,7 +123,7 @@ describe('Basic tests', () => {
         assert(res.result.status === 200);
         // The message includes the preImage payload concatenated to a signature,
         // separated by a standard string/buffer
-        const sigData = res.result.data.sigData.split(config.api.SPLIT_BUF);
+        const sigData = res.result.data.sigData.split(SPLIT_BUF);
         const preImage = Buffer.from(sigData[0], 'hex');
         const msg = sha3(preImage);
         const sig = sigData[1];
@@ -188,7 +188,7 @@ describe('Basic tests', () => {
       sdk.signAutomated(req2, (err, res) => {
         assert(err === null, err);
         // Make sure the signature came out of the right pubkey
-        const sigData = res.result.data.sigData.split(config.api.SPLIT_BUF);
+        const sigData = res.result.data.sigData.split(config.api.SPLIT_BUF);=
         done()
       });
     });
