@@ -1,13 +1,16 @@
 import crypto from 'crypto';
 import config from './config';
-import bitcoin from './blockchain/bitcoin';
-import ethereum from './blockchain/ethereum';
+import bitcoin from './providers/bitcoin';
+import ethereum from './providers/ethereum';
 import AgentRestClient from './rest/client';
 
-export default class GridPlusSDK {
-  //============================================================================
-  // SETUP OBJECT
-  //============================================================================
+export const providers = {
+  bitcoin,
+  ethereum,
+};
+
+export default class SdkClient {
+
   constructor(options) {
     options = options || {};
 
@@ -16,14 +19,12 @@ export default class GridPlusSDK {
     options.clientConfig.name = options.clientConfig.name || 'gridplus-sdk';
     options.clientConfig.privKey = options.clientConfig.privKey || crypto.randomBytes(32);
 
-    this.client = new AgentRestClient(options.clientConfig)
+    this.client = new AgentRestClient(options.clientConfig);
     // Create a keypair either with existing entropy or system-based randomness
     // this._initKeyPair(opts);
     // this.headerSecret = null;
-    this.providers = {
-      bitcoin: null,
-      ethereum: null,
-    }
+    this.providers = options.providers || [];
+
   }
 
   addresses(param, cb) {
@@ -158,4 +159,4 @@ export default class GridPlusSDK {
 
 }
 
-exports.default = GridPlusSDK;
+export const Client = SdkClient;
