@@ -17,7 +17,7 @@ export function buildTx (provider, from, to, value, opts={}, cb) {
   if (typeof from !== 'string') {
     cb('Please specify a single address to transfer from');
   } else {
-    exports.getNonce(provider, from)
+    getNonce(provider, from)
     .then((nonce) => {
       let tx = [ nonce, null, null, to, null, null ];
       // Fill in `value` and `data` if this is an ERC20 transfer
@@ -155,7 +155,7 @@ function getERC20TransferHistory(provider, user, contractAddr) {
 // @param [provider]  {object}  - Provider engine via ethers.js
 // @param [addr]      {string}  - The account we are looking up
 // @param [addr]    {string}  - The account we are looking up
-function getNonce (user) {
+function getNonce (provider, user) {
   return new Promise((resolve, reject) => {
     provider.getTransactionCount(user)
     .then((nonce) => { return resolve(nonce); })

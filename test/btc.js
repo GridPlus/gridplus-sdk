@@ -3,7 +3,7 @@ import { Network } from 'bcoin';
 import { NodeClient } from 'bclient';
 import assert from 'assert';
 import bitcoin from 'bitcoinjs-lib';
-import { bitcoinNode, SPLIT_BUF, testing } from '../src/config';
+import { bitcoinNode, SPLIT_BUF, testing } from '../src/config.js';
 import GridPlusSDK from 'index';
 
 let startBal, startUtxos, testAddr, testKeyPair, balance, TX_VALUE;
@@ -60,7 +60,7 @@ describe('Bitcoin', () => {
 
   it('Should check the balance of a single address and set a baseline', (done) => {
     // Look for the balance and any unspent transaction outputs
-    sdk.getBalance('BTC', config.testing.btcHolder.address, (err, d) => {
+    sdk.getBalance('BTC', testing.btcHolder.address, (err, d) => {
       assert(err === null, err);
       startUtxos = d.utxos;
       startBal = d.balance;
@@ -82,7 +82,7 @@ describe('Bitcoin', () => {
 
   it('Should register a balance increase', (done) => {
     // Look for the balance and any unspent transaction outputs
-    sdk.getBalance('BTC', config.testing.btcHolder.address, (err, d) => {
+    sdk.getBalance('BTC', testing.btcHolder.address, (err, d) => {
       assert(err === null, err);
       assert(d.utxos.length === startUtxos.length + 1, 'Block did not mine to correct coinbase');
       assert(d.balance > startBal, 'Balance did not increase. Try removing your chaindata: ~/.bcoin/regtest/chain.ldb');
@@ -148,8 +148,8 @@ describe('Bitcoin', () => {
   });
 
   it('Should form a transaction and send 0.1 BTC to address 0', (done) => {
-    const signer = bitcoin.ECPair.fromWIF(config.testing.btcHolder.wif, bitcoin.networks.testnet);
-    sdk.getBalance('BTC', config.testing.btcHolder.address, (err, d) => {
+    const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.wif, bitcoin.networks.testnet);
+    sdk.getBalance('BTC', testing.btcHolder.address, (err, d) => {
       assert(err === null, err);
       const utxo = d.utxos[0];
       const txb = new bitcoin.TransactionBuilder(bitcoin.networks.testnet);
@@ -276,7 +276,6 @@ describe('Bitcoin', () => {
         done();
       });
     });
-  })
+  });
 
-})
-
+});
