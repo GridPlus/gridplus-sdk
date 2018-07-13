@@ -2,22 +2,64 @@ import crypto from 'crypto';
 import config from './config';
 import bitcoin from './blockchain/bitcoin';
 import ethereum from './blockchain/ethereum';
-import RestClient from './rest/restClient';
+import AgentRestClient from './rest/client';
 
-export default class GridPlusSDK extends RestClient {
+export default class GridPlusSDK {
   //============================================================================
   // SETUP OBJECT
   //============================================================================
-  constructor({ url = config.api.baseUrl, name = 'app-0', privKey = crypto.randomBytes(32),  } = {}) {
-    super({ baseUrl: url, privKey });
+  constructor(options) {
+    options = options || {};
+
+    options.clientConfig = options.clientConfig || {}
+    options.clientConfig.baseUrl = options.clientConfig.baseUrl || config.api.baseUrl;
+    options.clientConfig.name = options.clientConfig.name || 'gridplus-sdk';
+    options.clientConfig.privKey = options.clientConfig.privKey || crypto.randomBytes(32);
+
+    this.client = new AgentRestClient(options.clientConfig)
     // Create a keypair either with existing entropy or system-based randomness
     // this._initKeyPair(opts);
-    this.headerSecret = null;
-    this.name = name;
+    // this.headerSecret = null;
     this.providers = {
       bitcoin: null,
       ethereum: null,
     }
+  }
+
+  /*
+    connects to all configured network providers, returning the first of any encountered errors.
+    else continues via supplied callback when done.
+  */
+  connect(cb) {
+    return this.client.connect(cb);
+  }
+
+  addresses(param, cb) {
+    return this.client.addresses(param, cb);
+  }
+
+  addPermission(param, cb) {
+    return this.client.addPermission(param, cb);
+  }
+
+  addManualPermission(cb) {
+    return this.client.addManualPermission(cb);
+  }
+
+  pair(name, cb) {
+    return this.client.pair(name, cb);
+  }
+
+  setupPairing(cb) {
+    return this.client.setupPairing(cb);
+  }
+
+  signAutomated(param, cb) {
+    return this.client.signAutomated(param, cb);
+  }
+
+  signManual(param, cb) {
+    return this.client.signManual(param, cb);
   }
 
   //============================================================================

@@ -10,20 +10,15 @@ const { SPLIT_BUF } = api;
 let sdk;
 
 describe('Basic tests', () => {
-  it('Should instantiate an SDK object', (done) => {
-    try {
-      sdk = new GridPlusSDK();
-      done();
-    } catch (err) {
-      assert(err === null, err);
-      done();
-    }
+
+  before(() => {
+    sdk = new GridPlusSDK({ clientConfig: { name: 'basic-test' }});
   });
 
   it('Should connect to an agent', (done) => {
     sdk.connect((err, res) => {
       assert(err === null, err);
-      assert(sdk.ecdhPub === res.key, 'Mismatched key on response')
+      assert(sdk.client.ecdhPub === res.key, 'Mismatched key on response')
       done()
     });
   });
@@ -37,7 +32,7 @@ describe('Basic tests', () => {
   });
 
   it('Should pair with the agent', (done) => {
-    sdk.pair(sdk.name, (err) => {
+    sdk.pair((err) => {
       assert(err === null, err)
       done();
     });
