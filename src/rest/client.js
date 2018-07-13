@@ -8,12 +8,14 @@ import {
   ecdsaKeyPair,
 } from '../util';
 
-export default class RestClient {
-  constructor({ baseUrl, privKey = crypto.randomBytes(32).toString('hex') } = {}) {
+export default class Client {
+  constructor({ baseUrl, name, privKey } = {}) {
     if (!baseUrl) throw new Error('baseUrl is required');
+    if (!name) throw new Error('name is required');
 
     // this.appSecret = appSecret;
     this.baseUrl = baseUrl;
+    this.name = name;
     this.privKey = privKey;
 
     this.key = ecdsaKeyPair(this.privKey);
@@ -64,7 +66,7 @@ export default class RestClient {
     return this.request('connect', cb);
   }
 
-  pair(name, cb) {
+  pair(cb) {
     const id = this._newId();
     const type = 'addPairing';
     const preImage = `${this.sharedSecret}${this.appSecret}`;
@@ -72,7 +74,7 @@ export default class RestClient {
     try {
       const hash = crypto.createHash('sha256').update(preImage).digest();
       const sig = this.key.sign(hash).toDER();
-      const param = { name, sig };
+      const param = { name: this.name , sig };
       const data = this._createRequestData(param, id, type);
       return this.request('pair', { key: this.ecdhPub, data, id }, (err, res) => {
         if (err) return cb(err);

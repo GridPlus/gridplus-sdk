@@ -1,3 +1,4 @@
 .bcoin
 dist
 node_modules
+coverage

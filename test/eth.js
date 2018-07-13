@@ -13,7 +13,7 @@ describe('Ethereum', () => {
 
   it('Should instantiate an SDK object', (done) => {
     try {
-      sdk = new GridPlusSDK();
+      sdk = new GridPlusSDK({ clientConfig: { name: 'basic-test' }});
       done();
     } catch (err) {
       assert(err === null, err);
@@ -32,7 +32,7 @@ describe('Ethereum', () => {
   it('Should connect to an agent', (done) => {
     sdk.connect((err, res) => {
       assert(err === null, err);
-      assert(sdk.ecdhPub === res.key, 'Mismatched key on response')
+      assert(sdk.client.ecdhPub === res.key, 'Mismatched key on response')
       done()
     });
   });
@@ -46,7 +46,7 @@ describe('Ethereum', () => {
   });
 
   it('Should pair with the agent', (done) => {
-    sdk.pair(sdk.name, (err) => {
+    sdk.pair((err) => {
       assert(err === null, err)
       done();
     });

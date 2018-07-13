@@ -32,6 +32,11 @@ test:
 	ETHEREUM_NODE_URI=$(ETHEREUM_NODE_URI) \
 	npm test
 
+test-watch:
+	BASE_URL=$(BASE_URL) \
+	ETHEREUM_NODE_URI=$(ETHEREUM_NODE_URI) \
+	npm run test:watch
+
 up-agent: ensure-serial
 	AGENT_SERIAL=$(AGENT_SERIAL) \
 	DEBUG=$(DEBUG) \
