@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import superagent from 'superagent';
 import {
   decrypt,
@@ -9,14 +8,15 @@ import {
 } from '../util';
 
 export default class Client {
-  constructor({ baseUrl, name, privKey } = {}) {
+  constructor({ baseUrl, crypto, name, privKey } = {}) {
     if (!baseUrl) throw new Error('baseUrl is required');
     if (!name) throw new Error('name is required');
+    if (!crypto) throw new Error('crypto provider is required');
 
-    // this.appSecret = appSecret;
     this.baseUrl = baseUrl;
+    this.crypto = crypto;
     this.name = name;
-    this.privKey = privKey;
+    this.privKey = privKey || this.crypto.generateEntropy();
 
     this.key = ecdsaKeyPair(this.privKey);
     this.pubKey = this.key.getPublic().encode('hex');
@@ -38,7 +38,7 @@ export default class Client {
     const preImage = `${this.sharedSecret}${this.appSecret}`;
 
     try {
-      const hash = crypto.createHash('sha256').update(preImage).digest();
+      const hash = this.crypto.createHash(preImage);
       const sig = this.key.sign(hash).toDER();
       const param = { name: this.name , sig };
       const data = this._createRequestData(param, id, type);
@@ -100,7 +100,7 @@ export default class Client {
 
   _createRequestData(data, id, type) {
     const req = JSON.stringify(data);
-    const msg = crypto.createHash('sha256').update(`${id}${type}${req}`).digest();
+    const msg = this.crypto.createHash(`${id}${type}${req}`);
     const body = JSON.stringify({
       data: req,
       sig: this.key.sign(msg).toDER(),
@@ -127,16 +127,16 @@ export default class Client {
   }
 
   _genAppSecret() {
-    this.appSecret = crypto.randomBytes(6).toString('hex');
+    this.appSecret = this.crypto.randomBytes(6);
     return this.appSecret;
   }
 
   _newId() {
     // if we have a shared secret, derive a new id from it. else use random bytes.
     if (this.sharedSecret === null) {
-      return crypto.randomBytes(32).toString('hex');
+      return this.crypto.randomBytes(32);
     }
-    return crypto.createHash('sha256').update(this.sharedSecret).digest().toString('hex');
+    return this.crypto.createHash(this.sharedSecret).toString('hex');
   }
 
   _prepareNextRequest(result) {
