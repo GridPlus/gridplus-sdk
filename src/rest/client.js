@@ -51,9 +51,9 @@ export default class Client {
     }
   }
 
-  pairedRequest(method, { param = {}, id = this._newId(), type }, cb) {
+  pairedRequest(method, { param = {}, id = this._newId() }, cb) {
     try {
-      const data = this._createRequestData(param, id, type);
+      const data = this._createRequestData(param, id, method);
       return this.request(method, { key: this.ecdhPub, data, id }, (err, res) => {
         if (err) return cb(err);
         return this._decryptResponse(res, cb);
