@@ -1,13 +1,17 @@
-import crypto from 'crypto';
 import config from './config';
 import bitcoin from './providers/bitcoin';
 import ethereum from './providers/ethereum';
+import node from './crypto/node';
 import AgentRestClient from './rest/client';
 
 export const providers = {
   bitcoin,
   ethereum,
 };
+
+export const crypto = {
+  node,
+}
 
 export default class SdkClient {
 
@@ -17,12 +21,12 @@ export default class SdkClient {
     options.clientConfig = options.clientConfig || {}
     options.clientConfig.baseUrl = options.clientConfig.baseUrl || config.api.baseUrl;
     options.clientConfig.name = options.clientConfig.name || 'gridplus-sdk';
-    options.clientConfig.privKey = options.clientConfig.privKey || crypto.randomBytes(32);
+    options.clientConfig.privKey = options.clientConfig.privKey;
+
+    if ( ! options.clientConfig.crypto) throw new Error('options.clientConfig.crypto provider must be specified');
 
     this.client = new AgentRestClient(options.clientConfig);
-    // Create a keypair either with existing entropy or system-based randomness
-    // this._initKeyPair(opts);
-    // this.headerSecret = null;
+
     this.providers = options.providers || [];
 
   }
