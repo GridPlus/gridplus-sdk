@@ -32,18 +32,15 @@ export default class SdkClient {
   }
 
   addresses(param, cb) {
-    const type = 'addresses';
-    return this.client.pairedRequest('addresses', { param, type }, cb);
+    return this.client.pairedRequest('addresses', { param }, cb);
   }
 
   addManualPermission(cb) {
-    const type = 'addManualPermission';
-    return this.client.pairedRequest('addManualPermission', { type }, cb);
+    return this.client.pairedRequest('addManualPermission', { }, cb);
   }
 
   addPermission(param, cb) {
-    const type = 'addPermission';
-    return this.client.pairedRequest('addPermission', { param, type }, cb);
+    return this.client.pairedRequest('addPermission', { param }, cb);
   }
 
   /*
@@ -59,13 +56,11 @@ export default class SdkClient {
   }
 
   signAutomated(param, cb) {
-    const type = 'signAutomated';
-    return this.client.pairedRequest('signAutomated', { param, type }, cb);
+    return this.client.pairedRequest('signAutomated', { param }, cb);
   }
 
   signManual(param, cb) {
-    const type = 'signManual';
-    return this.client.pairedRequest('signManual', { param, type }, cb);
+    return this.client.pairedRequest('signManual', { param }, cb);
   }
 
   setupPairing(cb) {
