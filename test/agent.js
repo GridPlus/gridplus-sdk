@@ -12,7 +12,11 @@ let client;
 describe('basic tests', () => {
 
   before(() => {
-    client = new Client({ clientConfig: { name: 'basic-test', crypto: crypto.node }});
+    client = new Client({ clientConfig: { 
+      name: 'basic-test', 
+      crypto: crypto.node, 
+      privKey: crypto.node.randomBytes(32) 
+    }});
   });
 
   it('Should connect to an agent', (done) => {
@@ -188,4 +192,5 @@ describe('basic tests', () => {
       });
     });
   });
+  
 });

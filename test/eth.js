@@ -12,7 +12,11 @@ let client, addr, provider, erc20Addr, sender, senderPriv, balance;
 describe('Ethereum', () => {
 
   before(() => {
-    client = new Client({ clientConfig: { name: 'basic-test', crypto: crypto.node }});
+    client = new Client({ clientConfig: {
+      name: 'basic-test', 
+      crypto: crypto.node,
+      privKey: crypto.node.randomBytes(32)     
+    }});
   });
 
   it('Should connect to an ETH node', (done) => {
