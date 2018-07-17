@@ -4,6 +4,7 @@ import EthUtil from 'ethereumjs-util';
 import Tx from 'ethereumjs-tx';
 import { SPLIT_BUF, testing } from '../src/config.js';
 import { Client } from 'index';
+import NodeCrypto from 'crypto/node';
 import crypto from 'crypto';
 
 const { erc20Src } = testing;
@@ -13,9 +14,11 @@ let client, addr, provider, erc20Addr, sender, senderPriv, balance;
 describe('Ethereum', () => {
 
   before(() => {
+    const privKey = crypto.randomBytes(32).toString('hex');
     client = new Client({ clientConfig: {
-      name: 'basic-test', 
-      privKey: crypto.randomBytes(32).toString('hex')    
+      name: 'basic-test',
+      crypto: NodeCrypto,
+      privKey 
     }});
   });
 

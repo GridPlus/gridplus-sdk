@@ -18,19 +18,6 @@ export default class SdkClient {
     options.clientConfig.baseUrl = options.clientConfig.baseUrl || config.api.baseUrl;
     options.clientConfig.name = options.clientConfig.name || 'gridplus-sdk';
     options.clientConfig.privKey = options.clientConfig.privKey;
-
-    // Setup our crypto functions. ReactNative cannot use node's crypto module, so we need to import
-    // different dependencies depending on the user's system
-    if (options.clientConfig.crypto === 'react-native' && options.clientConfig.privKey != undefined) {
-      // Use the provided privKey as the source of entropy for future crypto functionality in RN
-      const tmp = require('./crypto/react-native.js').default;
-      tmp.init(options.clientConfig.privKey);
-      options.clientConfig.crypto = tmp.fetch();
-    } else {
-      // Use node's crypto module for non-RN users
-      options.clientConfig.crypto = require('./crypto/node.js').default;
-    }
-
     if ( ! options.clientConfig.crypto) 
       throw new Error('options.clientConfig.crypto provider must be specified');
     if ( ! options.clientConfig.privKey || options.clientConfig.privKey.length !== 64 || typeof options.clientConfig.privKey !== 'string') 
