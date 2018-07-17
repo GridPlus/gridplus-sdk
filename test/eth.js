@@ -3,7 +3,7 @@ import assert from 'assert';
 import EthUtil from 'ethereumjs-util';
 import Tx from 'ethereumjs-tx';
 import { SPLIT_BUF, testing } from '../src/config.js';
-import { Client, crypto } from 'index';
+import { Client, crypto, providers } from 'index';
 
 const { erc20Src } = testing;
 
@@ -12,15 +12,19 @@ let client, addr, provider, erc20Addr, sender, senderPriv, balance;
 describe('Ethereum', () => {
 
   before(() => {
-    client = new Client({ clientConfig: {
-      name: 'basic-test', 
-      crypto: crypto.node,
-      privKey: crypto.node.randomBytes(32)     
-    }});
+    const ethProvider = new providers.Ethereum();
+    client = new Client({
+      clientConfig: {
+        name: 'basic-test',
+        crypto: crypto.node,
+        privKey: crypto.node.randomBytes(32)
+      },
+      providers: [ ethProvider ],
+    });
   });
 
   it('Should connect to an ETH node', (done) => {
-    client.connectToEth((err, provider) => {
+    client.initialize((err, provider) => {
       assert(err === null, err);
       assert(typeof provider === 'object');
       done();
@@ -68,7 +72,7 @@ describe('Ethereum', () => {
     client.addresses(req, (err, res) => {
       assert(err === null, err);
       addr = res.result.data.addresses;
-      client.getBalance('ETH', addr, (err, data) => {
+      client.getBalance('ETH', { address: addr }, (err, data) => {
         assert.equal(err, null, err);
         balance = data.balance;
         done();
@@ -78,7 +82,7 @@ describe('Ethereum', () => {
 
   const toSend = 10 ** 18;
   it('Should transfer ETH to the address', (done) => {
-    provider = client.providers.ethereum;
+    // provider = client.providers.ethereum;
     sender = testing.ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
     // Build a tx for the sender
@@ -87,14 +91,14 @@ describe('Ethereum', () => {
       const tx = new Tx({ nonce: _tx[0], gasPrice: _tx[1], gasLimit: _tx[2], to: _tx[3], value: _tx[4], data: _tx[5] });
       tx.sign(senderPriv);
       const serTx = tx.serialize();
-      return provider.sendTransaction(`0x${serTx.toString('hex')}`)
+      return client.providers.ETH.provider.sendTransaction(`0x${serTx.toString('hex')}`)
       .then(() => { done(); })
       .catch((err) => { assert(err === null, err); })
     })
   });
 
   it('Should find a non-zero ETH balance for the address', (done) => {
-    client.getBalance('ETH', addr, (err, data) => {
+    client.getBalance('ETH', { address: addr }, (err, data) => {
       assert(err === null, err);
       const _balance = data.balance;
       assert(typeof _balance === 'number');
@@ -118,9 +122,9 @@ describe('Ethereum', () => {
       const tx = new Tx(rawTx);
       tx.sign(senderPriv);
       const serTx = tx.serialize();
-      return provider.sendTransaction(`0x${serTx.toString('hex')}`)
+      return client.providers.ETH.provider.sendTransaction(`0x${serTx.toString('hex')}`)
       .then((txHash) => {
-        return provider.getTransactionReceipt(txHash);
+        return client.providers.ETH.provider.getTransactionReceipt(txHash);
       })
       .then((receipt) => {
         assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
@@ -134,7 +138,7 @@ describe('Ethereum', () => {
   // A freshly deployed ERC20 token should have a new address, so the balance will be 0
   // (unlike ETH, which may have been sent in previous tests)
   it('Should find a zero token balance for the address', (done) => {
-    client.getBalance('ERC20', addr, erc20Addr, (err, data) => {
+    client.getBalance('ETH', { address: addr, erc20Address: erc20Addr }, (err, data) => {
       assert(err === null, err);
       assert(typeof data.balance === 'number');
       assert(data.balance === 0);
@@ -143,7 +147,7 @@ describe('Ethereum', () => {
   });
 
   it('Should find a non-zero balance for the sender', (done) => {
-    client.getBalance('ETH', sender.address, erc20Addr, (err, data) => {
+    client.getBalance('ETH', { address: sender.address, erc20Address: erc20Addr }, (err, data) => {
       assert(err === null, err);
       assert(typeof data.balance === 'number');
       assert(data.balance > 0, `Sender balance should be >0, but is ${data.balance}`);
@@ -157,9 +161,9 @@ describe('Ethereum', () => {
       const tx = new Tx(_tx);
       tx.sign(senderPriv);
       const serTx = tx.serialize();
-      return provider.sendTransaction(`0x${serTx.toString('hex')}`)
+      return client.providers.ETH.provider.sendTransaction(`0x${serTx.toString('hex')}`)
       .then((txHash) => {
-        return provider.getTransactionReceipt(txHash);
+        return client.providers.ETH.provider.getTransactionReceipt(txHash);
       })
       .then((receipt) => {
         assert(receipt.logs.length > 0, 'Transaction did not emit any logs.');
@@ -170,7 +174,7 @@ describe('Ethereum', () => {
   });
 
   it('Should get the token transfer history for the user', (done) => {
-    client.getBalance('ERC20', addr, erc20Addr, (err, data) => {
+    client.getBalance('ETH', { address: addr, erc20Address: erc20Addr }, (err, data) => {
       assert(err === null, err);
       assert(data.transfers.in.length === 1, `Number of inbound transfers should be 1, but got ${data.transfers.in.length}`);
       assert(data.transfers.out.length === 0, `Number of outbound transfers should be 0, but got ${data.transfers.out.length}`);
@@ -204,13 +208,13 @@ describe('Ethereum', () => {
 
         // Create a new transaction with the returned signature
         const newTx = new Tx(tx.concat(vrs));
-        provider.sendTransaction(`0x${newTx.serialize().toString('hex')}`)
+        client.providers.ETH.provider.sendTransaction(`0x${newTx.serialize().toString('hex')}`)
         .then((txHash) => {
-          return provider.getTransaction(txHash);
+          return client.providers.ETH.provider.getTransaction(txHash);
         })
         .then((receipt) => {
           assert(receipt.blockNumber > 0, 'Transaction not included in block');
-          client.getBalance('ETH', addr, (err, data) => {
+          client.getBalance('ETH', { address: addr }, (err, data) => {
             assert(err === null, err);
             assert(data.balance < balance, 'Balance did not reduce');
             done();
@@ -236,13 +240,13 @@ describe('Ethereum', () => {
         const v = parseInt(sig.slice(-1)) + 27;
         const vrs = [ v, Buffer.from(sig.slice(0, 64), 'hex'), Buffer.from(sig.slice(64, 128), 'hex'),  ];
         const newTx = new Tx(tx.concat(vrs));
-        provider.sendTransaction(`0x${newTx.serialize().toString('hex')}`)
+        client.providers.ETH.provider.sendTransaction(`0x${newTx.serialize().toString('hex')}`)
         .then((txHash) => {
-          return provider.getTransaction(txHash);
+          return client.providers.ETH.provider.getTransaction(txHash);
         })
         .then((receipt) => {
           assert(receipt.blockNumber > 0, 'Transaction not included in block');
-          client.getBalance('ERC20', addr, erc20Addr, (err, data) => {
+          client.getBalance('ETH', { address: addr, erc20Address: erc20Addr }, (err, data) => {
             assert(err === null, err);
             assert(data.transfers.out.length > 0);
             done();

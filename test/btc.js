@@ -3,7 +3,7 @@ import { NodeClient } from 'bclient';
 import assert from 'assert';
 import bitcoin from 'bitcoinjs-lib';
 import { bitcoinNode, SPLIT_BUF, testing } from '../src/config.js';
-import { Client, crypto } from 'index';
+import { Client, crypto, providers } from 'index';
 
 let startBal, startUtxos, TX_VALUE;
 const CHANGE_INDEX = 3, CHANGE_AMOUNT = 9000;
@@ -41,24 +41,28 @@ function mineIfNeeded(oldestUtxoHeight, done) {
 describe('Bitcoin', () => {
 
   before(() => {
-    client = new Client({ clientConfig: { 
-      name: 'basic-test', 
-      crypto: crypto.node,
-      privKey: crypto.node.randomBytes(32)       
-    }});
+    const btcProvider = new providers.Bitcoin();
+    client = new Client({
+      clientConfig: {
+        name: 'basic-test',
+        crypto: crypto.node,
+        privKey: crypto.node.randomBytes(32),
+      },
+      providers: [ btcProvider ]
+    });
   });
 
-  it('Should connect to an BTC node', (done) => {
-    client.connectToBtc((err, info) => {
-      assert(err === null, err);
-      assert(info.network === 'regtest', 'Did not connect to testnet');
+  it('Should connect to a BTC node', (done) => {
+    client.initialize((err, connections) => {
+      assert.equal(err, null, err);
+      assert.equal(connections[0].network, 'regtest', 'Did not connect to testnet');
       done();
     })
   });
 
   it('Should check the balance of a single address and set a baseline', (done) => {
     // Look for the balance and any unspent transaction outputs
-    client.getBalance('BTC', testing.btcHolder.address, (err, d) => {
+    client.getBalance('BTC', { address: testing.btcHolder.address }, (err, d) => {
       assert(err === null, err);
       startUtxos = d.utxos;
       startBal = d.balance;
@@ -80,7 +84,7 @@ describe('Bitcoin', () => {
 
   it('Should register a balance increase', (done) => {
     // Look for the balance and any unspent transaction outputs
-    client.getBalance('BTC', testing.btcHolder.address, (err, d) => {
+    client.getBalance('BTC', { address: testing.btcHolder.address }, (err, d) => {
       assert(err === null, err);
       assert(d.utxos.length === startUtxos.length + 1, 'Block did not mine to correct coinbase');
       assert(d.balance > startBal, 'Balance did not increase. Try removing your chaindata: ~/.bcoin/regtest/chain.ldb');
@@ -135,10 +139,10 @@ describe('Bitcoin', () => {
       assert(res.result.data.addresses[0].slice(0, 1) === '2', 'Not a testnet address');
       const addrs = res.result.data.addresses;
       // Get the baseline balance for the addresses
-      client.getBalance('BTC', addrs[0], (err, d) => {
+      client.getBalance('BTC', { address: addrs[0] }, (err, d) => {
         assert(err === null, err);
         receiving.push([addrs[0], d.balance]);
-        client.getBalance('BTC', addrs[1], (err, d) => {
+        client.getBalance('BTC', { address: addrs[1] }, (err, d) => {
           assert(err === null, err);
           receiving.push([addrs[1], d.balance]);
           done();
@@ -149,7 +153,7 @@ describe('Bitcoin', () => {
 
   it('Should form a transaction and send 0.1 BTC to address 0', (done) => {
     const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.wif, bitcoin.networks.testnet);
-    client.getBalance('BTC', testing.btcHolder.address, (err, d) => {
+    client.getBalance('BTC', { address: testing.btcHolder.address }, (err, d) => {
       assert(err === null, err);
       const utxo = d.utxos[0];
       const txb = new bitcoin.TransactionBuilder(bitcoin.networks.testnet);
@@ -184,7 +188,7 @@ describe('Bitcoin', () => {
     })
     .then((block) => {
       assert(block.tx.length > 1, 'Block did not include spend transaction')
-      client.getBalance('BTC', receiving[0][0], (err, d) => {
+      client.getBalance('BTC', { address: receiving[0][0] }, (err, d) => {
         assert(err === null, err);
         const expectedBal = receiving[0][1] + 1e7;
         assert(d.balance === expectedBal, `Expected balance of ${expectedBal}, got ${d.balance}`);
@@ -205,7 +209,7 @@ describe('Bitcoin', () => {
       fetchAccountIndex: CHANGE_INDEX,   // the account index where we'd like the change to go
       network: 'testnet',
     }
-    client.getBalance('BTC', receiving[0][0], (err, d) => {
+    client.getBalance('BTC', { address: receiving[0][0] }, (err, d) => {
       assert(err === null, err);
       const utxo = d.utxos[0];
       TX_VALUE = utxo.value - 10000;
@@ -244,7 +248,7 @@ describe('Bitcoin', () => {
         })
         .then((mempool) => {
           assert(mempool.length === 0, `Mempool not empty: ${mempool}`)
-          client.getBalance('BTC', receiving[1][0], (err, d) => {
+          client.getBalance('BTC', { address: receiving[1][0] }, (err, d) => {
             // Check the balance of the receiving address
             const prevBal = receiving[1][1];
             const newBal = d.balance;
@@ -269,7 +273,7 @@ describe('Bitcoin', () => {
     }
     client.addresses(req, (err, res) => {
       assert(err === null, err);
-      client.getBalance('BTC', res.result.data.addresses[CHANGE_INDEX], (err, d) => {
+      client.getBalance('BTC', { address: res.result.data.addresses[CHANGE_INDEX] }, (err, d) => {
         assert(err === null, err);
         assert(d.utxos.length > 0, 'Did not find any change outputs')
         assert(d.utxos[d.utxos.length - 1].value === CHANGE_AMOUNT, 'Change output was wrong')
