@@ -127,36 +127,6 @@ export default class SdkClient {
     return this.client.setupPairing(cb);
   }
 
-  //============================================================================
-  // FUNCTIONALITY TO INTERACT WITH VARIOUS BLOCKCHAINS
-  // We need to query both Bitcoin and Ethereum blockchains to get relevent
-  // account data. This means connecting to nodes
-  //============================================================================
-
-  // Initialize a connection to an Ethereum node.
-  // @param [provider] {string} - of form `${protocol}://${host}:${port}`, where `protocol` is 'ws' or 'http'
-  // @returns          {Error}  - may be null
-  // connectToEth(cb) {
-  //   ethereum.initialize(null, (err, provider) => {
-  //     if (err) return cb(err);
-
-  //     this.providers.ethereum = provider;
-  //     cb(null, provider);
-  //   });
-  // }
-
-  // Initialize a connection to Bitcoin node.
-  // @param [options] {object}
-  // @callback        err (Error), info (object)
-  // connectToBtc(cb) {
-  //   bitcoin.initialize((err, client, info) => {
-  //     if (err) return cb(err);
-
-  //     this.providers.bitcoin = client;
-  //     return cb(null, info);
-  //   })
-  // }
-
   // Get a balance for an account.
   // @param [shortcode]  {string}  - "ETH", "ERC20", or "BTC"
   // @param [addr]      {string}  - The account we are querying
