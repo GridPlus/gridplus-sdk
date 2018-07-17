@@ -1,8 +1,7 @@
 import config from './config';
-import Bitcoin from './providers/Bitcoin';
+import Bitcoin from './providers/bitcoin';
 import Debug from 'debug';
-import Ethereum from './providers/Ethereum';
-import node from './crypto/node';
+import Ethereum from './providers/ethereum';
 import AgentRestClient from './rest/client';
 
 export const providers = {
