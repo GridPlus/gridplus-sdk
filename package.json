@@ -26,7 +26,6 @@
     "url": "git+https://github.com/GridPlus/gridplus-sdk.git"
   },
   "dependencies": {
-    "@gridplus/agent-rest-client": "^1.0.3",
     "aes-js": "^3.1.1",
     "bclient": "^0.1.0",
     "bcoin": "git+https://git@github.com/gridplus/bcoin.git",
@@ -36,6 +35,7 @@
     "ethers": "^3.0.21",
     "left-pad": "^1.3.0",
     "mocha": "^5.2.0",
+    "sjcl": "^1.0.7",
     "superagent": "^3.8.3"
   },
   "devDependencies": {
