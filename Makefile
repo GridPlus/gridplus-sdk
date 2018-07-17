@@ -1,6 +1,6 @@
 AGENT_SERIAL?=agent-0
 BASE_URL?=http://localhost:80
-DEBUG?=debug,info,warn,error,fatal
+DEBUG=gridplus-sdk
 ETHEREUM_NODE_URI?=http://localhost:8545
 NPM_TOKEN?=`sed -n -e '/\/\/nexus.gridpl.us\/repository\/npm-group\/:_authToken=/ s/.*\= *//p' ~/.npmrc` #grabbing NPM_TOKEN from ~/.npmrc if its not already set as an env var
 RABBIT_MQTT_STAGING_URL?=
@@ -29,11 +29,25 @@ install:
 
 test:
 	BASE_URL=$(BASE_URL) \
+	DEBUG= \
+	ETHEREUM_NODE_URI=$(ETHEREUM_NODE_URI) \
+	npm test
+
+test-debug:
+	BASE_URL=$(BASE_URL) \
+	DEBUG=$(DEBUG) \
 	ETHEREUM_NODE_URI=$(ETHEREUM_NODE_URI) \
 	npm test
 
 test-watch:
 	BASE_URL=$(BASE_URL) \
+	DEBUG= \
+	ETHEREUM_NODE_URI=$(ETHEREUM_NODE_URI) \
+	npm run test:watch
+
+test-watch-debug:
+	BASE_URL=$(BASE_URL) \
+	DEBUG=$(DEBUG) \
 	ETHEREUM_NODE_URI=$(ETHEREUM_NODE_URI) \
 	npm run test:watch
 
