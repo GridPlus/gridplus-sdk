@@ -10,10 +10,6 @@ export const providers = {
   Ethereum,
 };
 
-export const crypto = {
-  node,
-}
-
 const debug = Debug('gridplus-sdk');
 
 export default class SdkClient {
