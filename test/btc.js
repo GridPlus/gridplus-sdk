@@ -4,6 +4,7 @@ import assert from 'assert';
 import bitcoin from 'bitcoinjs-lib';
 import { bitcoinNode, SPLIT_BUF, testing } from '../src/config.js';
 import { Client } from 'index';
+import NodeCrypto from 'crypto/node';
 import crypto from 'crypto';
 
 let startBal, startUtxos, TX_VALUE;
@@ -42,9 +43,11 @@ function mineIfNeeded(oldestUtxoHeight, done) {
 describe('Bitcoin', () => {
 
   before(() => {
+    const privKey = crypto.randomBytes(32).toString('hex');
     client = new Client({ clientConfig: { 
-      name: 'basic-test', 
-      privKey: crypto.randomBytes(32).toString('hex')     
+      name: 'basic-test',
+      crypto: NodeCrypto,
+      privKey   
     }});
   });
 
