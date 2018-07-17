@@ -3,7 +3,8 @@ import assert from 'assert';
 import EthUtil from 'ethereumjs-util';
 import Tx from 'ethereumjs-tx';
 import { SPLIT_BUF, testing } from '../src/config.js';
-import { Client, crypto, providers } from 'index';
+import { Client, providers } from 'index';
+import NodeCrypto from 'crypto/node';
 
 const { erc20Src } = testing;
 
@@ -13,15 +14,16 @@ describe('Ethereum', () => {
 
   before(() => {
 
-    const ethProvider = new providers.Ethereum();
+    const eth = new providers.Ethereum();
     client = new Client({
       clientConfig: {
         name: 'basic-test',
-        crypto: crypto.node,
-        privKey: crypto.node.randomBytes(32).toString('hex')
+        crypto: NodeCrypto,
+        privKey: NodeCrypto.randomBytes(32).toString('hex'),
       },
-      providers: [ ethProvider ],
+      providers: [ eth ],
     });
+
   });
 
   it('Should connect to an ETH node', (done) => {
