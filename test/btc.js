@@ -46,7 +46,7 @@ describe('Bitcoin', () => {
       clientConfig: {
         name: 'basic-test',
         crypto: crypto.node,
-        privKey: crypto.node.randomBytes(32),
+        privKey: crypto.node.randomBytes(32).toString('hex'),
       },
       providers: [ btcProvider ]
     });

@@ -7,17 +7,18 @@ import { Client, crypto, providers } from 'index';
 
 const { erc20Src } = testing;
 
-let client, addr, provider, erc20Addr, sender, senderPriv, balance;
+let client, addr, erc20Addr, sender, senderPriv, balance;
 
 describe('Ethereum', () => {
 
   before(() => {
+
     const ethProvider = new providers.Ethereum();
     client = new Client({
       clientConfig: {
         name: 'basic-test',
         crypto: crypto.node,
-        privKey: crypto.node.randomBytes(32)
+        privKey: crypto.node.randomBytes(32).toString('hex')
       },
       providers: [ ethProvider ],
     });
