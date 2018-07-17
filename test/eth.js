@@ -85,7 +85,6 @@ describe('Ethereum', () => {
 
   const toSend = 10 ** 18;
   it('Should transfer ETH to the address', (done) => {
-    // provider = client.providers.ethereum;
     sender = testing.ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
     // Build a tx for the sender
