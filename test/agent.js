@@ -3,8 +3,8 @@ import assert from 'assert';
 import secp256k1 from 'secp256k1';
 import { sha3, pubToAddress } from 'ethereumjs-util';
 import { api } from './../src/config.js';
-import { Client, crypto } from 'index';
-
+import { Client } from 'index';
+import crypto from 'crypto';
 const { SPLIT_BUF } = api;
 
 let client;
@@ -14,8 +14,8 @@ describe('basic tests', () => {
   before(() => {
     client = new Client({ clientConfig: { 
       name: 'basic-test', 
-      crypto: crypto.node, 
-      privKey: crypto.node.randomBytes(32) 
+      crypto: 'react-native', 
+      privKey: crypto.randomBytes(32).toString('hex')
     }});
   });
 

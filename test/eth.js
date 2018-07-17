@@ -3,7 +3,8 @@ import assert from 'assert';
 import EthUtil from 'ethereumjs-util';
 import Tx from 'ethereumjs-tx';
 import { SPLIT_BUF, testing } from '../src/config.js';
-import { Client, crypto } from 'index';
+import { Client } from 'index';
+import crypto from 'crypto';
 
 const { erc20Src } = testing;
 
@@ -14,8 +15,7 @@ describe('Ethereum', () => {
   before(() => {
     client = new Client({ clientConfig: {
       name: 'basic-test', 
-      crypto: crypto.node,
-      privKey: crypto.node.randomBytes(32)     
+      privKey: crypto.randomBytes(32).toString('hex')    
     }});
   });
 
