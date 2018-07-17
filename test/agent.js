@@ -3,8 +3,9 @@ import assert from 'assert';
 import secp256k1 from 'secp256k1';
 import { sha3, pubToAddress } from 'ethereumjs-util';
 import { api } from './../src/config.js';
-import { Client, crypto } from 'index';
-
+import { Client } from 'index';
+import ReactNativeCrypto from 'crypto/react-native';
+import crypto from 'crypto';
 const { SPLIT_BUF } = api;
 
 let client;
@@ -12,10 +13,15 @@ let client;
 describe('basic tests', () => {
 
   before(() => {
+
+    // Use React Native crypto for this series of tests.
+    // The node.js version is faster, but we want to test both
+    const privKey = crypto.randomBytes(32).toString('hex');
+    const clientCrypto = new ReactNativeCrypto(privKey);
     client = new Client({ clientConfig: {
       name: 'basic-test',
-      crypto: crypto.node,
-      privKey: crypto.node.randomBytes(32).toString('hex')
+      crypto: clientCrypto.functions(),
+      privKey
     }});
   });
 

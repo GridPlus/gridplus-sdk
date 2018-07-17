@@ -3,7 +3,9 @@ import { NodeClient } from 'bclient';
 import assert from 'assert';
 import bitcoin from 'bitcoinjs-lib';
 import { bitcoinNode, SPLIT_BUF, testing } from '../src/config.js';
-import { Client, crypto, providers } from 'index';
+import { Client, providers  } from 'index';
+import NodeCrypto from 'crypto/node';
+import crypto from 'crypto';
 
 let startBal, startUtxos, TX_VALUE;
 const CHANGE_INDEX = 3, CHANGE_AMOUNT = 9000;
@@ -41,15 +43,17 @@ function mineIfNeeded(oldestUtxoHeight, done) {
 describe('Bitcoin', () => {
 
   before(() => {
+
     const btcProvider = new providers.Bitcoin();
     client = new Client({
       clientConfig: {
         name: 'basic-test',
-        crypto: crypto.node,
-        privKey: crypto.node.randomBytes(32).toString('hex'),
+        crypto: NodeCrypto,
+        privKey: crypto.randomBytes(32).toString('hex'),
       },
       providers: [ btcProvider ]
     });
+
   });
 
   it('Should connect to a BTC node', (done) => {

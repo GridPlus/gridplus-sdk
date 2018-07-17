@@ -26,10 +26,13 @@ export default class SdkClient {
     options.clientConfig.name = options.clientConfig.name || 'gridplus-sdk';
     options.clientConfig.privKey = options.clientConfig.privKey;
 
-    if ( ! options.clientConfig.crypto)
+    if ( ! options.clientConfig.crypto) {
       throw new Error('options.clientConfig.crypto provider must be specified');
-    if ( ! options.clientConfig.privKey || options.clientConfig.privKey.length !== 64 || typeof options.clientConfig.privKey !== 'string')
+    }
+
+    if ( ! options.clientConfig.privKey || options.clientConfig.privKey.length !== 64 || typeof options.clientConfig.privKey !== 'string') {
       throw new Error('options.clientConfig.privKey must be provided as a 32 byte hex string')
+    }
 
     this.client = new AgentRestClient(options.clientConfig);
 
