@@ -1,9 +1,9 @@
 const sjcl = require('sjcl');
 let entropy, createHash, generateEntropy, randomBytes;
 
-function init(_entropy) {
+function init(e) {
   // Hash whatever the entropy provided is and use that hash as the entropy for sjcl
-  const hash = sjcl.hash.sha256.hash(_entropy);
+  const hash = sjcl.hash.sha256.hash(e);
   entropy = sjcl.codec.hex.fromBits(hash);
   // Set sjcl.random with the entropy. It should be sufficient for our purposes
   sjcl.random.addEntropy(entropy);
@@ -23,7 +23,6 @@ function init(_entropy) {
     return sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(x));
   }
 }
-
 
 function fetch() {
   return {
