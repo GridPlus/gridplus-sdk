@@ -27,6 +27,10 @@ ensure-serial:
 install:
 	npm i
 
+link-dependencies:
+	npm link @gridplus/node-crypto
+	npm link @gridplus/react-native-crypto
+
 test:
 	BASE_URL=$(BASE_URL) \
 	DEBUG= \
