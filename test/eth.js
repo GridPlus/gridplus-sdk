@@ -4,7 +4,7 @@ import EthUtil from 'ethereumjs-util';
 import Tx from 'ethereumjs-tx';
 import { SPLIT_BUF, testing } from '../src/config.js';
 import { Client, providers } from 'index';
-import NodeCrypto from 'gridplus-node-crypto';
+import NodeCrypto from '@gridplus/node-crypto';
 
 const { erc20Src } = testing;
 
