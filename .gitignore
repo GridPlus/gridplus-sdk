@@ -1,3 +1,4 @@
+package-lock.json
 .bcoin
 dist
 node_modules
