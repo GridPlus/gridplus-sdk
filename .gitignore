@@ -1,4 +1,5 @@
 package-lock.json
+.app-secret
 .bcoin
 dist
 node_modules

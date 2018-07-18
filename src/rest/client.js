@@ -32,7 +32,16 @@ export default class Client {
     this.timeoutMs = 5000;
   }
 
-  pair(cb) {
+  pair(appSecret, cb) {
+    if (typeof appSecret === 'function') {
+      cb = appSecret;
+      appSecret = null;
+    }
+
+    if (appSecret) {
+      this.appSecret = appSecret;
+    }
+
     const id = this._newId();
     const type = 'addPairing';
     const preImage = `${this.sharedSecret}${this.appSecret}`;
@@ -86,18 +95,6 @@ export default class Client {
     });
   }
 
-  // MWW NOTE: we should find a less dangerous way to test pairing than
-  // allowing an env var gate you into an ability to pair.
-  // Perhaps we can check the existence of a file on a shared volume.
-  // MWW ALSO: this breaks the pattern we have come up with for routing messages
-  // back to individual agents. It will need to be updated to request with a
-  // serial, and response back to an id.
-  setupPairing(cb) {
-    if (this.appSecret === undefined) this._genAppSecret();
-    const param = { secret: this.appSecret };
-    return this._request({ method: 'setupPairing', param }, cb);
-  }
-
   _createRequestData(data, id, type) {
     const req = JSON.stringify(data);
     const msg = this.crypto.createHash(`${id}${type}${req}`);
@@ -127,7 +124,9 @@ export default class Client {
   }
 
   _genAppSecret() {
-    this.appSecret = this.crypto.randomBytes(6);
+    if (! this.appSecret) {
+      this.appSecret = process.env.APP_SECRET; // temp step toward refactoring out to env var
+    }
     return this.appSecret;
   }
 

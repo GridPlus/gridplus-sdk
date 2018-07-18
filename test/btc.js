@@ -101,23 +101,17 @@ describe('Bitcoin', () => {
   });
 
   it('Should connect to an agent', (done) => {
-    client.connect((err, res) => {
+    const serial = process.env.AGENT_SERIAL;
+    client.connect(serial, (err, res) => {
       assert(err === null, err);
       assert(client.client.ecdhPub === res.key, 'Mismatched key on response')
       done()
     });
   });
 
-  it('Should start the pairing process on the agent', (done) => {
-    client.setupPairing((err, res) => {
-      assert(err === null, err);
-      assert(res.status === 200);
-      done();
-    });
-  });
-
   it('Should pair with the agent', (done) => {
-    client.pair((err) => {
+    const appSecret = process.env.APP_SECRET;
+    client.pair(appSecret, (err) => {
       assert(err === null, err)
       done();
     });
