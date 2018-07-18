@@ -4,7 +4,7 @@ import secp256k1 from 'secp256k1';
 import { sha3, pubToAddress } from 'ethereumjs-util';
 import { api } from './../src/config.js';
 import { Client } from 'index';
-import ReactNativeCrypto from 'crypto/react-native';
+import ReactNativeCrypto from 'gridplus-react-native-crypto';
 import crypto from 'crypto';
 const { SPLIT_BUF } = api;
 
