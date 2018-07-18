@@ -1,7 +1,7 @@
 import config from './config';
-import Bitcoin from './providers/bitcoin';
-import Debug from 'debug';
-import Ethereum from './providers/ethereum';
+import Bitcoin from './providers/Bitcoin';
+import debug from 'debug';
+import Ethereum from './providers/Ethereum';
 import AgentRestClient from './rest/client';
 
 export const providers = {
@@ -9,7 +9,7 @@ export const providers = {
   Ethereum,
 };
 
-const debug = Debug('gridplus-sdk');
+const log = debug('gridplus-sdk');
 
 export default class SdkClient {
 
@@ -35,9 +35,9 @@ export default class SdkClient {
 
     (options.providers || []).map((provider) => {
       this.providers[provider.shortcode] = provider;
-    })
+    });
 
-    debug(`gridplus sdk created with providers [${Object.keys(this.providers)}]`);
+    log(`gridplus sdk created with providers [${Object.keys(this.providers)}]`);
 
   }
 
@@ -87,14 +87,14 @@ export default class SdkClient {
 
         if ( ! provider) return reject(new Error(`no provider found with shortcode ${shortcode}`));
 
-        debug(`initializing provider ${shortcode}`);
+        log(`initializing provider ${shortcode}`);
 
         provider.initialize((err, info) => {
           if (err) return reject(err);
 
           this.providers[shortcode] = provider;
 
-          debug(`initialized provider ${shortcode}`);
+          log(`initialized provider ${shortcode}`);
           resolve(info);
         });
 

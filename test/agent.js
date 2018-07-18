@@ -16,10 +16,10 @@ describe('basic tests', () => {
     // Use React Native crypto for this series of tests.
     // The node.js version is faster, but we want to test both
     const privKey = crypto.randomBytes(32).toString('hex');
-    const rnCrypto = new ReactNativeCrypto(privKey);
+    const reactNative = new ReactNativeCrypto(privKey);
     client = new Client({ clientConfig: {
       name: 'basic-test',
-      crypto: rnCrypto,
+      crypto: reactNative,
       privKey
     }});
   });
