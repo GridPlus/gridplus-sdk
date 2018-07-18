@@ -28,7 +28,6 @@
   "dependencies": {
     "aes-js": "^3.1.1",
     "bclient": "^0.1.0",
-    "bcoin": "git+https://git@github.com/gridplus/bcoin.git",
     "debug": "^3.1.0",
     "eccrypto": "^1.0.3",
     "elliptic": "^6.4.0",
