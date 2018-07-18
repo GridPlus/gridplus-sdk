@@ -57,7 +57,11 @@ export default class SdkClient {
     connects to all configured network providers, returning the first of any encountered errors.
     else continues via supplied callback when done.
   */
-  connect(cb) {
+  connect(serial, cb) {
+    if (typeof serial === 'function') {
+      cb = serial;
+      serial = null;
+    }
     return this.client.request('connect', cb);
   }
 
@@ -105,9 +109,9 @@ export default class SdkClient {
       return cb(null, info);
     }).catch(err => cb(err));
   }
-
-  pair(name, cb) {
-    return this.client.pair(name, cb);
+  // appSecret
+  pair(appSecret, cb) {
+    return this.client.pair(appSecret, cb);
   }
 
   signAutomated(param, cb) {
@@ -116,10 +120,6 @@ export default class SdkClient {
 
   signManual(param, cb) {
     return this.client.pairedRequest('signManual', { param }, cb);
-  }
-
-  setupPairing(cb) {
-    return this.client.setupPairing(cb);
   }
 
   // Get a balance for an account.

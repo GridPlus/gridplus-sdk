@@ -8,7 +8,7 @@ import ReactNativeCrypto from '@gridplus/react-native-crypto';
 import crypto from 'crypto';
 const { SPLIT_BUF } = api;
 
-let client;
+let client, reactNative;
 
 describe('basic tests', () => {
 
@@ -16,7 +16,7 @@ describe('basic tests', () => {
     // Use React Native crypto for this series of tests.
     // The node.js version is faster, but we want to test both
     const privKey = crypto.randomBytes(32).toString('hex');
-    const reactNative = new ReactNativeCrypto(privKey);
+    reactNative = new ReactNativeCrypto(privKey);
     client = new Client({ clientConfig: {
       name: 'basic-test',
       crypto: reactNative,
@@ -25,23 +25,17 @@ describe('basic tests', () => {
   });
 
   it('Should connect to an agent', (done) => {
-    client.connect((err, res) => {
+    const serial = process.env.AGENT_SERIAL;
+    client.connect(serial, (err, res) => {
       assert(err === null, err);
       assert(client.client.ecdhPub === res.key, 'Mismatched key on response')
       done()
     });
   });
 
-  it('Should start the pairing process on the agent', (done) => {
-    client.setupPairing((err, res) => {
-      assert(err === null, err);
-      assert(res.status === 200);
-      done();
-    });
-  });
-
   it('Should pair with the agent', (done) => {
-    client.pair((err) => {
+    const appSecret = process.env.APP_SECRET;
+    client.pair(appSecret, (err) => {
       assert(err === null, err)
       done();
     });
