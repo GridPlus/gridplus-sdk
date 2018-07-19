@@ -1,4 +1,5 @@
 // Static utility functions
+const Buffer = require('buffer/').Buffer
 import aes from 'aes-js';
 import leftPad from 'left-pad';
 import elliptic from 'elliptic';
