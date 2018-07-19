@@ -90,7 +90,7 @@ export default class Bitcoin {
 
   _sortUtxos(_utxos) {
     return _utxos.sort((a, b) => {
-      return (a.height > b.height) ? 1 : ((b.height > a.height) ? 1 : 0)
+      return (a.height > b.height) ? 1 : ((b.height > a.height) ? -1 : 0)
     });
   }
 }
