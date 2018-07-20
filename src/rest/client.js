@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import superagent from 'superagent';
 import {
   decrypt,
@@ -8,13 +7,16 @@ import {
   ecdsaKeyPair,
 } from '../util';
 
-export default class RestClient {
-  constructor({ baseUrl, privKey = crypto.randomBytes(32).toString('hex') } = {}) {
+export default class Client {
+  constructor({ baseUrl, crypto, name, privKey } = {}) {
     if (!baseUrl) throw new Error('baseUrl is required');
+    if (!name) throw new Error('name is required');
+    if (!crypto) throw new Error('crypto provider is required');
 
-    // this.appSecret = appSecret;
     this.baseUrl = baseUrl;
-    this.privKey = privKey;
+    this.crypto = crypto;
+    this.name = name;
+    this.privKey = privKey || this.crypto.generateEntropy();
 
     this.key = ecdsaKeyPair(this.privKey);
     this.pubKey = this.key.getPublic().encode('hex');
@@ -30,49 +32,24 @@ export default class RestClient {
     this.timeoutMs = 5000;
   }
 
-  genAppSecret() {
-    this.appSecret = crypto.randomBytes(6).toString('hex');
-    return this.appSecret;
-  }
+  pair(appSecret, cb) {
+    if (typeof appSecret === 'function') {
+      cb = appSecret;
+      appSecret = null;
+    }
 
-  addresses(param, cb) {
-    const type = 'addresses';
-    return this.pairedRequest('addresses', { param, type }, cb);
-  }
+    if (appSecret) {
+      this.appSecret = appSecret;
+    }
 
-  addManualPermission(cb) {
-    const type = 'addManualPermission';
-    return this.pairedRequest('addManualPermission', { type }, cb);
-  }
-
-  addPermission(param, cb) {
-    const type = 'addPermission';
-    return this.pairedRequest('addPermission', { param, type }, cb);
-  }
-
-  signAutomated(param, cb) {
-    const type = 'signAutomated';
-    return this.pairedRequest('signAutomated', { param, type }, cb);
-  }
-
-  signManual(param, cb) {
-    const type = 'signManual';
-    return this.pairedRequest('signManual', { param, type }, cb);
-  }
-
-  connect(cb) {
-    return this.request('connect', cb);
-  }
-
-  pair(name, cb) {
     const id = this._newId();
     const type = 'addPairing';
     const preImage = `${this.sharedSecret}${this.appSecret}`;
 
     try {
-      const hash = crypto.createHash('sha256').update(preImage).digest();
+      const hash = this.crypto.createHash(preImage);
       const sig = this.key.sign(hash).toDER();
-      const param = { name, sig };
+      const param = { name: this.name , sig };
       const data = this._createRequestData(param, id, type);
       return this.request('pair', { key: this.ecdhPub, data, id }, (err, res) => {
         if (err) return cb(err);
@@ -83,9 +60,9 @@ export default class RestClient {
     }
   }
 
-  pairedRequest(method, { param = {}, id = this._newId(), type }, cb) {
+  pairedRequest(method, { param = {}, id = this._newId() }, cb) {
     try {
-      const data = this._createRequestData(param, id, type);
+      const data = this._createRequestData(param, id, method);
       return this.request(method, { key: this.ecdhPub, data, id }, (err, res) => {
         if (err) return cb(err);
         return this._decryptResponse(res, cb);
@@ -118,21 +95,9 @@ export default class RestClient {
     });
   }
 
-  // MWW NOTE: we should find a less dangerous way to test pairing than
-  // allowing an env var gate you into an ability to pair.
-  // Perhaps we can check the existence of a file on a shared volume.
-  // MWW ALSO: this breaks the pattern we have come up with for routing messages
-  // back to individual agents. It will need to be updated to request with a
-  // serial, and response back to an id.
-  setupPairing(cb) {
-    if (this.appSecret === undefined) this.genAppSecret();
-    const param = { secret: this.appSecret };
-    return this._request({ method: 'setupPairing', param }, cb);
-  }
-
   _createRequestData(data, id, type) {
     const req = JSON.stringify(data);
-    const msg = crypto.createHash('sha256').update(`${id}${type}${req}`).digest();
+    const msg = this.crypto.createHash(`${id}${type}${req}`);
     const body = JSON.stringify({
       data: req,
       sig: this.key.sign(msg).toDER(),
@@ -158,12 +123,19 @@ export default class RestClient {
     return cb(null, res);
   }
 
+  _genAppSecret() {
+    if (! this.appSecret) {
+      this.appSecret = process.env.APP_SECRET; // temp step toward refactoring out to env var
+    }
+    return this.appSecret;
+  }
+
   _newId() {
     // if we have a shared secret, derive a new id from it. else use random bytes.
     if (this.sharedSecret === null) {
-      return crypto.randomBytes(32).toString('hex');
+      return this.crypto.randomBytes(32);
     }
-    return crypto.createHash('sha256').update(this.sharedSecret).digest().toString('hex');
+    return this.crypto.createHash(this.sharedSecret).toString('hex');
   }
 
   _prepareNextRequest(result) {

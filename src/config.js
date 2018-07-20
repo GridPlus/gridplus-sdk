@@ -17,7 +17,7 @@ export const erc20 = {
 };
 
 export const api = {
-  baseUrl: process.env.BASE_URL || 'http://localhost:3001',
+  baseUrl: process.env.BASE_URL || 'http://localhost',
   SPLIT_BUF: '22222222222222222222222222222222',
 }
 
