@@ -114,6 +114,10 @@ export default class SdkClient {
     return this.client.pair(appSecret, cb);
   }
 
+  deletePairing(cb) {
+    return this.client.pairedRequest('deletePairing', {}, cb);
+  }
+
   signAutomated(param, cb) {
     return this.client.pairedRequest('signAutomated', { param }, cb);
   }
