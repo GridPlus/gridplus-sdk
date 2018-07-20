@@ -144,6 +144,7 @@ export default class Client {
     }
     let token = decrypt(result.newToken || result, this.headerSecret, this.counter);
     token = JSON.parse(token);
+      
     // Hacky parsing of different return schema
     // MWW NOTE: Alex, can we replace this with just always replying with the same return param structure (json)?
     // MWW NOTE: Actually, I'm not noticing any string tokens returned. Can we nuke this and use the object version only?
@@ -152,12 +153,15 @@ export default class Client {
     } else if (token.data === undefined) {
       token = { data: token };
     }
-
+    
     if (token.data.status && token.data.status !== 200) throw new Error(`remote agent signing error: status code: ${token.data.status} message: ${token.data.message}`);
-
-    // something's fishy below
-    this.counter = token.data.counter || token.data.newToken.counter;
-    this.sharedSecret = deriveSecret(this.privKey, token.data.ephemPublicKey || token.data.newToken.ephemPublicKey).toString('hex');
+    if (
+      (token.data && token.data.counter && token.data.ephemPublicKey) || 
+      (token.data.newToken && token.data.newToken.counter && token.data.newToken.ephemPublicKey)
+    ) {
+      this.counter = token.data.counter || token.data.newToken.counter;
+      this.sharedSecret = deriveSecret(this.privKey, token.data.ephemPublicKey || token.data.newToken.ephemPublicKey).toString('hex');
+    }
   }
 
   _request({ method, param }, cb) {
