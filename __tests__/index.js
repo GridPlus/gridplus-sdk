@@ -10,21 +10,6 @@ describe('integration tests', () => {
 
   describe('pairing', () => {
 
-    it('should start the pairing process (using testing feature)', (done) => {
-      // MWW NOTE: we should find a less dangerous way to test pairing than
-      // allowing an env var gate you into an ability to pair.
-      // Perhaps we can check the existence of a file on a shared volume.
-      // MWW ALSO: this breaks the pattern we have come up with for routing messages
-      // back to individual agents. It will need to be updated to request with a
-      // SERIAL, and response back to an id.
-      const client = new Client({ baseUrl });
-      client.setupPairing((err, res) => {
-        if (err) return done(err);
-        assert.equal(res.result, null);
-        done();
-      });
-    });
-
     it('should connect and get header key and pairing secret', (done) => {
       const client = new Client({ baseUrl });
       client.connect((err, res) => {
@@ -44,31 +29,28 @@ describe('integration tests', () => {
 
     it('should connect and pair an app', (done) => {
       const client = new Client({ baseUrl });
-      client.setupPairing((err) => {
+      // sut
+      client.connect((err) => {
         if (err) return done(err);
+        const name = 'my-app';
         // sut
-        client.connect((err) => {
+        client.pair(name, (err, res) => {
           if (err) return done(err);
-          const name = 'my-app';
-          // sut
-          client.pair(name, (err, res) => {
-            if (err) return done(err);
-            assert.notEqual(res.id, null);
-            assert.notEqual(res.id, undefined);
-            assert.notEqual(res.result, null);
-            assert.notEqual(res.result, undefined);
-            assert.equal(res.result.message, 'Success');
-            assert.equal(res.result.status, 200);
-            assert.notEqual(res.result.data, null);
-            assert.notEqual(res.result.data, undefined);
-            assert.notEqual(res.result.data.newToken, null);
-            assert.notEqual(res.result.data.newToken, undefined);
-            assert.notEqual(res.result.data.newToken.ephemPublicKey, null);
-            assert.notEqual(res.result.data.newToken.ephemPublicKey, undefined);
-            assert.notEqual(res.result.data.newToken.counter, null);
-            assert.notEqual(res.result.data.newToken.counter, undefined);
-            done();
-          });
+          assert.notEqual(res.id, null);
+          assert.notEqual(res.id, undefined);
+          assert.notEqual(res.result, null);
+          assert.notEqual(res.result, undefined);
+          assert.equal(res.result.message, 'Success');
+          assert.equal(res.result.status, 200);
+          assert.notEqual(res.result.data, null);
+          assert.notEqual(res.result.data, undefined);
+          assert.notEqual(res.result.data.newToken, null);
+          assert.notEqual(res.result.data.newToken, undefined);
+          assert.notEqual(res.result.data.newToken.ephemPublicKey, null);
+          assert.notEqual(res.result.data.newToken.ephemPublicKey, undefined);
+          assert.notEqual(res.result.data.newToken.counter, null);
+          assert.notEqual(res.result.data.newToken.counter, undefined);
+          done();
         });
       });
     });
@@ -79,15 +61,12 @@ describe('integration tests', () => {
 
     beforeAll((done) => {
       client = new Client({ baseUrl });
-      client.setupPairing((err) => {
-        if (err) return done(err);
-        client.connect((err) => {
+      client.connect((err) => {
+      if (err) return done(err);
+        const name = 'my-app-2';
+        client.pair(name, (err) => {
           if (err) return done(err);
-          const name = 'my-app-2';
-          client.pair(name, (err) => {
-            if (err) return done(err);
-            done(err);
-          });
+          done(err);
         });
       });
     });
@@ -206,15 +185,12 @@ describe('integration tests', () => {
 
     beforeAll((done) => {
       mqttMessagingClient = new Client({ baseUrl });
-      mqttMessagingClient.setupPairing((err) => {
+      mqttMessagingClient.connect((err) => {
         if (err) return done(err);
-        mqttMessagingClient.connect((err) => {
+        const name = 'my-app-2';
+        mqttMessagingClient.pair(name, (err) => {
           if (err) return done(err);
-          const name = 'my-app-2';
-          mqttMessagingClient.pair(name, (err) => {
-            if (err) return done(err);
-            done(err);
-          });
+          done(err);
         });
       });
     });

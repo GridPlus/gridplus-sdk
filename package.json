@@ -13,8 +13,9 @@
     "prepublish": "npm run build",
     "postinstall": "npm run build",
     "test": "mocha -R spec --require babel-core/register test --recursive --exit",
+    "test:watch": "mocha -R spec --require babel-core/register test --recursive --watch",
     "test:jest": "NODE_ENV=test jest --config jest.json --verbose",
-    "test:watch": "NODE_ENV=test jest --config jest.json --watch --coverage --verbose",
+    "test:watch:jest": "NODE_ENV=test jest --config jest.json --watch --coverage --verbose",
     "test:integration": "NODE_ENV=test jest --config jest.integration.json --coverage --verbose",
     "test:integration:watch": "NODE_ENV=test jest --config jest.integration.json --watch --coverage --verbose"
   },
@@ -25,15 +26,16 @@
     "url": "git+https://github.com/GridPlus/gridplus-sdk.git"
   },
   "dependencies": {
-    "@gridplus/agent-rest-client": "^1.0.3",
     "aes-js": "^3.1.1",
-    "bclient": "^0.1.0",
-    "bcoin": "git+https://git@github.com/gridplus/bcoin.git",
+    "bclient": "git@github.com:GridPlus/bclient.git",
+    "buffer": "^5.1.0",
+    "debug": "^3.1.0",
     "eccrypto": "^1.0.3",
     "elliptic": "^6.4.0",
     "ethers": "^3.0.21",
     "left-pad": "^1.3.0",
     "mocha": "^5.2.0",
+    "sjcl": "^1.0.7",
     "superagent": "^3.8.3"
   },
   "devDependencies": {
@@ -55,6 +57,8 @@
     "eslint-plugin-standard": "^3.0.1",
     "ethereumjs-tx": "^1.3.4",
     "ethereumjs-util": "^5.2.0",
+    "@gridplus/node-crypto": "git@github.com:gridplus/gridplus-node-crypto.git",
+    "@gridplus/react-native-crypto": "git@github.com:gridplus/gridplus-react-native-crypto.git",
     "jest": "^23.4.0",
     "mocha": "^5.2.0",
     "secp256k1": "^3.5.0"

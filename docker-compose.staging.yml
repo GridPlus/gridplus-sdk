@@ -35,7 +35,7 @@ services:
       args:
         NPM_TOKEN: ${NPM_TOKEN}
     environment:
-      - DEBUG=${DEBUG:-debug,info,warn,error,fatal}
+      - DEBUG=${DEBUG:-trace,debug,info,warn,error,fatal}
       - MQTT_URL=mqtt://mqtt-broker:1883
     restart: always
     privileged: true
@@ -56,7 +56,7 @@ services:
       - mqtt-broker
       - signing-service
     environment:
-      - DEBUG=${DEBUG:-debug,info,warn,error,fatal}
+      - DEBUG=${DEBUG:-trace,debug,info,warn,error,fatal}
       - MQTT_URL=mqtt://mqtt-broker:1883
       - PORT=80
       - SERIAL=${AGENT_SERIAL}
@@ -80,9 +80,7 @@ services:
     depends_on:
       - mqtt-broker
     environment:
-      - APP_SECRET=${APP_SECRET}
-      - DEBUG=${DEBUG:-debug,info,warn,error,fatal}
-      - LOG_LEVEL=${LOG_LEVEL}
+      - DEBUG=${DEBUG:-trace,debug,info,warn,error,fatal}
       - MQTT_SERVER_HOST=${MQTT_SERVER_HOST:-mqtt-broker}
       - MQTT_SERVER_PORT=${MQTT_SERVER_PORT:-1883}
       - SERIAL=${AGENT_SERIAL}
@@ -94,4 +92,24 @@ services:
     volumes:
       - ../../services/agent/signing-service:/usr/src/service
       - /tmp:/tmp
+      - /usr/local/lib/node_modules:/usr/local/lib/node_modules
+
+  signing-proxy-api:
+    build:
+      context: ../../services/signing-proxy-api
+      dockerfile: ./Dockerfile.mac
+      args:
+        NPM_TOKEN: ${NPM_TOKEN}
+    environment:
+      - DEBUG=${DEBUG:-trace,debug,info,warn,error,fatal}
+      - MQTT_URL=mqtt://mqtt-broker:1883
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    restart: always
+    privileged: true
+    networks:
+      - hostnet
+    volumes:
+      - ../../services/signing-proxy-api:/usr/src/service
       - /usr/local/lib/node_modules:/usr/local/lib/node_modules
