@@ -9,7 +9,7 @@ import NodeCrypto from '@gridplus/node-crypto';
 import crypto from 'crypto';
 
 let startBal, startUtxos, TX_VALUE;
-const CHANGE_INDEX = 3, CHANGE_AMOUNT = 9000;
+const CHANGE_INDEX = 2, CHANGE_AMOUNT = 9000;
 
 const { host, network, port } = bitcoinNode;
 const { btcHolder } = testing;
