@@ -99,7 +99,7 @@ describe('Ethereum', () => {
       const _balance = data.balance;
       assert(typeof _balance === 'number');
       // Note that _balances are returned in whole units (ether)
-      assert(_balance * 10**18 === (balance * 10**18) + toSend, `Expected balance of ${toSend}, but got ${_balance}`);
+      assert(_balance === balance + toSend, `Expected balance of ${balance + toSend}, but got ${_balance}`);
       balance = _balance;
       done();
     });
