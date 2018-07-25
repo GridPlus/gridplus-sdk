@@ -55,6 +55,7 @@ export default class Ethereum {
         this.provider.call({ to: erc20Address, data: config.erc20.decimals() })
         .then((decimals) => {
           erc20Decimals[erc20Address] = parseInt(decimals);
+          data.decimals = parseInt(decimals);
           // Get the balance
           return this.provider.call({ to: erc20Address, data: config.erc20.balanceOf(address) })
         })
@@ -71,7 +72,9 @@ export default class Ethereum {
         // If the decimals are cached, we can just query the balance
         this.provider.call({ to: erc20Address, data: config.erc20.balanceOf(address) })
         .then((balance) => {
-          data.balance = parseInt(balance) / 10 ** erc20Decimals[erc20Address];
+          data.decimals = erc20Decimals[erc20Address];
+          data.balance = parseInt(balance);
+          // data.balance = parseInt(balance) / 10 ** erc20Decimals[erc20Address];
           return this.getTransfers(this.provider, address, erc20Address);
         })
         .then((transfers) => {
@@ -84,7 +87,8 @@ export default class Ethereum {
       // Otherwise query for the ETH balance
       this.provider.getBalance(address)
       .then((balance) => {
-        data.balance = parseInt(balance) / 10 ** 18;
+        // data.balance = parseInt(balance) / 10 ** 18;
+        data.balance = parseInt(balance);
         return this.getTransfers(this.provider, address, erc20Address)
       })
       .then((transfers) => {

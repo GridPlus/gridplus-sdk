@@ -33,12 +33,12 @@ export default class Bitcoin {
     };
   }
 
-  getBalance ({ address }, cb) {
+  getBalance ({ address, sat = true }, cb) {
     let balances;
     if (typeof address === 'string') {
       this.getUtxosSingleAddr(address)
         .then((utxos) => { 
-          balances = this.addBalanceSingle(utxos);
+          balances = this.addBalanceSingle(utxos, sat);
           return this.getTxsSingleAddr(address)
         })
         .then((txs) => {
