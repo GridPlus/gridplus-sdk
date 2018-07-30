@@ -6,6 +6,18 @@ import { bitcoinNode, SPLIT_BUF, testing } from '../src/config.js';
 import { Client, providers  } from 'index';
 import NodeCrypto from '@gridplus/node-crypto';
 
+const regtest = {  // regtest config from bcoin: http://bcoin.io/docs/protocol_networks.js.html
+  messagePrefix: '\x18Bitcoin Signed Message:\n',
+  bech32: 'rb',
+  bip32: {
+    public: 0xeab4fa05,
+    private: 0xeab404c7
+  },
+  pubKeyHash: 0x3c,
+  scriptHash: 0x26,
+  wif: 0x5a
+}
+
 import crypto from 'crypto';
 
 let startBal, startUtxos, TX_VALUE;
@@ -13,7 +25,7 @@ const CHANGE_INDEX = 2, CHANGE_AMOUNT = 9000;
 
 const { host, network, port } = bitcoinNode;
 const { btcHolder } = testing;
-const { address } = btcHolder;
+const { regtestAddress } = btcHolder;
 // Start bcoin client. There is also one running through the SDK,
 // but we will use this instance to mine blocks
 const nodeClient = new NodeClient({
@@ -31,7 +43,8 @@ let client;
 function mineIfNeeded(oldestUtxoHeight, done) {
   nodeClient.execute('getblockcount')
   .then((b) => {
-    const numNeeded = 101 - b - oldestUtxoHeight;
+    const diff = 101 - (b - oldestUtxoHeight);
+    const numNeeded = diff > 0 ? diff : 0;
     if (numNeeded > 0) {
       nodeClient.execute('generate', [ numNeeded ])
       .then(() => { done(); })
@@ -67,7 +80,7 @@ describe('Bitcoin', () => {
 
   it('Should check the balance of a single address and set a baseline', (done) => {
     // Look for the balance and any unspent transaction outputs
-    client.getBalance('BTC', { address: testing.btcHolder.address }, (err, d) => {
+    client.getBalance('BTC', { address: testing.btcHolder.regtestAddress }, (err, d) => {
       assert(err === null, err);
       startUtxos = d.utxos;
       startBal = d.balance;
@@ -79,6 +92,13 @@ describe('Bitcoin', () => {
     nodeClient.execute('generate', [ 1 ])
     .then((blocks) => {
       assert(blocks.length === 1);
+      return nodeClient.execute('getblock', [ blocks[0] ])
+    })
+    .then((b) => {
+      return nodeClient.getTX(b.tx[0])
+    })
+    .then((tx) => {
+      assert(tx.outputs[0].address === testing.btcHolder.regtestAddress, 'Mined coinbase address is incorrect')
       done();
     })
     .catch((err) => {
@@ -89,7 +109,7 @@ describe('Bitcoin', () => {
 
   it('Should register a balance increase', (done) => {
     // Look for the balance and any unspent transaction outputs
-    client.getBalance('BTC', { address: testing.btcHolder.address }, (err, d) => {
+    client.getBalance('BTC', { address: testing.btcHolder.regtestAddress }, (err, d) => {
       assert(err === null, err);
       assert(d.utxos.length === startUtxos.length + 1, 'Block did not mine to correct coinbase');
       assert(d.balance > startBal, 'Balance did not increase. Try removing your chaindata: ~/.bcoin/regtest/chain.ldb');
@@ -130,12 +150,12 @@ describe('Bitcoin', () => {
       permissionIndex: 0,
       isManual: true,
       total: 2,
-      network: 'testnet'
+      network: 'regtest'
     }
     client.addresses(req, (err, res) => {
       assert(err === null, err);
       assert(res.result.data.addresses.length === 2);
-      assert(res.result.data.addresses[0].slice(0, 1) === '2', 'Not a testnet address');
+      // assert(res.result.data.addresses[0].slice(0, 1) === '2', 'Not a testnet address');
       const addrs = res.result.data.addresses;
       // Get the baseline balance for the addresses
       client.getBalance('BTC', { address: addrs[0] }, (err, d) => {
@@ -151,18 +171,18 @@ describe('Bitcoin', () => {
   });
 
   it('Should form a transaction and send 0.1 BTC to address 0', (done) => {
-    const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.wif, bitcoin.networks.testnet);
-    client.getBalance('BTC', { address: testing.btcHolder.address }, (err, d) => {
+    const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.regtestWif, regtest);
+    client.getBalance('BTC', { address: testing.btcHolder.regtestAddress }, (err, d) => {
       assert(err === null, err);
       const utxo = d.utxos[0];
-      const txb = new bitcoin.TransactionBuilder(bitcoin.networks.testnet);
+      const txb = new bitcoin.TransactionBuilder(regtest);
       txb.addInput(utxo.hash, utxo.index);
       // Note; this will throw if the address does not conform to the testnet
       // Need to figure out if regtest emulates the mainnet
       txb.addOutput(receiving[0][0], 1e7);
-      txb.addOutput(address, utxo.value - 1e7 - 1e3);
-
+      txb.addOutput(regtestAddress, utxo.value - 1e7 - 1e3);
       txb.sign(0, signer);
+
       const tx = txb.build().toHex();
       nodeClient.broadcast(tx)
       .then((result) => {
@@ -200,13 +220,12 @@ describe('Bitcoin', () => {
     });
   });
 
-
   it('Should spend out of the first address to the second one', (done) => {
     const req = {
       schemaIndex: 1,
       typeIndex: 2,
       fetchAccountIndex: CHANGE_INDEX,   // the account index where we'd like the change to go
-      network: 'testnet',
+      network: 'regtest',
     }
     client.getBalance('BTC', { address: receiving[0][0] }, (err, d) => {
       assert(err === null, err);
@@ -268,7 +287,7 @@ describe('Bitcoin', () => {
       permissionIndex: 0,
       isManual: true,
       total: 4,
-      network: 'testnet'
+      network: 'regtest'
     }
     client.addresses(req, (err, res) => {
       assert(err === null, err);
