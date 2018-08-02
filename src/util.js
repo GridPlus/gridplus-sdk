@@ -3,6 +3,7 @@ const Buffer = require('buffer/').Buffer
 import aes from 'aes-js';
 import leftPad from 'left-pad';
 import elliptic from 'elliptic';
+import config from './config';
 
 const EC = elliptic.ec;
 const ec = new EC('curve25519');
@@ -58,4 +59,36 @@ export function encrypt (payload, secret, counter=5) {
   const aesCtr = new aes.ModeOfOperation.ctr(secret, new aes.Counter(counter));
   const enc = aesCtr.encrypt(b);
   return aes.utils.hex.fromBytes(enc);
+}
+
+export function parseSigResponse(res) {
+  if (res.result && res.result.status === 200) {
+    const sigData = res.result.data.sigData.split(config.api.SPLIT_BUF);
+    const witnessData = res.result.witnessData;
+    let d = {
+      tx: sigData[0],
+      sigs: sigData.slice(1),
+    }
+    if (witnessData) {
+      // Remove `marker` and `flag`
+      let legacyTx = d.tx.slice(0, 9) + d.tx.slice(13);
+      // Remove witness data
+      const wi = legacyTx.indexOf(witnessData);
+      legacyTx = legacyTx.slice(0, wi) + legacyTx.slice(wi + witnessData.length);
+      // Double hash
+      d.txHash = getTxHash(legacyTx);
+      d.stxHash = getTxHash(d.tx);
+    } else {
+      d.txHash = getTxHash(d.tx);
+    }
+    return d;
+  } else {
+    return null;
+  }
+}
+
+function getTxHash(x) {
+  const h1 = ec.hash().update(x).digest('hex');
+  const h2 = ec.hash().update(h1).digest('hex');
+  return Buffer.from(h2, 'hex').reverse().toString('hex');
 }
