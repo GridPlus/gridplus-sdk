@@ -3,7 +3,7 @@ import Bitcoin from './providers/Bitcoin';
 import debug from 'debug';
 import Ethereum from './providers/Ethereum';
 import AgentRestClient from './rest/client';
-
+import { parseSigResponse } from './util';
 export const providers = {
   Bitcoin,
   Ethereum,
@@ -123,7 +123,12 @@ export default class SdkClient {
   }
 
   signManual(param, cb) {
-    return this.client.pairedRequest('signManual', { param }, cb);
+    return this.client.pairedRequest('signManual', { param }, (err, res) => {
+      if (err) return cb(err);
+      const data = parseSigResponse(res);
+      res.data = data;
+      cb(null, res);
+    });
   }
 
   // Get a balance for an account.
