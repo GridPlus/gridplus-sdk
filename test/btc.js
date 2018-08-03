@@ -54,6 +54,8 @@ function mineIfNeeded(oldestUtxoHeight, done) {
   })
 }
 
+process.on('unhandledRejection', e => { throw e; });
+
 describe('Bitcoin', () => {
 
   before(() => {
@@ -184,17 +186,9 @@ describe('Bitcoin', () => {
       txb.sign(0, signer);
 
       const tx = txb.build().toHex();
-      nodeClient.broadcast(tx)
-      .then((result) => {
-        assert(result.success === true, 'Could not broadcast transaction');
-        return nodeClient.getMempool();
-      })
-      .then((mempool) => {
-        assert(mempool.length > 0, `Found empty mempool: ${mempool}`)
-        done();
-      })
-      .catch((err) => {
+      client.broadcast('BTC', { tx }, (err, res) => {
         assert(err === null, err);
+        assert(res.timestamp > 0, 'Could not broadcast properly');
         done();
       });
     });
@@ -247,39 +241,29 @@ describe('Bitcoin', () => {
       // Build a transaction and sign it in the k81
       client.signManual(req, (err, res) => {
         assert(err === null, err);
-        const sigData = res.result.data.sigData.split(SPLIT_BUF);
-        const tx = sigData[0];
-        console.log('res', res)
         // Broadcast the transaction
-        nodeClient.broadcast(tx)
-        .then((success) => {
-          assert(success.success === true, 'Failed to broadcast transaction')
-          // Check the mempool
-          return nodeClient.getMempool()
-        })
-        .then((mempool) => {
-          console.log('mempool', mempool)
-          assert(mempool.length > 0, 'Found empty mempool');
-          assert(mempool[0] === res.data.txHash, 'Returned txHash is incorrect');
-          // Mine a block
-          return nodeClient.execute('generate', [ 1 ])
-        })
-        .then(() => {
-          return nodeClient.getMempool()
-        })
-        .then((mempool) => {
-          assert(mempool.length === 0, `Mempool not empty: ${mempool}`)
-          client.getBalance('BTC', { address: receiving[1][0] }, (err, d) => {
-            // Check the balance of the receiving address
-            const prevBal = receiving[1][1];
-            const newBal = d.balance;
-            assert(newBal === TX_VALUE + prevBal, `Expected new balance of ${TX_VALUE + prevBal}, got ${newBal}`);
-            done();
-          })
-        })
-        .catch((err) => {
+        client.broadcast('BTC', res.data, (err, res) => {
           assert(err === null, err);
-          done();
+          assert(res.timestamp > 0, 'Could not broadcast properly');
+       
+          nodeClient.execute('generate', [ 1 ])
+          .then(() => {
+            return nodeClient.getMempool()
+          })
+          .then((mempool) => {
+            assert(mempool.length === 0, `Mempool not empty: ${mempool}`)
+            client.getBalance('BTC', { address: receiving[1][0] }, (err, d) => {
+              // Check the balance of the receiving address
+              const prevBal = receiving[1][1];
+              const newBal = d.balance;
+              assert(newBal === TX_VALUE + prevBal, `Expected new balance of ${TX_VALUE + prevBal}, got ${newBal}`);
+              done();
+            })
+          })
+          .catch((err) => {
+            assert(err === null, err);
+            done();
+          });
         });
       });
     });

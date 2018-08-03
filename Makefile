@@ -42,6 +42,12 @@ install:
 link-dependencies:
 	meta npm link
 
+mine:
+	curl localhost:48332 \
+  -X POST \
+  --data '{"method": "generate","params": [ '1' ]}'
+
+
 test: ensure-serial
 	AGENT_SERIAL=$(AGENT_SERIAL) \
 	APP_SECRET=$(APP_SECRET) \
