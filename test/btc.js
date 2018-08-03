@@ -249,6 +249,7 @@ describe('Bitcoin', () => {
         assert(err === null, err);
         const sigData = res.result.data.sigData.split(SPLIT_BUF);
         const tx = sigData[0];
+        console.log('res', res)
         // Broadcast the transaction
         nodeClient.broadcast(tx)
         .then((success) => {
@@ -257,7 +258,9 @@ describe('Bitcoin', () => {
           return nodeClient.getMempool()
         })
         .then((mempool) => {
-          assert(mempool.length > 0, 'Found empty mempool')
+          console.log('mempool', mempool)
+          assert(mempool.length > 0, 'Found empty mempool');
+          assert(mempool[0] === res.data.txHash, 'Returned txHash is incorrect');
           // Mine a block
           return nodeClient.execute('generate', [ 1 ])
         })

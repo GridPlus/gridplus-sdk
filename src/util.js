@@ -88,7 +88,8 @@ export function parseSigResponse(res) {
 }
 
 function getTxHash(x) {
-  const h1 = ec.hash().update(x).digest('hex');
+  if (typeof x === 'string') x = Buffer.from(x, 'hex');
+  const h1 = ec.hash().update(x).digest();
   const h2 = ec.hash().update(h1).digest('hex');
   return Buffer.from(h2, 'hex').reverse().toString('hex');
 }
