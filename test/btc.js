@@ -1,5 +1,5 @@
 // Basic tests for atomic SDK functionality
-import { NodeClient } from 'bcli@gridplus/bclientent';
+import { NodeClient } from '@gridplus/bclient';
 import assert from 'assert';
 import bitcoin from 'bitcoinjs-lib';
 import { bitcoinNode, SPLIT_BUF, testing } from '../src/config.js';
