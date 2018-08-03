@@ -37,7 +37,8 @@ ensure-serial:
 
 install:
 	NPM_CONFIG_REGISTRY=$(NPM_CONFIG_REGISTRY) \
-	npm i
+	NPM_TOKEN=$(NPM_TOKEN) \
+	docker-compose -f docker-compose.builder.yml run install
 
 link-dependencies:
 	meta npm link

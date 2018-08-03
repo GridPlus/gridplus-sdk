@@ -1,5 +1,5 @@
 // Basic tests for atomic SDK functionality
-import { NodeClient } from 'bclient';
+import { NodeClient } from 'bcli@gridplus/bclientent';
 import assert from 'assert';
 import bitcoin from 'bitcoinjs-lib';
 import { bitcoinNode, SPLIT_BUF, testing } from '../src/config.js';
@@ -245,7 +245,7 @@ describe('Bitcoin', () => {
         client.broadcast('BTC', res.data, (err, res) => {
           assert(err === null, err);
           assert(res.timestamp > 0, 'Could not broadcast properly');
-       
+
           nodeClient.execute('generate', [ 1 ])
           .then(() => {
             return nodeClient.getMempool()
