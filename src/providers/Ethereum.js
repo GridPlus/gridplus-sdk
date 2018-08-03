@@ -12,6 +12,18 @@ export default class Ethereum {
     this.shortcode = 'ETH';
   }
 
+  broadcast (tx, cb) {
+    if (typeof tx !== 'string') return cb('Error: transaction should be a 0x-prefixed hex string.');
+    this.provider.sendTransaction(tx)
+    .then((txHash) => {  
+      return cb(null, { txHash, timestamp: new Date().getTime() });
+    })
+    .catch((err) => { 
+      return cb(err);
+    })
+  }
+
+
   buildTx (from, to, value, opts = {}, cb) {
     if (typeof from !== 'string') {
       cb('Please specify a single address to transfer from');

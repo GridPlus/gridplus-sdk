@@ -1,5 +1,6 @@
 import { NodeClient } from 'bclient';
 import config from '../config.js';
+import { getTxHash } from '../util';
 
 export default class Bitcoin {
   constructor (/* TODO: pass config in via ctor */) {
@@ -31,6 +32,25 @@ export default class Bitcoin {
     return {
       utxos, balance
     };
+  }
+
+  broadcast(txData, cb) {
+    let { tx, txHash } = txData;
+    if (!txHash) txHash = getTxHash(tx);
+    this.client.broadcast(tx)
+    .then((success) => {
+      if (!success.success) return cb('Could not broadcast transaction. Please try again later.');
+      return this.client.execute('getmempoolentry', [txHash])
+    })
+    .then((mempoolEntry) => {
+      if (!mempoolEntry || !mempoolEntry.time) {
+        return cb('Could not find broadcasted transaction. Try resubmitting it.');
+      }
+      return cb(null, { txHash, timestamp: mempoolEntry.time });
+    })
+    .catch((err) => {
+      return cb(err);
+    })
   }
 
   getBalance ({ address, sat = true }, cb) {
