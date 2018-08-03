@@ -149,6 +149,15 @@ export default class SdkClient {
     return this.providers[shortcode].getBalance(options, cb);
   }
 
+  // Broadcast a transaction and return the result of the mempool
+  broadcast(shortcode, payload, cb) {
+    if (! this.providers[shortcode]) {
+      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
+    }
+
+    return this.providers[shortcode].broadcast(payload, cb);
+  }
+
   // Build a transaction
   // @param [shortcode]  {string}          - "ETH" or "BTC"
   // @param [to]      {string}          - Receiving address
