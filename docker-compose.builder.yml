@@ -1,29 +1,32 @@
-version: '3.4'
+version: '2.1'
 
 services:
 
-  # install:
-  #   image: node:9-alpine
-  #   environment:
-  #     - NPM_TOKEN=${NPM_TOKEN}
-  #   volumes:
-  #     - .:/usr/src/service
-  #     # - /usr/local/lib/node_modules:/usr/local/lib/node_modules
-  #     # - /usr/local/lib/node_modules/@gridplus/mqtt-client:/usr/local/lib/node_modules/@gridplus/mqtt-client
-  #   working_dir: /usr/src/service
-  #   privileged: true
-  #   user: node
-  #   command: /usr/local/bin/npm i
+  base:
+    image: docker.gridpl.us/gridplus/node-build
+    environment:
+      - NPM_CONFIG_REGISTRY=${NPM_CONFIG_REGISTRY}
+      - NPM_TOKEN=${NPM_TOKEN}
+    volumes:
+      - .:/usr/src/service
+    working_dir: /usr/src/service
 
-  # test:
-  #   image: node:9-alpine
-  #   environment:
-  #     - NPM_TOKEN=${NPM_TOKEN}
-  #   volumes:
-  #     - .:/usr/src/service
-  #     # - /usr/local/lib/node_modules:/usr/local/lib/node_modules
-  #     # - /usr/local/lib/node_modules/@gridplus/mqtt-client:/usr/local/lib/node_modules/@gridplus/mqtt-client
-  #   working_dir: /usr/src/service
-  #   privileged: true
-  #   user: node
-  #   command: /usr/local/bin/npm test
+  install:
+    extends:
+      service: base
+    volumes:
+      - .:/usr/src/service
+      # - /usr/local/lib/node_modules:/usr/local/lib/node_modules
+      # - /usr/local/lib/node_modules/@gridplus/node-crypto:/usr/local/lib/node_modules/@gridplus/node-crypto
+      # - /usr/local/lib/node_modules/@gridplus/react-native-crypto:/usr/local/lib/node_modules/@gridplus/react-native-crypto
+    command: npm i
+
+  test:
+    extends:
+      service: base
+    volumes:
+      - .:/usr/src/service
+      # - /usr/local/lib/node_modules:/usr/local/lib/node_modules
+      # - /usr/local/lib/node_modules/@gridplus/node-crypto:/usr/local/lib/node_modules/@gridplus/node-crypto
+      # - /usr/local/lib/node_modules/@gridplus/react-native-crypto:/usr/local/lib/node_modules/@gridplus/react-native-crypto
+    command: npm test

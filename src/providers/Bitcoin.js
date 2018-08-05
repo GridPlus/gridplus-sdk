@@ -1,4 +1,4 @@
-import { NodeClient } from 'bclient';
+import { NodeClient } from '@gridplus/bclient';
 import config from '../config.js';
 import { getTxHash } from '../util';
 
@@ -57,7 +57,7 @@ export default class Bitcoin {
     let balances;
     if (typeof address === 'string') {
       this.getUtxosSingleAddr(address)
-        .then((utxos) => { 
+        .then((utxos) => {
           balances = this.addBalanceSingle(utxos, sat);
           return this.getTxsSingleAddr(address)
         })
@@ -73,12 +73,12 @@ export default class Bitcoin {
       // while bcoin's regtest addrs start with R. I don't know how to get
       // theirs from a public key
       /*this.getUtxosMultipleAddrs(address)
-        .then((utxos) => { 
+        .then((utxos) => {
           balances = this.addBalanceMultiple(utxos);
           return this.getTxsMultipleAddrs(address)
         })
         .then((txs) => {
-          // balances.txs 
+          // balances.txs
           cb(null, balances);
         })
         .catch((err) => { cb(err); })
