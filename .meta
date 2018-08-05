@@ -1,5 +1,8 @@
 {
   "projects": {
+    "../bclient": "git@github.com:GridPlus/bclient.git",
+    "../bcurl": "git@github.com:GridPlus/bcurl.git",
+    "../brq": "git@github.com:GridPlus/brq.git",
     "../gridplus-node-crypto": "git@github.com:GridPlus/gridplus-node-crypto.git",
     "../gridplus-react-native-crypto": "git@github.com:GridPlus/gridplus-react-native-crypto.git"
   }

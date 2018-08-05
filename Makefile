@@ -40,8 +40,8 @@ install:
 	NPM_TOKEN=$(NPM_TOKEN) \
 	docker-compose -f docker-compose.builder.yml run install
 
-link-dependencies:
-	meta npm link
+link:
+	meta npm link -all
 
 mine:
 	curl localhost:48332 \
