@@ -86,6 +86,10 @@ export default class Ethereum {
         .then((balance) => {
           data.decimals = erc20Decimals[erc20Address];
           data.balance = parseInt(balance);
+          return this.provider.getTransactionCount(address)
+        })
+        .then((nonce) => {
+          data.nonce = parseInt(nonce);
           // data.balance = parseInt(balance) / 10 ** erc20Decimals[erc20Address];
           return this.getTransfers(this.provider, address, erc20Address);
         })
@@ -99,8 +103,11 @@ export default class Ethereum {
       // Otherwise query for the ETH balance
       this.provider.getBalance(address)
       .then((balance) => {
-        // data.balance = parseInt(balance) / 10 ** 18;
         data.balance = parseInt(balance);
+        return this.provider.getTransactionCount(address)
+      })
+      .then((nonce) => {
+        data.nonce = parseInt(nonce);
         return this.getTransfers(this.provider, address, erc20Address)
       })
       .then((transfers) => {
