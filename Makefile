@@ -48,6 +48,9 @@ mine:
   -X POST \
   --data '{"method": "generate","params": [ '1' ]}'
 
+publish:
+	NPM_CONFIG_REGISTRY=$(NPM_CONFIG_REGISTRY) \
+	npm publish
 
 test: ensure-serial
 	AGENT_SERIAL=$(AGENT_SERIAL) \
