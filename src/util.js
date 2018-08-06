@@ -62,34 +62,149 @@ export function encrypt (payload, secret, counter=5) {
 }
 
 export function parseSigResponse(res) {
-  if (res.result && res.result.status === 200) {
-    const sigData = res.result.data.sigData.split(config.api.SPLIT_BUF);
-    const witnessData = res.result.witnessData;
-    let d = {
-      tx: sigData[0],
-      sigs: sigData.slice(1),
+  let data;
+  if (res.result && res.result.status === 200) {    
+    switch (res.result.data.schemaIndex) {
+      case 0: // ETH
+        return parseEthTx(res);
+      case 1: // BTC
+        return parseBtcTx(res);
+      default:
+        return null;
     }
-    if (witnessData) {
-      // Remove `marker` and `flag`
-      let legacyTx = d.tx.slice(0, 9) + d.tx.slice(13);
-      // Remove witness data
-      const wi = legacyTx.indexOf(witnessData);
-      legacyTx = legacyTx.slice(0, wi) + legacyTx.slice(wi + witnessData.length);
-      // Double hash
-      d.txHash = getTxHash(legacyTx);
-      d.stxHash = getTxHash(d.tx);
-    } else {
-      d.txHash = getTxHash(d.tx);
-    }
-    return d;
   } else {
     return null;
   }
 }
+
+// Get the serialized transaction and the appropriate txHash
+function parseBtcTx(res) {
+  const sigData = res.result.data.sigData.split(config.api.SPLIT_BUF);
+  const witnessData = res.result.witnessData;
+  let d = {
+    tx: sigData[0],
+  }
+  if (witnessData) {
+    // Remove `marker` and `flag`
+    let legacyTx = d.tx.slice(0, 9) + d.tx.slice(13);
+    // Remove witness data
+    const wi = legacyTx.indexOf(witnessData);
+    legacyTx = legacyTx.slice(0, wi) + legacyTx.slice(wi + witnessData.length);
+    // Double hash
+    d.txHash = getTxHash(legacyTx);
+    d.stxHash = getTxHash(d.tx);
+  } else {
+    d.txHash = getTxHash(d.tx);
+  }
+  return d;
+}
+
+function parseEthTx(res) {
+  const sigData = res.result.data.sigData.split(config.api.SPLIT_BUF);
+  let d = {
+    sigs: sigData.slice(1),
+    vrs: []
+  }
+  d.sigs.forEach((sig) => {
+    d.vrs.push([ parseInt(sig.slice(-1)) + 27, sig.slice(0, 64), sig.slice(64, 128) ]);
+  });
+  // Transaction should be an array of all the original params plus the v,r,s array (there should only be one of those)
+  const vrsToUse = [ d.vrs[0][0], Buffer.from(d.vrs[0][1], 'hex'), Buffer.from(d.vrs[0][2], 'hex') ];
+  d.tx = `0x${rlpEncode(res.result.data.params.concat(vrsToUse)).toString('hex')}`;
+  d.txHash = null;
+  return d;
+}
+
 
 export function getTxHash(x) {
   if (typeof x === 'string') x = Buffer.from(x, 'hex');
   const h1 = ec.hash().update(x).digest();
   const h2 = ec.hash().update(h1).digest('hex');
   return Buffer.from(h2, 'hex').reverse().toString('hex');
+}
+
+function encodeLength (len, offset) {
+  if (len < 56) {
+    return Buffer.from([len + offset])
+  } else {
+    var hexLength = intToHex(len)
+    var lLength = hexLength.length / 2
+    var firstByte = intToHex(offset + 55 + lLength)
+    return Buffer.from(firstByte + hexLength, 'hex')
+  }
+}
+
+function intToHex (i) {
+  var hex = i.toString(16)
+  if (hex.length % 2) {
+    hex = '0' + hex
+  }
+  return hex
+}
+
+function intToBuffer (i) {
+  var hex = intToHex(i)
+  return Buffer.from(hex, 'hex')
+}
+
+function isHexPrefixed (str) {
+  return str.slice(0, 2) === '0x'
+}
+
+function padToEven (a) {
+  if (a.length % 2) a = '0' + a
+  return a
+}
+
+function stripHexPrefix (str) {
+  if (typeof str !== 'string') {
+    return str
+  }
+  return isHexPrefixed(str) ? str.slice(2) : str
+}
+
+function toBuffer (v) {
+  if (!Buffer.isBuffer(v)) {
+    if (typeof v === 'string') {
+      if (isHexPrefixed(v)) {
+        v = Buffer.from(padToEven(stripHexPrefix(v)), 'hex')
+      } else {
+        v = Buffer.from(v)
+      }
+    } else if (typeof v === 'number') {
+      if (!v) {
+        v = Buffer.from([])
+      } else {
+        v = intToBuffer(v)
+      }
+    } else if (v === null || v === undefined) {
+      v = Buffer.from([])
+    } else if (v.toArray) {
+      // converts a BN to a Buffer
+      v = Buffer.from(v.toArray())
+    } else if (v instanceof Uint8Array) {
+      v = Buffer.from(v)
+    } else {
+      throw new Error('invalid type')
+    }
+  }
+  return v
+}
+
+function rlpEncode(input) {
+  if (input instanceof Array) {
+    var output = []
+    for (var i = 0; i < input.length; i++) {
+      output.push(rlpEncode(input[i]))
+    }
+    var buf = Buffer.concat(output)
+    return Buffer.concat([encodeLength(buf.length, 192), buf])
+  } else {
+    input = toBuffer(input)
+    if (input.length === 1 && input[0] < 128) {
+      return input
+    } else {
+      return Buffer.concat([encodeLength(input.length, 128), input])
+    }
+  }
 }

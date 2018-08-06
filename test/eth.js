@@ -212,8 +212,7 @@ describe('Ethereum', () => {
         assert(signer === addr, `Expected signer to be ${addr}, got ${signer}`);
 
         // Create a new transaction with the returned signature
-        const newTx = new Tx(tx.concat(vrs));
-        client.broadcast('ETH', `0x${newTx.serialize().toString('hex')}`, (err, res) => {
+        client.broadcast('ETH', res.data.tx, (err, res) => {
           assert(err === null, err);
           assert(res && res.txHash, 'Did not broadcast properly');
           client.providers.ETH.provider.getTransaction(res.txHash)
@@ -246,9 +245,8 @@ describe('Ethereum', () => {
         const v = parseInt(sig.slice(-1)) + 27;
         const vrs = [ v, Buffer.from(sig.slice(0, 64), 'hex'), Buffer.from(sig.slice(64, 128), 'hex'),  ];
         const newTx = new Tx(tx.concat(vrs));
-        // client.providers.ETH.provider.sendTransaction(`0x${newTx.serialize().toString('hex')}`)
-        client.broadcast('ETH', `0x${newTx.serialize().toString('hex')}`, (err, res) => {
-
+        // client.broadcast('ETH', `0x${newTx.serialize().toString('hex')}`, (err, res) => {
+        client.broadcast('ETH', res.data.tx, (err, res) => {
           assert(err === null, err);
           assert(res && res.txHash, 'Did not broadcast properly');
           client.providers.ETH.provider.getTransaction(res.txHash)
