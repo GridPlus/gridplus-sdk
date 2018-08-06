@@ -71,6 +71,7 @@ describe('Ethereum', () => {
       addr = res.result.data.addresses;
       client.getBalance('ETH', { address: addr }, (err, data) => {
         assert.equal(err, null, err);
+        assert(data.nonce > -1);
         balance = data.balance;
         done();
       });
@@ -255,6 +256,7 @@ describe('Ethereum', () => {
             assert(receipt.blockNumber > 0, 'Transaction not included in block');
             client.getBalance('ETH', { address: addr, erc20Address: erc20Addr }, (err, data) => {
               assert(err === null, err);
+              assert(data.nonce > -1);
               assert(data.transfers.out.length > 0);
               done();
             });
