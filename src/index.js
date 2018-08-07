@@ -150,11 +150,15 @@ export default class SdkClient {
   }
 
   // Get (one or more) transaction(s) and return (one or more) object(s) that conform to a common schema across currencies
-  getTx(shortcode, hashes, cb) {
+  getTx(shortcode, hashes, opts, cb) {
     if (! this.providers[shortcode]) {
       return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
     }
-    return this.providers[shortcode].getTx(hashes, cb);
+    if (typeof opts === 'function') {
+      cb = opts;
+      opts = {};
+    }
+    return this.providers[shortcode].getTx(hashes, cb, opts);
   }
 
   // Broadcast a transaction and return the result of the mempool

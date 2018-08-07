@@ -189,11 +189,15 @@ export default class Ethereum {
     return this.provider.getTransaction(hash)
     .then((txRaw) => {
       tx = {
+        currency: 'ETH',
         hash: txRaw.hash,
         height: txRaw.blockNumber || -1,
         from: txRaw.from,
         to: txRaw.to,
         value: this._getValue(txRaw),
+        fee: this._getFee(txRaw),
+        in: 0,  // For now, we can assume any transactions are outgoing. TODO: figure a way to get incoming txs
+        data: txRaw,
       }
       const fCode = txRaw.data.slice(2, 10);
       if (tx.value === 0 && fCode === config.ethFunctionCodes.ERC20Transfer) {
@@ -225,11 +229,18 @@ export default class Ethereum {
   _getValue(tx) {
     if (tx.value.toString() !== '0') {
       const factor = BigNumber('-1e18');
-      let value = BigNumber(tx.gasPrice.mul(tx.gasLimit).add(tx.value).toString());
-      return value.dividedBy(factor).toString();
+      const value = BigNumber(tx.value.toString());
+      return value.div(factor).toString();
     } else {
       return 0;
     }
+  }
+
+  _getFee(tx) {
+    // let value = BigNumber(tx.gasPrice.mul(tx.gasLimit).add(tx.value).toString());
+    const factor = BigNumber('-1e18');
+    const weiFee = new BigNumber(tx.gasPrice.mul(tx.gasLimit).toString());
+    return weiFee.div(factor).toString();
   }
 
   _parseLog(log, type, decimals=0) {
