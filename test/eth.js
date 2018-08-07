@@ -91,7 +91,7 @@ describe('Ethereum', () => {
       const tx = `0x${serTx.toString('hex')}`;
       client.broadcast('ETH', tx, (err, res) => {
         assert(err === null, err);
-        assert(res && res.txHash && res.timestamp, 'Did not broadcast properly')
+        assert(res && res.hash && res.timestamp, 'Did not broadcast properly')
         done();
       })
     })
@@ -125,8 +125,8 @@ describe('Ethereum', () => {
       const tx = `0x${serTx.toString('hex')}`;
       client.broadcast('ETH', tx, (err, res) => {
         assert(err === null, err);
-        assert(res && res.txHash, 'Did not broadcast properly');
-        client.providers.ETH.provider.getTransactionReceipt(res.txHash)
+        assert(res && res.hash, 'Did not broadcast properly');
+        client.providers.ETH.provider.getTransactionReceipt(res.hash)
         .then((receipt) => {
           assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
           erc20Addr = receipt.contractAddress;
@@ -167,8 +167,8 @@ describe('Ethereum', () => {
       // return client.providers.ETH.provider.sendTransaction(`0x${serTx.toString('hex')}`)
       client.broadcast('ETH', tx, (err, res) => {
         assert(err === null, err);
-        assert(res && res.txHash, 'Did not broadcast properly');
-        client.providers.ETH.provider.getTransactionReceipt(res.txHash)
+        assert(res && res.hash, 'Did not broadcast properly');
+        client.providers.ETH.provider.getTransactionReceipt(res.hash)
         .then((receipt) => {
           assert(receipt.logs.length > 0, 'Transaction did not emit any logs.');
           done();
@@ -214,8 +214,8 @@ describe('Ethereum', () => {
         // Create a new transaction with the returned signature
         client.broadcast('ETH', res.data.tx, (err, res) => {
           assert(err === null, err);
-          assert(res && res.txHash, 'Did not broadcast properly');
-          client.providers.ETH.provider.getTransaction(res.txHash)
+          assert(res && res.hash, 'Did not broadcast properly');
+          client.providers.ETH.provider.getTransaction(res.hash)
           .then((receipt) => {
             assert(receipt.blockNumber > 0, 'Transaction not included in block');
             client.getBalance('ETH', { address: addr }, (err, data) => {
@@ -248,8 +248,8 @@ describe('Ethereum', () => {
         // client.broadcast('ETH', `0x${newTx.serialize().toString('hex')}`, (err, res) => {
         client.broadcast('ETH', res.data.tx, (err, res) => {
           assert(err === null, err);
-          assert(res && res.txHash, 'Did not broadcast properly');
-          client.providers.ETH.provider.getTransaction(res.txHash)
+          assert(res && res.hash, 'Did not broadcast properly');
+          client.providers.ETH.provider.getTransaction(res.hash)
           .then((receipt) => {
             assert(receipt.blockNumber > 0, 'Transaction not included in block');
             client.getBalance('ETH', { address: addr, erc20Address: erc20Addr }, (err, data) => {
