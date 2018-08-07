@@ -181,7 +181,7 @@ describe('Ethereum', () => {
       });
     });
   });
-/*
+
   it('Should get the token transfer history for the user', (done) => {
     client.getBalance('ETH', { address: addr, erc20Address: erc20Addr }, (err, data) => {
       assert(err === null, err);
@@ -219,9 +219,9 @@ describe('Ethereum', () => {
         client.broadcast('ETH', res.data.tx, (err, res) => {
           assert(err === null, err);
           assert(res && res.hash, 'Did not broadcast properly');
-          client.providers.ETH.provider.getTransaction(res.hash)
-          .then((receipt) => {
-            assert(receipt.blockNumber > 0, 'Transaction not included in block');
+          client.getTx('ETH', res.hash, (err, tx) => {
+            assert(err === null, err);
+            assert(tx.height > -1, 'Block was not mined');
             client.getBalance('ETH', { address: addr }, (err, data) => {
               assert(err === null, err);
               assert(data.balance < balance, 'Balance did not reduce');
@@ -253,9 +253,10 @@ describe('Ethereum', () => {
         client.broadcast('ETH', res.data.tx, (err, res) => {
           assert(err === null, err);
           assert(res && res.hash, 'Did not broadcast properly');
-          client.providers.ETH.provider.getTransaction(res.hash)
-          .then((receipt) => {
-            assert(receipt.blockNumber > 0, 'Transaction not included in block');
+          // client.providers.ETH.provider.getTransaction(res.hash)
+          client.getTx('ETH', res.hash, (err, tx) => {
+            assert(err === null, err);
+            assert(tx.height > -1, 'Transaction not included in block');
             client.getBalance('ETH', { address: addr, erc20Address: erc20Addr }, (err, data) => {
               assert(err === null, err);
               assert(data.nonce > -1);
@@ -267,5 +268,5 @@ describe('Ethereum', () => {
       });
     });
   });
-  */
+  
 });
