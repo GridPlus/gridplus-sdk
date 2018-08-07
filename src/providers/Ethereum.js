@@ -1,6 +1,7 @@
 import ethers from 'ethers';
 import config from '../config.js';
 import { pad64, unpad } from '../util.js';
+import { BigNumber } from 'bignumber.js';
 
 const erc20Decimals = {};
 
@@ -118,6 +119,21 @@ export default class Ethereum {
     }
   }
 
+  getTx(hashes, cb, filled=[]) {
+    if (typeof hashes === 'string') {
+      return this._getTx(hashes, cb);
+    } else if (hashes.length === 0) {
+      return cb(null, filled);
+    } else {
+      const hash = hashes.shift();
+      return this._getTx(hash, (err, tx) => {
+        if (err) return cb(err)
+        filled.push(tx);
+        return this.getTx(hashes, cb, filled);
+      });
+    }
+  }
+
   initialize (cb) {
     return cb(null, this.provider);
   }
@@ -166,6 +182,54 @@ export default class Ethereum {
       .then((events) => { return resolve(events); })
       .catch((err) => { return reject(err); })
     });
+  }
+
+  _getTx(hash, cb) {
+    let tx;
+    return this.provider.getTransaction(hash)
+    .then((txRaw) => {
+      tx = {
+        hash: txRaw.hash,
+        height: txRaw.blockNumber || -1,
+        from: txRaw.from,
+        to: txRaw.to,
+        value: this._getValue(txRaw),
+      }
+      const fCode = txRaw.data.slice(2, 10);
+      if (tx.value === 0 && fCode === config.ethFunctionCodes.ERC20Transfer) {
+        return this._getERC20TransferValue(hash, (err, erc20Tx) => {
+          if (err) return cb(err);
+          tx.to = erc20Tx.to;
+          tx.contract = erc20Tx.contract;
+          tx.value = erc20Tx.value;
+          tx.from = erc20Tx.from;
+          return cb(null, tx);
+        })
+      } else {
+        return cb(null, tx); 
+      }
+    })
+    .catch((err) => { return cb(err); })
+  }
+
+  _getERC20TransferValue(hash, cb) {
+    return this.provider.getTransactionReceipt(hash)
+    .then((receipt) => {
+      return cb(null, this._parseLog(receipt.logs[0], 'ERC20'));
+    })
+    .catch((err) => {
+      return cb(err);
+    })
+  }
+
+  _getValue(tx) {
+    if (tx.value.toString() !== '0') {
+      const factor = BigNumber('-1e18');
+      let value = BigNumber(tx.gasPrice.mul(tx.gasLimit).add(tx.value).toString());
+      return value.dividedBy(factor).toString();
+    } else {
+      return 0;
+    }
   }
 
   _parseLog(log, type, decimals=0) {
