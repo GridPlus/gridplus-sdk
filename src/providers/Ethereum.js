@@ -16,7 +16,7 @@ export default class Ethereum {
     if (typeof tx !== 'string') return cb('Error: transaction should be a 0x-prefixed hex string.');
     this.provider.sendTransaction(tx)
     .then((txHash) => {  
-      return cb(null, { txHash, timestamp: new Date().getTime() });
+      return cb(null, { hash: txHash, timestamp: new Date().getTime() });
     })
     .catch((err) => { 
       return cb(err);

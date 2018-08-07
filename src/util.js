@@ -101,18 +101,29 @@ function parseBtcTx(res) {
 
 function parseEthTx(res) {
   const sigData = res.result.data.sigData.split(config.api.SPLIT_BUF);
+  const { params } = res.result.data;
   let d = {
     sigs: sigData.slice(1),
-    vrs: []
+    vrs: [],
+    to: params[3],
+    value: getEthValue(params),
+    height: -1,  // Everything passing through here will be unmined
   }
   d.sigs.forEach((sig) => {
     d.vrs.push([ parseInt(sig.slice(-1)) + 27, sig.slice(0, 64), sig.slice(64, 128) ]);
   });
   // Transaction should be an array of all the original params plus the v,r,s array (there should only be one of those)
   const vrsToUse = [ d.vrs[0][0], Buffer.from(d.vrs[0][1], 'hex'), Buffer.from(d.vrs[0][2], 'hex') ];
-  d.tx = `0x${rlpEncode(res.result.data.params.concat(vrsToUse)).toString('hex')}`;
+  d.tx = `0x${rlpEncode(params.concat(vrsToUse)).toString('hex')}`;
   d.txHash = null;
   return d;
+}
+
+function getEthValue(params) {
+  const gasPrice = params[1];
+  const gas = params[2];
+  const value = params[4];
+  return -1 * ((gas * gasPrice) - value);
 }
 
 
