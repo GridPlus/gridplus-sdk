@@ -57,6 +57,8 @@ export default class Ethereum {
     }
   }
 
+  // TODO: Make a new function for both this and BTC to get the transaction history.
+  //        This should be separate from the balance, which is requested here.
   getBalance ({ address, erc20Address = null}, cb) {
     const data = {
       balance: 0,
