@@ -91,8 +91,15 @@ describe('Ethereum', () => {
       const tx = `0x${serTx.toString('hex')}`;
       client.broadcast('ETH', tx, (err, res) => {
         assert(err === null, err);
-        assert(res && res.hash && res.timestamp, 'Did not broadcast properly')
-        done();
+        assert(res && res.hash && res.timestamp, 'Did not broadcast properly');
+        setTimeout(() => {
+          client.getTx('ETH', res.hash, (err, txs) => {
+            console.log('ETH tx', txs)
+            assert(err === null, err);
+            assert(txs.height > 0, 'Tx was not mined');
+            done();
+          });
+        }, 300);
       })
     })
   });
@@ -164,16 +171,14 @@ describe('Ethereum', () => {
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const tx = `0x${serTx.toString('hex')}`;
-      // return client.providers.ETH.provider.sendTransaction(`0x${serTx.toString('hex')}`)
       client.broadcast('ETH', tx, (err, res) => {
         assert(err === null, err);
         assert(res && res.hash, 'Did not broadcast properly');
-        client.providers.ETH.provider.getTransactionReceipt(res.hash)
-        .then((receipt) => {
-          assert(receipt.logs.length > 0, 'Transaction did not emit any logs.');
+        client.getTx('ETH', res.hash, (err, minedTx) => {
+          assert(err === null, err);
+          assert(minedTx.height > -1);
           done();
-        })
-        .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
+        });
       });
     });
   });
@@ -215,9 +220,9 @@ describe('Ethereum', () => {
         client.broadcast('ETH', res.data.tx, (err, res) => {
           assert(err === null, err);
           assert(res && res.hash, 'Did not broadcast properly');
-          client.providers.ETH.provider.getTransaction(res.hash)
-          .then((receipt) => {
-            assert(receipt.blockNumber > 0, 'Transaction not included in block');
+          client.getTx('ETH', res.hash, (err, tx) => {
+            assert(err === null, err);
+            assert(tx.height > -1, 'Block was not mined');
             client.getBalance('ETH', { address: addr }, (err, data) => {
               assert(err === null, err);
               assert(data.balance < balance, 'Balance did not reduce');
@@ -249,9 +254,10 @@ describe('Ethereum', () => {
         client.broadcast('ETH', res.data.tx, (err, res) => {
           assert(err === null, err);
           assert(res && res.hash, 'Did not broadcast properly');
-          client.providers.ETH.provider.getTransaction(res.hash)
-          .then((receipt) => {
-            assert(receipt.blockNumber > 0, 'Transaction not included in block');
+          // client.providers.ETH.provider.getTransaction(res.hash)
+          client.getTx('ETH', res.hash, (err, tx) => {
+            assert(err === null, err);
+            assert(tx.height > -1, 'Transaction not included in block');
             client.getBalance('ETH', { address: addr, erc20Address: erc20Addr }, (err, data) => {
               assert(err === null, err);
               assert(data.nonce > -1);
@@ -263,4 +269,5 @@ describe('Ethereum', () => {
       });
     });
   });
+
 });
