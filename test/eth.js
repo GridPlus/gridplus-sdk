@@ -94,7 +94,6 @@ describe('Ethereum', () => {
         assert(res && res.hash && res.timestamp, 'Did not broadcast properly');
         setTimeout(() => {
           client.getTx('ETH', res.hash, (err, txs) => {
-            console.log('ETH tx', txs)
             assert(err === null, err);
             assert(txs.height > 0, 'Tx was not mined');
             done();
