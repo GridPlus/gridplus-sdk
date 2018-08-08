@@ -140,6 +140,7 @@ describe('Bitcoin', () => {
   });
 
   it('Should create a manual permission', (done) => {
+
     client.addManualPermission((err, res) => {
       assert(err === null, err);
       assert(res.result.status === 200);
