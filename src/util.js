@@ -29,7 +29,7 @@ export function unpad (x) {
   if (x.substr(0, 2) === '0x') x = x.slice(2);
   let _i = 0;
   for (let i = 0; i < x.length; i++) {
-    if (x[i] === 0) _i += 1;
+    if (x[i] === '0') _i += 1;
     else return x.slice(_i);
   }
   return x.slice(_i);

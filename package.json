@@ -1,6 +1,6 @@
 {
   "name": "gridplus-sdk",
-  "version": "0.0.3",
+  "version": "0.0.7",
   "description": "SDK to interact with GridPlus agent devices",
   "scripts": {
     "commit": "git-cz",
@@ -25,8 +25,9 @@
     "url": "git+https://github.com/GridPlus/gridplus-sdk.git"
   },
   "dependencies": {
-    "aes-js": "^3.1.1",
     "@gridplus/bclient": "^0.1.1",
+    "aes-js": "^3.1.1",
+    "bignumber.js": "^7.2.1",
     "bitcoinjs-lib": "^4.0.1",
     "buffer": "^5.1.0",
     "debug": "^3.1.0",
