@@ -59,10 +59,10 @@ export default class Bitcoin {
       this.getUtxosSingleAddr(address)
         .then((utxos) => {
           balances = this.addBalanceSingle(utxos, sat);
-        //   return this.getTxsSingleAddr(address)
-        // })
-        // .then((txs) => {
-        //   balances.txs = txs;
+          return this.getTxsSingleAddr(address)
+        })
+        .then((txs) => {
+          balances.txs = txs;
           cb(null, balances);
         })
         .catch((err) => { cb(err); })
@@ -144,9 +144,9 @@ export default class Bitcoin {
       addrs.push(addr);
       this.client.getTXByAddress(addr)
       .then((txs) => {
-        console.log('got txs', txs)
         const sortedTxs = this._sortByHeight(txs);
-        return resolve(this._filterTxs(sortedTxs, addrs));
+        return resolve(sortedTxs);
+        // return resolve(this._filterTxs(sortedTxs, addrs));
       })
       .catch((err) => {
         return reject(err);

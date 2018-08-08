@@ -191,7 +191,6 @@ describe('Bitcoin', () => {
         assert(err === null, err);
         assert(res.timestamp > 0, 'Could not broadcast properly');
         client.getTx('BTC', res.hash, { addresses: testing.btcHolder.regtestAddress }, (err, retTx) => {
-          console.log('bTC tx', retTx)
           assert(err === null, err);
           assert(retTx.value === -0.1);
           assert(retTx.height === -1, 'Transaction was mined but should not have been');
