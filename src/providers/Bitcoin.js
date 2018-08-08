@@ -40,13 +40,10 @@ export default class Bitcoin {
     this.client.broadcast(tx)
     .then((success) => {
       if (!success.success) return cb('Could not broadcast transaction. Please try again later.');
-      return this.client.execute('getmempoolentry', [txHash])
-    })
-    .then((mempoolEntry) => {
-      if (!mempoolEntry || !mempoolEntry.time) {
-        return cb('Could not find broadcasted transaction. Try resubmitting it.');
-      }
-      return cb(null, { hash: txHash, timestamp: mempoolEntry.time });
+      this._getTx(txHash, (err, newTx) => {
+        if (err) return cb(err);
+        return cb(null, newTx)
+      })
     })
     .catch((err) => {
       return cb(err);
@@ -187,16 +184,16 @@ export default class Bitcoin {
   _getTx(hash, cb, opts={}) {
     this.client.getTX(hash)
     .then((tx) => {
-      cb(null, this._filterTxs(tx, opts)[0]);
+      const filtered = this._filterTxs(tx, opts);
+      cb(null, filtered);
     })
   }
-
 
   _filterTxs(txs, opts={}) {
     const addresses = opts.addresses ? opts.addresses : [];
     let newTxs = [];
-    if (txs instanceof Array === false) { txs = [ txs ]; }
-    
+    let isArray = txs instanceof Array === true;
+    if (!isArray) { txs = [ txs ]; }
     txs.forEach((tx) => {
       let value = 0;
       tx.inputs.forEach((input) => {
@@ -226,7 +223,8 @@ export default class Bitcoin {
         data: tx,
       });
     });
-    return newTxs;
+    if (!isArray) return newTxs[0]
+    else          return newTxs;
   }
 
   _sortByHeight(_utxos) {
