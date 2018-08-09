@@ -7,6 +7,8 @@ import {
   ecdsaKeyPair,
 } from '../util';
 
+const debug = require('debug')('@gridplus/sdk:rest/client');
+
 export default class Client {
   constructor({ baseUrl, crypto, name, privKey } = {}) {
     if (!baseUrl) throw new Error('baseUrl is required');
@@ -30,6 +32,8 @@ export default class Client {
 
     this.timeout = null;
     this.timeoutMs = 5000;
+
+    debug(`created rest client for ${this.baseUrl}`);
   }
 
   pair(appSecret, cb) {
@@ -84,6 +88,8 @@ export default class Client {
     param.data = param.data || null;
     param.id = param.id || this._newId();
 
+    debug(`requesting ${method} ${JSON.stringify(param)}`);
+
     return this._request({ method, param }, (err, res) => {
       if (err) return cb(err);
       try {
@@ -103,6 +109,9 @@ export default class Client {
       sig: this.key.sign(msg).toDER(),
       type,
     });
+
+    debug(`creating request data: ${JSON.stringify(data)} id: ${id} type: ${type}`);
+
     const encBody = encrypt(body, this.sharedSecret, this.counter);
     const request = {
       ecdhKey: this.ecdhPub,
@@ -144,7 +153,7 @@ export default class Client {
     }
     let token = decrypt(result.newToken || result, this.headerSecret, this.counter);
     token = JSON.parse(token);
-      
+
     // Hacky parsing of different return schema
     // MWW NOTE: Alex, can we replace this with just always replying with the same return param structure (json)?
     // MWW NOTE: Actually, I'm not noticing any string tokens returned. Can we nuke this and use the object version only?
@@ -153,10 +162,10 @@ export default class Client {
     } else if (token.data === undefined) {
       token = { data: token };
     }
-    
+
     if (token.data.status && token.data.status !== 200) throw new Error(`remote agent signing error: status code: ${token.data.status} message: ${token.data.message}`);
     if (
-      (token.data && token.data.counter && token.data.ephemPublicKey) || 
+      (token.data && token.data.counter && token.data.ephemPublicKey) ||
       (token.data.newToken && token.data.newToken.counter && token.data.newToken.ephemPublicKey)
     ) {
       this.counter = token.data.counter || token.data.newToken.counter;

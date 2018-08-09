@@ -122,6 +122,7 @@ describe('Bitcoin', () => {
     });
   });
 
+
   it('Should connect to an agent', (done) => {
     const serial = process.env.AGENT_SERIAL;
     client.connect(serial, (err, res) => {
@@ -140,6 +141,7 @@ describe('Bitcoin', () => {
   });
 
   it('Should create a manual permission', (done) => {
+
     client.addManualPermission((err, res) => {
       assert(err === null, err);
       assert(res.result.status === 200);
@@ -189,7 +191,13 @@ describe('Bitcoin', () => {
       client.broadcast('BTC', { tx }, (err, res) => {
         assert(err === null, err);
         assert(res.timestamp > 0, 'Could not broadcast properly');
-        done();
+        client.getTx('BTC', res.hash, { addresses: testing.btcHolder.regtestAddress }, (err, retTx) => {
+          assert(err === null, err);
+          assert(retTx.value === -0.1);
+          assert(retTx.height === -1, 'Transaction was mined but should not have been');
+          assert(retTx.from === testing.btcHolder.regtestAddress, 'Tx not sent from the right address');
+          done();
+        });
       });
     });
   });
@@ -286,5 +294,4 @@ describe('Bitcoin', () => {
       });
     });
   });
-
 });

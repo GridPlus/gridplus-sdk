@@ -1,6 +1,7 @@
 import ethers from 'ethers';
 import config from '../config.js';
 import { pad64, unpad } from '../util.js';
+import { BigNumber } from 'bignumber.js';
 
 const erc20Decimals = {};
 
@@ -12,17 +13,20 @@ export default class Ethereum {
     this.shortcode = 'ETH';
   }
 
-  broadcast (tx, cb) {
-    if (typeof tx !== 'string') return cb('Error: transaction should be a 0x-prefixed hex string.');
-    this.provider.sendTransaction(tx)
-    .then((txHash) => {  
-      return cb(null, { txHash, timestamp: new Date().getTime() });
+  broadcast (data, cb) {
+    this.provider.sendTransaction(data.tx)
+    .then((txHash) => {
+      this._getTx(txHash, (err, tx) => {
+        if (err) return cb(err);
+        tx.timestamp = new Date().getTime();
+        tx.in = 0;
+        return cb(null, tx);
+      });
     })
     .catch((err) => { 
       return cb(err);
     })
   }
-
 
   buildTx (from, to, value, opts = {}, cb) {
     if (typeof from !== 'string') {
@@ -56,6 +60,8 @@ export default class Ethereum {
     }
   }
 
+  // TODO: Make a new function for both this and BTC to get the transaction history.
+  //        This should be separate from the balance, which is requested here.
   getBalance ({ address, erc20Address = null}, cb) {
     const data = {
       balance: 0,
@@ -86,6 +92,10 @@ export default class Ethereum {
         .then((balance) => {
           data.decimals = erc20Decimals[erc20Address];
           data.balance = parseInt(balance);
+          return this.provider.getTransactionCount(address)
+        })
+        .then((nonce) => {
+          data.nonce = parseInt(nonce);
           // data.balance = parseInt(balance) / 10 ** erc20Decimals[erc20Address];
           return this.getTransfers(this.provider, address, erc20Address);
         })
@@ -99,8 +109,11 @@ export default class Ethereum {
       // Otherwise query for the ETH balance
       this.provider.getBalance(address)
       .then((balance) => {
-        // data.balance = parseInt(balance) / 10 ** 18;
         data.balance = parseInt(balance);
+        return this.provider.getTransactionCount(address)
+      })
+      .then((nonce) => {
+        data.nonce = parseInt(nonce);
         return this.getTransfers(this.provider, address, erc20Address)
       })
       .then((transfers) => {
@@ -108,6 +121,21 @@ export default class Ethereum {
         cb(null, data);
       })
       .catch((err) => { cb(err); })
+    }
+  }
+
+  getTx(hashes, cb, filled=[]) {
+    if (typeof hashes === 'string') {
+      return this._getTx(hashes, cb);
+    } else if (hashes.length === 0) {
+      return cb(null, filled);
+    } else {
+      const hash = hashes.shift();
+      return this._getTx(hash, (err, tx) => {
+        if (err) return cb(err)
+        filled.push(tx);
+        return this.getTx(hashes, cb, filled);
+      });
     }
   }
 
@@ -159,6 +187,65 @@ export default class Ethereum {
       .then((events) => { return resolve(events); })
       .catch((err) => { return reject(err); })
     });
+  }
+
+  _getTx(hash, cb) {
+    let tx;
+    return this.provider.getTransaction(hash)
+    .then((txRaw) => {
+      tx = {
+        currency: 'ETH',
+        hash: txRaw.hash,
+        height: txRaw.blockNumber || -1,
+        from: txRaw.from,
+        to: txRaw.to,
+        value: this._getValue(txRaw),
+        fee: this._getFee(txRaw),
+        in: 0,  // For now, we can assume any transactions are outgoing. TODO: figure a way to get incoming txs
+        data: txRaw,
+      }
+      const fCode = txRaw.data.slice(2, 10);
+      if (tx.value === 0 && fCode === config.ethFunctionCodes.ERC20Transfer) {
+        return this._getERC20TransferValue(hash, (err, erc20Tx) => {
+          if (err) return cb(err);
+          tx.to = erc20Tx.to;
+          tx.contract = erc20Tx.contract;
+          tx.value = erc20Tx.value;
+          tx.from = erc20Tx.from;
+          return cb(null, tx);
+        })
+      } else {
+        return cb(null, tx); 
+      }
+    })
+    .catch((err) => { return cb(err); })
+  }
+
+  _getERC20TransferValue(hash, cb) {
+    return this.provider.getTransactionReceipt(hash)
+    .then((receipt) => {
+      return cb(null, this._parseLog(receipt.logs[0], 'ERC20'));
+    })
+    .catch((err) => {
+      return cb(err);
+    })
+  }
+
+  _getValue(tx) {
+    if (tx.value.toString() !== '0') {
+      const factor = BigNumber('-1e18');
+      const value = BigNumber(tx.value.toString());
+      return value.div(factor).toString();
+    } else {
+      return 0;
+    }
+  }
+
+  _getFee(tx) {
+    // let value = BigNumber(tx.gasPrice.mul(tx.gasLimit).add(tx.value).toString());
+    const factor = BigNumber('-1e18');
+    const weiFee = new BigNumber(tx.gasPrice.mul(tx.gasLimit).toString());
+    return weiFee.div(factor).toString();
   }
 
   _parseLog(log, type, decimals=0) {
