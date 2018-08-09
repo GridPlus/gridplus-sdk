@@ -40,13 +40,10 @@ export default class Bitcoin {
     this.client.broadcast(tx)
     .then((success) => {
       if (!success.success) return cb('Could not broadcast transaction. Please try again later.');
-      return this.client.execute('getmempoolentry', [txHash])
-    })
-    .then((mempoolEntry) => {
-      if (!mempoolEntry || !mempoolEntry.time) {
-        return cb('Could not find broadcasted transaction. Try resubmitting it.');
-      }
-      return cb(null, { txHash, timestamp: mempoolEntry.time });
+      this._getTx(txHash, (err, newTx) => {
+        if (err) return cb(err);
+        return cb(null, newTx)
+      })
     })
     .catch((err) => {
       return cb(err);
@@ -87,6 +84,21 @@ export default class Bitcoin {
     }
   }
 
+  getTx(hashes, cb, opts={}, filled=[]) {
+    if (typeof hashes === 'string') {
+      return this._getTx(hashes, cb, opts);
+    } else if (hashes.length === 0) {
+      return cb(null, filled);
+    } else {
+      const hash = hashes.shift();
+      return this._getTx(hash, (err, tx) => {
+        if (err) return cb(err)
+        filled.push(tx);
+        return this.getTx(hashes, cb, opts, filled);
+      });
+    }
+  }
+
   getUtxosSingleAddr(addr) {
     return new Promise((resolve, reject) => {
       this.client.getCoinsByAddress(addr)
@@ -124,12 +136,14 @@ export default class Bitcoin {
     })
   }
 */
-  getTxsSingleAddr(addr) {
+  getTxsSingleAddr(addr, addrs=[]) {
     return new Promise((resolve, reject) => {
+      addrs.push(addr);
       this.client.getTXByAddress(addr)
       .then((txs) => {
         const sortedTxs = this._sortByHeight(txs);
         return resolve(sortedTxs);
+        // return resolve(this._filterTxs(sortedTxs, addrs));
       })
       .catch((err) => {
         return reject(err);
@@ -165,6 +179,52 @@ export default class Bitcoin {
         return cb(null, info);
       })
       .catch((err) => cb(err))
+  }
+
+  _getTx(hash, cb, opts={}) {
+    this.client.getTX(hash)
+    .then((tx) => {
+      const filtered = this._filterTxs(tx, opts);
+      cb(null, filtered);
+    })
+  }
+
+  _filterTxs(txs, opts={}) {
+    const addresses = opts.addresses ? opts.addresses : [];
+    let newTxs = [];
+    let isArray = txs instanceof Array === true;
+    if (!isArray) { txs = [ txs ]; }
+    txs.forEach((tx) => {
+      let value = 0;
+      tx.inputs.forEach((input) => {
+        if (addresses.indexOf(input.coin.address) > -1) {
+          // If this was sent by one of our addresses, the value should be deducted
+          value -= input.coin.value;
+        }
+      });
+      tx.outputs.forEach((output) => {
+        if (addresses.indexOf(output.address) > -1) {
+          value += output.value; 
+        }
+      });
+      if (value < 0) value += tx.fee
+      else           value -= tx.fee;
+      // Set metadata
+      newTxs.push({
+        to: tx.outputs[0].address, 
+        from: tx.inputs[0].coin.address,
+        fee: tx.fee / 10 ** 8,
+        in: value > 0 ? 1 : 0,
+        hash: tx.hash,
+        currency: 'BTC',
+        height: tx.height,
+        timestamp: tx.mtime,
+        value: value / 10 ** 8,
+        data: tx,
+      });
+    });
+    if (!isArray) return newTxs[0]
+    else          return newTxs;
   }
 
   _sortByHeight(_utxos) {

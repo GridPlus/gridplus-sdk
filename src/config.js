@@ -16,6 +16,10 @@ export const erc20 = {
   decimals: function() { return '0x313ce567' },
 };
 
+export const ethFunctionCodes = {
+  ERC20Transfer: 'a9059cbb'
+}
+
 export const api = {
   baseUrl: process.env.BASE_URL || 'http://localhost',
   SPLIT_BUF: '22222222222222222222222222222222',
@@ -50,6 +54,7 @@ export default {
   defaultWeb3Provider,
   SPLIT_BUF,
   defaults,
+  ethFunctionCodes,
   erc20,
   api,
   bitcoinNode,

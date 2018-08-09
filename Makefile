@@ -3,7 +3,7 @@ APP_SECRET?=`cat .app-secret`
 APP_SECRET_TEXT=`head -c 24 /dev/random | base64 | sed 's/[^a-zA-Z0-9]//g' | cut -c -6`
 BASE_URL?=http://localhost:80
 BASE_URL_STAGING?=http://localhost:3000
-DEBUG=gridplus-sdk,trace,debug,info,warn,error,fatal
+DEBUG=@gridplus/sdk*,gridplus-sdk*,trace,debug,info,warn,error,fatal
 ETHEREUM_NODE_URI?=http://localhost:8545
 LOG_LEVEL?=debug
 NPM_CONFIG_REGISTRY?=https://nexus.gridpl.us/repository/npm-group/
@@ -48,6 +48,9 @@ mine:
   -X POST \
   --data '{"method": "generate","params": [ '1' ]}'
 
+publish:
+	NPM_CONFIG_REGISTRY=$(NPM_CONFIG_REGISTRY) \
+	npm publish
 
 test: ensure-serial
 	AGENT_SERIAL=$(AGENT_SERIAL) \
