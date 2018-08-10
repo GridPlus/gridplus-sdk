@@ -15,6 +15,30 @@ pipeline {
         )
       }
     }
+    stage("build-bcoin") {
+      agent {
+        label "build"
+      }
+      steps {
+        script {
+          repo = 'gridplus'
+          container = 'bcoin'
+          tag = getBuildVersion()
+        }
+        dockerLogin()
+        sh "docker image build -t ${container} -f bcoin.Dockerfile --build-arg=NPM_TOKEN=${NPM_TOKEN} ."
+        dockerLogout()
+      }
+    }
+    stage("release-bcoin") {
+      agent {
+        label "build"
+      }
+      steps {
+        dockerRelease(repo,container,tag)
+        dockerRelease(repo,container,'latest')
+      }
+    }
     stage("build") {
       agent {
         label "build"
