@@ -26,7 +26,7 @@ export const api = {
 }
 
 export const bitcoinNode = {
-  host: 'localhost',
+  host: process.env.BITCOIN_NODE_HOST || 'localhost',
   network: 'regtest',
   port: 48332,
 }

@@ -15,7 +15,7 @@ build:
 	npm run build
 
 build-image:
-	docker build -f Dockerfile .
+	docker build -f Dockerfile --build-arg NPM_TOKEN=$(NPM_TOKEN) .
 
 down:
 	docker-compose -f docker-compose.mac.yml down
