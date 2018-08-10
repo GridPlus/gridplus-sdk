@@ -26,7 +26,7 @@ pipeline {
           tag = getBuildVersion()
         }
         dockerLogin()
-        sh "docker image build -t ${container} -f bcoin.Dockerfile --build-arg=NPM_TOKEN=${NPM_TOKEN} ."
+        sh "docker image build -t ${container} -f bcoin.Dockerfile ."
         dockerLogout()
       }
     }
