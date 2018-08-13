@@ -193,6 +193,7 @@ export default class Ethereum {
     let tx;
     return this.provider.getTransaction(hash)
     .then((txRaw) => {
+      if (!txRaw) return cb(null, null);
       tx = {
         currency: 'ETH',
         hash: txRaw.hash,
@@ -242,7 +243,6 @@ export default class Ethereum {
   }
 
   _getFee(tx) {
-    // let value = BigNumber(tx.gasPrice.mul(tx.gasLimit).add(tx.value).toString());
     const factor = BigNumber('-1e18');
     const weiFee = new BigNumber(tx.gasPrice.mul(tx.gasLimit).toString());
     return weiFee.div(factor).toString();

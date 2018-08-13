@@ -184,8 +184,12 @@ export default class Bitcoin {
   _getTx(hash, cb, opts={}) {
     this.client.getTX(hash)
     .then((tx) => {
+      if (!tx) return cb(null, null);
       const filtered = this._filterTxs(tx, opts);
-      cb(null, filtered);
+      return cb(null, filtered);
+    })
+    .catch((err) => {
+      return cb(err);
     })
   }
 
