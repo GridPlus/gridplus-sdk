@@ -132,9 +132,9 @@ export default class Ethereum {
     } else {
       const hash = hashes.shift();
       return this._getTx(hash, (err, tx) => {
-        if (err) return cb(err)
-        filled.push(tx);
-        return this.getTx(hashes, cb, filled);
+        if (err) return cb(err);
+        if (tx) filled.push(tx);
+        return this.getTx(hashes, cb, opts, filled);
       });
     }
   }
