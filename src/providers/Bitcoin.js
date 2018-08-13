@@ -93,7 +93,7 @@ export default class Bitcoin {
       const hash = hashes.shift();
       return this._getTx(hash, (err, tx) => {
         if (err) return cb(err)
-        filled.push(tx);
+        if (tx) filled.push(tx);
         return this.getTx(hashes, cb, opts, filled);
       });
     }
