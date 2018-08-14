@@ -35,7 +35,9 @@ export default class Bitcoin {
   }
 
   broadcast(txData, cb) {
-    let { tx, txHash } = txData;
+    const { tx } = txData;
+    let { txHash, opts } = txData;
+    if (!opts) opts = {};
     if (!txHash) txHash = getTxHash(tx);
     this.client.broadcast(tx)
     .then((success) => {
@@ -43,7 +45,7 @@ export default class Bitcoin {
       this._getTx(txHash, (err, newTx) => {
         if (err) return cb(err);
         return cb(null, newTx)
-      })
+      }, opts)
     })
     .catch((err) => {
       return cb(err);
