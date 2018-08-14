@@ -95,7 +95,7 @@ export default class Bitcoin {
         if (err) return cb(err)
         if (tx) filled.push(tx);
         return this.getTx(hashes, cb, opts, filled);
-      });
+      }, opts);
     }
   }
 

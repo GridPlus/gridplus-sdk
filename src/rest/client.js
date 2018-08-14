@@ -91,7 +91,8 @@ export default class Client {
     debug(`requesting ${method} ${JSON.stringify(param)}`);
 
     return this._request({ method, param }, (err, res) => {
-      if (err) return cb(err);
+      if (err) return cb(err)
+      else if (!res || !res.body || !res.body.result) return cb('Could not get a response from the device.');
       try {
         this._prepareNextRequest(res.body.result);
       } catch (err) {
