@@ -18,7 +18,7 @@ export default class Ethereum {
     .then((txHash) => {
       this._getTx(txHash, (err, tx) => {
         if (err) return cb(err);
-        tx.timestamp = new Date().getTime();
+        tx.timestamp = new Date().getTime() / 1000;
         tx.in = 0;
         return cb(null, tx);
       });
