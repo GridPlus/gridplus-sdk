@@ -1,6 +1,7 @@
 import { NodeClient } from '@gridplus/bclient';
 import config from '../config.js';
 import { getTxHash } from '../util';
+const BASE_SEGWIT_SIZE = 134; // see: https://www.reddit.com/r/Bitcoin/comments/7m8ald/how_do_i_calculate_my_fees_for_a_transaction_sent/
 
 export default class Bitcoin {
   constructor (/* TODO: pass config in via ctor */) {
@@ -52,9 +53,66 @@ export default class Bitcoin {
     })
   }
 
-  // buildTx (amount, to, addresses, history, perByteFee) {
+  buildTx ({amount, to, addresses, perByteFee, changeIndex=null, network=null}, cb) {
+    this.getBalance({ address: addresses }, (err, utxoSets) => {
+      if (err) return cb(err);
+      
+      const utxos = [];
+      let utxoSum = 0;
+      addresses.forEach((address, i) => {
+        if (utxoSets[address] && utxoSets[address].utxos && utxoSets[address].utxos.length > 0) {
+          utxoSets[address].utxos.forEach((utxo) => {
+            utxos.push([i, utxo]);
+            utxoSum += utxo.value;
+          });
+        }
+      });
+      
+      if (utxoSum <= amount) return cb('Not enough balance to make this transaction');
+      
+      let inputs = [];
+      let numInputs = 0;
+      utxoSum = 0;  // Reset this as zero; we will count up with it
+      utxos.forEach((utxo) => {
+        if (utxoSum <= amount) {
+          const input = [
+            utxo[1].hash,
+            utxo[1].index,
+            'p2sh(p2wpkh)',
+            utxo[0],
+            utxo[0],   // We have to do this twice for legacy reasons. This should get cleaned up soon on the agent side
+            utxo[1].value,
+          ];
+          inputs = inputs.concat(input);
+          numInputs += 1;
+          utxoSum += utxo[1].value;
+        }
+      });
 
-  // }
+      // Size is the base size plus 40 (for one additional output) plus 100 for each input over 1
+      // This should work for now, but we should make it better
+      // TODO: Make this more robust
+      const bytesSize = BASE_SEGWIT_SIZE + 100 * (numInputs - 1) + 40;
+      const fee = perByteFee * bytesSize;
+      const params = [
+        1,   // version
+        0,   // locktime
+        to,  // recipient
+        amount,
+        utxoSum - amount - fee,   // change
+      ];
+      // TODO: addresses.length is not really the best way to do this because it requires
+      // the user to provide all known addresses
+      const req = {
+        schemaIndex: 1,  // Bitcoin
+        typeIndex: 2,    // segwit
+        params: params.concat(inputs),
+        fetchAccountIndex: changeIndex ? changeIndex : addresses.length,  // index of the change address
+        network: network ? network : 'regtest',
+      };
+      return cb(null, req); 
+    })
+  }
 
   getBalance ({ address, sat = true }, cb) {
     let balances;
