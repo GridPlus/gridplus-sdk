@@ -184,6 +184,15 @@ describe('Bitcoin', () => {
     })
   })
 
+  it('Should get transaction history for the same addresses', (done) => {
+    const addresses = deviceAddresses.concat(testing.btcHolder.regtestAddress);
+    client.getTxHistory('BTC', { addresses }, (err, txs) => {
+      assert(err === null, err);
+      assert(txs[testing.btcHolder.regtestAddress].length > 0, 'btcHolder address should have more than one transaction in history');      
+      done();
+    })
+  })
+
   it('Should form a transaction and send 0.1 BTC to address 0', (done) => {
     const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.regtestWif, regtest);
     client.getBalance('BTC', { address: testing.btcHolder.regtestAddress }, (err, d) => {
