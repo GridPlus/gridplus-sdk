@@ -21,7 +21,8 @@ const regtest = {  // regtest config from bcoin: http://bcoin.io/docs/protocol_n
 import crypto from 'crypto';
 
 let deviceAddresses, startBal, startUtxos, TX_VALUE;
-const CHANGE_INDEX = 2, CHANGE_AMOUNT = 9000;
+const CHANGE_INDEX = 2
+let CHANGE_AMOUNT = 9000;
 
 const { host, network, port } = bitcoinNode;
 const { btcHolder } = testing;
@@ -242,57 +243,51 @@ describe('Bitcoin', () => {
   });
 
   it('Should spend out of the first address to the second one', (done) => {
-    const req = {
-      schemaIndex: 1,
-      typeIndex: 2,
-      fetchAccountIndex: CHANGE_INDEX,   // the account index where we'd like the change to go
-      network: 'regtest',
-    }
     client.getBalance('BTC', { address: receiving[0][0] }, (err, d) => {
       assert(err === null, err);
       const utxo = d.utxos[0];
       TX_VALUE = utxo.value - 10000;
-      // Create the transaction. Here we will take change of 9000 sats and pay a mining fee of 1000 sats
-      // [ version, lockTime, to, value, changeVal ]
-      const params = [ 1, 0, receiving[1][0], TX_VALUE, CHANGE_AMOUNT]
-      // Parameterize the k81 request with the input
-      const inputs = [
-        utxo.hash,
-        utxo.index,
-        'p2sh(p2wpkh)',
-        0,
-        0,
-        utxo.value,
-      ];
-      req.params = params.concat(inputs);
-      // Build a transaction and sign it in the k81
-      client.signManual(req, (err, res) => {
+      
+      const req = {
+        amount: TX_VALUE,
+        to: receiving[1][0],
+        addresses: deviceAddresses,
+        perByteFee: 3,
+        changeIndex: CHANGE_INDEX,
+        network: 'regtest'
+      }
+      
+      client.buildTx('BTC', req, (err, sigReq) => {
         assert(err === null, err);
-        // Broadcast the transaction
-        client.broadcast('BTC', res.data, (err, res) => {
+        CHANGE_AMOUNT = sigReq.params[4];
+        client.signManual(sigReq, (err, res) => {
           assert(err === null, err);
-          assert(res.timestamp > 0, 'Could not broadcast properly');
-
-          nodeClient.execute('generate', [ 1 ])
-          .then(() => {
-            return nodeClient.getMempool()
-          })
-          .then((mempool) => {
-            assert(mempool.length === 0, `Mempool not empty: ${mempool}`)
-            client.getBalance('BTC', { address: receiving[1][0] }, (err, d) => {
-              // Check the balance of the receiving address
-              const prevBal = receiving[1][1];
-              const newBal = d.balance;
-              assert(newBal === TX_VALUE + prevBal, `Expected new balance of ${TX_VALUE + prevBal}, got ${newBal}`);
-              done();
-            })
-          })
-          .catch((err) => {
+          // Broadcast the transaction
+          client.broadcast('BTC', res.data, (err, res) => {
             assert(err === null, err);
-            done();
+            assert(res.timestamp > 0, 'Could not broadcast properly');
+            
+            nodeClient.execute('generate', [ 1 ])
+            .then(() => {
+              return nodeClient.getMempool()
+            })
+            .then((mempool) => {
+              assert(mempool.length === 0, `Mempool not empty: ${mempool}`)
+              client.getBalance('BTC', { address: receiving[1][0] }, (err, d) => {
+                // Check the balance of the receiving address
+                const prevBal = receiving[1][1];
+                const newBal = d.balance;
+                assert(newBal === TX_VALUE + prevBal, `Expected new balance of ${TX_VALUE + prevBal}, got ${newBal}`);
+                done();
+              })
+            })
+            .catch((err) => {
+              assert(err === null, err);
+              done();
+            });
           });
         });
-      });
+      })
     });
   });
 
@@ -313,4 +308,5 @@ describe('Bitcoin', () => {
       });
     });
   });
+  
 });
