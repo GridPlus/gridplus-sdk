@@ -52,37 +52,34 @@ export default class Bitcoin {
     })
   }
 
+  // buildTx (amount, to, addresses, history, perByteFee) {
+
+  // }
+
   getBalance ({ address, sat = true }, cb) {
     let balances;
     if (typeof address === 'string') {
       this.getUtxosSingleAddr(address)
-        .then((utxos) => {
-          balances = this.addBalanceSingle(utxos, sat);
-          return this.getTxsSingleAddr(address)
-        })
-        .then((txs) => {
-          balances.txs = txs;
-          cb(null, balances);
-        })
-        .catch((err) => { cb(err); })
+      .then((utxos) => {
+        balances = this.addBalanceSingle(utxos, sat);
+        return this.getTxsSingleAddr(address)
+      })
+      .then((txs) => {
+        balances.txs = txs;
+        cb(null, balances);
+      })
+      .catch((err) => { cb(err); })
     } else {
-      // TODO: Get this to work with the testnet. Unfortunately, regtest
-      // addresses show up differently in bcoin (even though it is happy)
-      // to process the ones we give it. Our testnet addrs start with 2,
-      // while bcoin's regtest addrs start with R. I don't know how to get
-      // theirs from a public key
-      /*this.getUtxosMultipleAddrs(address)
-        .then((utxos) => {
-          balances = this.addBalanceMultiple(utxos);
-          return this.getTxsMultipleAddrs(address)
-        })
-        .then((txs) => {
-          // balances.txs
-          cb(null, balances);
-        })
-        .catch((err) => { cb(err); })
-      */
-      cb(null, null);
+      this.getUtxosMultipleAddrs(address)
+      .then((utxos) => {
+        balances = this.addBalanceMultiple(utxos);
+      //   return this.getTxsMultipleAddrs(address)
+      // })
+      // .then((txs) => {
+      //   // balances.txs
+        cb(null, balances);
+      })
+      .catch((err) => { cb(err); })
     }
   }
 
@@ -113,7 +110,7 @@ export default class Bitcoin {
         });
     });
   }
-/*
+
   getUtxosMultipleAddrs(addrs) {
     return new Promise((resolve, reject) => {
       const utxos = {}
@@ -121,13 +118,10 @@ export default class Bitcoin {
       addrs.forEach((a) => {
         if (utxos[a] === undefined) utxos[a] = [];
       });
-      console.log('addrs', addrs, '\n\n')
       this.client.getCoinsByAddresses(addrs)
       .then((bulkUtxos) => {
-        console.log('bulkUtxos', bulkUtxos.length)
         // Reconstruct data, indexed by address
         bulkUtxos.forEach((u) => {
-          console.log('u.ad', u.address)
           utxos[u.address].push(u);
         });
         return resolve(utxos);
@@ -137,7 +131,7 @@ export default class Bitcoin {
       })
     })
   }
-*/
+
   getTxsSingleAddr(addr, addrs=[]) {
     return new Promise((resolve, reject) => {
       addrs.push(addr);

@@ -20,7 +20,7 @@ const regtest = {  // regtest config from bcoin: http://bcoin.io/docs/protocol_n
 
 import crypto from 'crypto';
 
-let startBal, startUtxos, TX_VALUE;
+let deviceAddresses, startBal, startUtxos, TX_VALUE;
 const CHANGE_INDEX = 2, CHANGE_AMOUNT = 9000;
 
 const { host, network, port } = bitcoinNode;
@@ -141,7 +141,6 @@ describe('Bitcoin', () => {
   });
 
   it('Should create a manual permission', (done) => {
-
     client.addManualPermission((err, res) => {
       assert(err === null, err);
       assert(res.result.status === 200);
@@ -159,20 +158,31 @@ describe('Bitcoin', () => {
     client.addresses(req, (err, res) => {
       assert(err === null, err);
       assert(res.result.data.addresses.length === 2);
-      // assert(res.result.data.addresses[0].slice(0, 1) === '2', 'Not a testnet address');
-      const addrs = res.result.data.addresses;
+      deviceAddresses = res.result.data.addresses;
       // Get the baseline balance for the addresses
-      client.getBalance('BTC', { address: addrs[0] }, (err, d) => {
+      client.getBalance('BTC', { address: deviceAddresses[0] }, (err, d) => {
         assert(err === null, err);
-        receiving.push([addrs[0], d.balance]);
-        client.getBalance('BTC', { address: addrs[1] }, (err, d) => {
+        receiving.push([deviceAddresses[0], d.balance]);
+        client.getBalance('BTC', { address: deviceAddresses[1] }, (err, d) => {
           assert(err === null, err);
-          receiving.push([addrs[1], d.balance]);
+          receiving.push([deviceAddresses[1], d.balance]);
           done();
         });
       });
     });
   });
+
+  it('Should get UTXOs for a few addresses', (done) => {
+    const addresses = deviceAddresses.concat(testing.btcHolder.regtestAddress);
+    client.getBalance('BTC', { address: addresses }, (err, balances) => {
+      assert(err === null, err);
+      assert(typeof balances[deviceAddresses[0]].balance === 'number', 'Balance not found for address 0');
+      assert(typeof balances[deviceAddresses[1]].balance === 'number', 'Balance not found for address 1');
+      assert(typeof balances[testing.btcHolder.regtestAddress].balance === 'number', 'Balance not found for btcHolder address.');
+      assert(balances[testing.btcHolder.regtestAddress].balance > 0, 'Balance should be >0 for btcHolder address');
+      done();
+    })
+  })
 
   it('Should form a transaction and send 0.1 BTC to address 0', (done) => {
     const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.regtestWif, regtest);
