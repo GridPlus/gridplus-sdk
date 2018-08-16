@@ -20,8 +20,9 @@ const regtest = {  // regtest config from bcoin: http://bcoin.io/docs/protocol_n
 
 import crypto from 'crypto';
 
-let startBal, startUtxos, TX_VALUE;
-const CHANGE_INDEX = 2, CHANGE_AMOUNT = 9000;
+let deviceAddresses, startBal, startUtxos, TX_VALUE;
+const CHANGE_INDEX = 2
+let CHANGE_AMOUNT = 9000;
 
 const { host, network, port } = bitcoinNode;
 const { btcHolder } = testing;
@@ -141,7 +142,6 @@ describe('Bitcoin', () => {
   });
 
   it('Should create a manual permission', (done) => {
-
     client.addManualPermission((err, res) => {
       assert(err === null, err);
       assert(res.result.status === 200);
@@ -159,20 +159,40 @@ describe('Bitcoin', () => {
     client.addresses(req, (err, res) => {
       assert(err === null, err);
       assert(res.result.data.addresses.length === 2);
-      // assert(res.result.data.addresses[0].slice(0, 1) === '2', 'Not a testnet address');
-      const addrs = res.result.data.addresses;
+      deviceAddresses = res.result.data.addresses;
       // Get the baseline balance for the addresses
-      client.getBalance('BTC', { address: addrs[0] }, (err, d) => {
+      client.getBalance('BTC', { address: deviceAddresses[0] }, (err, d) => {
         assert(err === null, err);
-        receiving.push([addrs[0], d.balance]);
-        client.getBalance('BTC', { address: addrs[1] }, (err, d) => {
+        receiving.push([deviceAddresses[0], d.balance]);
+        client.getBalance('BTC', { address: deviceAddresses[1] }, (err, d) => {
           assert(err === null, err);
-          receiving.push([addrs[1], d.balance]);
+          receiving.push([deviceAddresses[1], d.balance]);
           done();
         });
       });
     });
   });
+
+  it('Should get UTXOs for a few addresses', (done) => {
+    const addresses = deviceAddresses.concat(testing.btcHolder.regtestAddress);
+    client.getBalance('BTC', { address: addresses }, (err, balances) => {
+      assert(err === null, err);
+      assert(typeof balances[deviceAddresses[0]].balance === 'number', 'Balance not found for address 0');
+      assert(typeof balances[deviceAddresses[1]].balance === 'number', 'Balance not found for address 1');
+      assert(typeof balances[testing.btcHolder.regtestAddress].balance === 'number', 'Balance not found for btcHolder address.');
+      assert(balances[testing.btcHolder.regtestAddress].balance > 0, 'Balance should be >0 for btcHolder address');
+      done();
+    })
+  })
+
+  it('Should get transaction history for the same addresses', (done) => {
+    const addresses = deviceAddresses.concat(testing.btcHolder.regtestAddress);
+    client.getTxHistory('BTC', { addresses }, (err, txs) => {
+      assert(err === null, err);
+      assert(txs[testing.btcHolder.regtestAddress].length > 0, 'btcHolder address should have more than one transaction in history');      
+      done();
+    })
+  })
 
   it('Should form a transaction and send 0.1 BTC to address 0', (done) => {
     const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.regtestWif, regtest);
@@ -223,57 +243,51 @@ describe('Bitcoin', () => {
   });
 
   it('Should spend out of the first address to the second one', (done) => {
-    const req = {
-      schemaIndex: 1,
-      typeIndex: 2,
-      fetchAccountIndex: CHANGE_INDEX,   // the account index where we'd like the change to go
-      network: 'regtest',
-    }
     client.getBalance('BTC', { address: receiving[0][0] }, (err, d) => {
       assert(err === null, err);
       const utxo = d.utxos[0];
       TX_VALUE = utxo.value - 10000;
-      // Create the transaction. Here we will take change of 9000 sats and pay a mining fee of 1000 sats
-      // [ version, lockTime, to, value, changeVal ]
-      const params = [ 1, 0, receiving[1][0], TX_VALUE, CHANGE_AMOUNT]
-      // Parameterize the k81 request with the input
-      const inputs = [
-        utxo.hash,
-        utxo.index,
-        'p2sh(p2wpkh)',
-        0,
-        0,
-        utxo.value,
-      ];
-      req.params = params.concat(inputs);
-      // Build a transaction and sign it in the k81
-      client.signManual(req, (err, res) => {
+      
+      const req = {
+        amount: TX_VALUE,
+        to: receiving[1][0],
+        addresses: deviceAddresses,
+        perByteFee: 3,
+        changeIndex: CHANGE_INDEX,
+        network: 'regtest'
+      }
+      
+      client.buildTx('BTC', req, (err, sigReq) => {
         assert(err === null, err);
-        // Broadcast the transaction
-        client.broadcast('BTC', res.data, (err, res) => {
+        CHANGE_AMOUNT = sigReq.params[4];
+        client.signManual(sigReq, (err, res) => {
           assert(err === null, err);
-          assert(res.timestamp > 0, 'Could not broadcast properly');
-
-          nodeClient.execute('generate', [ 1 ])
-          .then(() => {
-            return nodeClient.getMempool()
-          })
-          .then((mempool) => {
-            assert(mempool.length === 0, `Mempool not empty: ${mempool}`)
-            client.getBalance('BTC', { address: receiving[1][0] }, (err, d) => {
-              // Check the balance of the receiving address
-              const prevBal = receiving[1][1];
-              const newBal = d.balance;
-              assert(newBal === TX_VALUE + prevBal, `Expected new balance of ${TX_VALUE + prevBal}, got ${newBal}`);
-              done();
-            })
-          })
-          .catch((err) => {
+          // Broadcast the transaction
+          client.broadcast('BTC', res.data, (err, res) => {
             assert(err === null, err);
-            done();
+            assert(res.timestamp > 0, 'Could not broadcast properly');
+            
+            nodeClient.execute('generate', [ 1 ])
+            .then(() => {
+              return nodeClient.getMempool()
+            })
+            .then((mempool) => {
+              assert(mempool.length === 0, `Mempool not empty: ${mempool}`)
+              client.getBalance('BTC', { address: receiving[1][0] }, (err, d) => {
+                // Check the balance of the receiving address
+                const prevBal = receiving[1][1];
+                const newBal = d.balance;
+                assert(newBal === TX_VALUE + prevBal, `Expected new balance of ${TX_VALUE + prevBal}, got ${newBal}`);
+                done();
+              })
+            })
+            .catch((err) => {
+              assert(err === null, err);
+              done();
+            });
           });
         });
-      });
+      })
     });
   });
 
@@ -294,4 +308,5 @@ describe('Bitcoin', () => {
       });
     });
   });
+  
 });
