@@ -83,6 +83,36 @@ export default class Bitcoin {
     }
   }
 
+  getTxHistory(opts, cb) {
+    if (!opts.address && !opts.addresses) return cb('No address or addresses included in options.');
+    const a = opts.address ? opts.address : opts.addresses;
+    if (typeof a === 'string') {
+      this.client.getTXByAddress(a)
+      .then((txs) => {
+        return cb(null, txs);
+      })
+      .catch((err) => {
+        return cb(err);
+      })
+    } else {
+      this.client.getTXByAddresses(a)
+      .then((txs) => {
+        const filteredTxs = this._filterTxs(txs, { addresses: a });
+        const txsToReturn = {};
+        filteredTxs.forEach((tx) => {
+          if (a.indexOf(tx.from) > -1) {
+            if (txsToReturn[tx.from] === undefined) txsToReturn[tx.from] = [ tx ]
+            else                                    txsToReturn[tx.from].push(tx); 
+          } else if (a.indexOf(tx.to) > -1) {
+            if (txsToReturn[tx.to] === undefined) txsToReturn[tx.to] = [ tx ]
+            else                                    txsToReturn[tx.to].push(tx); 
+          }
+        })
+        return cb(null, txsToReturn);
+      })
+    }
+  }
+
   getTx(hashes, cb, opts={}, filled=[]) {
     if (typeof hashes === 'string') {
       return this._getTx(hashes, cb, opts);
@@ -146,7 +176,7 @@ export default class Bitcoin {
       })
     })
   }
-/*
+
   getTxsMultipleAddrs(addrs) {
     return new Promise((resolve, reject) => {
       const txs = {}
@@ -158,7 +188,11 @@ export default class Bitcoin {
       .then((bulkTxs) => {
         // Reconstruct data, indexed by address
         bulkTxs.forEach((t) => {
-          txs[u.address].push(this._sortByHeight(u));
+          txs[t.inputs[0].coin.address].push(t);
+        });
+        // Sort the transactions for each address
+        Object.keys(txs).forEach((a) => {
+          txs[a] = this._sortByHeight(txs[a]);
         });
         return resolve(txs);
       })
@@ -167,7 +201,7 @@ export default class Bitcoin {
       })
     })
   }
-*/
+
   initialize (cb) {
     this.client.getInfo()
       .then((info) => {
@@ -191,13 +225,13 @@ export default class Bitcoin {
 
   _filterTxs(txs, opts={}) {
     const addresses = opts.addresses ? opts.addresses : [];
-    let newTxs = [];
-    let isArray = txs instanceof Array === true;
+    const newTxs = [];
+    const isArray = txs instanceof Array === true;
     if (!isArray) { txs = [ txs ]; }
     txs.forEach((tx) => {
       let value = 0;
       tx.inputs.forEach((input) => {
-        if (addresses.indexOf(input.coin.address) > -1) {
+        if (input.coin && addresses.indexOf(input.coin.address) > -1) {
           // If this was sent by one of our addresses, the value should be deducted
           value -= input.coin.value;
         }
@@ -212,7 +246,7 @@ export default class Bitcoin {
       // Set metadata
       newTxs.push({
         to: tx.outputs[0].address, 
-        from: tx.inputs[0].coin.address,
+        from: tx.inputs[0].coin ? tx.inputs[0].coin.address : '',
         fee: tx.fee / 10 ** 8,
         in: value > 0 ? 1 : 0,
         hash: tx.hash,

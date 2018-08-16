@@ -149,6 +149,14 @@ export default class SdkClient {
     return this.providers[shortcode].getBalance(options, cb);
   }
 
+  getTxHistory(shortcode, options, cb) {
+    if (! this.providers[shortcode]) {
+      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
+    }
+
+    return this.providers[shortcode].getTxHistory(options, cb);
+  }
+
   // Get (one or more) transaction(s) and return (one or more) object(s) that conform to a common schema across currencies
   getTx(shortcode, hashes, opts, cb) {
     if (! this.providers[shortcode]) {
