@@ -183,6 +183,16 @@ describe('Bitcoin', () => {
       assert(balances[testing.btcHolder.regtestAddress].balance > 0, 'Balance should be >0 for btcHolder address');
       done();
     })
+  });
+
+  it('Should get UTXOs for a single address', (done) => {
+    const address = testing.btcHolder.regtestAddress;
+    client.getBalance('BTC', { address }, (err, balances) => {
+      assert(err === null, err);
+      assert(typeof balances.balance === 'number', 'Balance not found');
+      assert(balances.balance > 0, 'Balance should be >0');
+      done();
+    })
   })
 
   it('Should get transaction history for the same addresses', (done) => {
@@ -190,6 +200,15 @@ describe('Bitcoin', () => {
     client.getTxHistory('BTC', { addresses }, (err, txs) => {
       assert(err === null, err);
       assert(txs[testing.btcHolder.regtestAddress].length > 0, 'btcHolder address should have more than one transaction in history');      
+      done();
+    })
+  })
+
+  it('Should get transaction history for just one address', (done) => {
+    const address = testing.btcHolder.regtestAddress;
+    client.getTxHistory('BTC', { address }, (err, txs) => {
+      assert(err === null, err);
+      assert(txs.length > 0, 'btcHolder address should have more than one transaction in history');      
       done();
     })
   })
