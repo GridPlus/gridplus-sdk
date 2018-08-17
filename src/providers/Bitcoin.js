@@ -120,10 +120,6 @@ export default class Bitcoin {
       this.getUtxosSingleAddr(address)
       .then((utxos) => {
         balances = this.addBalanceSingle(utxos, sat);
-        return this.getTxsSingleAddr(address)
-      })
-      .then((txs) => {
-        balances.txs = txs;
         cb(null, balances);
       })
       .catch((err) => { cb(err); })
@@ -131,10 +127,6 @@ export default class Bitcoin {
       this.getUtxosMultipleAddrs(address)
       .then((utxos) => {
         balances = this.addBalanceMultiple(utxos);
-      //   return this.getTxsMultipleAddrs(address)
-      // })
-      // .then((txs) => {
-      //   // balances.txs
         cb(null, balances);
       })
       .catch((err) => { cb(err); })
@@ -147,7 +139,8 @@ export default class Bitcoin {
     if (typeof a === 'string') {
       this.client.getTXByAddress(a)
       .then((txs) => {
-        return cb(null, txs);
+        const filteredTxs = this._filterTxs(txs, { addresses: a });
+        return cb(null, filteredTxs);
       })
       .catch((err) => {
         return cb(err);
