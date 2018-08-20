@@ -7,6 +7,7 @@ import config from './config';
 
 const EC = elliptic.ec;
 const ec = new EC('curve25519');
+const ecSecp256k1 = new EC('secp256k1');
 
 export function ecdsaKeyPair (privKey) {
   const curve = new EC('secp256k1');
@@ -59,6 +60,18 @@ export function encrypt (payload, secret, counter=5) {
   const aesCtr = new aes.ModeOfOperation.ctr(secret, new aes.Counter(counter));
   const enc = aesCtr.encrypt(b);
   return aes.utils.hex.fromBytes(enc);
+}
+
+export function recoverPubKey (msg, sig) {
+  if (typeof msg === 'string') msg = Buffer.from(msg, 'hex');
+  const v = sig.v > 1 ? sig.v - 27 : sig.v;
+  const { r, s } = sig;
+  const sigObj = {
+    r: Buffer.from(r, 'hex'),
+    s: Buffer.from(s, 'hex'),
+  }
+  const pubKey = ecSecp256k1.recoverPubKey(Buffer.from(msg, 'hex'), sigObj, v);
+  return pubKey.encode('hex');
 }
 
 export function parseSigResponse(res) {
