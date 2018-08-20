@@ -1,8 +1,8 @@
 // Tests on communications with simulated agent devices
 import assert from 'assert';
-import secp256k1 from 'secp256k1';
 import { sha3, pubToAddress } from 'ethereumjs-util';
 import { api } from './../src/config.js';
+import { recoverPubKey } from '../src/util.js';
 import { Client } from 'index';
 import ReactNativeCrypto from '@gridplus/react-native-crypto';
 import crypto from 'crypto';
@@ -124,12 +124,15 @@ describe('basic tests', () => {
         const preImage = Buffer.from(sigData[0], 'hex');
         const msg = sha3(preImage);
         const sig = sigData[1];
-        // Deconstruct the signature and ensure the signer is the key associated
-        // with the permission
-        const sr = Buffer.from(sig.substr(0, sig.length - 1), 'hex');
-        const v = parseInt(sig.slice(-1));
-        const signer = secp256k1.recover(msg, sr, v, false);
-        assert.equal('0x' + pubToAddress(signer.slice(1)).toString('hex'), addr, 'Incorrect signature');
+        assert(sig.length === 129, 'Incorrect signature length');
+        const parsedSig = {
+          r: sig.substr(0, 64),
+          s: sig.substr(64, 128),
+          v: parseInt(sig.slice(-1)),
+        } 
+        const recoveredPubKey = Buffer.from(recoverPubKey(msg, parsedSig), 'hex');
+        const recoveredAddress = `0x${pubToAddress(recoveredPubKey.slice(1)).toString('hex')}`;
+        assert(recoveredAddress === addr, 'Incorrect signature');
         done();
       });
     });
