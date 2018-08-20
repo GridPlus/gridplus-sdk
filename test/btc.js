@@ -2,7 +2,7 @@
 import { NodeClient } from '@gridplus/bclient';
 import assert from 'assert';
 import bitcoin from 'bitcoinjs-lib';
-import { bitcoinNode, SPLIT_BUF, testing } from '../src/config.js';
+import { bitcoinNode, testing } from '../src/config.js';
 import { Client, providers  } from 'index';
 import NodeCrypto from '@gridplus/node-crypto';
 
