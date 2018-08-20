@@ -244,12 +244,6 @@ describe('Ethereum', () => {
       };
       client.signManual(params, (err, res) => {
         assert(err === null, err);
-        const sigData = res.result.data.sigData.split(SPLIT_BUF);
-        const sig = sigData[1];
-        const v = parseInt(sig.slice(-1)) + 27;
-        const vrs = [ v, Buffer.from(sig.slice(0, 64), 'hex'), Buffer.from(sig.slice(64, 128), 'hex'),  ];
-        const newTx = new Tx(tx.concat(vrs));
-        // client.broadcast('ETH', `0x${newTx.serialize().toString('hex')}`, (err, res) => {
         client.broadcast('ETH', res.data, (err, res) => {
           assert(err === null, err);
           assert(res && res.hash, 'Did not broadcast properly');

@@ -184,11 +184,15 @@ describe('basic tests', () => {
       params: params,
     };
     client.addresses(req1, (err, res) => {
-      const addr = res.result.data.addresses;
+      assert(err === null, err);
+      assert(res !== undefined);
+      // const addr = res.result.data.addresses;
       client.signAutomated(req2, (err, res) => {
         assert(err === null, err);
+        assert(res !== undefined);
+
         // Make sure the signature came out of the right pubkey
-        const sigData = res.result.data.sigData.split(api.SPLIT_BUF);
+        // const sigData = res.result.data.sigData.split(api.SPLIT_BUF);
         // TODO: test sigData
         done()
       });

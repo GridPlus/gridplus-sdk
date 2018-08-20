@@ -75,7 +75,6 @@ export function recoverPubKey (msg, sig) {
 }
 
 export function parseSigResponse(res) {
-  let data;
   if (res.result && res.result.status === 200) {    
     switch (res.result.data.schemaIndex) {
       case 0: // ETH
@@ -94,7 +93,7 @@ export function parseSigResponse(res) {
 function parseBtcTx(res) {
   const sigData = res.result.data.sigData.split(config.api.SPLIT_BUF);
   const witnessData = res.result.witnessData;
-  let d = {
+  const d = {
     tx: sigData[0],
   }
   if (witnessData) {
@@ -115,7 +114,7 @@ function parseBtcTx(res) {
 function parseEthTx(res) {
   const sigData = res.result.data.sigData.split(config.api.SPLIT_BUF);
   const { params } = res.result.data;
-  let d = {
+  const d = {
     sigs: sigData.slice(1),
     vrs: [],
     to: params[3],
@@ -151,15 +150,15 @@ function encodeLength (len, offset) {
   if (len < 56) {
     return Buffer.from([len + offset])
   } else {
-    var hexLength = intToHex(len)
-    var lLength = hexLength.length / 2
-    var firstByte = intToHex(offset + 55 + lLength)
+    const hexLength = intToHex(len)
+    const lLength = hexLength.length / 2
+    const firstByte = intToHex(offset + 55 + lLength)
     return Buffer.from(firstByte + hexLength, 'hex')
   }
 }
 
 function intToHex (i) {
-  var hex = i.toString(16)
+  let hex = i.toString(16)
   if (hex.length % 2) {
     hex = '0' + hex
   }
@@ -167,7 +166,7 @@ function intToHex (i) {
 }
 
 function intToBuffer (i) {
-  var hex = intToHex(i)
+  const hex = intToHex(i)
   return Buffer.from(hex, 'hex')
 }
 
@@ -217,11 +216,11 @@ function toBuffer (v) {
 
 function rlpEncode(input) {
   if (input instanceof Array) {
-    var output = []
-    for (var i = 0; i < input.length; i++) {
+    const output = []
+    for (let i = 0; i < input.length; i++) {
       output.push(rlpEncode(input[i]))
     }
-    var buf = Buffer.concat(output)
+    const buf = Buffer.concat(output)
     return Buffer.concat([encodeLength(buf.length, 192), buf])
   } else {
     input = toBuffer(input)
