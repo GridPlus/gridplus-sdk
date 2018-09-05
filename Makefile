@@ -149,6 +149,15 @@ up:
 	RABBIT_MQTT_URL=$(RABBIT_MQTT_URL) \
 	docker-compose -f docker-compose.mac.yml up # start all services
 
+up-providers:
+	AGENT_SERIAL=$(AGENT_SERIAL) \
+	APP_SECRET=$(APP_SECRET) \
+	DEBUG=$(DEBUG) \
+	LOG_LEVEL=$(LOG_LEVEL) \
+	NPM_TOKEN=$(NPM_TOKEN) \
+	RABBIT_MQTT_URL=$(RABBIT_MQTT_URL) \
+	docker-compose -f docker-compose.providers.yml up # start all services
+
 up-staging-mqtt:
 	AGENT_SERIAL=$(AGENT_SERIAL) \
 	APP_SECRET=$(APP_SECRET) \

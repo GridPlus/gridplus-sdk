@@ -6,10 +6,10 @@ import { BigNumber } from 'bignumber.js';
 const erc20Decimals = {};
 
 export default class Ethereum {
-
-  constructor ({ provider = new ethers.providers.JsonRpcProvider(config.defaultWeb3Provider) } = {}) {
+  constructor (opts=config.defaultWeb3Provider) {
+    const providerUrl = typeof opts === 'string' ? opts : `http://${opts.host}:${opts.port}`;
     this.name = 'ethereum';
-    this.provider = provider;
+    this.provider = new ethers.providers.JsonRpcProvider(providerUrl);
     this.shortcode = 'ETH';
   }
 

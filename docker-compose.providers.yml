@@ -1,0 +1,47 @@
+version: '3.4'
+
+networks:
+  agent-internal:
+  hostnet:
+
+services:
+
+  bcoin:
+    build:
+      context: .
+      dockerfile: bcoin.Dockerfile
+    restart: always
+    ports:
+      - "48332:48332"
+      - "48333:48333"
+    environment:
+      BCOIN_CONFIG: /conf/bcoin.conf
+      VIRTUAL_HOST: localhost
+      VIRTUAL_PORT: 48332
+    volumes:
+      - ./.bcoin:/data
+      - ./support/bcoin/bcoin.conf:/conf/bcoin.conf
+
+  ganache:
+    image: trufflesuite/ganache-cli:latest
+    ports:
+      - "8545:8545"
+    command: "--host 0.0.0.0 --mnemonic \"finish oppose decorate face calm tragic certain desk hour urge dinosaur mango\""
+
+  mqtt-broker:
+    build:
+      context: ../../services/agent/mqtt-broker
+      dockerfile: ./Dockerfile.mac
+      args:
+        NPM_TOKEN: ${NPM_TOKEN}
+    environment:
+      - DEBUG=${DEBUG:-debug,info,warn,error,fatal}
+      - MQTT_URL=mqtt://mqtt-broker:1883
+    restart: always
+    privileged: true
+    networks:
+      - agent-internal
+      - hostnet
+    volumes:
+      - ../../services/agent/mqtt-broker:/usr/src/service
+      - /usr/local/lib/node_modules:/usr/local/lib/node_modules

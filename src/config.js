@@ -51,12 +51,12 @@ export const testing = {
 };
 
 export default {
-  defaultWeb3Provider,
   SPLIT_BUF,
   defaults,
   ethFunctionCodes,
   erc20,
   api,
   bitcoinNode,
+  defaultWeb3Provider,
   testing
 }
