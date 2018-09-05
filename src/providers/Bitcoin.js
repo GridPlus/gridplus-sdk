@@ -2,14 +2,15 @@ import { NodeClient } from '@gridplus/bclient';
 import config from '../config.js';
 import { getTxHash } from '../util';
 const BASE_SEGWIT_SIZE = 134; // see: https://www.reddit.com/r/Bitcoin/comments/7m8ald/how_do_i_calculate_my_fees_for_a_transaction_sent/
+const defaultOpts = {
+  host: config.bitcoinNode.host,
+  network: config.bitcoinNode.network,
+  port: config.bitcoinNode.port,
+};
 
 export default class Bitcoin {
-  constructor (/* TODO: pass config in via ctor */) {
-    this.client = new NodeClient({
-      host: config.bitcoinNode.host,
-      network: config.bitcoinNode.network,
-      port: config.bitcoinNode.port,
-    });
+  constructor (opts=defaultOpts) {
+    this.client = new NodeClient(opts);
     this.name = 'bitcoin';
     this.shortcode = 'BTC';
   }
