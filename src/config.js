@@ -7,7 +7,7 @@ export const defaultWeb3Provider = process.env.ETHEREUM_NODE_URI || 'http://loca
 export const SPLIT_BUF = '22222222222222222222222222222222';
 
 export const defaults = {
-  gasPrice: 10 * 10**9
+  gasPrice: 10 * Math.pow(10, 9)
 }
 export const erc20 = {
   abi: erc20Abi,

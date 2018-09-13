@@ -29,7 +29,7 @@ export default class Bitcoin {
       balance += u.value;
     });
     if (sat !== true) {
-      balance /= 10 ** 8;
+      balance /= Math.pow(10, 8);
     }
     return {
       utxos, balance
@@ -299,13 +299,13 @@ export default class Bitcoin {
       newTxs.push({
         to: tx.outputs[0].address, 
         from: tx.inputs[0].coin ? tx.inputs[0].coin.address : '',
-        fee: tx.fee / 10 ** 8,
+        fee: tx.fee / Math.pow(10, 8),
         in: value > 0 ? 1 : 0,
         hash: tx.hash,
         currency: 'BTC',
         height: tx.height,
         timestamp: tx.mtime,
-        value: value / 10 ** 8,
+        value: value / Math.pow(10, 8),
         data: tx,
       });
     });
