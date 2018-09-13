@@ -16,7 +16,7 @@ export default class SdkClient {
   constructor(options) {
     options = options || {};
 
-    options.clientConfig = options.clientConfig || {}
+    options.clientConfig = options.clientConfig || {};
     options.clientConfig.baseUrl = options.clientConfig.baseUrl || config.api.baseUrl;
     options.clientConfig.name = options.clientConfig.name || 'gridplus-sdk';
     options.clientConfig.privKey = options.clientConfig.privKey;
