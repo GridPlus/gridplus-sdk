@@ -10,11 +10,11 @@ import {
 const debug = require('debug')('@gridplus/sdk:rest/client');
 
 export default class Client {
-  constructor({ baseUrl, crypto, name, privKey } = {}) {
+  constructor({ baseUrl, crypto, name, privKey, httpRequest } = {}) {
     if (!baseUrl) throw new Error('baseUrl is required');
     if (!name) throw new Error('name is required');
     if (!crypto) throw new Error('crypto provider is required');
-
+    if (httpRequest) this.httpRequest = httpRequest;
     this.baseUrl = baseUrl;
     this.crypto = crypto;
     this.name = name;
@@ -176,10 +176,17 @@ export default class Client {
 
   _request({ method, param }, cb) {
     const url = `${this.baseUrl}/${method}`;
-    superagent.post(url)
+    if (this.httpRequest) {
+      this.httpRequest(url, param)
+      .then((res) => { cb(null, res) })
+      .catch((err) => { cb(err); })
+    } else {
+      superagent.post(url)
       .send(param)
       .set('Accept', 'application/json')
-      .then(res => cb(null, res))
+      .then(res => { cb(null, res) })
       .catch(err => cb(err));
+    }
   }
+
 }
