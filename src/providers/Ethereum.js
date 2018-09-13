@@ -78,7 +78,7 @@ export default class Ethereum {
           return this.provider.call({ to: erc20Address, data: config.erc20.balanceOf(address) })
         })
         .then((balance) => {
-          data.balance = parseInt(balance) / 10 ** erc20Decimals[erc20Address];
+          data.balance = parseInt(balance) / Math.pow(10, erc20Decimals[erc20Address]);
           return this.getTransfers(this.provider, address, erc20Address)
         })
         .then((transfers) => {
@@ -96,7 +96,6 @@ export default class Ethereum {
         })
         .then((nonce) => {
           data.nonce = parseInt(nonce);
-          // data.balance = parseInt(balance) / 10 ** erc20Decimals[erc20Address];
           return this.getTransfers(this.provider, address, erc20Address);
         })
         .then((transfers) => {
@@ -256,7 +255,7 @@ export default class Ethereum {
           contract: log.address,
           from: `0x${unpad(log.topics[1])}`,
           to: `0x${unpad(log.topics[2])}`,
-          value: parseInt(log.data) / (10 ** decimals),
+          value: parseInt(log.data) / Math.pow(10, decimals),
         };
       default:
         return {};

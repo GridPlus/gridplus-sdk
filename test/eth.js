@@ -78,7 +78,7 @@ describe('Ethereum', () => {
     });
   });
 
-  const toSend = 10 ** 18;
+  const toSend = Math.pow(10, 18);
   it('Should transfer ETH to the address', (done) => {
     sender = testing.ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
