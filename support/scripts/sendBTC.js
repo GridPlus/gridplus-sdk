@@ -27,6 +27,7 @@ const recipient = process.argv[2];
 const sender = testing.btcHolder.regtestAddress;
 client.getCoinsByAddress(sender)
 .then((utxos) => {
+  utxos = utxos.sort((a,b) => {return (a.height > b.height) ? 1 : ((b.height > a.height) ? -1 : 0);} );
   const utxo = utxos[0];
   const txb = new bitcoin.TransactionBuilder(regtest);
   txb.addInput(utxo.hash, utxo.index);
