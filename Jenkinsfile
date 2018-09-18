@@ -2,8 +2,8 @@ pipeline {
   agent none
 
   options {
-    buildDiscarder(logRotator(numToKeepStr: '2'))
-    disableConcurrentBuilds()
+    // buildDiscarder(logRotator(numToKeepStr: '2'))
+    // disableConcurrentBuilds()
   }
   stages {
     // stage("notify") {
