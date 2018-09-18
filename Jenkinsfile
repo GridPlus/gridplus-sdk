@@ -5,7 +5,7 @@ pipeline {
     buildDiscarder(logRotator(numToKeepStr: '2'))
     disableConcurrentBuilds()
   }
-  stages {
+  stages {/*
     stage("notify") {
       agent any
       steps {
@@ -69,7 +69,7 @@ pipeline {
         dockerRelease(repo,container,'latest')
       }
     }
-  }
+  */}
   post {
     failure {
       slackSend(
