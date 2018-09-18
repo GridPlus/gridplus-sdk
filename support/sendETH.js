@@ -1,7 +1,7 @@
-import { Client, providers } from '../../src/index';
+import { Client, providers } from '../src/index';
 import NodeCrypto from '@gridplus/node-crypto';
 import Tx from 'ethereumjs-tx';
-const sender = require('../../src/config.js').testing.ethHolder;
+const sender = require('../src/config.js').testing.ethHolder;
 const senderPriv = Buffer.from(sender.privKey, 'hex');
 if (process.argv.length !== 3) {
   throw new Error('Please specify a receiving address')
