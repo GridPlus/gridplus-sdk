@@ -170,7 +170,12 @@ export default class Ethereum {
   getNonce(user) {
     return new Promise((resolve, reject) => {
       this.provider.getTransactionCount(user)
-      .then((nonce) => { return resolve(nonce); })
+      .then((nonce) => { 
+        // Unclear why etherscan returns 1 lower than the nonce should be
+        // TODO: Make sure this is the case
+        if (this.etherscan === true) nonce += 1;  
+        return resolve(nonce); 
+      })
       .catch((err) => { return reject(err); })
     });
   }
@@ -187,16 +192,16 @@ export default class Ethereum {
         to: tx.to,
         from: tx.from,
         fee: tx.gasPrice.mul(tx.gasLimit).toNumber(),
-        in: tx.to === address ? 1 : 0,
+        in: tx.to.toLowerCase() === address.toLowerCase() ? 1 : 0,
         hash: tx.hash,
         currency: 'ETH',
-        height: tx.blocknumber,
+        height: tx.blockNumber,
         timestamp: tx.timestamp,
         value: val.div(ethFactor).toNumber(),
         data: tx, 
       });
     });
-    return txs;
+    return newTxs;
   }
 
   _getEvents(address, topics, fromBlock=0, toBlock='latest') {
