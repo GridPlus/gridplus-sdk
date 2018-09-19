@@ -55,6 +55,7 @@ export const testing = {
 export default {
   SPLIT_BUF,
   defaults,
+  etherscanApiKey,
   ethFunctionCodes,
   erc20,
   api,
