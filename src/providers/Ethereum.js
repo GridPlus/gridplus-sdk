@@ -2,6 +2,7 @@ import ethers from 'ethers';
 import config from '../config.js';
 import { pad64, unpad } from '../util.js';
 import { BigNumber } from 'bignumber.js';
+import { BN } from 'bn.js';
 
 const erc20Decimals = {};
 
@@ -140,23 +141,26 @@ export default class Ethereum {
     const events = {}
     const { address, erc20Address } = opts;
     if (erc20Address) {
+      // TODO: Token transfer output needs to conform to the same schema as the history from etherscan
+      // This block is deprecated
+
       // Get transfer "out" events
-      this._getEvents(erc20Address, [ null, `0x${pad64(address)}`, null ])
-      .then((outEvents) => {
-        events.out = outEvents;
-        return this._getEvents(erc20Address, [ null, null, `0x${pad64(address)}` ])
-      })
-      .then((inEvents) => {
-        events.in = inEvents;
-        const data = this._parseTransferLogs(events, 'ERC20', erc20Decimals[erc20Address]);
-        return cb(null, data);
-      })
-      .catch((err) => { 
-        return cb(err); 
-      })
+      // this._getEvents(erc20Address, [ null, `0x${pad64(address)}`, null ])
+      // .then((outEvents) => {
+      //   events.out = outEvents;
+      //   return this._getEvents(erc20Address, [ null, null, `0x${pad64(address)}` ])
+      // })
+      // .then((inEvents) => {
+      //   events.in = inEvents;
+      //   const data = this._parseTransferLogs(events, 'ERC20', erc20Decimals[erc20Address]);
+      //   return cb(null, data);
+      // })
+      // .catch((err) => { 
+      //   return cb(err); 
+      // })
     } else if (this.etherscan === true) {
       this.provider.getHistory(address)
-      .then((history) => { return cb(null, history); })
+      .then((history) => { return cb(null, this._filterTxs(history, address)); })
       .catch((err) => { return cb(err); })
     } else {
       return cb(null, []);
@@ -169,6 +173,30 @@ export default class Ethereum {
       .then((nonce) => { return resolve(nonce); })
       .catch((err) => { return reject(err); })
     });
+  }
+
+  _filterTxs(txs, address) {
+    const newTxs = [];
+    const isArray = txs instanceof Array === true;
+    if (!isArray) txs = [ txs ];
+    const ethFactor = new BigNumber('1e18');
+    txs.forEach((tx) => {
+      const valString = tx.value.toString();
+      const val = new BigNumber(valString);
+      newTxs.push({
+        to: tx.to,
+        from: tx.from,
+        fee: tx.gasPrice.mul(tx.gasLimit).toNumber(),
+        in: tx.to === address ? 1 : 0,
+        hash: tx.hash,
+        currency: 'ETH',
+        height: tx.blocknumber,
+        timestamp: tx.timestamp,
+        value: val.div(ethFactor).toNumber(),
+        data: tx, 
+      });
+    });
+    return txs;
   }
 
   _getEvents(address, topics, fromBlock=0, toBlock='latest') {

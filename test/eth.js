@@ -114,7 +114,7 @@ describe('Ethereum', () => {
       done();
     });
   });
-
+/*
   it('Should deploy an ERC20 token', (done) => {
     client.buildTx('ETH', sender.address, addr, 0, (err, _tx) => {
       assert(err === null, err);
@@ -184,13 +184,14 @@ describe('Ethereum', () => {
 
   it('Should get the token transfer history for the user', (done) => {
     client.getTxHistory('ETH', { address: addr, erc20Address: erc20Addr }, (err, txHistory) => {
+      console.log('ETH txs', txHistory);
       assert(err === null, err);
       assert(txHistory.in.length === 1, `Number of inbound transfers should be 1, but got ${txHistory.in.length}`);
       assert(txHistory.out.length === 0, `Number of outbound transfers should be 0, but got ${txHistory.out.length}`);
       done();
     });
   });
-
+*/
   it('Should transfer ETH out of the agent account', (done) => {
     const randAddr = '0xdde20a2810ff23775585cf2d87991c7f5ddb8c22'
     client.buildTx('ETH', addr, randAddr, 10000, (err, tx) => {

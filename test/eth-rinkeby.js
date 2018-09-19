@@ -85,7 +85,7 @@ describe('Ethereum (via Etherscan)', () => {
       });
     });
   });
-
+/*
   const toSend = Math.pow(10, 15);
   it('Should transfer ETH to the address (20s)', (done) => {
     sender = testing.ethHolder;
@@ -118,7 +118,7 @@ describe('Ethereum (via Etherscan)', () => {
       })
     })
   });
-
+*/
   it('Should get a list of transactions', (done) => {
     client.getTxHistory('ETH', { address: ethHolder.address }, (err, txs) => {
       assert.equal(err, null, err);

@@ -9,7 +9,7 @@ import crypto from 'crypto';
 const { SPLIT_BUF } = api;
 
 let client, reactNative;
-
+/*
 describe('basic tests', () => {
 
   before(() => {
@@ -200,3 +200,4 @@ describe('basic tests', () => {
   });
 
 });
+*/
