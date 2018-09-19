@@ -4,7 +4,7 @@ const erc20Abi = [{'constant':true,'inputs':[],'name':'name','outputs':[{'name':
 
 export const defaultWeb3Provider = process.env.ETHEREUM_NODE_URI || 'http://localhost:8545';
 
-export const SPLIT_BUF = '22222222222222222222222222222222';
+export const SPLIT_BUF = 'qqq';
 
 export const defaults = {
   gasPrice: 10 * Math.pow(10, 9)
@@ -16,13 +16,15 @@ export const erc20 = {
   decimals: function() { return '0x313ce567' },
 };
 
+export const etherscanApiKey = 'GYRNT1WI11NXTJ64TBY6UIQV6PKFXFDKH8';
+
 export const ethFunctionCodes = {
   ERC20Transfer: 'a9059cbb'
 }
 
 export const api = {
   baseUrl: process.env.BASE_URL || 'http://localhost',
-  SPLIT_BUF: '22222222222222222222222222222222',
+  SPLIT_BUF,
 }
 
 export const bitcoinNode = {
