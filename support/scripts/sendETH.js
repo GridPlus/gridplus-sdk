@@ -3,18 +3,19 @@ import NodeCrypto from '@gridplus/node-crypto';
 import Tx from 'ethereumjs-tx';
 const sender = require('../../src/config.js').testing.ethHolder;
 const senderPriv = Buffer.from(sender.privKey, 'hex');
-if (process.argv.length !== 3) {
+if (process.argv.length < 3) {
   throw new Error('Please specify a receiving address')
 }
 const recipient = process.argv[2];
-
+const network = process.argv[3] ? process.argv[3] : null;
+const etherscan = network !== null;
 const client = new Client({
   clientConfig: {
     name: 'basic-test',
     crypto: NodeCrypto,
     privKey: NodeCrypto.randomBytes(32).toString('hex'),
   },
-  providers: [ new providers.Ethereum() ]
+  providers: [ new providers.Ethereum({ etherscan, network }) ]
 });
 
 client.buildTx('ETH', sender.address, recipient, Math.pow(10, 17), (err, builtTx) => {

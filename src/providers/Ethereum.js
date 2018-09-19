@@ -6,11 +6,19 @@ import { BigNumber } from 'bignumber.js';
 const erc20Decimals = {};
 
 export default class Ethereum {
-  constructor (opts=config.defaultWeb3Provider) {
-    const providerUrl = typeof opts === 'string' ? opts : `http://${opts.host}:${opts.port}`;
+  constructor (opts) {
     this.name = 'ethereum';
-    this.provider = new ethers.providers.JsonRpcProvider(providerUrl);
     this.shortcode = 'ETH';
+    if (opts && opts.etherscan === true) {
+      this.etherscan = true;
+      this.network = opts.network || 'homestead'; // No idea why mainnet is still being called homestead...
+      this.provider = new ethers.providers.EtherscanProvider(this.network, config.etherscanApiKey);
+    } else {
+      this.etherscan = false;
+      this.network = null;
+      const url = typeof opts === 'string' ? opts : (opts && opts.host && opts.port ? `http://${opts.host}:${opts.port}` : 'http://localhost:8545');
+      this.provider = new ethers.providers.JsonRpcProvider(url);
+    }
   }
 
   broadcast (data, cb) {
@@ -146,7 +154,9 @@ export default class Ethereum {
     return new Promise((resolve, reject) => {
       if (ERC20Addr === null) {
         // TODO: Need to figure out how to pull transfers for ETH
-        return resolve({})
+        return this.getETHTransferHistory(addr)
+        .then((transfers) => { return resolve(transfers); })
+        .catch((err) => { return reject(err); })
       } else {
         return this.getERC20TransferHistory(provider, addr, ERC20Addr)
         .then((transfers) =>  { return resolve(transfers); })
@@ -170,6 +180,18 @@ export default class Ethereum {
         })
         .catch((err) => { return reject(err); })
     });
+  }
+
+  getETHTransferHistory(user) {
+    return new Promise((resolve, reject) => {
+      if (this.etherscan === true) {
+        this.provider.getHistory(user)
+        .then((history) => { return resolve(history); })
+        .catch((err) => { return reject(err); })
+      } else {
+        return resolve([]);
+      }
+    })
   }
 
   getNonce (provider, user) {
