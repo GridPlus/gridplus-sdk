@@ -106,7 +106,7 @@ describe('Ethereum (via Etherscan)', () => {
             if (count > 20) {
               assert(err === null, err);
               assert(txs.height > 0, 'Tx was not mined');
-              done();
+              done();;
             } else if (txs.height > 0) {
               clearInterval(interval);
               done();
@@ -120,12 +120,11 @@ describe('Ethereum (via Etherscan)', () => {
   });
 
   it('Should get a list of transactions', (done) => {
-    client.getBalance('ETH', { address: ethHolder.address }, (err, data) => {
+    client.getTxHistory('ETH', { address: ethHolder.address }, (err, txs) => {
       assert.equal(err, null, err);
-      assert(data.transfers.length > 0);
+      assert(txs.length > 0);
       done();
     })
   })
-
   
 });

@@ -153,7 +153,6 @@ export default class SdkClient {
     if (! this.providers[shortcode]) {
       return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
     }
-
     return this.providers[shortcode].getTxHistory(options, cb);
   }
 

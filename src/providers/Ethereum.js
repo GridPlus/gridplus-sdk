@@ -40,7 +40,7 @@ export default class Ethereum {
     if (typeof from !== 'string') {
       cb('Please specify a single address to transfer from');
     } else {
-      this.getNonce(this.provider, from)
+      this.getNonce(from)
         .then((nonce) => {
           const tx = [ nonce, null, null, to, null, null ];
           // Fill in `value` and `data` if this is an ERC20 transfer
@@ -68,8 +68,6 @@ export default class Ethereum {
     }
   }
 
-  // TODO: Make a new function for both this and BTC to get the transaction history.
-  //        This should be separate from the balance, which is requested here.
   getBalance ({ address, erc20Address = null}, cb) {
     const data = {
       balance: 0,
@@ -87,12 +85,8 @@ export default class Ethereum {
         })
         .then((balance) => {
           data.balance = parseInt(balance) / Math.pow(10, erc20Decimals[erc20Address]);
-          return this.getTransfers(this.provider, address, erc20Address)
-        })
-        .then((transfers) => {
-          data.transfers = transfers;
           cb(null, data);
-          })
+        })
         .catch((err) => { cb(err); });
       } else {
         // If the decimals are cached, we can just query the balance
@@ -104,10 +98,6 @@ export default class Ethereum {
         })
         .then((nonce) => {
           data.nonce = parseInt(nonce);
-          return this.getTransfers(this.provider, address, erc20Address);
-        })
-        .then((transfers) => {
-          data.transfers = transfers;
           cb(null, data);
         })
         .catch((err) => { cb(err); });
@@ -121,10 +111,6 @@ export default class Ethereum {
       })
       .then((nonce) => {
         data.nonce = parseInt(nonce);
-        return this.getTransfers(this.provider, address, erc20Address)
-      })
-      .then((transfers) => {
-        data.transfers = transfers;
         cb(null, data);
       })
       .catch((err) => { cb(err); })
@@ -150,51 +136,34 @@ export default class Ethereum {
     return cb(null, this.provider);
   }
 
-  getTransfers(provider, addr, ERC20Addr=null) {
-    return new Promise((resolve, reject) => {
-      if (ERC20Addr === null) {
-        // TODO: Need to figure out how to pull transfers for ETH
-        return this.getETHTransferHistory(addr)
-        .then((transfers) => { return resolve(transfers); })
-        .catch((err) => { return reject(err); })
-      } else {
-        return this.getERC20TransferHistory(provider, addr, ERC20Addr)
-        .then((transfers) =>  { return resolve(transfers); })
-        .catch((err) => { return reject(err); })
-      }
-    });
-  }
-
-  getERC20TransferHistory(provider, user, contractAddr) {
-    return new Promise((resolve, reject) => {
-      const events = {}
+  getTxHistory(opts, cb) {
+    const events = {}
+    const { address, erc20Address } = opts;
+    if (erc20Address) {
       // Get transfer "out" events
-      this._getEvents(provider, contractAddr, [ null, `0x${pad64(user)}`, null ])
-        .then((outEvents) => {
-          events.out = outEvents;
-          return this._getEvents(provider, contractAddr, [ null, null, `0x${pad64(user)}` ])
-        })
-        .then((inEvents) => {
-          events.in = inEvents;
-          return resolve(this._parseTransferLogs(events, 'ERC20', erc20Decimals[contractAddr]));
-        })
-        .catch((err) => { return reject(err); })
-    });
+      this._getEvents(erc20Address, [ null, `0x${pad64(address)}`, null ])
+      .then((outEvents) => {
+        events.out = outEvents;
+        return this._getEvents(erc20Address, [ null, null, `0x${pad64(address)}` ])
+      })
+      .then((inEvents) => {
+        events.in = inEvents;
+        const data = this._parseTransferLogs(events, 'ERC20', erc20Decimals[erc20Address]);
+        return cb(null, data);
+      })
+      .catch((err) => { 
+        return cb(err); 
+      })
+    } else if (this.etherscan === true) {
+      this.provider.getHistory(address)
+      .then((history) => { return cb(null, history); })
+      .catch((err) => { return cb(err); })
+    } else {
+      return cb(null, []);
+    }
   }
 
-  getETHTransferHistory(user) {
-    return new Promise((resolve, reject) => {
-      if (this.etherscan === true) {
-        this.provider.getHistory(user)
-        .then((history) => { return resolve(history); })
-        .catch((err) => { return reject(err); })
-      } else {
-        return resolve([]);
-      }
-    })
-  }
-
-  getNonce (provider, user) {
+  getNonce(user) {
     return new Promise((resolve, reject) => {
       this.provider.getTransactionCount(user)
       .then((nonce) => { return resolve(nonce); })
@@ -202,7 +171,7 @@ export default class Ethereum {
     });
   }
 
-  _getEvents(provider, address, topics, fromBlock=0, toBlock='latest') {
+  _getEvents(address, topics, fromBlock=0, toBlock='latest') {
     return new Promise((resolve, reject) => {
       this.provider.getLogs({ address, topics, fromBlock, toBlock })
       .then((events) => { return resolve(events); })
