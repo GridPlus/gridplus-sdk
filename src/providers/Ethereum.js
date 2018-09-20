@@ -2,15 +2,24 @@ import ethers from 'ethers';
 import config from '../config.js';
 import { pad64, unpad } from '../util.js';
 import { BigNumber } from 'bignumber.js';
+import { BN } from 'bn.js';
 
 const erc20Decimals = {};
 
 export default class Ethereum {
-  constructor (opts=config.defaultWeb3Provider) {
-    const providerUrl = typeof opts === 'string' ? opts : `http://${opts.host}:${opts.port}`;
+  constructor (opts) {
     this.name = 'ethereum';
-    this.provider = new ethers.providers.JsonRpcProvider(providerUrl);
     this.shortcode = 'ETH';
+    if (opts && opts.etherscan === true) {
+      this.etherscan = true;
+      this.network = opts.network || 'homestead'; // No idea why mainnet is still being called homestead...
+      this.provider = new ethers.providers.EtherscanProvider(this.network, config.etherscanApiKey);
+    } else {
+      this.etherscan = false;
+      this.network = null;
+      const url = typeof opts === 'string' ? opts : (opts && opts.host && opts.port ? `http://${opts.host}:${opts.port}` : 'http://localhost:8545');
+      this.provider = new ethers.providers.JsonRpcProvider(url);
+    }
   }
 
   broadcast (data, cb) {
@@ -32,7 +41,7 @@ export default class Ethereum {
     if (typeof from !== 'string') {
       cb('Please specify a single address to transfer from');
     } else {
-      this.getNonce(this.provider, from)
+      this.getNonce(from)
         .then((nonce) => {
           const tx = [ nonce, null, null, to, null, null ];
           // Fill in `value` and `data` if this is an ERC20 transfer
@@ -60,8 +69,6 @@ export default class Ethereum {
     }
   }
 
-  // TODO: Make a new function for both this and BTC to get the transaction history.
-  //        This should be separate from the balance, which is requested here.
   getBalance ({ address, erc20Address = null}, cb) {
     const data = {
       balance: 0,
@@ -79,12 +86,8 @@ export default class Ethereum {
         })
         .then((balance) => {
           data.balance = parseInt(balance) / Math.pow(10, erc20Decimals[erc20Address]);
-          return this.getTransfers(this.provider, address, erc20Address)
-        })
-        .then((transfers) => {
-          data.transfers = transfers;
           cb(null, data);
-          })
+        })
         .catch((err) => { cb(err); });
       } else {
         // If the decimals are cached, we can just query the balance
@@ -96,10 +99,6 @@ export default class Ethereum {
         })
         .then((nonce) => {
           data.nonce = parseInt(nonce);
-          return this.getTransfers(this.provider, address, erc20Address);
-        })
-        .then((transfers) => {
-          data.transfers = transfers;
           cb(null, data);
         })
         .catch((err) => { cb(err); });
@@ -113,10 +112,6 @@ export default class Ethereum {
       })
       .then((nonce) => {
         data.nonce = parseInt(nonce);
-        return this.getTransfers(this.provider, address, erc20Address)
-      })
-      .then((transfers) => {
-        data.transfers = transfers;
         cb(null, data);
       })
       .catch((err) => { cb(err); })
@@ -142,37 +137,46 @@ export default class Ethereum {
     return cb(null, this.provider);
   }
 
-  getTransfers(provider, addr, ERC20Addr=null) {
-    return new Promise((resolve, reject) => {
-      if (ERC20Addr === null) {
-        // TODO: Need to figure out how to pull transfers for ETH
-        return resolve({})
-      } else {
-        return this.getERC20TransferHistory(provider, addr, ERC20Addr)
-        .then((transfers) =>  { return resolve(transfers); })
-        .catch((err) => { return reject(err); })
-      }
-    });
-  }
+  getTxHistory(opts, cb) {
+    const events = {}
+    const { address, erc20Address } = opts;
+    if (erc20Address) {
+      // TODO: Token transfer output needs to conform to the same schema as the history from etherscan
+      // This block is deprecated
 
-  getERC20TransferHistory(provider, user, contractAddr) {
-    return new Promise((resolve, reject) => {
-      const events = {}
       // Get transfer "out" events
-      this._getEvents(provider, contractAddr, [ null, `0x${pad64(user)}`, null ])
-        .then((outEvents) => {
-          events.out = outEvents;
-          return this._getEvents(provider, contractAddr, [ null, null, `0x${pad64(user)}` ])
-        })
-        .then((inEvents) => {
-          events.in = inEvents;
-          return resolve(this._parseTransferLogs(events, 'ERC20', erc20Decimals[contractAddr]));
-        })
-        .catch((err) => { return reject(err); })
-    });
+      this._getEvents(erc20Address, [ null, `0x${pad64(address)}`, null ])
+      .then((outEvents) => {
+        events.out = outEvents;
+        return this._getEvents(erc20Address, [ null, null, `0x${pad64(address)}` ])
+      })
+      .then((inEvents) => {
+        events.in = inEvents;
+        const allLogs = this._parseTransferLogs(events, 'ERC20', address, erc20Decimals[erc20Address]);
+        const txs = allLogs.in.concat(allLogs.out);
+        return cb(null, txs.sort((a, b) => { return a.height - b.height }));
+      })
+      .catch((err) => { 
+        return cb(err); 
+      })
+    } else if (this.etherscan === true) {
+      let txs = [];
+      this.provider.getHistory(address)
+      .then((history) => { 
+        txs = history;
+        return this.provider.tokentx(address)
+      })
+      .then((tokenHistory) => {
+        txs = txs.concat(tokenHistory || []);
+        return setImmediate(() => cb(null, this._filterEtherscanTxs(txs, address)));
+      })
+      .catch((err) => { return cb(err); })
+    } else {
+      return cb(null, []);
+    }
   }
 
-  getNonce (provider, user) {
+  getNonce(user) {
     return new Promise((resolve, reject) => {
       this.provider.getTransactionCount(user)
       .then((nonce) => { return resolve(nonce); })
@@ -180,7 +184,33 @@ export default class Ethereum {
     });
   }
 
-  _getEvents(provider, address, topics, fromBlock=0, toBlock='latest') {
+  _filterEtherscanTxs(txs, address) {
+    const newTxs = [];
+    const isArray = txs instanceof Array === true;
+    if (!isArray) txs = [ txs ];
+    const ethFactor = new BigNumber('1e18');
+    txs.forEach((tx) => {
+      const valString = tx.value.toString();
+      const val = new BigNumber(valString);
+      const to = tx.to ? tx.to : '';
+      newTxs.push({
+        to: to,
+        from: tx.from,
+        fee: tx.gasPrice.mul(tx.gasLimit).toString(),
+        in: to.toLowerCase() === address.toLowerCase() ? 1 : 0,
+        hash: tx.hash,
+        currency: 'ETH',
+        height: tx.blockNumber,
+        timestamp: tx.timestamp,
+        value: val.div(ethFactor).toString(),
+        data: tx,
+        contractAddress: tx.creates ? tx.creates : null
+      });
+    });
+    return newTxs;
+  }
+
+  _getEvents(address, topics, fromBlock=0, toBlock='latest') {
     return new Promise((resolve, reject) => {
       this.provider.getLogs({ address, topics, fromBlock, toBlock })
       .then((events) => { return resolve(events); })
@@ -204,31 +234,9 @@ export default class Ethereum {
         in: 0,  // For now, we can assume any transactions are outgoing. TODO: figure a way to get incoming txs
         data: txRaw,
       }
-      const fCode = txRaw.data.slice(2, 10);
-      if (tx.value === 0 && fCode === config.ethFunctionCodes.ERC20Transfer) {
-        return this._getERC20TransferValue(hash, (err, erc20Tx) => {
-          if (err) return cb(err);
-          tx.to = erc20Tx.to;
-          tx.contract = erc20Tx.contract;
-          tx.value = erc20Tx.value;
-          tx.from = erc20Tx.from;
-          return cb(null, tx);
-        })
-      } else {
-        return cb(null, tx); 
-      }
+      return cb(null, tx); 
     })
     .catch((err) => { return cb(err); })
-  }
-
-  _getERC20TransferValue(hash, cb) {
-    return this.provider.getTransactionReceipt(hash)
-    .then((receipt) => {
-      return cb(null, this._parseLog(receipt.logs[0], 'ERC20'));
-    })
-    .catch((err) => {
-      return cb(err);
-    })
   }
 
   _getValue(tx) {
@@ -247,28 +255,34 @@ export default class Ethereum {
     return weiFee.div(factor).toString();
   }
 
-  _parseLog(log, type, decimals=0) {
-    switch (type) {
-      case 'ERC20':
+  _parseLog(log, type, address, decimals=0) {
+    if (type === 'ERC20') {
+        const from = `0x${unpad(log.topics[1])}`;
+        const to = `0x${unpad(log.topics[2])}`;
+        const isIn = to.toLowerCase() === address.toLowerCase() ? 1 : 0;
         return {
-          transactionHash: log.transactionHash,
-          contract: log.address,
-          from: `0x${unpad(log.topics[1])}`,
-          to: `0x${unpad(log.topics[2])}`,
+          currency: 'ETH',
+          hash: log.transactionHash,
+          height: log.blockNumber,
+          // fee: 0,
+          in: isIn,
+          contractAddress: log.address,
+          from,
+          to,
           value: parseInt(log.data) / Math.pow(10, decimals),
         };
-      default:
-        return {};
+    } else {
+      return {};
     }
   }
 
-  _parseTransferLogs(logs, type, decimals=0) {
+  _parseTransferLogs(logs, type, address, decimals=0) {
     const newLogs = { in: [], out: [] };
     logs.out.forEach((log) => {
-      newLogs.out.push(this._parseLog(log, type, decimals));
+      newLogs.out.push(this._parseLog(log, type, address, decimals));
     });
     logs.in.forEach((log) => {
-      newLogs.in.push(this._parseLog(log, type, decimals));
+      newLogs.in.push(this._parseLog(log, type, address, decimals));
     });
     return newLogs;
   }
