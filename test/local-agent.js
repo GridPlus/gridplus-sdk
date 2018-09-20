@@ -1,7 +1,7 @@
 // Tests on communications with simulated agent devices
 import assert from 'assert';
 import { sha3, pubToAddress } from 'ethereumjs-util';
-import { api } from './../src/config.js';
+import { api } from '../src/config.js';
 import { recoverPubKey } from '../src/util.js';
 import { Client } from 'index';
 import ReactNativeCrypto from '@gridplus/react-native-crypto';
@@ -9,7 +9,7 @@ import crypto from 'crypto';
 const { SPLIT_BUF } = api;
 
 let client, reactNative;
-/*
+
 describe('basic tests', () => {
 
   before(() => {
@@ -200,4 +200,3 @@ describe('basic tests', () => {
   });
 
 });
-*/

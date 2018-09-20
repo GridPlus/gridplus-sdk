@@ -9,7 +9,7 @@ import NodeCrypto from '@gridplus/node-crypto';
 const { erc20Src } = testing;
 
 let client, addr, erc20Addr, sender, senderPriv, balance;
-/*
+
 describe('Ethereum', () => {
 
   before(() => {
@@ -115,82 +115,81 @@ describe('Ethereum', () => {
     });
   });
 
-  // it('Should deploy an ERC20 token', (done) => {
-  //   client.buildTx('ETH', sender.address, addr, 0, (err, _tx) => {
-  //     assert(err === null, err);
-  //     const rawTx = {
-  //       nonce: _tx[0],
-  //       gasPrice: _tx[1],
-  //       gasLimit: '0x1e8480',
-  //       value: 0,
-  //       data: erc20Src,
-  //     }
-  //     const txObj = new Tx(rawTx);
-  //     txObj.sign(senderPriv);
-  //     const serTx = txObj.serialize();
-  //     const data = { tx: `0x${serTx.toString('hex')}` };
-  //     client.broadcast('ETH', data, (err, res) => {
-  //       assert(err === null, err);
-  //       assert(res && res.hash, 'Did not broadcast properly');
-  //       client.providers.ETH.provider.getTransactionReceipt(res.hash)
-  //       .then((receipt) => {
-  //         assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
-  //         erc20Addr = receipt.contractAddress;
-  //         done();
-  //       })
-  //       .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
-  //     })
-  //   });
-  // });
+  it('Should deploy an ERC20 token', (done) => {
+    client.buildTx('ETH', sender.address, addr, 0, (err, _tx) => {
+      assert(err === null, err);
+      const rawTx = {
+        nonce: _tx[0],
+        gasPrice: _tx[1],
+        gasLimit: '0x1e8480',
+        value: 0,
+        data: erc20Src,
+      }
+      const txObj = new Tx(rawTx);
+      txObj.sign(senderPriv);
+      const serTx = txObj.serialize();
+      const data = { tx: `0x${serTx.toString('hex')}` };
+      client.broadcast('ETH', data, (err, res) => {
+        assert(err === null, err);
+        assert(res && res.hash, 'Did not broadcast properly');
+        client.providers.ETH.provider.getTransactionReceipt(res.hash)
+        .then((receipt) => {
+          assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
+          erc20Addr = receipt.contractAddress;
+          done();
+        })
+        .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
+      })
+    });
+  });
 
-  // // A freshly deployed ERC20 token should have a new address, so the balance will be 0
-  // // (unlike ETH, which may have been sent in previous tests)
-  // it('Should find a zero token balance for the address', (done) => {
-  //   client.getBalance('ETH', { address: addr, erc20Address: erc20Addr }, (err, data) => {
-  //     assert(err === null, err);
-  //     assert(typeof data.balance === 'number');
-  //     assert(data.balance === 0);
-  //     done();
-  //   });
-  // });
+  // A freshly deployed ERC20 token should have a new address, so the balance will be 0
+  // (unlike ETH, which may have been sent in previous tests)
+  it('Should find a zero token balance for the address', (done) => {
+    client.getBalance('ETH', { address: addr, erc20Address: erc20Addr }, (err, data) => {
+      assert(err === null, err);
+      assert(typeof data.balance === 'number');
+      assert(data.balance === 0);
+      done();
+    });
+  });
 
-  // it('Should find a non-zero balance for the sender', (done) => {
-  //   client.getBalance('ETH', { address: sender.address, erc20Address: erc20Addr }, (err, data) => {
-  //     assert(err === null, err);
-  //     assert(typeof data.balance === 'number');
-  //     assert(data.balance > 0, `Sender balance should be >0, but is ${data.balance}`);
-  //     done();
-  //   });
-  // });
+  it('Should find a non-zero balance for the sender', (done) => {
+    client.getBalance('ETH', { address: sender.address, erc20Address: erc20Addr }, (err, data) => {
+      assert(err === null, err);
+      assert(typeof data.balance === 'number');
+      assert(data.balance > 0, `Sender balance should be >0, but is ${data.balance}`);
+      done();
+    });
+  });
 
-  // it('Should transfer some ERC20 tokens to the address', (done) => {
-  //   client.buildTx('ETH', sender.address, addr, 1, { ERC20Token: erc20Addr}, (err, _tx) => {
-  //     assert(err === null, err);
-  //     const txObj = new Tx(_tx);
-  //     txObj.sign(senderPriv);
-  //     const serTx = txObj.serialize();
-  //     const data = { tx: `0x${serTx.toString('hex')}` };
-  //     client.broadcast('ETH', data, (err, res) => {
-  //       assert(err === null, err);
-  //       assert(res && res.hash, 'Did not broadcast properly');
-  //       client.getTx('ETH', res.hash, (err, minedTx) => {
-  //         assert(err === null, err);
-  //         assert(minedTx.height > -1);
-  //         done();
-  //       });
-  //     });
-  //   });
-  // });
+  it('Should transfer some ERC20 tokens to the address', (done) => {
+    client.buildTx('ETH', sender.address, addr, 1, { ERC20Token: erc20Addr}, (err, _tx) => {
+      assert(err === null, err);
+      const txObj = new Tx(_tx);
+      txObj.sign(senderPriv);
+      const serTx = txObj.serialize();
+      const data = { tx: `0x${serTx.toString('hex')}` };
+      client.broadcast('ETH', data, (err, res) => {
+        assert(err === null, err);
+        assert(res && res.hash, 'Did not broadcast properly');
+        client.getTx('ETH', res.hash, (err, minedTx) => {
+          assert(err === null, err);
+          assert(minedTx.height > -1);
+          done();
+        });
+      });
+    });
+  });
 
-  // it('Should get the token transfer history for the user', (done) => {
-  //   client.getTxHistory('ETH', { address: addr, erc20Address: erc20Addr }, (err, txHistory) => {
-  //     console.log('ETH txs', txHistory);
-  //     assert(err === null, err);
-  //     assert(txHistory.in.length === 1, `Number of inbound transfers should be 1, but got ${txHistory.in.length}`);
-  //     assert(txHistory.out.length === 0, `Number of outbound transfers should be 0, but got ${txHistory.out.length}`);
-  //     done();
-  //   });
-  // });
+  it('Should get the token transfer history for the user', (done) => {
+    client.getTxHistory('ETH', { address: addr, erc20Address: erc20Addr }, (err, txHistory) => {
+      assert(err === null, err);
+      assert(txHistory.length === 1, `Number of transfers should be 1, but got ${txHistory.length}`);
+      assert(txHistory[0].in === 1, 'Transfer should be inbound, but was not')
+      done();
+    });
+  });
 
   it('Should transfer ETH out of the agent account', (done) => {
     const randAddr = '0xdde20a2810ff23775585cf2d87991c7f5ddb8c22'
@@ -264,4 +263,3 @@ describe('Ethereum', () => {
   });
 
 });
-*/

@@ -145,19 +145,20 @@ export default class Ethereum {
       // This block is deprecated
 
       // Get transfer "out" events
-      // this._getEvents(erc20Address, [ null, `0x${pad64(address)}`, null ])
-      // .then((outEvents) => {
-      //   events.out = outEvents;
-      //   return this._getEvents(erc20Address, [ null, null, `0x${pad64(address)}` ])
-      // })
-      // .then((inEvents) => {
-      //   events.in = inEvents;
-      //   const data = this._parseTransferLogs(events, 'ERC20', erc20Decimals[erc20Address]);
-      //   return cb(null, data);
-      // })
-      // .catch((err) => { 
-      //   return cb(err); 
-      // })
+      this._getEvents(erc20Address, [ null, `0x${pad64(address)}`, null ])
+      .then((outEvents) => {
+        events.out = outEvents;
+        return this._getEvents(erc20Address, [ null, null, `0x${pad64(address)}` ])
+      })
+      .then((inEvents) => {
+        events.in = inEvents;
+        const allLogs = this._parseTransferLogs(events, 'ERC20', address, erc20Decimals[erc20Address]);
+        const txs = allLogs.in.concat(allLogs.out);
+        return cb(null, txs.sort((a, b) => { return a.height - b.height }));
+      })
+      .catch((err) => { 
+        return cb(err); 
+      })
     } else if (this.etherscan === true) {
       let txs = [];
       this.provider.getHistory(address)
@@ -167,7 +168,7 @@ export default class Ethereum {
       })
       .then((tokenHistory) => {
         txs = txs.concat(tokenHistory || []);
-        return setImmediate(() => cb(null, this._filterTxs(txs, address)));
+        return setImmediate(() => cb(null, this._filterEtherscanTxs(txs, address)));
       })
       .catch((err) => { return cb(err); })
     } else {
@@ -183,7 +184,7 @@ export default class Ethereum {
     });
   }
 
-  _filterTxs(txs, address) {
+  _filterEtherscanTxs(txs, address) {
     const newTxs = [];
     const isArray = txs instanceof Array === true;
     if (!isArray) txs = [ txs ];
@@ -233,32 +234,10 @@ export default class Ethereum {
         in: 0,  // For now, we can assume any transactions are outgoing. TODO: figure a way to get incoming txs
         data: txRaw,
       }
-      // const fCode = txRaw.data.slice(2, 10);
-      // if (tx.value === 0 && fCode === config.ethFunctionCodes.ERC20Transfer) {
-      //   return this._getERC20TransferValue(hash, (err, erc20Tx) => {
-      //     if (err) return cb(err);
-      //     tx.to = erc20Tx.to;
-      //     tx.contract = erc20Tx.contract;
-      //     tx.value = erc20Tx.value;
-      //     tx.from = erc20Tx.from;
-      //     return cb(null, tx);
-      //   })
-      // } else {
-        return cb(null, tx); 
-      // }
+      return cb(null, tx); 
     })
     .catch((err) => { return cb(err); })
   }
-
-  // _getERC20TransferValue(hash, cb) {
-  //   return this.provider.getTransactionReceipt(hash)
-  //   .then((receipt) => {
-  //     return cb(null, this._parseLog(receipt.logs[0], 'ERC20'));
-  //   })
-  //   .catch((err) => {
-  //     return cb(err);
-  //   })
-  // }
 
   _getValue(tx) {
     if (tx.value.toString() !== '0') {
@@ -276,28 +255,34 @@ export default class Ethereum {
     return weiFee.div(factor).toString();
   }
 
-  _parseLog(log, type, decimals=0) {
-    switch (type) {
-      case 'ERC20':
+  _parseLog(log, type, address, decimals=0) {
+    if (type === 'ERC20') {
+        const from = `0x${unpad(log.topics[1])}`;
+        const to = `0x${unpad(log.topics[2])}`;
+        const isIn = to.toLowerCase() === address.toLowerCase() ? 1 : 0;
         return {
-          transactionHash: log.transactionHash,
-          contract: log.address,
-          from: `0x${unpad(log.topics[1])}`,
-          to: `0x${unpad(log.topics[2])}`,
+          currency: 'ETH',
+          hash: log.transactionHash,
+          height: log.blockNumber,
+          // fee: 0,
+          in: isIn,
+          contractAddress: log.address,
+          from,
+          to,
           value: parseInt(log.data) / Math.pow(10, decimals),
         };
-      default:
-        return {};
+    } else {
+      return {};
     }
   }
 
-  _parseTransferLogs(logs, type, decimals=0) {
+  _parseTransferLogs(logs, type, address, decimals=0) {
     const newLogs = { in: [], out: [] };
     logs.out.forEach((log) => {
-      newLogs.out.push(this._parseLog(log, type, decimals));
+      newLogs.out.push(this._parseLog(log, type, address, decimals));
     });
     logs.in.forEach((log) => {
-      newLogs.in.push(this._parseLog(log, type, decimals));
+      newLogs.in.push(this._parseLog(log, type, address, decimals));
     });
     return newLogs;
   }
