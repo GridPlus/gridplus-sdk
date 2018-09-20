@@ -5,12 +5,12 @@ import Tx from 'ethereumjs-tx';
 import { SPLIT_BUF, testing } from '../src/config.js';
 import { Client, providers } from 'index';
 import NodeCrypto from '@gridplus/node-crypto';
-
+const TIMEOUT_SEC = 59;
 const { erc20Src, ethHolder } = testing;
 
 let client, addr, erc20Addr, sender, senderPriv, balance;
 
-describe('Ethereum (via Etherscan)', () => {
+describe('Ethereum via Etherscan: ether transfers', () => {
 
   before(() => {
 
@@ -85,7 +85,7 @@ describe('Ethereum (via Etherscan)', () => {
       });
     });
   });
-/*
+
   const toSend = Math.pow(10, 15);
   it('Should transfer ETH to the address (20s)', (done) => {
     sender = testing.ethHolder;
@@ -102,12 +102,12 @@ describe('Ethereum (via Etherscan)', () => {
         assert(res && res.hash && res.timestamp, 'Did not broadcast properly');
         let count = 0;
         const interval = setInterval(() => {
-          client.getTx('ETH', res.hash, (err, txs) => {
-            if (count > 20) {
+          client.getTx('ETH', res.hash, (err, tx) => {
+            if (count > TIMEOUT_SEC) {
               assert(err === null, err);
-              assert(txs.height > 0, 'Tx was not mined');
+              assert(tx.height > 0, 'Tx was not mined');
               done();;
-            } else if (txs.height > 0) {
+            } else if (tx.height > 0) {
               clearInterval(interval);
               done();
             } else {
@@ -118,7 +118,7 @@ describe('Ethereum (via Etherscan)', () => {
       })
     })
   });
-*/
+
   it('Should get a list of transactions', (done) => {
     client.getTxHistory('ETH', { address: ethHolder.address }, (err, txs) => {
       assert.equal(err, null, err);
@@ -128,3 +128,114 @@ describe('Ethereum (via Etherscan)', () => {
   })
   
 });
+
+describe('Ethereum via Etherscan: ERC20 transfers',  () => {
+
+  before(() => {
+
+    const eth = new providers.Ethereum({ network: 'rinkeby', etherscan: true });
+    client = new Client({
+      clientConfig: {
+        name: 'basic-test',
+        crypto: NodeCrypto,
+        privKey: NodeCrypto.randomBytes(32).toString('hex'),
+      },
+      providers: [ eth ],
+    });
+
+  });
+
+  it('Should deploy an ERC20 token', (done) => {
+    sender = testing.ethHolder;
+    senderPriv = Buffer.from(sender.privKey, 'hex');
+    client.buildTx('ETH', sender.address, addr, 0, {gasPrice: 1e9}, (err, _tx) => {
+      assert(err === null, err);
+      const rawTx = {
+        nonce: _tx[0],
+        gasPrice: _tx[1],
+        gasLimit: '0x1e8480',
+        value: 0,
+        data: erc20Src,
+      }
+      const txObj = new Tx(rawTx);
+      txObj.sign(senderPriv);
+      const serTx = txObj.serialize();
+      const data = { tx: `0x${serTx.toString('hex')}` };
+      client.broadcast('ETH', data, (err, res) => {
+        assert(err === null, err);
+        assert(res && res.hash && res.timestamp, 'Did not broadcast properly');
+        let count = 0;
+        const interval = setInterval(() => {
+          client.getTx('ETH', res.hash, (err, tx) => {
+            if (count > TIMEOUT_SEC) {
+              assert(err === null, err);
+              assert(tx.height > 0, 'Tx was not mined');
+              done();
+            } else if (tx.height > 0) {
+              clearInterval(interval);
+              erc20Addr = tx.data.creates;
+              done();
+            } else {
+              count += 1;
+            }
+          });
+        }, 1000);
+      });
+    });
+  });
+
+  it('Should transfer some ERC20 tokens to the address', (done) => {
+    client.buildTx('ETH', sender.address, addr, 1, { gasPrice: 1e9, ERC20Token: erc20Addr}, (err, _tx) => {
+      assert(err === null, err);
+      const txObj = new Tx(_tx);
+      txObj.sign(senderPriv);
+      const serTx = txObj.serialize();
+      const data = { tx: `0x${serTx.toString('hex')}` };
+      client.broadcast('ETH', data, (err, res) => {
+        assert(err === null, err);
+        assert(res && res.hash && res.timestamp, 'Did not broadcast properly');
+        let count = 0;
+        const interval = setInterval(() => {
+          client.getTx('ETH', res.hash, (err, txs) => {
+            if (count > TIMEOUT_SEC) {
+              assert(err === null, err);
+              assert(txs.height > 0, 'Tx was not mined');
+              done();
+            } else if (txs.height > 0) {
+              clearInterval(interval);
+              done();
+            } else {
+              count += 1;
+            }
+          });
+        }, 1000);
+      });
+    });
+  });
+
+  it('Should get the token transfer history for the new account', (done) => {
+    let count = 0;
+    const interval = setInterval(() => {
+      client.getTxHistory('ETH', { address: addr }, (err, txs) => {
+        if (count > TIMEOUT_SEC) {
+          assert(err === null, err);
+          assert(txs.height > 0, 'Could not get correct tx history from etherscan. Try again.');
+          done();
+        } else {
+          const t = txs[txs.length - 1];
+          if (
+            t.to.toLowerCase() === addr.toLowerCase() &&
+            t.from.toLowerCase() === sender.address.toLowerCase() &&
+            t.contractAddress.toLowerCase() === erc20Addr.toLowerCase()
+          ) {
+            clearInterval(interval);
+            done();
+          } else {
+            count += 1;
+          }
+        }
+      });
+    }, 1000);
+  });
+
+})

@@ -159,8 +159,16 @@ export default class Ethereum {
       //   return cb(err); 
       // })
     } else if (this.etherscan === true) {
+      let txs = [];
       this.provider.getHistory(address)
-      .then((history) => { return cb(null, this._filterTxs(history, address)); })
+      .then((history) => { 
+        txs = history;
+        return this.provider.tokentx(address)
+      })
+      .then((tokenHistory) => {
+        txs = txs.concat(tokenHistory || []);
+        return setImmediate(() => cb(null, this._filterTxs(txs, address)));
+      })
       .catch((err) => { return cb(err); })
     } else {
       return cb(null, []);
@@ -170,12 +178,7 @@ export default class Ethereum {
   getNonce(user) {
     return new Promise((resolve, reject) => {
       this.provider.getTransactionCount(user)
-      .then((nonce) => { 
-        // Unclear why etherscan returns 1 lower than the nonce should be
-        // TODO: Make sure this is the case
-        if (this.etherscan === true) nonce += 1;  
-        return resolve(nonce); 
-      })
+      .then((nonce) => { return resolve(nonce); })
       .catch((err) => { return reject(err); })
     });
   }
@@ -188,17 +191,19 @@ export default class Ethereum {
     txs.forEach((tx) => {
       const valString = tx.value.toString();
       const val = new BigNumber(valString);
+      const to = tx.to ? tx.to : '';
       newTxs.push({
-        to: tx.to,
+        to: to,
         from: tx.from,
-        fee: tx.gasPrice.mul(tx.gasLimit).toNumber(),
-        in: tx.to.toLowerCase() === address.toLowerCase() ? 1 : 0,
+        fee: tx.gasPrice.mul(tx.gasLimit).toString(),
+        in: to.toLowerCase() === address.toLowerCase() ? 1 : 0,
         hash: tx.hash,
         currency: 'ETH',
         height: tx.blockNumber,
         timestamp: tx.timestamp,
-        value: val.div(ethFactor).toNumber(),
-        data: tx, 
+        value: val.div(ethFactor).toString(),
+        data: tx,
+        contractAddress: tx.creates ? tx.creates : null
       });
     });
     return newTxs;
@@ -228,32 +233,32 @@ export default class Ethereum {
         in: 0,  // For now, we can assume any transactions are outgoing. TODO: figure a way to get incoming txs
         data: txRaw,
       }
-      const fCode = txRaw.data.slice(2, 10);
-      if (tx.value === 0 && fCode === config.ethFunctionCodes.ERC20Transfer) {
-        return this._getERC20TransferValue(hash, (err, erc20Tx) => {
-          if (err) return cb(err);
-          tx.to = erc20Tx.to;
-          tx.contract = erc20Tx.contract;
-          tx.value = erc20Tx.value;
-          tx.from = erc20Tx.from;
-          return cb(null, tx);
-        })
-      } else {
+      // const fCode = txRaw.data.slice(2, 10);
+      // if (tx.value === 0 && fCode === config.ethFunctionCodes.ERC20Transfer) {
+      //   return this._getERC20TransferValue(hash, (err, erc20Tx) => {
+      //     if (err) return cb(err);
+      //     tx.to = erc20Tx.to;
+      //     tx.contract = erc20Tx.contract;
+      //     tx.value = erc20Tx.value;
+      //     tx.from = erc20Tx.from;
+      //     return cb(null, tx);
+      //   })
+      // } else {
         return cb(null, tx); 
-      }
+      // }
     })
     .catch((err) => { return cb(err); })
   }
 
-  _getERC20TransferValue(hash, cb) {
-    return this.provider.getTransactionReceipt(hash)
-    .then((receipt) => {
-      return cb(null, this._parseLog(receipt.logs[0], 'ERC20'));
-    })
-    .catch((err) => {
-      return cb(err);
-    })
-  }
+  // _getERC20TransferValue(hash, cb) {
+  //   return this.provider.getTransactionReceipt(hash)
+  //   .then((receipt) => {
+  //     return cb(null, this._parseLog(receipt.logs[0], 'ERC20'));
+  //   })
+  //   .catch((err) => {
+  //     return cb(err);
+  //   })
+  // }
 
   _getValue(tx) {
     if (tx.value.toString() !== '0') {
