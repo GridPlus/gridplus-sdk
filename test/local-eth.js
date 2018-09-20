@@ -183,10 +183,10 @@ describe('Ethereum', () => {
   });
 
   it('Should get the token transfer history for the user', (done) => {
-    client.getBalance('ETH', { address: addr, erc20Address: erc20Addr }, (err, data) => {
+    client.getTxHistory('ETH', { address: addr, erc20Address: erc20Addr }, (err, txHistory) => {
       assert(err === null, err);
-      assert(data.transfers.in.length === 1, `Number of inbound transfers should be 1, but got ${data.transfers.in.length}`);
-      assert(data.transfers.out.length === 0, `Number of outbound transfers should be 0, but got ${data.transfers.out.length}`);
+      assert(txHistory.length === 1, `Number of transfers should be 1, but got ${txHistory.length}`);
+      assert(txHistory[0].in === 1, 'Transfer should be inbound, but was not')
       done();
     });
   });
@@ -254,7 +254,6 @@ describe('Ethereum', () => {
             client.getBalance('ETH', { address: addr, erc20Address: erc20Addr }, (err, data) => {
               assert(err === null, err);
               assert(data.nonce > -1);
-              assert(data.transfers.out.length > 0);
               done();
             });
           });
