@@ -251,6 +251,6 @@ function rlpEncode(input) {
 //   return result.result;
 // }
 
-export function httpReq(url) {
-  return ethers.providers.Provider.fetchJSON(url, null)
+export function httpReq(url, body=null) {
+  return ethers.providers.Provider.fetchJSON(url, body)
 }
