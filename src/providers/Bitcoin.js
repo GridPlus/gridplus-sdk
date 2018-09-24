@@ -124,21 +124,32 @@ export default class Bitcoin {
   }
 
   getBalance ({ address, sat = true }, cb) {
-    let balances;
-    if (typeof address === 'string') {
-      this.getUtxosSingleAddr(address)
-      .then((utxos) => {
-        balances = this.addBalanceSingle(utxos, sat);
-        cb(null, balances);
-      })
-      .catch((err) => { cb(err); })
-    } else {
-      this.getUtxosMultipleAddrs(address)
-      .then((utxos) => {
-        balances = this.addBalanceMultiple(utxos);
-        cb(null, balances);
-      })
-      .catch((err) => { cb(err); })
+    if (this.blockcypher === true) {
+      if (typeof address === 'string') {
+        return httpReq(`${this.blockcypherBaseUrl}/addrs/${address}/full`)
+        .then((res) => { return cb(null, res); })
+        .catch((err) => cb(err));
+      } else {
+        // TODO: chain requests via blockcypher
+        cb(null, null);
+      }
+    } else {  
+      let balances;
+      if (typeof address === 'string') {
+        this.getUtxosSingleAddr(address)
+        .then((utxos) => {
+          balances = this.addBalanceSingle(utxos, sat);
+          cb(null, balances);
+        })
+        .catch((err) => { cb(err); })
+      } else {
+        this.getUtxosMultipleAddrs(address)
+        .then((utxos) => {
+          balances = this.addBalanceMultiple(utxos);
+          cb(null, balances);
+        })
+        .catch((err) => { cb(err); })
+      }
     }
   }
 
