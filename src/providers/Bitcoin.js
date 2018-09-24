@@ -151,31 +151,35 @@ export default class Bitcoin {
   getTxHistory(opts, cb) {
     if (!opts.address && !opts.addresses) return cb('No address or addresses included in options.');
     const a = opts.address ? opts.address : opts.addresses;
-    if (typeof a === 'string') {
-      this.client.getTXByAddress(a)
-      .then((txs) => {
-        const filteredTxs = this._filterTxs(txs, { addresses: a });
-        return cb(null, filteredTxs);
-      })
-      .catch((err) => {
-        return cb(err);
-      })
+    if (this.blockcypher === true) {
+      return this.provider.getTxHistory({ address: a }, cb);
     } else {
-      this.client.getTXByAddresses(a)
-      .then((txs) => {
-        const filteredTxs = this._filterTxs(txs, { addresses: a });
-        const txsToReturn = {};
-        filteredTxs.forEach((tx) => {
-          if (a.indexOf(tx.from) > -1) {
-            if (txsToReturn[tx.from] === undefined) txsToReturn[tx.from] = [ tx ]
-            else                                    txsToReturn[tx.from].push(tx); 
-          } else if (a.indexOf(tx.to) > -1) {
-            if (txsToReturn[tx.to] === undefined) txsToReturn[tx.to] = [ tx ]
-            else                                    txsToReturn[tx.to].push(tx); 
-          }
+      if (typeof a === 'string') {
+        this.client.getTXByAddress(a)
+        .then((txs) => {
+          const filteredTxs = this._filterTxs(txs, { addresses: a });
+          return cb(null, filteredTxs);
         })
-        return cb(null, txsToReturn);
-      })
+        .catch((err) => {
+          return cb(err);
+        })
+      } else {
+        this.client.getTXByAddresses(a)
+        .then((txs) => {
+          const filteredTxs = this._filterTxs(txs, { addresses: a });
+          const txsToReturn = {};
+          filteredTxs.forEach((tx) => {
+            if (a.indexOf(tx.from) > -1) {
+              if (txsToReturn[tx.from] === undefined) txsToReturn[tx.from] = [ tx ]
+              else                                    txsToReturn[tx.from].push(tx); 
+            } else if (a.indexOf(tx.to) > -1) {
+              if (txsToReturn[tx.to] === undefined) txsToReturn[tx.to] = [ tx ]
+              else                                    txsToReturn[tx.to].push(tx); 
+            }
+          })
+          return cb(null, txsToReturn);
+        })
+      }
     }
   }
 

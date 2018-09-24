@@ -5,6 +5,7 @@ import { assert } from 'elliptic/lib/elliptic/utils';
 import { testing } from '../src/config.js';
 const { btcHolder } = testing;
 let client, deviceAddresses;
+process.on('unhandledRejection', e => { throw e; });
 
 const testnet = {
   messagePrefix: '\x18Bitcoin Signed Message:\n',
@@ -36,7 +37,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       assert(err === null, err);
       assert(typeof provider === 'object');
       assert(provider[0].height > 0);
-      done();
+      setTimeout(() => { done() }, 750);
     });
   });
 
@@ -69,7 +70,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
     client.getBalance('BTC', { address: btcHolder.address }, (err, data) => {
       assert.equal(err, null, err);
       assert(data.utxos.length > 0, `address (${btcHolder.address}) has not sent or received any bitcoins. Please request funds from the faucet (https://coinfaucet.eu/en/btc-testnet/) and try again.`);
-      done();
+      setTimeout(() => { done() }, 750);      
     });
   });
 
@@ -101,11 +102,30 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       assert(typeof balances[deviceAddresses[1]].balance === 'number', 'Balance not found for address 1');
       assert(typeof balances[testing.btcHolder.address].balance === 'number', 'Balance not found for btcHolder address.');
       assert(balances[testing.btcHolder.address].balance > 0, 'Balance should be >0 for btcHolder address');
-      done();
+      setTimeout(() => { done() }, 750);      
     })
   });
 
-/*
+  it('Should get transaction history for the holder', (done) => {
+    client.getTxHistory('BTC', { addresses: testing.btcHolder.address }, (err, txs) => {
+      assert(err === null, err);
+      assert(txs.length > 0, 'btcHolder address should have more than one transaction in history');      
+      setTimeout(() => { done() }, 750);      
+    })
+  })
+
+  // it('Should get transaction history for all 3 addresses', (done) => {
+  //   const addresses = deviceAddresses.concat(testing.btcHolder.address);
+  //   client.getTxHistory('BTC', { addresses }, (err, txs) => {
+  //     console.log(txs)
+  //     assert(err === null, err);
+  //     assert(txs[testing.btcHolder.address].length > 0, 'btcHolder address should have more than one transaction in history');      
+  //     done();
+  //   })
+  // })
+
+
+
   it('Should spend a small amount from the holder address', (done) => {
     const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.wif, testnet);
     client.getBalance('BTC', { address: testing.btcHolder.address }, (err, d) => {
@@ -136,6 +156,5 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       done()
     });
   });
-*/
 
 })
