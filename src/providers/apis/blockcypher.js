@@ -1,5 +1,5 @@
 // Blockcypher API
-import { httpReq, getTxHash } from '../../util';
+import { httpReq } from '../../util';
 import { blockcypherApiKey } from '../../config';
 export default class BlockCypherApi {
 
@@ -10,9 +10,8 @@ export default class BlockCypherApi {
 
   broadcast(rawTx, cb) {
     const url = `${this.blockcypherBaseUrl}/txs/push?token=${blockcypherApiKey}`;
-    console.log('broadcasting', url, rawTx)
-    return httpReq(url, rawTx)
-    .then((res) => { return cb(null, this._filterBroadcastedTx(res)) })
+    return httpReq(url, JSON.stringify({ tx: rawTx }))
+    .then((res) => { console.log('\n\ngot broadcast res', res, '\n\n'); return cb(null, this._filterBroadcastedTx(res)) })
     .catch((err) => { return cb(err); })
   }
 
@@ -30,11 +29,11 @@ export default class BlockCypherApi {
       return httpReq(url)
       .then((res) => { 
         if (txsOnly) {
-          return cb(null, this._filterTxs(res.txs, address));
+          return cb(null, this._sortByHeight(this._filterTxs(res.txs, address)));
         } else {
           const toReturn = {
             balance: this._getBalance(res.balance, sat),
-            utxos: this._filterUtxos(res.txs, address),
+            utxos: this._sortByHeight(this._filterUtxos(res.txs, address)),
           };
           return cb(null, toReturn); 
         }
@@ -47,12 +46,12 @@ export default class BlockCypherApi {
         res.forEach((b) => {
           if (txsOnly) {
             // For the tx history
-            toReturn[b.address] = this._filterTxs(b.txs, b.address)
+            toReturn[b.address] = this._sortByHeight(this._filterTxs(b.txs, b.address))
           } else {
             // For the balance/utxos
             toReturn[b.address] = {
               balance: this._getBalance(b.balance, sat),
-              utxos: this._filterUtxos(b.txs, b.address),
+              utxos: this._sortByHeight(this._filterUtxos(b.txs, b.address)),
             }
           }
         })
@@ -159,6 +158,10 @@ export default class BlockCypherApi {
       data: tx,
     }
     return parsedTx;
+  }
+
+  _sortByHeight(txs) {
+    return txs.sort((a, b) => { return a.height < b.height });
   }
 
 }
