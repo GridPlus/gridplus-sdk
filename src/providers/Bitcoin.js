@@ -1,6 +1,7 @@
 import { NodeClient } from '@gridplus/bclient';
 import config from '../config.js';
 import { httpReq, getTxHash } from '../util';
+import { BlockCypherApi } from './apis'
 const BASE_SEGWIT_SIZE = 134; // see: https://www.reddit.com/r/Bitcoin/comments/7m8ald/how_do_i_calculate_my_fees_for_a_transaction_sent/
 const defaultOpts = {
   host: config.bitcoinNode.host,
@@ -17,6 +18,7 @@ export default class Bitcoin {
       this.blockcypher = true;
       const network = opts.network ? opts.network : 'main';
       this.blockcypherBaseUrl = `https://api.blockcypher.com/v1/btc/${network}`
+      this.provider = new BlockCypherApi({ network });
     } else {
       // Use bcoin client      
       this.client = new NodeClient(opts);
@@ -125,14 +127,7 @@ export default class Bitcoin {
 
   getBalance ({ address, sat = true }, cb) {
     if (this.blockcypher === true) {
-      if (typeof address === 'string') {
-        return httpReq(`${this.blockcypherBaseUrl}/addrs/${address}/full`)
-        .then((res) => { return cb(null, res); })
-        .catch((err) => cb(err));
-      } else {
-        // TODO: chain requests via blockcypher
-        cb(null, null);
-      }
+      return this.provider.getBalance({ address, sat}, cb);
     } else {  
       let balances;
       if (typeof address === 'string') {
