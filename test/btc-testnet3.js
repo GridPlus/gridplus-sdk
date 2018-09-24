@@ -4,7 +4,7 @@ import NodeCrypto from '@gridplus/node-crypto';
 import { assert } from 'elliptic/lib/elliptic/utils';
 import { testing } from '../src/config.js';
 const { btcHolder } = testing;
-let client, deviceAddresses;
+let client, deviceAddresses, utxo;
 process.on('unhandledRejection', e => { throw e; });
 
 const testnet = {
@@ -70,6 +70,8 @@ describe('Bitcoin via BlockCypher: transfers', () => {
     client.getBalance('BTC', { address: btcHolder.address }, (err, data) => {
       assert.equal(err, null, err);
       assert(data.utxos.length > 0, `address (${btcHolder.address}) has not sent or received any bitcoins. Please request funds from the faucet (https://coinfaucet.eu/en/btc-testnet/) and try again.`);
+      assert(data.utxos[0].height > 0 && data.utxos[0].index !== undefined);
+      utxo = data.utxos[0];
       setTimeout(() => { done() }, 750);      
     });
   });
@@ -110,51 +112,46 @@ describe('Bitcoin via BlockCypher: transfers', () => {
     client.getTxHistory('BTC', { addresses: testing.btcHolder.address }, (err, txs) => {
       assert(err === null, err);
       assert(txs.length > 0, 'btcHolder address should have more than one transaction in history');      
-      setTimeout(() => { done() }, 750);      
+      setTimeout(() => { done() }, 1000);      
     })
   })
 
-  // it('Should get transaction history for all 3 addresses', (done) => {
-  //   const addresses = deviceAddresses.concat(testing.btcHolder.address);
-  //   client.getTxHistory('BTC', { addresses }, (err, txs) => {
-  //     console.log(txs)
-  //     assert(err === null, err);
-  //     assert(txs[testing.btcHolder.address].length > 0, 'btcHolder address should have more than one transaction in history');      
-  //     done();
-  //   })
-  // })
-
-
+  it('Should get transaction history for all 3 addresses', (done) => {
+    const addresses = deviceAddresses.concat(testing.btcHolder.address);
+    client.getTxHistory('BTC', { addresses }, (err, txs) => {
+      assert(err === null, err);
+      assert(txs[testing.btcHolder.address].length > 0, 'btcHolder address should have more than one transaction in history');      
+      done();
+    })
+  })
 
   it('Should spend a small amount from the holder address', (done) => {
     const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.wif, testnet);
-    client.getBalance('BTC', { address: testing.btcHolder.address }, (err, d) => {
-      assert(err === null, err);
-      const utxo = d.utxos[0];
-      const txb = new bitcoin.TransactionBuilder(testnet);
-      // console.log('deviceAddresses[0]', deviceAddresses[0], 'utxo', JSON.stringify(utxo))
-      txb.addInput(utxo.hash, utxo.block_index);
-      // // Note; this will throw if the address does not conform to the testnet
-      // // Need to figure out if regtest emulates the mainnet
-      txb.addOutput(deviceAddresses[0], 100);
-      txb.addOutput(testing.btcHolder.address, utxo.value - 100 - 100);
-      txb.sign(0, signer);
+    const txb = new bitcoin.TransactionBuilder(testnet);
+    console.log('utxo', utxo)
+    // console.log('deviceAddresses[0]', deviceAddresses[0], 'utxo', JSON.stringify(utxo))
+    txb.addInput(utxo.hash, utxo.index);
+    // // Note; this will throw if the address does not conform to the testnet
+    // // Need to figure out if regtest emulates the mainnet
+    txb.addOutput(deviceAddresses[0], 100);
+    txb.addOutput(testing.btcHolder.address, utxo.value - 100 - 100);
+    txb.sign(0, signer);
 
-      const tx = txb.build().toHex();
-      // console.log('tx', tx)
-      // client.broadcast('BTC', { tx }, (err, res) => {
-      //   assert(err === null, err);
-      //   assert(res.timestamp > 0, 'Could not broadcast properly');
-      //   client.getTx('BTC', res.hash, { addresses: testing.btcHolder.regtestAddress }, (err, retTx) => {
-      //     assert(err === null, err);
-      //     assert(retTx.value === -0.1);
-      //     assert(retTx.height === -1, 'Transaction was mined but should not have been');
-      //     assert(retTx.from === testing.btcHolder.regtestAddress, 'Tx not sent from the right address');
-      //     done();
-      //   });
-      // });
-      done()
+    const tx = txb.build().toHex();
+    console.log('tx', tx)
+    client.broadcast('BTC', { tx }, (err, res) => {
+      console.log('broadcast?', err, res)
+      assert(err === null, err);
+      assert(res.timestamp > 0, 'Could not broadcast properly');
+      client.getTx('BTC', res.hash, { addresses: testing.btcHolder.regtestAddress }, (err, retTx) => {
+        assert(err === null, err);
+        assert(retTx.value === -0.1);
+        assert(retTx.height === -1, 'Transaction was mined but should not have been');
+        assert(retTx.from === testing.btcHolder.regtestAddress, 'Tx not sent from the right address');
+        done();
+      });
     });
+    done()
   });
 
 })

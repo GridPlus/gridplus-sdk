@@ -176,7 +176,6 @@ describe('Bitcoin', () => {
   it('Should get UTXOs for a few addresses', (done) => {
     const addresses = deviceAddresses.concat(testing.btcHolder.regtestAddress);
     client.getBalance('BTC', { address: addresses }, (err, balances) => {
-      console.log('BALANCES', balances)
       assert(err === null, err);
       assert(typeof balances[deviceAddresses[0]].balance === 'number', 'Balance not found for address 0');
       assert(typeof balances[deviceAddresses[1]].balance === 'number', 'Balance not found for address 1');
@@ -219,6 +218,7 @@ describe('Bitcoin', () => {
     client.getBalance('BTC', { address: testing.btcHolder.regtestAddress }, (err, d) => {
       assert(err === null, err);
       const utxo = d.utxos[0];
+      console.log('utxo', utxo)
       const txb = new bitcoin.TransactionBuilder(regtest);
       txb.addInput(utxo.hash, utxo.index);
       // Note; this will throw if the address does not conform to the testnet
