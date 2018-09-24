@@ -49,7 +49,7 @@ export default class Bitcoin {
   broadcast(txData, cb) {
     console.log('TXDATA?', txData)
     if (this.blockcypher === true) {
-      return this.provider.broadcast({ tx: txData.tx, }, cb)
+      return this.provider.broadcast(txData.tx, cb)
     } else {
       const { tx } = txData;
       let { txHash, opts } = txData;
