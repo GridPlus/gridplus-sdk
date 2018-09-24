@@ -2,7 +2,6 @@ import ethers from 'ethers';
 import config from '../config.js';
 import { pad64, unpad } from '../util.js';
 import { BigNumber } from 'bignumber.js';
-import { BN } from 'bn.js';
 
 const erc20Decimals = {};
 

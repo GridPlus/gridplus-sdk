@@ -4,10 +4,11 @@ import aes from 'aes-js';
 import leftPad from 'left-pad';
 import elliptic from 'elliptic';
 import config from './config';
-
+const XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 const EC = elliptic.ec;
 const ec = new EC('curve25519');
 const ecSecp256k1 = new EC('secp256k1');
+import ethers from 'ethers';
 
 export function ecdsaKeyPair (privKey) {
   const curve = new EC('secp256k1');
@@ -230,4 +231,26 @@ function rlpEncode(input) {
       return Buffer.concat([encodeLength(input.length, 128), input])
     }
   }
+}
+
+// function getJsonResult(result) {
+//   console.log('\n\n\nresult', result, '\n\n\n')
+//   if (result.jsonrpc !== '2.0') {
+//       const error = new Error('invalid response');
+//       error.result = JSON.stringify(result);
+//       throw error;
+//   }
+
+//   if (result.error) {
+//       const error = new Error(result.error.message || 'unknown error');
+//       if (result.error.code) { error.code = result.error.code; }
+//       if (result.error.data) { error.data = result.error.data; }
+//       throw error;
+//   }
+
+//   return result.result;
+// }
+
+export function httpReq(url) {
+  return ethers.providers.Provider.fetchJSON(url, null)
 }
