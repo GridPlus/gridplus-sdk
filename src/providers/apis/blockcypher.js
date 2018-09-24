@@ -5,11 +5,12 @@ export default class BlockCypherApi {
 
   constructor(opts) {
     this.network = opts.network ? opts.network : 'main';
-    this.blockcypherBaseUrl = `https://api.blockcypher.com/v1/btc/${this.network}?token=${blockcypherApiKey}`;
+    this.blockcypherBaseUrl = `https://api.blockcypher.com/v1/btc/${this.network}`;
   }
 
   broadcast(rawTx, cb) {
     const url = `${this.blockcypherBaseUrl}/txs/push?token=${blockcypherApiKey}`;
+    console.log('broadcasting', url, rawTx)
     return httpReq(url, rawTx)
     .then((res) => { return cb(null, this._filterBroadcastedTx(res)) })
     .catch((err) => { return cb(err); })
@@ -25,30 +26,33 @@ export default class BlockCypherApi {
 
   _getBalanceAndTransactions({ address, sat=true, txsOnly=false }, cb) {
     if (typeof address === 'string') {
-      return httpReq(`${this.blockcypherBaseUrl}/addrs/${address}/full?token=${blockcypherApiKey}`)
+      const url = `${this.blockcypherBaseUrl}/addrs/${address}/full`;
+      return httpReq(url)
       .then((res) => { 
         if (txsOnly) {
           return cb(null, this._filterTxs(res.txs, address));
         } else {
           const toReturn = {
             balance: this._getBalance(res.balance, sat),
-            utxos: this._filterTxs(res.txs, address),
+            utxos: this._filterUtxos(res.txs, address),
           };
           return cb(null, toReturn); 
         }
       })
       .catch((err) => { return cb(err); })
     } else {
-      return httpReq(`${this.blockcypherBaseUrl}/addrs/${address.join(';')}/full?token=${blockcypherApiKey}`)
+      return httpReq(`${this.blockcypherBaseUrl}/addrs/${address.join(';')}/full`)
       .then((res) => {
         const toReturn = {};
         res.forEach((b) => {
           if (txsOnly) {
+            // For the tx history
             toReturn[b.address] = this._filterTxs(b.txs, b.address)
           } else {
+            // For the balance/utxos
             toReturn[b.address] = {
               balance: this._getBalance(b.balance, sat),
-              utxos: this._filterTxs(b.txs, b.address),
+              utxos: this._filterUtxos(b.txs, b.address),
             }
           }
         })
@@ -63,12 +67,36 @@ export default class BlockCypherApi {
     else              return balance;
   }
 
+  _filterUtxos(txs, address) {
+    const addresses = typeof address === 'string' ? [ address ] : address;
+    const filteredUtxos = [];
+    txs.forEach((tx) => {
+      tx.outputs.forEach((o, idx) => {
+        const outputAddress = o.addresses[0];
+        if (addresses.indexOf(outputAddress) > -1) {
+          const utxo = {
+            version: tx.ver,
+            height: tx.block_height,
+            value: o.value,
+            script: o.script,
+            address: outputAddress,
+            coinbase: false,
+            hash: tx.hash,
+            index: idx,
+          };
+          filteredUtxos.push(utxo);
+        }
+      })
+    })
+    return filteredUtxos;
+  }
+
   _filterTxs(txs, address) {
     const newTxs = [];
     const addresses = typeof address === 'string' ? [ address ] : address;
     txs.forEach((tx) => {
       tx.inputs.forEach((i) => {
-        const inputAddress = tx.inputs[i].addresses[0];
+        const inputAddress = i.addresses[0];
         const outputAddress = tx.outputs[0].addresses[0];
         if (addresses.indexOf(inputAddress) > -1) {
           const newTx = {

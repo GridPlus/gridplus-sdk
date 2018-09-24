@@ -47,21 +47,26 @@ export default class Bitcoin {
   }
 
   broadcast(txData, cb) {
-    const { tx } = txData;
-    let { txHash, opts } = txData;
-    if (!opts) opts = {};
-    if (!txHash) txHash = getTxHash(tx);
-    this.client.broadcast(tx)
-    .then((success) => {
-      if (!success.success) return cb('Could not broadcast transaction. Please try again later.');
-      this._getTx(txHash, (err, newTx) => {
-        if (err) return cb(err);
-        return cb(null, newTx)
+    console.log('TXDATA?', txData)
+    if (this.blockcypher === true) {
+      return this.provider.broadcast({ tx: txData.tx, }, cb)
+    } else {
+      const { tx } = txData;
+      let { txHash, opts } = txData;
+      if (!opts) opts = {};
+      if (!txHash) txHash = getTxHash(tx);
+      this.client.broadcast(tx)
+      .then((success) => {
+        if (!success.success) return cb('Could not broadcast transaction. Please try again later.');
+        this._getTx(txHash, (err, newTx) => {
+          if (err) return cb(err);
+          return cb(null, newTx)
       }, opts)
-    })
-    .catch((err) => {
-      return cb(err);
-    })
+      })
+      .catch((err) => {
+        return cb(err);
+      })
+    }
   }
 
   buildTx ({amount, to, addresses, perByteFee, changeIndex=null, network=null}, cb) {
