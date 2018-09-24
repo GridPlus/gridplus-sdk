@@ -176,6 +176,7 @@ describe('Bitcoin', () => {
   it('Should get UTXOs for a few addresses', (done) => {
     const addresses = deviceAddresses.concat(testing.btcHolder.regtestAddress);
     client.getBalance('BTC', { address: addresses }, (err, balances) => {
+      console.log('BALANCES', balances)
       assert(err === null, err);
       assert(typeof balances[deviceAddresses[0]].balance === 'number', 'Balance not found for address 0');
       assert(typeof balances[deviceAddresses[1]].balance === 'number', 'Balance not found for address 1');

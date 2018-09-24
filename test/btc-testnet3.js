@@ -1,9 +1,22 @@
 import { Client, providers } from 'index';
+import bitcoin from 'bitcoinjs-lib';
 import NodeCrypto from '@gridplus/node-crypto';
 import { assert } from 'elliptic/lib/elliptic/utils';
 import { testing } from '../src/config.js';
 const { btcHolder } = testing;
 let client, deviceAddresses;
+
+const testnet = {
+  messagePrefix: '\x18Bitcoin Signed Message:\n',
+  bech32: 'tb',
+  bip32: {
+    public: 0x043587cf,
+    private: 0x04358394
+  },
+  pubKeyHash: 0x6f,
+  scriptHash: 0xc4,
+  wif: 0xef
+}
 
 describe('Bitcoin via BlockCypher: transfers', () => {
   before(() => {
@@ -55,12 +68,12 @@ describe('Bitcoin via BlockCypher: transfers', () => {
   it('Should get the testnet3 balance of the holder account', (done) => {
     client.getBalance('BTC', { address: btcHolder.address }, (err, data) => {
       assert.equal(err, null, err);
-      assert(data.txs.length > 0, `address (${btcHolder.address}) has not sent or received any bitcoins. Please request funds from the faucet (https://coinfaucet.eu/en/btc-testnet/) and try again.`);
+      assert(data.utxos.length > 0, `address (${btcHolder.address}) has not sent or received any bitcoins. Please request funds from the faucet (https://coinfaucet.eu/en/btc-testnet/) and try again.`);
       done();
     });
   });
 
-  it('Should get the first Bitcoin addresses of the manual permission and log address 0', (done) => {
+  it('Should get the first 2 Bitcoin addresses of the manual permission and log address 0', (done) => {
     const req = {
       permissionIndex: 0,
       isManual: true,
@@ -71,15 +84,58 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       assert(err === null, err);
       assert(res.result.data.addresses.length === 2);
       deviceAddresses = res.result.data.addresses;
-      // Get the baseline balance for the addresses
+      // // Get the baseline balance for the addresses
       client.getBalance('BTC', { address: deviceAddresses[0] }, (err, d) => {
         assert(err === null, err);
-        assert((d.txs.length === 0 && d.total_received === 0) || (d.txs.length > 0 && d.total_received > 0));
-        done();
+        done()
       });
     });
   });
 
 
+  it('Should get UTXOs for a few addresses', (done) => {
+    const addresses = deviceAddresses.concat(testing.btcHolder.address);
+    client.getBalance('BTC', { address: addresses }, (err, balances) => {
+      assert(err === null, err);
+      assert(typeof balances[deviceAddresses[0]].balance === 'number', 'Balance not found for address 0');
+      assert(typeof balances[deviceAddresses[1]].balance === 'number', 'Balance not found for address 1');
+      assert(typeof balances[testing.btcHolder.address].balance === 'number', 'Balance not found for btcHolder address.');
+      assert(balances[testing.btcHolder.address].balance > 0, 'Balance should be >0 for btcHolder address');
+      done();
+    })
+  });
+
+/*
+  it('Should spend a small amount from the holder address', (done) => {
+    const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.wif, testnet);
+    client.getBalance('BTC', { address: testing.btcHolder.address }, (err, d) => {
+      assert(err === null, err);
+      const utxo = d.utxos[0];
+      const txb = new bitcoin.TransactionBuilder(testnet);
+      // console.log('deviceAddresses[0]', deviceAddresses[0], 'utxo', JSON.stringify(utxo))
+      txb.addInput(utxo.hash, utxo.block_index);
+      // // Note; this will throw if the address does not conform to the testnet
+      // // Need to figure out if regtest emulates the mainnet
+      txb.addOutput(deviceAddresses[0], 100);
+      txb.addOutput(testing.btcHolder.address, utxo.value - 100 - 100);
+      txb.sign(0, signer);
+
+      const tx = txb.build().toHex();
+      // console.log('tx', tx)
+      // client.broadcast('BTC', { tx }, (err, res) => {
+      //   assert(err === null, err);
+      //   assert(res.timestamp > 0, 'Could not broadcast properly');
+      //   client.getTx('BTC', res.hash, { addresses: testing.btcHolder.regtestAddress }, (err, retTx) => {
+      //     assert(err === null, err);
+      //     assert(retTx.value === -0.1);
+      //     assert(retTx.height === -1, 'Transaction was mined but should not have been');
+      //     assert(retTx.from === testing.btcHolder.regtestAddress, 'Tx not sent from the right address');
+      //     done();
+      //   });
+      // });
+      done()
+    });
+  });
+*/
 
 })
