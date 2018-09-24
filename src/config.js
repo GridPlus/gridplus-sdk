@@ -17,6 +17,7 @@ export const erc20 = {
 };
 
 export const etherscanApiKey = 'GYRNT1WI11NXTJ64TBY6UIQV6PKFXFDKH8';
+export const blockcypherApiKey = '3e2da4f0c5784a3987eb1d77d3d03bed';
 
 export const ethFunctionCodes = {
   ERC20Transfer: 'a9059cbb'

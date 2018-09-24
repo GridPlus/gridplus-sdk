@@ -1,6 +1,6 @@
 import { NodeClient } from '@gridplus/bclient';
 import config from '../config.js';
-import { getTxHash } from '../util';
+import { httpReq, getTxHash } from '../util';
 const BASE_SEGWIT_SIZE = 134; // see: https://www.reddit.com/r/Bitcoin/comments/7m8ald/how_do_i_calculate_my_fees_for_a_transaction_sent/
 const defaultOpts = {
   host: config.bitcoinNode.host,
@@ -10,9 +10,17 @@ const defaultOpts = {
 
 export default class Bitcoin {
   constructor (opts=defaultOpts) {
-    this.client = new NodeClient(opts);
     this.name = 'bitcoin';
     this.shortcode = 'BTC';
+    if (opts.blockcypher === true) {
+      // Use blockcypher api client
+      this.blockcypher = true;
+      const network = opts.network ? opts.network : 'main';
+      this.blockcypherBaseUrl = `https://api.blockcypher.com/v1/btc/${network}`
+    } else {
+      // Use bcoin client      
+      this.client = new NodeClient(opts);
+    }
   }
 
   addBalanceMultiple(utxos, sat=true) {
@@ -255,12 +263,18 @@ export default class Bitcoin {
   }
 
   initialize (cb) {
-    this.client.getInfo()
+    if (this.blockcypher === true) {
+      return httpReq(`${this.blockcypherBaseUrl}`)
+      .then((res) => { return cb(null, res); })
+      .catch((err) => cb(err));
+    } else {
+      this.client.getInfo()
       .then((info) => {
         if (!info || !info.network) return cb(new Error('Could not connect to node'));
         return cb(null, info);
       })
       .catch((err) => cb(err))
+    }
   }
 
   _getTx(hash, cb, opts={}) {
@@ -318,4 +332,5 @@ export default class Bitcoin {
       return (a.height > b.height) ? 1 : ((b.height > a.height) ? -1 : 0)
     });
   }
+
 }

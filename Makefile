@@ -68,6 +68,14 @@ test-rinkeby: ensure-serial
 	ETHEREUM_NODE_URI=$(ETHEREUM_NODE_URI) \
 	npm run test:rinkeby
 
+test-testnet3: ensure-serial
+	AGENT_SERIAL=$(AGENT_SERIAL) \
+	APP_SECRET=$(APP_SECRET) \
+	BASE_URL=$(BASE_URL) \
+	DEBUG= \
+	ETHEREUM_NODE_URI=$(ETHEREUM_NODE_URI) \
+	npm run test:testnet3
+
 test-staging: ensure-serial
 	AGENT_SERIAL=$(AGENT_SERIAL) \
 	APP_SECRET=$(APP_SECRET) \
