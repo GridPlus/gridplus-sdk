@@ -1,18 +1,35 @@
 // Blockcypher API
 import { httpReq } from '../../util';
 import { blockcypherApiKey } from '../../config';
+const request = require('superagent');
+
 export default class BlockCypherApi {
 
   constructor(opts) {
     this.network = opts.network ? opts.network : 'main';
-    this.blockcypherBaseUrl = `https://api.blockcypher.com/v1/btc/${this.network}`;
+    this.coin = opts.coin ? opts.coin : 'btc';
+    this.blockcypherBaseUrl = `https://api.blockcypher.com/v1/${this.coin}/${this.network}`;
+  }
+
+  initialize(cb) {
+    return httpReq(this.blockcypherBaseUrl)
+    .then((res) => { return cb(null, res); })
+    .catch((err) => cb(err));
   }
 
   broadcast(rawTx, cb) {
-    const url = `${this.blockcypherBaseUrl}/txs/push?token=${blockcypherApiKey}`;
-    return httpReq(url, JSON.stringify({ tx: rawTx }))
-    .then((res) => { console.log('\n\ngot broadcast res', res, '\n\n'); return cb(null, this._filterBroadcastedTx(res)) })
-    .catch((err) => { return cb(err); })
+    console.log('rawTx', rawTx)
+    const url = `${this.blockcypherBaseUrl}/txs/push`;
+    return request
+      .post(url)
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ tx: rawTx }))
+      .then((res) => {
+        console.log('broadcasted', res.body)
+        console.log('broadcast filtered', this._filterBroadcastedTx(res.body))
+        return cb(null, this._filterBroadcastedTx(res.body)); 
+      })
+      .catch((err) => { return cb(err); })
   }
 
   getBalance({ address, sat }, cb) {
@@ -91,26 +108,27 @@ export default class BlockCypherApi {
   }
 
   _filterTxs(txs, address) {
+    const oldTxs = (txs.length !== undefined) ? txs : [ txs ];
     const newTxs = [];
     const addresses = typeof address === 'string' ? [ address ] : address;
-    txs.forEach((tx) => {
+    oldTxs.forEach((tx) => {
       tx.inputs.forEach((i) => {
         const inputAddress = i.addresses[0];
         const outputAddress = tx.outputs[0].addresses[0];
         if (addresses.indexOf(inputAddress) > -1) {
-          const newTx = {
-            to: outputAddress,
-            from: inputAddress,
-            fee: tx.fees,
-            in: false,
-            hash: tx.hash,
-            currency: 'BTC',
-            height: tx.block_height,
-            timestamp: tx.confirmed ? tx.confirmed : tx.received,
-            value: i.output_value,
-            data: tx,
-          };
-          newTxs.push(newTx);
+          // {
+          //   to: outputAddress,
+          //   from: inputAddress,
+          //   fee: tx.fees,
+          //   in: false,
+          //   hash: tx.hash,
+          //   currency: 'BTC',
+          //   height: tx.block_height,
+          //   timestamp: tx.confirmed ? tx.confirmed : tx.received,
+          //   value: i.output_value,
+          //   data: tx,
+          // };
+          newTxs.push(this._filterTx(tx, outputAddress, inputAddress));
         }
       })
       tx.outputs.forEach((o) => {
@@ -119,37 +137,55 @@ export default class BlockCypherApi {
         const outputAddress = o.addresses[0];
         const inputAddress = tx.inputs[0].addresses[0];
         if (addresses.indexOf(outputAddress) > -1) {
-          const newTx = {
-            to: outputAddress,
-            from: inputAddress,
-            fee: tx.fees,
-            in: true,
-            hash: tx.hash,
-            currency: 'BTC',
-            height: tx.block_height,
-            timestamp: tx.confirmed ? tx.confirmed : tx.received,
-            value: o.value,
-            data: tx,
-          };
-          newTxs.push(newTx);
+          // const newTx = {
+          //   to: outputAddress,
+          //   from: inputAddress,
+          //   fee: tx.fees,
+          //   in: true,
+          //   hash: tx.hash,
+          //   currency: 'BTC',
+          //   height: tx.block_height,
+          //   timestamp: tx.confirmed ? tx.confirmed : tx.received,
+          //   value: o.value,
+          //   data: tx,
+          // };
+          newTxs.push(this._filterTx(tx, outputAddress, inputAddress, true));
         }
       })
     })
-    return newTxs;
+    if (txs.length !== undefined) return newTxs
+    else                          return newTxs[0];
   }
 
-  _filterBroadcastedTx(tx) {
+  _filterBroadcastedTx(res) {
+    const tx = res.tx ? res.tx : res;
     const sender = tx.inputs[0].addresses[0];
     let output;
     tx.outputs.forEach((o) => {
-      if (o.addresses[0] === sender) output = o;
+      if (!output && o.addresses[0] !== sender) output = o;
     })
     if (!output) return null;
-    const parsedTx = {
-      to: output.addresses[0],
-      from: sender,
+    // const parsedTx = {
+    //   to: output.addresses[0],
+    //   from: sender,
+    //   fee: tx.fees,
+    //   in: false,
+    //   hash: tx.hash,
+    //   currency: 'BTC',
+    //   height: tx.block_height,
+    //   timestamp: tx.confirmed ? tx.confirmed : tx.received,
+    //   value: tx.inputs[0].output_value,
+    //   data: tx,
+    // }
+    return this._filterTx(tx, output.addresses[0], sender);
+  }
+
+  _filterTx(tx, to, from, input=false) {
+    return {
+      to,
+      from,
       fee: tx.fees,
-      in: false,
+      in: input,
       hash: tx.hash,
       currency: 'BTC',
       height: tx.block_height,
@@ -157,7 +193,6 @@ export default class BlockCypherApi {
       value: tx.inputs[0].output_value,
       data: tx,
     }
-    return parsedTx;
   }
 
   _sortByHeight(txs) {
