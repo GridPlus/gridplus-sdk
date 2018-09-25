@@ -18,15 +18,12 @@ export default class BlockCypherApi {
   }
 
   broadcast(rawTx, cb) {
-    console.log('rawTx', rawTx)
     const url = `${this.blockcypherBaseUrl}/txs/push`;
     return request
       .post(url)
       .set('Content-Type', 'application/json')
       .send(JSON.stringify({ tx: rawTx }))
       .then((res) => {
-        console.log('broadcasted', res.body)
-        console.log('broadcast filtered', this._filterBroadcastedTx(res.body))
         return cb(null, this._filterBroadcastedTx(res.body)); 
       })
       .catch((err) => { return cb(err); })
