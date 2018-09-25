@@ -90,6 +90,7 @@ export default class Bitcoin {
       // TODO: Make this more robust
       let bytesSize = 0;
       let fee = 0;
+      let utxoVersion = 1;
       utxoSum = 0;  // Reset this as zero; we will count up with it
       utxos.forEach((utxo) => {
         if (utxoSum <= (amount + fee)) {
@@ -106,11 +107,11 @@ export default class Bitcoin {
           bytesSize = BASE_SEGWIT_SIZE + 100 * (numInputs - 1) + 40;
           fee = perByteFee * bytesSize;
           utxoSum += utxo[1].value;
+          utxoVersion = utxo[1].version; // Not sure what to do if two utxos have different versions...
         }
       });
-
       const params = [
-        1,   // version
+        utxoVersion || 1,   // version
         0,   // locktime
         to,  // recipient
         amount,
