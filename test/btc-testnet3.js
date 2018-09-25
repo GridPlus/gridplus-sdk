@@ -133,8 +133,8 @@ describe('Bitcoin via BlockCypher: transfers', () => {
     txb.addInput(utxo.hash, utxo.index);
     // // Note; this will throw if the address does not conform to the testnet
     // // Need to figure out if regtest emulates the mainnet
-    txb.addOutput(deviceAddresses[0], 100);
-    txb.addOutput(testing.btcHolder.bcyAddress, utxo.value - 100 - 100);
+    txb.addOutput(deviceAddresses[0], 10000);
+    txb.addOutput(testing.btcHolder.bcyAddress, utxo.value - 10000 - 100);
     txb.sign(0, signer);
     const tx = txb.build().toHex();  
     client.broadcast('BTC', { tx }, (err, res) => {
@@ -157,7 +157,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
   it('Should spend some of the new coins from the lattice address', (done) => {
     console.log('newUtxo', newUtxo)
     const req = {
-      amount: utxo.value - 90,
+      amount: newUtxo.value - 90,
       to: deviceAddresses[0],
       addresses: deviceAddresses,
       perByteFee: 3,
