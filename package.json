@@ -17,6 +17,7 @@
     "sendETH": "node --require babel-core/register support/scripts/sendETH.js",
     "test": "mocha --timeout 5000 -R spec --require babel-core/register test/local-*.js --recursive --exit",
     "test:rinkeby": "mocha --timeout 60000 -R spec --require babel-core/register test/eth-rinkeby.js --recursive --exit",
+    "test:bcy": "mocha --timeout 60000 -R spec --require babel-core/register test/btc-bcy.js --recursive --exit",    
     "test:testnet3": "mocha --timeout 60000 -R spec --require babel-core/register test/btc-testnet3.js --recursive --exit",
     "test-docker": "npm run sleep && npm run test test:integration",
     "test:watch": "mocha -R spec --require babel-core/register test --recursive --watch",
