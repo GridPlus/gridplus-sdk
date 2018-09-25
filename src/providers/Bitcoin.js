@@ -16,9 +16,7 @@ export default class Bitcoin {
     if (opts.blockcypher === true) {
       // Use blockcypher api client
       this.blockcypher = true;
-      const network = opts.network ? opts.network : 'main';
-      this.blockcypherBaseUrl = `https://api.blockcypher.com/v1/btc/${network}`
-      this.provider = new BlockCypherApi({ network });
+      this.provider = new BlockCypherApi(opts);
     } else {
       // Use bcoin client      
       this.client = new NodeClient(opts);
@@ -47,7 +45,6 @@ export default class Bitcoin {
   }
 
   broadcast(txData, cb) {
-    console.log('TXDATA?', txData)
     if (this.blockcypher === true) {
       return this.provider.broadcast(txData.tx, cb)
     } else {
@@ -71,6 +68,7 @@ export default class Bitcoin {
 
   buildTx ({amount, to, addresses, perByteFee, changeIndex=null, network=null}, cb) {
     this.getBalance({ address: addresses }, (err, utxoSets) => {
+      console.log('buildTx: got balance', utxoSets, '\n\nerr?', err)
       if (err) return cb(err);
       
       const utxos = [];
@@ -279,9 +277,7 @@ export default class Bitcoin {
 
   initialize (cb) {
     if (this.blockcypher === true) {
-      return httpReq(`${this.blockcypherBaseUrl}`)
-      .then((res) => { return cb(null, res); })
-      .catch((err) => cb(err));
+      return this.provider.initialize(cb);
     } else {
       this.client.getInfo()
       .then((info) => {
@@ -293,15 +289,19 @@ export default class Bitcoin {
   }
 
   _getTx(hash, cb, opts={}) {
-    this.client.getTX(hash)
-    .then((tx) => {
-      if (!tx) return cb(null, null);
-      const filtered = this._filterTxs(tx, opts);
-      return cb(null, filtered);
-    })
-    .catch((err) => {
-      return cb(err);
-    })
+    if (this.blockcypher === true) {
+      return this.provider.getTx(hash, cb);
+    } else {
+      this.client.getTX(hash)
+      .then((tx) => {
+        if (!tx) return cb(null, null);
+        const filtered = this._filterTxs(tx, opts);
+        return cb(null, filtered);
+      })
+      .catch((err) => {
+        return cb(err);
+      })
+    }
   }
 
   _filterTxs(txs, opts={}) {

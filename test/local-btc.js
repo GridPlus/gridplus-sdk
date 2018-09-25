@@ -188,6 +188,7 @@ describe('Bitcoin', () => {
   it('Should get UTXOs for a single address', (done) => {
     const address = testing.btcHolder.regtestAddress;
     client.getBalance('BTC', { address }, (err, balances) => {
+      console.log('utxos', balances.utxos[0])
       assert(err === null, err);
       assert(typeof balances.balance === 'number', 'Balance not found');
       assert(balances.balance > 0, 'Balance should be >0');
@@ -203,10 +204,12 @@ describe('Bitcoin', () => {
       done();
     })
   })
-
+  
   it('Should get transaction history for just one address', (done) => {
     const address = testing.btcHolder.regtestAddress;
     client.getTxHistory('BTC', { address }, (err, txs) => {
+      console.log('txs', txs[0])
+      console.log('input', txs[0].data.inputs)
       assert(err === null, err);
       assert(txs.length > 0, 'btcHolder address should have more than one transaction in history');      
       done();
@@ -218,7 +221,6 @@ describe('Bitcoin', () => {
     client.getBalance('BTC', { address: testing.btcHolder.regtestAddress }, (err, d) => {
       assert(err === null, err);
       const utxo = d.utxos[0];
-      console.log('utxo', utxo)
       const txb = new bitcoin.TransactionBuilder(regtest);
       txb.addInput(utxo.hash, utxo.index);
       // Note; this will throw if the address does not conform to the testnet
