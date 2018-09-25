@@ -157,7 +157,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
   it('Should spend some of the new coins from the lattice address', (done) => {
     console.log('newUtxo', newUtxo)
     const req = {
-      amount: newUtxo.value - 90,
+      amount: 100,
       to: deviceAddresses[0],
       addresses: deviceAddresses,
       perByteFee: 3,
@@ -165,14 +165,13 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       network: 'bcy'
     };
     client.buildTx('BTC', req, (err, sigReq) => {
-      console.log('sigReq', sigReq, err)
-      done()
-      // assert(err === null, err);
-      // client.signManual(sigReq, (err, res) => {
-      //   assert(err === null, err);
-      //   console.log('signed', res)
-      //   done();
-      // })
+      console.log('sigreq', sigReq)
+      assert(err === null, err);
+      client.signManual(sigReq, (err, res) => {
+        assert(err === null, err);
+        console.log('signed', res)
+        done();
+      });
     })  
   });
 
