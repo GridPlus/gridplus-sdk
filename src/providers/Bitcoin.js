@@ -46,6 +46,7 @@ export default class Bitcoin {
 
   broadcast(txData, cb) {
     if (this.blockcypher === true) {
+      console.log('txdata', txData, cb)
       return this.provider.broadcast(txData.tx, cb)
     } else {
       const { tx } = txData;
@@ -66,7 +67,7 @@ export default class Bitcoin {
     }
   }
 
-  buildTx ({amount, to, addresses, perByteFee, changeIndex=null, network=null}, cb) {
+  buildTx ({amount, to, addresses, perByteFee, changeIndex=null, network=null, scriptType='p2sh(p2wpkh)'}, cb) {
     this.getBalance({ address: addresses }, (err, utxoSets) => {
       if (err) return cb(err);
       
@@ -97,7 +98,7 @@ export default class Bitcoin {
           const input = [
             utxo[1].hash,
             utxo[1].index,
-            'p2sh(p2wpkh)',
+            scriptType,
             utxo[0],
             utxo[0],   // We have to do this twice for legacy reasons. This should get cleaned up soon on the agent side
             utxo[1].value,
