@@ -115,18 +115,6 @@ export default class BlockCypherApi {
         const inputAddress = i.addresses[0];
         const outputAddress = tx.outputs[0].addresses[0];
         if (addresses.indexOf(inputAddress) > -1) {
-          // {
-          //   to: outputAddress,
-          //   from: inputAddress,
-          //   fee: tx.fees,
-          //   in: false,
-          //   hash: tx.hash,
-          //   currency: 'BTC',
-          //   height: tx.block_height,
-          //   timestamp: tx.confirmed ? tx.confirmed : tx.received,
-          //   value: i.output_value,
-          //   data: tx,
-          // };
           newTxs.push(this._filterTx(tx, outputAddress, inputAddress));
         }
       })
@@ -136,18 +124,6 @@ export default class BlockCypherApi {
         const outputAddress = o.addresses[0];
         const inputAddress = tx.inputs[0].addresses[0];
         if (addresses.indexOf(outputAddress) > -1) {
-          // const newTx = {
-          //   to: outputAddress,
-          //   from: inputAddress,
-          //   fee: tx.fees,
-          //   in: true,
-          //   hash: tx.hash,
-          //   currency: 'BTC',
-          //   height: tx.block_height,
-          //   timestamp: tx.confirmed ? tx.confirmed : tx.received,
-          //   value: o.value,
-          //   data: tx,
-          // };
           newTxs.push(this._filterTx(tx, outputAddress, inputAddress, true));
         }
       })
@@ -164,18 +140,6 @@ export default class BlockCypherApi {
       if (!output && o.addresses[0] !== sender) output = o;
     })
     if (!output) return null;
-    // const parsedTx = {
-    //   to: output.addresses[0],
-    //   from: sender,
-    //   fee: tx.fees,
-    //   in: false,
-    //   hash: tx.hash,
-    //   currency: 'BTC',
-    //   height: tx.block_height,
-    //   timestamp: tx.confirmed ? tx.confirmed : tx.received,
-    //   value: tx.inputs[0].output_value,
-    //   data: tx,
-    // }
     return this._filterTx(tx, output.addresses[0], sender);
   }
 

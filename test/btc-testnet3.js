@@ -180,11 +180,10 @@ describe('Bitcoin via BlockCypher: transfers', () => {
 
     client.buildTx('BTC', req, (err, sigReq) => {
       console.log('sigreq', sigReq)
-      console.log('err', err)
       assert(err === null, err);
       client.signManual(sigReq, (err, res) => {
         assert(err === null, err);
-        console.log('signed', res.data.tx)
+        console.log('signed', res)
         // client.broadcast(res.data, (err2, res2) => {
         //   assert(err2 === null, err2);
         //   done();

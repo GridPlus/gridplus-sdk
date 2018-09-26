@@ -4,18 +4,19 @@ import NodeCrypto from '@gridplus/node-crypto';
 import { assert } from 'elliptic/lib/elliptic/utils';
 import { testing } from '../src/config.js';
 const { btcHolder } = testing;
-let client, deviceAddresses, sentTx, utxo, newUtxo;
+let client, deviceAddresses, balance0, utxo, sentTx, newUtxo;
 process.on('unhandledRejection', e => { throw e; });
 
-const bcy = {                    // blockcypher testnet
+const bcy = {                    // blockcypher testnet (https://www.blockcypher.com/dev/bitcoin/#testing)
   messagePrefix: '\x18Bitcoin Signed Message:\n',
   bech32: 'bc',
   bip32: {
     public: 0x0488b21e,
     private: 0x0488ade4
   },
-  pubKeyHash: 0x1B,
-  scriptHash: 0x05,
+  pubKeyHash: 0x1b,
+  // pubKeyHash: 0x00,     // I think this is the same as mainnet, but not totally sure
+  scriptHash: 0x1b,
   wif: 0x49
 };
 
@@ -76,6 +77,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       isManual: true,
       total: 2,
       network,
+      segwit: false
     }
     client.addresses(req, (err, res) => {
       assert(err === null, err);
@@ -96,8 +98,13 @@ describe('Bitcoin via BlockCypher: transfers', () => {
     client.getBalance('BTC', { address: holderAddress }, (err, data) => {
       assert.equal(err, null, err);
       assert(data.utxos.length > 0, `address (${holderAddress}) has not sent or received any bitcoins. Please request funds from the faucet (https://coinfaucet.eu/en/btc-testnet/) and try again.`);
-      assert(data.utxos[0].height > 0 && data.utxos[0].index !== undefined);
-      utxo = data.utxos[0];
+      data.utxos.some((u) => {
+        if (u.value >= 10000 && u.height > 0 && u.index !== undefined) {
+          utxo = u;
+          return true;
+        }
+      });
+      assert(utxo !== undefined, `Unable to find an output with value >=10000 for address ${holderAddress}`);
       setTimeout(() => { done() }, 750);      
     });
   });
@@ -110,10 +117,11 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       assert(typeof balances[deviceAddresses[1]].balance === 'number', 'Balance not found for address 1');
       assert(typeof balances[holderAddress].balance === 'number', 'Balance not found for btcHolder address.');
       assert(balances[holderAddress].balance > 0, 'Balance should be >0 for btcHolder address');
+      balance0 = balances[deviceAddresses[0]].balance;
       setTimeout(() => { done() }, 750);      
     })
   });
-
+/*
   it('Should get transaction history for the holder', (done) => {
     client.getTxHistory('BTC', { addresses: holderAddress }, (err, txs) => {
       assert(err === null, err);
@@ -130,24 +138,28 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       setTimeout(() => { done() }, 1000);
     })
   })
-
+*/
   it('Should spend a small amount from the holder address', (done) => {
-    const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.bcyWif, bcy);
-    const txb = new bitcoin.TransactionBuilder(bcy);
-    txb.addInput(utxo.hash, utxo.index);
-    // // Note; this will throw if the address does not conform to the testnet
-    // // Need to figure out if regtest emulates the mainnet
-    txb.addOutput(deviceAddresses[0], 10000);
-    txb.addOutput(holderAddress, utxo.value - 10000 - 100);
-    txb.sign(0, signer);
-    const tx = txb.build().toHex();  
-    client.broadcast('BTC', { tx }, (err, res) => {
-      assert(err === null, err);
-      sentTx = res;
+    if (balance0 === 0) {
+      const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.bcyWif, bcy);
+      const txb = new bitcoin.TransactionBuilder(bcy);
+      txb.addInput(utxo.hash, utxo.index);
+      // // Note; this will throw if the address does not conform to the testnet
+      // // Need to figure out if regtest emulates the mainnet
+      txb.addOutput(deviceAddresses[0], 10000);
+      txb.addOutput(holderAddress, utxo.value - 10000 - 100);
+      txb.sign(0, signer);
+      
+      const tx = txb.build().toHex();  
+      client.broadcast('BTC', { tx }, (err, res) => {
+        assert(err === null, err);
+        sentTx = res;
+        done();
+      });
+    } else {
       done();
-    });
-    
-  })
+    }
+  });
 
   it('Should get the utxo of the new account', (done) => {
     const a = deviceAddresses[0];
@@ -171,6 +183,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       scriptType: 'p2pkh'
     };
     client.buildTx('BTC', req, (err, sigReq) => {
+      console.log('sigReq', sigReq)
       assert(err === null, err);
       client.signManual(sigReq, (err, res) => {
         assert(err === null, err);
