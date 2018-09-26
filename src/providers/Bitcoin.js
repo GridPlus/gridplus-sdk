@@ -46,7 +46,6 @@ export default class Bitcoin {
 
   broadcast(txData, cb) {
     if (this.blockcypher === true) {
-      console.log('txdata', txData, cb)
       return this.provider.broadcast(txData.tx, cb)
     } else {
       const { tx } = txData;
@@ -101,7 +100,7 @@ export default class Bitcoin {
             scriptType,
             utxo[0],
             utxo[0],   // We have to do this twice for legacy reasons. This should get cleaned up soon on the agent side
-            utxo[1].value,
+            null, // utxo[1].value,
           ];
           inputs = inputs.concat(input);
           numInputs += 1;
