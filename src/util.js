@@ -4,7 +4,6 @@ import aes from 'aes-js';
 import leftPad from 'left-pad';
 import elliptic from 'elliptic';
 import config from './config';
-const XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 const EC = elliptic.ec;
 const ec = new EC('curve25519');
 const ecSecp256k1 = new EC('secp256k1');
