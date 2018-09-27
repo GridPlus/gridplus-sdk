@@ -121,7 +121,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       setTimeout(() => { done() }, 750);      
     })
   });
-/*
+
   it('Should get transaction history for the holder', (done) => {
     client.getTxHistory('BTC', { addresses: holderAddress }, (err, txs) => {
       assert(err === null, err);
@@ -138,7 +138,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       setTimeout(() => { done() }, 1000);
     })
   })
-*/
+
   it('Should spend a small amount from the holder address', (done) => {
     if (balance0 === 0) {
       const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.bcyWif, bcy);
@@ -183,18 +183,17 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       scriptType: 'p2pkh'
     };
     client.buildTx('BTC', req, (err, sigReq) => {
-      console.log('sigReq', sigReq)
       assert(err === null, err);
       client.signManual(sigReq, (err, res) => {
         assert(err === null, err);
         console.log('tx', res.data.tx)
-        done();
-        // console.log('client.broadcast?', client.broadcast)
-        // client.broadcast(res.data, (err2, res2) => {
-        //   console.log('ERR2', err2)
-        //   // assert(err2 === null, err2);
-        //   done();
-        // });
+        setTimeout(() => {
+          client.broadcast('BTC', res.data, (err2, res2) => {
+            assert(err2 === null, err2);
+            console.log('res2', res2)
+            done();
+          });
+        }, 750);
       });
     });
   });

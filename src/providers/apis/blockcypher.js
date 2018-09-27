@@ -1,6 +1,6 @@
 // Blockcypher API
 import { httpReq } from '../../util';
-import { blockcypherApiKey } from '../../config';
+// import { blockcypherApiKey } from '../../config';
 const request = require('superagent');
 
 export default class BlockCypherApi {
@@ -9,7 +9,6 @@ export default class BlockCypherApi {
     this.network = opts.network ? opts.network : 'main';
     this.coin = opts.coin ? opts.coin : 'btc';
     this.blockcypherBaseUrl = `https://api.blockcypher.com/v1/${this.coin}/${this.network}`;
-    console.log('blockcypherBaseUrl', this.blockcypherBaseUrl) 
   }
 
   initialize(cb) {
@@ -19,7 +18,6 @@ export default class BlockCypherApi {
   }
 
   broadcast(rawTx, cb) {
-    console.log('blockcypher:broadcast:cb', cb)
     const url = `${this.blockcypherBaseUrl}/txs/push`;
     return request
       .post(url)
