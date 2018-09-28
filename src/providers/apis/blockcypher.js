@@ -9,6 +9,7 @@ export default class BlockCypherApi {
     this.coin = opts.coin ? opts.coin : 'btc';
     this.blockcypherBaseUrl = `https://api.blockcypher.com/v1/${this.coin}/${this.network}`;
     this.timeout = opts.timeout ? opts.timeout : 0; // Timeout between requests to avoid getting 429s from blockcypher
+    this.sat = opts.sat ? opts.sat : false;
   }
 
   initialize(cb) {
@@ -24,8 +25,8 @@ export default class BlockCypherApi {
       .catch((err) => { return cb(err); })
   }
 
-  getBalance({ address, sat }, cb) {
-    return this._getBalanceAndTransactions({ address, sat }, cb);
+  getBalance({ address }, cb) {
+    return this._getBalanceAndTransactions({ address }, cb);
   }
 
   getTxHistory({ address }, cb) {
@@ -40,7 +41,7 @@ export default class BlockCypherApi {
       .catch((err) => { return cb(err); })
   }
 
-  _getBalanceAndTransactions({ address, sat=true, txsOnly=false }, cb) {
+  _getBalanceAndTransactions({ address, txsOnly=false }, cb) {
     if (typeof address === 'string') {
       const url = `${this.blockcypherBaseUrl}/addrs/${address}/full`;
       return this._request(url)
@@ -49,7 +50,7 @@ export default class BlockCypherApi {
           return cb(null, this._sortByHeight(this._filterTxs(res.txs, address)));
         } else {
           const toReturn = {
-            balance: this._getBalance(res.balance, sat),
+            balance: this._getBitcoinValue(res.balance),
             utxos: this._sortByHeight(this._filterUtxos(res.txs, address)),
           };
           return cb(null, toReturn); 
@@ -68,7 +69,7 @@ export default class BlockCypherApi {
           } else {
             // For the balance/utxos
             toReturn[b.address] = {
-              balance: this._getBalance(b.balance, sat),
+              balance: this._getBitcoinValue(b.balance),
               utxos: this._sortByHeight(this._filterUtxos(b.txs, b.address)),
             }
           }
@@ -79,9 +80,9 @@ export default class BlockCypherApi {
     }
   }
 
-  _getBalance(balance, sat) {
-    if (sat !== true) return balance / Math.pow(10, 8)
-    else              return balance;
+  _getBitcoinValue(a) {
+    if (this.sat !== true) return a / Math.pow(10, 8)
+    else                   return a;
   }
 
   _filterUtxos(txs, address) {
@@ -149,18 +150,23 @@ export default class BlockCypherApi {
   }
 
   _filterTx(tx, to, from, input=false) {
+    const t = tx.confirmed ? tx.confirmed : tx.received;
     return {
       to,
       from,
-      fee: tx.fees,
+      fee: this._getBitcoinValue(tx.fees),
       in: input,
       hash: tx.hash,
       currency: 'BTC',
       height: tx.block_height,
-      timestamp: tx.confirmed ? tx.confirmed : tx.received,
-      value: tx.inputs[0].output_value,
+      timestamp: this._getUnixTimestamp(t),
+      value: this._getBitcoinValue(tx.inputs[0].output_value),
       data: tx,
     }
+  }
+
+  _getUnixTimestamp(t) {
+    return new Date(t).getTime() / 1000;
   }
 
   _sortByHeight(txs) {
