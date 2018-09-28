@@ -94,7 +94,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       });
     });
   });
-
+  
   it('Should get the BCY testnet balance of the holder account', (done) => {
     client.getBalance('BTC', { address: holderAddress }, (err, data) => {
       assert.equal(err, null, err);
@@ -219,5 +219,5 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       done();
     })
   });
-
+  
 });
