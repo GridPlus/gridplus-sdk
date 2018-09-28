@@ -50,7 +50,8 @@ export default class BlockCypherApi {
           return cb(null, this._sortByHeight(this._filterTxs(res.txs, address)));
         } else {
           const toReturn = {
-            balance: this._getBitcoinValue(res.balance),
+            // balance: this._getBitcoinValue(res.balance),
+            balance: res.balance,   // TODO: Fix the inconsistencies between this and the fallback bcoin option. We should ideally return the BTC value (as opposed to satoshi)
             utxos: this._sortByHeight(this._filterUtxos(res.txs, address)),
           };
           return cb(null, toReturn); 
@@ -114,13 +115,11 @@ export default class BlockCypherApi {
     const newTxs = [];
     const addresses = typeof address === 'string' ? [ address ] : address;
     oldTxs.forEach((tx) => {
-      let txUsed = false;
       tx.inputs.forEach((i) => {
         const inputAddress = i.addresses[0];
         const outputAddress = tx.outputs[0].addresses[0];
-        if (!txUsed && addresses.indexOf(inputAddress) > -1) {
-          newTxs.push(this._filterTx(tx, outputAddress, inputAddress));
-          txUsed = true;
+        if (addresses.indexOf(inputAddress) > -1) {
+          newTxs.push(this._filterTx(tx, outputAddress, inputAddress, i.output_value));
         }
       })
       tx.outputs.forEach((o) => {
@@ -128,9 +127,8 @@ export default class BlockCypherApi {
         // send an output with multiple recipients...
         const outputAddress = o.addresses[0];
         const inputAddress = tx.inputs[0].addresses[0];
-        if (!txUsed && addresses.indexOf(outputAddress) > -1) {
-          newTxs.push(this._filterTx(tx, outputAddress, inputAddress, true));
-          txUsed = true;
+        if (addresses.indexOf(outputAddress) > -1) {
+          newTxs.push(this._filterTx(tx, outputAddress, inputAddress, o.value, true));
         }
       })
     })
@@ -149,7 +147,7 @@ export default class BlockCypherApi {
     return this._filterTx(tx, output.addresses[0], sender);
   }
 
-  _filterTx(tx, to, from, input=false) {
+  _filterTx(tx, to, from, value, input=false) {
     const t = tx.confirmed ? tx.confirmed : tx.received;
     return {
       to,
@@ -160,7 +158,7 @@ export default class BlockCypherApi {
       currency: 'BTC',
       height: tx.block_height,
       timestamp: this._getUnixTimestamp(t),
-      value: this._getBitcoinValue(tx.inputs[0].output_value),
+      value: this._getBitcoinValue(value),
       data: tx,
     }
   }

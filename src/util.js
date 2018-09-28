@@ -7,7 +7,6 @@ import config from './config';
 const EC = elliptic.ec;
 const ec = new EC('curve25519');
 const ecSecp256k1 = new EC('secp256k1');
-import ethers from 'ethers';
 
 export function ecdsaKeyPair (privKey) {
   const curve = new EC('secp256k1');
