@@ -1,6 +1,6 @@
 import { NodeClient } from '@gridplus/bclient';
 import config from '../config.js';
-import { httpReq, getTxHash } from '../util';
+import { getTxHash } from '../util';
 import { BlockCypherApi } from './apis'
 const BASE_SEGWIT_SIZE = 134; // see: https://www.reddit.com/r/Bitcoin/comments/7m8ald/how_do_i_calculate_my_fees_for_a_transaction_sent/
 const defaultOpts = {
@@ -192,17 +192,25 @@ export default class Bitcoin {
   }
 
   getTx(hashes, cb, opts={}, filled=[]) {
-    if (typeof hashes === 'string') {
-      return this._getTx(hashes, cb, opts);
-    } else if (hashes.length === 0) {
-      return cb(null, filled);
-    } else {
-      const hash = hashes.shift();
-      return this._getTx(hash, (err, tx) => {
+    if (this.blockcypher === true) {
+      const addresses = opts.addresses ? opts.addresses : [];
+      this.provider.getTxs(hashes, (err, txs) => {
         if (err) return cb(err)
-        if (tx) filled.push(tx);
-        return this.getTx(hashes, cb, opts, filled);
-      }, opts);
+        else     return cb(null, txs);
+      }, addresses);
+    } else { 
+      if (typeof hashes === 'string') {
+        return this._getTx(hashes, cb, opts);
+      } else if (hashes.length === 0) {
+        return cb(null, filled);
+      } else {
+        const hash = hashes.shift();
+        return this._getTx(hash, (err, tx) => {
+          if (err) return cb(err)
+          if (tx) filled.push(tx);
+          return this.getTx(hashes, cb, opts, filled);
+        }, opts);
+      }
     }
   }
 
