@@ -1,5 +1,4 @@
 // Blockcypher API
-import { httpReq } from '../../util';
 // import { blockcypherApiKey } from '../../config';
 const request = require('superagent');
 
@@ -9,23 +8,19 @@ export default class BlockCypherApi {
     this.network = opts.network ? opts.network : 'main';
     this.coin = opts.coin ? opts.coin : 'btc';
     this.blockcypherBaseUrl = `https://api.blockcypher.com/v1/${this.coin}/${this.network}`;
+    this.timeout = opts.timeout ? opts.timeout : 0; // Timeout between requests to avoid getting 429s from blockcypher
   }
 
   initialize(cb) {
-    return httpReq(this.blockcypherBaseUrl)
+    return this._request(this.blockcypherBaseUrl)
     .then((res) => { return cb(null, res); })
     .catch((err) => cb(err));
   }
 
   broadcast(rawTx, cb) {
     const url = `${this.blockcypherBaseUrl}/txs/push`;
-    return request
-      .post(url)
-      .set('Content-Type', 'application/json')
-      .send(JSON.stringify({ tx: rawTx }))
-      .then((res) => {
-        return cb(null, this._filterBroadcastedTx(res.body)); 
-      })
+    return this._request(url, { tx: rawTx })
+      .then((res) => { return cb(null, this._filterBroadcastedTx(res)); })
       .catch((err) => { return cb(err); })
   }
 
@@ -40,7 +35,7 @@ export default class BlockCypherApi {
   _getBalanceAndTransactions({ address, sat=true, txsOnly=false }, cb) {
     if (typeof address === 'string') {
       const url = `${this.blockcypherBaseUrl}/addrs/${address}/full`;
-      return httpReq(url)
+      return this._request(url)
       .then((res) => { 
         if (txsOnly) {
           return cb(null, this._sortByHeight(this._filterTxs(res.txs, address)));
@@ -54,9 +49,10 @@ export default class BlockCypherApi {
       })
       .catch((err) => { return cb(err); })
     } else {
-      return httpReq(`${this.blockcypherBaseUrl}/addrs/${address.join(';')}/full`)
+      return this._request(`${this.blockcypherBaseUrl}/addrs/${address.join(';')}/full`)
       .then((res) => {
         const toReturn = {};
+        if (!Array.isArray(res)) res = [ res ];
         res.forEach((b) => {
           if (txsOnly) {
             // For the tx history
@@ -158,6 +154,24 @@ export default class BlockCypherApi {
 
   _sortByHeight(txs) {
     return txs.sort((a, b) => { return a.height < b.height });
+  }
+
+  _request(url, body=null) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        if (body === null) {
+          return request.get(url)
+            .then((res) => { return resolve(res.body); })
+            .catch((err) => { return reject(err); })
+        } else {
+          return request.post(url)
+            .set('Content-Type', 'application/json')
+            .send(JSON.stringify(body))
+            .then((res) => { return resolve(res.body); })
+            .catch((err) => { return reject(err); })
+        }
+        }, this.timeout);
+    })
   }
 
 }
