@@ -231,25 +231,3 @@ function rlpEncode(input) {
     }
   }
 }
-
-function getJsonResult(result) {
-  if (result.jsonrpc !== '2.0') {
-      const error = new Error('invalid response');
-      error.result = JSON.stringify(result);
-      throw error;
-  }
-
-  if (result.error) {
-      const error = new Error(result.error.message || 'unknown error');
-      if (result.error.code) { error.code = result.error.code; }
-      if (result.error.data) { error.data = result.error.data; }
-      throw error;
-  }
-
-  return result.result;
-}
-
-export function httpReq(url, body=null) {
-  const processFunc = body === null ? undefined : getJsonResult;
-  return ethers.providers.Provider.fetchJSON(url, body, processFunc)
-}

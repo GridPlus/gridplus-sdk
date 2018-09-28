@@ -4,7 +4,8 @@ import NodeCrypto from '@gridplus/node-crypto';
 import { assert } from 'elliptic/lib/elliptic/utils';
 import { testing } from '../src/config.js';
 const { btcHolder } = testing;
-let client, deviceAddresses, balance0, utxo, sentTx, newUtxo;
+let client, deviceAddresses, utxo, sentTx, newUtxo;
+let balance0 = 0;
 process.on('unhandledRejection', e => { throw e; });
 
 const bcy = {                    // blockcypher testnet (https://www.blockcypher.com/dev/bitcoin/#testing)
@@ -26,7 +27,7 @@ const holderAddress = btcHolder.bcyAddress
 
 describe('Bitcoin via BlockCypher: transfers', () => {
   before(() => {
-    const btc = new providers.Bitcoin({ network: 'test', blockcypher: true, coin });
+    const btc = new providers.Bitcoin({ network: 'test', blockcypher: true, coin, timeout: 750 });
     client = new Client({
       clientConfig: {
         name: 'blockcypher-test',
@@ -42,7 +43,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       assert(err === null, err);
       assert(typeof provider === 'object');
       assert(provider[0].height > 0);
-      setTimeout(() => { done() }, 750);
+      done();
     });
   });
 
@@ -105,10 +106,10 @@ describe('Bitcoin via BlockCypher: transfers', () => {
         }
       });
       assert(utxo !== undefined, `Unable to find an output with value >=10000 for address ${holderAddress}`);
-      setTimeout(() => { done() }, 750);      
+      done();  
     });
   });
-
+/*
   it('Should get UTXOs for a few addresses', (done) => {
     const addresses = deviceAddresses.concat(holderAddress);
     client.getBalance('BTC', { address: addresses }, (err, balances) => {
@@ -118,7 +119,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       assert(typeof balances[holderAddress].balance === 'number', 'Balance not found for btcHolder address.');
       assert(balances[holderAddress].balance > 0, 'Balance should be >0 for btcHolder address');
       balance0 = balances[deviceAddresses[0]].balance;
-      setTimeout(() => { done() }, 750);      
+      done();   
     })
   });
 
@@ -126,7 +127,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
     client.getTxHistory('BTC', { addresses: holderAddress }, (err, txs) => {
       assert(err === null, err);
       assert(txs.length > 0, 'btcHolder address should have more than one transaction in history');      
-      setTimeout(() => { done() }, 1000);      
+      done();     
     })
   })
 
@@ -135,10 +136,10 @@ describe('Bitcoin via BlockCypher: transfers', () => {
     client.getTxHistory('BTC', { addresses }, (err, txs) => {
       assert(err === null, err);
       assert(txs[holderAddress].length > 0, 'btcHolder address should have more than one transaction in history');      
-      setTimeout(() => { done() }, 1000);
+      done();
     })
   })
-
+*/
   it('Should spend a small amount from the holder address', (done) => {
     if (balance0 === 0) {
       const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.bcyWif, bcy);
@@ -163,13 +164,24 @@ describe('Bitcoin via BlockCypher: transfers', () => {
 
   it('Should get the utxo of the new account', (done) => {
     const a = deviceAddresses[0];
-    client.getBalance('BTC', { address: a }, (err, data) => {
-      assert.equal(err, null, err);      
-      assert(data.utxos.length > 0, `Address (${a}) has not sent or received any bitcoins. Please request funds from the faucet (https://coinfaucet.eu/en/btc-testnet/) and try again.`);
-      assert(data.utxos[0].height > 0 && data.utxos[0].index !== undefined, `Address (${a}) has a transaction, but it has not been confirmed. Please wait until it has`);
-      newUtxo = data.utxos[0];
-      setTimeout(() => { done() }, 750);      
-    });
+    let count = 0;
+    const interval = setInterval(() => {
+      client.getBalance('BTC', { address: a }, (err, data) => {
+        if (count > 10) {
+          assert.equal(err, null, err);      
+          assert(data.utxos.length > 0, `Address (${a}) has not sent or received any bitcoins. Please request funds from the faucet (https://coinfaucet.eu/en/btc-testnet/) and try again.`);
+          assert(data.utxos[0].height > 0 && data.utxos[0].index !== undefined, `Address (${a}) has a transaction, but it has not been confirmed. Please wait until it has`);
+          newUtxo = data.utxos[0];
+          done();
+        } else if (data.utxos.length > 0 && data.utxos[0].height > 0) {
+          newUtxo = data.utxos[0];
+          clearInterval(interval);
+          done();
+        } else {
+          count += 1;
+        }
+      });
+    }, 10000);
   });
 
   it('Should spend some of the new coins from the lattice address', (done) => {
@@ -186,11 +198,9 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       assert(err === null, err);
       client.signManual(sigReq, (err, res) => {
         assert(err === null, err);
-        console.log('tx', res.data.tx)
         setTimeout(() => {
           client.broadcast('BTC', res.data, (err2, res2) => {
             assert(err2 === null, err2);
-            console.log('res2', res2)
             done();
           });
         }, 750);
