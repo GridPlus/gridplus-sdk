@@ -109,37 +109,37 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       done();  
     });
   });
-/*
-  it('Should get UTXOs for a few addresses', (done) => {
-    const addresses = deviceAddresses.concat(holderAddress);
-    client.getBalance('BTC', { address: addresses }, (err, balances) => {
-      assert(err === null, err);
-      assert(typeof balances[deviceAddresses[0]].balance === 'number', 'Balance not found for address 0');
-      assert(typeof balances[deviceAddresses[1]].balance === 'number', 'Balance not found for address 1');
-      assert(typeof balances[holderAddress].balance === 'number', 'Balance not found for btcHolder address.');
-      assert(balances[holderAddress].balance > 0, 'Balance should be >0 for btcHolder address');
-      balance0 = balances[deviceAddresses[0]].balance;
-      done();   
-    })
-  });
 
-  it('Should get transaction history for the holder', (done) => {
-    client.getTxHistory('BTC', { addresses: holderAddress }, (err, txs) => {
-      assert(err === null, err);
-      assert(txs.length > 0, 'btcHolder address should have more than one transaction in history');      
-      done();     
-    })
-  })
+  // it('Should get UTXOs for a few addresses', (done) => {
+  //   const addresses = deviceAddresses.concat(holderAddress);
+  //   client.getBalance('BTC', { address: addresses }, (err, balances) => {
+  //     assert(err === null, err);
+  //     assert(typeof balances[deviceAddresses[0]].balance === 'number', 'Balance not found for address 0');
+  //     assert(typeof balances[deviceAddresses[1]].balance === 'number', 'Balance not found for address 1');
+  //     assert(typeof balances[holderAddress].balance === 'number', 'Balance not found for btcHolder address.');
+  //     assert(balances[holderAddress].balance > 0, 'Balance should be >0 for btcHolder address');
+  //     balance0 = balances[deviceAddresses[0]].balance;
+  //     done();   
+  //   })
+  // });
 
-  it('Should get transaction history for all 3 addresses', (done) => {
-    const addresses = deviceAddresses.concat(holderAddress);
-    client.getTxHistory('BTC', { addresses }, (err, txs) => {
-      assert(err === null, err);
-      assert(txs[holderAddress].length > 0, 'btcHolder address should have more than one transaction in history');      
-      done();
-    })
-  })
-*/
+  // it('Should get transaction history for the holder', (done) => {
+  //   client.getTxHistory('BTC', { addresses: holderAddress }, (err, txs) => {
+  //     assert(err === null, err);
+  //     assert(txs.length > 0, 'btcHolder address should have more than one transaction in history');      
+  //     done();     
+  //   })
+  // })
+
+  // it('Should get transaction history for all 3 addresses', (done) => {
+  //   const addresses = deviceAddresses.concat(holderAddress);
+  //   client.getTxHistory('BTC', { addresses }, (err, txs) => {
+  //     assert(err === null, err);
+  //     assert(txs[holderAddress].length > 0, 'btcHolder address should have more than one transaction in history');      
+  //     done();
+  //   })
+  // })
+
   it('Should spend a small amount from the holder address', (done) => {
     if (balance0 === 0) {
       const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.bcyWif, bcy);
@@ -201,11 +201,23 @@ describe('Bitcoin via BlockCypher: transfers', () => {
         setTimeout(() => {
           client.broadcast('BTC', res.data, (err2, res2) => {
             assert(err2 === null, err2);
+            console.log('res2', res2)
             done();
           });
         }, 750);
       });
     });
+  });
+
+  it('Should get transaction data from the hashes', (done) => {
+    const hashes = [ newUtxo.hash, utxo.hash ];
+    client.getTx('BTC', hashes, { addresses: holderAddress }, (err, res) => {
+      assert(err === null, err);
+      assert(res.length === 2, `Should have gotten 2 filtered tx objects, but got ${res.length}`);
+      assert(res[0].from === holderAddress && res[0].in === false, `First filtered transaction of unexpected format: expected outflow from ${holderAddress}`);
+      assert(res[1].from === holderAddress && res[1].in === false, `Second filtered transaction of unexpected format: expected outflow from ${holderAddress}`);
+      done();
+    })
   });
 
 });

@@ -1,5 +1,5 @@
 // Blockcypher API
-// import { blockcypherApiKey } from '../../config';
+import { blockcypherApiKey } from '../../config';
 const request = require('superagent');
 
 export default class BlockCypherApi {
@@ -18,7 +18,7 @@ export default class BlockCypherApi {
   }
 
   broadcast(rawTx, cb) {
-    const url = `${this.blockcypherBaseUrl}/txs/push`;
+    const url = `${this.blockcypherBaseUrl}/txs/push?token=${blockcypherApiKey}`;
     return this._request(url, { tx: rawTx })
       .then((res) => { return cb(null, this._filterBroadcastedTx(res)); })
       .catch((err) => { return cb(err); })
@@ -30,6 +30,14 @@ export default class BlockCypherApi {
 
   getTxHistory({ address }, cb) {
     return this._getBalanceAndTransactions({ address, txsOnly: true }, cb);
+  }
+
+  getTxs(hashes, cb, addresses=[]) {
+    if (typeof hashes === 'string') hashes = [ hashes ];
+    const url = `${this.blockcypherBaseUrl}/txs/${hashes.join(';')}`;
+    return this._request(url)
+      .then((txs) => { return cb(null, this._filterTxs(txs, addresses)); })
+      .catch((err) => { return cb(err); })
   }
 
   _getBalanceAndTransactions({ address, sat=true, txsOnly=false }, cb) {
@@ -105,11 +113,13 @@ export default class BlockCypherApi {
     const newTxs = [];
     const addresses = typeof address === 'string' ? [ address ] : address;
     oldTxs.forEach((tx) => {
+      let txUsed = false;
       tx.inputs.forEach((i) => {
         const inputAddress = i.addresses[0];
         const outputAddress = tx.outputs[0].addresses[0];
-        if (addresses.indexOf(inputAddress) > -1) {
+        if (!txUsed && addresses.indexOf(inputAddress) > -1) {
           newTxs.push(this._filterTx(tx, outputAddress, inputAddress));
+          txUsed = true;
         }
       })
       tx.outputs.forEach((o) => {
@@ -117,8 +127,9 @@ export default class BlockCypherApi {
         // send an output with multiple recipients...
         const outputAddress = o.addresses[0];
         const inputAddress = tx.inputs[0].addresses[0];
-        if (addresses.indexOf(outputAddress) > -1) {
+        if (!txUsed && addresses.indexOf(outputAddress) > -1) {
           newTxs.push(this._filterTx(tx, outputAddress, inputAddress, true));
+          txUsed = true;
         }
       })
     })
