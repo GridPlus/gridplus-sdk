@@ -12,6 +12,11 @@ export default class BlockCypherApi {
     this.sat = opts.sat ? opts.sat : false;
   }
 
+  getExplorerUrl() {
+    const prefix = this.coin === 'bcy' ? 'bcy' : (this.coin === 'btc' && this.network === 'test3') ? 'btc-testnet' : 'btc';
+    return `https://live.blockcypher.com/${prefix}`;
+  }
+
   initialize(cb) {
     return this._request(this.blockcypherBaseUrl)
     .then((res) => { return cb(null, res); })
@@ -70,7 +75,8 @@ export default class BlockCypherApi {
           } else {
             // For the balance/utxos
             toReturn[b.address] = {
-              balance: this._getBitcoinValue(b.balance),
+              // balance: this._getBitcoinValue(b.balance),
+              balance: b.balance,   // TODO: Fix the inconsistencies between this and the fallback bcoin option. We should ideally return the BTC value (as opposed to satoshi)            
               utxos: this._sortByHeight(this._filterUtxos(b.txs, b.address)),
             }
           }

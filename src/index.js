@@ -149,6 +149,14 @@ export default class SdkClient {
     return this.providers[shortcode].getBalance(options, cb);
   }
 
+  getExplorerUrl(shortcode) {
+    if (! this.providers[shortcode]) {
+      return null;
+    }
+
+    return this.providers[shortcode].getExplorerUrl();
+  }
+
   getTxHistory(shortcode, options, cb) {
     if (! this.providers[shortcode]) {
       return cb(new Error(`no provider loaded for shortcode ${shortcode}`));

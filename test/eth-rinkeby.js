@@ -237,5 +237,11 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
       });
     }, 1000);
   });
+  
+  it('Should get the correct explorer url and do a lookup', (done) => {
+    assert(client.getExplorerUrl() === null);
+    assert(client.getExplorerUrl('ETH'), 'https://rinkeby.etherscan.io');
+    done();
+  });
 
 })

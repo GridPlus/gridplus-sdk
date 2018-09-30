@@ -156,6 +156,14 @@ export default class Bitcoin {
     }
   }
 
+  getExplorerUrl() {
+    if (this.blockcypher === true) {
+      return this.provider.getExplorerUrl();
+    } else {
+      return 'https://live.blockcypher.com/btc';
+    }
+  }
+
   getTxHistory(opts, cb) {
     if (!opts.address && !opts.addresses) return cb('No address or addresses included in options.');
     const a = opts.address ? opts.address : opts.addresses;
