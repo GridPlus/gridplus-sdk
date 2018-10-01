@@ -151,7 +151,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       txb.addOutput(holderAddress, utxo.value - 10000 - 100);
       txb.sign(0, signer);
       
-      const tx = txb.build().toHex();  
+      const tx = txb.build().toHex();
       client.broadcast('BTC', { tx }, (err, res) => {
         assert(err === null, err);
         sentTx = res;
@@ -201,7 +201,6 @@ describe('Bitcoin via BlockCypher: transfers', () => {
         setTimeout(() => {
           client.broadcast('BTC', res.data, (err2, res2) => {
             assert(err2 === null, err2);
-            console.log('res2', res2)
             done();
           });
         }, 750);
@@ -219,10 +218,5 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       done();
     })
   });
-  
-  it('Should get the correct explorer url and do a lookup', (done) => {
-    assert(client.getExplorerUrl() === null);
-    assert(client.getExplorerUrl('BTC'), 'https://live.blockcypher.com/bcy');
-    done();
-  });
+
 });

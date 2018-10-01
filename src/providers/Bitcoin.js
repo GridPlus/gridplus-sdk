@@ -67,19 +67,32 @@ export default class Bitcoin {
   }
 
   buildTx ({amount, to, addresses, perByteFee, changeIndex=null, network=null, scriptType='p2sh(p2wpkh)'}, cb) {
-    this.getBalance({ address: addresses }, (err, utxoSets) => {
+    this.getBalance({ address: addresses }, (err, account) => {
       if (err) return cb(err);
       
       const utxos = [];
       let utxoSum = 0;
-      addresses.forEach((address, i) => {
-        if (utxoSets[address] && utxoSets[address].utxos && utxoSets[address].utxos.length > 0) {
-          utxoSets[address].utxos.forEach((utxo) => {
+  
+      if (account.utxos) { 
+        // Blockcypher api
+        account.utxos.forEach((utxo) => {
+          const i = addresses.indexOf(utxo.address);
+          if (i > -1) {
             utxos.push([i, utxo]);
             utxoSum += utxo.value;
-          });
-        }
-      });
+          }
+        });
+      } else {
+        // Bcoin api
+        addresses.forEach((address, i) => {
+          if (account[address] && account[address].utxos && account[address].utxos.length > 0) {
+            account[address].utxos.forEach((utxo) => {
+              utxos.push([i, utxo]);
+              utxoSum += utxo.value;
+            })
+          }
+        })
+      }
       
       if (utxoSum <= amount) return cb(`Not enough balance to make this transaction: have ${utxoSum}, need ${amount}`);
       
@@ -93,6 +106,7 @@ export default class Bitcoin {
       let utxoVersion = 1;
       utxoSum = 0;  // Reset this as zero; we will count up with it
       utxos.forEach((utxo) => {
+        console.log('using utxo', utxo)
         if (utxoSum <= (amount + fee)) {
           const input = [
             utxo[1].hash,
@@ -153,14 +167,6 @@ export default class Bitcoin {
         })
         .catch((err) => { cb(err); })
       }
-    }
-  }
-
-  getExplorerUrl() {
-    if (this.blockcypher === true) {
-      return this.provider.getExplorerUrl();
-    } else {
-      return 'https://live.blockcypher.com/btc';
     }
   }
 

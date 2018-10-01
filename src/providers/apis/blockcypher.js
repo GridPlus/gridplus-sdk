@@ -12,11 +12,6 @@ export default class BlockCypherApi {
     this.sat = opts.sat ? opts.sat : false;
   }
 
-  getExplorerUrl() {
-    const prefix = this.coin === 'bcy' ? 'bcy' : (this.coin === 'btc' && this.network === 'test3') ? 'btc-testnet' : 'btc';
-    return `https://live.blockcypher.com/${prefix}`;
-  }
-
   initialize(cb) {
     return this._request(this.blockcypherBaseUrl)
     .then((res) => { return cb(null, res); })
@@ -31,11 +26,27 @@ export default class BlockCypherApi {
   }
 
   getBalance({ address }, cb) {
-    return this._getBalanceAndTransactions({ address }, cb);
+    const addressString = typeof address === 'string' ? address : address.join(';');
+    const url = `${this.blockcypherBaseUrl}/addrs/${addressString}?unspentOnly=true`;
+    return this._request(url)
+      .then((account) => {
+        const data = {
+          balance: Array.isArray(account) ? account.reduce((a, b) => { return a.balance + b.balance}) : account.balance,
+          utxos: this._sortByHeight(this._filterUtxos(account, address))
+        }
+        return cb(null, data);
+      })
+      .catch((err) => { return cb(err); })
   }
 
   getTxHistory({ address }, cb) {
-    return this._getBalanceAndTransactions({ address, txsOnly: true }, cb);
+    const addressString = typeof address === 'string' ? address : address.join(';');
+    const url = `${this.blockcypherBaseUrl}/addrs/${addressString}/full`;
+    return this._request(url)
+      .then((res) => {
+        return cb(null, this._sortByHeight(this._filterTxs(res.txs, address)));
+      })
+      .catch((err) => { return cb(err); })
   }
 
   getTxs(hashes, cb, addresses=[]) {
@@ -92,26 +103,38 @@ export default class BlockCypherApi {
     else                   return a;
   }
 
-  _filterUtxos(txs, address) {
-    const addresses = typeof address === 'string' ? [ address ] : address;
+  _filterUtxos(utxoSets) {
     const filteredUtxos = [];
-    txs.forEach((tx) => {
-      tx.outputs.forEach((o, idx) => {
-        const outputAddress = o.addresses[0];
-        if (addresses.indexOf(outputAddress) > -1) {
-          const utxo = {
-            version: tx.ver,
-            height: tx.block_height,
-            value: o.value,
-            script: o.script,
-            address: outputAddress,
+    if (!Array.isArray(utxoSets)) utxoSets = [ utxoSets ];
+    utxoSets.forEach((utxoSet) => {
+      if (utxoSet.txrefs) {
+        utxoSet.txrefs.forEach((utxo) => {
+          filteredUtxos.push({
+            version: null,
+            height: utxo.block_height,
+            value: utxo.value,
+            script: null,
+            address: utxoSet.address,
             coinbase: false,
-            hash: tx.hash,
-            index: idx,
-          };
-          filteredUtxos.push(utxo);
-        }
-      })
+            hash: utxo.tx_hash,
+            index: utxo.tx_output_n,
+          })
+        })
+      }
+      if (utxoSet.unconfirmed_txrefs) {
+        utxoSet.unconfirmed_txrefs.forEach((utxo) => {
+          filteredUtxos.push({
+            version: null,
+              height: -1,
+              value: utxo.value,
+              script: null,
+              address: utxoSet.address,
+              coinbase: false,
+              hash: utxo.tx_hash,
+              index: utxo.tx_output_n,
+          })
+        })
+      }
     })
     return filteredUtxos;
   }
@@ -125,7 +148,8 @@ export default class BlockCypherApi {
         const inputAddress = i.addresses[0];
         const outputAddress = tx.outputs[0].addresses[0];
         if (addresses.indexOf(inputAddress) > -1) {
-          newTxs.push(this._filterTx(tx, outputAddress, inputAddress, i.output_value));
+          const filteredTx = this._filterTx(tx, outputAddress, inputAddress, this._getInputValue(i, tx.outputs, addresses));
+          if (filteredTx) newTxs.push(filteredTx);
         }
       })
       tx.outputs.forEach((o) => {
@@ -134,7 +158,8 @@ export default class BlockCypherApi {
         const outputAddress = o.addresses[0];
         const inputAddress = tx.inputs[0].addresses[0];
         if (addresses.indexOf(outputAddress) > -1) {
-          newTxs.push(this._filterTx(tx, outputAddress, inputAddress, o.value, true));
+          const filteredTx = this._filterTx(tx, outputAddress, inputAddress, o.value, true);
+          if (filteredTx) newTxs.push(filteredTx);
         }
       })
     })
@@ -145,27 +170,37 @@ export default class BlockCypherApi {
   _filterBroadcastedTx(res) {
     const tx = res.tx ? res.tx : res;
     const sender = tx.inputs[0].addresses[0];
-    let output;
-    tx.outputs.forEach((o) => {
-      if (!output && o.addresses[0] !== sender) output = o;
+    if (tx.outputs.length < 1) return null;
+    const output = tx.outputs[0];
+    return this._filterTx(tx, output.addresses[0], sender, output.value);
+  }
+
+  _getInputValue(input, outputs, addresses) {
+    let val = input.output_value;
+    outputs.forEach((o) => {
+      if (addresses.indexOf(o.addresses[0]) > -1) val -= o.value;
     })
-    if (!output) return null;
-    return this._filterTx(tx, output.addresses[0], sender);
+    return val;
   }
 
   _filterTx(tx, to, from, value, input=false) {
-    const t = tx.confirmed ? tx.confirmed : tx.received;
-    return {
-      to,
-      from,
-      fee: this._getBitcoinValue(tx.fees),
-      in: input,
-      hash: tx.hash,
-      currency: 'BTC',
-      height: tx.block_height,
-      timestamp: this._getUnixTimestamp(t),
-      value: this._getBitcoinValue(value),
-      data: tx,
+    const allowed = (to !== from);
+    if (allowed) {
+      const t = tx.confirmed ? tx.confirmed : tx.received;
+      return {
+        to,
+        from,
+        fee: this._getBitcoinValue(tx.fees),
+        in: input,
+        hash: tx.hash,
+        currency: 'BTC',
+        height: tx.block_height,
+        timestamp: this._getUnixTimestamp(t),
+        value: this._getBitcoinValue(value),
+        data: tx,
+      }
+    } else {
+      return undefined;
     }
   }
 
