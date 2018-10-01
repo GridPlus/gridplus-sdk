@@ -44,7 +44,18 @@ export default class BlockCypherApi {
     const url = `${this.blockcypherBaseUrl}/addrs/${addressString}/full`;
     return this._request(url)
       .then((res) => {
-        return cb(null, this._sortByHeight(this._filterTxs(res.txs, address)));
+        let txs = [];
+        if (Array.isArray(res)) {
+          res.forEach((r) => {
+            r.txs.forEach((t) => {
+              txs.push(t);
+            })
+          })
+        } else {
+          txs = res.txs;
+        }
+        const filteredTxs = this._filterTxs(txs, address);
+        return cb(null, this._sortByHeight(filteredTxs));
       })
       .catch((err) => { return cb(err); })
   }
@@ -55,47 +66,6 @@ export default class BlockCypherApi {
     return this._request(url)
       .then((txs) => { return cb(null, this._filterTxs(txs, addresses)); })
       .catch((err) => { return cb(err); })
-  }
-
-  _getBalanceAndTransactions({ address, txsOnly=false }, cb) {
-    if (typeof address === 'string') {
-      const url = `${this.blockcypherBaseUrl}/addrs/${address}/full`;
-      return this._request(url)
-      .then((res) => { 
-        if (txsOnly) {
-          return cb(null, this._sortByHeight(this._filterTxs(res.txs, address)));
-        } else {
-          const toReturn = {
-            // balance: this._getBitcoinValue(res.balance),
-            balance: res.balance,   // TODO: Fix the inconsistencies between this and the fallback bcoin option. We should ideally return the BTC value (as opposed to satoshi)
-            utxos: this._sortByHeight(this._filterUtxos(res.txs, address)),
-          };
-          return cb(null, toReturn); 
-        }
-      })
-      .catch((err) => { return cb(err); })
-    } else {
-      return this._request(`${this.blockcypherBaseUrl}/addrs/${address.join(';')}/full`)
-      .then((res) => {
-        const toReturn = {};
-        if (!Array.isArray(res)) res = [ res ];
-        res.forEach((b) => {
-          if (txsOnly) {
-            // For the tx history
-            toReturn[b.address] = this._sortByHeight(this._filterTxs(b.txs, b.address))
-          } else {
-            // For the balance/utxos
-            toReturn[b.address] = {
-              // balance: this._getBitcoinValue(b.balance),
-              balance: b.balance,   // TODO: Fix the inconsistencies between this and the fallback bcoin option. We should ideally return the BTC value (as opposed to satoshi)            
-              utxos: this._sortByHeight(this._filterUtxos(b.txs, b.address)),
-            }
-          }
-        })
-        return cb(null, toReturn);
-      })
-      .catch((err) => { return cb(err);})
-    }
   }
 
   _getBitcoinValue(a) {
@@ -140,7 +110,7 @@ export default class BlockCypherApi {
   }
 
   _filterTxs(txs, address) {
-    const oldTxs = (txs.length !== undefined) ? txs : [ txs ];
+    const oldTxs = (txs && txs.length !== undefined) ? txs : [ txs ];
     const newTxs = [];
     const addresses = typeof address === 'string' ? [ address ] : address;
     oldTxs.forEach((tx) => {
@@ -226,7 +196,7 @@ export default class BlockCypherApi {
             .then((res) => { return resolve(res.body); })
             .catch((err) => { return reject(err); })
         }
-        }, this.timeout);
+      }, this.timeout);
     })
   }
 

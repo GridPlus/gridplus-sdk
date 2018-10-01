@@ -106,7 +106,6 @@ export default class Bitcoin {
       let utxoVersion = 1;
       utxoSum = 0;  // Reset this as zero; we will count up with it
       utxos.forEach((utxo) => {
-        console.log('using utxo', utxo)
         if (utxoSum <= (amount + fee)) {
           const input = [
             utxo[1].hash,
