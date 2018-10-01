@@ -117,14 +117,6 @@ export default class Ethereum {
     }
   }
 
-  getExplorerUrl() {
-    if (['kovan', 'rinkeby', 'ropsten'].indexOf(this.network) > -1) {
-      return `https://${this.network}.etherscan.io`;
-    } else {
-      return 'https://etherscan.io';
-    }
-  }
-
   getTx(hashes, cb, opts={}, filled=[]) {
     if (typeof hashes === 'string') {
       return this._getTx(hashes, cb);
