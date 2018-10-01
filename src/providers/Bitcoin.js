@@ -113,7 +113,7 @@ export default class Bitcoin {
             scriptType,
             utxo[0],
             utxo[0],   // We have to do this twice for legacy reasons. This should get cleaned up soon on the agent side
-            null, // utxo[1].value,
+            utxo[1].value,
           ];
           inputs = inputs.concat(input);
           numInputs += 1;
