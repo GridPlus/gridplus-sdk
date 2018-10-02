@@ -249,10 +249,12 @@ export default class Bitcoin {
       });
       this.client.getCoinsByAddresses(addrs)
       .then((bulkUtxos) => {
-        // Reconstruct data, indexed by address
-        bulkUtxos.forEach((u) => {
-          utxos[u.address].push(u);
-        });
+        if (bulkUtxos) {
+          // Reconstruct data, indexed by address
+          bulkUtxos.forEach((u) => {
+            utxos[u.address].push(u);
+          });
+        }
         return resolve(utxos);
       })
       .catch((err) => {
@@ -334,7 +336,11 @@ export default class Bitcoin {
     const addresses = opts.addresses ? opts.addresses : [];
     const newTxs = [];
     const isArray = txs instanceof Array === true;
-    if (!isArray) { txs = [ txs ]; }
+    if (!txs) {
+      txs = [];
+    } else if (!isArray) {
+      txs = [txs];
+    }
     txs.forEach((tx) => {
       let value = 0;
       tx.inputs.forEach((input) => {
@@ -364,11 +370,14 @@ export default class Bitcoin {
         data: tx,
       });
     });
-    if (!isArray) return newTxs[0]
-    else          return newTxs;
+
+    if (txs.length === 0)  return []
+    else if (!isArray)     return newTxs[0]
+    else                   return newTxs;
   }
 
   _sortByHeight(_utxos) {
+    if (!_utxos) return [];
     return _utxos.sort((a, b) => {
       return (a.height > b.height) ? 1 : ((b.height > a.height) ? -1 : 0)
     });
