@@ -58,6 +58,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
 
   it('Should pair with the agent', (done) => {
     const appSecret = process.env.APP_SECRET;
+    console.log('appSecret:', appSecret)
     client.pair(appSecret, (err) => {
       assert(err === null, err)
       done();
@@ -206,6 +207,9 @@ describe('Bitcoin via BlockCypher: transfers', () => {
         setTimeout(() => {
           client.broadcast('BTC', res.data, (err2, res2) => {
             assert(err2 === null, err2);
+            const actualAddress = res2.data.outputs[1].addresses[0];
+            const expectedAddress = deviceAddresses[1];
+            assert(actualAddress === expectedAddress, `Expected change address to be ${expectedAddress} but got ${actualAddress}`)
             done();
           });
         }, 750);
