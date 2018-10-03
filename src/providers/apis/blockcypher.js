@@ -28,9 +28,11 @@ export default class BlockCypherApi {
   getBalance({ address }, cb, accounts=[]) {
     const allAddresses = typeof address === 'string' ? [ address ] : JSON.parse(JSON.stringify(address));
     if (allAddresses.length === 0) {
+      let totalBalance = 0;
+      accounts.forEach((a) => { totalBalance += a.balance; })
       const data = {
-        balance: accounts.reduce((a, b) => { return a.balance + b.balance}),
-        utxos: this._sortByHeight(this._filterUtxos(accounts, address)),
+        balance: totalBalance,
+        utxos: this._sortByHeight(this._filterUtxos(accounts, address))
       };
       return cb(null, data);
     } else {
