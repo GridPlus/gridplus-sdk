@@ -249,33 +249,48 @@ export default class BcoinApi {
     return filteredUtxos;
   }
 
-  _filterTxs(txs, address) {
-    const oldTxs = (txs && txs.length !== undefined) ? txs : [ txs ];
+  _filterTxs(txs, opts={}) {
+    const addresses = opts.addresses ? opts.addresses : [];
     const newTxs = [];
-    console.log('typeof address', typeof address, address)
-    const addresses = typeof address === 'string' ? [ address ] : address;
-    oldTxs.forEach((tx) => {
-      tx.inputs.forEach((i) => {
-        const inputAddress = i.addresses[0];
-        const outputAddress = tx.outputs[0].addresses[0];
-        if (addresses.indexOf(inputAddress) > -1) {
-          const filteredTx = this._filterTx(tx, outputAddress, inputAddress, this._getInputValue(i, tx.outputs, addresses));
-          if (filteredTx) newTxs.push(filteredTx);
+    const isArray = txs instanceof Array === true;
+    if (!txs) {
+      txs = [];
+    } else if (!isArray) {
+      txs = [txs];
+    }
+    txs.forEach((tx) => {
+      let value = 0;
+      tx.inputs.forEach((input) => {
+        if (input.coin && addresses.indexOf(input.coin.address) > -1) {
+          // If this was sent by one of our addresses, the value should be deducted
+          value -= input.coin.value;
         }
-      })
-      tx.outputs.forEach((o) => {
-        // Really not sure why output.addresses is an array. I don't know when you would
-        // send an output with multiple recipients...
-        const outputAddress = o.addresses[0];
-        const inputAddress = tx.inputs[0].addresses[0];
-        if (addresses.indexOf(outputAddress) > -1) {
-          const filteredTx = this._filterTx(tx, outputAddress, inputAddress, o.value, true);
-          if (filteredTx) newTxs.push(filteredTx);
+      });
+      tx.outputs.forEach((output) => {
+        if (addresses.indexOf(output.address) > -1) {
+          value += output.value; 
         }
-      })
-    })
-    if (txs.length !== undefined) return newTxs
-    else                          return newTxs[0];
+      });
+      if (value < 0) value += tx.fee
+      else           value -= tx.fee;
+      // Set metadata
+      newTxs.push({
+        to: tx.outputs[0].address, 
+        from: tx.inputs[0].coin ? tx.inputs[0].coin.address : '',
+        fee: tx.fee / Math.pow(10, 8),
+        in: value > 0 ? 1 : 0,
+        hash: tx.hash,
+        currency: 'BTC',
+        height: tx.height,
+        timestamp: tx.mtime,
+        value: value / Math.pow(10, 8),
+        data: tx,
+      });
+    });
+
+    if (txs.length === 0)  return []
+    else if (!isArray)     return newTxs[0]
+    else                   return newTxs;
   }
 
   _filterBroadcastedTx(res) {
