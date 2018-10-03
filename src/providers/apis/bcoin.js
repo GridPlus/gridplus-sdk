@@ -39,7 +39,7 @@ export default class BcoinApi {
     };
   }
   
-  broadcast(rawTx, cb) {
+  broadcast(txData, cb) {
     const { tx } = txData;
     let { txHash, opts } = txData;
     if (!opts) opts = {};
@@ -47,7 +47,7 @@ export default class BcoinApi {
     this.client.broadcast(tx)
     .then((success) => {
       if (!success.success) return cb('Could not broadcast transaction. Please try again later.');
-      this.getTx(txHash, (err, newTx) => {
+      this._getTx(txHash, (err, newTx) => {
         if (err) return cb(err);
         return cb(null, newTx)
     }, opts)

@@ -24,7 +24,7 @@ export default class Bitcoin {
   }
 
   broadcast(txData, cb) {
-    return this.provider.broadcast(txData.tx, cb)
+    return this.provider.broadcast(txData, cb)
   }
 
   buildTx ({amount, to, addresses, perByteFee, changeIndex=null, network=null, scriptType='p2sh(p2wpkh)'}, cb) {
@@ -114,7 +114,6 @@ export default class Bitcoin {
   getTxHistory(opts, cb) {
     if (!opts.address && !opts.addresses) return cb('No address or addresses included in options.');
     const address = opts.address ? opts.address : opts.addresses;
-    console.log('address', address)
     return this.provider.getTxHistory({ address }, cb);
   }
 
@@ -135,50 +134,6 @@ export default class Bitcoin {
 
   _getTx(hash, cb, opts={}) {
     return this.provider.getTx(hash, cb);
-  }
-
-  _filterTxs(txs, opts={}) {
-    const addresses = opts.addresses ? opts.addresses : [];
-    const newTxs = [];
-    const isArray = txs instanceof Array === true;
-    if (!txs) {
-      txs = [];
-    } else if (!isArray) {
-      txs = [txs];
-    }
-    txs.forEach((tx) => {
-      let value = 0;
-      tx.inputs.forEach((input) => {
-        if (input.coin && addresses.indexOf(input.coin.address) > -1) {
-          // If this was sent by one of our addresses, the value should be deducted
-          value -= input.coin.value;
-        }
-      });
-      tx.outputs.forEach((output) => {
-        if (addresses.indexOf(output.address) > -1) {
-          value += output.value; 
-        }
-      });
-      if (value < 0) value += tx.fee
-      else           value -= tx.fee;
-      // Set metadata
-      newTxs.push({
-        to: tx.outputs[0].address, 
-        from: tx.inputs[0].coin ? tx.inputs[0].coin.address : '',
-        fee: tx.fee / Math.pow(10, 8),
-        in: value > 0 ? 1 : 0,
-        hash: tx.hash,
-        currency: 'BTC',
-        height: tx.height,
-        timestamp: tx.mtime,
-        value: value / Math.pow(10, 8),
-        data: tx,
-      });
-    });
-
-    if (txs.length === 0)  return []
-    else if (!isArray)     return newTxs[0]
-    else                   return newTxs;
   }
 
 }
