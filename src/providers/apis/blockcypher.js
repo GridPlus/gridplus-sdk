@@ -25,39 +25,42 @@ export default class BlockCypherApi {
       .catch((err) => { return cb(err); })
   }
 
-  getBalance({ address }, cb) {
-    const addressString = typeof address === 'string' ? address : address.join(';');
-    const url = `${this.blockcypherBaseUrl}/addrs/${addressString}?unspentOnly=true`;
-    return this._request(url)
+  getBalance({ address }, cb, accounts=[]) {
+    const allAddresses = typeof address === 'string' ? [ address ] : JSON.parse(JSON.stringify(address));
+    if (allAddresses.length === 0) {
+      const data = {
+        balance: accounts.reduce((a, b) => { return a.balance + b.balance}),
+        utxos: this._sortByHeight(this._filterUtxos(accounts, address)),
+      };
+      return cb(null, data);
+    } else {
+      const a = allAddresses.shift();
+      const url = `${this.blockcypherBaseUrl}/addrs/${a}?unspentOnly=true`;
+      return this._request(url)
       .then((account) => {
-        const data = {
-          balance: Array.isArray(account) ? account.reduce((a, b) => { return a.balance + b.balance}) : account.balance,
-          utxos: this._sortByHeight(this._filterUtxos(account, address))
-        }
-        return cb(null, data);
+        accounts.push(account);
+        return this.getBalance({ address: allAddresses }, cb, accounts)
       })
       .catch((err) => { return cb(err); })
+    }
   }
 
-  getTxHistory({ address }, cb) {
-    const addressString = typeof address === 'string' ? address : address.join(';');
-    const url = `${this.blockcypherBaseUrl}/addrs/${addressString}/full`;
-    return this._request(url)
-      .then((res) => {
-        let txs = [];
-        if (Array.isArray(res)) {
-          res.forEach((r) => {
-            r.txs.forEach((t) => {
-              txs.push(t);
-            })
-          })
-        } else {
-          txs = res.txs;
-        }
-        const filteredTxs = this._filterTxs(txs, address);
-        return cb(null, this._sortByHeight(filteredTxs));
-      })
-      .catch((err) => { return cb(err); })
+  getTxHistory({ address }, cb, txs=[], usedAddresses=[]) {
+    const allAddresses = typeof address === 'string' ? [ address ] : JSON.parse(JSON.stringify(address));
+    if (allAddresses.length === 0) {
+     const filteredTxs = this._filterTxs(txs, usedAddresses);
+     return cb(null, this._sortByHeight(filteredTxs)); 
+    } else {
+      const a = allAddresses.shift();
+      const url = `${this.blockcypherBaseUrl}/addrs/${a}/full`;
+      return this._request(url)
+        .then((res) => {
+          res.txs.forEach((t) => { txs.push(t); })
+          usedAddresses.push(a);
+          return this.getTxHistory({ address: allAddresses }, cb, txs, usedAddresses);
+        })
+        .catch((err) => { return cb(err); })
+    }
   }
 
   getTxs(hashes, cb, addresses=[]) {
