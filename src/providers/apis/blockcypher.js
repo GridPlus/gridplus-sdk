@@ -18,7 +18,7 @@ export default class BlockCypherApi {
     .catch((err) => cb(err));
   }
 
-  broadcast(rawTx, cb) {
+  broadcast({tx:rawTx}, cb) {
     const url = `${this.blockcypherBaseUrl}/txs/push?token=${blockcypherApiKey}`;
     return this._request(url, { tx: rawTx })
       .then((res) => { return cb(null, this._filterBroadcastedTx(res)); })
