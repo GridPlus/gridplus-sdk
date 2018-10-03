@@ -89,7 +89,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       assert(addrs[1].slice(0, 1) === 'B' || addrs[1].slice(0, 1) === 'C', 'Address 2 is not a BCY address')
       deviceAddresses = addrs;
       // // Get the baseline balance for the addresses
-      client.getBalance('BTC', { address: deviceAddresses[0] }, (err, d) => {
+      client.getBalance('BTC', { address: deviceAddresses }, (err, d) => {
         assert(err === null, err);
         done()
       });
@@ -193,7 +193,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
   it('Should spend some of the new coins from the lattice address', (done) => {
     const req = {
       amount: 100,
-      to: holderAddress,
+      to: 'CFr99841LyMkyX5ZTGepY58rjXJhyNGXHf', // testnet distributing account
       addresses: deviceAddresses,
       perByteFee: 1,
       changeIndex: 1,
