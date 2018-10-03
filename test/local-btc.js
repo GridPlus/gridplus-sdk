@@ -84,6 +84,7 @@ describe('Bitcoin', () => {
   it('Should check the balance of a single address and set a baseline', (done) => {
     // Look for the balance and any unspent transaction outputs
     client.getBalance('BTC', { address: testing.btcHolder.regtestAddress }, (err, d) => {
+      console.log(err)
       assert(err === null, err);
       startUtxos = d.utxos;
       startBal = d.balance;
