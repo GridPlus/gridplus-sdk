@@ -63,11 +63,11 @@ export default class BlockCypherApi {
     }
   }
 
-  getTxs(hashes, cb, addresses=[]) {
+  getTxs(hashes, cb, opts={}) {
     if (typeof hashes === 'string') hashes = [ hashes ];
     const url = `${this.blockcypherBaseUrl}/txs/${hashes.join(';')}`;
     return this._request(url)
-      .then((txs) => { return cb(null, this._filterTxs(txs, addresses)); })
+      .then((txs) => { return cb(null, this._filterTxs(txs, opts.addresses || [])); })
       .catch((err) => { return cb(err); })
   }
 
