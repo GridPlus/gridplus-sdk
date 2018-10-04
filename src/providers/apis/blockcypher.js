@@ -18,7 +18,7 @@ export default class BlockCypherApi {
     .catch((err) => cb(err));
   }
 
-  broadcast(rawTx, cb) {
+  broadcast({tx:rawTx}, cb) {
     const url = `${this.blockcypherBaseUrl}/txs/push?token=${blockcypherApiKey}`;
     return this._request(url, { tx: rawTx })
       .then((res) => { return cb(null, this._filterBroadcastedTx(res)); })
@@ -65,11 +65,11 @@ export default class BlockCypherApi {
     }
   }
 
-  getTxs(hashes, cb, addresses=[]) {
+  getTxs(hashes, cb, opts={}) {
     if (typeof hashes === 'string') hashes = [ hashes ];
     const url = `${this.blockcypherBaseUrl}/txs/${hashes.join(';')}`;
     return this._request(url)
-      .then((txs) => { return cb(null, this._filterTxs(txs, addresses)); })
+      .then((txs) => { return cb(null, this._filterTxs(txs, opts.addresses || [])); })
       .catch((err) => { return cb(err); })
   }
 
