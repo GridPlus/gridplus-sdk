@@ -123,7 +123,6 @@ describe('Bitcoin', () => {
     });
   });
 
-
   it('Should connect to an agent', (done) => {
     const serial = process.env.AGENT_SERIAL;
     client.connect(serial, (err, res) => {
@@ -177,10 +176,8 @@ describe('Bitcoin', () => {
     const addresses = deviceAddresses.concat(testing.btcHolder.regtestAddress);
     client.getBalance('BTC', { address: addresses }, (err, balances) => {
       assert(err === null, err);
-      assert(typeof balances[deviceAddresses[0]].balance === 'number', 'Balance not found for address 0');
-      assert(typeof balances[deviceAddresses[1]].balance === 'number', 'Balance not found for address 1');
-      assert(typeof balances[testing.btcHolder.regtestAddress].balance === 'number', 'Balance not found for btcHolder address.');
-      assert(balances[testing.btcHolder.regtestAddress].balance > 0, 'Balance should be >0 for btcHolder address');
+      assert(balances.balance > 0);
+      assert(balances.utxos.length > 0);
       done();
     })
   });
@@ -203,7 +200,7 @@ describe('Bitcoin', () => {
       done();
     })
   })
-
+  
   it('Should get transaction history for just one address', (done) => {
     const address = testing.btcHolder.regtestAddress;
     client.getTxHistory('BTC', { address }, (err, txs) => {
@@ -277,7 +274,6 @@ describe('Bitcoin', () => {
       }
       
       client.buildTx('BTC', req, (err, sigReq) => {
-        assert(err === null, err);
         CHANGE_AMOUNT = sigReq.params[4];
         client.signManual(sigReq, (err, res) => {
           assert(err === null, err);
