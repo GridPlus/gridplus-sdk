@@ -62,7 +62,7 @@ export default class Bitcoin {
       // TODO: Make this more robust
       let bytesSize = 0;
       let fee = 0;
-      let utxoVersion = 1;
+      let utxoVersion = 2;
       utxoSum = 0;  // Reset this as zero; we will count up with it
       utxos.forEach((utxo) => {
         if (utxoSum <= (amount + fee)) {
