@@ -1,6 +1,4 @@
-import { NodeClient } from '@gridplus/bclient';
 import config from '../config.js';
-import { getTxHash, sortByHeight } from '../util';
 import { BlockCypherApi, BcoinApi } from './apis'
 
 const BASE_SEGWIT_SIZE = 134; // see: https://www.reddit.com/r/Bitcoin/comments/7m8ald/how_do_i_calculate_my_fees_for_a_transaction_sent/

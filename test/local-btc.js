@@ -84,7 +84,6 @@ describe('Bitcoin', () => {
   it('Should check the balance of a single address and set a baseline', (done) => {
     // Look for the balance and any unspent transaction outputs
     client.getBalance('BTC', { address: testing.btcHolder.regtestAddress }, (err, d) => {
-      console.log(err)
       assert(err === null, err);
       startUtxos = d.utxos;
       startBal = d.balance;
@@ -123,7 +122,6 @@ describe('Bitcoin', () => {
       mineIfNeeded(d.utxos[0].height, done);
     });
   });
-
 
   it('Should connect to an agent', (done) => {
     const serial = process.env.AGENT_SERIAL;
@@ -178,10 +176,8 @@ describe('Bitcoin', () => {
     const addresses = deviceAddresses.concat(testing.btcHolder.regtestAddress);
     client.getBalance('BTC', { address: addresses }, (err, balances) => {
       assert(err === null, err);
-      assert(typeof balances[deviceAddresses[0]].balance === 'number', 'Balance not found for address 0');
-      assert(typeof balances[deviceAddresses[1]].balance === 'number', 'Balance not found for address 1');
-      assert(typeof balances[testing.btcHolder.regtestAddress].balance === 'number', 'Balance not found for btcHolder address.');
-      assert(balances[testing.btcHolder.regtestAddress].balance > 0, 'Balance should be >0 for btcHolder address');
+      assert(balances.balance > 0);
+      assert(balances.utxos.length > 0);
       done();
     })
   });

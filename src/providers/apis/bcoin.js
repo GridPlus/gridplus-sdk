@@ -57,23 +57,38 @@ export default class BcoinApi {
     })
   }
 
-  getBalance({ address, sat }, cb, accounts=[]) {
+  getBalance({ address, sat }, cb, accounts = []) {
     let balances;
     if (typeof address === 'string') {
-      this.getUtxosSingleAddr(address)
-      .then((utxos) => {
+      this.getUtxosSingleAddr(address).then(utxos => {
         balances = this.addBalanceSingle(utxos, sat);
-        cb(null, balances);
-      })
-      .catch((err) => { cb(err); })
+        cb(null, this._combineBalances({ [address]: balances }));
+      }).catch(err => {
+        cb(err);
+      });
     } else {
-      this.getUtxosMultipleAddrs(address)
-      .then((utxos) => {
+      this.getUtxosMultipleAddrs(address).then(utxos => {
         balances = this.addBalanceMultiple(utxos);
-        cb(null, balances);
-      })
-      .catch((err) => { cb(err); })
+        cb(null, this._combineBalances(balances));
+      }).catch(err => {
+        cb(err);
+      });
     }
+  }
+
+  _combineBalances(balances) {
+    const combined = {
+      balance: 0,
+      utxos: []
+    }
+    Object.keys(balances).forEach((k) => {
+      const balance = balances[k];
+      if (typeof balance === 'object' && !Array.isArray(balance)) {
+        combined.balance += balance.balance;
+        combined.utxos = combined.utxos.concat(balance.utxos);
+      }
+    });
+    return combined;
   }
   
   _getTx(hash, cb, opts={}) {
@@ -193,19 +208,19 @@ export default class BcoinApi {
     }
   }
 
-  getTxs(hashes, cb, opts = {}) {
+  getTxs(hashes, cb, opts = {}, filled=[]) {
     if (typeof hashes === 'string') {
       return this._getTx(hashes, cb, opts);
-    } 
-    if (hashes.length === 0) {
+    } else if (hashes.length === 0) {
       return cb(null, filled);
-    } 
-    const hash = hashes.shift();
-    return this._getTx(hash, (err, tx) => {
-      if (err) return cb(err)
-      if (tx) filled.push(tx);
-      return this._getTx(hashes, cb, opts, filled);
-    }, opts);
+    } else {
+      const hash = hashes.shift();
+      return this._getTx(hash, (err, tx) => {
+        if (err) return cb(err)
+        if (tx) filled.push(tx);
+        return this.getTxs(hashes, cb, opts, filled);
+      }, opts);
+    }
   }
 
   _getBitcoinValue(a) {
