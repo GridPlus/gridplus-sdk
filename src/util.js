@@ -4,7 +4,6 @@ import aes from 'aes-js';
 import leftPad from 'left-pad';
 import elliptic from 'elliptic';
 import config from './config';
-
 const EC = elliptic.ec;
 const ec = new EC('curve25519');
 const ecSecp256k1 = new EC('secp256k1');
@@ -87,6 +86,13 @@ export function parseSigResponse(res) {
   } else {
     return null;
   }
+}
+
+export const sortByHeight = (_utxos) => {
+  if (!_utxos) return [];
+  return _utxos.sort((a, b) => {
+    return (a.height > b.height) ? 1 : ((b.height > a.height) ? -1 : 0)
+  });
 }
 
 // Get the serialized transaction and the appropriate txHash
