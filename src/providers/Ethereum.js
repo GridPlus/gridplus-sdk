@@ -191,11 +191,13 @@ export default class Ethereum {
     txs.forEach((tx) => {
       const valString = tx.value.toString();
       const val = new BigNumber(valString);
+      const gasPrice = new BigNumber(tx.gasPrice.toString());
+      const gasLimit = new BigNumber(tx.gasLimit.toString());
       const to = tx.to ? tx.to : '';
       newTxs.push({
         to: to,
         from: tx.from,
-        fee: tx.gasPrice.mul(tx.gasLimit).toString(),
+        fee: gasPrice.times(gasLimit).div(ethFactor).toString(),
         in: to.toLowerCase() === address.toLowerCase() ? 1 : 0,
         hash: tx.hash,
         currency: 'ETH',
