@@ -232,7 +232,6 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
           assert(txs.height > 0, 'Could not get correct tx history from etherscan. Try again.');
           assert(txs[txs.length - 1].contractAddress !== null);
           clearInterval(interval);
-          console.log('calling done 1')
           done();
         } else if (txs && txs.length > 0) {
           const t = txs[txs.length - 1];
@@ -244,7 +243,6 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
           ) {
             assert(t.value === transferAmount.toString(), 'Token transfer value incorrect.')
             clearInterval(interval);
-            console.log('calling done 2')
           } else {
             count += 1;
           }
