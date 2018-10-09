@@ -138,27 +138,9 @@ export default class Ethereum {
 
   getTxHistory(opts, cb) {
     const events = {}
-    const { address, erc20Address } = opts;
-    if (erc20Address) {
-      // TODO: Token transfer output needs to conform to the same schema as the history from etherscan
-      // This block is deprecated
+    const { address, ERC20Token } = opts;
 
-      // Get transfer "out" events
-      this._getEvents(erc20Address, [ null, `0x${pad64(address)}`, null ])
-      .then((outEvents) => {
-        events.out = outEvents;
-        return this._getEvents(erc20Address, [ null, null, `0x${pad64(address)}` ])
-      })
-      .then((inEvents) => {
-        events.in = inEvents;
-        const allLogs = this._parseTransferLogs(events, 'ERC20', address, erc20Decimals[erc20Address]);
-        const txs = allLogs.in.concat(allLogs.out);
-        return cb(null, txs.sort((a, b) => { return a.height - b.height }));
-      })
-      .catch((err) => { 
-        return cb(err); 
-      })
-    } else if (this.etherscan === true) {
+    if (this.etherscan === true) {
       let txs = [];
       this.provider.getHistory(address)
       .then((history) => { 
@@ -166,10 +148,34 @@ export default class Ethereum {
         return this.provider.tokentx(address)
       })
       .then((tokenHistory) => {
-        txs = txs.concat(tokenHistory || []);
-        return setImmediate(() => cb(null, this._filterEtherscanTxs(txs, address)));
+        if (!tokenHistory) tokenHistory = [];
+        try {
+          txs = txs.concat(this._filterEtherscanTokenHistory(tokenHistory, ERC20Token));
+          return cb(null, this._filterEtherscanTxs(txs, address));
+        } catch (err) {
+          return cb(new Error(`Error filtering token transfer history: ${err}`));
+        }
       })
       .catch((err) => { return cb(err); })
+    } else if (ERC20Token) {
+      // TODO: Token transfer output needs to conform to the same schema as the history from etherscan
+      // This block is deprecated
+
+      // Get transfer "out" events
+      this._getEvents(ERC20Token, [ null, `0x${pad64(address)}`, null ])
+      .then((outEvents) => {
+        events.out = outEvents;
+        return this._getEvents(ERC20Token, [ null, null, `0x${pad64(address)}` ])
+      })
+      .then((inEvents) => {
+        events.in = inEvents;
+        const allLogs = this._parseTransferLogs(events, 'ERC20', address, erc20Decimals[ERC20Token]);
+        const txs = allLogs.in.concat(allLogs.out);
+        return cb(null, txs.sort((a, b) => { return a.height - b.height }));
+      })
+      .catch((err) => { 
+        return cb(err); 
+      })
     } else {
       return cb(null, []);
     }
@@ -190,10 +196,11 @@ export default class Ethereum {
     const ethFactor = new BigNumber('1e18');
     txs.forEach((tx) => {
       const valString = tx.value.toString();
-      const val = new BigNumber(valString);
       const gasPrice = new BigNumber(tx.gasPrice.toString());
       const gasLimit = new BigNumber(tx.gasLimit.toString());
       const to = tx.to ? tx.to : '';
+      const contractAddress = tx.creates ? tx.creates : null;
+      const value = contractAddress === null ? BigNumber(valString).div(ethFactor).toString() : valString;
       newTxs.push({
         to: to,
         from: tx.from,
@@ -203,12 +210,22 @@ export default class Ethereum {
         currency: 'ETH',
         height: tx.blockNumber,
         timestamp: tx.timestamp,
-        value: val.div(ethFactor).toString(),
+        value,
         data: tx,
-        contractAddress: tx.creates ? tx.creates : null
+        contractAddress,
       });
     });
     return newTxs;
+  }
+
+  _filterEtherscanTokenHistory(transfers, tokenAddresses) {
+    if (!tokenAddresses) return transfers;
+    if (typeof tokenAddresses === 'string') tokenAddresses = [ tokenAddresses ];
+    const addressesToCheck = tokenAddresses.map((a) => { return a.toLowerCase() })
+    const filteredTransfers = transfers.filter((t) => { 
+      return addressesToCheck.indexOf(t.creates.toLowerCase()) > -1 
+    });
+    return filteredTransfers;
   }
 
   _getEvents(address, topics, fromBlock=0, toBlock='latest') {
