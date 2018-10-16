@@ -8,7 +8,7 @@ export const providers = {
   Bitcoin,
   Ethereum,
 };
-
+const tokenList = require('../tokensByAddress.json')
 const log = debug('gridplus-sdk');
 
 export default class SdkClient {
@@ -35,6 +35,10 @@ export default class SdkClient {
 
     (options.providers || []).map((provider) => {
       this.providers[provider.shortcode] = provider;
+      // Add token lists
+      if (provider.shortcode === 'ETH') {
+        this.tokenList = tokenList;
+      }
     });
 
     log(`gridplus sdk created with providers [${Object.keys(this.providers)}]`);
@@ -193,7 +197,6 @@ export default class SdkClient {
     if (! this.providers[shortcode]) {
       return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
     }
-
     return this.providers[shortcode].buildTx(from, to, value, opts, cb);
   }
 
