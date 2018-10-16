@@ -153,6 +153,14 @@ export default class SdkClient {
     return this.providers[shortcode].getBalance(options, cb);
   }
 
+  getTokenBalance(options, cb) {
+    if (!this.providers['ETH']) {
+      return cb(new Error('Cannot request token balance. ETH provider is not set.'))
+    }
+
+    return this.providers['ETH'].getTokenBalance(options, cb);
+  }
+
   getTxHistory(shortcode, options, cb) {
     if (! this.providers[shortcode]) {
       return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
