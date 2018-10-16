@@ -29,6 +29,15 @@ export default class EtherscanApi {
     return this.provider.getTransactionReceipt(hash);
   }
 
+  getTokenBalance(address, tokens) {
+    return new Promise((resolve, reject) => {
+      this._getTokenBalance(address, tokens, (err, balances) => {
+        if (err) return reject(err)
+        else     return resolve(balances);
+      })
+    })
+  }
+
   getTxHistory(opts) {
     return new Promise((resolve, reject) => {
       const { address, ERC20Token } = opts;
@@ -49,6 +58,22 @@ export default class EtherscanApi {
       })
       .catch((err) => { return reject(err); })
     })
+  }
+
+  // Get token balance for one or more tokens for a single address
+  _getTokenBalance(address, tokens, cb, balances={}) {
+    if (tokens.length === 0) {
+      return cb(null, balances);
+    } else {
+      if (typeof tokens === 'string') tokens = [ tokens ];
+      const token = tokens.shift();
+      this.provider.tokenbalance(address, token)
+      .then((balance) => {
+        balances[token] = balance;
+        return this._getTokenBalance(address, tokens, cb, balances);
+      })
+      .catch((err) => { return cb(err); })
+    }
   }
 
   _filterEtherscanTokenHistory(transfers, tokenAddresses) {

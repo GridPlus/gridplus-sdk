@@ -81,6 +81,14 @@ export default class Ethereum {
     .catch((err) => { cb(err); })
   }
 
+  getTokenBalance(options, cb) {
+    const { address } = options;
+    const tokens = options.tokens ? options.tokens : options.token;
+    this.provider.getTokenBalance(address, tokens)
+    .then((balances) => { return cb(null, balances); })
+    .catch((err) => { return cb(err); })
+  }
+
   getNonce(user) {
     return new Promise((resolve, reject) => {
       this.provider.getTransactionCount(user)

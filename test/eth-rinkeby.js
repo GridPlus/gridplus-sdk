@@ -287,7 +287,15 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
     done();
   });
 
-  it('Should get not history for a random token address', (done) => {
+  it('Should get the token balance of the first receiving address', (done) => {
+    client.getTokenBalance({ address: addr, tokens: erc20Addr }, (err, res) => {
+      assert(err === null, err);
+      assert(parseInt(res[erc20Addr]) === transferAmount, `Expected balance of ${transferAmount}, but got ${res[erc20Addr]}`);
+      done();
+    })
+  })
+
+  it('Should get no history for a random token address', (done) => {
     const opts = {
       address: addr,
       ERC20Token: '0xf8025BE99c093e3ea80AfE1F20cd9D64CEAb6626', 
