@@ -141,7 +141,22 @@ export default class Ethereum {
       return cb(null, txs.sort((a, b) => { return a.height - b.height }));
     } else {
       const token = tokens.pop();
-      const events = {}
+      if (typeof address === 'string') address = [ address ];
+      const addressCopy = JSON.parse(JSON.stringify(address));
+      this._getTokenHistoryForAddresses(addressCopy, token, (err, newTxs) => {
+        if (err) return cb(err)
+        txs = txs.concat(newTxs);
+        return this.getERC20TransferHistory(address, tokens, cb, txs);
+      })
+    }
+  }
+
+  _getTokenHistoryForAddresses(addresses, token, cb, txs=[]) {
+    if (addresses.length === 0) {
+      return cb(null, txs);
+    } else {
+      const events = {};
+      const address = addresses.shift();
       this._getEvents(token, [ null, `0x${pad64(address)}`, null ])
       .then((outEvents) => {
         events.out = outEvents;
@@ -152,8 +167,9 @@ export default class Ethereum {
         const allLogs = this._parseTransferLogs(events, 'ERC20', address);
         const newTxs = allLogs.in.concat(allLogs.out);
         txs = txs.concat(newTxs);
-        return this.getERC20TransferHistory(address, tokens, cb, txs);
+        return this._getTokenHistoryForAddresses(addresses, token, cb, txs);
       })
+      .catch((err) => { return cb(err); })
     }
   }
 

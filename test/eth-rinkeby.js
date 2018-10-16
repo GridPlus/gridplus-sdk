@@ -8,7 +8,7 @@ import NodeCrypto from '@gridplus/node-crypto';
 const TIMEOUT_SEC = 59;
 const { erc20Src, ethHolder } = testing;
 
-let client, addr, erc20Addr, sender, senderPriv, balance;
+let client, addr, erc20Addr, sender, senderPriv, balance, addr2;
 const transferAmount = 54;
 
 describe('Ethereum via Etherscan: ether transfers', () => {
@@ -73,12 +73,14 @@ describe('Ethereum via Etherscan: ether transfers', () => {
     const req = {
       permissionIndex: 0,
       isManual: true,
-      total: 1,
+      total: 2,
       coin_type: '60\''
     }
     client.addresses(req, (err, res) => {
       assert(err === null, err);
-      addr = res.result.data.addresses;
+      assert(res.result.data.addresses.length === 2, `Expected 2 addresses. Got ${res.result.data.addresses.length}`);
+      addr = res.result.data.addresses[0];
+      addr2 = res.result.data.addresses[1];
       client.getBalance('ETH', { address: addr }, (err, data) => {
         assert.equal(err, null, err);
         assert(data.nonce > -1);
@@ -219,10 +221,43 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
     });
   });
 
-  it('Should get the token transfer history for the new account', (done) => {
+  it('Should transfer some ERC20 tokens to the second address', (done) => {
+    const opts = {
+      gasPrice: 1e9, 
+      ERC20Token: erc20Addr,
+    }
+    client.buildTx('ETH', sender.address, addr2, transferAmount, opts, (err, _tx) => {
+      assert(err === null, err);
+      const txObj = new Tx(_tx);
+      txObj.sign(senderPriv);
+      const serTx = txObj.serialize();
+      const data = { tx: `0x${serTx.toString('hex')}` };
+      client.broadcast('ETH', data, (err, res) => {
+        assert(err === null, err);
+        assert(res && res.hash && res.timestamp, 'Did not broadcast properly');
+        let count = 0;
+        const interval = setInterval(() => {
+          client.getTx('ETH', res.hash, (err, txs) => {
+            if (count > TIMEOUT_SEC) {
+              assert(err === null, err);
+              assert(txs.height > 0, 'Tx was not mined');
+              done();
+            } else if (txs.height > 0) {
+              clearInterval(interval);
+              done();
+            } else {
+              count += 1;
+            }
+          });
+        }, 1000);
+      });
+    });
+  });
+
+  it('Should get the token transfer history for the receiving addresses', (done) => {
     let count = 0;
     const opts = {
-      address: addr,
+      address: [ addr, addr2 ],
       ERC20Token: erc20Addr, 
     }
     const interval = setInterval(() => {

@@ -8,6 +8,7 @@ import NodeCrypto from '@gridplus/node-crypto';
 
 const { erc20Src } = testing;
 const transferAmount = 154;
+const randAddr = '0xdde20a2810ff23775585cf2d87991c7f5ddb8c22';
 
 let client, addr, erc20Addr, erc20Addr2, sender, senderPriv, balance;
 
@@ -210,6 +211,25 @@ describe('Ethereum', () => {
     });
   });
 
+  it('Should transfer some ERC20 (2) tokens to the random address', (done) => {
+    client.buildTx('ETH', sender.address, randAddr, transferAmount, { ERC20Token: erc20Addr2}, (err, _tx) => {
+      assert(err === null, err);
+      const txObj = new Tx(_tx);
+      txObj.sign(senderPriv);
+      const serTx = txObj.serialize();
+      const data = { tx: `0x${serTx.toString('hex')}` };
+      client.broadcast('ETH', data, (err, res) => {
+        assert(err === null, err);
+        assert(res && res.hash, 'Did not broadcast properly');
+        client.getTx('ETH', res.hash, (err, minedTx) => {
+          assert(err === null, err);
+          assert(minedTx.height > -1);
+          done();
+        });
+      });
+    });
+  });
+
   it('Should get the token transfer history for a single token', (done) => {
     client.getTxHistory('ETH', { address: addr, ERC20Token: erc20Addr2 }, (err, txHistory) => {
       assert(err === null, err);
@@ -223,7 +243,19 @@ describe('Ethereum', () => {
   it('Should get the token transfer history for both tokens', (done) => {
     client.getTxHistory('ETH', { address: addr, ERC20Token: [ erc20Addr, erc20Addr2 ] }, (err, txHistory) => {
       assert(err === null, err);
-      assert(txHistory.length === 2, `Number of transfers should be 1, but got ${txHistory.length}`);
+      assert(txHistory.length === 2, `Number of transfers should be 2, but got ${txHistory.length}`);
+      assert(txHistory[0].value === transferAmount, 'Transfer amount incorrect.')
+      assert(txHistory[1].value === transferAmount, 'Transfer amount incorrect.')
+      assert(txHistory[0].in === 1, 'Transfer should be inbound, but was not')
+      assert(txHistory[1].in === 1, 'Transfer should be inbound, but was not')
+      done();
+    });
+  });
+
+  it('Should get the token transfer history for multiple addresses', (done) => {
+    client.getTxHistory('ETH', { address: [ addr, randAddr ], ERC20Token: [ erc20Addr, erc20Addr2 ] }, (err, txHistory) => {
+      assert(err === null, err);
+      assert(txHistory.length === 3, `Number of transfers should be 3, but got ${txHistory.length}`);
       assert(txHistory[0].value === transferAmount, 'Transfer amount incorrect.')
       assert(txHistory[1].value === transferAmount, 'Transfer amount incorrect.')
       assert(txHistory[0].in === 1, 'Transfer should be inbound, but was not')
@@ -233,7 +265,6 @@ describe('Ethereum', () => {
   });
 
   it('Should transfer ETH out of the agent account', (done) => {
-    const randAddr = '0xdde20a2810ff23775585cf2d87991c7f5ddb8c22'
     client.buildTx('ETH', addr, randAddr, 10000, (err, tx) => {
       assert(err === null, err);
       const params = {
@@ -275,7 +306,6 @@ describe('Ethereum', () => {
   });
 
   it('Should transfer the ERC20 token out of the agent account', (done) => {
-    const randAddr = '0xdde20a2810ff23775585cf2d87991c7f5ddb8c22';
     client.buildTx('ETH', addr, randAddr, 1, { ERC20Token: erc20Addr}, (err, tx) => {
       assert(err === null, err);
       const params = {
@@ -302,5 +332,11 @@ describe('Ethereum', () => {
       });
     });
   });
+
+  it('Should get a list of tokens and check a balance', (done) => {
+    const tokenList = client.tokenList;
+    assert(tokenList && Object.keys(tokenList).length > 0);
+    done();
+  })
 
 });
