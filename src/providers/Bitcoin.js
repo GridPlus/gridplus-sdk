@@ -115,22 +115,18 @@ export default class Bitcoin {
     return this.provider.getTxHistory({ address }, cb);
   }
 
-  getTx(hashes, cb, opts={}, filled=[]) {
+  getTx(hashes, cb, opts={}) {
     this.provider.getTxs(hashes, (err, txs) => {
       if (err) return cb(err)
       else     return cb(null, txs);
     }, opts);
-  }
-  
-  getTxsMultipleAddrs(addrs) {
-    
   }
 
   initialize (cb) {
     return this.provider.initialize(cb);
   }
 
-  _getTx(hash, cb, opts={}) {
+  _getTx(hash, cb) {
     return this.provider.getTx(hash, cb);
   }
 

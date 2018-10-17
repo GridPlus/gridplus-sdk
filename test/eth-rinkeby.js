@@ -7,7 +7,7 @@ import NodeCrypto from '@gridplus/node-crypto';
 const TIMEOUT_SEC = 59;
 const { erc20Src, ethHolder } = testing;
 
-let client, addr, erc20Addr, sender, senderPriv, balance, addr2;
+let client, addr, erc20Addr, sender, senderPriv, addr2;
 const transferAmount = 54;
 
 describe('Ethereum via Etherscan: ether transfers', () => {
@@ -83,7 +83,6 @@ describe('Ethereum via Etherscan: ether transfers', () => {
       client.getBalance('ETH', { address: addr }, (err, data) => {
         assert.equal(err, null, err);
         assert(data.nonce > -1);
-        balance = data.balance;
         done();
       });
     });
