@@ -7,8 +7,10 @@ import { Client, providers } from 'index';
 import NodeCrypto from '@gridplus/node-crypto';
 
 const { erc20Src } = testing;
+const transferAmount = 154;
+const randAddr = '0xdde20a2810ff23775585cf2d87991c7f5ddb8c22';
 
-let client, addr, erc20Addr, sender, senderPriv, balance;
+let client, addr, erc20Addr, erc20Addr2, sender, senderPriv, balance;
 
 describe('Ethereum', () => {
 
@@ -143,28 +145,36 @@ describe('Ethereum', () => {
     });
   });
 
-  // A freshly deployed ERC20 token should have a new address, so the balance will be 0
-  // (unlike ETH, which may have been sent in previous tests)
-  it('Should find a zero token balance for the address', (done) => {
-    client.getBalance('ETH', { address: addr, erc20Address: erc20Addr }, (err, data) => {
+  it('Should deploy a second ERC20 token', (done) => {
+    client.buildTx('ETH', sender.address, addr, 0, (err, _tx) => {
       assert(err === null, err);
-      assert(typeof data.balance === 'number');
-      assert(data.balance === 0);
-      done();
+      const rawTx = {
+        nonce: _tx[0],
+        gasPrice: _tx[1],
+        gasLimit: '0x1e8480',
+        value: 0,
+        data: erc20Src,
+      }
+      const txObj = new Tx(rawTx);
+      txObj.sign(senderPriv);
+      const serTx = txObj.serialize();
+      const data = { tx: `0x${serTx.toString('hex')}` };
+      client.broadcast('ETH', data, (err, res) => {
+        assert(err === null, err);
+        assert(res && res.hash, 'Did not broadcast properly');
+        client.providers.ETH.provider.getTransactionReceipt(res.hash)
+        .then((receipt) => {
+          assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
+          erc20Addr2 = receipt.contractAddress;
+          done();
+        })
+        .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
+      })
     });
   });
 
-  it('Should find a non-zero balance for the sender', (done) => {
-    client.getBalance('ETH', { address: sender.address, erc20Address: erc20Addr }, (err, data) => {
-      assert(err === null, err);
-      assert(typeof data.balance === 'number');
-      assert(data.balance > 0, `Sender balance should be >0, but is ${data.balance}`);
-      done();
-    });
-  });
-
-  it('Should transfer some ERC20 tokens to the address', (done) => {
-    client.buildTx('ETH', sender.address, addr, 1, { ERC20Token: erc20Addr}, (err, _tx) => {
+  it('Should transfer some ERC20 (1) tokens to the address', (done) => {
+    client.buildTx('ETH', sender.address, addr, transferAmount, { ERC20Token: erc20Addr}, (err, _tx) => {
       assert(err === null, err);
       const txObj = new Tx(_tx);
       txObj.sign(senderPriv);
@@ -182,17 +192,79 @@ describe('Ethereum', () => {
     });
   });
 
-  it('Should get the token transfer history for the user', (done) => {
-    client.getTxHistory('ETH', { address: addr, erc20Address: erc20Addr }, (err, txHistory) => {
+  it('Should transfer some ERC20 (2) tokens to the address', (done) => {
+    client.buildTx('ETH', sender.address, addr, transferAmount, { ERC20Token: erc20Addr2}, (err, _tx) => {
+      assert(err === null, err);
+      const txObj = new Tx(_tx);
+      txObj.sign(senderPriv);
+      const serTx = txObj.serialize();
+      const data = { tx: `0x${serTx.toString('hex')}` };
+      client.broadcast('ETH', data, (err, res) => {
+        assert(err === null, err);
+        assert(res && res.hash, 'Did not broadcast properly');
+        client.getTx('ETH', res.hash, (err, minedTx) => {
+          assert(err === null, err);
+          assert(minedTx.height > -1);
+          done();
+        });
+      });
+    });
+  });
+
+  it('Should transfer some ERC20 (2) tokens to the random address', (done) => {
+    client.buildTx('ETH', sender.address, randAddr, transferAmount, { ERC20Token: erc20Addr2}, (err, _tx) => {
+      assert(err === null, err);
+      const txObj = new Tx(_tx);
+      txObj.sign(senderPriv);
+      const serTx = txObj.serialize();
+      const data = { tx: `0x${serTx.toString('hex')}` };
+      client.broadcast('ETH', data, (err, res) => {
+        assert(err === null, err);
+        assert(res && res.hash, 'Did not broadcast properly');
+        client.getTx('ETH', res.hash, (err, minedTx) => {
+          assert(err === null, err);
+          assert(minedTx.height > -1);
+          done();
+        });
+      });
+    });
+  });
+
+  it('Should get the token transfer history for a single token', (done) => {
+    client.getTxHistory('ETH', { address: addr, ERC20Token: erc20Addr2 }, (err, txHistory) => {
       assert(err === null, err);
       assert(txHistory.length === 1, `Number of transfers should be 1, but got ${txHistory.length}`);
+      assert(txHistory[0].value === transferAmount, 'Transfer amount incorrect.')
       assert(txHistory[0].in === 1, 'Transfer should be inbound, but was not')
       done();
     });
   });
 
+  it('Should get the token transfer history for both tokens', (done) => {
+    client.getTxHistory('ETH', { address: addr, ERC20Token: [ erc20Addr, erc20Addr2 ] }, (err, txHistory) => {
+      assert(err === null, err);
+      assert(txHistory.length === 2, `Number of transfers should be 2, but got ${txHistory.length}`);
+      assert(txHistory[0].value === transferAmount, 'Transfer amount incorrect.')
+      assert(txHistory[1].value === transferAmount, 'Transfer amount incorrect.')
+      assert(txHistory[0].in === 1, 'Transfer should be inbound, but was not')
+      assert(txHistory[1].in === 1, 'Transfer should be inbound, but was not')
+      done();
+    });
+  });
+
+  it('Should get the token transfer history for multiple addresses', (done) => {
+    client.getTxHistory('ETH', { address: [ addr, randAddr ], ERC20Token: [ erc20Addr, erc20Addr2 ] }, (err, txHistory) => {
+      assert(err === null, err);
+      assert(txHistory.length === 3, `Number of transfers should be 3, but got ${txHistory.length}`);
+      assert(txHistory[0].value === transferAmount, 'Transfer amount incorrect.')
+      assert(txHistory[1].value === transferAmount, 'Transfer amount incorrect.')
+      assert(txHistory[0].in === 1, 'Transfer should be inbound, but was not')
+      assert(txHistory[1].in === 1, 'Transfer should be inbound, but was not')
+      done();
+    });
+  });
+
   it('Should transfer ETH out of the agent account', (done) => {
-    const randAddr = '0xdde20a2810ff23775585cf2d87991c7f5ddb8c22'
     client.buildTx('ETH', addr, randAddr, 10000, (err, tx) => {
       assert(err === null, err);
       const params = {
@@ -234,7 +306,6 @@ describe('Ethereum', () => {
   });
 
   it('Should transfer the ERC20 token out of the agent account', (done) => {
-    const randAddr = '0xdde20a2810ff23775585cf2d87991c7f5ddb8c22';
     client.buildTx('ETH', addr, randAddr, 1, { ERC20Token: erc20Addr}, (err, tx) => {
       assert(err === null, err);
       const params = {
@@ -251,7 +322,7 @@ describe('Ethereum', () => {
           client.getTx('ETH', res.hash, (err, tx) => {
             assert(err === null, err);
             assert(tx.height > -1, 'Transaction not included in block');
-            client.getBalance('ETH', { address: addr, erc20Address: erc20Addr }, (err, data) => {
+            client.getBalance('ETH', { address: addr }, (err, data) => {
               assert(err === null, err);
               assert(data.nonce > -1);
               done();
@@ -261,5 +332,20 @@ describe('Ethereum', () => {
       });
     });
   });
+
+  it('Should get a list of tokens and check a balance', (done) => {
+    const tokenList = client.tokenList;
+    assert(tokenList && Object.keys(tokenList).length > 0);
+    done();
+  })
+
+  it('Should get the token balance of the first receiving address', (done) => {
+    client.getTokenBalance({ address: addr, tokens: [ erc20Addr, erc20Addr2 ] }, (err, res) => {
+      assert(err === null, err);
+      assert(parseInt(res[erc20Addr]) === transferAmount - 1, `Expected balance of ${transferAmount - 1}, but got ${res[erc20Addr]}`);
+      assert(parseInt(res[erc20Addr2]) === transferAmount, `Expected balance of ${transferAmount}, but got ${res[erc20Addr2]}`);
+      done();
+    })
+  })
 
 });

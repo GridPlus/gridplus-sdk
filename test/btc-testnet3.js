@@ -1,10 +1,9 @@
 import { Client, providers } from 'index';
-import bitcoin from 'bitcoinjs-lib';
 import NodeCrypto from '@gridplus/node-crypto';
 import { assert } from 'elliptic/lib/elliptic/utils';
 import { testing } from '../src/config.js';
 const { btcHolder } = testing;
-let client, deviceAddresses, sentTx, utxo, newUtxo;
+let client, deviceAddresses;
 process.on('unhandledRejection', e => { throw e; });
 
 // const bcy = {                    // blockcypher testnet
@@ -83,13 +82,12 @@ describe('Bitcoin via BlockCypher: transfers', () => {
     client.addresses(req, (err, res) => {
       assert(err === null, err);
       const addrs = res.result.data.addresses;
-      console.log('addrs', addrs)
       assert(addrs.length === 2);
       // assert(addrs[0].slice(0, 1) === 'B' || addrs[0].slice(0, 1) === 'C', 'Address 1 is not a BCY address');
       // assert(addrs[1].slice(0, 1) === 'B' || addrs[1].slice(0, 1) === 'C', 'Address 2 is not a BCY address')
       deviceAddresses = addrs;
       // // Get the baseline balance for the addresses
-      client.getBalance('BTC', { address: deviceAddresses[0] }, (err, d) => {
+      client.getBalance('BTC', { address: deviceAddresses[0] }, (err) => {
         assert(err === null, err);
         done()
       });
@@ -163,7 +161,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       
       assert(data.utxos.length > 0, `Address (${a}) has not sent or received any bitcoins. Please request funds from the faucet (https://coinfaucet.eu/en/btc-testnet/) and try again.`);
       assert(data.utxos[0].height > 0 && data.utxos[0].index !== undefined, `Address (${a}) has a transaction, but it has not been confirmed. Please wait until it has`);
-      newUtxo = data.utxos[0];
+      // newUtxo = data.utxos[0];
       setTimeout(() => { done() }, 750);      
     });
   });
