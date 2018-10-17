@@ -1,8 +1,7 @@
 // Basic tests for atomic SDK functionality
 import assert from 'assert';
-import EthUtil from 'ethereumjs-util';
 import Tx from 'ethereumjs-tx';
-import { SPLIT_BUF, testing } from '../src/config.js';
+import { testing } from '../src/config.js';
 import { Client, providers } from 'index';
 import NodeCrypto from '@gridplus/node-crypto';
 const TIMEOUT_SEC = 59;
