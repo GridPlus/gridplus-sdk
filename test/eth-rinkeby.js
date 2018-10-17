@@ -1,14 +1,14 @@
 // Basic tests for atomic SDK functionality
 import assert from 'assert';
-import EthUtil from 'ethereumjs-util';
 import Tx from 'ethereumjs-tx';
-import { SPLIT_BUF, testing } from '../src/config.js';
+import { testing } from '../src/config.js';
 import { Client, providers } from 'index';
 import NodeCrypto from '@gridplus/node-crypto';
 const TIMEOUT_SEC = 59;
 const { erc20Src, ethHolder } = testing;
 
-let client, addr, erc20Addr, sender, senderPriv, balance;
+let client, addr, erc20Addr, sender, senderPriv, addr2;
+const transferAmount = 54;
 
 describe('Ethereum via Etherscan: ether transfers', () => {
 
@@ -45,6 +45,7 @@ describe('Ethereum via Etherscan: ether transfers', () => {
 
   it('Should pair with the agent', (done) => {
     const appSecret = process.env.APP_SECRET;
+    console.log('Pairing with app secret: ', appSecret)
     client.pair(appSecret, (err) => {
       assert(err === null, err)
       done();
@@ -71,16 +72,17 @@ describe('Ethereum via Etherscan: ether transfers', () => {
     const req = {
       permissionIndex: 0,
       isManual: true,
-      total: 1,
+      total: 2,
       coin_type: '60\''
     }
     client.addresses(req, (err, res) => {
       assert(err === null, err);
-      addr = res.result.data.addresses;
+      assert(res.result.data.addresses.length === 2, `Expected 2 addresses. Got ${res.result.data.addresses.length}`);
+      addr = res.result.data.addresses[0];
+      addr2 = res.result.data.addresses[1];
       client.getBalance('ETH', { address: addr }, (err, data) => {
         assert.equal(err, null, err);
         assert(data.nonce > -1);
-        balance = data.balance;
         done();
       });
     });
@@ -106,7 +108,7 @@ describe('Ethereum via Etherscan: ether transfers', () => {
             if (count > TIMEOUT_SEC) {
               assert(err === null, err);
               assert(tx.height > 0, 'Tx was not mined');
-              done();;
+              done();
             } else if (tx.height > 0) {
               clearInterval(interval);
               done();
@@ -171,7 +173,7 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
               assert(err === null, err);
               assert(tx.height > 0, 'Tx was not mined');
               done();
-            } else if (tx.height > 0) {
+            } else if (tx && tx.height > 0) {
               clearInterval(interval);
               erc20Addr = tx.data.creates;
               done();
@@ -185,7 +187,11 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
   });
 
   it('Should transfer some ERC20 tokens to the address', (done) => {
-    client.buildTx('ETH', sender.address, addr, 1, { gasPrice: 1e9, ERC20Token: erc20Addr}, (err, _tx) => {
+    const opts = {
+      gasPrice: 1e9, 
+      ERC20Token: erc20Addr,
+    }
+    client.buildTx('ETH', sender.address, addr, transferAmount, opts, (err, _tx) => {
       assert(err === null, err);
       const txObj = new Tx(_tx);
       txObj.sign(senderPriv);
@@ -213,29 +219,91 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
     });
   });
 
-  it('Should get the token transfer history for the new account', (done) => {
+  it('Should transfer some ERC20 tokens to the second address', (done) => {
+    const opts = {
+      gasPrice: 1e9, 
+      ERC20Token: erc20Addr,
+    }
+    client.buildTx('ETH', sender.address, addr2, transferAmount, opts, (err, _tx) => {
+      assert(err === null, err);
+      const txObj = new Tx(_tx);
+      txObj.sign(senderPriv);
+      const serTx = txObj.serialize();
+      const data = { tx: `0x${serTx.toString('hex')}` };
+      client.broadcast('ETH', data, (err, res) => {
+        assert(err === null, err);
+        assert(res && res.hash && res.timestamp, 'Did not broadcast properly');
+        let count = 0;
+        const interval = setInterval(() => {
+          client.getTx('ETH', res.hash, (err, txs) => {
+            if (count > TIMEOUT_SEC) {
+              assert(err === null, err);
+              assert(txs.height > 0, 'Tx was not mined');
+              done();
+            } else if (txs.height > 0) {
+              clearInterval(interval);
+              done();
+            } else {
+              count += 1;
+            }
+          });
+        }, 1000);
+      });
+    });
+  });
+
+  it('Should get the token transfer history for the receiving addresses', (done) => {
     let count = 0;
+    const opts = {
+      address: [ addr, addr2 ],
+      ERC20Token: erc20Addr, 
+    }
     const interval = setInterval(() => {
-      client.getTxHistory('ETH', { address: addr }, (err, txs) => {
+      client.getTxHistory('ETH', opts, (err, txs) => {
+        assert(err === null, err);
         if (count > TIMEOUT_SEC) {
-          assert(err === null, err);
           assert(txs.height > 0, 'Could not get correct tx history from etherscan. Try again.');
+          assert(txs[txs.length - 1].contractAddress !== null);
+          clearInterval(interval);
           done();
-        } else {
+        } else if (txs && txs.length > 0) {
           const t = txs[txs.length - 1];
           if (
             t.to.toLowerCase() === addr.toLowerCase() &&
             t.from.toLowerCase() === sender.address.toLowerCase() &&
+            t.contractAddress &&
             t.contractAddress.toLowerCase() === erc20Addr.toLowerCase()
           ) {
+            assert(t.value === transferAmount.toString(), 'Token transfer value incorrect.')
             clearInterval(interval);
-            done();
           } else {
             count += 1;
           }
         }
       });
     }, 1000);
+    done();
   });
+
+  it('Should get the token balance of the first receiving address', (done) => {
+    client.getTokenBalance({ address: addr, tokens: erc20Addr }, (err, res) => {
+      assert(err === null, err);
+      assert(parseInt(res[erc20Addr]) === transferAmount, `Expected balance of ${transferAmount}, but got ${res[erc20Addr]}`);
+      done();
+    })
+  })
+
+  it('Should get no history for a random token address', (done) => {
+    const opts = {
+      address: addr,
+      ERC20Token: '0xf8025BE99c093e3ea80AfE1F20cd9D64CEAb6626', 
+    }
+    client.getTxHistory('ETH', opts, (err, txs) => {
+      assert(err === null)
+      const tokenTransfers = txs.filter((t) => { return t.contractAddress !== null; });
+      assert(tokenTransfers.length === 0);
+      done();
+    })
+  })
 
 })

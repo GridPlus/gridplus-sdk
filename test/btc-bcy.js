@@ -4,8 +4,8 @@ import NodeCrypto from '@gridplus/node-crypto';
 import { assert } from 'elliptic/lib/elliptic/utils';
 import { testing } from '../src/config.js';
 const { btcHolder } = testing;
-let client, deviceAddresses, utxo, sentTx, newUtxo;
-let balance0 = 0;
+let client, deviceAddresses, utxo, newUtxo;
+const balance0 = 0;
 process.on('unhandledRejection', e => { throw e; });
 
 const bcy = {                    // blockcypher testnet (https://www.blockcypher.com/dev/bitcoin/#testing)
@@ -89,7 +89,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       assert(addrs[1].slice(0, 1) === 'B' || addrs[1].slice(0, 1) === 'C', 'Address 2 is not a BCY address')
       deviceAddresses = addrs;
       // // Get the baseline balance for the addresses
-      client.getBalance('BTC', { address: deviceAddresses }, (err, d) => {
+      client.getBalance('BTC', { address: deviceAddresses }, (err) => {
         assert(err === null, err);
         done()
       });
@@ -158,9 +158,9 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       txb.sign(0, signer);
       
       const tx = txb.build().toHex();
-      client.broadcast('BTC', { tx }, (err, res) => {
+      client.broadcast('BTC', { tx }, (err) => {
         assert(err === null, err);
-        sentTx = res;
+        // sentTx = res;
         done();
       });
     } else {

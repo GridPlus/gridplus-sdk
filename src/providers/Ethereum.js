@@ -1,9 +1,6 @@
-import ethers from 'ethers';
 import config from '../config.js';
-import { pad64, unpad } from '../util.js';
 import { BigNumber } from 'bignumber.js';
-
-const erc20Decimals = {};
+import { EtherscanApi, JsonRpcApi } from './apis'
 
 export default class Ethereum {
   constructor (opts) {
@@ -11,13 +8,11 @@ export default class Ethereum {
     this.shortcode = 'ETH';
     if (opts && opts.etherscan === true) {
       this.etherscan = true;
-      this.network = opts.network || 'homestead'; // No idea why mainnet is still being called homestead...
-      this.provider = new ethers.providers.EtherscanProvider(this.network, config.etherscanApiKey);
+      this.provider = new EtherscanApi(opts);
     } else {
       this.etherscan = false;
       this.network = null;
-      const url = typeof opts === 'string' ? opts : (opts && opts.host && opts.port ? `http://${opts.host}:${opts.port}` : 'http://localhost:8545');
-      this.provider = new ethers.providers.JsonRpcProvider(url);
+      this.provider = new JsonRpcApi(opts);
     }
   }
 
@@ -68,53 +63,38 @@ export default class Ethereum {
     }
   }
 
-  getBalance ({ address, erc20Address = null}, cb) {
+  getBalance ({ address }, cb) {
     const data = {
       balance: 0,
       transfers: {}
     };
-    if (erc20Address !== null) {
-      if (erc20Decimals[erc20Address] === undefined) {
-        // Save the contract as an object
-        this.provider.call({ to: erc20Address, data: config.erc20.decimals() })
-        .then((decimals) => {
-          erc20Decimals[erc20Address] = parseInt(decimals);
-          data.decimals = parseInt(decimals);
-          // Get the balance
-          return this.provider.call({ to: erc20Address, data: config.erc20.balanceOf(address) })
-        })
-        .then((balance) => {
-          data.balance = parseInt(balance) / Math.pow(10, erc20Decimals[erc20Address]);
-          cb(null, data);
-        })
-        .catch((err) => { cb(err); });
-      } else {
-        // If the decimals are cached, we can just query the balance
-        this.provider.call({ to: erc20Address, data: config.erc20.balanceOf(address) })
-        .then((balance) => {
-          data.decimals = erc20Decimals[erc20Address];
-          data.balance = parseInt(balance);
-          return this.provider.getTransactionCount(address)
-        })
-        .then((nonce) => {
-          data.nonce = parseInt(nonce);
-          cb(null, data);
-        })
-        .catch((err) => { cb(err); });
-      }
-    } else {
-      // Otherwise query for the ETH balance
-      this.provider.getBalance(address)
-      .then((balance) => {
-        data.balance = parseInt(balance);
-        return this.provider.getTransactionCount(address)
-      })
-      .then((nonce) => {
-        data.nonce = parseInt(nonce);
-        cb(null, data);
-      })
-      .catch((err) => { cb(err); })
-    }
+    // Otherwise query for the ETH balance
+    this.provider.getBalance(address)
+    .then((balance) => {
+      data.balance = parseInt(balance);
+      return this.getNonce(address)
+    })
+    .then((nonce) => {
+      data.nonce = parseInt(nonce);
+      cb(null, data);
+    })
+    .catch((err) => { cb(err); })
+  }
+
+  getTokenBalance(options, cb) {
+    const { address } = options;
+    const tokens = options.tokens ? options.tokens : options.token;
+    this.provider.getTokenBalance(address, tokens)
+    .then((balances) => { return cb(null, balances); })
+    .catch((err) => { return cb(err); })
+  }
+
+  getNonce(user) {
+    return new Promise((resolve, reject) => {
+      this.provider.getTransactionCount(user)
+      .then((nonce) => { return resolve(nonce); })
+      .catch((err) => { return reject(err); })
+    });
   }
 
   getTx(hashes, cb, opts={}, filled=[]) {
@@ -137,86 +117,9 @@ export default class Ethereum {
   }
 
   getTxHistory(opts, cb) {
-    const events = {}
-    const { address, erc20Address } = opts;
-    if (erc20Address) {
-      // TODO: Token transfer output needs to conform to the same schema as the history from etherscan
-      // This block is deprecated
-
-      // Get transfer "out" events
-      this._getEvents(erc20Address, [ null, `0x${pad64(address)}`, null ])
-      .then((outEvents) => {
-        events.out = outEvents;
-        return this._getEvents(erc20Address, [ null, null, `0x${pad64(address)}` ])
-      })
-      .then((inEvents) => {
-        events.in = inEvents;
-        const allLogs = this._parseTransferLogs(events, 'ERC20', address, erc20Decimals[erc20Address]);
-        const txs = allLogs.in.concat(allLogs.out);
-        return cb(null, txs.sort((a, b) => { return a.height - b.height }));
-      })
-      .catch((err) => { 
-        return cb(err); 
-      })
-    } else if (this.etherscan === true) {
-      let txs = [];
-      this.provider.getHistory(address)
-      .then((history) => { 
-        txs = history;
-        return this.provider.tokentx(address)
-      })
-      .then((tokenHistory) => {
-        txs = txs.concat(tokenHistory || []);
-        return setImmediate(() => cb(null, this._filterEtherscanTxs(txs, address)));
-      })
-      .catch((err) => { return cb(err); })
-    } else {
-      return cb(null, []);
-    }
-  }
-
-  getNonce(user) {
-    return new Promise((resolve, reject) => {
-      this.provider.getTransactionCount(user)
-      .then((nonce) => { return resolve(nonce); })
-      .catch((err) => { return reject(err); })
-    });
-  }
-
-  _filterEtherscanTxs(txs, address) {
-    const newTxs = [];
-    const isArray = txs instanceof Array === true;
-    if (!isArray) txs = [ txs ];
-    const ethFactor = new BigNumber('1e18');
-    txs.forEach((tx) => {
-      const valString = tx.value.toString();
-      const val = new BigNumber(valString);
-      const gasPrice = new BigNumber(tx.gasPrice.toString());
-      const gasLimit = new BigNumber(tx.gasLimit.toString());
-      const to = tx.to ? tx.to : '';
-      newTxs.push({
-        to: to,
-        from: tx.from,
-        fee: gasPrice.times(gasLimit).div(ethFactor).toString(),
-        in: to.toLowerCase() === address.toLowerCase() ? 1 : 0,
-        hash: tx.hash,
-        currency: 'ETH',
-        height: tx.blockNumber,
-        timestamp: tx.timestamp,
-        value: val.div(ethFactor).toString(),
-        data: tx,
-        contractAddress: tx.creates ? tx.creates : null
-      });
-    });
-    return newTxs;
-  }
-
-  _getEvents(address, topics, fromBlock=0, toBlock='latest') {
-    return new Promise((resolve, reject) => {
-      this.provider.getLogs({ address, topics, fromBlock, toBlock })
-      .then((events) => { return resolve(events); })
-      .catch((err) => { return reject(err); })
-    });
+    this.provider.getTxHistory(opts)
+    .then((history) => { return cb(null, history); })
+    .catch((err) => { return cb(err); })
   }
 
   _getTx(hash, cb) {
@@ -254,38 +157,6 @@ export default class Ethereum {
     const factor = BigNumber('-1e18');
     const weiFee = new BigNumber(tx.gasPrice.mul(tx.gasLimit).toString());
     return weiFee.div(factor).toString();
-  }
-
-  _parseLog(log, type, address, decimals=0) {
-    if (type === 'ERC20') {
-        const from = `0x${unpad(log.topics[1])}`;
-        const to = `0x${unpad(log.topics[2])}`;
-        const isIn = to.toLowerCase() === address.toLowerCase() ? 1 : 0;
-        return {
-          currency: 'ETH',
-          hash: log.transactionHash,
-          height: log.blockNumber,
-          // fee: 0,
-          in: isIn,
-          contractAddress: log.address,
-          from,
-          to,
-          value: parseInt(log.data) / Math.pow(10, decimals),
-        };
-    } else {
-      return {};
-    }
-  }
-
-  _parseTransferLogs(logs, type, address, decimals=0) {
-    const newLogs = { in: [], out: [] };
-    logs.out.forEach((log) => {
-      newLogs.out.push(this._parseLog(log, type, address, decimals));
-    });
-    logs.in.forEach((log) => {
-      newLogs.in.push(this._parseLog(log, type, address, decimals));
-    });
-    return newLogs;
   }
 
 }
