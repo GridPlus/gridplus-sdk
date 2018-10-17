@@ -1,5 +1,6 @@
 import ethers from 'ethers';
 import { pad64, unpad } from '../../util.js';
+import { erc20 } from '../../config.js';
 
 export default class JsonRpcApi {
   constructor(opts) {
@@ -25,6 +26,15 @@ export default class JsonRpcApi {
 
   getTransactionReceipt(hash) {
     return this.provider.getTransactionReceipt(hash);
+  }
+
+  getTokenBalance(address, tokens) {
+    return new Promise((resolve, reject) => {
+      this._getTokenBalance(address, tokens, (err, balances) => {
+        if (err) return reject(err)
+        else     return resolve(balances);
+      })
+    })
   }
 
   getTxHistory(opts) {
@@ -81,7 +91,25 @@ export default class JsonRpcApi {
       .catch((err) => { return cb(err); })
     }
   }
- 
+
+  _getTokenBalance(address, tokens, cb, balances={}) {
+    if (tokens.length === 0) {
+      return cb(null, balances);
+    } else {
+      if (typeof tokens === 'string') tokens = [ tokens ];
+      const token = tokens.shift();
+      const req = {
+        to: token,
+        data: erc20.balanceOf(address),
+      }
+      this.provider.call(req)
+      .then((res) => {
+        balances[token] = parseInt(res);
+        return this._getTokenBalance(address, tokens, cb, balances);
+      })
+      .catch((err) => { return cb(err); })
+    }
+  }
 
   _getEvents(address, topics, fromBlock=0, toBlock='latest') {
     return new Promise((resolve, reject) => {

@@ -339,4 +339,13 @@ describe('Ethereum', () => {
     done();
   })
 
+  it('Should get the token balance of the first receiving address', (done) => {
+    client.getTokenBalance({ address: addr, tokens: [ erc20Addr, erc20Addr2 ] }, (err, res) => {
+      assert(err === null, err);
+      assert(parseInt(res[erc20Addr]) === transferAmount - 1, `Expected balance of ${transferAmount - 1}, but got ${res[erc20Addr]}`);
+      assert(parseInt(res[erc20Addr2]) === transferAmount, `Expected balance of ${transferAmount}, but got ${res[erc20Addr2]}`);
+      done();
+    })
+  })
+
 });
