@@ -1,7 +1,6 @@
 // BCoin API
 import { NodeClient } from '@gridplus/bclient';
 import { getTxHash, sortByHeight } from '../../util';
-const request = require('superagent');
 
 export default class BcoinApi {
 
@@ -57,7 +56,7 @@ export default class BcoinApi {
     })
   }
 
-  getBalance({ address, sat }, cb, accounts = []) {
+  getBalance({ address, sat }, cb) {
     let balances;
     if (typeof address === 'string') {
       this.getUtxosSingleAddr(address).then(utxos => {
@@ -179,7 +178,7 @@ export default class BcoinApi {
     });
   }
 
-  getTxHistory({ address }, cb, txs=[], usedAddresses=[]) {
+  getTxHistory({ address }, cb) {
     if (typeof address === 'string') {
       this.client.getTXByAddress(address)
       .then((txs) => {
