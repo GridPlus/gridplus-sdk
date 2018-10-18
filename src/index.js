@@ -207,6 +207,6 @@ export default class SdkClient {
 }
 
 export const Client = SdkClient;
-export const tokens = require('tokensByName.json');
-export const tokensByName = require('../tokensByName.json');
+export const tokens = require('../tokensBySymbol.json');
+export const tokensBySymbol = require('../tokensBySymbol.json');
 export const tokensByAddress = require('../tokensByAddress.json');
