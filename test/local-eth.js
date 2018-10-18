@@ -3,7 +3,7 @@ import assert from 'assert';
 import EthUtil from 'ethereumjs-util';
 import Tx from 'ethereumjs-tx';
 import { SPLIT_BUF, testing } from '../src/config.js';
-import { Client, providers } from 'index';
+import { Client, providers, tokens } from 'index';
 import NodeCrypto from '@gridplus/node-crypto';
 
 const { erc20Src } = testing;
@@ -334,7 +334,7 @@ describe('Ethereum', () => {
   });
 
   it('Should get a list of tokens and check a balance', (done) => {
-    const tokenList = client.tokenList;
+    const tokenList = tokens;
     assert(tokenList && Object.keys(tokenList).length > 0);
     done();
   })

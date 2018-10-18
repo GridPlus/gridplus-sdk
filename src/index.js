@@ -35,10 +35,6 @@ export default class SdkClient {
 
     (options.providers || []).map((provider) => {
       this.providers[provider.shortcode] = provider;
-      // Add token lists
-      if (provider.shortcode === 'ETH') {
-        this.tokenList = tokenList;
-      }
     });
 
     log(`gridplus sdk created with providers [${Object.keys(this.providers)}]`);
@@ -211,3 +207,6 @@ export default class SdkClient {
 }
 
 export const Client = SdkClient;
+export const tokens = require('tokensByName.json');
+export const tokensByName = require('../tokensByName.json');
+export const tokensByAddress = require('../tokensByAddress.json');
