@@ -118,7 +118,38 @@ client.addManualPermission((err, res) => {
 
 ## Getting Addresses
 
-You may retrieve some number of addresses for supported cryptocurrencies (for now, just Ethereum and Bitcoin).
+You may retrieve some number of addresses for supported cryptocurrencies. The Grid+ Lattice uses [BIP44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)-compliant highly-deterministic (HD) wallets for generating addresses. This means that for each currency you want to access, you must specify a `coin_type` (by default it will choose Bitcoin, or `0'`). You may also specify `start` (the starting index) and `total` the total number of addresses to generate, starting at the starting index.
+
+An example request looks like:
+
+```
+const req = {
+    permissionIndex: 0,  // Will be deprecated soon
+    isManual: true,      // Will be deprecated soon
+    start: 0,
+    total: 4,
+    coin_type: "0'"
+    network: 'regtest'
+};
+client.addresses(req, (err, res) => {
+    ...
+})
+```
+
+**TODO: We need to remove permissionIndex for manual permissions and we also need to talk about automated permissions**
+
+## Requesting a Signature
+
+The Lattice device, at its core, is a tightly controlled, highly configurable, cryptographic signing machine. By default, each pairing (the persistent association between your app and a user's lattice) allows the app an ability to request signatures that the user must manually authorize. However, this SDK also gives the app an ability to establish "automated signatures", which conform to permissions established by the user. For more information on that functionality, please see the [Permissions section](#Permissions). Since this is an advanced topic, this quick start guide does not cover it.
+
+### Building a Transaction
+
+To request a signature that must be manually authorized, you must have a pairing. Once you do, you can form a request like so:
+
+
+
+
+#<a name="Permissions"></a>Permissions
 
 #<a name="Providers"></a>Providers
 
