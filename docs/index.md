@@ -169,7 +169,18 @@ Without a specified permission, an SDK user with a pairing can always request a 
 Once your transaction has been built by the SDK, you can send it to the device, which checks the boundaries of your request in the secure compute module and, if it conforms to the desired schema, is passed to the secure enclave for signing (pending user authorization).
 
 ```
-client.signManual(tx, (err, res) => {
+client.signManual(tx, (err, signedTx) => {
+    ...
+})
+```
+
+### Broadcasting a Transaction
+
+Once you have your transaction (`signedTx`, from the previous section) signed, you can use the `client` to *broadcast* that transaction on the appropriate network. Note that this requires you to have instantiated a [provider](#Providers) properly and to know the [schema name](#Schema-Reference) of the network you are trying to use. Here is a simple example of broadcasting on Ethereum:
+
+```
+const schemaName = 'ETH';
+client.broadcast(schemaName, signedTx, (err, res) => {
     ...
 })
 ```
@@ -267,11 +278,53 @@ As such, network providers must be utilized at the application level by default.
 
 ## Importing and Using a Provider
 
+Providers may be imported from this module separately from the `client`. Currently, the following provider *types* are supported
+
+* `Bitcoin`
+* `Ethereum`
+
+These are imported like so:
+
+```
+import { providers } from 'gridplus-sdk';
+const { Bitcoin, Ethereum } = providers;
+```
+
+To use a particular provider, you must pass an object configuring the provider type. Here are some exxamples:
+
+```
+// Use a BlockCypher provider for testnet3
+const btcProvider = new Bitcoin({ network: 'test3', blockcypher: true, coin: 'btc' });
+
+// Use an Etherscan provider for Rinkeby
+const ethPRovider = new Ethereum({ network: 'rinkeby', etherscan: true });
+```
+
+Once imported, you can use this provider to instantiate your `client`:
+
+```
+const client = new Client({
+    clientConfig: {
+        name: 'MyAppName',
+        privKey: crypto.randomBytes(32).toString('hex'),
+    },
+    providers: [ btcProvider, ethProvider ]
+});
+```
+
+A few notes:
+
+* `clientConfig` must be passed as an object. `name` and `privKey` are required fields.
+* `providers` must be passed as an array of instantiated provider objects. Order does not matter here, as the client will automatically detect which provider corresponds to which currency (so long as the provider was intantiated properly).
+
+
 ##<a name="Using-Your-Own-Provider"></a>Using Your Own Provider
+
+You may also create your own provider and use it. However, if you do this you **must** replicate the [provider API](#API-Of-Providers).
 
 ## List of Built-In Providers
 
-### API of Providers
+###<a name="API-Of-Providers"></a>API of Providers
 
 #<a name="API-Reference"></a>API Reference
 
