@@ -35,6 +35,7 @@ describe('basic tests', () => {
 
   it('Should pair with the agent', (done) => {
     const appSecret = process.env.APP_SECRET;
+    console.log('appSecret: ', appSecret)
     client.pair(appSecret, (err) => {
       assert(err === null, err)
       done();
