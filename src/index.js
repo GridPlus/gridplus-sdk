@@ -192,7 +192,7 @@ export default class SdkClient {
   // @param [value]   {number}          - number of tokens to send in the tx
   // @param [opts]    {Object}          - (optional) parameterization options, including ERC20 address
   // @callback                          - err (Error), data (object)
-  buildTx(shortcode, from, to, value, opts={}, cb) {
+  buildTx(shortcode, opts={}, cb) {
     if (typeof opts === 'function') {
       cb = opts;
       opts = {};
@@ -201,7 +201,8 @@ export default class SdkClient {
     if (! this.providers[shortcode]) {
       return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
     }
-    return this.providers[shortcode].buildTx(from, to, value, opts, cb);
+    // return this.providers[shortcode].buildTx(from, to, value, opts, cb);
+    return this.providers[shortcode].buildTx(opts, cb);
   }
 
 }

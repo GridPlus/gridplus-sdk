@@ -85,7 +85,12 @@ describe('Ethereum', () => {
     sender = testing.ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
     // Build a tx for the sender
-    client.buildTx('ETH', sender.address, addr, toSend, (err, _tx) => {
+    const opts = {
+      from: sender.address,
+      to: addr,
+      value: toSend,
+    }
+    client.buildTx('ETH', opts, (err, _tx) => {
       assert(err === null, err);
       const txObj = new Tx({ nonce: _tx[0], gasPrice: _tx[1], gasLimit: _tx[2], to: _tx[3], value: _tx[4], data: _tx[5] });
       txObj.sign(senderPriv);
@@ -118,7 +123,12 @@ describe('Ethereum', () => {
   });
 
   it('Should deploy an ERC20 token', (done) => {
-    client.buildTx('ETH', sender.address, addr, 0, (err, _tx) => {
+    const opts = {
+      from: sender.address,
+      to: addr,
+      value: 0,
+    }
+    client.buildTx('ETH', opts, (err, _tx) => {
       assert(err === null, err);
       const rawTx = {
         nonce: _tx[0],
@@ -146,7 +156,12 @@ describe('Ethereum', () => {
   });
 
   it('Should deploy a second ERC20 token', (done) => {
-    client.buildTx('ETH', sender.address, addr, 0, (err, _tx) => {
+    const opts = {
+      from: sender.address,
+      to: addr,
+      value: 0,
+    }
+    client.buildTx('ETH', opts, (err, _tx) => {
       assert(err === null, err);
       const rawTx = {
         nonce: _tx[0],
@@ -174,7 +189,13 @@ describe('Ethereum', () => {
   });
 
   it('Should transfer some ERC20 (1) tokens to the address', (done) => {
-    client.buildTx('ETH', sender.address, addr, transferAmount, { ERC20Token: erc20Addr}, (err, _tx) => {
+    const opts = {
+      from: sender.address,
+      to: addr,
+      value: transferAmount,
+      ERC20Token: erc20Addr
+    };
+    client.buildTx('ETH', opts, (err, _tx) => {
       assert(err === null, err);
       const txObj = new Tx(_tx);
       txObj.sign(senderPriv);
@@ -193,7 +214,13 @@ describe('Ethereum', () => {
   });
 
   it('Should transfer some ERC20 (2) tokens to the address', (done) => {
-    client.buildTx('ETH', sender.address, addr, transferAmount, { ERC20Token: erc20Addr2}, (err, _tx) => {
+    const opts = {
+      from: sender.address,
+      to: addr,
+      value: transferAmount,
+      ERC20Token: erc20Addr2
+    };
+    client.buildTx('ETH', opts, (err, _tx) => {
       assert(err === null, err);
       const txObj = new Tx(_tx);
       txObj.sign(senderPriv);
@@ -212,7 +239,13 @@ describe('Ethereum', () => {
   });
 
   it('Should transfer some ERC20 (2) tokens to the random address', (done) => {
-    client.buildTx('ETH', sender.address, randAddr, transferAmount, { ERC20Token: erc20Addr2}, (err, _tx) => {
+    const opts = {
+      from: sender.address,
+      to: randAddr,
+      value: transferAmount,
+      ERC20Token: erc20Addr2,
+    };
+    client.buildTx('ETH', opts, (err, _tx) => {
       assert(err === null, err);
       const txObj = new Tx(_tx);
       txObj.sign(senderPriv);
@@ -265,7 +298,12 @@ describe('Ethereum', () => {
   });
 
   it('Should transfer ETH out of the agent account', (done) => {
-    client.buildTx('ETH', addr, randAddr, 10000, (err, tx) => {
+    const opts = {
+      from: addr,
+      to: randAddr,
+      value: 10000,
+    }
+    client.buildTx('ETH', opts, (err, tx) => {
       assert(err === null, err);
       const params = {
         schemaIndex: 0,
@@ -306,7 +344,13 @@ describe('Ethereum', () => {
   });
 
   it('Should transfer the ERC20 token out of the agent account', (done) => {
-    client.buildTx('ETH', addr, randAddr, 1, { ERC20Token: erc20Addr}, (err, tx) => {
+    const opts = {
+      from: addr,
+      to: randAddr,
+      value: 1,
+      ERC20Token: erc20Addr,
+    };
+    client.buildTx('ETH', opts, (err, tx) => {
       assert(err === null, err);
       const params = {
         schemaIndex: 0,

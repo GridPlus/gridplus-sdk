@@ -152,12 +152,12 @@ All supported schema are available in the SDK with a string representing its cod
 
 ```
 const schemaCode = 'ETH';
-const req = {
+const opts = {
     amount: 1*(10**18), // atomic units: 10**18 per 1 ether
     to: '0x123...ab',
     gasPrice: 1*(10**9),
 }
-client.buildTx(schemaCode, req, (err, tx) => {
+client.buildTx(schemaCode, opts, (err, tx) => {
     ...
 })
 ```
@@ -192,6 +192,8 @@ The Lattice1 offers an extended API which enables "automated" signatures, which 
 #### Requesitng a Permission
 
 Before requesting automated signatures, the paired application or service must create a permission. For example, your service can establish a permission with a particular Lattice that will enable automated signatures on up to 0.1 ETH per 24 hours. Such a request would look like this:
+
+**TODO: Build this functionality into SDK**
 
 ```
 const permission = {
