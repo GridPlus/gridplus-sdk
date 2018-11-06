@@ -71,7 +71,6 @@ export default class Bitcoin {
             utxo[1].index,
             scriptType,
             utxo[0],
-            utxo[0],   // We have to do this twice for legacy reasons. This should get cleaned up soon on the agent side
             utxo[1].value,
           ];
           inputs = inputs.concat(input);
@@ -88,6 +87,7 @@ export default class Bitcoin {
         to,  // recipient
         amount,
         utxoSum - amount - fee,   // change
+        changeIndex ? changeIndex : addresses.length,
       ];
 
       if (utxoSum <= (amount + fee)) return cb(`Not enough balance to make this transaction: have balance=${utxoSum}, need amount=${amount}+fee=${fee}`);
@@ -98,7 +98,6 @@ export default class Bitcoin {
         schemaIndex: 1,  // Bitcoin
         typeIndex: 2,    // segwit
         params: params.concat(inputs),
-        fetchAccountIndex: changeIndex ? changeIndex : addresses.length,  // index of the change address
         network: network ? network : 'regtest',
       };
       return cb(null, req); 

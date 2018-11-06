@@ -99,7 +99,6 @@ function getRule(x) {
 function addExtraParams(opts, req) {
   if (opts.schemaCode === 'BTC') {
     opts.inputs.forEach((i) => {
-      console.log('i', i)
       const parsedInput = [ i.hash, i.outIndex, i.scriptType, i.spendAccountIndex, i.inputValue ];
       req.params = req.params.concat(parsedInput);
     });
