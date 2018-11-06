@@ -141,9 +141,8 @@ describe('Bitcoin', () => {
   });
 
   it('Should create a manual permission', (done) => {
-    client.addManualPermission((err, res) => {
+    client.addManualPermission((err) => {
       assert(err === null, err);
-      assert(res.result.status === 200);
       done();
     })
   });
@@ -155,10 +154,10 @@ describe('Bitcoin', () => {
       total: 2,
       network: 'regtest'
     }
-    client.addresses(req, (err, res) => {
+    client.addresses(req, (err, addresses) => {
       assert(err === null, err);
-      assert(res.result.data.addresses.length === 2);
-      deviceAddresses = res.result.data.addresses;
+      assert(addresses.length === 2);
+      deviceAddresses = addresses;
       // Get the baseline balance for the addresses
       client.getBalance('BTC', { address: deviceAddresses[0] }, (err, d) => {
         assert(err === null, err);
@@ -225,6 +224,7 @@ describe('Bitcoin', () => {
 
       const tx = txb.build().toHex();
       client.broadcast('BTC', { tx }, (err, res) => {
+        console.log('broadcast res', res)
         assert(err === null, err);
         assert(res.timestamp > 0, 'Could not broadcast properly');
         client.getTx('BTC', res.hash, { addresses: testing.btcHolder.regtestAddress }, (err, retTx) => {
@@ -313,9 +313,9 @@ describe('Bitcoin', () => {
       total: 4,
       network: 'regtest'
     }
-    client.addresses(req, (err, res) => {
+    client.addresses(req, (err, addresses) => {
       assert(err === null, err);
-      client.getBalance('BTC', { address: res.result.data.addresses[CHANGE_INDEX] }, (err, d) => {
+      client.getBalance('BTC', { address: addresses[CHANGE_INDEX] }, (err, d) => {
         assert(err === null, err);
         assert(d.utxos.length > 0, 'Did not find any change outputs')
         assert(d.utxos[d.utxos.length - 1].value === CHANGE_AMOUNT, 'Change output was wrong')

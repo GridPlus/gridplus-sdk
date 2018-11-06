@@ -185,15 +185,13 @@ client.broadcast(schemaName, signedTx, (err, res) => {
 })
 ```
 
-##<a name="Permissions"></a>Permissions
+##<a name="Permissions">Permissions</a>
 
 The Lattice1 offers an extended API which enables "automated" signatures, which are based on user-authorized *permissions*.
 
 #### Requesitng a Permission
 
 Before requesting automated signatures, the paired application or service must create a permission. For example, your service can establish a permission with a particular Lattice that will enable automated signatures on up to 0.1 ETH per 24 hours. Such a request would look like this:
-
-**TODO: Build this functionality into SDK**
 
 ```
 const permission = {
@@ -272,7 +270,7 @@ client.buildTx(schemaCode, req, (err, tx) => {
 
 Notice how this process is nearly identical to requesting a manual signature. If the request does not conform to an established permission associated with your app, it will be converted to a manual signature request, which times out after a period of time.
 
-#<a name="Providers"></a>Providers
+#<a name="Providers">Providers</a>
 
 The Lattice is designed to compartmentalize security and delegate logic to the appropriate level of security. As such, it is by default stateless, in the sense that it does not know the state of any blockchain network. Rather, it securely holds the entropy, which determines the cryptocurrency wallets according to BIP39/44 standards.
 
@@ -333,7 +331,7 @@ const Bitcoin = providers.Bitcoin;
 const btc = new Bitcoin(params);
 ```
 
-#### API Options
+####<a href="Bitcoin-Provider-Options"></a>API Options
 
 <table>
     <tr>
@@ -430,17 +428,193 @@ const eth = new Ethereum(paramss);
     </tr>
 </table>
 
+#<a name="Schema-Reference">Schema Reference</a>
 
-#<a name="API-Reference"></a>API Reference
+This section outlines the schema types, param names, and restrictions for the accepted `schemaCodes`:
 
-#<a name="Schema-Reference"></a>Schema Reference
+* **Types** show the data types expected for the relevant schema
+* **ParamNames** show the naems of the parameters that will go into building a schema
+* **Restrictions** show required param values, if applicable
 
 ## Ethereum
 
-### 'ETH': Ether Transfers
+#### 'ETH': Ether Transfers
 
-### 'ETH-ERC20': ERC20 Transfers
+* Types: `[ "number", "number", "number", "string", "number", "string" ]`
+* ParamNames: `[ "nonce", "gasPrice", "gas", "to", "value", "data" ]`
+* Restrictions: `data=''`
+
+#### 'ETH-ERC20': ERC20 Transfers
+
+* Types: `[ "number", "number", "number", "string", "number", "string" ]`
+* ParamNames: `[ "nonce", "gasPrice", "gas", "to", "value", "data" ]`
+* Restrictions: `data` must be of form ``0xa9059cbb${pad64(addr)}${pad64(value.toString(16))}`, where `pad64` indicates a 0-left-padded value of 64 characters. `addr` is the receiving address and `value` is the number of atomic units to send, in base-16 (i.e. a hex string)
 
 ## Bitcoin
 
-### 'BTC': Bitcoin Transfers
+#### 'BTC': Bitcoin Transfers
+
+* Types: `[ "number", "number", "string", "number", "number", "number" ]`
+* ParamNames: `[ "version", "lockTime", "recipient", "value", "change", "changeAccountIndex" ]`
+* Restrictions: `version=1`, `lockTime=0`
+
+
+#<a name="API-Reference">API Reference</a>
+
+This section includes a full reference for the `client` API.
+
+## addresses
+
+Retrieve one or more addresses from a paired device.
+
+Example call:
+
+```
+client.addresses(param, (err, addresses) => { })
+```
+
+#### param [object], required
+
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Default</td>
+        <td>Required</td>
+        <td>Description</td>
+    </tr>
+    <tr>
+        <td>permissionIndex</td>
+        <td>integer</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>Will be deprecated soon. Refers to specific index of permission we are requesting addresses against</td>
+    </tr>
+        <tr>
+        <td>start</td>
+        <td>integer</td>
+        <td>0</td>
+        <td>No</td>
+        <td>Starting index of account to scan (m/44'/x/x/start)</td>
+    </tr>    
+    <tr>
+        <td>total</td>
+        <td>integer</td>
+        <td>1</td>
+        <td>No</td>
+        <td>Number of addresses to return. These will be in sequential order starting at `start`.</td>
+    </tr>    
+    <tr>
+        <td>coin_type</td>
+        <td>string</td>
+        <td>0'</td>
+        <td>No</td>
+        <td>BIP44 code for coin being requested. 0' for Bitcoin, 60' for Ethereum</td>
+    </tr>
+    <tr>
+        <td>network</td>
+        <td>string</td>
+        <td>bitcoin</td>
+        <td>No</td>
+        <td>Name of network (see relevant provider options in previous section)</td>
+    </tr>
+    <tr>
+        <td>segwit</td>
+        <td>bool</td>
+        <td>true</td>
+        <td>No</td>
+        <td>True if you want segwit addresses. Is only used for Bitcoin addresses</td>
+    </tr>
+</table>
+
+#### cb [Function]
+
+Returns `(err, addresses)`, where `err` is a string (or `null`) and `addresses` is an array of strings (if multiple) or a string (if one).
+
+
+## addManualPermission
+
+Will be deprecated soon
+
+## addPermission
+
+Request a new permission based on a rule set you provide.
+
+Example call:
+
+```
+client.addPermission(param, (err) => { })
+```
+
+#### param [object], required
+
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Default</td>
+        <td>Required</td>
+        <td>Description</td>
+    </tr>
+    <tr>
+        <td>schemaCode</td>
+        <td>string</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>Schema code you want to create a permission for (e.g. ETH, ETH-ERC20, BTC)</td>
+    </tr>
+        <tr>
+        <td>timeLimit</td>
+        <td>integer</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>Time (in seconds) constraining permission. For example, a permission might set a limit of 0.5 ETH to be auto-signed over a period of 60 seconds. This permission would reset every 60 seconds.</td>
+    </tr>    
+    <tr>
+        <td>params</td>
+        <td>object</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>An object whose keys are named after schema param names. Sub-object keys are range options. See Permissions section for examples.</td>
+    </tr>    
+</table>
+
+#### cb [Function]
+
+Returns `(err)`, where `err` is a string or `null`.
+
+## broadcast
+
+Given a built transaction (see: `buildTx`), broadcast to the desired network using the specified provider.
+
+Example call:
+
+```
+client.broadcast(shortcode, payload, (err, tx) => {});
+```
+
+#### shortcode [string], required
+
+Provider code you want to broadcast to (e.g. ETH, BTC)
+
+#### payload [object], required
+
+Object of form:
+```
+{
+    tx: <string>
+}
+```
+
+Where `tx` is the encoded transaction payload specific to the network being used.
+
+#### cb [Function]
+
+Returns `(err, res)`, where `err` is a string or `null` and `res` is an object whose form depends on the network/provider being used.
+
+## buildTx
+
+Build a transaction given network-specific options.
+
+
+
