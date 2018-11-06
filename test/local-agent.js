@@ -184,7 +184,6 @@ describe('basic tests', () => {
       12000,                                                              // input value
     ];
     params = params.concat(inputs);
-    console.log('PARAMS SHOULD BE', params)
     // Build the request
     const req2 = {
       schemaCode: 'BTC',
