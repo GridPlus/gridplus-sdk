@@ -43,17 +43,54 @@ export default class SdkClient {
   }
 
   addresses(param, cb) {
-    return this.client.pairedRequest('addresses', { param }, cb);
+    this.client.pairedRequest('addresses', { param }, (err, res) => {
+      if (err) return cb(err);  
+      if (!res.result || !res.result.data || !res.result.data.addresses) return cb('Incorrect response.');
+      return cb(null, res.result.data.addresses);
+    });
   }
 
   addManualPermission(cb) {
-    return this.client.pairedRequest('addManualPermission', { }, cb);
+    this.client.pairedRequest('addManualPermission', { }, (err) => {
+      return cb(err);
+    });
   }
 
   addPermission(param, cb) {
     const req = buildPermissionRequest(param);
     if (typeof req === 'string') return cb(req);
-    return this.client.pairedRequest('addPermission', { param: req }, cb);
+    this.client.pairedRequest('addPermission', { param: req }, (err) => {
+      return cb(err);
+    });
+  }
+
+  // Broadcast a transaction and return the result of the mempool
+  broadcast(shortcode, payload, cb) {
+    if (! this.providers[shortcode]) {
+      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
+    }
+
+    return this.providers[shortcode].broadcast(payload, cb);
+  }
+
+  // Build a transaction
+  // @param [shortcode]  {string}          - "ETH" or "BTC"
+  // @param [to]      {string}          - Receiving address
+  // @param [from]    {string | array}  - Sending address (or addresses for BTC)
+  // @param [value]   {number}          - number of tokens to send in the tx
+  // @param [opts]    {Object}          - (optional) parameterization options, including ERC20 address
+  // @callback                          - err (Error), data (object)
+  buildTx(shortcode, opts={}, cb) {
+    if (typeof opts === 'function') {
+      cb = opts;
+      opts = {};
+    }
+
+    if (! this.providers[shortcode]) {
+      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
+    }
+    // return this.providers[shortcode].buildTx(from, to, value, opts, cb);
+    return this.providers[shortcode].buildTx(opts, cb);
   }
 
   /*
@@ -66,6 +103,55 @@ export default class SdkClient {
       serial = null;
     }
     return this.client.request('connect', cb);
+  }
+
+  deletePairing(cb) {
+    return this.client.pairedRequest('deletePairing', {}, cb);
+  }
+
+   // Get a balance for an account.
+  // @param [shortcode]  {string}  - "ETH", "ERC20", or "BTC"
+  // @param [addr]      {string}  - The account we are querying
+  // @param [ERC20Addr] {string}  - (optional) Address of the ERC20 token we are asking about
+  // @callback                    - err (Error), data (object)
+  getBalance(shortcode, options, cb) {
+    if (typeof options === 'function') {
+      cb = options;
+      options = {};
+    }
+
+    if (! this.providers[shortcode]) {
+      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
+    }
+
+    return this.providers[shortcode].getBalance(options, cb);
+  }
+
+  getTokenBalance(options, cb) {
+    if (!this.providers['ETH']) {
+      return cb(new Error('Cannot request token balance. ETH provider is not set.'))
+    }
+
+    return this.providers['ETH'].getTokenBalance(options, cb);
+  }
+
+  getTxHistory(shortcode, options, cb) {
+    if (! this.providers[shortcode]) {
+      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
+    }
+    return this.providers[shortcode].getTxHistory(options, cb);
+  }
+
+  // Get (one or more) transaction(s) and return (one or more) object(s) that conform to a common schema across currencies
+  getTx(shortcode, hashes, opts, cb) {
+    if (! this.providers[shortcode]) {
+      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
+    }
+    if (typeof opts === 'function') {
+      cb = opts;
+      opts = {};
+    }
+    return this.providers[shortcode].getTx(hashes, cb, opts);
   }
 
   initialize(options, cb) {
@@ -117,10 +203,6 @@ export default class SdkClient {
     return this.client.pair(appSecret, cb);
   }
 
-  deletePairing(cb) {
-    return this.client.pairedRequest('deletePairing', {}, cb);
-  }
-
   signAutomated(param, cb) {
     const req = buildAutomatedSignatureRequest(param);
     if (typeof req === 'string') return cb(req);
@@ -134,80 +216,6 @@ export default class SdkClient {
       res.data = data;
       cb(null, res);
     });
-  }
-
-  // Get a balance for an account.
-  // @param [shortcode]  {string}  - "ETH", "ERC20", or "BTC"
-  // @param [addr]      {string}  - The account we are querying
-  // @param [ERC20Addr] {string}  - (optional) Address of the ERC20 token we are asking about
-  // @callback                    - err (Error), data (object)
-  getBalance(shortcode, options, cb) {
-    if (typeof options === 'function') {
-      cb = options;
-      options = {};
-    }
-
-    if (! this.providers[shortcode]) {
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    }
-
-    return this.providers[shortcode].getBalance(options, cb);
-  }
-
-  getTokenBalance(options, cb) {
-    if (!this.providers['ETH']) {
-      return cb(new Error('Cannot request token balance. ETH provider is not set.'))
-    }
-
-    return this.providers['ETH'].getTokenBalance(options, cb);
-  }
-
-  getTxHistory(shortcode, options, cb) {
-    if (! this.providers[shortcode]) {
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    }
-    return this.providers[shortcode].getTxHistory(options, cb);
-  }
-
-  // Get (one or more) transaction(s) and return (one or more) object(s) that conform to a common schema across currencies
-  getTx(shortcode, hashes, opts, cb) {
-    if (! this.providers[shortcode]) {
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    }
-    if (typeof opts === 'function') {
-      cb = opts;
-      opts = {};
-    }
-    return this.providers[shortcode].getTx(hashes, cb, opts);
-  }
-
-  // Broadcast a transaction and return the result of the mempool
-  broadcast(shortcode, payload, cb) {
-    if (! this.providers[shortcode]) {
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    }
-
-    return this.providers[shortcode].broadcast(payload, cb);
-  }
-
-  // Build a transaction
-  // @param [shortcode]  {string}          - "ETH" or "BTC"
-  // @param [to]      {string}          - Receiving address
-  // @param [from]    {string | array}  - Sending address (or addresses for BTC)
-  // @param [value]   {number}          - number of tokens to send in the tx
-  // @param [opts]    {Object}          - (optional) parameterization options, including ERC20 address
-  // @callback                          - err (Error), data (object)
-  buildTx(shortcode, opts={}, cb) {
-    if (typeof opts === 'function') {
-      cb = opts;
-      opts = {};
-    }
-
-    if (! this.providers[shortcode]) {
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    }
-    // return this.providers[shortcode].buildTx(from, to, value, opts, cb);
-    return this.providers[shortcode].buildTx(opts, cb);
   }
 
 }

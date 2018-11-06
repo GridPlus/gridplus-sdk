@@ -54,9 +54,8 @@ describe('Ethereum', () => {
   });
 
   it('Should create a manual permission', (done) => {
-    client.addManualPermission((err, res) => {
+    client.addManualPermission((err) => {
       assert(err === null, err);
-      assert(res.result.status === 200);
       done();
     })
   });
@@ -68,9 +67,9 @@ describe('Ethereum', () => {
       total: 1,
       coin_type: '60\''
     }
-    client.addresses(req, (err, res) => {
+    client.addresses(req, (err, addresses) => {
       assert(err === null, err);
-      addr = res.result.data.addresses;
+      addr = addresses;
       client.getBalance('ETH', { address: addr }, (err, data) => {
         assert.equal(err, null, err);
         assert(data.nonce > -1);

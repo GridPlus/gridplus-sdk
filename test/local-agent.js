@@ -43,9 +43,8 @@ describe('basic tests', () => {
   });
 
   it('Should create a manual permission', (done) => {
-    client.addManualPermission((err, res) => {
+    client.addManualPermission((err) => {
       assert(err === null, err);
-      assert(res.result.status === 200);
       done();
     })
   });
@@ -56,10 +55,10 @@ describe('basic tests', () => {
       isManual: true,
       total: 3,
     }
-    client.addresses(req, (err, res) => {
+    client.addresses(req, (err, addresses) => {
       assert(err === null, err);
-      assert(res.result.data.addresses.length === 3);
-      assert(res.result.data.addresses[0].slice(0, 1) === '3', 'Not a segwit address');
+      assert(addresses.length === 3);
+      assert(addresses[0].slice(0, 1) === '3', 'Not a segwit address');
       done();
     })
   });
@@ -71,10 +70,11 @@ describe('basic tests', () => {
       total: 3,
       network: 'testnet'
     }
-    client.addresses(req, (err, res) => {
+    client.addresses(req, (err, addresses) => {
+
       assert(err === null, err);
-      assert(res.result.data.addresses.length === 3);
-      assert(res.result.data.addresses[0].slice(0, 1) === '2', 'Not a testnet address');
+      assert(addresses.length === 3);
+      assert(addresses[0].slice(0, 1) === '2', 'Not a testnet address');
       done();
     });
   });
@@ -96,9 +96,8 @@ describe('basic tests', () => {
       }
     }
 
-    client.addPermission(req, (err, res) => {
+    client.addPermission(req, (err) => {
       assert(err === null, err);
-      assert(res.result.status === 200);
       done();
     })
   });
@@ -122,9 +121,8 @@ describe('basic tests', () => {
       }
     }
 
-    client.addresses(req1, (err, res) => {
+    client.addresses(req1, (err, address) => {
       assert(err === null, err);
-      const addr = res.result.data.addresses;
       client.signAutomated(req2, (err, res) => {
         assert(err === null, err);
         assert(res.result.status === 200);
@@ -142,7 +140,7 @@ describe('basic tests', () => {
         } 
         const recoveredPubKey = Buffer.from(recoverPubKey(msg, parsedSig), 'hex');
         const recoveredAddress = `0x${pubToAddress(recoveredPubKey.slice(1)).toString('hex')}`;
-        assert(recoveredAddress === addr, 'Incorrect signature');
+        assert(recoveredAddress === address, 'Incorrect signature');
         done();
       });
     });
@@ -160,9 +158,8 @@ describe('basic tests', () => {
       }
     };
 
-    client.addPermission(req, (err, res) => {
+    client.addPermission(req, (err) => {
       assert(err === null, err);
-      assert(res.result.status === 200);
       done();
     });
   });

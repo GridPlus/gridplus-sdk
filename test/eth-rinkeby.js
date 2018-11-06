@@ -53,9 +53,8 @@ describe('Ethereum via Etherscan: ether transfers', () => {
   });
 
   it('Should create a manual permission', (done) => {
-    client.addManualPermission((err, res) => {
+    client.addManualPermission((err) => {
       assert(err === null, err);
-      assert(res.result.status === 200);
       done();
     })
   });
@@ -75,11 +74,11 @@ describe('Ethereum via Etherscan: ether transfers', () => {
       total: 2,
       coin_type: '60\''
     }
-    client.addresses(req, (err, res) => {
+    client.addresses(req, (err, addresses) => {
       assert(err === null, err);
-      assert(res.result.data.addresses.length === 2, `Expected 2 addresses. Got ${res.result.data.addresses.length}`);
-      addr = res.result.data.addresses[0];
-      addr2 = res.result.data.addresses[1];
+      assert(addresses.length === 2, `Expected 2 addresses. Got ${addresses.length}`);
+      addr = addresses[0];
+      addr2 = addresses[1];
       client.getBalance('ETH', { address: addr }, (err, data) => {
         assert.equal(err, null, err);
         assert(data.nonce > -1);
