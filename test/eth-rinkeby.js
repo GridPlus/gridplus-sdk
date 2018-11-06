@@ -93,7 +93,12 @@ describe('Ethereum via Etherscan: ether transfers', () => {
     sender = testing.ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
     // Build a tx for the sender
-    client.buildTx('ETH', sender.address, addr, toSend, (err, _tx) => {
+    const opts = {
+      from: sender.address,
+      to: addr,
+      value: toSend,
+    }
+    client.buildTx('ETH', opts, (err, _tx) => {
       assert(err === null, err);
       const txObj = new Tx({ nonce: _tx[0], gasPrice: _tx[1], gasLimit: _tx[2], to: _tx[3], value: _tx[4], data: _tx[5] });
       txObj.sign(senderPriv);
@@ -150,7 +155,14 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
   it('Should deploy an ERC20 token', (done) => {
     sender = testing.ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
-    client.buildTx('ETH', sender.address, addr, 0, {gasPrice: 1e9}, (err, _tx) => {
+    const opts = {
+      from: sender.address,
+      to: addr,
+      value: 0,
+      gasPrice: 1e9
+    }
+
+    client.buildTx('ETH', opts, (err, _tx) => {
       assert(err === null, err);
       const rawTx = {
         nonce: _tx[0],
@@ -188,10 +200,13 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
 
   it('Should transfer some ERC20 tokens to the address', (done) => {
     const opts = {
+      from: sender.address,
+      to: addr,
+      value: transferAmount,
       gasPrice: 1e9, 
       ERC20Token: erc20Addr,
     }
-    client.buildTx('ETH', sender.address, addr, transferAmount, opts, (err, _tx) => {
+    client.buildTx('ETH', opts, (err, _tx) => {
       assert(err === null, err);
       const txObj = new Tx(_tx);
       txObj.sign(senderPriv);
@@ -221,10 +236,13 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
 
   it('Should transfer some ERC20 tokens to the second address', (done) => {
     const opts = {
+      from: sender.address,
+      to: addr2,
+      value: transferAmount,
       gasPrice: 1e9, 
       ERC20Token: erc20Addr,
     }
-    client.buildTx('ETH', sender.address, addr2, transferAmount, opts, (err, _tx) => {
+    client.buildTx('ETH', opts, (err, _tx) => {
       assert(err === null, err);
       const txObj = new Tx(_tx);
       txObj.sign(senderPriv);
