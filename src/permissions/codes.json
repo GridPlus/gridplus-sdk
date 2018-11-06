@@ -1,0 +1,24 @@
+{
+  "code": {
+    "ETH": {
+      "schema": 0,
+      "type": 0
+    },
+    "ETH-ERC20": {
+      "schema": 0,
+      "type": 1
+    },
+    "BTC": {
+      "schema": 1,
+      "type": 2
+    }
+  },
+  "schemaTypes": {
+    "0": [ "number", "number", "number", "string", "number", "string" ],
+    "1": [ "number", "number", "string", "number", "number", "number" ]
+  },
+  "schemaNames": {
+    "0": [ "nonce", "gasPrice", "gas", "to", "value", "data" ],
+    "1": [ "version", "lockTime", "recipient", "value", "change", "changeAccountIndex" ]
+  }
+}
