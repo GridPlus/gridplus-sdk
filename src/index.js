@@ -8,6 +8,7 @@ export const providers = {
   Bitcoin,
   Ethereum,
 };
+import { buildPermissionRequest, buildAutomatedSignatureRequest } from './permissions';
 const tokenList = require('../tokensByAddress.json')
 const log = debug('gridplus-sdk');
 
@@ -50,7 +51,9 @@ export default class SdkClient {
   }
 
   addPermission(param, cb) {
-    return this.client.pairedRequest('addPermission', { param }, cb);
+    const req = buildPermissionRequest(param);
+    if (typeof req === 'string') return cb(req);
+    return this.client.pairedRequest('addPermission', { param: req }, cb);
   }
 
   /*
@@ -119,7 +122,9 @@ export default class SdkClient {
   }
 
   signAutomated(param, cb) {
-    return this.client.pairedRequest('signAutomated', { param }, cb);
+    const req = buildAutomatedSignatureRequest(param);
+    if (typeof req === 'string') return cb(req);
+    return this.client.pairedRequest('signAutomated', { param: req }, cb);
   }
 
   signManual(param, cb) {

@@ -81,18 +81,20 @@ describe('basic tests', () => {
 
   it('Should create an automated permission', (done) => {
     const req = {
-      schemaIndex: 0,
-      typeIndex: 0,
-      rules: [
-        null, null, null,
-        null, null, null,
-        null, null, null,
-        'equals', '0x39765400baa16dbcd1d7b473bac4d55dd5a7cffb', null,
-        'equals', 1000, null,
-        'equals', '', null,
-      ],
-      timeLimit: 10000
-    };
+      schemaCode: 'ETH',
+      timeLimit: 10000,
+      params: {
+        to: {
+          eq: '0x39765400baa16dbcd1d7b473bac4d55dd5a7cffb'
+        },
+        value: {
+          eq: 1000
+        },
+        data: {
+          eq: ''
+        }
+      }
+    }
 
     client.addPermission(req, (err, res) => {
       assert(err === null, err);
@@ -102,15 +104,22 @@ describe('basic tests', () => {
   });
 
   it('Should get the Ethereum address and request a signature from it', (done) => {
+    // TODO: remove permissionIndex and isManual from request
     const req1 = {
       permissionIndex: 0,
       isManual: false,
       coin_type: '60\''
     };
     const req2 = {
-      schemaIndex: 0,
-      typeIndex: 0,
-      params: [ 1, 100000000, 100000, '0x39765400baa16dbcd1d7b473bac4d55dd5a7cffb', 1000, '' ]
+      schemaCode: 'ETH',
+      params: {
+        nonce: 1,
+        gasPrice: 100000000,
+        gas: 100000,
+        to: '0x39765400baa16dbcd1d7b473bac4d55dd5a7cffb',
+        value: 1000,
+        data: ''
+      }
     }
 
     client.addresses(req1, (err, res) => {
@@ -140,18 +149,15 @@ describe('basic tests', () => {
   });
 
   it('Should create an automated permission to send Bitcoins', (done) => {
+
     const req = {
-      schemaIndex: 1,
-      typeIndex: 2,
-      rules: [ // version, locktime, recipient, value, outScriptType (e.g. p2pkh)
-        'equals', 1, null,
-        'equals', 0, null,
-        null, null, null,
-        'lte', 12000, null,
-        null, null, null,
-        null, null, null,
-      ],
+      schemaCode: 'BTC',
       timeLimit: 0,
+      params: {
+        version: { eq: 1 },
+        lockTime: { eq: 0 },
+        value: { lte: 12000 },
+      }
     };
 
     client.addPermission(req, (err, res) => {
@@ -178,11 +184,25 @@ describe('basic tests', () => {
       12000,                                                              // input value
     ];
     params = params.concat(inputs);
+    console.log('PARAMS SHOULD BE', params)
     // Build the request
     const req2 = {
-      schemaIndex: 1,
-      typeIndex: 2,
-      params: params,
+      schemaCode: 'BTC',
+      params: {
+        version: 1,
+        lockTime: 0,
+        recipient: '3EdCNnLV17fcR13aSjPCR4YWjX2wJYbjYu',
+        value: 12000,
+        change: 0,
+        changeAccountIndex: 0,
+      },
+      inputs: [{
+        hash: 'b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c',
+        outIndex: 0,
+        scriptType: 'p2sh(p2wpkh)',
+        spendAccountIndex: 0,
+        inputValue: 12000,
+      }]
     };
     client.addresses(req1, (err, res) => {
       assert(err === null, err);
