@@ -194,6 +194,7 @@ describe('Bitcoin', () => {
   it('Should get transaction history for the same addresses', (done) => {
     const addresses = deviceAddresses.concat(testing.btcHolder.regtestAddress);
     client.getTxHistory('BTC', { addresses }, (err, txs) => {
+      console.log('tx1', txs)
       assert(err === null, err);
       assert(txs[testing.btcHolder.regtestAddress].length > 0, 'btcHolder address should have more than one transaction in history');      
       done();
@@ -203,6 +204,7 @@ describe('Bitcoin', () => {
   it('Should get transaction history for just one address', (done) => {
     const address = testing.btcHolder.regtestAddress;
     client.getTxHistory('BTC', { address }, (err, txs) => {
+      // console.log('tx2', txs)
       assert(err === null, err);
       assert(txs.length > 0, 'btcHolder address should have more than one transaction in history');      
       done();
@@ -224,7 +226,6 @@ describe('Bitcoin', () => {
 
       const tx = txb.build().toHex();
       client.broadcast('BTC', { tx }, (err, res) => {
-        console.log('broadcast res', res)
         assert(err === null, err);
         assert(res.timestamp > 0, 'Could not broadcast properly');
         client.getTx('BTC', res.hash, { addresses: testing.btcHolder.regtestAddress }, (err, retTx) => {
