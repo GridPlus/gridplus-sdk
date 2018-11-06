@@ -276,7 +276,7 @@ Notice how this process is nearly identical to requesting a manual signature. If
 
 The Lattice is designed to compartmentalize security and delegate logic to the appropriate level of security. As such, it is by default stateless, in the sense that it does not know the state of any blockchain network. Rather, it securely holds the entropy, which determines the cryptocurrency wallets according to BIP39/44 standards.
 
-As such, network providers must be utilized at the application level by default. Providers are available through the SDK, though you are also able to [import your own](Using-Your-Own-Provider) so long as it conforms to the same API.
+As such, network providers must be utilized at the application level by default. Providers are available through the SDK, though you are also able to import your own so long as it conforms to the same API.
 
 ## Importing and Using a Provider
 
@@ -319,14 +319,117 @@ A few notes:
 * `clientConfig` must be passed as an object. `name` and `privKey` are required fields.
 * `providers` must be passed as an array of instantiated provider objects. Order does not matter here, as the client will automatically detect which provider corresponds to which currency (so long as the provider was intantiated properly).
 
-
-##<a name="Using-Your-Own-Provider"></a>Using Your Own Provider
-
-You may also create your own provider and use it. However, if you do this you **must** replicate the [provider API](#API-Of-Providers).
-
 ## List of Built-In Providers
 
-###<a name="API-Of-Providers"></a>API of Providers
+The following section outlines options related to build-in providers.
+
+### Bitcoin
+
+The built-in Bitcoin provider allows you to connect either to [blockcypher](https://blockcypher.com) or to a custom node that you define.
+
+```
+import { providers } from 'gridplus-sdk'
+const Bitcoin = providers.Bitcoin;
+const btc = new Bitcoin(params);
+```
+
+#### API Options
+
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Description</td>
+        <td>Options</td>
+        <td>Default</td>
+    </tr>
+    <tr>
+        <td>network</td>
+        <td>string</td>
+        <td>Name of the network to which you wish to connect</td>
+        <td>test3 (Testnet3), mainnet, test (BCY testnet), regtest (local development)</td>
+        <td>regtest</td>
+    </tr>
+     <tr>
+        <td>blockcypher</td>
+        <td>bool</td>
+        <td>True if you want to use blockcypher</td>
+        <td>true, false</td>
+        <td>false</td>
+    </tr>
+    <tr>
+        <td>coin</td>
+        <td>string</td>
+        <td>The coin to use. Only needed when blockcypher=true</td>
+        <td>BTC, BCY</td>
+        <td>BTC</td>
+    </tr>
+    <tr>
+        <td>host</td>
+        <td>string</td>
+        <td>Hostname of the node you wish to connect to. Only needed when blockcypher=false</td>
+        <td>Any</td>
+        <td>localhost<td>
+    <tr>
+    <tr>
+        <td>port</td>
+        <td>integer</td>
+        <td>Port to connect to node. Only needed when blockcypher=false</td>
+        <td>Any</td>
+        <td>48332</td>
+    </tr>
+</table>
+
+### Ethereum
+
+The built-in Ethereum provider allows you to connect either to [etherscan](https://etherscan.io) or to a custom node that you define.
+
+```
+import { providers } from 'gridplus-sdk';
+const Ethereum = providers.Ethereum;
+const eth = new Ethereum(paramss);
+```
+
+#### API Options
+
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Description</td>
+        <td>Options</td>
+        <td>Default</td>
+    </tr>
+    <tr>
+        <td>network</td>
+        <td>string</td>
+        <td>Name of the network to which you wish to connect. Only needs to be specified if etherscan=true; can be null if using custom node.</td>
+        <td>rinkeby, kovan, ropsten, homestead (mainnet)</td>
+        <td>regtest</td>
+    </tr>
+     <tr>
+        <td>etherscan</td>
+        <td>bool</td>
+        <td>True if you want to use etherscan</td>
+        <td>true, false</td>
+        <td>false</td>
+    </tr>
+    <tr>
+        <td>host</td>
+        <td>string</td>
+        <td>Hostname of the node you wish to connect to. Only needed when etherscan=false</td>
+        <td>Any</td>
+        <td>localhost<td>
+    <tr>
+    <tr>
+        <td>port</td>
+        <td>integer</td>
+        <td>Port to connect to node. Only needed when etherscan=false</td>
+        <td>Any</td>
+        <td>8545</td>
+    </tr>
+</table>
+
 
 #<a name="API-Reference"></a>API Reference
 
