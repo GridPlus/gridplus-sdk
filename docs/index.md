@@ -153,9 +153,9 @@ All supported schema are available in the SDK with a string representing its cod
 ```
 const schemaCode = 'ETH';
 const opts = {
-    amount: 1*(10**18), // atomic units: 10**18 per 1 ether
+    amount: 1*(10e18), // atomic units: 10e18 per 1 ether
     to: '0x123...ab',
-    gasPrice: 1*(10**9),
+    gasPrice: 1*(10e9),
 }
 client.buildTx(schemaCode, opts, (err, tx) => {
     ...
@@ -198,11 +198,11 @@ const permission = {
     schemaCode = 'ETH',
     params: {
         gasPrice: {
-            gte: 1*(10**8),
-            lte: 1*(10**9),
+            gte: 1*(10e8),
+            lte: 1*(10e9),
         },
         value: {
-            lte: 1*(10**17),
+            lte: 1*(10e17),
         }
     },
     timeLimit: 86400
@@ -231,21 +231,21 @@ Since we do not require tracking of individual permissions (the next section wil
 ```
 params: {
     gasPrice: {
-        gte: 1*(10**8),
-        lte: 1*(10**9),
+        gte: 1*(10e8),
+        lte: 1*(10e9),
     },
     value: {
-        lte: 1*(10**17),
+        lte: 1*(10e17),
     }
 }
 
 params: {
     gasPrice: {
-        gte: 1*(10**9), // overlaps with upper bound of previous permission
-        lte: 1*(10**10),
+        gte: 1*(10e9), // overlaps with upper bound of previous permission
+        lte: 1*(10e10),
     },
     value: {
-        lte: 1*(10**17),
+        lte: 1*(10e17),
     }
 }
 ```
@@ -257,9 +257,9 @@ With a permission in hand, an app can make a request like this:
 ```
 const schemaCode = 'ETH';
 const req = {
-    amount: 1*(10**17), // atomic units: 10**18 per 1 ether
+    amount: 1*(10e17), // atomic units: 10e18 per 1 ether
     to: '0x123...ab',
-    gasPrice: 1*(10**9),
+    gasPrice: 1*(10e9),
 }
 client.buildTx(schemaCode, req, (err, tx) => {
     client.signAutomated(tx, (err, res) => {
@@ -378,6 +378,15 @@ const btc = new Bitcoin(params);
     </tr>
 </table>
 
+#### Network Options:
+
+**TODO: Ensure these match with expectations**
+
+* `test3`: Testnet3
+* `bitcoin`: mainnet
+* `test`: BCY (blockcypher) testnet
+* `regtest`: local development network
+
 ### Ethereum
 
 The built-in Ethereum provider allows you to connect either to [etherscan](https://etherscan.io) or to a custom node that you define.
@@ -427,6 +436,13 @@ const eth = new Ethereum(paramss);
         <td>8545</td>
     </tr>
 </table>
+
+#### Network Options:
+
+* `rinkeby`
+* `kovan`
+* `ropsten`
+* `homestead`: mainnet
 
 #<a name="Schema-Reference">Schema Reference</a>
 
@@ -614,7 +630,329 @@ Returns `(err, res)`, where `err` is a string or `null` and `res` is an object w
 
 ## buildTx
 
+**I think this has been functionally deprecated. Our signature requests no longer need to be specially formatted, which I think was the whole point of this function.**
+
 Build a transaction given network-specific options.
 
+#### shortcode [string], required
+
+Provider code you want to broadcast to (e.g. ETH, BTC)
+
+#### opts [object], required
+
+These will be different depending on the shortcode.
+
+**Bitcoin**:
+
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Default</td>
+        <td>Required</td>
+        <td>Description</td>
+    </tr>
+    <tr>
+        <td>amount</td>
+        <td>integer</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>Number of satoshis (10e-8 BTC) to send.</td>
+    </tr>
+    <tr>
+        <td>to</td>
+        <td>string</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>Address to receive bitcoins</td>
+    </tr>
+    <tr>
+        <td>addresses</td>
+        <td>array</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>Addresses that the sender controls, which will be searched for any UTXOs.</td>
+    </tr>
+    <tr>
+        <td>perByteFee</td>
+        <td>integer</td>
+        <td>3</td>
+        <td>No</td>
+        <td>Satoshis/byte for mining fee</td>
+    </tr>
+    <tr>
+        <td>changeIndex</td>
+        <td>integer</td>
+        <td>0</td>
+        <td>No</td>
+        <td>Index of the account that will be receiving change. This is the last index of the BIP44 standard.</td>
+    </tr>
+    <tr>
+        <td>network</td>
+        <td>string</td>
+        <td>regtest</td>
+        <td>No</td>
+        <td>Network to use (see Bitcoin provider network options)</td>
+    </tr>
+</table>
+
+**Ethereum**:
+
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Default</td>
+        <td>Required</td>
+        <td>Description</td>
+    </tr>
+    <tr>
+        <td>from</td>
+        <td>address</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>Address the user is sending from.</td>
+    </tr>
+    <tr>
+        <td>to</td>
+        <td>string</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>Address the user is sending to.</td>
+    </tr>
+    <tr>
+        <td>value</td>
+        <td>integer</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>Number of wei (10e-18 ether) to send in transaction. Will be 0 for all contract calls, including ERC20 transfers.</td>
+    </tr>
+    <tr>
+        <td>gasPrice</td>
+        <td>integer</td>
+        <td>1e9</td>
+        <td>No</td>
+        <td>Price (in wei) of gas</td>
+    </tr>
+    <tr>
+        <td>gas</td>
+        <td>integer</td>
+        <td>100000</td>
+        <td>No</td>
+        <td>Gas limit of transaction. Any extra gas spent will be refunded.</td>
+    </tr>
+    <tr>
+        <td>data</td>
+        <td>string</td>
+        <td>''</td>
+        <td>No</td>
+        <td>Hex string with ABI-encoded data. See restrictions on schema type.</td>
+    </tr>
+</table>
+
+#### cb (err, tx)
+
+* `err` - string representing the error message (or `null`)
+* `tx` - string with the encoded transaction payload to broadcast
 
 
+## connect
+
+Reach out to a Lattice device using a `serial`. This will attempt to make a brief connection to retrieve the first encryption key needed for pairing.
+
+#### serial [string], required
+
+Serial of the Lattice. This is device-specific.
+
+#### cb (err)
+
+* `err` - string representing the error message (or `null`)
+
+
+## deletePairing
+
+Delete the pairing between this SDK and a device. Note that each SDK object instance maps 1:1 to a paired device, so no arguments are needed.
+
+#### cb (err)
+
+* `err` - string representing the error message (or `null`)
+
+## getBalance
+
+Use a provider to get the balance of a particular account for a particular network.
+
+#### shortcode [string], required
+
+Provider code you want to broadcast to (e.g. ETH, BTC)
+
+#### opts [object]
+
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Default</td>
+        <td>Required</td>
+        <td>Description</td>
+    </tr>
+    <tr>
+        <td>address</td>
+        <td>string or array</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>One or more addresses to query the balance for. NOTE: This must be a single address for Ethereum requests!</td>
+    </tr>
+    <tr>
+        <td>sat</td>
+        <td>bool</td>
+        <td>true</td>
+        <td>No</td>
+        <td>(Bitcoin only) Get balance in satoshis (rather than BTC).</td>
+    </tr>
+</table>
+
+#### cb(err, res)
+
+* `err` - string representing the error message (or `null`)
+* `res` - object of form:
+
+*Ethereum*:
+```
+{
+    balance: <integer>,  // balance in wei
+    transfers: <object>, // ether transfers. Will only be non-empty if etherscan=true
+    nonce: <integer>     // account nonce
+}
+```
+
+*Bitcoin*:
+```
+{
+    balance: <integer> // Balance in the specified unit (satoshis by default)
+    utxos: <array>     // Array of UTXO objects
+}
+```
+
+
+## getTokenBalance [Ethereum only]
+
+Use a provider to get the ERC20 balance for one or more tokens, for one or more addresses.
+
+#### opts [object]
+
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Default</td>
+        <td>Required</td>
+        <td>Description</td>
+    </tr>
+    <tr>
+        <td>address</td>
+        <td>string</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>Address to scan balances for.</td>
+    </tr>
+    <tr>
+        <td>tokens</td>
+        <td>string or array</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>One or more token contract addresses to scan over.</td>
+    </tr>
+</table>
+
+#### cb(err, res)
+
+* `err` - string representing the error message (or `null`)
+* `res` - object of form:
+
+```
+{
+    <tokenAddress>: <int>  // Balance in atomic units of token
+}
+```
+
+## getTxHistory
+
+Get transaction history for a given address or addresses.
+
+#### shortcode [string], required
+
+Provider code you want to broadcast to (e.g. ETH, BTC)
+
+#### opts [object]
+
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Default</td>
+        <td>Required</td>
+        <td>Description</td>
+    </tr>
+    <tr>
+        <td>address</td>
+        <td>string or array</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>Address (or addresses) to scan history for.</td>
+    </tr>
+    <tr>
+        <td>ERC20Token</td>
+        <td>string or array</td>
+        <td>None</td>
+        <td>No</td>
+        <td>[Ethereum only] One or more token contract addresses to scan over.</td>
+    </tr>
+</table>
+
+#### cb(err, res)
+
+* `err` - string representing the error message (or `null`)
+* `res` - array of form:
+
+
+*Etheruem*:
+**TODO: Make sure JSON-RPC returns the fields marked "etherscan only" below**
+```
+[
+    { 
+        currency: <string>,               // indicates ETH or BTC (ERC20 transfers are ETH)
+        hash: <string>,                   // transaction hash
+        height: <integer>,                // block the transaction was included in
+        in: <integer>,                    // true if the address being scanned received these coins
+        contractAddress: <string>,        // token contract, if applicable (null for ether transfers)
+        from: <string>,
+        to: <string>,
+        value: <number>,                  // value being transacted, in tokens (atomic units) or ether (NOT wei)
+        timestamp: <number>               // [etherscan only] timestamp of mined block
+        fee: <number>                     // [etherscan only] mining fee in units of ether
+        data: <object>                    // [etherscan only] raw transaction payload
+    }    
+]
+```
+
+
+
+
+
+### Check out both blockcypher and local regtest responses. These need to be the same!
+*Bitcoin*:
+```
+[
+     { to: 'GfuN4XdR5jzHtJYQj8gFu4tBw9fjEC9meu',
+       from: 'GJNT5W899xhAuaL3WnZEBPMPuhT1zTPXQP',
+       fee: 0.00000522,
+       in: 0,
+       hash:
+        '299c9858dea9545917a7f19cb2483a09cd1fad394d979d621ec12b9a1e0a4cfc',
+       currency: 'BTC',
+       height: 952,
+       timestamp: 1541540917,
+       value: -0.00009478,
+       data: [Object] },
+]
+```

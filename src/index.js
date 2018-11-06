@@ -75,11 +75,11 @@ export default class SdkClient {
 
   // Build a transaction
   // @param [shortcode]  {string}          - "ETH" or "BTC"
-  // @param [to]      {string}          - Receiving address
-  // @param [from]    {string | array}  - Sending address (or addresses for BTC)
-  // @param [value]   {number}          - number of tokens to send in the tx
-  // @param [opts]    {Object}          - (optional) parameterization options, including ERC20 address
-  // @callback                          - err (Error), data (object)
+  // @param [to]         {string}          - Receiving address
+  // @param [from]       {string | array}  - Sending address (or addresses for BTC)
+  // @param [value]      {number}          - number of tokens to send in the tx
+  // @param [opts]       {Object}          - (optional) parameterization options, including ERC20 address
+  // @callback                             - err (Error), data (object)
   buildTx(shortcode, opts={}, cb) {
     if (typeof opts === 'function') {
       cb = opts;
