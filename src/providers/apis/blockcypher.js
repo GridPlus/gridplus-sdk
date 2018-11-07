@@ -4,12 +4,36 @@ const request = require('superagent');
 
 export default class BlockCypherApi {
 
-  constructor(opts) {
-    this.network = opts.network ? opts.network : 'main';
-    this.coin = opts.coin ? opts.coin : 'btc';
+  constructor(opts={}) {
+    this.network = this.getNetwork(opts.network);
+    this.coin = this.getCoin(this.network);
     this.blockcypherBaseUrl = `https://api.blockcypher.com/v1/${this.coin}/${this.network}`;
     this.timeout = opts.timeout ? opts.timeout : 0; // Timeout between requests to avoid getting 429s from blockcypher
     this.sat = opts.sat ? opts.sat : false;
+  }
+
+  getNetwork(code) {
+    switch (code) {
+      case 'testnet':
+        return 'test3';
+      case 'bcy':
+        return 'test';
+      case 'bitcoin':
+        return 'main';
+      case 'regtest':
+        return 'regtest';
+      default:
+        return 'main';
+    }
+  }
+
+  getCoin(network) {
+    switch (network) {
+      case 'test':
+        return 'bcy';
+      default:
+        return 'btc';
+    }
   }
 
   initialize(cb) {

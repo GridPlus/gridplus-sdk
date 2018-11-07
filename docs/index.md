@@ -1,8 +1,10 @@
 # Grid+ SDK
 
+**WARNING: This is alpha software and may contain bugs. Please limit cryptocurrency-related use to small amounts.**
+
 The Grid+ SDK allows any application to establish a connection and interact with a Grid+ Lattice device. 
 
-# Quickstart
+# <a href="Quickstart">Quickstart</a>
 
 The following tutorial will cover all the steps you need to start using the SDK at a basic level. For documentation on all functionality, please see the [API Reference section](#API-Reference).
 
@@ -148,8 +150,6 @@ The Lattice device, at its core, is a tightly controlled, highly configurable, c
 ###<a name="Build-Tx"></a>Building a Transaction
 
 For security reasons, transactions must be built according to pre-defined [schema](#Schema-Reference). Here we will use an ether transfer as an example, but several others are available (see [here](#Schema-Reference)).
-
-#### TODO: Standardize `buildTx`
 
 All supported schema are available in the SDK with a string representing its code:
 
@@ -359,13 +359,6 @@ const btc = new Bitcoin(params);
         <td>false</td>
     </tr>
     <tr>
-        <td>coin</td>
-        <td>string</td>
-        <td>The coin to use. Only needed when blockcypher=true</td>
-        <td>BTC, BCY</td>
-        <td>BTC</td>
-    </tr>
-    <tr>
         <td>host</td>
         <td>string</td>
         <td>Hostname of the node you wish to connect to. Only needed when blockcypher=false</td>
@@ -383,11 +376,9 @@ const btc = new Bitcoin(params);
 
 #### Network Options:
 
-**TODO: Ensure these match with expectations**
-
-* `test3`: Testnet3
+* `testnet`: Testnet3
 * `bitcoin`: mainnet
-* `test`: BCY (blockcypher) testnet
+* `bcy`: BCY (blockcypher) testnet
 * `regtest`: local development network
 
 ### Ethereum
