@@ -1,5 +1,5 @@
 // BCoin API
-import { NodeClient } from '@gridplus/bclient';
+import { NodeClient } from 'gridplus-bclient';
 import { getTxHash, sortByHeight } from '../../util';
 
 export default class BcoinApi {
@@ -207,7 +207,7 @@ export default class BcoinApi {
     }
   }
 
-  getTxs(hashes, cb, opts = {}, filled=[]) {
+  getTx(hashes, cb, opts = {}, filled=[]) {
     if (typeof hashes === 'string') {
       return this._getTx(hashes, cb, opts);
     } else if (hashes.length === 0) {
@@ -217,7 +217,7 @@ export default class BcoinApi {
       return this._getTx(hash, (err, tx) => {
         if (err) return cb(err)
         if (tx) filled.push(tx);
-        return this.getTxs(hashes, cb, opts, filled);
+        return this.getTx(hashes, cb, opts, filled);
       }, opts);
     }
   }

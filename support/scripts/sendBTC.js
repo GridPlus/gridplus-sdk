@@ -1,4 +1,4 @@
-const NodeClient = require('@gridplus/bclient').NodeClient;
+const NodeClient = require('gridplus-bclient').NodeClient;
 const bitcoin = require('bitcoinjs-lib');
 const client = new NodeClient({
   host: 'localhost',

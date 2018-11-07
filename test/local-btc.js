@@ -1,10 +1,10 @@
 // Basic tests for atomic SDK functionality
-import { NodeClient } from '@gridplus/bclient';
+import { NodeClient } from 'gridplus-bclient';
 import assert from 'assert';
 import bitcoin from 'bitcoinjs-lib';
 import { bitcoinNode, testing } from '../src/config.js';
 import { Client, providers  } from 'index';
-import NodeCrypto from '@gridplus/node-crypto';
+import NodeCrypto from 'gridplus-node-crypto';
 
 const regtest = {  // regtest config from bcoin: http://bcoin.io/docs/protocol_networks.js.html
   messagePrefix: '\x18Bitcoin Signed Message:\n',
