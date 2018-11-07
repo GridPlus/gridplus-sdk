@@ -63,9 +63,14 @@ export default class JsonRpcApi {
       if (typeof address === 'string') address = [ address ];
       const addressCopy = JSON.parse(JSON.stringify(address));
       this._getTokenHistoryForAddresses(addressCopy, token, (err, newTxs) => {
-        if (err) return cb(err)
-        txs = txs.concat(newTxs);
-        return this.getERC20TransferHistory(address, tokens, cb, txs);
+        if (err) return cb(err);
+        this._getTxsForTokenHistory(newTxs, (err, newTxs2) => {
+          if (err) return cb(err);
+          this._getTimestampsFromTransfers(newTxs2, (err, newTxs3) => {
+            txs = txs.concat(newTxs3);
+            return this.getERC20TransferHistory(address, tokens, cb, txs);
+          })
+        })
       })
     }
   }
@@ -114,9 +119,50 @@ export default class JsonRpcApi {
   _getEvents(address, topics, fromBlock=0, toBlock='latest') {
     return new Promise((resolve, reject) => {
       this.provider.getLogs({ address, topics, fromBlock, toBlock })
-      .then((events) => { return resolve(events); })
-      .catch((err) => { return reject(err); })
+      .then((events) => { 
+        return resolve(events);
+      })
+      .catch((err) => { 
+        return reject(err); 
+      })
     });
+  }
+
+  _getTxsForTokenHistory(events, cb, newEvents=[]) {
+    if (events.length === 0) return cb(null, newEvents);
+    const event = events.pop();
+    this.getTransaction(event.hash)
+    .then((tx) => {
+      event.fee = tx.gasPrice.toNumber() * Math.pow(10, -18) * tx.gasLimit.toNumber();
+      event.data = tx;
+      newEvents.push(event);
+      return this._getTxsForTokenHistory(events, cb, newEvents);
+    })
+    .catch((err) => { return cb(err); })
+  }
+
+  _getTimestampsFromTransfers(txs, cb, blockHeights=null) {
+    if (blockHeights === null) {
+      const uniqueBlockHeights = [];
+      txs.forEach((tx) => {
+        if (uniqueBlockHeights.indexOf(tx.height) < 0) uniqueBlockHeights.push(tx.height);
+      })
+      return this._getTimestampsFromTransfers(txs, cb, uniqueBlockHeights);
+    } else if (blockHeights.length === 0) {
+      return cb(null, txs);
+    } else {
+      const blockHeight = blockHeights.pop();
+      this.provider.getBlock(blockHeight)
+      .then((block) => {
+        txs.forEach((tx) => {
+          if (tx.height === blockHeight) tx.timestamp = block.timestamp
+        })
+        return this._getTimestampsFromTransfers(txs, cb, blockHeights);
+      })
+      .catch((err) => {
+        return cb(err);
+      })
+    }
   }
 
   _parseLog(log, type, address) {

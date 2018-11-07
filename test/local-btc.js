@@ -194,7 +194,7 @@ describe('Bitcoin', () => {
   it('Should get transaction history for the same addresses', (done) => {
     const addresses = deviceAddresses.concat(testing.btcHolder.regtestAddress);
     client.getTxHistory('BTC', { addresses }, (err, txs) => {
-      console.log('tx1', txs)
+      // console.log('tx1', txs)
       assert(err === null, err);
       assert(txs[testing.btcHolder.regtestAddress].length > 0, 'btcHolder address should have more than one transaction in history');      
       done();
@@ -274,7 +274,8 @@ describe('Bitcoin', () => {
         network: 'regtest'
       }
       
-      client.buildTx('BTC', req, (err, sigReq) => {
+      client.buildTx('BTC', req, (err, sigReq) => { 
+        assert(err === null, err)
         CHANGE_AMOUNT = sigReq.params[4];
         client.signManual(sigReq, (err, res) => {
           assert(err === null, err);

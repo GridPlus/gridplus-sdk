@@ -91,7 +91,8 @@ describe('Ethereum', () => {
     }
     client.buildTx('ETH', opts, (err, _tx) => {
       assert(err === null, err);
-      const txObj = new Tx({ nonce: _tx[0], gasPrice: _tx[1], gasLimit: _tx[2], to: _tx[3], value: _tx[4], data: _tx[5] });
+      const { params } = _tx;
+      const txObj = new Tx({ nonce: params[0], gasPrice: params[1], gasLimit: params[2], to: params[3], value: params[4], data: params[5] });
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
@@ -129,9 +130,10 @@ describe('Ethereum', () => {
     }
     client.buildTx('ETH', opts, (err, _tx) => {
       assert(err === null, err);
+      const { params } = _tx;
       const rawTx = {
-        nonce: _tx[0],
-        gasPrice: _tx[1],
+        nonce: params[0],
+        gasPrice: params[1],
         gasLimit: '0x1e8480',
         value: 0,
         data: erc20Src,
@@ -162,9 +164,10 @@ describe('Ethereum', () => {
     }
     client.buildTx('ETH', opts, (err, _tx) => {
       assert(err === null, err);
+      const { params } = _tx;
       const rawTx = {
-        nonce: _tx[0],
-        gasPrice: _tx[1],
+        nonce: params[0],
+        gasPrice: params[1],
         gasLimit: '0x1e8480',
         value: 0,
         data: erc20Src,
@@ -196,7 +199,8 @@ describe('Ethereum', () => {
     };
     client.buildTx('ETH', opts, (err, _tx) => {
       assert(err === null, err);
-      const txObj = new Tx(_tx);
+      const { params } = _tx;
+      const txObj = new Tx(params);
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
@@ -221,7 +225,7 @@ describe('Ethereum', () => {
     };
     client.buildTx('ETH', opts, (err, _tx) => {
       assert(err === null, err);
-      const txObj = new Tx(_tx);
+      const txObj = new Tx(_tx.params);
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
@@ -246,7 +250,8 @@ describe('Ethereum', () => {
     };
     client.buildTx('ETH', opts, (err, _tx) => {
       assert(err === null, err);
-      const txObj = new Tx(_tx);
+      const { params } = _tx;
+      const txObj = new Tx(params);
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
@@ -304,17 +309,18 @@ describe('Ethereum', () => {
     }
     client.buildTx('ETH', opts, (err, tx) => {
       assert(err === null, err);
-      const params = {
-        schemaIndex: 0,
-        typeIndex: 0,
-        params: tx
-      };
-      client.signManual(params, (err, res) => {
+      // const params = {
+      //   schemaIndex: 0,
+      //   typeIndex: 0,
+      //   params: tx
+      // };
+      const { params } = tx;
+      client.signManual(tx, (err, res) => {
         assert(err === null, err);
         assert(res.result.status === 200);
         const sigData = res.result.data.sigData.split(SPLIT_BUF);
         const msg = EthUtil.sha3(Buffer.from(sigData[0], 'hex'));
-        const test = new Tx(tx.concat([null, null, null]));
+        const test = new Tx(params.concat([null, null, null]));
         test.raw = test.raw.slice(0, test.raw.length - 3);
 
         const sig = sigData[1];
@@ -351,12 +357,7 @@ describe('Ethereum', () => {
     };
     client.buildTx('ETH', opts, (err, tx) => {
       assert(err === null, err);
-      const params = {
-        schemaIndex: 0,
-        typeIndex: 1,
-        params: tx
-      };
-      client.signManual(params, (err, res) => {
+      client.signManual(tx, (err, res) => {
         assert(err === null, err);
         client.broadcast('ETH', res.data, (err, res) => {
           assert(err === null, err);

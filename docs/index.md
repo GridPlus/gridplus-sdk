@@ -630,9 +630,7 @@ Returns `(err, res)`, where `err` is a string or `null` and `res` is an object w
 
 ## buildTx
 
-**I think this has been functionally deprecated. Our signature requests no longer need to be specially formatted, which I think was the whole point of this function.**
-
-Build a transaction given network-specific options.
+Build a transaction given network-specific options. This function returns an object which can be passed to a signing call.
 
 #### shortcode [string], required
 
@@ -753,8 +751,16 @@ These will be different depending on the shortcode.
 #### cb (err, tx)
 
 * `err` - string representing the error message (or `null`)
-* `tx` - string with the encoded transaction payload to broadcast
+* `tx` - object containing transaction data that can be passed to the device for a signature request:
 
+```
+{
+    schemaIndex: <int>,    // index for Latitce
+    typeIndex: <int>,      // another index for Lattice
+    params: <array>,       // tx data formatted for the Lattice
+    network: <string>,     // only used for bitcoin, defaults to regtest unless one was provided in the request
+}
+```
 
 ## connect
 
@@ -916,7 +922,6 @@ Provider code you want to broadcast to (e.g. ETH, BTC)
 
 
 *Etheruem*:
-**TODO: Make sure JSON-RPC returns the fields marked "etherscan only" below**
 ```
 [
     { 
@@ -928,15 +933,12 @@ Provider code you want to broadcast to (e.g. ETH, BTC)
         from: <string>,
         to: <string>,
         value: <number>,                  // value being transacted, in tokens (atomic units) or ether (NOT wei)
-        timestamp: <number>               // [etherscan only] timestamp of mined block
-        fee: <number>                     // [etherscan only] mining fee in units of ether
-        data: <object>                    // [etherscan only] raw transaction payload
+        timestamp: <number>               // timestamp of mined block
+        fee: <number>                     // mining fee in units of ether
+        data: <object>                    // raw transaction payload (tx object)
     }    
 ]
 ```
-
-
-
 
 
 ### Check out both blockcypher and local regtest responses. These need to be the same!

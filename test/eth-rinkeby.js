@@ -97,9 +97,10 @@ describe('Ethereum via Etherscan: ether transfers', () => {
       to: addr,
       value: toSend,
     }
-    client.buildTx('ETH', opts, (err, _tx) => {
+    client.buildTx('ETH', opts, (err, tx) => {
       assert(err === null, err);
-      const txObj = new Tx({ nonce: _tx[0], gasPrice: _tx[1], gasLimit: _tx[2], to: _tx[3], value: _tx[4], data: _tx[5] });
+      const { params } = tx;
+      const txObj = new Tx({ nonce: params[0], gasPrice: params[1], gasLimit: params[2], to: params[3], value: params[4], data: params[5] });
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
@@ -161,11 +162,12 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
       gasPrice: 1e9
     }
 
-    client.buildTx('ETH', opts, (err, _tx) => {
+    client.buildTx('ETH', opts, (err, tx) => {
       assert(err === null, err);
+      const { params } = tx;
       const rawTx = {
-        nonce: _tx[0],
-        gasPrice: _tx[1],
+        nonce: params[0],
+        gasPrice: params[1],
         gasLimit: '0x1e8480',
         value: 0,
         data: erc20Src,
@@ -205,9 +207,10 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
       gasPrice: 1e9, 
       ERC20Token: erc20Addr,
     }
-    client.buildTx('ETH', opts, (err, _tx) => {
+    client.buildTx('ETH', opts, (err, tx) => {
       assert(err === null, err);
-      const txObj = new Tx(_tx);
+      const { params } = tx;
+      const txObj = new Tx(params);
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
@@ -241,9 +244,10 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
       gasPrice: 1e9, 
       ERC20Token: erc20Addr,
     }
-    client.buildTx('ETH', opts, (err, _tx) => {
+    client.buildTx('ETH', opts, (err, tx) => {
       assert(err === null, err);
-      const txObj = new Tx(_tx);
+      const { params } = tx;
+      const txObj = new Tx(params);
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };

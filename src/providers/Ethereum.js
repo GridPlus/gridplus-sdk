@@ -1,6 +1,7 @@
 import config from '../config.js';
 import { BigNumber } from 'bignumber.js';
 import { EtherscanApi, JsonRpcApi } from './apis'
+const schemaCodes = require('../permissions/codes.json').code;
 
 export default class Ethereum {
   constructor (opts) {
@@ -55,7 +56,13 @@ export default class Ethereum {
           } else {
             tx[1] = config.defaults.gasPrice;
           }
-          cb(null, tx);
+          const code = ERC20Token === undefined ? 'ETH' : 'ETH-ERC20';
+          const txObj = {
+            schemaIndex: schemaCodes[code].schema,
+            typeIndex: schemaCodes[code].type,
+            params: tx,
+          }
+          cb(null, txObj);
         })
         .catch((err) => {
           cb(err);
