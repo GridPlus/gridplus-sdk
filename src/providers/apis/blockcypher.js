@@ -65,7 +65,7 @@ export default class BlockCypherApi {
     }
   }
 
-  getTxs(hashes, cb, opts={}) {
+  getTx(hashes, cb, opts={}) {
     if (typeof hashes === 'string') hashes = [ hashes ];
     const url = `${this.blockcypherBaseUrl}/txs/${hashes.join(';')}`;
     return this._request(url)
