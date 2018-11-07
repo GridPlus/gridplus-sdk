@@ -104,7 +104,7 @@ export default class Ethereum {
     });
   }
 
-  getTx(hashes, cb, opts={}, filled=[]) {
+  getTx(hashes, cb, filled=[]) {
     if (typeof hashes === 'string') {
       return this._getTx(hashes, cb);
     } else if (hashes.length === 0) {
@@ -114,7 +114,7 @@ export default class Ethereum {
       return this._getTx(hash, (err, tx) => {
         if (err) return cb(err);
         if (tx) filled.push(tx);
-        return this.getTx(hashes, cb, opts, filled);
+        return this.getTx(hashes, cb, filled);
       });
     }
   }

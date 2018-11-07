@@ -66,9 +66,8 @@ describe('Bitcoin via BlockCypher: transfers', () => {
   });
 
   it('Should create a manual permission', (done) => {
-    client.addManualPermission((err, res) => {
+    client.addManualPermission((err) => {
       assert(err === null, err);
-      assert(res.result.status === 200);
       done();
     })
   });
@@ -81,13 +80,12 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       network,
       segwit: false
     }
-    client.addresses(req, (err, res) => {
+    client.addresses(req, (err, addresses) => {
       assert(err === null, err);
-      const addrs = res.result.data.addresses;
-      assert(addrs.length === 2);
-      assert(addrs[0].slice(0, 1) === 'B' || addrs[0].slice(0, 1) === 'C', 'Address 1 is not a BCY address');
-      assert(addrs[1].slice(0, 1) === 'B' || addrs[1].slice(0, 1) === 'C', 'Address 2 is not a BCY address')
-      deviceAddresses = addrs;
+      assert(addresses.length === 2);
+      assert(addresses[0].slice(0, 1) === 'B' || addresses[0].slice(0, 1) === 'C', 'Address 1 is not a BCY address');
+      assert(addresses[1].slice(0, 1) === 'B' || addresses[1].slice(0, 1) === 'C', 'Address 2 is not a BCY address')
+      deviceAddresses = addresses;
       // // Get the baseline balance for the addresses
       client.getBalance('BTC', { address: deviceAddresses }, (err) => {
         assert(err === null, err);

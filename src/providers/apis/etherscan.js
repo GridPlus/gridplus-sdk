@@ -51,7 +51,6 @@ export default class EtherscanApi {
         if (!tokenHistory) tokenHistory = [];
         try {
           txs = txs.concat(this._filterEtherscanTokenHistory(tokenHistory, ERC20Token));
-          console.log('this._filterEtherscanTxs(txs, address))', this._filterEtherscanTxs(txs, address))
           return resolve(this._filterEtherscanTxs(txs, address));
         } catch (err) {
           return reject(new Error(`Error filtering token transfer history: ${err}`));

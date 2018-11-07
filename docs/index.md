@@ -75,7 +75,10 @@ With the `clientConfig` filled out, you can initialize a new SDK object:
 
 ```
 const client = new Client({ clientConfig: clientConfig });
+client.initialize((err, connections) => { })
 ```
+
+This returns an array of connections to the providers you have specified.
 
 ## Connecting to a Lattice
 
@@ -136,7 +139,7 @@ client.addresses(req, (err, res) => {
 })
 ```
 
-**TODO: We need to remove permissionIndex for manual permissions and we also need to talk about automated permissions**
+###TODO: We need to remove permissionIndex for manual permissions and we also need to talk about automated permissions
 
 ## Requesting a Manual Signature
 
@@ -925,17 +928,17 @@ Provider code you want to broadcast to (e.g. ETH, BTC)
 ```
 [
     { 
-        currency: <string>,               // indicates ETH or BTC (ERC20 transfers are ETH)
+        currency: 'ETH',                  // indicates ETH or BTC (ERC20 transfers are ETH)
         hash: <string>,                   // transaction hash
         height: <integer>,                // block the transaction was included in
-        in: <integer>,                    // true if the address being scanned received these coins
+        in: <tinyint>,                    // 1 if the address being scanned received these coins, 0 otherwise
         contractAddress: <string>,        // token contract, if applicable (null for ether transfers)
         from: <string>,
         to: <string>,
         value: <number>,                  // value being transacted, in tokens (atomic units) or ether (NOT wei)
-        timestamp: <number>               // timestamp of mined block
+        timestamp: <number>               // UNIX timestamp of mined transaction/block
         fee: <number>                     // mining fee in units of ether
-        data: <object>                    // raw transaction payload (tx object)
+        data: <object>                    // Full transaction object. May differ depending on provider.
     }    
 ]
 ```
@@ -944,17 +947,60 @@ Provider code you want to broadcast to (e.g. ETH, BTC)
 ### Check out both blockcypher and local regtest responses. These need to be the same!
 *Bitcoin*:
 ```
-[
-     { to: 'GfuN4XdR5jzHtJYQj8gFu4tBw9fjEC9meu',
-       from: 'GJNT5W899xhAuaL3WnZEBPMPuhT1zTPXQP',
-       fee: 0.00000522,
-       in: 0,
-       hash:
-        '299c9858dea9545917a7f19cb2483a09cd1fad394d979d621ec12b9a1e0a4cfc',
-       currency: 'BTC',
-       height: 952,
-       timestamp: 1541540917,
-       value: -0.00009478,
-       data: [Object] },
-]
+{
+    <address0>: [
+        { 
+            to: <string>,            // Address of recipient of the *first* output 
+            from: <string>,          // Address of spender of the *first* UTXO input 
+            fee: <number>,           // Total transaction fee in units of BTC or satoshis, depending on your request params
+            in: <tinyint>,           // 0 for outgoing transactions, 1 for incoming
+            hash: <string>,          // Transaction hash
+            currency: 'BTC',
+            height: <integer>,       // Block number in which this transaction was included
+            timestamp: <integer>,    // UNIX timestamp of mined transaction/block
+            value: <number>,         // Value of transaction (negative if outgoing). May be in BTC or satoshis, depending on your request params
+            data: <object>           // Full transaction object. May differ depending on provider
+        },
+    ]
+}
 ```
+
+*Note that if only one address is sent, the return object will be a single array, rather than an object indexed by address.*
+
+## getTx
+
+Get the full transaction object(s) using one (or more) transaction hashes.
+
+*Warning: This function is not well tested and may be deprecated. It is not supported with all providers.*
+
+#### shortcode [string], required
+
+Provider code you want to broadcast to (e.g. ETH, BTC)
+
+#### hashes [string or array], required
+
+Single hash (string) or array of hashes to look up.
+
+#### opts [object]
+
+This option may be deprecated. It currently only allows the user to pass `addresses` to filter out txs that don't involve those addresses.
+
+### cb(err, txs)
+
+* `err` - string representing the error message (or `null`)
+* `res` - array of transaction objects (see `getTxHistory`)
+
+
+## initialize
+
+Once the `client` object is created, you must initialize the providers. This establishes a connection to the desired networks through the providers.
+
+#### cb(err, connections)
+
+* `err` - string representing the error message (or `null`)
+* `connections` - array of connections to the desired networks. The format depends on the network and provider combination, but they should be non-empty for each provider.
+
+
+## pair
+
+Establish a secure connection with the desired device.
