@@ -1,5 +1,5 @@
 import { Client, providers } from '../../src/index';
-import NodeCrypto from '@gridplus/node-crypto';
+import NodeCrypto from 'gridplus-node-crypto';
 import Tx from 'ethereumjs-tx';
 const sender = require('../../src/config.js').testing.ethHolder;
 const senderPriv = Buffer.from(sender.privKey, 'hex');

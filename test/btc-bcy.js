@@ -1,6 +1,6 @@
 import { Client, providers } from 'index';
 import bitcoin from 'bitcoinjs-lib';
-import NodeCrypto from '@gridplus/node-crypto';
+import NodeCrypto from 'gridplus-node-crypto';
 import { assert } from 'elliptic/lib/elliptic/utils';
 import { testing } from '../src/config.js';
 const { btcHolder } = testing;

@@ -4,7 +4,7 @@ import { sha3, pubToAddress } from 'ethereumjs-util';
 import { api } from '../src/config.js';
 import { recoverPubKey } from '../src/util.js';
 import { Client } from 'index';
-import ReactNativeCrypto from '@gridplus/react-native-crypto';
+import ReactNativeCrypto from 'gridplus-react-native-crypto';
 import crypto from 'crypto';
 
 let client, reactNative;

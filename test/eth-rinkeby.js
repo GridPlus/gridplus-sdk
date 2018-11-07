@@ -3,7 +3,7 @@ import assert from 'assert';
 import Tx from 'ethereumjs-tx';
 import { testing } from '../src/config.js';
 import { Client, providers } from 'index';
-import NodeCrypto from '@gridplus/node-crypto';
+import NodeCrypto from 'gridplus-node-crypto';
 const TIMEOUT_SEC = 59;
 const { erc20Src, ethHolder } = testing;
 
