@@ -203,7 +203,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       client.signManual(sigReq, (err, res) => {
         assert(err === null, err);
         setTimeout(() => {
-          client.broadcast('BTC', res.data, (err2, res2) => {
+          client.broadcast('BTC', res, (err2, res2) => {
             assert(err2 === null, err2);
             const actualAddress = res2.data.outputs[1].addresses[0];
             const expectedAddress = deviceAddresses[1];

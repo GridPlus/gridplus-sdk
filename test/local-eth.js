@@ -309,29 +309,22 @@ describe('Ethereum', () => {
     }
     client.buildTx('ETH', opts, (err, tx) => {
       assert(err === null, err);
-      // const params = {
-      //   schemaIndex: 0,
-      //   typeIndex: 0,
-      //   params: tx
-      // };
       const { params } = tx;
-      client.signManual(tx, (err, res) => {
+      client.signManual(tx, (err, data) => {
         assert(err === null, err);
-        assert(res.result.status === 200);
-        const sigData = res.result.data.sigData.split(SPLIT_BUF);
-        const msg = EthUtil.sha3(Buffer.from(sigData[0], 'hex'));
+        const msg = EthUtil.sha3(Buffer.from(data.unsignedTx, 'hex'));
         const test = new Tx(params.concat([null, null, null]));
         test.raw = test.raw.slice(0, test.raw.length - 3);
 
-        const sig = sigData[1];
-        const v = parseInt(sig.slice(-1)) + 27;
-        const vrs = [ v, Buffer.from(sig.slice(0, 64), 'hex'), Buffer.from(sig.slice(64, 128), 'hex'),  ];
-        // Check that the signer is correct
-        const signer = '0x' + EthUtil.pubToAddress(EthUtil.ecrecover(Buffer.from(msg, 'hex'), v, vrs[1], vrs[2])).toString('hex');
+        const v = data.vrs[0];
+        const r = Buffer.from(data.vrs[1], 'hex');
+        const s = Buffer.from(data.vrs[2], 'hex');
+        const signer = '0x' + EthUtil.pubToAddress(EthUtil.ecrecover(Buffer.from(msg, 'hex'), v, r, s)).toString('hex');
+        
         assert(signer === addr, `Expected signer to be ${addr}, got ${signer}`);
 
         // Create a new transaction with the returned signature
-        client.broadcast('ETH', res.data, (err, res) => {
+        client.broadcast('ETH', data, (err, res) => {
           assert(err === null, err);
           assert(res && res.hash, 'Did not broadcast properly');
           client.getTx('ETH', res.hash, (err, tx) => {
@@ -357,9 +350,9 @@ describe('Ethereum', () => {
     };
     client.buildTx('ETH', opts, (err, tx) => {
       assert(err === null, err);
-      client.signManual(tx, (err, res) => {
+      client.signManual(tx, (err, sigData) => {
         assert(err === null, err);
-        client.broadcast('ETH', res.data, (err, res) => {
+        client.broadcast('ETH', sigData, (err, res) => {
           assert(err === null, err);
           assert(res && res.hash, 'Did not broadcast properly');
           // client.providers.ETH.provider.getTransaction(res.hash)

@@ -6,7 +6,6 @@ import { recoverPubKey } from '../src/util.js';
 import { Client } from 'index';
 import ReactNativeCrypto from '@gridplus/react-native-crypto';
 import crypto from 'crypto';
-const { SPLIT_BUF } = api;
 
 let client, reactNative;
 
@@ -35,7 +34,6 @@ describe('basic tests', () => {
 
   it('Should pair with the agent', (done) => {
     const appSecret = process.env.APP_SECRET;
-    console.log('appSecret: ', appSecret)
     client.pair(appSecret, (err) => {
       assert(err === null, err)
       done();
@@ -123,15 +121,14 @@ describe('basic tests', () => {
 
     client.addresses(req1, (err, address) => {
       assert(err === null, err);
-      client.signAutomated(req2, (err, res) => {
+      client.signAutomated(req2, (err, sigData) => {
         assert(err === null, err);
-        assert(res.result.status === 200);
         // The message includes the preImage payload concatenated to a signature,
         // separated by a standard string/buffer
-        const sigData = res.result.data.sigData.split(SPLIT_BUF);
-        const preImage = Buffer.from(sigData[0], 'hex');
+        // const sigData = res.result.data.sigData.split(SPLIT_BUF);
+        const preImage = Buffer.from(sigData.rawTx, 'hex');
         const msg = sha3(preImage);
-        const sig = sigData[1];
+        const sig = sigData.sigs[0];
         assert(sig.length === 129, 'Incorrect signature length');
         const parsedSig = {
           r: sig.substr(0, 64),

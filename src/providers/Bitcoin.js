@@ -116,7 +116,7 @@ export default class Bitcoin {
   }
 
   getTx(hashes, cb, opts={}) {
-    this.provider.getTxs(hashes, (err, txs) => {
+    this.provider.getTx(hashes, (err, txs) => {
       if (err) return cb(err)
       else     return cb(null, txs);
     }, opts);
