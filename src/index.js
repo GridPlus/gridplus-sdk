@@ -206,15 +206,22 @@ export default class SdkClient {
   signAutomated(param, cb) {
     const req = buildAutomatedSignatureRequest(param);
     if (typeof req === 'string') return cb(req);
-    return this.client.pairedRequest('signAutomated', { param: req }, cb);
+    return this.client.pairedRequest('signAutomated', { param: req }, (err, res) => {
+      if (err) return cb(err)
+      else if (!res || res.result === undefined || res.result.data === undefined || res.result.data.sigData === undefined) return cb('Incorrect response');
+      const sigDataArray = res.result.data.sigData.split(config.api.SPLIT_BUF);
+      const sigData = {
+        rawTx: sigDataArray[0],
+        sigs: sigDataArray.slice(1),
+      };
+      return cb(null, sigData);
+    });
   }
 
   signManual(param, cb) {
     return this.client.pairedRequest('signManual', { param }, (err, res) => {
       if (err) return cb(err);
-      const data = parseSigResponse(res);
-      res.data = data;
-      cb(null, res);
+      cb(null, parseSigResponse(res));
     });
   }
 

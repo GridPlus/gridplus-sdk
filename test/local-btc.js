@@ -275,10 +275,10 @@ describe('Bitcoin', () => {
       client.buildTx('BTC', req, (err, sigReq) => { 
         assert(err === null, err)
         CHANGE_AMOUNT = sigReq.params[4];
-        client.signManual(sigReq, (err, res) => {
+        client.signManual(sigReq, (err, sigData) => {
           assert(err === null, err);
           // Broadcast the transaction
-          client.broadcast('BTC', res.data, (err, res) => {
+          client.broadcast('BTC', sigData, (err, res) => {
             assert(err === null, err);
             assert(res.timestamp > 0, 'Could not broadcast properly');
             

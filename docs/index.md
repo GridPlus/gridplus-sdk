@@ -482,15 +482,9 @@ This section outlines the schema types, param names, and restrictions for the ac
 
 This section includes a full reference for the `client` API.
 
-## addresses
+## addresses(param, cb)
 
 Retrieve one or more addresses from a paired device.
-
-Example call:
-
-```
-client.addresses(param, (err, addresses) => { })
-```
 
 #### param [object], required
 
@@ -546,24 +540,19 @@ client.addresses(param, (err, addresses) => { })
     </tr>
 </table>
 
-#### cb [Function]
+#### cb(err, addresses)
 
-Returns `(err, addresses)`, where `err` is a string (or `null`) and `addresses` is an array of strings (if multiple) or a string (if one).
+* `err`: string or `null`
+* `addresses`: array of strings (if multiple) or a string (if one).
 
 
 ## addManualPermission
 
 Will be deprecated soon
 
-## addPermission
+## addPermission(param, cb)
 
 Request a new permission based on a rule set you provide.
-
-Example call:
-
-```
-client.addPermission(param, (err) => { })
-```
 
 #### param [object], required
 
@@ -598,19 +587,13 @@ client.addPermission(param, (err) => { })
     </tr>    
 </table>
 
-#### cb [Function]
+#### cb(err)
 
-Returns `(err)`, where `err` is a string or `null`.
+* `err`: string or `null`.
 
-## broadcast
+## broadcast(shortcode, payload, cb)
 
 Given a built transaction (see: `buildTx`), broadcast to the desired network using the specified provider.
-
-Example call:
-
-```
-client.broadcast(shortcode, payload, (err, tx) => {});
-```
 
 #### shortcode [string], required
 
@@ -627,11 +610,12 @@ Object of form:
 
 Where `tx` is the encoded transaction payload specific to the network being used.
 
-#### cb [Function]
+#### cb(err, res)
 
-Returns `(err, res)`, where `err` is a string or `null` and `res` is an object whose form depends on the network/provider being used.
+* `err` string or `null`
+* `res` object whose form depends on the network/provider being used.
 
-## buildTx
+## buildTx(shortcode, opts, cb)
 
 Build a transaction given network-specific options. This function returns an object which can be passed to a signing call.
 
@@ -765,7 +749,7 @@ These will be different depending on the shortcode.
 }
 ```
 
-## connect
+## connect(serial, cb)
 
 Reach out to a Lattice device using a `serial`. This will attempt to make a brief connection to retrieve the first encryption key needed for pairing.
 
@@ -773,20 +757,20 @@ Reach out to a Lattice device using a `serial`. This will attempt to make a brie
 
 Serial of the Lattice. This is device-specific.
 
-#### cb (err)
+#### cb(err)
 
 * `err` - string representing the error message (or `null`)
 
 
-## deletePairing
+## deletePairing(cb)
 
 Delete the pairing between this SDK and a device. Note that each SDK object instance maps 1:1 to a paired device, so no arguments are needed.
 
-#### cb (err)
+#### cb(err)
 
 * `err` - string representing the error message (or `null`)
 
-## getBalance
+## getBalance(shortcode, opts, cb)
 
 Use a provider to get the balance of a particular account for a particular network.
 
@@ -843,7 +827,7 @@ Provider code you want to broadcast to (e.g. ETH, BTC)
 ```
 
 
-## getTokenBalance [Ethereum only]
+## getTokenBalance(opts, cb) [Ethereum only]
 
 Use a provider to get the ERC20 balance for one or more tokens, for one or more addresses.
 
@@ -884,7 +868,7 @@ Use a provider to get the ERC20 balance for one or more tokens, for one or more 
 }
 ```
 
-## getTxHistory
+## getTxHistory(shortcode, opts)
 
 Get transaction history for a given address or addresses.
 
@@ -892,7 +876,7 @@ Get transaction history for a given address or addresses.
 
 Provider code you want to broadcast to (e.g. ETH, BTC)
 
-#### opts [object]
+#### opts [object], required
 
 <table>
     <tr>
@@ -967,7 +951,7 @@ Provider code you want to broadcast to (e.g. ETH, BTC)
 
 *Note that if only one address is sent, the return object will be a single array, rather than an object indexed by address.*
 
-## getTx
+## getTx(shortcode, hashes, [opts], cb)
 
 Get the full transaction object(s) using one (or more) transaction hashes.
 
@@ -991,7 +975,7 @@ This option may be deprecated. It currently only allows the user to pass `addres
 * `res` - array of transaction objects (see `getTxHistory`)
 
 
-## initialize
+## initialize(cb)
 
 Once the `client` object is created, you must initialize the providers. This establishes a connection to the desired networks through the providers.
 
@@ -1001,6 +985,115 @@ Once the `client` object is created, you must initialize the providers. This est
 * `connections` - array of connections to the desired networks. The format depends on the network and provider combination, but they should be non-empty for each provider.
 
 
-## pair
+## pair(appSecret, cb)
 
 Establish a secure connection with the desired device.
+
+#### appSecret [string], required
+
+String representation of the entropy you have generated. **Must be 6 characters (TODO: specify alphabet - use hex for now)**
+
+#### cb(err)
+
+* `err` - string representing the error message (or `null`)
+
+## signAutomated(param, cb)
+
+### TODO: We need some tests that pass this response to broadcast()
+
+Request a signature to be returned automatically (i.e. *without* user authorization). This must be requested within constraints of a pre-established permission.
+
+#### param [object], required
+
+The set of parameters to use in the request:
+
+```
+{
+    schemaCode: <string>,  // The schema code (e.g. ETH, ETH-ERC20, BTC)
+    params: {
+        ... // Set of parameters based on the type of request
+    }
+}
+```
+
+Note that `param.params` will depend on the schema being used. For a full list of specific schema params, see the [Schema Reference](#Schema-Reference) section.
+
+#### cb(err, sigData)
+
+* `err` - string representing the error message (or `null`)
+* `sigData` - object containing signature data which can be broadcast with `client.broadcast()`. Format depends on the network used:
+
+*Bitcoin*:
+```
+{ 
+    tx: <string>,       // Full transaction payload which can be broadcast
+    txHash: <string>,   // Transaction hash (non-segwit)
+    stxHash: <string>   // Segwit-based transaction hash. If your tx is segwit, you should use this to look up the transaction in a block explorer
+}
+```
+
+*Ethereum*:
+```
+{
+    sig: <string>,          // Concatenated signature (v,r,s)
+    vrs: <array>,           // Broken up v,r,s signature: [ v <integer>, r <string>, s <string> ],
+    to: <string>,           // Recipient
+    value: <integer>,       // Value (in wei) of transaction (0 for ERC20 transfers)
+    height: <integer>,      // Block in which this transaction was included. This should be -1 unless the same tx has already been signed and mined
+    tx: <string>,           // Full ABI encoded, signed transaction payload (hex string)
+    txHash: <string>,       // Transaction hash (may be null)
+    unsignedTx: <string>    // ABI encoded transaction payload without the signature
+}
+```
+
+*Note: This returns more data than we **need** to pass to `broadcast`. The extra data can be helpful for debug and testing, but will not impact the `broadcast` call if it is included.*
+
+## signManual(param, cb)
+
+Request a signature to be manually authorized by the user. **This is functionally equivalent to `signAutomated` and the two may be merged together in the future.**
+
+#### param [object], required
+
+The set of parameters to use in the request:
+
+```
+{
+    schemaCode: <string>,  // The schema code (e.g. ETH, ETH-ERC20, BTC)
+    params: {
+        ... // Set of parameters based on the type of request
+    }
+}
+```
+
+Note that `param.params` will depend on the schema being used. For a full list of specific schema params, see the [Schema Reference](#Schema-Reference) section.
+
+#### cb(err, sigData)
+
+* `err` - string representing the error message (or `null`)
+* `sigData` - object containing signature data which can be broadcast with `client.broadcast()`. Format depends on the network used:
+
+*Bitcoin*:
+```
+{ 
+    tx: <string>,       // Full transaction payload which can be broadcast
+    txHash: <string>,   // Transaction hash (non-segwit)
+    stxHash: <string>   // Segwit-based transaction hash. If your tx is segwit, you should use this to look up the transaction in a block explorer
+}
+```
+
+*Ethereum*:
+```
+{
+    sig: <string>,          // Concatenated signature (v,r,s)
+    vrs: <array>,           // Broken up v,r,s signature: [ v <integer>, r <string>, s <string> ],
+    to: <string>,           // Recipient
+    value: <integer>,       // Value (in wei) of transaction (0 for ERC20 transfers)
+    height: <integer>,      // Block in which this transaction was included. This should be -1 unless the same tx has already been signed and mined
+    tx: <string>,           // Full ABI encoded, signed transaction payload (hex string)
+    txHash: <string>,       // Transaction hash (may be null)
+    unsignedTx: <string>    // ABI encoded transaction payload without the signature
+}
+```
+
+
+*Note: This returns more data than we **need** to pass to `broadcast`. The extra data can be helpful for debug and testing, but will not impact the `broadcast` call if it is included.*
