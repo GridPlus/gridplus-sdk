@@ -1,6 +1,6 @@
 import config from '../config.js';
 import { BlockCypherApi, BcoinApi } from './apis'
-
+const schemaCodes = require('../permissions/codes.json').code;
 const BASE_SEGWIT_SIZE = 134; // see: https://www.reddit.com/r/Bitcoin/comments/7m8ald/how_do_i_calculate_my_fees_for_a_transaction_sent/
 const defaultOpts = {
   host: config.bitcoinNode.host,
@@ -94,9 +94,10 @@ export default class Bitcoin {
 
       // TODO: addresses.length is not really the best way to do this because it requires
       // the user to provide all known addresses
+      const code = 'BTC';
       const req = {
-        schemaIndex: 1,  // Bitcoin
-        typeIndex: 2,    // segwit
+        schemaIndex: schemaCodes[code].schema,  // Bitcoin
+        typeIndex: schemaCodes[code].type,    // segwit
         params: params.concat(inputs),
         network: network ? network : 'regtest',
       };
