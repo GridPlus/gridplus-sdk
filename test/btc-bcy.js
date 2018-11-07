@@ -21,13 +21,12 @@ const bcy = {                    // blockcypher testnet (https://www.blockcypher
   wif: 0x49
 };
 
-const coin = 'bcy';
 const network = 'bcy';
 const holderAddress = btcHolder.bcyAddress
 
 describe('Bitcoin via BlockCypher: transfers', () => {
   before(() => {
-    const btc = new providers.Bitcoin({ network: 'test', blockcypher: true, coin, timeout: 750 });
+    const btc = new providers.Bitcoin({ network, blockcypher: true, timeout: 750 });
     client = new Client({
       clientConfig: {
         name: 'blockcypher-test',

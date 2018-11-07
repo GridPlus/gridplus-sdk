@@ -27,7 +27,7 @@ const holderAddress = btcHolder.address // btcHolder.bcyAddress
 
 describe('Bitcoin via BlockCypher: transfers', () => {
   before(() => {
-    const btc = new providers.Bitcoin({ network: 'test3', blockcypher: true, coin });
+    const btc = new providers.Bitcoin({ network, blockcypher: true, coin });
     client = new Client({
       clientConfig: {
         name: 'blockcypher-test',
