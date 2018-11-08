@@ -8,6 +8,17 @@ const EC = elliptic.ec;
 const ec = new EC('curve25519');
 const ecSecp256k1 = new EC('secp256k1');
 
+export function getProviderShortCode(schemaCode) {
+  switch (schemaCode) {
+    case 'ETH':
+      return 'ETH';
+    case 'ETH-ERC20':
+      return 'ETH';
+    case 'BTC':
+      return 'BTC';
+  }
+}
+
 export function ecdsaKeyPair (privKey) {
   const curve = new EC('secp256k1');
   const key = curve.keyFromPrivate(privKey, 'hex');

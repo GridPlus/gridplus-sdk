@@ -301,40 +301,34 @@ describe('Ethereum', () => {
     });
   });
 
-  it('Should transfer ETH out of the agent account', (done) => {
-    const opts = {
-      from: addr,
-      to: randAddr,
-      value: 10000,
+  it('Should transfer ETH out of the first agent account', (done) => {
+    const req = {
+      schemaCode: 'ETH',
+      params: {
+        nonce: null,
+        gasPrice: 100000000,
+        gas: 100000,
+        to: randAddr,
+        value: 10000,
+        data: ''
+      },
+      accountIndex: 0, // corresponds to addr
+      sender: addr,    // full address corresponding to accountIndex=0
     }
-    client.buildTx('ETH', opts, (err, tx) => {
+    client.signManual(req, (err, data) => {
       assert(err === null, err);
-      const { params } = tx;
-      client.signManual(tx, (err, data) => {
+      // Create a new transaction with the returned signature
+      client.broadcast('ETH', data, (err, res) => {
         assert(err === null, err);
-        const msg = EthUtil.sha3(Buffer.from(data.unsignedTx, 'hex'));
-        const test = new Tx(params.concat([null, null, null]));
-        test.raw = test.raw.slice(0, test.raw.length - 3);
-
-        const v = data.vrs[0];
-        const r = Buffer.from(data.vrs[1], 'hex');
-        const s = Buffer.from(data.vrs[2], 'hex');
-        const signer = '0x' + EthUtil.pubToAddress(EthUtil.ecrecover(Buffer.from(msg, 'hex'), v, r, s)).toString('hex');
-        
-        assert(signer === addr, `Expected signer to be ${addr}, got ${signer}`);
-
-        // Create a new transaction with the returned signature
-        client.broadcast('ETH', data, (err, res) => {
+        assert(res && res.hash, 'Did not broadcast properly');
+        client.getTx('ETH', res.hash, (err, tx) => {
           assert(err === null, err);
-          assert(res && res.hash, 'Did not broadcast properly');
-          client.getTx('ETH', res.hash, (err, tx) => {
+          assert(tx.height > -1, 'Block was not mined');
+          assert(tx.from.toLowerCase() === addr.toLowerCase(), `Incorrect signer: got ${tx.from}, expected ${addr}`);
+          client.getBalance('ETH', { address: addr }, (err, data) => {
             assert(err === null, err);
-            assert(tx.height > -1, 'Block was not mined');
-            client.getBalance('ETH', { address: addr }, (err, data) => {
-              assert(err === null, err);
-              assert(data.balance < balance, 'Balance did not reduce');
-              done();
-            });
+            assert(data.balance < balance, 'Balance did not reduce');
+            done();
           });
         });
       });
@@ -342,28 +336,35 @@ describe('Ethereum', () => {
   });
 
   it('Should transfer the ERC20 token out of the agent account', (done) => {
-    const opts = {
-      from: addr,
-      to: randAddr,
-      value: 1,
-      ERC20Token: erc20Addr,
+    const req = {
+      schemaCode: 'ETH-ERC20',
+      params: {
+        nonce: null,
+        gasPrice: 100000000,
+        gas: 100000,
+        to: erc20Addr,
+        value: 0,
+        data: {
+          to: randAddr,
+          value: 1
+        }
+      },
+      accountIndex: 0,
+      sender: addr,
     };
-    client.buildTx('ETH', opts, (err, tx) => {
+    client.signManual(req, (err, sigData) => {
       assert(err === null, err);
-      client.signManual(tx, (err, sigData) => {
+      client.broadcast('ETH', sigData, (err, res) => {
         assert(err === null, err);
-        client.broadcast('ETH', sigData, (err, res) => {
+        assert(res && res.hash, 'Did not broadcast properly');
+        // client.providers.ETH.provider.getTransaction(res.hash)
+        client.getTx('ETH', res.hash, (err, tx) => {
           assert(err === null, err);
-          assert(res && res.hash, 'Did not broadcast properly');
-          // client.providers.ETH.provider.getTransaction(res.hash)
-          client.getTx('ETH', res.hash, (err, tx) => {
+          assert(tx.height > -1, 'Transaction not included in block');
+          client.getBalance('ETH', { address: addr }, (err, data) => {
             assert(err === null, err);
-            assert(tx.height > -1, 'Transaction not included in block');
-            client.getBalance('ETH', { address: addr }, (err, data) => {
-              assert(err === null, err);
-              assert(data.nonce > -1);
-              done();
-            });
+            assert(data.nonce > -1);
+            done();
           });
         });
       });
@@ -384,5 +385,9 @@ describe('Ethereum', () => {
       done();
     })
   })
+
+  it('Should create an automated permission.');
+
+  it('Should make an automated signature request and broadcast the response in a transaction.');
 
 });

@@ -110,13 +110,14 @@ describe('basic tests', () => {
     const req2 = {
       schemaCode: 'ETH',
       params: {
-        nonce: 1,
+        nonce: 1,   // Need to specify nonce in this test file because we have not instantied any providers
         gasPrice: 100000000,
         gas: 100000,
         to: '0x39765400baa16dbcd1d7b473bac4d55dd5a7cffb',
         value: 1000,
         data: ''
-      }
+      },
+      accountIndex: 0
     }
 
     client.addresses(req1, (err, address) => {
@@ -125,10 +126,9 @@ describe('basic tests', () => {
         assert(err === null, err);
         // The message includes the preImage payload concatenated to a signature,
         // separated by a standard string/buffer
-        // const sigData = res.result.data.sigData.split(SPLIT_BUF);
-        const preImage = Buffer.from(sigData.rawTx, 'hex');
+        const preImage = Buffer.from(sigData.unsignedTx, 'hex');
         const msg = sha3(preImage);
-        const sig = sigData.sigs[0];
+        const sig = sigData.sig;
         assert(sig.length === 129, 'Incorrect signature length');
         const parsedSig = {
           r: sig.substr(0, 64),
@@ -167,17 +167,6 @@ describe('basic tests', () => {
       isManual: false,
       coin_type: '0\''
     };
-    // Build inputs: [ txHash, outIndex, scriptType, spendAccountIndex ]
-    let params = [ 1, 0, '3EdCNnLV17fcR13aSjPCR4YWjX2wJYbjYu', 12000, 0 ];
-    const inputs = [
-      'b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c', // txHash
-      0,                                                                  // outIndex
-      'p2sh(p2wpkh)',                                                     // scriptType
-      0,                                                                  // spend account sub-index
-      0,                                                                  // spend account index
-      12000,                                                              // input value
-    ];
-    params = params.concat(inputs);
     // Build the request
     const req2 = {
       schemaCode: 'BTC',
@@ -189,26 +178,23 @@ describe('basic tests', () => {
         change: 0,
         changeAccountIndex: 0,
       },
-      inputs: [{
+      inputs: [{ // Need to specify inputs in this test file because we have not instantied any providers
         hash: 'b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c',
         outIndex: 0,
         scriptType: 'p2sh(p2wpkh)',
         spendAccountIndex: 0,
         inputValue: 12000,
-      }]
+      }],
+      accountIndex: 0,
     };
     client.addresses(req1, (err, res) => {
       assert(err === null, err);
       assert(res !== undefined);
       // const addr = res.result.data.addresses;
-      client.signAutomated(req2, (err, res) => {
+      client.signAutomated(req2, (err, sigData) => {
         assert(err === null, err);
-        assert(res !== undefined);
-
-        // Make sure the signature came out of the right pubkey
-        // const sigData = res.result.data.sigData.split(api.SPLIT_BUF);
-        // TODO: test sigData
-        done()
+        assert(sigData !== undefined);
+        done();
       });
     });
   });

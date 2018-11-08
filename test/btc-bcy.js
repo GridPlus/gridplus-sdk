@@ -226,4 +226,8 @@ describe('Bitcoin via BlockCypher: transfers', () => {
     })
   });
 
+  it('Should create an automated permission.');
+
+  it('Should make an automated signature request and broadcast the response in a transaction.');
+
 });

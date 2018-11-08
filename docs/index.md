@@ -125,6 +125,8 @@ client.addManualPermission((err, res) => {
 
 You may retrieve some number of addresses for supported cryptocurrencies. The Grid+ Lattice uses [BIP44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)-compliant highly-deterministic (HD) wallets for generating addresses. This means that for each currency you want to access, you must specify a `coin_type` (by default it will choose Bitcoin, or `0'`). You may also specify `start` (the starting index) and `total` the total number of addresses to generate, starting at the starting index.
 
+###TODO: We need to remove permissionIndex and isManual
+
 An example request looks like:
 
 ```
@@ -140,8 +142,6 @@ client.addresses(req, (err, res) => {
     ...
 })
 ```
-
-###TODO: We need to remove permissionIndex for manual permissions and we also need to talk about automated permissions
 
 ## Requesting a Manual Signature
 
@@ -456,9 +456,11 @@ This section outlines the schema types, param names, and restrictions for the ac
 
 #### 'ETH-ERC20': ERC20 Transfers
 
-* Types: `[ "number", "number", "number", "string", "number", "string" ]`
+* Types: `[ "number", "number", "number", "string", "number", "object" ]`
 * ParamNames: `[ "nonce", "gasPrice", "gas", "to", "value", "data" ]`
-* Restrictions: `data` must be of form ``0xa9059cbb${pad64(addr)}${pad64(value.toString(16))}`, where `pad64` indicates a 0-left-padded value of 64 characters. `addr` is the receiving address and `value` is the number of atomic units to send, in base-16 (i.e. a hex string)
+* Restrictions: `data` must be of form `{ to: <string>, value: <integer> }` where `to` is the recipient of the tokens and `value` is the number of tokens (atomic units) to send.
+
+**Note: ERC20 transfers require the `to` value in the `param` array to be the address of the token contract!**
 
 ## Bitcoin
 
@@ -606,7 +608,7 @@ Where `tx` is the encoded transaction payload specific to the network being used
 * `err` string or `null`
 * `res` object whose form depends on the network/provider being used.
 
-## buildTx(shortcode, opts, cb)
+## buildTx(shortcode, opts, cb) THIS SHOULD BE DEPRECATED
 
 Build a transaction given network-specific options. This function returns an object which can be passed to a signing call.
 
@@ -988,26 +990,39 @@ String representation of the entropy you have generated. **Must be 6 characters 
 
 * `err` - string representing the error message (or `null`)
 
-## signAutomated(param, cb)
+## signAutomated(options, cb)
 
 ### TODO: We need some tests that pass this response to broadcast()
 
 Request a signature to be returned automatically (i.e. *without* user authorization). This must be requested within constraints of a pre-established permission.
 
-#### param [object], required
+#### options [object], required
 
-The set of parameters to use in the request:
+Required options:
 
 ```
 {
-    schemaCode: <string>,  // The schema code (e.g. ETH, ETH-ERC20, BTC)
+    schemaCode: <string>,     // The schema code (e.g. ETH, ETH-ERC20, BTC)
     params: {
         ... // Set of parameters based on the type of request
     }
 }
 ```
 
-Note that `param.params` will depend on the schema being used. For a full list of specific schema params, see the [Schema Reference](#Schema-Reference) section.
+Notes about `options.params`:
+* **All values are required!**
+* The values will depend on the schema being used. For a full list of specific schema params, see the [Schema Reference](#Schema-Reference) section.
+
+Optional options:
+```
+{
+    ...,                          // required params specified above
+    accountIndex: <integer>,      // [Default 0] index of the requested signing account (e.g. 0 indicates m/44/*/*/0)
+    sender: <string> or <array>,  // Address (or addresses) to send from. Ethereum should only have one address - it is used to look up a nonce. Bitcoin can have one or several - they are used to look up UTXOs 
+    inputs: <array>,              // Bitcoin only. UTXO(s) to spend.
+    perByteFee: <integer>,        // Bitcoin only. Satoshis per byte for the mining fee
+}
+```
 
 #### cb(err, sigData)
 
@@ -1042,49 +1057,3 @@ Note that `param.params` will depend on the schema being used. For a full list o
 ## signManual(param, cb)
 
 Request a signature to be manually authorized by the user. **This is functionally equivalent to `signAutomated` and the two may be merged together in the future.**
-
-#### param [object], required
-
-The set of parameters to use in the request:
-
-```
-{
-    schemaCode: <string>,  // The schema code (e.g. ETH, ETH-ERC20, BTC)
-    params: {
-        ... // Set of parameters based on the type of request
-    }
-}
-```
-
-Note that `param.params` will depend on the schema being used. For a full list of specific schema params, see the [Schema Reference](#Schema-Reference) section.
-
-#### cb(err, sigData)
-
-* `err` - string representing the error message (or `null`)
-* `sigData` - object containing signature data which can be broadcast with `client.broadcast()`. Format depends on the network used:
-
-*Bitcoin*:
-```
-{ 
-    tx: <string>,       // Full transaction payload which can be broadcast
-    txHash: <string>,   // Transaction hash (non-segwit)
-    stxHash: <string>   // Segwit-based transaction hash. If your tx is segwit, you should use this to look up the transaction in a block explorer
-}
-```
-
-*Ethereum*:
-```
-{
-    sig: <string>,          // Concatenated signature (v,r,s)
-    vrs: <array>,           // Broken up v,r,s signature: [ v <integer>, r <string>, s <string> ],
-    to: <string>,           // Recipient
-    value: <integer>,       // Value (in wei) of transaction (0 for ERC20 transfers)
-    height: <integer>,      // Block in which this transaction was included. This should be -1 unless the same tx has already been signed and mined
-    tx: <string>,           // Full ABI encoded, signed transaction payload (hex string)
-    txHash: <string>,       // Transaction hash (may be null)
-    unsignedTx: <string>    // ABI encoded transaction payload without the signature
-}
-```
-
-
-*Note: This returns more data than we **need** to pass to `broadcast`. The extra data can be helpful for debug and testing, but will not impact the `broadcast` call if it is included.*

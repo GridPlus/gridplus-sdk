@@ -133,7 +133,58 @@ describe('Ethereum via Etherscan: ether transfers', () => {
       done();
     })
   })
-  
+
+  it('Should create an automated permission.', (done) => {
+    const req = {
+      schemaCode: 'ETH',
+      timeLimit: 0,
+      params: {
+        value: { lte: 12000 },
+      }
+    };
+    client.addPermission(req, (err) => {
+      assert(err === null, err);
+      done();
+    })
+  });
+
+  it('Should make an automated signature request and broadcast the response in a transaction.', (done) => {
+    const req = {
+      permissionIndex: 0,
+      isManual: true,
+      total: 2,
+      coin_type: '60\''
+    };
+    client.addresses(req, (err, addresses) => {
+      assert(err === null, err);
+      client.providers.ETH.getNonce(addresses[0])
+      .then((nonce) => {
+        const req2 = {
+          schemaCode: 'ETH',
+          params: {
+            nonce,
+            gasPrice: 1e9,
+            gas: 1e6,
+            to: addresses[1],
+            value: 10000,
+            data: '',
+          },
+          accountIndex: 0
+        };
+        client.signAutomated(req2, (err, sigData) => {
+          assert(err === null, err);
+          client.broadcast('ETH', sigData, (err, tx) => {
+            assert(err === null, err);
+            done();
+          })
+        });
+      })
+      .catch((err) => {
+        assert(err === null, err);
+      })
+    });
+  });
+
 });
 
 describe('Ethereum via Etherscan: ERC20 transfers',  () => {

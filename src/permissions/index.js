@@ -1,4 +1,4 @@
-import { buildPermissionRequest, buildAutomatedSignatureRequest } from './permissions';
+import { buildPermissionRequest, buildSigRequest } from './permissions';
 
 exports.buildPermissionRequest = buildPermissionRequest;
-exports.buildAutomatedSignatureRequest = buildAutomatedSignatureRequest;
+exports.buildSigRequest = buildSigRequest;
