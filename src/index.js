@@ -3,12 +3,12 @@ import Bitcoin from './providers/Bitcoin';
 import debug from 'debug';
 import Ethereum from './providers/Ethereum';
 import AgentRestClient from './rest/client';
-import { parseSigResponse } from './util';
+import { parseSigResponse, getProviderShortCode } from './util';
 export const providers = {
   Bitcoin,
   Ethereum,
 };
-import { buildPermissionRequest, buildAutomatedSignatureRequest } from './permissions';
+import { buildPermissionRequest, buildSigRequest } from './permissions';
 const tokenList = require('../tokensByAddress.json')
 const log = debug('gridplus-sdk');
 
@@ -204,25 +204,50 @@ export default class SdkClient {
   }
 
   signAutomated(param, cb) {
-    const req = buildAutomatedSignatureRequest(param);
+    const req = buildSigRequest(param);
+    const providerCode = getProviderShortCode(param.schemaCode);
     if (typeof req === 'string') return cb(req);
-    return this.client.pairedRequest('signAutomated', { param: req }, (err, res) => {
-      if (err) return cb(err)
-      else if (!res || res.result === undefined || res.result.data === undefined || res.result.data.sigData === undefined) return cb('Incorrect response');
-      const sigDataArray = res.result.data.sigData.split(config.api.SPLIT_BUF);
-      const sigData = {
-        rawTx: sigDataArray[0],
-        sigs: sigDataArray.slice(1),
-      };
-      return cb(null, sigData);
-    });
+    this._getStatefulParams(providerCode, req, (err, newReq) => {
+      if (err) return cb(err);
+      this.client.pairedRequest('signAutomated', { param: newReq }, (err, res) => {
+        if (err) return cb(err)
+        else if (!res || res.result === undefined || res.result.data === undefined || res.result.data.sigData === undefined) return cb('Incorrect response');
+        
+        res.result.data.params = newReq.params;
+        
+        if (res.result.data.schemaIndex === undefined) res.result.data.schemaIndex = newReq.schemaIndex;
+        if (res.result.data.typeIndex === undefined) res.result.data.typeIndex = newReq.typeIndex;
+        
+        return cb(null, parseSigResponse(res))
+      });
+    })
   }
 
   signManual(param, cb) {
-    return this.client.pairedRequest('signManual', { param }, (err, res) => {
+    const req = buildSigRequest(param);
+    const providerCode = getProviderShortCode(param.schemaCode);
+    this._getStatefulParams(providerCode, req, (err, newReq) => {
       if (err) return cb(err);
-      cb(null, parseSigResponse(res));
-    });
+      this.client.pairedRequest('signManual', { param: newReq }, (err, res) => {
+        if (err) return cb(err)
+        else if (!res || res.result === undefined || res.result.data === undefined || res.result.data.sigData === undefined) return cb('Incorrect response');
+        
+        res.result.data.params = newReq.params;
+        
+        if (res.result.data.schemaIndex === undefined) res.result.data.schemaIndex = newReq.schemaIndex;
+        if (res.result.data.typeIndex === undefined) res.result.data.typeIndex = newReq.typeIndex;
+        
+        return cb(null, parseSigResponse(res))
+      });
+    })
+  }
+
+  _getStatefulParams(providerCode, req, cb) {
+    if (this.providers[providerCode]) {
+      return this.providers[providerCode].getStatefulParams(req, cb);
+    } else {
+      return cb(null, req);
+    }
   }
 
 }

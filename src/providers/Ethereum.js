@@ -1,6 +1,7 @@
 import config from '../config.js';
 import { BigNumber } from 'bignumber.js';
 import { EtherscanApi, JsonRpcApi } from './apis'
+import { isArray } from 'util';
 const schemaCodes = require('../permissions/codes.json').code;
 
 export default class Ethereum {
@@ -86,6 +87,23 @@ export default class Ethereum {
       cb(null, data);
     })
     .catch((err) => { cb(err); })
+  }
+
+  getStatefulParams(opts, cb) {
+    // Get the nonce
+    if (opts.sender) {
+      if (Array.isArray(opts)) opts.sender = opts.sender[0];
+      this.getNonce(opts.sender)
+      .then((nonce) => {
+        opts.params[0] = nonce;   // Nonce is in the first position
+        return cb(null, opts);
+      })
+      .catch((err) => {
+        return cb(err);
+      });
+    } else {
+      return cb(null, opts);
+    }
   }
 
   getTokenBalance(options, cb) {

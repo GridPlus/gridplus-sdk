@@ -1,4 +1,5 @@
 const codes = require('./codes.json');
+const config = require('../config.js');
 
 // Build a request to create a permission
 exports.buildPermissionRequest = function(opts) {
@@ -29,7 +30,7 @@ exports.buildPermissionRequest = function(opts) {
 }
 
 // Build a signature request against a permission
-exports.buildAutomatedSignatureRequest = function(opts) {
+exports.buildSigRequest = function(opts) {
   if (opts.schemaCode === undefined || opts.params === undefined) return 'You must include "schemaCode" and "params" in this request.';
   const code = codes.code[opts.schemaCode];
   let req = {
@@ -37,13 +38,15 @@ exports.buildAutomatedSignatureRequest = function(opts) {
     typeIndex: code.type,
     params: []
   };
+  let err = null;
   codes.schemaNames[req.schemaIndex].forEach((paramName) => {
-    if (opts.params[paramName] === undefined) return `You are missing parameter ${paramName}`;
+    if (opts.params[paramName] === undefined) err = `You are missing parameter ${paramName}`;
     req.params.push(opts.params[paramName]);
   });
   // Some schema types will add additional stuff (e.g. BTC utxo inputs)
   req = addExtraParams(opts, req);
-  return req;
+  if (err) return err;
+  else     return req;
 }
 
 // Parse the human-readable params object into an instruction set for the Lattice
@@ -97,11 +100,18 @@ function getRule(x) {
 }
 
 function addExtraParams(opts, req) {
-  if (opts.schemaCode === 'BTC') {
-    opts.inputs.forEach((i) => {
-      const parsedInput = [ i.hash, i.outIndex, i.scriptType, i.spendAccountIndex, i.inputValue ];
-      req.params = req.params.concat(parsedInput);
-    });
+  switch(opts.schemaCode) {
+    case 'BTC':
+      opts.inputs.forEach((i) => {
+        const parsedInput = [ i.hash, i.outIndex, i.scriptType, i.spendAccountIndex, i.inputValue ];
+        req.params = req.params.concat(parsedInput);
+      });
+      break;
+    case 'ETH-ERC20':
+      req.params[req.params.length - 1] = config.erc20.transfer(opts.params.data.to, opts.params.data.value);
+      break;
   }
+  // Extras
+  req.sender = opts.sender;
   return req;
 }
