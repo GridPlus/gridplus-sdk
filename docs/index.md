@@ -183,7 +183,7 @@ Once you have your transaction (`signedTx`, from the previous section) signed, y
 
 ```
 const schemaName = 'ETH';
-client.broadcast(schemaName, signedTx, (err, res) => {
+client.broadcast(schemaName, signedTx, (err, txHash) => {
     ...
 })
 ```
@@ -606,141 +606,7 @@ Where `tx` is the encoded transaction payload specific to the network being used
 #### cb(err, res)
 
 * `err` string or `null`
-* `res` object whose form depends on the network/provider being used.
-
-## buildTx(shortcode, opts, cb) THIS SHOULD BE DEPRECATED
-
-Build a transaction given network-specific options. This function returns an object which can be passed to a signing call.
-
-#### shortcode [string], required
-
-Provider code you want to broadcast to (e.g. ETH, BTC)
-
-#### opts [object], required
-
-These will be different depending on the shortcode.
-
-**Bitcoin**:
-
-<table>
-    <tr>
-        <td>Param</td>
-        <td>Type</td>
-        <td>Default</td>
-        <td>Required</td>
-        <td>Description</td>
-    </tr>
-    <tr>
-        <td>amount</td>
-        <td>integer</td>
-        <td>None</td>
-        <td>Yes</td>
-        <td>Number of satoshis (10e-8 BTC) to send.</td>
-    </tr>
-    <tr>
-        <td>to</td>
-        <td>string</td>
-        <td>None</td>
-        <td>Yes</td>
-        <td>Address to receive bitcoins</td>
-    </tr>
-    <tr>
-        <td>addresses</td>
-        <td>array</td>
-        <td>None</td>
-        <td>Yes</td>
-        <td>Addresses that the sender controls, which will be searched for any UTXOs.</td>
-    </tr>
-    <tr>
-        <td>perByteFee</td>
-        <td>integer</td>
-        <td>3</td>
-        <td>No</td>
-        <td>Satoshis/byte for mining fee</td>
-    </tr>
-    <tr>
-        <td>changeIndex</td>
-        <td>integer</td>
-        <td>0</td>
-        <td>No</td>
-        <td>Index of the account that will be receiving change. This is the last index of the BIP44 standard.</td>
-    </tr>
-    <tr>
-        <td>network</td>
-        <td>string</td>
-        <td>regtest</td>
-        <td>No</td>
-        <td>Network to use (see Bitcoin provider network options)</td>
-    </tr>
-</table>
-
-**Ethereum**:
-
-<table>
-    <tr>
-        <td>Param</td>
-        <td>Type</td>
-        <td>Default</td>
-        <td>Required</td>
-        <td>Description</td>
-    </tr>
-    <tr>
-        <td>from</td>
-        <td>address</td>
-        <td>None</td>
-        <td>Yes</td>
-        <td>Address the user is sending from.</td>
-    </tr>
-    <tr>
-        <td>to</td>
-        <td>string</td>
-        <td>None</td>
-        <td>Yes</td>
-        <td>Address the user is sending to.</td>
-    </tr>
-    <tr>
-        <td>value</td>
-        <td>integer</td>
-        <td>None</td>
-        <td>Yes</td>
-        <td>Number of wei (10e-18 ether) to send in transaction. Will be 0 for all contract calls, including ERC20 transfers.</td>
-    </tr>
-    <tr>
-        <td>gasPrice</td>
-        <td>integer</td>
-        <td>1e9</td>
-        <td>No</td>
-        <td>Price (in wei) of gas</td>
-    </tr>
-    <tr>
-        <td>gas</td>
-        <td>integer</td>
-        <td>100000</td>
-        <td>No</td>
-        <td>Gas limit of transaction. Any extra gas spent will be refunded.</td>
-    </tr>
-    <tr>
-        <td>data</td>
-        <td>string</td>
-        <td>''</td>
-        <td>No</td>
-        <td>Hex string with ABI-encoded data. See restrictions on schema type.</td>
-    </tr>
-</table>
-
-#### cb (err, tx)
-
-* `err` - string representing the error message (or `null`)
-* `tx` - object containing transaction data that can be passed to the device for a signature request:
-
-```
-{
-    schemaIndex: <int>,    // index for Latitce
-    typeIndex: <int>,      // another index for Lattice
-    params: <array>,       // tx data formatted for the Lattice
-    network: <string>,     // only used for bitcoin, defaults to regtest unless one was provided in the request
-}
-```
+* `txHash` string, transaction hash
 
 ## connect(serial, cb)
 
@@ -1016,11 +882,27 @@ Notes about `options.params`:
 Optional options:
 ```
 {
-    ...,                          // required params specified above
-    accountIndex: <integer>,      // [Default 0] index of the requested signing account (e.g. 0 indicates m/44/*/*/0)
-    sender: <string> or <array>,  // Address (or addresses) to send from. Ethereum should only have one address - it is used to look up a nonce. Bitcoin can have one or several - they are used to look up UTXOs 
-    inputs: <array>,              // Bitcoin only. UTXO(s) to spend.
-    perByteFee: <integer>,        // Bitcoin only. Satoshis per byte for the mining fee
+    ...,                                // required params specified above
+    accountIndex: <integer> or array,   // [Default 0] index of the requested signing account (e.g. 0 indicates m/44/*/*/0)
+    sender: <string> or <array>,        // Address (or addresses) to send from (or check UTXOs received by). Ethereum should only have one address - it is used to look up a nonce. Bitcoin can have one or several - they are used to look up UTXOs 
+    inputs: <array>,                    // Bitcoin only. UTXO(s) to spend.
+    perByteFee: <integer>,              // Default 3, Bitcoin only. Satoshis per byte for the mining fee
+    multisig: <bool>                    // Default false, Bitcoin only. If true, a p2sh locking script will be interpreted as multisig (instead of single segwit)
+}
+```
+
+**Notes**:
+
+* `accountIndex` must correspond to `sender`. For example, if you want to send from account 0, you need to get the corresponding address and you would use those as a single int/string combination. If you want to potentially spend from multiple addresses, you would need to get the addresses and corresponding indices. Also note that for Ethereum, the SDK will only use the first address/index combination if you pass it arrays.
+* `inputs` above may be explicitly specified by the user, but by default a signature request will find UTXOs to spend and construct the inputs automatically. Just in case you want to define your own inputs, they are formatted as:
+
+```
+{
+    hash: <string>,                 // Hash of the transaction that produced the UTXO that is being consumed
+    outIndex: <integer>,            // Index of the consumed UTXO in the transaction
+    scriptType: <string>,           // Type of spend script: p2pkh, p2sh, p2sh(p2pwh)
+    spendAccountIndex: <integer>,   // Index of the Lattice account associated with the address which can spend this UTXO
+    inputValue: <integer>           // Value of the UTXO being spent (in units of satoshi)
 }
 ```
 

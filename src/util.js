@@ -18,6 +18,12 @@ export function getProviderShortCode(schemaCode) {
       return 'BTC';
   }
 }
+exports.OPs = {
+  'a9': 'OP_HASH160',
+  '76': 'OP_DUP',
+  '87': 'OP_EQUAL',
+  'ac': 'OP_CHECKSIG',
+}
 
 export function ecdsaKeyPair (privKey) {
   const curve = new EC('secp256k1');
