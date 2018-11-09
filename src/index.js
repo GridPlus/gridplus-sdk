@@ -227,7 +227,6 @@ export default class SdkClient {
     if (typeof req === 'string') return cb(req);
     const providerCode = getProviderShortCode(param.schemaCode);
     this._getStatefulParams(providerCode, req, (err, newReq) => {
-      console.log('newReq', newReq)
       if (err) return cb(err);
       this.client.pairedRequest('signManual', { param: newReq }, (err, res) => {
         if (err) return cb(err)

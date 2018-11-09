@@ -1,6 +1,6 @@
 // BCoin API
 import { NodeClient } from 'gridplus-bclient';
-import { getTxHash, sortByHeight, OPs } from '../../util';
+import { getTxHash, sortByHeight, getOutputScriptType } from '../../util';
 
 export default class BcoinApi {
 
@@ -53,14 +53,14 @@ export default class BcoinApi {
     })
   }
 
-  buildInputs(utxos) {
+  buildInputs(utxos, cb) {
     let inputs = [];
     utxos.forEach((utxo) => {
       // hash, outIndex, scriptType, spendAccountIndex, inputValue
-      const input = [ utxo.hash, utxo.index, this._getScriptType(utxo.script), utxo.accountIndex, utxo.value ];
+      const input = [ utxo.hash, utxo.index, getOutputScriptType(utxo.script), utxo.accountIndex, utxo.value ];
       inputs = inputs.concat(input);
     });
-    return inputs;
+    return cb(null, inputs);
   }
 
   getBalance({ address, sat }, cb) {
@@ -95,23 +95,6 @@ export default class BcoinApi {
       }
     });
     return combined;
-  }
-
-  // TODO: Pass `multisig` through from the request
-  _getScriptType(s, multisig=false) {
-    const OP_first = s.slice(0, 2);
-    const OP_last = s.slice(s.length - 2, s.length);
-    const p2pkh = (OPs[OP_first] === 'OP_DUP' && OPs[OP_last] === 'OP_CHECKSIG');
-    const p2sh = (OPs[OP_first] === 'OP_HASH160' && OPs[OP_last] === 'OP_EQUAL');
-    if (p2pkh) {
-      return 'p2pkh';
-    } else if (p2sh && multisig === true) {
-      return 'p2sh';
-    } else if (p2sh && multisig !== true) {
-      return 'p2sh(p2wpkh)';
-    } else {
-      return null;
-    }
   }
   
   _getTx(hash, cb, opts={}) {

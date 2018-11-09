@@ -38,16 +38,18 @@ export default class Bitcoin {
       const value = opts.params[valueIndex];
       this._getUtxos(opts.sender, opts.accountIndex, value, (err, utxos) => {
         if (err) return cb(err);
-        const inputs = this.provider.buildInputs(utxos);
-        const change = this._getChange(opts, utxos, value);
-        opts.params[changeIndex] = change;
-        const newOpts = {
-          schemaIndex: opts.schemaIndex,
-          typeIndex: opts.typeIndex,
-          params: opts.params.concat(inputs),
-          network: opts.network || 'bitcoin',
-        };
-        return cb(null, newOpts);
+        this.provider.buildInputs(utxos, (err, inputs) => {
+          if (err) return cb(err);
+          const change = this._getChange(opts, utxos, value);
+          opts.params[changeIndex] = change;
+          const newOpts = {
+            schemaIndex: opts.schemaIndex,
+            typeIndex: opts.typeIndex,
+            params: opts.params.concat(inputs),
+            network: opts.network || 'bitcoin',
+          };
+          return cb(null, newOpts);
+        });
       })
     } else {
       return cb(null, opts);

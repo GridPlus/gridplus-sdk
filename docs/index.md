@@ -891,6 +891,8 @@ Optional options:
 }
 ```
 
+*NOTE: `multisig` is not functional yet, but in the future it will be used to distinguish between p2sh and p2sh(p2pwh) spends. Right now we assume the latter.*
+
 **Notes**:
 
 * `accountIndex` must correspond to `sender`. For example, if you want to send from account 0, you need to get the corresponding address and you would use those as a single int/string combination. If you want to potentially spend from multiple addresses, you would need to get the addresses and corresponding indices. Also note that for Ethereum, the SDK will only use the first address/index combination if you pass it arrays.
