@@ -102,16 +102,20 @@ function getRule(x) {
 function addExtraParams(opts, req) {
   switch(opts.schemaCode) {
     case 'BTC':
-      opts.inputs.forEach((i) => {
-        const parsedInput = [ i.hash, i.outIndex, i.scriptType, i.spendAccountIndex, i.inputValue ];
-        req.params = req.params.concat(parsedInput);
-      });
+      if (opts.inputs && Array.isArray(opts.inputs)) {
+        opts.inputs.forEach((i) => {
+          const parsedInput = [ i.hash, i.outIndex, i.scriptType, i.spendAccountIndex, i.inputValue ];
+          req.params = req.params.concat(parsedInput);
+        });
+      }
       break;
     case 'ETH-ERC20':
       req.params[req.params.length - 1] = config.erc20.transfer(opts.params.data.to, opts.params.data.value);
       break;
   }
   // Extras
-  req.sender = opts.sender;
+  if (opts.sender)       req.sender = opts.sender;
+  if (opts.accountIndex) req.accountIndex = opts.accountIndex;
+  if (opts.network)      req.network = opts.network;
   return req;
 }

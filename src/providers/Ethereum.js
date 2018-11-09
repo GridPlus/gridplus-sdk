@@ -21,12 +21,7 @@ export default class Ethereum {
   broadcast (data, cb) {
     this.provider.sendTransaction(data.tx)
     .then((txHash) => {
-      this._getTx(txHash, (err, tx) => {
-        if (err) return cb(err);
-        tx.timestamp = new Date().getTime() / 1000;
-        tx.in = 0;
-        return cb(null, tx);
-      });
+      return cb(null, txHash);
     })
     .catch((err) => { 
       return cb(err);

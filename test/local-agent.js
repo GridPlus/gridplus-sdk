@@ -9,7 +9,7 @@ import crypto from 'crypto';
 
 let client, reactNative;
 
-describe('basic tests', () => {
+describe('Basic stateless tests (no providers)', () => {
 
   before(() => {
     // Use React Native crypto for this series of tests.

@@ -223,10 +223,9 @@ describe('Bitcoin', () => {
       txb.sign(0, signer);
 
       const tx = txb.build().toHex();
-      client.broadcast('BTC', { tx }, (err, res) => {
+      client.broadcast('BTC', { tx }, (err, txHash) => {
         assert(err === null, err);
-        assert(res.timestamp > 0, 'Could not broadcast properly');
-        client.getTx('BTC', res.hash, { addresses: testing.btcHolder.regtestAddress }, (err, retTx) => {
+        client.getTx('BTC', txHash, { addresses: testing.btcHolder.regtestAddress }, (err, retTx) => {
           assert(err === null, err);
           assert(retTx.value === -0.1);
           assert(retTx.height === -1, 'Transaction was mined but should not have been');
@@ -264,6 +263,7 @@ describe('Bitcoin', () => {
       TX_VALUE = utxo.value - 10000;
       
       const req = {
+        schemaCode: 'BTC',
         params: {
           version: 1,
           lockTime: 0,
@@ -273,46 +273,42 @@ describe('Bitcoin', () => {
           changeAccountIndex: CHANGE_INDEX
         },
         network: 'regtest',
-        sender: deviceAddresses,
-        perByteFee: 3,
+        sender: [ deviceAddresses[0], deviceAddresses[1] ],
+        accountIndex: [ 0, 1 ], 
+        perByteFee: 3,   // optional
+        multisig: false, // optional
       }
       
-      // client.buildTx('BTC', req, (err, sigReq) => { 
-      //   console.log('sigReq', sigReq)
-        // assert(err === null, err)
-        // CHANGE_AMOUNT = sigReq.params[4];
-        // client.signManual(sigReq, (err, sigData) => {
-        client.signManual(req, (err, sigData) => {
+      client.signManual(req, (err, sigData) => {
+        assert(err === null, err);
+        // Broadcast the transaction
+        client.broadcast('BTC', sigData, (err) => {
           assert(err === null, err);
-          // Broadcast the transaction
-          client.broadcast('BTC', sigData, (err, res) => {
-            assert(err === null, err);
-            assert(res.timestamp > 0, 'Could not broadcast properly');
-            
-            nodeClient.execute('generate', [ 1 ])
-            .then(() => {
-              return nodeClient.getMempool()
-            })
-            .then((mempool) => {
-              assert(mempool.length === 0, `Mempool not empty: ${mempool}`)
-              client.getBalance('BTC', { address: receiving[1][0] }, (err, d) => {
-                // Check the balance of the receiving address
-                const prevBal = receiving[1][1];
-                const newBal = d.balance;
-                assert(newBal === TX_VALUE + prevBal, `Expected new balance of ${TX_VALUE + prevBal}, got ${newBal}`);
-                done();
-              })
-            })
-            .catch((err) => {
+          
+          nodeClient.execute('generate', [ 1 ])
+          .then(() => {
+            return nodeClient.getMempool()
+          })
+          .then((mempool) => {
+            assert(mempool.length === 0, `Mempool not empty: ${mempool}`)
+            client.getBalance('BTC', { address: receiving[1][0] }, (err, d) => {
               assert(err === null, err);
+              // Check the balance of the receiving address
+              const prevBal = receiving[1][1];
+              const newBal = d.balance;
+              assert(newBal === TX_VALUE + prevBal, `Expected new balance of ${TX_VALUE + prevBal}, got ${newBal}`);
               done();
-            });
+            })
+          })
+          .catch((err) => {
+            assert(err === null, err);
+            done();
           });
         });
-      })
-    // });
+      });
+    });
   });
-/*
+
   it('Should ensure the correct change address got the change', (done) => {
     const req = {
       permissionIndex: 0,
@@ -325,7 +321,7 @@ describe('Bitcoin', () => {
       client.getBalance('BTC', { address: addresses[CHANGE_INDEX] }, (err, d) => {
         assert(err === null, err);
         assert(d.utxos.length > 0, 'Did not find any change outputs')
-        assert(d.utxos[d.utxos.length - 1].value === CHANGE_AMOUNT, 'Change output was wrong')
+        // assert(d.utxos[d.utxos.length - 1].value === CHANGE_AMOUNT, 'Change output was wrong')
         done();
       });
     });
@@ -334,5 +330,5 @@ describe('Bitcoin', () => {
   it('Should create an automated permission.');
 
   it('Should make an automated signature request and broadcast the response in a transaction.');
-  */
+  
 });

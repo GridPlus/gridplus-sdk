@@ -96,11 +96,11 @@ describe('Ethereum', () => {
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
+        console.log('txHash', txHash)
         assert(err === null, err);
-        assert(res && res.hash && res.timestamp, 'Did not broadcast properly');
         setTimeout(() => {
-          client.getTx('ETH', res.hash, (err, txs) => {
+          client.getTx('ETH', txHash, (err, txs) => {
             assert(err === null, err);
             assert(txs.height > 0, 'Tx was not mined');
             done();
@@ -142,10 +142,9 @@ describe('Ethereum', () => {
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash, 'Did not broadcast properly');
-        client.providers.ETH.provider.getTransactionReceipt(res.hash)
+        client.providers.ETH.provider.getTransactionReceipt(txHash)
         .then((receipt) => {
           assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
           erc20Addr = receipt.contractAddress;
@@ -176,10 +175,9 @@ describe('Ethereum', () => {
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash, 'Did not broadcast properly');
-        client.providers.ETH.provider.getTransactionReceipt(res.hash)
+        client.providers.ETH.provider.getTransactionReceipt(txHash)
         .then((receipt) => {
           assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
           erc20Addr2 = receipt.contractAddress;
@@ -204,10 +202,9 @@ describe('Ethereum', () => {
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash, 'Did not broadcast properly');
-        client.getTx('ETH', res.hash, (err, minedTx) => {
+        client.getTx('ETH', txHash, (err, minedTx) => {
           assert(err === null, err);
           assert(minedTx.height > -1);
           done();
@@ -229,10 +226,9 @@ describe('Ethereum', () => {
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash, 'Did not broadcast properly');
-        client.getTx('ETH', res.hash, (err, minedTx) => {
+        client.getTx('ETH', txHash, (err, minedTx) => {
           assert(err === null, err);
           assert(minedTx.height > -1);
           done();
@@ -255,10 +251,9 @@ describe('Ethereum', () => {
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash, 'Did not broadcast properly');
-        client.getTx('ETH', res.hash, (err, minedTx) => {
+        client.getTx('ETH', txHash, (err, minedTx) => {
           assert(err === null, err);
           assert(minedTx.height > -1);
           done();
@@ -318,10 +313,9 @@ describe('Ethereum', () => {
     client.signManual(req, (err, data) => {
       assert(err === null, err);
       // Create a new transaction with the returned signature
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash, 'Did not broadcast properly');
-        client.getTx('ETH', res.hash, (err, tx) => {
+        client.getTx('ETH', txHash, (err, tx) => {
           assert(err === null, err);
           assert(tx.height > -1, 'Block was not mined');
           assert(tx.from.toLowerCase() === addr.toLowerCase(), `Incorrect signer: got ${tx.from}, expected ${addr}`);
@@ -354,11 +348,9 @@ describe('Ethereum', () => {
     };
     client.signManual(req, (err, sigData) => {
       assert(err === null, err);
-      client.broadcast('ETH', sigData, (err, res) => {
+      client.broadcast('ETH', sigData, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash, 'Did not broadcast properly');
-        // client.providers.ETH.provider.getTransaction(res.hash)
-        client.getTx('ETH', res.hash, (err, tx) => {
+        client.getTx('ETH', txHash, (err, tx) => {
           assert(err === null, err);
           assert(tx.height > -1, 'Transaction not included in block');
           client.getBalance('ETH', { address: addr }, (err, data) => {

@@ -42,6 +42,25 @@ export default class SdkClient {
 
   }
 
+
+  // WILL BE DEPRECATED SOON
+  buildTx(shortcode, opts={}, cb) {
+    if (typeof opts === 'function') {
+      cb = opts;
+      opts = {};
+    }
+
+    if (! this.providers[shortcode]) {
+      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
+    }
+    // return this.providers[shortcode].buildTx(from, to, value, opts, cb);
+    return this.providers[shortcode].buildTx(opts, cb);
+  }
+
+
+
+
+
   addresses(param, cb) {
     this.client.pairedRequest('addresses', { param }, (err, res) => {
       if (err) return cb(err);  
@@ -73,30 +92,9 @@ export default class SdkClient {
     return this.providers[shortcode].broadcast(payload, cb);
   }
 
-  // Build a transaction
-  // @param [shortcode]  {string}          - "ETH" or "BTC"
-  // @param [to]         {string}          - Receiving address
-  // @param [from]       {string | array}  - Sending address (or addresses for BTC)
-  // @param [value]      {number}          - number of tokens to send in the tx
-  // @param [opts]       {Object}          - (optional) parameterization options, including ERC20 address
-  // @callback                             - err (Error), data (object)
-  buildTx(shortcode, opts={}, cb) {
-    if (typeof opts === 'function') {
-      cb = opts;
-      opts = {};
-    }
 
-    if (! this.providers[shortcode]) {
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    }
-    // return this.providers[shortcode].buildTx(from, to, value, opts, cb);
-    return this.providers[shortcode].buildTx(opts, cb);
-  }
-
-  /*
-    connects to all configured network providers, returning the first of any encountered errors.
-    else continues via supplied callback when done.
-  */
+  // connects to all configured network providers, returning the first of any encountered errors.
+  // else continues via supplied callback when done.
   connect(serial, cb) {
     if (typeof serial === 'function') {
       cb = serial;
@@ -205,6 +203,7 @@ export default class SdkClient {
 
   signAutomated(param, cb) {
     const req = buildSigRequest(param);
+    if (typeof req === 'string') return cb(req);
     const providerCode = getProviderShortCode(param.schemaCode);
     if (typeof req === 'string') return cb(req);
     this._getStatefulParams(providerCode, req, (err, newReq) => {
@@ -225,8 +224,10 @@ export default class SdkClient {
 
   signManual(param, cb) {
     const req = buildSigRequest(param);
+    if (typeof req === 'string') return cb(req);
     const providerCode = getProviderShortCode(param.schemaCode);
     this._getStatefulParams(providerCode, req, (err, newReq) => {
+      console.log('newReq', newReq)
       if (err) return cb(err);
       this.client.pairedRequest('signManual', { param: newReq }, (err, res) => {
         if (err) return cb(err)
@@ -242,6 +243,7 @@ export default class SdkClient {
     })
   }
 
+  // Add additional parameters and reconfigure the request as needed
   _getStatefulParams(providerCode, req, cb) {
     if (this.providers[providerCode]) {
       return this.providers[providerCode].getStatefulParams(req, cb);

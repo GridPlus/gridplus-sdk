@@ -42,6 +42,10 @@ export default class BlockCypherApi {
     .catch((err) => cb(err));
   }
 
+  buildInputs(utxos, cb) {
+
+  }
+
   broadcast({tx:rawTx}, cb) {
     const url = `${this.blockcypherBaseUrl}/txs/push?token=${blockcypherApiKey}`;
     return this._request(url, { tx: rawTx })
