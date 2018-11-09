@@ -908,6 +908,8 @@ Optional options:
 }
 ```
 
+*NOTE: including your own inputs is not yet supported.*
+
 #### cb(err, sigData)
 
 * `err` - string representing the error message (or `null`)

@@ -104,12 +104,11 @@ describe('Ethereum via Etherscan: ether transfers', () => {
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash && res.timestamp, 'Did not broadcast properly');
         let count = 0;
         const interval = setInterval(() => {
-          client.getTx('ETH', res.hash, (err, tx) => {
+          client.getTx('ETH', txHash, (err, tx) => {
             if (count > TIMEOUT_SEC) {
               assert(err === null, err);
               assert(tx.height > 0, 'Tx was not mined');
@@ -173,7 +172,7 @@ describe('Ethereum via Etherscan: ether transfers', () => {
         };
         client.signAutomated(req2, (err, sigData) => {
           assert(err === null, err);
-          client.broadcast('ETH', sigData, (err, tx) => {
+          client.broadcast('ETH', sigData, (err, txHash) => {
             assert(err === null, err);
             done();
           })
@@ -227,12 +226,11 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash && res.timestamp, 'Did not broadcast properly');
         let count = 0;
         const interval = setInterval(() => {
-          client.getTx('ETH', res.hash, (err, tx) => {
+          client.getTx('ETH', txHash, (err, tx) => {
             if (count > TIMEOUT_SEC) {
               assert(err === null, err);
               assert(tx.height > 0, 'Tx was not mined');
@@ -265,12 +263,11 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash && res.timestamp, 'Did not broadcast properly');
         let count = 0;
         const interval = setInterval(() => {
-          client.getTx('ETH', res.hash, (err, txs) => {
+          client.getTx('ETH', txHash, (err, txs) => {
             if (count > TIMEOUT_SEC) {
               assert(err === null, err);
               assert(txs.height > 0, 'Tx was not mined');
@@ -302,12 +299,11 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash && res.timestamp, 'Did not broadcast properly');
         let count = 0;
         const interval = setInterval(() => {
-          client.getTx('ETH', res.hash, (err, txs) => {
+          client.getTx('ETH', txHash, (err, txs) => {
             if (count > TIMEOUT_SEC) {
               assert(err === null, err);
               assert(txs.height > 0, 'Tx was not mined');
