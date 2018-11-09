@@ -8,6 +8,13 @@ const EC = elliptic.ec;
 const ec = new EC('curve25519');
 const ecSecp256k1 = new EC('secp256k1');
 
+const OPs = {
+  'a9': 'OP_HASH160',
+  '76': 'OP_DUP',
+  '87': 'OP_EQUAL',
+  'ac': 'OP_CHECKSIG',
+}
+
 export function getProviderShortCode(schemaCode) {
   switch (schemaCode) {
     case 'ETH':
@@ -18,11 +25,21 @@ export function getProviderShortCode(schemaCode) {
       return 'BTC';
   }
 }
-exports.OPs = {
-  'a9': 'OP_HASH160',
-  '76': 'OP_DUP',
-  '87': 'OP_EQUAL',
-  'ac': 'OP_CHECKSIG',
+
+export function getOutputScriptType(s, multisig=false) {
+  const OP_first = s.slice(0, 2);
+  const OP_last = s.slice(s.length - 2, s.length);
+  const p2pkh = (OPs[OP_first] === 'OP_DUP' && OPs[OP_last] === 'OP_CHECKSIG');
+  const p2sh = (OPs[OP_first] === 'OP_HASH160' && OPs[OP_last] === 'OP_EQUAL');
+  if (p2pkh) {
+    return 'p2pkh';
+  } else if (p2sh && multisig === true) {
+    return 'p2sh';
+  } else if (p2sh && multisig !== true) {
+    return 'p2sh(p2wpkh)';
+  } else {
+    return null;
+  }
 }
 
 export function ecdsaKeyPair (privKey) {

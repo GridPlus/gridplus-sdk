@@ -97,7 +97,6 @@ describe('Ethereum', () => {
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
       client.broadcast('ETH', data, (err, txHash) => {
-        console.log('txHash', txHash)
         assert(err === null, err);
         setTimeout(() => {
           client.getTx('ETH', txHash, (err, txs) => {

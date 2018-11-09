@@ -189,41 +189,44 @@ describe('Bitcoin via BlockCypher: transfers', () => {
 
   it('Should spend some of the new coins from the lattice address', (done) => {
     const req = {
-      amount: 100,
-      to: 'CFr99841LyMkyX5ZTGepY58rjXJhyNGXHf', // testnet distributing account
-      addresses: deviceAddresses,
-      perByteFee: 1,
-      changeIndex: 1,
-      network,
-      scriptType: 'p2pkh'
-    };
-    client.buildTx('BTC', req, (err, sigReq) => {
-      assert(err === null, err);
-      client.signManual(sigReq, (err, res) => {
-        assert(err === null, err);
-        setTimeout(() => {
-          client.broadcast('BTC', res, (err2, res2) => {
-            assert(err2 === null, err2);
-            const actualAddress = res2.data.outputs[1].addresses[0];
-            const expectedAddress = deviceAddresses[1];
-            assert(actualAddress === expectedAddress, `Expected change address to be ${expectedAddress} but got ${actualAddress}`)
-            done();
-          });
-        }, 750);
-      });
-    });
-  });
+      schemaCode: 'BTC',
+      params: {
+        version: 1,
+        lockTime: 0,
+        recipient: 'CFr99841LyMkyX5ZTGepY58rjXJhyNGXHf',
+        value: 100,
+        change: null,
+        changeAccountIndex: 1
+      },
+      network: 'bcy',
+      sender: [ deviceAddresses[0], deviceAddresses[1] ],
+      accountIndex: [ 0, 1 ],
+      perByteFee: 1,   // optional
+      multisig: false, // optional
+    }
 
-  it('Should get transaction data from the hashes', (done) => {
-    const hashes = [ newUtxo.hash, utxo.hash ];
-    client.getTx('BTC', hashes, { addresses: deviceAddresses }, (err, res) => {
+    client.signManual(req, (err, res) => {
       assert(err === null, err);
-      assert(res.length > 0);
-      // assert(res.length === 2, `Should have gotten 2 filtered tx objects, but got ${res.length}`);
-      // assert(res[0].from === holderAddress && res[0].in === false, `First filtered transaction of unexpected format: expected outflow from ${holderAddress}`);
-      // assert(res[1].from === holderAddress && res[1].in === false, `Second filtered transaction of unexpected format: expected outflow from ${holderAddress}`);
-      done();
-    })
+      setTimeout(() => {
+        client.broadcast('BTC', res, (err2, txHash) => {
+          assert(err2 === null, err2);
+          let count = 0;
+          const interval = setInterval(() => {
+            client.getTx('BTC', txHash, (err, data) => {
+              if (count > 10) {
+                assert.equal(err, null, err);      
+                throw new Error('Transaction did not mine in time');
+              } else if (data.block_height > -1) {
+                clearInterval(interval);
+                done();
+              } else {
+                count += 1;
+              }
+            });
+          }, 10000);
+        });
+      }, 750);
+    });
   });
 
   it('Should create an automated permission.');
