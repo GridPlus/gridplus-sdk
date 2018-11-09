@@ -42,25 +42,6 @@ export default class SdkClient {
 
   }
 
-
-  // WILL BE DEPRECATED SOON
-  buildTx(shortcode, opts={}, cb) {
-    if (typeof opts === 'function') {
-      cb = opts;
-      opts = {};
-    }
-
-    if (! this.providers[shortcode]) {
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    }
-    // return this.providers[shortcode].buildTx(from, to, value, opts, cb);
-    return this.providers[shortcode].buildTx(opts, cb);
-  }
-
-
-
-
-
   addresses(param, cb) {
     this.client.pairedRequest('addresses', { param }, (err, res) => {
       if (err) return cb(err);  

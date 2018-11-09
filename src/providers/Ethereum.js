@@ -28,44 +28,6 @@ export default class Ethereum {
     })
   }
 
-  buildTx ({ from, to, value, ERC20Token=undefined, gasPrice=undefined }, cb) {
-    if (typeof from !== 'string') {
-      cb('Please specify a single address to transfer from');
-    } else {
-      this.getNonce(from)
-        .then((nonce) => {
-          const tx = [ nonce, null, null, to, null, null ];
-          // Fill in `value` and `data` if this is an ERC20 transfer
-          if (ERC20Token !== undefined) {
-            tx[5] = config.erc20.transfer(to, value);
-            tx[4] = 0;
-            tx[3] = ERC20Token;
-            tx[2] = 100000; // gas=100,000 to be safe
-          } else {
-            tx[5] = '';
-            tx[4] = value;
-            tx[2] = 22000; // gas=22000 for ETH transfers
-          }
-          // Check for a specified gas price (should be in decimal)
-          if (gasPrice !== undefined) {
-            tx[1] = gasPrice;
-          } else {
-            tx[1] = config.defaults.gasPrice;
-          }
-          const code = ERC20Token === undefined ? 'ETH' : 'ETH-ERC20';
-          const txObj = {
-            schemaIndex: schemaCodes[code].schema,
-            typeIndex: schemaCodes[code].type,
-            params: tx,
-          }
-          cb(null, txObj);
-        })
-        .catch((err) => {
-          cb(err);
-        });
-    }
-  }
-
   getBalance ({ address }, cb) {
     const data = {
       balance: 0,
