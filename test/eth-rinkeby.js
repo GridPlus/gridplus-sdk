@@ -1,7 +1,7 @@
 // Basic tests for atomic SDK functionality
 import assert from 'assert';
 import Tx from 'ethereumjs-tx';
-import { testing } from '../src/config.js';
+import config, { testing } from '../src/config.js';
 import { Client, providers } from 'index';
 import NodeCrypto from 'gridplus-node-crypto';
 const TIMEOUT_SEC = 59;
@@ -92,15 +92,19 @@ describe('Ethereum via Etherscan: ether transfers', () => {
     sender = testing.ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
     // Build a tx for the sender
-    const opts = {
+    const tx = {
+      nonce: null,
+      gasPrice: 1e9,
+      gas: 50000, 
       from: sender.address,
       to: addr,
       value: toSend,
-    }
-    client.buildTx('ETH', opts, (err, tx) => {
-      assert(err === null, err);
-      const { params } = tx;
-      const txObj = new Tx({ nonce: params[0], gasPrice: params[1], gasLimit: params[2], to: params[3], value: params[4], data: params[5] });
+      data: '',
+    };
+    client.providers.ETH.getNonce(tx.from)
+    .then((nonce) => {
+      tx.nonce = nonce;
+      const txObj = new Tx(tx);
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
@@ -205,24 +209,18 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
   it('Should deploy an ERC20 token', (done) => {
     sender = testing.ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
-    const opts = {
+    const tx = {
+      nonce: null,
+      gasPrice: 1e9,
+      gas: '0x1e8480', 
       from: sender.address,
-      to: addr,
       value: 0,
-      gasPrice: 1e9
-    }
-
-    client.buildTx('ETH', opts, (err, tx) => {
-      assert(err === null, err);
-      const { params } = tx;
-      const rawTx = {
-        nonce: params[0],
-        gasPrice: params[1],
-        gasLimit: '0x1e8480',
-        value: 0,
-        data: erc20Src,
-      }
-      const txObj = new Tx(rawTx);
+      data: erc20Src
+    };
+    client.providers.ETH.getNonce(tx.from)
+    .then((nonce) => {
+      tx.nonce = nonce;
+      const txObj = new Tx(tx);
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
@@ -245,21 +243,24 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
           });
         }, 1000);
       });
-    });
+    })
+    .catch((err) => { throw new Error(err); })
   });
 
   it('Should transfer some ERC20 tokens to the address', (done) => {
-    const opts = {
+    const tx = {
+      nonce: null,
+      to: erc20Addr,
+      gasPrice: 1e9,
+      gas: 100000, 
       from: sender.address,
-      to: addr,
-      value: transferAmount,
-      gasPrice: 1e9, 
-      ERC20Token: erc20Addr,
-    }
-    client.buildTx('ETH', opts, (err, tx) => {
-      assert(err === null, err);
-      const { params } = tx;
-      const txObj = new Tx(params);
+      value: 0,
+      data: config.erc20.transfer(addr, transferAmount),
+    };
+    client.providers.ETH.getNonce(tx.from)
+    .then((nonce) => {
+      tx.nonce = nonce;
+      const txObj = new Tx(tx);
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
@@ -281,21 +282,24 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
           });
         }, 1000);
       });
-    });
+    })
+    .catch((err) => { throw new Error(err); })
   });
 
   it('Should transfer some ERC20 tokens to the second address', (done) => {
-    const opts = {
+    const tx = {
+      nonce: null,
+      to: erc20Addr,
+      gasPrice: 1e9,
+      gas: 100000, 
       from: sender.address,
-      to: addr2,
-      value: transferAmount,
-      gasPrice: 1e9, 
-      ERC20Token: erc20Addr,
-    }
-    client.buildTx('ETH', opts, (err, tx) => {
-      assert(err === null, err);
-      const { params } = tx;
-      const txObj = new Tx(params);
+      value: 0,
+      data: config.erc20.transfer(addr2, transferAmount),
+    };
+    client.providers.ETH.getNonce(tx.from)
+    .then((nonce) => {
+      tx.nonce = nonce;
+      const txObj = new Tx(tx);
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };

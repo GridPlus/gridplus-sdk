@@ -156,14 +156,21 @@ All supported schema are available in the SDK with a string representing its cod
 ```
 const schemaCode = 'ETH';
 const opts = {
-    amount: 1*(10e18), // atomic units: 10e18 per 1 ether
-    to: '0x123...ab',
-    gasPrice: 1*(10e9),
-}
-client.buildTx(schemaCode, opts, (err, tx) => {
-    ...
-})
+    schemaCode,
+    params: {
+      nonce: null,          // This will be filled in by the SDK
+      gasPrice: 1e9,
+      gas: 30000,
+      to: '0x123...ab',
+      value: 1e18,          // atomic units: 10e18 per 1 ether
+      data: ''
+    },
+    accountIndex: 0,        // Indicates we are using account index 0 to spend from (i.e. m/44/60'/0'/0/0 <-- the last 0)
+    sender: myAddress,      // Full address of the associated account index 0
+};
 ```
+
+*Note that `accountIndex` and `sender` must associate to the same address! For example, you might request the first address (index 0) from the client ([see method](#addresses)) and then use that result in this call along with `accountIndex=0`*
 
 ### Requesting the Signature
 
@@ -172,7 +179,7 @@ Without a specified permission, an SDK user with a pairing can always request a 
 Once your transaction has been built by the SDK, you can send it to the device, which checks the boundaries of your request in the secure compute module and, if it conforms to the desired schema, is passed to the secure enclave for signing (pending user authorization).
 
 ```
-client.signManual(tx, (err, signedTx) => {
+client.signManual(opts, (err, signedTx) => {
     ...
 })
 ```
@@ -255,21 +262,28 @@ params: {
 
 ### Requesting an Automated Signature
 
-With a permission in hand, an app can make a request like this:
+With a permission in hand, an app can make a request in exactly the same way as before.
 
 ```
 const schemaCode = 'ETH';
-const req = {
-    amount: 1*(10e17), // atomic units: 10e18 per 1 ether
-    to: '0x123...ab',
-    gasPrice: 1*(10e9),
-}
-client.buildTx(schemaCode, req, (err, tx) => {
-    client.signAutomated(tx, (err, res) => {
-        ...
-    })
+const opts = {
+    schemaCode,
+    params: {
+      nonce: null,          // This will be filled in by the SDK
+      gasPrice: 1e9,
+      gas: 30000,
+      to: '0x123...ab',
+      value: 1e18,          // atomic units: 10e18 per 1 ether
+      data: ''
+    },
+    accountIndex: 0,        // Indicates we are using account index 0 to spend from (i.e. m/44/60'/0'/0/0 <-- the last 0)
+    sender: myAddress,      // Full address of the associated account index 0
+};
+client.signAutomated(opts, (err, res) => {
+    ...
 })
 ```
+
 
 Notice how this process is nearly identical to requesting a manual signature. If the request does not conform to an established permission associated with your app, it will be converted to a manual signature request, which times out after a period of time.
 
@@ -322,7 +336,7 @@ A few notes:
 
 ## List of Built-In Providers
 
-The following section outlines options related to build-in providers.
+The following section outlines options related to built-in providers.
 
 ### Bitcoin
 
@@ -475,7 +489,7 @@ This section outlines the schema types, param names, and restrictions for the ac
 
 This section includes a full reference for the `client` API.
 
-## addresses(param, cb)
+##<a href="#addresses">addresses(param, cb)</a>
 
 Retrieve one or more addresses from a paired device.
 
@@ -586,7 +600,7 @@ Request a new permission based on a rule set you provide.
 
 ## broadcast(shortcode, payload, cb)
 
-Given a built transaction (see: `buildTx`), broadcast to the desired network using the specified provider.
+Given a signed transaction from `signManual` or `signAutomated`, broadcast to the desired network using the specified provider.
 
 #### shortcode [string], required
 
