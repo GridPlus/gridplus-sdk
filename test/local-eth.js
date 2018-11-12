@@ -62,8 +62,6 @@ describe('Ethereum', () => {
 
   it('Should get the ETH address', (done) => {
     const req = {
-      permissionIndex: 0,
-      isManual: true,
       total: 1,
       coin_type: '60\''
     }

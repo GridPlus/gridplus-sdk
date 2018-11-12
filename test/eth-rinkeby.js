@@ -69,8 +69,6 @@ describe('Ethereum via Etherscan: ether transfers', () => {
 
   it('Should get the ETH address', (done) => {
     const req = {
-      permissionIndex: 0,
-      isManual: true,
       total: 2,
       coin_type: '60\''
     }
@@ -153,8 +151,6 @@ describe('Ethereum via Etherscan: ether transfers', () => {
 
   it('Should make an automated signature request and broadcast the response in a transaction.', (done) => {
     const req = {
-      permissionIndex: 0,
-      isManual: true,
       total: 2,
       coin_type: '60\''
     };

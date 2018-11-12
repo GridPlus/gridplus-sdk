@@ -149,8 +149,6 @@ describe('Bitcoin', () => {
 
   it('Should get the first 2 Bitcoin addresses of the manual permission and log address 0', (done) => {
     const req = {
-      permissionIndex: 0,
-      isManual: true,
       total: 4,
       network: 'regtest'
     }
@@ -311,8 +309,6 @@ describe('Bitcoin', () => {
 
   it('Should ensure the correct change address got the change', (done) => {
     const req = {
-      permissionIndex: 0,
-      isManual: true,
       total: 4,
       network: 'regtest'
     }
