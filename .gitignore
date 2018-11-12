@@ -1,3 +1,4 @@
+.DS_Store
 secrets.json
 mkdocs.yml
 tokensByAddress.json

@@ -8,7 +8,7 @@ The Grid+ SDK allows any application to establish a connection and interact with
 
 The following tutorial will cover all the steps you need to start using the SDK at a basic level. For documentation on all functionality, please see the [API Reference section](#API-Reference).
 
-## Installation
+## <a href="installation">Installation</a>
 
 This SDK is currently only available as a `node.js` module. You can add it to your project with:
 
@@ -28,7 +28,7 @@ or, for older style syntax:
 const Sdk = require('gridplus-sdk').Client;
 ```
 
-## Initializing a Client
+## <a href="initializing-a-client">Initializing a Client</a>
 
 Once imported, you can initialize your SDK client with a `clientConfig` object, which at minimum requires the name of your app (`name`) and a private key with which to sign requests (`privKey`). The latter is not meant to e.g. hold onto any cryptocurrencies; it is simply a way of maintaining a secure communication channel between the device and your application.
 
@@ -39,7 +39,7 @@ const clientConfig = {
 }
 ```
 
-### Adding Providers
+### <a href="adding-providers">Adding Providers</a>
 
 To connect the SDK to supported cryptocurrency networks, you will need to add *providers* to the `clientConfig`. We have two from which to choose:
 
@@ -63,7 +63,7 @@ clientConfig.providers = [ eth, btc ];
 To see the full list of configuration options for these providers (and how to add your own), please see the [Providers](#Providers) section.
 
 
-### Adding Crypto Module [Optional]
+### <a href="adding-a-crypto-module">Adding Crypto Module [Optional]</a>
 
 By default, this client will use the build in `node.js` [`crypto`](https://nodejs.org/api/crypto.html) module. If you are using React Native, you may want to add another option to the `clientConfig` which specifies a limited "crypto library". We have an [example library](https://github.com/GridPlus/gridplus-react-native-crypto), which you are free to use:
 
@@ -73,7 +73,7 @@ const cryptoLib = new ReactNativeCrypto(clientConfig.privKey);
 clientConfig.crypto = cryptoLib;
 ```
 
-### Initialize!
+### <a href="initialize">Initialize!</a>
 
 With the `clientConfig` filled out, you can initialize a new SDK object:
 
@@ -84,7 +84,7 @@ client.initialize((err, connections) => { })
 
 This returns an array of connections to the providers you have specified.
 
-## Connecting to a Lattice
+## <a href="connecting-to-a-lattice">Connecting to a Lattice</a>
 
 Once you have a client initialized, you can make a connection to any Lattice device which is connected to the internet:
 
@@ -97,7 +97,7 @@ client.connect(serial, (err, res) => {
 
 If you get a non-error response, it means you can talk to the device. 
 
-## Pairing with a Device
+## <a href="pairing-with-a-device">Pairing with a Device</a>
 
 We can now *pair* with a Lattice device, which means establishing a permanent, secure channel between your app and the device. We do this by generating a 6-digit secret, signing it, and sending that signature (plus some other content) to the device. The user then enters the secret you generated into the device (out of band).
 
@@ -123,7 +123,7 @@ client.addManualPermission((err, res) => {
 })
 ```
 
-## Getting Addresses
+## <a href="getting-addresses">Getting Addresses</a>
 
 You may retrieve some number of addresses for supported cryptocurrencies. The Grid+ Lattice uses [BIP44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)-compliant highly-deterministic (HD) wallets for generating addresses. This means that for each currency you want to access, you must specify a `coin_type` (by default it will choose Bitcoin, or `0'`). You may also specify `start` (the starting index) and `total` the total number of addresses to generate, starting at the starting index.
 
@@ -141,11 +141,11 @@ client.addresses(req, (err, res) => {
 })
 ```
 
-## Requesting a Manual Signature
+## <a href="requesting-sigs">Requesting Signatures</a>
 
 The Lattice device, at its core, is a tightly controlled, highly configurable, cryptographic signing machine. By default, each pairing (the persistent association between your app and a user's lattice) allows the app an ability to request signatures that the user must manually authorize. However, this SDK also gives the app an ability to establish "automated signatures", which conform to permissions established by the user. For more information on that functionality, please see the [Permissions section](#Permissions). This section will focus on the more basic *manual signature request* functionality.
 
-###<a name="Build-Tx"></a>Building a Transaction
+### <a name="Build-Tx"></a>Building a Transaction
 
 For security reasons, transactions must be built according to pre-defined [schema](#Schema-Reference). Here we will use an ether transfer as an example, but several others are available (see [here](#Schema-Reference)).
 
@@ -170,7 +170,7 @@ const opts = {
 
 *Note that `accountIndex` and `sender` must associate to the same address! For example, you might request the first address (index 0) from the client ([see method](#addresses)) and then use that result in this call along with `accountIndex=0`*
 
-### Requesting the Signature
+### <a href="requesting-the-sig">Requesting the Signature</a>
 
 Without a specified permission, an SDK user with a pairing can always request a signature that the Lattice user can manually accept on the device (similar to the experience of other hardware wallets).
 
@@ -182,7 +182,7 @@ client.sign(opts, (err, signedTx) => {
 })
 ```
 
-### Broadcasting a Transaction
+### <a href="broadcasting-a-tx">Broadcasting a Transaction</a>
 
 Once you have your transaction (`signedTx`, from the previous section) signed, you can use the `client` to *broadcast* that transaction on the appropriate network. Note that this requires you to have instantiated a [provider](#Providers) properly and to know the [schema name](#Schema-Reference) of the network you are trying to use. Here is a simple example of broadcasting on Ethereum:
 
@@ -193,11 +193,11 @@ client.broadcast(schemaName, signedTx, (err, txHash) => {
 })
 ```
 
-##<a name="Permissions">Permissions</a>
+## <a name="Permissions">Permissions</a>
 
 The Lattice1 offers an extended API which enables "automated" signatures, which are based on user-authorized *permissions*.
 
-#### Requesitng a Permission
+#### <a href="requesting-a-permission">Requesting a Permission</a>
 
 Before requesting automated signatures, the paired application or service must create a permission. For example, your service can establish a permission with a particular Lattice that will enable automated signatures on up to 0.1 ETH per 24 hours. Such a request would look like this:
 
@@ -258,7 +258,7 @@ params: {
 }
 ```
 
-### Requesting an Automated Signature
+### <a href="requesting-an-automated-sig">Requesting an Automated Signature</a>
 
 With a permission in hand, an app can make a request in exactly the same way as before.
 
@@ -292,7 +292,7 @@ The Lattice is designed to compartmentalize security and delegate logic to the a
 
 As such, network providers must be utilized at the application level by default. Providers are available through the SDK, though you are also able to import your own so long as it conforms to the same API.
 
-## Importing and Using a Provider
+## <a href="importing-and-using-a-provider">Importing and Using a Provider</a>
 
 Providers may be imported from this module separately from the `client`. Currently, the following provider *types* are supported
 
@@ -334,11 +334,11 @@ A few notes:
 * `clientConfig` must be passed as an object. `name` and `privKey` are required fields.
 * `providers` must be passed as an array of instantiated provider objects. Order does not matter here, as the client will automatically detect which provider corresponds to which currency (so long as the provider was intantiated properly).
 
-## List of Built-In Providers
+## <a href="list-of-providers">List of Built-In Providers</a>
 
 The following section outlines options related to built-in providers.
 
-### Bitcoin
+*Bitcoin*
 
 The built-in Bitcoin provider allows you to connect either to [blockcypher](https://blockcypher.com) or to a custom node that you define.
 
@@ -348,7 +348,7 @@ const Bitcoin = providers.Bitcoin;
 const btc = new Bitcoin(params);
 ```
 
-####<a href="Bitcoin-Provider-Options"></a>API Options
+#### <a href="Bitcoin-Provider-Options"></a>API Options
 
 <table>
     <tr>
@@ -402,7 +402,7 @@ const btc = new Bitcoin(params);
 * `bcy`: BCY (blockcypher) testnet
 * `regtest`: local development network
 
-### Ethereum
+*Ethereum*
 
 The built-in Ethereum provider allows you to connect either to [etherscan](https://etherscan.io) or to a custom node that you define.
 
@@ -474,7 +474,7 @@ This section outlines the schema types, param names, and restrictions for the ac
 * **ParamNames** show the naems of the parameters that will go into building a schema
 * **Restrictions** show required param values, if applicable
 
-## Ethereum
+*Ethereum*
 
 #### 'ETH': Ether Transfers
 
@@ -490,7 +490,7 @@ This section outlines the schema types, param names, and restrictions for the ac
 
 **Note: ERC20 transfers require the `to` value in the `param` array to be the address of the token contract!**
 
-## Bitcoin
+*Bitcoin*
 
 #### 'BTC': Bitcoin Transfers
 
@@ -499,11 +499,11 @@ This section outlines the schema types, param names, and restrictions for the ac
 * Restrictions: `version=1`, `lockTime=0`
 
 
-#<a name="API-Reference">API Reference</a>
+# <a name="API-Reference">API Reference</a>
 
 This section includes a full reference for the `client` API.
 
-##<a href="#addresses">addresses(param, cb)</a>
+## <a href="#addresses">addresses(param, cb)</a>
 
 Retrieve one or more addresses from a paired device.
 
@@ -567,11 +567,11 @@ Retrieve one or more addresses from a paired device.
 * `addresses`: array of strings (if multiple) or a string (if one).
 
 
-## addManualPermission
+## addManualPermission(cb)
 
-Will be deprecated soon
+**This will be deprecated soon**
 
-## addPermission(param, cb)
+## <a href="add-permission">addPermission(param, cb)</a>
 
 Request a new permission based on a rule set you provide.
 
@@ -612,7 +612,7 @@ Request a new permission based on a rule set you provide.
 
 * `err`: string or `null`.
 
-## broadcast(shortcode, payload, cb)
+## <a href="broadcast">broadcast(shortcode, payload, cb)</a>
 
 Given a signed transaction from `sign`, broadcast to the desired network using the specified provider.
 
@@ -636,7 +636,7 @@ Where `tx` is the encoded transaction payload specific to the network being used
 * `err` string or `null`
 * `txHash` string, transaction hash
 
-## connect(serial, cb)
+## <a href="connect">connect(serial, cb)</a>
 
 Reach out to a Lattice device using a `serial`. This will attempt to make a brief connection to retrieve the first encryption key needed for pairing.
 
@@ -649,15 +649,7 @@ Serial of the Lattice. This is device-specific.
 * `err` - string representing the error message (or `null`)
 
 
-## deletePairing(cb)
-
-Delete the pairing between this SDK and a device. Note that each SDK object instance maps 1:1 to a paired device, so no arguments are needed.
-
-#### cb(err)
-
-* `err` - string representing the error message (or `null`)
-
-## getBalance(shortcode, opts, cb)
+## <a href="get-balance">getBalance(shortcode, opts, cb)</a>
 
 Use a provider to get the balance of a particular account for a particular network.
 
@@ -714,7 +706,7 @@ Provider code you want to broadcast to (e.g. ETH, BTC)
 ```
 
 
-## getTokenBalance(opts, cb) [Ethereum only]
+## <a href="get-token-balance">getTokenBalance(opts, cb) [Ethereum only]</a>
 
 Use a provider to get the ERC20 balance for one or more tokens, for one or more addresses.
 
@@ -755,7 +747,7 @@ Use a provider to get the ERC20 balance for one or more tokens, for one or more 
 }
 ```
 
-## getTxHistory(shortcode, opts)
+## <a href="get-tx-history">getTxHistory(shortcode, opts)</a>
 
 Get transaction history for a given address or addresses.
 
@@ -814,8 +806,6 @@ Provider code you want to broadcast to (e.g. ETH, BTC)
 ]
 ```
 
-
-### Check out both blockcypher and local regtest responses. These need to be the same!
 *Bitcoin*:
 ```
 {
@@ -838,7 +828,7 @@ Provider code you want to broadcast to (e.g. ETH, BTC)
 
 *Note that if only one address is sent, the return object will be a single array, rather than an object indexed by address.*
 
-## getTx(shortcode, hashes, [opts], cb)
+## <a href="get-tx">getTx(shortcode, hashes, [opts], cb)</a>
 
 Get the full transaction object(s) using one (or more) transaction hashes.
 
@@ -862,7 +852,7 @@ This option may be deprecated. It currently only allows the user to pass `addres
 * `res` - array of transaction objects (see `getTxHistory`)
 
 
-## initialize(cb)
+## <a href="initialize">initialize(cb)</a>
 
 Once the `client` object is created, you must initialize the providers. This establishes a connection to the desired networks through the providers.
 
@@ -872,7 +862,7 @@ Once the `client` object is created, you must initialize the providers. This est
 * `connections` - array of connections to the desired networks. The format depends on the network and provider combination, but they should be non-empty for each provider.
 
 
-## pair(appSecret, cb)
+## <a href="pair">pair(appSecret, cb)</a>
 
 Establish a secure connection with the desired device.
 
@@ -884,9 +874,7 @@ String representation of the entropy you have generated. **Must be 6 characters 
 
 * `err` - string representing the error message (or `null`)
 
-## sign(options, cb)
-
-### TODO: We need some tests that pass this response to broadcast()
+## <a href="sign">sign(options, cb)</a>
 
 Request a signature to be returned automatically (i.e. *without* user authorization). This must be requested within constraints of a pre-established permission.
 
