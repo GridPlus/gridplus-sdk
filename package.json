@@ -72,6 +72,9 @@
     "meta-npm": "0.0.28",
     "mocha": "^5.2.0"
   },
+  "files": [
+    "dist"
+  ],
   "license": "ISC",
   "publishConfig": {
     "registry": "https://nexus.gridpl.us/repository/npm-private/"
