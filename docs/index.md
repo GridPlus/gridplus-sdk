@@ -47,12 +47,14 @@ To connect the SDK to supported cryptocurrency networks, you will need to add *p
 import { providers } from `gridplus-sdk`;
 const eth = new providers.Ethereum({ 
     network: 'rinkeby' 
-    etherscan: true, 
+    etherscan: true,
+    apiKey: <myEtherscanApiKey>
 });
 const btc = new providers.Bitcoin({
     network: 'test3',
     blockcypher: true,
-    coin: 'btc'
+    coin: 'btc',
+    apiKey: <myBlockCypherApiKey>
 });
 
 clientConfig.providers = [ eth, btc ];
@@ -308,10 +310,10 @@ To use a particular provider, you must pass an object configuring the provider t
 
 ```
 // Use a BlockCypher provider for testnet3
-const btcProvider = new Bitcoin({ network: 'test3', blockcypher: true, coin: 'btc' });
+const btcProvider = new Bitcoin({ network: 'test3', blockcypher: true, coin: 'btc', apiKey });
 
 // Use an Etherscan provider for Rinkeby
-const ethPRovider = new Ethereum({ network: 'rinkeby', etherscan: true });
+const ethPRovider = new Ethereum({ network: 'rinkeby', etherscan: true, apiKey });
 ```
 
 Once imported, you can use this provider to instantiate your `client`:
@@ -328,6 +330,7 @@ const client = new Client({
 
 A few notes:
 
+* Your `apiKey` should be passed in for Etherscan and BlockCypher (i.e. cloud node providers). This does not need to be passed if you specify a custom node.
 * `clientConfig` must be passed as an object. `name` and `privKey` are required fields.
 * `providers` must be passed as an array of instantiated provider objects. Order does not matter here, as the client will automatically detect which provider corresponds to which currency (so long as the provider was intantiated properly).
 
@@ -368,6 +371,13 @@ const btc = new Bitcoin(params);
         <td>True if you want to use blockcypher</td>
         <td>true, false</td>
         <td>false</td>
+    </tr>
+    <tr>
+        <td>apiKey</td>
+        <td>string</td>
+        <td>The API key of the service you are using</td>
+        <td>Any</td>
+        <td>None</td>
     </tr>
     <tr>
         <td>host</td>
@@ -425,6 +435,13 @@ const eth = new Ethereum(paramss);
         <td>True if you want to use etherscan</td>
         <td>true, false</td>
         <td>false</td>
+    </tr>
+    <tr>
+        <td>apiKey</td>
+        <td>string</td>
+        <td>The API key of the service you are using</td>
+        <td>Any</td>
+        <td>None</td>
     </tr>
     <tr>
         <td>host</td>

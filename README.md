@@ -58,7 +58,7 @@ const eth = new providers.Ethereum({
 const btc = new providers.Bitcoin({
     network: 'test3',
     blockcypher: true,
-    coin: 'btc'
+    coin: 'btc',
 });
 
 clientConfig.providers = [ eth, btc ];
