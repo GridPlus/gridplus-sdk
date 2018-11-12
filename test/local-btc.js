@@ -151,12 +151,12 @@ describe('Bitcoin', () => {
     const req = {
       permissionIndex: 0,
       isManual: true,
-      total: 2,
+      total: 4,
       network: 'regtest'
     }
     client.addresses(req, (err, addresses) => {
       assert(err === null, err);
-      assert(addresses.length === 2);
+      assert(addresses.length === 4);
       deviceAddresses = addresses;
       // Get the baseline balance for the addresses
       client.getBalance('BTC', { address: deviceAddresses[0] }, (err, d) => {
@@ -260,7 +260,7 @@ describe('Bitcoin', () => {
     client.getBalance('BTC', { address: receiving[0][0] }, (err, d) => {
       assert(err === null, err);
       const utxo = d.utxos[0];
-      TX_VALUE = utxo.value - 10000;
+      TX_VALUE = 0.9 * utxo.value;
       
       const req = {
         schemaCode: 'BTC',
@@ -296,7 +296,7 @@ describe('Bitcoin', () => {
               // Check the balance of the receiving address
               const prevBal = receiving[1][1];
               const newBal = d.balance;
-              assert(newBal === TX_VALUE + prevBal, `Expected new balance of ${TX_VALUE + prevBal}, got ${newBal}`);
+              assert(newBal > prevBal, `Balance did not increase: new balance=${newBal}, old balance=${prevBal}`)
               done();
             })
           })
@@ -327,8 +327,58 @@ describe('Bitcoin', () => {
     });
   });
   
-  it('Should create an automated permission.');
+  it('Should create an automated permission.', (done) => {
+    const req = {
+      schemaCode: 'BTC',
+      timeLimit: 0,
+      params: {
+        value: { lt: 100000, gt: 1 }
+      }
+    };
+    client.addPermission(req, (err) => {
+      assert(err === null, err);
+      done();
+    })
+  });
 
-  it('Should make an automated signature request and broadcast the response in a transaction.');
+  it('Should make an automated signature request and broadcast the response in a transaction.', (done) => {
+    const recipient = deviceAddresses[0];
+    const req = {
+      schemaCode: 'BTC',
+      params: {
+        version: 1,
+        lockTime: 0,
+        recipient: recipient,
+        value: 1000,
+        change: null,
+        changeAccountIndex: 3
+      },
+      network: 'regtest',
+      sender: deviceAddresses[CHANGE_INDEX],
+      accountIndex: CHANGE_INDEX,
+      perByteFee: 1,
+      multisig: false,
+    }
+    client.signAutomated(req, (err, sigData) => {
+      assert(err === null, err);
+      client.broadcast('BTC', sigData, (err, txHash) => {
+        assert(err === null, err);
+        client.getBalance('BTC', { address: recipient }, (err, d) => {
+          assert(err === null, err);
+          assert(d.utxos[0].height === -1);
+          nodeClient.execute('generate', [ 1 ])
+          .then(() => {
+            assert(err === null, err);
+            client.getBalance('BTC', { address: recipient }, (err, d) => {
+              const h = d.utxos[d.utxos.length -1].hash;
+              assert(h === txHash, `Incorrect txHash: expected ${txHash}, got ${h}`);
+              done();
+            });
+          })
+          .catch((err) => { throw new Error(err); })
+        });
+      });
+    });
+  });
   
 });

@@ -36,11 +36,14 @@ export default class Bitcoin {
       const valueIndex = schema.indexOf('value');
       const changeIndex = schema.indexOf('change');
       const value = opts.params[valueIndex];
-      this._getUtxos(opts.sender, opts.accountIndex, value, (err, utxos) => {
+      this._getUtxos(opts.sender, opts.accountIndex, opts, value, (err, utxos) => {
         if (err) return cb(err);
         this.provider.buildInputs(utxos, (err, inputs) => {
           if (err) return cb(err);
           const change = this._getChange(opts, utxos, value);
+          if (change < 0) {
+            return cb('You are not sending enough to cover ')
+          }
           opts.params[changeIndex] = change;
           const newOpts = {
             schemaIndex: opts.schemaIndex,
@@ -88,37 +91,26 @@ export default class Bitcoin {
     return this.provider.getTx(hash, cb);
   }
 
-  _getUtxos(addresses, accountIndices, value, cb) {
+  _getUtxos(addresses, accountIndices, opts, value, cb) {
+    if (!Array.isArray(accountIndices)) accountIndices = [ accountIndices ];
+    if (!Array.isArray(addresses))      addresses = [ addresses ];
+    
     this.getBalance({ address: addresses }, (err, account) => {
       if (err) return cb(err);
-      
       const utxos = [];
       let utxoSum = 0;
-  
+      let change;
       if (account.utxos) { 
         // Blockcypher api
         account.utxos.forEach((utxo) => {
-          if (utxoSum <= value) {
+          if (utxoSum <= value || change < 0) {
             // Find the accountIndex corresponding to the address of the recipient
             utxo.accountIndex = accountIndices[addresses.indexOf(utxo.address)];
             utxos.push(utxo);
             utxoSum += utxo.value;
+            change = this._getChange(opts, utxos, value);
           }
         });
-      } else {
-        // Bcoin api
-        addresses.forEach((address, i) => {
-          if (account[address] && account[address].utxos && account[address].utxos.length > 0) {
-            account[address].utxos.forEach((utxo) => {
-              if (utxoSum <= value) {
-                // Find the accountIndex corresponding to the address of the recipient
-                utxo.accountIndex = accountIndices[addresses.indexOf(utxo.address)];
-                utxos.push(utxo);
-                utxoSum += utxo.value;
-              }
-            })
-          }
-        })
       }
       return cb(null, utxos);
     })
