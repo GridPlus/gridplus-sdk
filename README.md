@@ -1,18 +1,14 @@
 # gridplus-sdk
 
-*WARNING: This is early alpha software and it is recommended that any mainnet usage be restricted to small amounts*
+**WARNING: This is early alpha software and is subject to change. It is recommended that any mainnet usage be restricted to small amounts.**
 
-The Grid+ SDK allows any application to establish a connection and interact with a Grid+ Lattice device as a remote signer.
-
-With the Lattice1 as an extremely secure, connected keystore with signing capabilities, this SDK gives users the following functionality:
+The Grid+ SDK allows any application to establish a connection and interact with a Grid+ Lattice device as a remote signer. With the Lattice1 as an extremely secure, connected keystore with signing capabilities, this SDK gives users the following functionality:
 
 * **Pair** (exchange keys and establish encrypted communication channel) with a user's Lattice1 device using a serial
 * Get **addresses** from the paired device (Bitcoin or Ethereum)
 * Request ETH, ERC20, and BTC **signatures**, which the Lattice1 owner must authorize on the device
 * Create a **permission** giving your app the ability to request automated signatures based on rules accepted by the user
 * Request **automated signatures** against a permission
-
-*WARNING: The API may change in the future to allow for more functionality or a better UX*
 
 ## Documentation
 
