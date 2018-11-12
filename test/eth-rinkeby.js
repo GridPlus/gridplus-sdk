@@ -14,7 +14,7 @@ describe('Ethereum via Etherscan: ether transfers', () => {
 
   before(() => {
 
-    const eth = new providers.Ethereum({ network: 'rinkeby', etherscan: true });
+    const eth = new providers.Ethereum({ network: 'rinkeby', etherscan: true, apiKey: config.etherscanApiKey });
     client = new Client({
       clientConfig: {
         name: 'basic-test',

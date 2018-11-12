@@ -2,7 +2,7 @@ import { Client, providers } from 'index';
 import bitcoin from 'bitcoinjs-lib';
 import NodeCrypto from 'gridplus-node-crypto';
 import { assert } from 'elliptic/lib/elliptic/utils';
-import { testing } from '../src/config.js';
+import { blockcypherApiKey, testing } from '../src/config.js';
 const { btcHolder } = testing;
 let client, deviceAddresses, utxo;
 const balance0 = 0;
@@ -26,7 +26,7 @@ const holderAddress = btcHolder.bcyAddress
 
 describe('Bitcoin via BlockCypher: transfers', () => {
   before(() => {
-    const btc = new providers.Bitcoin({ network, blockcypher: true, timeout: 750 });
+    const btc = new providers.Bitcoin({ apiKey: blockcypherApiKey, network, blockcypher: true, timeout: 750 });
     client = new Client({
       clientConfig: {
         name: 'blockcypher-test',

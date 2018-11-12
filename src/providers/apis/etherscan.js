@@ -1,12 +1,16 @@
 import { BigNumber } from 'bignumber.js';
 import ethers from 'ethers';
 import config from '../../config.js';
+const defaultOpts = {
+  network: 'homestead', // No idea why mainnet is still being called homestead...
+  apiKey: config.etherscanApiKey,
+}
 
 export default class EtherscanApi {
 
-  constructor(opts) {
-    this.network = opts.network || 'homestead'; // No idea why mainnet is still being called homestead...
-    this.provider = new ethers.providers.EtherscanProvider(this.network, config.etherscanApiKey);
+  constructor(opts=defaultOpts) {
+    this.network = opts.network;
+    this.provider = new ethers.providers.EtherscanProvider(this.network, opts.apiKey);
   }
 
   sendTransaction(tx) {

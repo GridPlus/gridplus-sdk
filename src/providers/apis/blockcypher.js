@@ -1,5 +1,4 @@
 // Blockcypher API
-import { blockcypherApiKey } from '../../config';
 import { getOutputScriptType } from '../../util';
 const request = require('superagent');
 
@@ -11,6 +10,7 @@ export default class BlockCypherApi {
     this.blockcypherBaseUrl = `https://api.blockcypher.com/v1/${this.coin}/${this.network}`;
     this.timeout = opts.timeout ? opts.timeout : 0; // Timeout between requests to avoid getting 429s from blockcypher
     this.sat = opts.sat ? opts.sat : false;
+    this.apiKey = opts.apiKey;
   }
 
   getNetwork(code) {
@@ -66,7 +66,7 @@ export default class BlockCypherApi {
   }
 
   broadcast({tx:rawTx}, cb) {
-    const url = `${this.blockcypherBaseUrl}/txs/push?token=${blockcypherApiKey}`;
+    const url = `${this.blockcypherBaseUrl}/txs/push?token=${this.apiKey}`;
     return this._request(url, { tx: rawTx })
       .then((res) => { 
         if (!res || !res.tx || !res.tx.hash) return cb(`Could not properly broadcast transaction. Got response: ${JSON.stringify(res)}`)
