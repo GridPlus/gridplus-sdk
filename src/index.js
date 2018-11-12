@@ -9,7 +9,7 @@ export const providers = {
   Ethereum,
 };
 import { buildPermissionRequest, buildSigRequest } from './permissions';
-const tokenList = require('../tokensByAddress.json')
+// const tokenList = require('../tokensByAddress.json')
 const log = debug('gridplus-sdk');
 
 export default class SdkClient {

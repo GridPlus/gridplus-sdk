@@ -1,6 +1,5 @@
 // Basic tests for atomic SDK functionality
 import assert from 'assert';
-import EthUtil from 'ethereumjs-util';
 import Tx from 'ethereumjs-tx';
 import config, { testing } from '../src/config.js';
 import { Client, providers, tokens } from 'index';

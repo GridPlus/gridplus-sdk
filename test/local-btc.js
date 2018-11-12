@@ -22,7 +22,6 @@ import crypto from 'crypto';
 
 let deviceAddresses, startBal, startUtxos, TX_VALUE;
 const CHANGE_INDEX = 2
-let CHANGE_AMOUNT = 9000;
 
 const { host, network, port } = bitcoinNode;
 const { btcHolder } = testing;
@@ -317,7 +316,6 @@ describe('Bitcoin', () => {
       client.getBalance('BTC', { address: addresses[CHANGE_INDEX] }, (err, d) => {
         assert(err === null, err);
         assert(d.utxos.length > 0, 'Did not find any change outputs')
-        // assert(d.utxos[d.utxos.length - 1].value === CHANGE_AMOUNT, 'Change output was wrong')
         done();
       });
     });

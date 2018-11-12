@@ -4,7 +4,7 @@ import NodeCrypto from 'gridplus-node-crypto';
 import { assert } from 'elliptic/lib/elliptic/utils';
 import { testing } from '../src/config.js';
 const { btcHolder } = testing;
-let client, deviceAddresses, utxo, newUtxo;
+let client, deviceAddresses, utxo;
 const balance0 = 0;
 process.on('unhandledRejection', e => { throw e; });
 
@@ -172,10 +172,8 @@ describe('Bitcoin via BlockCypher: transfers', () => {
           assert.equal(err, null, err);      
           assert(data.utxos.length > 0, `Address (${a}) has not sent or received any bitcoins. Please request funds from the faucet (https://coinfaucet.eu/en/btc-testnet/) and try again.`);
           assert(data.utxos[0].height > 0 && data.utxos[0].index !== undefined, `Address (${a}) has a transaction, but it has not been confirmed. Please wait until it has`);
-          newUtxo = data.utxos[0];
           done();
         } else if (data.utxos.length > 0 && data.utxos[0].height > 0) {
-          newUtxo = data.utxos[0];
           clearInterval(interval);
           done();
         } else {

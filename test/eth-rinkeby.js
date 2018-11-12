@@ -175,6 +175,7 @@ describe('Ethereum via Etherscan: ether transfers', () => {
           assert(err === null, err);
           client.broadcast('ETH', sigData, (err, txHash) => {
             assert(err === null, err);
+            assert(txHash !== undefined && txHash !== null);
             done();
           })
         });
