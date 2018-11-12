@@ -1,9 +1,5 @@
-import config from '../config.js';
 import { BigNumber } from 'bignumber.js';
 import { EtherscanApi, JsonRpcApi } from './apis'
-import { isArray } from 'util';
-const schemaCodes = require('../permissions/codes.json').code;
-
 export default class Ethereum {
   constructor (opts) {
     this.name = 'ethereum';

@@ -14,9 +14,9 @@ exports.buildPermissionRequest = function(opts) {
     rules: [],
     timeLimit: opts.timeLimit,
   };
-  const expectedTypes = codes.schemaTypes[req.schemaIndex];
+  // const expectedTypes = codes.schemaTypes[req.schemaIndex];
   const expectedNames = codes.schemaNames[req.schemaIndex];
-  expectedNames.forEach((paramName, i) => {
+  expectedNames.forEach((paramName) => {
     if (opts.params[paramName] !== undefined) {
       // if (typeof opts.params[paramName] !== expectedTypes[i]) return `Incorrect param type (${paramName}): Expected ${expectedTypes[i]}, got ${typeof opts.params[paramName]}`;
       const rule = getRule(opts.params[paramName]);

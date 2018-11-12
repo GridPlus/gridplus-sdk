@@ -1,7 +1,6 @@
 import config from '../config.js';
 import { BlockCypherApi, BcoinApi } from './apis'
 const schemas = require('../permissions/codes.json');
-const BASE_SEGWIT_SIZE = 134; // see: https://www.reddit.com/r/Bitcoin/comments/7m8ald/how_do_i_calculate_my_fees_for_a_transaction_sent/
 const defaultOpts = {
   host: config.bitcoinNode.host,
   network: config.bitcoinNode.network,
