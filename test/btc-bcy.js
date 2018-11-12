@@ -165,38 +165,95 @@ describe('Bitcoin via BlockCypher: transfers', () => {
     }
   });
 
-  it('Should get the utxo of the new account', (done) => {
-    const a = deviceAddresses[0];
-    let count = 0;
-    const interval = setInterval(() => {
-      client.getBalance('BTC', { address: a }, (err, data) => {
-        if (count > 10) {
-          assert.equal(err, null, err);      
-          assert(data.utxos.length > 0, `Address (${a}) has not sent or received any bitcoins. Please request funds from the faucet (https://coinfaucet.eu/en/btc-testnet/) and try again.`);
-          assert(data.utxos[0].height > 0 && data.utxos[0].index !== undefined, `Address (${a}) has a transaction, but it has not been confirmed. Please wait until it has`);
-          newUtxo = data.utxos[0];
-          done();
-        } else if (data.utxos.length > 0 && data.utxos[0].height > 0) {
-          newUtxo = data.utxos[0];
-          clearInterval(interval);
-          done();
-        } else {
-          count += 1;
-        }
-      });
-    }, 10000);
+  // it('Should get the utxo of the new account', (done) => {
+  //   const a = deviceAddresses[0];
+  //   let count = 0;
+  //   const interval = setInterval(() => {
+  //     client.getBalance('BTC', { address: a }, (err, data) => {
+  //       if (count > 10) {
+  //         assert.equal(err, null, err);      
+  //         assert(data.utxos.length > 0, `Address (${a}) has not sent or received any bitcoins. Please request funds from the faucet (https://coinfaucet.eu/en/btc-testnet/) and try again.`);
+  //         assert(data.utxos[0].height > 0 && data.utxos[0].index !== undefined, `Address (${a}) has a transaction, but it has not been confirmed. Please wait until it has`);
+  //         newUtxo = data.utxos[0];
+  //         done();
+  //       } else if (data.utxos.length > 0 && data.utxos[0].height > 0) {
+  //         newUtxo = data.utxos[0];
+  //         clearInterval(interval);
+  //         done();
+  //       } else {
+  //         count += 1;
+  //       }
+  //     });
+  //   }, 10000);
+  // });
+
+  // it('Should spend some of the new coins from the lattice address', (done) => {
+  //   const req = {
+  //     schemaCode: 'BTC',
+  //     params: {
+  //       version: 1,
+  //       lockTime: 0,
+  //       recipient: 'CFr99841LyMkyX5ZTGepY58rjXJhyNGXHf',
+  //       value: 100,
+  //       change: null,
+  //       changeAccountIndex: 1
+  //     },
+  //     network: 'bcy',
+  //     sender: [ deviceAddresses[0], deviceAddresses[1] ],
+  //     accountIndex: [ 0, 1 ],
+  //     perByteFee: 1,   // optional
+  //     multisig: false, // optional
+  //   }
+
+  //   client.signManual(req, (err, res) => {
+  //     assert(err === null, err);
+  //     setTimeout(() => {
+  //       client.broadcast('BTC', res, (err2, txHash) => {
+  //         assert(err2 === null, err2);
+  //         let count = 0;
+  //         const interval = setInterval(() => {
+  //           client.getTx('BTC', txHash, (err, data) => {
+  //             if (count > 10) {
+  //               assert.equal(err, null, err);      
+  //               throw new Error('Transaction did not mine in time');
+  //             } else if (data.block_height > -1) {
+  //               clearInterval(interval);
+  //               done();
+  //             } else {
+  //               count += 1;
+  //             }
+  //           });
+  //         }, 10000);
+  //       });
+  //     }, 750);
+  //   });
+  // });
+
+  it('Should create an automated permission.', (done) => {
+    const req = {
+      schemaCode: 'BTC',
+      timeLimit: 0,
+      params: {
+        value: { lt: 100000, gt: 1 }
+      }
+    };
+    client.addPermission(req, (err) => {
+      assert(err === null, err);
+      done();
+    });
   });
 
-  it('Should spend some of the new coins from the lattice address', (done) => {
+  it('Should make an automated signature request and broadcast the response in a transaction.', (done) => {
+    const recipient = 'CFr99841LyMkyX5ZTGepY58rjXJhyNGXHf'; // random address
     const req = {
       schemaCode: 'BTC',
       params: {
         version: 1,
         lockTime: 0,
-        recipient: 'CFr99841LyMkyX5ZTGepY58rjXJhyNGXHf',
+        recipient: recipient,
         value: 100,
         change: null,
-        changeAccountIndex: 1
+        changeAccountIndex: 1,
       },
       network: 'bcy',
       sender: [ deviceAddresses[0], deviceAddresses[1] ],
@@ -205,7 +262,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       multisig: false, // optional
     }
 
-    client.signManual(req, (err, res) => {
+    client.signAutomated(req, (err, res) => {
       assert(err === null, err);
       setTimeout(() => {
         client.broadcast('BTC', res, (err2, txHash) => {
@@ -216,7 +273,14 @@ describe('Bitcoin via BlockCypher: transfers', () => {
               if (count > 10) {
                 assert.equal(err, null, err);      
                 throw new Error('Transaction did not mine in time');
-              } else if (data.block_height > -1) {
+              } else if (data && data.block_height > -1) {
+                const o1 = data.outputs[0].addresses[0];
+                if (o1 !== recipient) throw new Error(`Recipient did not receive output. Sent to ${o1}, but expected ${recipient}`);
+                const v1 = data.outputs[0].value;
+                if (v1 !== req.params.value) throw new Error(`Output value incorrect. Sent ${v1}, but expected ${req.params.value}`);
+                const o2 = data.outputs[1].addresses[0];
+                const expectedO2 = deviceAddresses[req.params.changeAccountIndex]
+                if (o2 !== expectedO2) throw new Error(`Change did not go to correct address. Sent to ${o2} but expected ${expectedO2}`);
                 clearInterval(interval);
                 done();
               } else {
@@ -228,9 +292,5 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       }, 750);
     });
   });
-
-  it('Should create an automated permission.');
-
-  it('Should make an automated signature request and broadcast the response in a transaction.');
 
 });
