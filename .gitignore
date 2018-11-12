@@ -1,3 +1,5 @@
+secrets.json
+mkdocs.yml
 tokensByAddress.json
 tokensbySymbol.json
 package-lock.json

@@ -8,6 +8,40 @@ const EC = elliptic.ec;
 const ec = new EC('curve25519');
 const ecSecp256k1 = new EC('secp256k1');
 
+const OPs = {
+  'a9': 'OP_HASH160',
+  '76': 'OP_DUP',
+  '87': 'OP_EQUAL',
+  'ac': 'OP_CHECKSIG',
+}
+
+export function getProviderShortCode(schemaCode) {
+  switch (schemaCode) {
+    case 'ETH':
+      return 'ETH';
+    case 'ETH-ERC20':
+      return 'ETH';
+    case 'BTC':
+      return 'BTC';
+  }
+}
+
+export function getOutputScriptType(s, multisig=false) {
+  const OP_first = s.slice(0, 2);
+  const OP_last = s.slice(s.length - 2, s.length);
+  const p2pkh = (OPs[OP_first] === 'OP_DUP' && OPs[OP_last] === 'OP_CHECKSIG');
+  const p2sh = (OPs[OP_first] === 'OP_HASH160' && OPs[OP_last] === 'OP_EQUAL');
+  if (p2pkh) {
+    return 'p2pkh';
+  } else if (p2sh && multisig === true) {
+    return 'p2sh';
+  } else if (p2sh && multisig !== true) {
+    return 'p2sh(p2wpkh)';
+  } else {
+    return null;
+  }
+}
+
 export function ecdsaKeyPair (privKey) {
   const curve = new EC('secp256k1');
   const key = curve.keyFromPrivate(privKey, 'hex');
@@ -120,20 +154,20 @@ function parseBtcTx(res) {
 function parseEthTx(res) {
   const sigData = res.result.data.sigData.split(config.api.SPLIT_BUF);
   const { params } = res.result.data;
+  const s = sigData[1];
   const d = {
-    sigs: sigData.slice(1),
-    vrs: [],
+    sig: s,
+    vrs: [ parseInt(s.slice(-1)) + 27, s.slice(0, 64), s.slice(64, 128) ],
     to: params[3],
     value: getEthValue(params),
     height: -1,  // Everything passing through here will be unmined
   }
-  d.sigs.forEach((sig) => {
-    d.vrs.push([ parseInt(sig.slice(-1)) + 27, sig.slice(0, 64), sig.slice(64, 128) ]);
-  });
+
   // Transaction should be an array of all the original params plus the v,r,s array (there should only be one of those)
-  const vrsToUse = [ d.vrs[0][0], Buffer.from(d.vrs[0][1], 'hex'), Buffer.from(d.vrs[0][2], 'hex') ];
+  const vrsToUse = [ d.vrs[0], Buffer.from(d.vrs[1], 'hex'), Buffer.from(d.vrs[2], 'hex') ];
   d.tx = `0x${rlpEncode(params.concat(vrsToUse)).toString('hex')}`;
   d.txHash = null;
+  d.unsignedTx = sigData[0];
   return d;
 }
 

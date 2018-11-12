@@ -1,15 +1,40 @@
 // Blockcypher API
-import { blockcypherApiKey } from '../../config';
+import { getOutputScriptType } from '../../util';
 const request = require('superagent');
 
 export default class BlockCypherApi {
 
-  constructor(opts) {
-    this.network = opts.network ? opts.network : 'main';
-    this.coin = opts.coin ? opts.coin : 'btc';
+  constructor(opts={}) {
+    this.network = this.getNetwork(opts.network);
+    this.coin = this.getCoin(this.network);
     this.blockcypherBaseUrl = `https://api.blockcypher.com/v1/${this.coin}/${this.network}`;
     this.timeout = opts.timeout ? opts.timeout : 0; // Timeout between requests to avoid getting 429s from blockcypher
     this.sat = opts.sat ? opts.sat : false;
+    this.apiKey = opts.apiKey;
+  }
+
+  getNetwork(code) {
+    switch (code) {
+      case 'testnet':
+        return 'test3';
+      case 'bcy':
+        return 'test';
+      case 'bitcoin':
+        return 'main';
+      case 'regtest':
+        return 'regtest';
+      default:
+        return 'main';
+    }
+  }
+
+  getCoin(network) {
+    switch (network) {
+      case 'test':
+        return 'bcy';
+      default:
+        return 'btc';
+    }
   }
 
   initialize(cb) {
@@ -18,10 +43,35 @@ export default class BlockCypherApi {
     .catch((err) => cb(err));
   }
 
+  buildInputs(utxos, cb) {
+    if (utxos.length === 0) {
+      return cb(null, utxos);
+    } else {
+      let inputs = [];
+      const hashes = [];
+      utxos.forEach((utxo) => { hashes.push(utxo.hash); });
+      this.getTx(hashes, (err, txs) => {
+        if (!Array.isArray(txs)) txs = [ txs ];
+        if (err) return cb(err);
+        txs.forEach((tx, i) => {
+          const u = utxos[i];
+          const o = tx.outputs[u.index];
+          const input = [ u.hash, u.index, getOutputScriptType(o.script), u.accountIndex, o.value ];
+          inputs = inputs.concat(input);
+        })
+
+        return cb(null, inputs);
+      })
+    }
+  }
+
   broadcast({tx:rawTx}, cb) {
-    const url = `${this.blockcypherBaseUrl}/txs/push?token=${blockcypherApiKey}`;
+    const url = `${this.blockcypherBaseUrl}/txs/push?token=${this.apiKey}`;
     return this._request(url, { tx: rawTx })
-      .then((res) => { return cb(null, this._filterBroadcastedTx(res)); })
+      .then((res) => { 
+        if (!res || !res.tx || !res.tx.hash) return cb(`Could not properly broadcast transaction. Got response: ${JSON.stringify(res)}`)
+        else                                 return cb(null, res.tx.hash )
+      })
       .catch((err) => { return cb(err); })
   }
 
@@ -65,11 +115,11 @@ export default class BlockCypherApi {
     }
   }
 
-  getTxs(hashes, cb, opts={}) {
+  getTx(hashes, cb, opts={}) {
     if (typeof hashes === 'string') hashes = [ hashes ];
     const url = `${this.blockcypherBaseUrl}/txs/${hashes.join(';')}`;
     return this._request(url)
-      .then((txs) => { return cb(null, this._filterTxs(txs, opts.addresses || [])); })
+      .then((txs) => { return cb(null, this._filterTxs(txs, opts.addresses)); })
       .catch((err) => { return cb(err); })
   }
 
@@ -114,41 +164,45 @@ export default class BlockCypherApi {
     return filteredUtxos;
   }
 
-  _filterTxs(txs, address) {
-    const oldTxs = (txs && txs.length !== undefined) ? txs : [ txs ];
-    const newTxs = [];
-    const addresses = typeof address === 'string' ? [ address ] : address;
-    oldTxs.forEach((tx) => {
-      tx.inputs.forEach((i) => {
-        const inputAddress = i.addresses[0];
-        const outputAddress = tx.outputs[0].addresses[0];
-        if (addresses.indexOf(inputAddress) > -1) {
-          const filteredTx = this._filterTx(tx, outputAddress, inputAddress, this._getInputValue(i, tx.outputs, addresses));
-          if (filteredTx) newTxs.push(filteredTx);
-        }
+  _filterTxs(txs, address=[]) {
+    if (!address || address.length === 0) {
+      return txs;
+    } else {
+      const oldTxs = (txs && txs.length !== undefined) ? txs : [ txs ];
+      const newTxs = [];
+      const addresses = typeof address === 'string' ? [ address ] : address;
+      oldTxs.forEach((tx) => {
+        tx.inputs.forEach((i) => {
+          const inputAddress = i.addresses[0];
+          const outputAddress = tx.outputs[0].addresses[0];
+          if (addresses.indexOf(inputAddress) > -1) {
+            const filteredTx = this._filterTx(tx, outputAddress, inputAddress, this._getInputValue(i, tx.outputs, addresses));
+            if (filteredTx) newTxs.push(filteredTx);
+          }
+        })
+        tx.outputs.forEach((o) => {
+          // Really not sure why output.addresses is an array. I don't know when you would
+          // send an output with multiple recipients...
+          const outputAddress = o.addresses[0];
+          const inputAddress = tx.inputs[0].addresses[0];
+          if (addresses.indexOf(outputAddress) > -1) {
+            const filteredTx = this._filterTx(tx, outputAddress, inputAddress, o.value, true);
+            if (filteredTx) newTxs.push(filteredTx);
+          }
+        })
       })
-      tx.outputs.forEach((o) => {
-        // Really not sure why output.addresses is an array. I don't know when you would
-        // send an output with multiple recipients...
-        const outputAddress = o.addresses[0];
-        const inputAddress = tx.inputs[0].addresses[0];
-        if (addresses.indexOf(outputAddress) > -1) {
-          const filteredTx = this._filterTx(tx, outputAddress, inputAddress, o.value, true);
-          if (filteredTx) newTxs.push(filteredTx);
-        }
-      })
-    })
-    if (txs.length !== undefined) return newTxs
-    else                          return newTxs[0];
+      if (txs.length !== undefined) return newTxs
+      else                          return newTxs[0];
+    }
   }
 
-  _filterBroadcastedTx(res) {
-    const tx = res.tx ? res.tx : res;
-    const sender = tx.inputs[0].addresses[0];
-    if (tx.outputs.length < 1) return null;
-    const output = tx.outputs[0];
-    return this._filterTx(tx, output.addresses[0], sender, output.value);
-  }
+  // _filterBroadcastedTx(res) {
+  //   const tx = res.tx ? res.tx : res;
+  //   const sender = tx.inputs[0].addresses[0];
+  //   if (tx.outputs.length < 1) return null;
+  //   const output = tx.outputs[0];
+  //   return this._filterTx(tx, output.addresses[0], sender, output.value);
+  // }
 
   _getInputValue(input, outputs, addresses) {
     let val = input.output_value;

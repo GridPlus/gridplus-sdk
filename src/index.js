@@ -3,12 +3,13 @@ import Bitcoin from './providers/Bitcoin';
 import debug from 'debug';
 import Ethereum from './providers/Ethereum';
 import AgentRestClient from './rest/client';
-import { parseSigResponse } from './util';
+import { parseSigResponse, getProviderShortCode } from './util';
 export const providers = {
   Bitcoin,
   Ethereum,
 };
-const tokenList = require('../tokensByAddress.json')
+import { buildPermissionRequest, buildSigRequest } from './permissions';
+// const tokenList = require('../tokensByAddress.json')
 const log = debug('gridplus-sdk');
 
 export default class SdkClient {
@@ -42,27 +43,94 @@ export default class SdkClient {
   }
 
   addresses(param, cb) {
-    return this.client.pairedRequest('addresses', { param }, cb);
+    this.client.pairedRequest('addresses', { param }, (err, res) => {
+      if (err) return cb(err);  
+      if (!res.result || !res.result.data || !res.result.data.addresses) return cb('Incorrect response.');
+      return cb(null, res.result.data.addresses);
+    });
   }
 
   addManualPermission(cb) {
-    return this.client.pairedRequest('addManualPermission', { }, cb);
+    this.client.pairedRequest('addManualPermission', { }, (err) => {
+      return cb(err);
+    });
   }
 
   addPermission(param, cb) {
-    return this.client.pairedRequest('addPermission', { param }, cb);
+    const req = buildPermissionRequest(param);
+    if (typeof req === 'string') return cb(req);
+    this.client.pairedRequest('addPermission', { param: req }, (err) => {
+      return cb(err);
+    });
   }
 
-  /*
-    connects to all configured network providers, returning the first of any encountered errors.
-    else continues via supplied callback when done.
-  */
+  // Broadcast a transaction and return the result of the mempool
+  broadcast(shortcode, payload, cb) {
+    if (! this.providers[shortcode]) {
+      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
+    }
+
+    return this.providers[shortcode].broadcast(payload, cb);
+  }
+
+
+  // connects to all configured network providers, returning the first of any encountered errors.
+  // else continues via supplied callback when done.
   connect(serial, cb) {
     if (typeof serial === 'function') {
       cb = serial;
       serial = null;
     }
     return this.client.request('connect', cb);
+  }
+
+  deletePairing(cb) {
+    return this.client.pairedRequest('deletePairing', {}, cb);
+  }
+
+   // Get a balance for an account.
+  // @param [shortcode]  {string}  - "ETH", "ERC20", or "BTC"
+  // @param [addr]      {string}  - The account we are querying
+  // @param [ERC20Addr] {string}  - (optional) Address of the ERC20 token we are asking about
+  // @callback                    - err (Error), data (object)
+  getBalance(shortcode, options, cb) {
+    if (typeof options === 'function') {
+      cb = options;
+      options = {};
+    }
+
+    if (! this.providers[shortcode]) {
+      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
+    }
+
+    return this.providers[shortcode].getBalance(options, cb);
+  }
+
+  getTokenBalance(options, cb) {
+    if (!this.providers['ETH']) {
+      return cb(new Error('Cannot request token balance. ETH provider is not set.'))
+    }
+
+    return this.providers['ETH'].getTokenBalance(options, cb);
+  }
+
+  getTxHistory(shortcode, options, cb) {
+    if (! this.providers[shortcode]) {
+      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
+    }
+    return this.providers[shortcode].getTxHistory(options, cb);
+  }
+
+  // Get (one or more) transaction(s) and return (one or more) object(s) that conform to a common schema across currencies
+  getTx(shortcode, hashes, opts, cb) {
+    if (! this.providers[shortcode]) {
+      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
+    }
+    if (typeof opts === 'function') {
+      cb = opts;
+      opts = {};
+    }
+    return this.providers[shortcode].getTx(hashes, cb, opts);
   }
 
   initialize(options, cb) {
@@ -114,94 +182,35 @@ export default class SdkClient {
     return this.client.pair(appSecret, cb);
   }
 
-  deletePairing(cb) {
-    return this.client.pairedRequest('deletePairing', {}, cb);
-  }
-
-  signAutomated(param, cb) {
-    return this.client.pairedRequest('signAutomated', { param }, cb);
-  }
-
-  signManual(param, cb) {
-    return this.client.pairedRequest('signManual', { param }, (err, res) => {
+  sign(param, cb) {
+    const req = buildSigRequest(param);
+    const automated = param.usePermission ? param.usePermission : false;
+    const route = automated === true ? 'signAutomated' : 'signManual';
+    if (typeof req === 'string') return cb(req);
+    const providerCode = getProviderShortCode(param.schemaCode);
+    this._getStatefulParams(providerCode, req, (err, newReq) => {
       if (err) return cb(err);
-      const data = parseSigResponse(res);
-      res.data = data;
-      cb(null, res);
-    });
+      this.client.pairedRequest(route, { param: newReq }, (err, res) => {
+        if (err) return cb(err)
+        else if (!res || res.result === undefined || res.result.data === undefined || res.result.data.sigData === undefined) return cb('Incorrect response');
+        
+        res.result.data.params = newReq.params;
+        
+        if (res.result.data.schemaIndex === undefined) res.result.data.schemaIndex = newReq.schemaIndex;
+        if (res.result.data.typeIndex === undefined) res.result.data.typeIndex = newReq.typeIndex;
+        
+        return cb(null, parseSigResponse(res))
+      });
+    })
   }
 
-  // Get a balance for an account.
-  // @param [shortcode]  {string}  - "ETH", "ERC20", or "BTC"
-  // @param [addr]      {string}  - The account we are querying
-  // @param [ERC20Addr] {string}  - (optional) Address of the ERC20 token we are asking about
-  // @callback                    - err (Error), data (object)
-  getBalance(shortcode, options, cb) {
-    if (typeof options === 'function') {
-      cb = options;
-      options = {};
+  // Add additional parameters and reconfigure the request as needed
+  _getStatefulParams(providerCode, req, cb) {
+    if (this.providers[providerCode]) {
+      return this.providers[providerCode].getStatefulParams(req, cb);
+    } else {
+      return cb(null, req);
     }
-
-    if (! this.providers[shortcode]) {
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    }
-
-    return this.providers[shortcode].getBalance(options, cb);
-  }
-
-  getTokenBalance(options, cb) {
-    if (!this.providers['ETH']) {
-      return cb(new Error('Cannot request token balance. ETH provider is not set.'))
-    }
-
-    return this.providers['ETH'].getTokenBalance(options, cb);
-  }
-
-  getTxHistory(shortcode, options, cb) {
-    if (! this.providers[shortcode]) {
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    }
-    return this.providers[shortcode].getTxHistory(options, cb);
-  }
-
-  // Get (one or more) transaction(s) and return (one or more) object(s) that conform to a common schema across currencies
-  getTx(shortcode, hashes, opts, cb) {
-    if (! this.providers[shortcode]) {
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    }
-    if (typeof opts === 'function') {
-      cb = opts;
-      opts = {};
-    }
-    return this.providers[shortcode].getTx(hashes, cb, opts);
-  }
-
-  // Broadcast a transaction and return the result of the mempool
-  broadcast(shortcode, payload, cb) {
-    if (! this.providers[shortcode]) {
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    }
-
-    return this.providers[shortcode].broadcast(payload, cb);
-  }
-
-  // Build a transaction
-  // @param [shortcode]  {string}          - "ETH" or "BTC"
-  // @param [to]      {string}          - Receiving address
-  // @param [from]    {string | array}  - Sending address (or addresses for BTC)
-  // @param [value]   {number}          - number of tokens to send in the tx
-  // @param [opts]    {Object}          - (optional) parameterization options, including ERC20 address
-  // @callback                          - err (Error), data (object)
-  buildTx(shortcode, from, to, value, opts={}, cb) {
-    if (typeof opts === 'function') {
-      cb = opts;
-      opts = {};
-    }
-
-    if (! this.providers[shortcode]) {
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    }
-    return this.providers[shortcode].buildTx(from, to, value, opts, cb);
   }
 
 }

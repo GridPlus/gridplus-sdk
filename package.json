@@ -33,7 +33,7 @@
     "url": "git+https://github.com/GridPlus/gridplus-sdk.git"
   },
   "dependencies": {
-    "@gridplus/bclient": "^0.1.1",
+    "gridplus-bclient": "^0.1.2",
     "aes-js": "^3.1.1",
     "bignumber.js": "^7.2.1",
     "bitcoinjs-lib": "^4.0.1",
@@ -49,8 +49,8 @@
     "superagent": "^3.8.3"
   },
   "devDependencies": {
-    "@gridplus/node-crypto": "^0.0.0",
-    "@gridplus/react-native-crypto": "^0.0.0",
+    "gridplus-node-crypto": "^0.0.0",
+    "gridplus-react-native-crypto": "^0.0.0",
     "babel-cli": "^6.24.1",
     "babel-core": "^6.25.0",
     "babel-eslint": "^8.2.2",
@@ -72,6 +72,9 @@
     "meta-npm": "0.0.28",
     "mocha": "^5.2.0"
   },
+  "files": [
+    "dist"
+  ],
   "license": "ISC",
   "publishConfig": {
     "registry": "https://nexus.gridpl.us/repository/npm-private/"

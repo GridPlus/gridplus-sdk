@@ -1,7 +1,5 @@
-import config from '../config.js';
 import { BigNumber } from 'bignumber.js';
 import { EtherscanApi, JsonRpcApi } from './apis'
-
 export default class Ethereum {
   constructor (opts) {
     this.name = 'ethereum';
@@ -19,48 +17,11 @@ export default class Ethereum {
   broadcast (data, cb) {
     this.provider.sendTransaction(data.tx)
     .then((txHash) => {
-      this._getTx(txHash, (err, tx) => {
-        if (err) return cb(err);
-        tx.timestamp = new Date().getTime() / 1000;
-        tx.in = 0;
-        return cb(null, tx);
-      });
+      return cb(null, txHash);
     })
     .catch((err) => { 
       return cb(err);
     })
-  }
-
-  buildTx (from, to, value, opts = {}, cb) {
-    if (typeof from !== 'string') {
-      cb('Please specify a single address to transfer from');
-    } else {
-      this.getNonce(from)
-        .then((nonce) => {
-          const tx = [ nonce, null, null, to, null, null ];
-          // Fill in `value` and `data` if this is an ERC20 transfer
-          if (opts.ERC20Token !== undefined) {
-            tx[5] = config.erc20.transfer(to, value);
-            tx[4] = 0;
-            tx[3] = opts.ERC20Token;
-            tx[2] = 100000; // gas=100,000 to be safe
-          } else {
-            tx[5] = '';
-            tx[4] = value;
-            tx[2] = 22000; // gas=22000 for ETH transfers
-          }
-          // Check for a specified gas price (should be in decimal)
-          if (opts.gasPrice !== undefined) {
-            tx[1] = opts.gasPrice;
-          } else {
-            tx[1] = config.defaults.gasPrice;
-          }
-          cb(null, tx);
-        })
-        .catch((err) => {
-          cb(err);
-        });
-    }
   }
 
   getBalance ({ address }, cb) {
@@ -81,6 +42,23 @@ export default class Ethereum {
     .catch((err) => { cb(err); })
   }
 
+  getStatefulParams(opts, cb) {
+    // Get the nonce
+    if (opts.sender) {
+      if (Array.isArray(opts)) opts.sender = opts.sender[0];
+      this.getNonce(opts.sender)
+      .then((nonce) => {
+        opts.params[0] = nonce;   // Nonce is in the first position
+        return cb(null, opts);
+      })
+      .catch((err) => {
+        return cb(err);
+      });
+    } else {
+      return cb(null, opts);
+    }
+  }
+
   getTokenBalance(options, cb) {
     const { address } = options;
     const tokens = options.tokens ? options.tokens : options.token;
@@ -97,7 +75,7 @@ export default class Ethereum {
     });
   }
 
-  getTx(hashes, cb, opts={}, filled=[]) {
+  getTx(hashes, cb, filled=[]) {
     if (typeof hashes === 'string') {
       return this._getTx(hashes, cb);
     } else if (hashes.length === 0) {
@@ -107,7 +85,7 @@ export default class Ethereum {
       return this._getTx(hash, (err, tx) => {
         if (err) return cb(err);
         if (tx) filled.push(tx);
-        return this.getTx(hashes, cb, opts, filled);
+        return this.getTx(hashes, cb, filled);
       });
     }
   }

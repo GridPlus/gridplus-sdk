@@ -1,10 +1,10 @@
 import { Client, providers } from 'index';
 import bitcoin from 'bitcoinjs-lib';
-import NodeCrypto from '@gridplus/node-crypto';
+import NodeCrypto from 'gridplus-node-crypto';
 import { assert } from 'elliptic/lib/elliptic/utils';
-import { testing } from '../src/config.js';
+import { blockcypherApiKey, testing } from '../src/config.js';
 const { btcHolder } = testing;
-let client, deviceAddresses, utxo, newUtxo;
+let client, deviceAddresses, utxo;
 const balance0 = 0;
 process.on('unhandledRejection', e => { throw e; });
 
@@ -21,13 +21,12 @@ const bcy = {                    // blockcypher testnet (https://www.blockcypher
   wif: 0x49
 };
 
-const coin = 'bcy';
 const network = 'bcy';
 const holderAddress = btcHolder.bcyAddress
 
 describe('Bitcoin via BlockCypher: transfers', () => {
   before(() => {
-    const btc = new providers.Bitcoin({ network: 'test', blockcypher: true, coin, timeout: 750 });
+    const btc = new providers.Bitcoin({ apiKey: blockcypherApiKey, network, blockcypher: true, timeout: 750 });
     client = new Client({
       clientConfig: {
         name: 'blockcypher-test',
@@ -66,28 +65,24 @@ describe('Bitcoin via BlockCypher: transfers', () => {
   });
 
   it('Should create a manual permission', (done) => {
-    client.addManualPermission((err, res) => {
+    client.addManualPermission((err) => {
       assert(err === null, err);
-      assert(res.result.status === 200);
       done();
     })
   });
 
   it('Should get the first 2 Bitcoin addresses of the manual permission and log address 0', (done) => {
     const req = {
-      permissionIndex: 0,
-      isManual: true,
       total: 2,
       network,
       segwit: false
     }
-    client.addresses(req, (err, res) => {
+    client.addresses(req, (err, addresses) => {
       assert(err === null, err);
-      const addrs = res.result.data.addresses;
-      assert(addrs.length === 2);
-      assert(addrs[0].slice(0, 1) === 'B' || addrs[0].slice(0, 1) === 'C', 'Address 1 is not a BCY address');
-      assert(addrs[1].slice(0, 1) === 'B' || addrs[1].slice(0, 1) === 'C', 'Address 2 is not a BCY address')
-      deviceAddresses = addrs;
+      assert(addresses.length === 2);
+      assert(addresses[0].slice(0, 1) === 'B' || addresses[0].slice(0, 1) === 'C', 'Address 1 is not a BCY address');
+      assert(addresses[1].slice(0, 1) === 'B' || addresses[1].slice(0, 1) === 'C', 'Address 2 is not a BCY address')
+      deviceAddresses = addresses;
       // // Get the baseline balance for the addresses
       client.getBalance('BTC', { address: deviceAddresses }, (err) => {
         assert(err === null, err);
@@ -177,10 +172,8 @@ describe('Bitcoin via BlockCypher: transfers', () => {
           assert.equal(err, null, err);      
           assert(data.utxos.length > 0, `Address (${a}) has not sent or received any bitcoins. Please request funds from the faucet (https://coinfaucet.eu/en/btc-testnet/) and try again.`);
           assert(data.utxos[0].height > 0 && data.utxos[0].index !== undefined, `Address (${a}) has a transaction, but it has not been confirmed. Please wait until it has`);
-          newUtxo = data.utxos[0];
           done();
         } else if (data.utxos.length > 0 && data.utxos[0].height > 0) {
-          newUtxo = data.utxos[0];
           clearInterval(interval);
           done();
         } else {
@@ -192,41 +185,109 @@ describe('Bitcoin via BlockCypher: transfers', () => {
 
   it('Should spend some of the new coins from the lattice address', (done) => {
     const req = {
-      amount: 100,
-      to: 'CFr99841LyMkyX5ZTGepY58rjXJhyNGXHf', // testnet distributing account
-      addresses: deviceAddresses,
-      perByteFee: 1,
-      changeIndex: 1,
-      network,
-      scriptType: 'p2pkh'
-    };
-    client.buildTx('BTC', req, (err, sigReq) => {
+      schemaCode: 'BTC',
+      params: {
+        version: 1,
+        lockTime: 0,
+        recipient: 'CFr99841LyMkyX5ZTGepY58rjXJhyNGXHf',
+        value: 100,
+        change: null,
+        changeAccountIndex: 1
+      },
+      network: 'bcy',
+      sender: [ deviceAddresses[0], deviceAddresses[1] ],
+      accountIndex: [ 0, 1 ],
+      perByteFee: 1,   // optional
+      multisig: false, // optional
+    }
+
+    client.sign(req, (err, res) => {
       assert(err === null, err);
-      client.signManual(sigReq, (err, res) => {
-        assert(err === null, err);
-        setTimeout(() => {
-          client.broadcast('BTC', res.data, (err2, res2) => {
-            assert(err2 === null, err2);
-            const actualAddress = res2.data.outputs[1].addresses[0];
-            const expectedAddress = deviceAddresses[1];
-            assert(actualAddress === expectedAddress, `Expected change address to be ${expectedAddress} but got ${actualAddress}`)
-            done();
-          });
-        }, 750);
-      });
+      setTimeout(() => {
+        client.broadcast('BTC', res, (err2, txHash) => {
+          assert(err2 === null, err2);
+          let count = 0;
+          const interval = setInterval(() => {
+            client.getTx('BTC', txHash, (err, data) => {
+              if (count > 10) {
+                assert.equal(err, null, err);      
+                throw new Error('Transaction did not mine in time');
+              } else if (data.block_height > -1) {
+                clearInterval(interval);
+                done();
+              } else {
+                count += 1;
+              }
+            });
+          }, 10000);
+        });
+      }, 750);
     });
   });
 
-  it('Should get transaction data from the hashes', (done) => {
-    const hashes = [ newUtxo.hash, utxo.hash ];
-    client.getTx('BTC', hashes, { addresses: deviceAddresses }, (err, res) => {
+  it('Should create an automated permission.', (done) => {
+    const req = {
+      schemaCode: 'BTC',
+      timeLimit: 0,
+      params: {
+        value: { lt: 100000, gt: 1 }
+      }
+    };
+    client.addPermission(req, (err) => {
       assert(err === null, err);
-      assert(res.length > 0);
-      // assert(res.length === 2, `Should have gotten 2 filtered tx objects, but got ${res.length}`);
-      // assert(res[0].from === holderAddress && res[0].in === false, `First filtered transaction of unexpected format: expected outflow from ${holderAddress}`);
-      // assert(res[1].from === holderAddress && res[1].in === false, `Second filtered transaction of unexpected format: expected outflow from ${holderAddress}`);
       done();
-    })
+    });
+  });
+
+  it('Should make an automated signature request and broadcast the response in a transaction.', (done) => {
+    const recipient = 'CFr99841LyMkyX5ZTGepY58rjXJhyNGXHf'; // random address
+    const req = {
+      usePermission: true,
+      schemaCode: 'BTC',
+      params: {
+        version: 1,
+        lockTime: 0,
+        recipient: recipient,
+        value: 100,
+        change: null,
+        changeAccountIndex: 1,
+      },
+      network: 'bcy',
+      sender: [ deviceAddresses[0], deviceAddresses[1] ],
+      accountIndex: [ 0, 1 ],
+      perByteFee: 1,   // optional
+      multisig: false, // optional
+    }
+
+    client.sign(req, (err, res) => {
+      assert(err === null, err);
+      setTimeout(() => {
+        client.broadcast('BTC', res, (err2, txHash) => {
+          assert(err2 === null, err2);
+          let count = 0;
+          const interval = setInterval(() => {
+            client.getTx('BTC', txHash, (err, data) => {
+              if (count > 10) {
+                assert.equal(err, null, err);      
+                throw new Error('Transaction did not mine in time');
+              } else if (data && data.block_height > -1) {
+                const o1 = data.outputs[0].addresses[0];
+                if (o1 !== recipient) throw new Error(`Recipient did not receive output. Sent to ${o1}, but expected ${recipient}`);
+                const v1 = data.outputs[0].value;
+                if (v1 !== req.params.value) throw new Error(`Output value incorrect. Sent ${v1}, but expected ${req.params.value}`);
+                const o2 = data.outputs[1].addresses[0];
+                const expectedO2 = deviceAddresses[req.params.changeAccountIndex]
+                if (o2 !== expectedO2) throw new Error(`Change did not go to correct address. Sent to ${o2} but expected ${expectedO2}`);
+                clearInterval(interval);
+                done();
+              } else {
+                count += 1;
+              }
+            });
+          }, 10000);
+        });
+      }, 750);
+    });
   });
 
 });

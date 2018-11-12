@@ -1,10 +1,9 @@
 // Basic tests for atomic SDK functionality
 import assert from 'assert';
-import EthUtil from 'ethereumjs-util';
 import Tx from 'ethereumjs-tx';
-import { SPLIT_BUF, testing } from '../src/config.js';
+import config, { testing } from '../src/config.js';
 import { Client, providers, tokens } from 'index';
-import NodeCrypto from '@gridplus/node-crypto';
+import NodeCrypto from 'gridplus-node-crypto';
 
 const { erc20Src } = testing;
 const transferAmount = 154;
@@ -54,23 +53,20 @@ describe('Ethereum', () => {
   });
 
   it('Should create a manual permission', (done) => {
-    client.addManualPermission((err, res) => {
+    client.addManualPermission((err) => {
       assert(err === null, err);
-      assert(res.result.status === 200);
       done();
     })
   });
 
   it('Should get the ETH address', (done) => {
     const req = {
-      permissionIndex: 0,
-      isManual: true,
       total: 1,
       coin_type: '60\''
     }
-    client.addresses(req, (err, res) => {
+    client.addresses(req, (err, addresses) => {
       assert(err === null, err);
-      addr = res.result.data.addresses;
+      addr = addresses;
       client.getBalance('ETH', { address: addr }, (err, data) => {
         assert.equal(err, null, err);
         assert(data.nonce > -1);
@@ -84,18 +80,26 @@ describe('Ethereum', () => {
   it('Should transfer ETH to the address', (done) => {
     sender = testing.ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
-    // Build a tx for the sender
-    client.buildTx('ETH', sender.address, addr, toSend, (err, _tx) => {
-      assert(err === null, err);
-      const txObj = new Tx({ nonce: _tx[0], gasPrice: _tx[1], gasLimit: _tx[2], to: _tx[3], value: _tx[4], data: _tx[5] });
+    const tx = {
+      nonce: null,
+      gasPrice: 100000000,
+      gas: 100000,
+      from: sender.address,
+      to: addr,
+      value: toSend,
+      data: ''
+    };
+    client.providers.ETH.getNonce(tx.from)
+    .then((nonce) => {
+      tx.nonce = nonce;
+      const txObj = new Tx(tx);
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash && res.timestamp, 'Did not broadcast properly');
         setTimeout(() => {
-          client.getTx('ETH', res.hash, (err, txs) => {
+          client.getTx('ETH', txHash, (err, txs) => {
             assert(err === null, err);
             assert(txs.height > 0, 'Tx was not mined');
             done();
@@ -103,6 +107,7 @@ describe('Ethereum', () => {
         }, 300);
       })
     })
+    .catch((err) => { throw new Error(err); })
   });
 
   it('Should find a non-zero ETH balance for the address', (done) => {
@@ -118,23 +123,25 @@ describe('Ethereum', () => {
   });
 
   it('Should deploy an ERC20 token', (done) => {
-    client.buildTx('ETH', sender.address, addr, 0, (err, _tx) => {
-      assert(err === null, err);
-      const rawTx = {
-        nonce: _tx[0],
-        gasPrice: _tx[1],
-        gasLimit: '0x1e8480',
-        value: 0,
-        data: erc20Src,
-      }
-      const txObj = new Tx(rawTx);
+    const tx = {
+      nonce: null,
+      gasPrice: 1000000,
+      gas: '0x1e8480', 
+      from: sender.address,
+      value: 0,
+      data: erc20Src
+    };
+
+    client.providers.ETH.getNonce(tx.from)
+    .then((nonce) => {
+      tx.nonce = nonce;
+      const txObj = new Tx(tx);
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash, 'Did not broadcast properly');
-        client.providers.ETH.provider.getTransactionReceipt(res.hash)
+        client.providers.ETH.provider.getTransactionReceipt(txHash)
         .then((receipt) => {
           assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
           erc20Addr = receipt.contractAddress;
@@ -142,27 +149,29 @@ describe('Ethereum', () => {
         })
         .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
       })
-    });
+    })
+    .catch((err) => { throw new Error(err); })
   });
 
   it('Should deploy a second ERC20 token', (done) => {
-    client.buildTx('ETH', sender.address, addr, 0, (err, _tx) => {
-      assert(err === null, err);
-      const rawTx = {
-        nonce: _tx[0],
-        gasPrice: _tx[1],
-        gasLimit: '0x1e8480',
-        value: 0,
-        data: erc20Src,
-      }
-      const txObj = new Tx(rawTx);
+    const tx = {
+      nonce: null,
+      gasPrice: 1000000,
+      gas: '0x1e8480', 
+      from: sender.address,
+      value: 0,
+      data: erc20Src
+    };
+    client.providers.ETH.getNonce(tx.from)
+    .then((nonce) => {
+      tx.nonce = nonce;
+      const txObj = new Tx(tx);
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash, 'Did not broadcast properly');
-        client.providers.ETH.provider.getTransactionReceipt(res.hash)
+        client.providers.ETH.provider.getTransactionReceipt(txHash)
         .then((receipt) => {
           assert(receipt.contractAddress !== undefined, 'Contract did not deploy properly');
           erc20Addr2 = receipt.contractAddress;
@@ -170,58 +179,88 @@ describe('Ethereum', () => {
         })
         .catch((err) => { assert(err === null, `Got Error: ${err}`); done(); });
       })
-    });
+    })
+    .catch((err) => { throw new Error(err); })
   });
 
   it('Should transfer some ERC20 (1) tokens to the address', (done) => {
-    client.buildTx('ETH', sender.address, addr, transferAmount, { ERC20Token: erc20Addr}, (err, _tx) => {
-      assert(err === null, err);
-      const txObj = new Tx(_tx);
+    const tx = {
+      nonce: null,
+      to: erc20Addr,
+      gasPrice: 1000000,
+      gas: 100000, 
+      from: sender.address,
+      value: 0,
+      data: config.erc20.transfer(addr, transferAmount),
+    };
+    client.providers.ETH.getNonce(tx.from)
+    .then((nonce) => {
+      tx.nonce = nonce;
+      const txObj = new Tx(tx);
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash, 'Did not broadcast properly');
-        client.getTx('ETH', res.hash, (err, minedTx) => {
+        client.getTx('ETH', txHash, (err, minedTx) => {
           assert(err === null, err);
           assert(minedTx.height > -1);
           done();
         });
       });
-    });
+    })
+    .catch((err) => { throw new Error(err); })
   });
 
   it('Should transfer some ERC20 (2) tokens to the address', (done) => {
-    client.buildTx('ETH', sender.address, addr, transferAmount, { ERC20Token: erc20Addr2}, (err, _tx) => {
-      assert(err === null, err);
-      const txObj = new Tx(_tx);
+    const tx = {
+      nonce: null,
+      to: erc20Addr2,
+      gasPrice: 1000000,
+      gas: 100000, 
+      from: sender.address,
+      value: 0,
+      data: config.erc20.transfer(addr, transferAmount),
+    };
+    client.providers.ETH.getNonce(tx.from)
+    .then((nonce) => {
+      tx.nonce = nonce;
+      const txObj = new Tx(tx);
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash, 'Did not broadcast properly');
-        client.getTx('ETH', res.hash, (err, minedTx) => {
+        client.getTx('ETH', txHash, (err, minedTx) => {
           assert(err === null, err);
           assert(minedTx.height > -1);
           done();
         });
       });
-    });
+    })
+    .catch((err) => { throw new Error(err); })
   });
 
   it('Should transfer some ERC20 (2) tokens to the random address', (done) => {
-    client.buildTx('ETH', sender.address, randAddr, transferAmount, { ERC20Token: erc20Addr2}, (err, _tx) => {
-      assert(err === null, err);
-      const txObj = new Tx(_tx);
+    const tx = {
+      nonce: null,
+      to: erc20Addr2,
+      gasPrice: 1000000,
+      gas: 100000, 
+      from: sender.address,
+      value: 0,
+      data: config.erc20.transfer(randAddr, transferAmount),
+    };
+    client.providers.ETH.getNonce(tx.from)
+    .then((nonce) => {
+      tx.nonce = nonce;
+      const txObj = new Tx(tx);
       txObj.sign(senderPriv);
       const serTx = txObj.serialize();
       const data = { tx: `0x${serTx.toString('hex')}` };
-      client.broadcast('ETH', data, (err, res) => {
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res && res.hash, 'Did not broadcast properly');
-        client.getTx('ETH', res.hash, (err, minedTx) => {
+        client.getTx('ETH', txHash, (err, minedTx) => {
           assert(err === null, err);
           assert(minedTx.height > -1);
           done();
@@ -264,41 +303,33 @@ describe('Ethereum', () => {
     });
   });
 
-  it('Should transfer ETH out of the agent account', (done) => {
-    client.buildTx('ETH', addr, randAddr, 10000, (err, tx) => {
+  it('Should transfer ETH out of the first agent account', (done) => {
+    const req = {
+      schemaCode: 'ETH',
+      params: {
+        nonce: null,
+        gasPrice: 100000000,
+        gas: 100000,
+        to: randAddr,
+        value: 10000,
+        data: ''
+      },
+      accountIndex: 0, // corresponds to addr
+      sender: addr,    // full address corresponding to accountIndex=0
+    }
+    client.sign(req, (err, data) => {
       assert(err === null, err);
-      const params = {
-        schemaIndex: 0,
-        typeIndex: 0,
-        params: tx
-      };
-      client.signManual(params, (err, res) => {
+      // Create a new transaction with the returned signature
+      client.broadcast('ETH', data, (err, txHash) => {
         assert(err === null, err);
-        assert(res.result.status === 200);
-        const sigData = res.result.data.sigData.split(SPLIT_BUF);
-        const msg = EthUtil.sha3(Buffer.from(sigData[0], 'hex'));
-        const test = new Tx(tx.concat([null, null, null]));
-        test.raw = test.raw.slice(0, test.raw.length - 3);
-
-        const sig = sigData[1];
-        const v = parseInt(sig.slice(-1)) + 27;
-        const vrs = [ v, Buffer.from(sig.slice(0, 64), 'hex'), Buffer.from(sig.slice(64, 128), 'hex'),  ];
-        // Check that the signer is correct
-        const signer = '0x' + EthUtil.pubToAddress(EthUtil.ecrecover(Buffer.from(msg, 'hex'), v, vrs[1], vrs[2])).toString('hex');
-        assert(signer === addr, `Expected signer to be ${addr}, got ${signer}`);
-
-        // Create a new transaction with the returned signature
-        client.broadcast('ETH', res.data, (err, res) => {
+        client.getTx('ETH', txHash, (err, tx) => {
           assert(err === null, err);
-          assert(res && res.hash, 'Did not broadcast properly');
-          client.getTx('ETH', res.hash, (err, tx) => {
+          assert(tx.height > -1, 'Block was not mined');
+          assert(tx.from.toLowerCase() === addr.toLowerCase(), `Incorrect signer: got ${tx.from}, expected ${addr}`);
+          client.getBalance('ETH', { address: addr }, (err, data) => {
             assert(err === null, err);
-            assert(tx.height > -1, 'Block was not mined');
-            client.getBalance('ETH', { address: addr }, (err, data) => {
-              assert(err === null, err);
-              assert(data.balance < balance, 'Balance did not reduce');
-              done();
-            });
+            assert(data.balance < balance, 'Balance did not reduce');
+            done();
           });
         });
       });
@@ -306,27 +337,33 @@ describe('Ethereum', () => {
   });
 
   it('Should transfer the ERC20 token out of the agent account', (done) => {
-    client.buildTx('ETH', addr, randAddr, 1, { ERC20Token: erc20Addr}, (err, tx) => {
+    const req = {
+      schemaCode: 'ETH-ERC20',
+      params: {
+        nonce: null,
+        gasPrice: 100000000,
+        gas: 100000,
+        to: erc20Addr,
+        value: 0,
+        data: {
+          to: randAddr,
+          value: 1
+        }
+      },
+      accountIndex: 0,
+      sender: addr,
+    };
+    client.sign(req, (err, sigData) => {
       assert(err === null, err);
-      const params = {
-        schemaIndex: 0,
-        typeIndex: 1,
-        params: tx
-      };
-      client.signManual(params, (err, res) => {
+      client.broadcast('ETH', sigData, (err, txHash) => {
         assert(err === null, err);
-        client.broadcast('ETH', res.data, (err, res) => {
+        client.getTx('ETH', txHash, (err, tx) => {
           assert(err === null, err);
-          assert(res && res.hash, 'Did not broadcast properly');
-          // client.providers.ETH.provider.getTransaction(res.hash)
-          client.getTx('ETH', res.hash, (err, tx) => {
+          assert(tx.height > -1, 'Transaction not included in block');
+          client.getBalance('ETH', { address: addr }, (err, data) => {
             assert(err === null, err);
-            assert(tx.height > -1, 'Transaction not included in block');
-            client.getBalance('ETH', { address: addr }, (err, data) => {
-              assert(err === null, err);
-              assert(data.nonce > -1);
-              done();
-            });
+            assert(data.nonce > -1);
+            done();
           });
         });
       });
@@ -347,5 +384,55 @@ describe('Ethereum', () => {
       done();
     })
   })
+
+  it('Should create an automated permission.', (done) => {
+    const req = {
+      schemaCode: 'ETH',
+      timeLimit: 0,
+      params: {
+        value: { gt: 1, lte: 12000 },
+      }
+    };
+    client.addPermission(req, (err) => {
+      assert(err === null, err);
+      done();
+    });
+  });
+
+  it('Should make an automated signature request and broadcast the response in a transaction.', (done) => {
+      client.providers.ETH.getNonce(addr)
+      .then((nonce) => {
+        const req = {
+          usePermission: true,
+          schemaCode: 'ETH',
+          params: {
+            nonce,
+            gasPrice: 1e9,
+            gas: 1e6,
+            to: randAddr,
+            value: 10000,
+            data: '',
+          },
+          accountIndex: 0
+        };
+        client.sign(req, (err, sigData) => {
+          assert(err === null, err);
+          client.broadcast('ETH', sigData, (err, txHash) => {
+            assert(err === null, err);
+            client.getTx('ETH', txHash, (err, tx) => {
+              assert(err === null, err);
+              assert(tx.from.toLowerCase() === addr.toLowerCase());
+              assert(tx.to.toLowerCase() === randAddr.toLowerCase());
+              const expectedVal = req.params.value * Math.pow(10, -18) * -1;
+              assert(tx.value === String(expectedVal), `Wrong tx value. Got ${tx.value}, expected ${expectedVal}`);
+              done();
+            });
+          });
+        });
+      })
+      .catch((err) => {
+        assert(err === null, err);
+      })
+  });
 
 });
