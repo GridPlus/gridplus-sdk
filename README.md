@@ -10,9 +10,9 @@ The Grid+ SDK allows any application to establish a connection and interact with
 * Create a **permission** giving your app the ability to request automated signatures based on rules accepted by the user
 * Request **automated signatures** against a permission
 
-## Documentation
+## [Documentation](https://gridplus-sdk.readthedocs.io)
 
-The documentation for this SDK can be found at [gridplus-sdk.readthedocs.io](gridplus-sdk.readthedocs.io). There you will find a complete quickstart guide (a shorter version of which is available in the next section) as well as a full API reference and schema enumerations. Please consider that document the source of truth for all things SDK.
+The documentation for this SDK can be found [here](https://gridplus-sdk.readthedocs.io). There you will find a complete quickstart guide (a shorter version of which is available in the next section) as well as a full API reference and schema enumerations. Please consider that document the source of truth for all things SDK.
 
 # Installation and Setup
 
