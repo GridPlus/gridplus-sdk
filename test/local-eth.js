@@ -388,8 +388,53 @@ describe('Ethereum', () => {
     })
   })
 
-  it('Should create an automated permission.');
+  it('Should create an automated permission.', (done) => {
+    const req = {
+      schemaCode: 'ETH',
+      timeLimit: 0,
+      params: {
+        value: { gt: 1, lte: 12000 },
+      }
+    };
+    client.addPermission(req, (err) => {
+      assert(err === null, err);
+      done();
+    });
+  });
 
-  it('Should make an automated signature request and broadcast the response in a transaction.');
+  it('Should make an automated signature request and broadcast the response in a transaction.', (done) => {
+      client.providers.ETH.getNonce(addr)
+      .then((nonce) => {
+        const req = {
+          schemaCode: 'ETH',
+          params: {
+            nonce,
+            gasPrice: 1e9,
+            gas: 1e6,
+            to: randAddr,
+            value: 10000,
+            data: '',
+          },
+          accountIndex: 0
+        };
+        client.signAutomated(req, (err, sigData) => {
+          assert(err === null, err);
+          client.broadcast('ETH', sigData, (err, txHash) => {
+            assert(err === null, err);
+            client.getTx('ETH', txHash, (err, tx) => {
+              assert(err === null, err);
+              assert(tx.from.toLowerCase() === addr.toLowerCase());
+              assert(tx.to.toLowerCase() === randAddr.toLowerCase());
+              const expectedVal = req.params.value * Math.pow(10, -18) * -1;
+              assert(tx.value === String(expectedVal), `Wrong tx value. Got ${tx.value}, expected ${expectedVal}`);
+              done();
+            });
+          });
+        });
+      })
+      .catch((err) => {
+        assert(err === null, err);
+      })
+  });
 
 });
