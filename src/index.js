@@ -186,7 +186,6 @@ export default class SdkClient {
     const req = buildSigRequest(param);
     if (typeof req === 'string') return cb(req);
     const providerCode = getProviderShortCode(param.schemaCode);
-    if (typeof req === 'string') return cb(req);
     this._getStatefulParams(providerCode, req, (err, newReq) => {
       if (err) return cb(err);
       this.client.pairedRequest('signAutomated', { param: newReq }, (err, res) => {

@@ -125,14 +125,10 @@ client.addManualPermission((err, res) => {
 
 You may retrieve some number of addresses for supported cryptocurrencies. The Grid+ Lattice uses [BIP44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)-compliant highly-deterministic (HD) wallets for generating addresses. This means that for each currency you want to access, you must specify a `coin_type` (by default it will choose Bitcoin, or `0'`). You may also specify `start` (the starting index) and `total` the total number of addresses to generate, starting at the starting index.
 
-###TODO: We need to remove permissionIndex and isManual
-
 An example request looks like:
 
 ```
 const req = {
-    permissionIndex: 0,  // Will be deprecated soon
-    isManual: true,      // Will be deprecated soon
     start: 0,
     total: 4,
     coin_type: "0'"

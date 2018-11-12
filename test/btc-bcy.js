@@ -73,8 +73,6 @@ describe('Bitcoin via BlockCypher: transfers', () => {
 
   it('Should get the first 2 Bitcoin addresses of the manual permission and log address 0', (done) => {
     const req = {
-      permissionIndex: 0,
-      isManual: true,
       total: 2,
       network,
       segwit: false
@@ -165,69 +163,69 @@ describe('Bitcoin via BlockCypher: transfers', () => {
     }
   });
 
-  // it('Should get the utxo of the new account', (done) => {
-  //   const a = deviceAddresses[0];
-  //   let count = 0;
-  //   const interval = setInterval(() => {
-  //     client.getBalance('BTC', { address: a }, (err, data) => {
-  //       if (count > 10) {
-  //         assert.equal(err, null, err);      
-  //         assert(data.utxos.length > 0, `Address (${a}) has not sent or received any bitcoins. Please request funds from the faucet (https://coinfaucet.eu/en/btc-testnet/) and try again.`);
-  //         assert(data.utxos[0].height > 0 && data.utxos[0].index !== undefined, `Address (${a}) has a transaction, but it has not been confirmed. Please wait until it has`);
-  //         newUtxo = data.utxos[0];
-  //         done();
-  //       } else if (data.utxos.length > 0 && data.utxos[0].height > 0) {
-  //         newUtxo = data.utxos[0];
-  //         clearInterval(interval);
-  //         done();
-  //       } else {
-  //         count += 1;
-  //       }
-  //     });
-  //   }, 10000);
-  // });
+  it('Should get the utxo of the new account', (done) => {
+    const a = deviceAddresses[0];
+    let count = 0;
+    const interval = setInterval(() => {
+      client.getBalance('BTC', { address: a }, (err, data) => {
+        if (count > 10) {
+          assert.equal(err, null, err);      
+          assert(data.utxos.length > 0, `Address (${a}) has not sent or received any bitcoins. Please request funds from the faucet (https://coinfaucet.eu/en/btc-testnet/) and try again.`);
+          assert(data.utxos[0].height > 0 && data.utxos[0].index !== undefined, `Address (${a}) has a transaction, but it has not been confirmed. Please wait until it has`);
+          newUtxo = data.utxos[0];
+          done();
+        } else if (data.utxos.length > 0 && data.utxos[0].height > 0) {
+          newUtxo = data.utxos[0];
+          clearInterval(interval);
+          done();
+        } else {
+          count += 1;
+        }
+      });
+    }, 10000);
+  });
 
-  // it('Should spend some of the new coins from the lattice address', (done) => {
-  //   const req = {
-  //     schemaCode: 'BTC',
-  //     params: {
-  //       version: 1,
-  //       lockTime: 0,
-  //       recipient: 'CFr99841LyMkyX5ZTGepY58rjXJhyNGXHf',
-  //       value: 100,
-  //       change: null,
-  //       changeAccountIndex: 1
-  //     },
-  //     network: 'bcy',
-  //     sender: [ deviceAddresses[0], deviceAddresses[1] ],
-  //     accountIndex: [ 0, 1 ],
-  //     perByteFee: 1,   // optional
-  //     multisig: false, // optional
-  //   }
+  it('Should spend some of the new coins from the lattice address', (done) => {
+    const req = {
+      schemaCode: 'BTC',
+      params: {
+        version: 1,
+        lockTime: 0,
+        recipient: 'CFr99841LyMkyX5ZTGepY58rjXJhyNGXHf',
+        value: 100,
+        change: null,
+        changeAccountIndex: 1
+      },
+      network: 'bcy',
+      sender: [ deviceAddresses[0], deviceAddresses[1] ],
+      accountIndex: [ 0, 1 ],
+      perByteFee: 1,   // optional
+      multisig: false, // optional
+    }
 
-  //   client.signManual(req, (err, res) => {
-  //     assert(err === null, err);
-  //     setTimeout(() => {
-  //       client.broadcast('BTC', res, (err2, txHash) => {
-  //         assert(err2 === null, err2);
-  //         let count = 0;
-  //         const interval = setInterval(() => {
-  //           client.getTx('BTC', txHash, (err, data) => {
-  //             if (count > 10) {
-  //               assert.equal(err, null, err);      
-  //               throw new Error('Transaction did not mine in time');
-  //             } else if (data.block_height > -1) {
-  //               clearInterval(interval);
-  //               done();
-  //             } else {
-  //               count += 1;
-  //             }
-  //           });
-  //         }, 10000);
-  //       });
-  //     }, 750);
-  //   });
-  // });
+    client.signManual(req, (err, res) => {
+      assert(err === null, err);
+      setTimeout(() => {
+        client.broadcast('BTC', res, (err2, txHash) => {
+          assert(err2 === null, err2);
+          let count = 0;
+          const interval = setInterval(() => {
+            client.getTx('BTC', txHash, (err, data) => {
+              if (count > 10) {
+                assert.equal(err, null, err);      
+                throw new Error('Transaction did not mine in time');
+              } else if (data.block_height > -1) {
+                clearInterval(interval);
+                done();
+              } else {
+                count += 1;
+              }
+            });
+          }, 10000);
+        });
+      }, 750);
+    });
+  });
 
   it('Should create an automated permission.', (done) => {
     const req = {

@@ -49,8 +49,6 @@ describe('Basic stateless tests (no providers)', () => {
 
   it('Should get the Bitcoin addresses of the manual permission', (done) => {
     const req = {
-      permissionIndex: 0,
-      isManual: true,
       total: 3,
     }
     client.addresses(req, (err, addresses) => {
@@ -63,8 +61,6 @@ describe('Basic stateless tests (no providers)', () => {
 
   it('Should get testnet addresses', (done) => {
     const req = {
-      permissionIndex: 0,
-      isManual: true,
       total: 3,
       network: 'testnet'
     }
@@ -103,8 +99,6 @@ describe('Basic stateless tests (no providers)', () => {
   it('Should get the Ethereum address and request a signature from it', (done) => {
     // TODO: remove permissionIndex and isManual from request
     const req1 = {
-      permissionIndex: 0,
-      isManual: false,
       coin_type: '60\''
     };
     const req2 = {
@@ -163,8 +157,6 @@ describe('Basic stateless tests (no providers)', () => {
 
   it('Should create an automated Bitcoin transaction', (done) => {
     const req1 = {
-      permissionIndex: 0,
-      isManual: false,
       coin_type: '0\''
     };
     // Build the request
