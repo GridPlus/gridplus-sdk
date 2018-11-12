@@ -182,33 +182,15 @@ export default class SdkClient {
     return this.client.pair(appSecret, cb);
   }
 
-  signAutomated(param, cb) {
+  sign(param, cb) {
     const req = buildSigRequest(param);
+    const automated = param.usePermission ? param.usePermission : false;
+    const route = automated === true ? 'signAutomated' : 'signManual';
     if (typeof req === 'string') return cb(req);
     const providerCode = getProviderShortCode(param.schemaCode);
     this._getStatefulParams(providerCode, req, (err, newReq) => {
       if (err) return cb(err);
-      this.client.pairedRequest('signAutomated', { param: newReq }, (err, res) => {
-        if (err) return cb(err)
-        else if (!res || res.result === undefined || res.result.data === undefined || res.result.data.sigData === undefined) return cb('Incorrect response');
-        
-        res.result.data.params = newReq.params;
-        
-        if (res.result.data.schemaIndex === undefined) res.result.data.schemaIndex = newReq.schemaIndex;
-        if (res.result.data.typeIndex === undefined) res.result.data.typeIndex = newReq.typeIndex;
-        
-        return cb(null, parseSigResponse(res))
-      });
-    })
-  }
-
-  signManual(param, cb) {
-    const req = buildSigRequest(param);
-    if (typeof req === 'string') return cb(req);
-    const providerCode = getProviderShortCode(param.schemaCode);
-    this._getStatefulParams(providerCode, req, (err, newReq) => {
-      if (err) return cb(err);
-      this.client.pairedRequest('signManual', { param: newReq }, (err, res) => {
+      this.client.pairedRequest(route, { param: newReq }, (err, res) => {
         if (err) return cb(err)
         else if (!res || res.result === undefined || res.result.data === undefined || res.result.data.sigData === undefined) return cb('Incorrect response');
         

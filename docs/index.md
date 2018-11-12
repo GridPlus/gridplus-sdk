@@ -175,7 +175,7 @@ Without a specified permission, an SDK user with a pairing can always request a 
 Once your transaction has been built by the SDK, you can send it to the device, which checks the boundaries of your request in the secure compute module and, if it conforms to the desired schema, is passed to the secure enclave for signing (pending user authorization).
 
 ```
-client.signManual(opts, (err, signedTx) => {
+client.sign(opts, (err, signedTx) => {
     ...
 })
 ```
@@ -263,6 +263,7 @@ With a permission in hand, an app can make a request in exactly the same way as 
 ```
 const schemaCode = 'ETH';
 const opts = {
+    usePermission: true,    // Needs to be true to request automated signature!
     schemaCode,
     params: {
       nonce: null,          // This will be filled in by the SDK
@@ -275,7 +276,7 @@ const opts = {
     accountIndex: 0,        // Indicates we are using account index 0 to spend from (i.e. m/44/60'/0'/0/0 <-- the last 0)
     sender: myAddress,      // Full address of the associated account index 0
 };
-client.signAutomated(opts, (err, res) => {
+client.sign(opts, (err, res) => {
     ...
 })
 ```
@@ -596,7 +597,7 @@ Request a new permission based on a rule set you provide.
 
 ## broadcast(shortcode, payload, cb)
 
-Given a signed transaction from `signManual` or `signAutomated`, broadcast to the desired network using the specified provider.
+Given a signed transaction from `sign`, broadcast to the desired network using the specified provider.
 
 #### shortcode [string], required
 
@@ -866,7 +867,7 @@ String representation of the entropy you have generated. **Must be 6 characters 
 
 * `err` - string representing the error message (or `null`)
 
-## signAutomated(options, cb)
+## sign(options, cb)
 
 ### TODO: We need some tests that pass this response to broadcast()
 
@@ -881,7 +882,8 @@ Required options:
     schemaCode: <string>,     // The schema code (e.g. ETH, ETH-ERC20, BTC)
     params: {
         ... // Set of parameters based on the type of request
-    }
+    },
+    usePermission: <bool>     // Default false, use true if you want to utilize an automatic signing permission
 }
 ```
 
@@ -949,7 +951,3 @@ Optional options:
 ```
 
 *Note: This returns more data than we **need** to pass to `broadcast`. The extra data can be helpful for debug and testing, but will not impact the `broadcast` call if it is included.*
-
-## signManual(param, cb)
-
-Request a signature to be manually authorized by the user. **This is functionally equivalent to `signAutomated` and the two may be merged together in the future.**

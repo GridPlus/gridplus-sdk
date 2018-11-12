@@ -159,6 +159,7 @@ describe('Ethereum via Etherscan: ether transfers', () => {
       client.providers.ETH.getNonce(addresses[0])
       .then((nonce) => {
         const req2 = {
+          usePermission: true,
           schemaCode: 'ETH',
           params: {
             nonce,
@@ -170,7 +171,7 @@ describe('Ethereum via Etherscan: ether transfers', () => {
           },
           accountIndex: 0
         };
-        client.signAutomated(req2, (err, sigData) => {
+        client.sign(req2, (err, sigData) => {
           assert(err === null, err);
           client.broadcast('ETH', sigData, (err, txHash) => {
             assert(err === null, err);

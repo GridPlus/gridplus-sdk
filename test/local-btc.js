@@ -277,7 +277,7 @@ describe('Bitcoin', () => {
         multisig: false, // optional
       }
       
-      client.signManual(req, (err, sigData) => {
+      client.sign(req, (err, sigData) => {
         assert(err === null, err);
         // Broadcast the transaction
         client.broadcast('BTC', sigData, (err) => {
@@ -340,6 +340,7 @@ describe('Bitcoin', () => {
   it('Should make an automated signature request and broadcast the response in a transaction.', (done) => {
     const recipient = deviceAddresses[0];
     const req = {
+      usePermission: true,
       schemaCode: 'BTC',
       params: {
         version: 1,
@@ -355,7 +356,7 @@ describe('Bitcoin', () => {
       perByteFee: 1,
       multisig: false,
     }
-    client.signAutomated(req, (err, sigData) => {
+    client.sign(req, (err, sigData) => {
       assert(err === null, err);
       client.broadcast('BTC', sigData, (err, txHash) => {
         assert(err === null, err);

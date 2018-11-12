@@ -203,7 +203,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       multisig: false, // optional
     }
 
-    client.signManual(req, (err, res) => {
+    client.sign(req, (err, res) => {
       assert(err === null, err);
       setTimeout(() => {
         client.broadcast('BTC', res, (err2, txHash) => {
@@ -244,6 +244,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
   it('Should make an automated signature request and broadcast the response in a transaction.', (done) => {
     const recipient = 'CFr99841LyMkyX5ZTGepY58rjXJhyNGXHf'; // random address
     const req = {
+      usePermission: true,
       schemaCode: 'BTC',
       params: {
         version: 1,
@@ -260,7 +261,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
       multisig: false, // optional
     }
 
-    client.signAutomated(req, (err, res) => {
+    client.sign(req, (err, res) => {
       assert(err === null, err);
       setTimeout(() => {
         client.broadcast('BTC', res, (err2, txHash) => {

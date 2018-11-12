@@ -318,7 +318,7 @@ describe('Ethereum', () => {
       accountIndex: 0, // corresponds to addr
       sender: addr,    // full address corresponding to accountIndex=0
     }
-    client.signManual(req, (err, data) => {
+    client.sign(req, (err, data) => {
       assert(err === null, err);
       // Create a new transaction with the returned signature
       client.broadcast('ETH', data, (err, txHash) => {
@@ -354,7 +354,7 @@ describe('Ethereum', () => {
       accountIndex: 0,
       sender: addr,
     };
-    client.signManual(req, (err, sigData) => {
+    client.sign(req, (err, sigData) => {
       assert(err === null, err);
       client.broadcast('ETH', sigData, (err, txHash) => {
         assert(err === null, err);
@@ -404,6 +404,7 @@ describe('Ethereum', () => {
       client.providers.ETH.getNonce(addr)
       .then((nonce) => {
         const req = {
+          usePermission: true,
           schemaCode: 'ETH',
           params: {
             nonce,
@@ -415,7 +416,7 @@ describe('Ethereum', () => {
           },
           accountIndex: 0
         };
-        client.signAutomated(req, (err, sigData) => {
+        client.sign(req, (err, sigData) => {
           assert(err === null, err);
           client.broadcast('ETH', sigData, (err, txHash) => {
             assert(err === null, err);

@@ -102,6 +102,7 @@ describe('Basic stateless tests (no providers)', () => {
       coin_type: '60\''
     };
     const req2 = {
+      usePermission: true,
       schemaCode: 'ETH',
       params: {
         nonce: 1,   // Need to specify nonce in this test file because we have not instantied any providers
@@ -116,7 +117,7 @@ describe('Basic stateless tests (no providers)', () => {
 
     client.addresses(req1, (err, address) => {
       assert(err === null, err);
-      client.signAutomated(req2, (err, sigData) => {
+      client.sign(req2, (err, sigData) => {
         assert(err === null, err);
         // The message includes the preImage payload concatenated to a signature,
         // separated by a standard string/buffer
@@ -161,6 +162,7 @@ describe('Basic stateless tests (no providers)', () => {
     };
     // Build the request
     const req2 = {
+      usePermission: true,
       schemaCode: 'BTC',
       params: {
         version: 1,
@@ -183,7 +185,7 @@ describe('Basic stateless tests (no providers)', () => {
       assert(err === null, err);
       assert(res !== undefined);
       // const addr = res.result.data.addresses;
-      client.signAutomated(req2, (err, sigData) => {
+      client.sign(req2, (err, sigData) => {
         assert(err === null, err);
         assert(sigData !== undefined);
         done();
