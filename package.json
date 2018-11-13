@@ -1,5 +1,5 @@
 {
-  "name": "@gridplus/sdk",
+  "name": "gridplus-sdk",
   "version": "0.0.0-development",
   "description": "SDK to interact with GridPlus agent devices",
   "scripts": {
