@@ -1,5 +1,7 @@
 # GridPlus Lattice1 SDK
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/GridPlus/gridplus-sdk.svg)](https://greenkeeper.io/)
+
 **WARNING: This is early alpha software and is subject to change. It is recommended that any mainnet usage be restricted to small amounts.**
 
 The Grid+ SDK allows any application to establish a connection and interact with a Grid+ Lattice1 device as a remote signer. With the Lattice1 as an extremely secure, connected keystore with signing capabilities, this SDK gives users the following functionality:
