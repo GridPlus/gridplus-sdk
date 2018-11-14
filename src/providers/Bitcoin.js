@@ -5,7 +5,6 @@ const defaultOpts = {
   host: config.bitcoinNode.host,
   network: config.bitcoinNode.network,
   port: config.bitcoinNode.port,
-  apiKey: config.blockcypherApiKey,
 };
 const DEFAULT_FEE = 3;
 

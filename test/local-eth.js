@@ -1,11 +1,11 @@
 // Basic tests for atomic SDK functionality
 import assert from 'assert';
 import Tx from 'ethereumjs-tx';
-import config, { testing } from '../src/config.js';
+import config from '../src/config.js';
 import { Client, providers, tokens } from 'index';
 import NodeCrypto from 'gridplus-node-crypto';
-
-const { erc20Src } = testing;
+const { erc20Src } = require('./config.json');
+const { ethHolder } = require('../secrets.json');
 const transferAmount = 154;
 const randAddr = '0xdde20a2810ff23775585cf2d87991c7f5ddb8c22';
 
@@ -78,7 +78,7 @@ describe('Ethereum', () => {
 
   const toSend = Math.pow(10, 18);
   it('Should transfer ETH to the address', (done) => {
-    sender = testing.ethHolder;
+    sender = ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
     const tx = {
       nonce: null,

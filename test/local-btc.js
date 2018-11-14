@@ -2,7 +2,7 @@
 import { NodeClient } from 'gridplus-bclient';
 import assert from 'assert';
 import bitcoin from 'bitcoinjs-lib';
-import { bitcoinNode, testing } from '../src/config.js';
+import { bitcoinNode } from '../src/config.js';
 import { Client, providers  } from 'index';
 import NodeCrypto from 'gridplus-node-crypto';
 
@@ -24,7 +24,7 @@ let deviceAddresses, startBal, startUtxos, TX_VALUE;
 const CHANGE_INDEX = 2
 
 const { host, network, port } = bitcoinNode;
-const { btcHolder } = testing;
+const { btcHolder }= require('../secrets.json');
 const { regtestAddress } = btcHolder;
 // Start bcoin client. There is also one running through the SDK,
 // but we will use this instance to mine blocks
@@ -82,7 +82,7 @@ describe('Bitcoin', () => {
 
   it('Should check the balance of a single address and set a baseline', (done) => {
     // Look for the balance and any unspent transaction outputs
-    client.getBalance('BTC', { address: testing.btcHolder.regtestAddress }, (err, d) => {
+    client.getBalance('BTC', { address: btcHolder.regtestAddress }, (err, d) => {
       assert(err === null, err);
       startUtxos = d.utxos;
       startBal = d.balance;
@@ -100,7 +100,7 @@ describe('Bitcoin', () => {
       return nodeClient.getTX(b.tx[0])
     })
     .then((tx) => {
-      assert(tx.outputs[0].address === testing.btcHolder.regtestAddress, 'Mined coinbase address is incorrect')
+      assert(tx.outputs[0].address === btcHolder.regtestAddress, 'Mined coinbase address is incorrect')
       done();
     })
     .catch((err) => {
@@ -111,7 +111,7 @@ describe('Bitcoin', () => {
 
   it('Should register a balance increase', (done) => {
     // Look for the balance and any unspent transaction outputs
-    client.getBalance('BTC', { address: testing.btcHolder.regtestAddress }, (err, d) => {
+    client.getBalance('BTC', { address: btcHolder.regtestAddress }, (err, d) => {
       assert(err === null, err);
       assert(d.utxos.length === startUtxos.length + 1, 'Block did not mine to correct coinbase');
       assert(d.balance > startBal, 'Balance did not increase. Try removing your chaindata: ~/.bcoin/regtest/chain.ldb');
@@ -169,7 +169,7 @@ describe('Bitcoin', () => {
   });
 
   it('Should get UTXOs for a few addresses', (done) => {
-    const addresses = deviceAddresses.concat(testing.btcHolder.regtestAddress);
+    const addresses = deviceAddresses.concat(btcHolder.regtestAddress);
     client.getBalance('BTC', { address: addresses }, (err, balances) => {
       assert(err === null, err);
       assert(balances.balance > 0);
@@ -179,7 +179,7 @@ describe('Bitcoin', () => {
   });
 
   it('Should get UTXOs for a single address', (done) => {
-    const address = testing.btcHolder.regtestAddress;
+    const address = btcHolder.regtestAddress;
     client.getBalance('BTC', { address }, (err, balances) => {
       assert(err === null, err);
       assert(typeof balances.balance === 'number', 'Balance not found');
@@ -189,16 +189,16 @@ describe('Bitcoin', () => {
   })
 
   it('Should get transaction history for the same addresses', (done) => {
-    const addresses = deviceAddresses.concat(testing.btcHolder.regtestAddress);
+    const addresses = deviceAddresses.concat(btcHolder.regtestAddress);
     client.getTxHistory('BTC', { addresses }, (err, txs) => {
       assert(err === null, err);
-      assert(txs[testing.btcHolder.regtestAddress].length > 0, 'btcHolder address should have more than one transaction in history');      
+      assert(txs[btcHolder.regtestAddress].length > 0, 'btcHolder address should have more than one transaction in history');      
       done();
     })
   })
   
   it('Should get transaction history for just one address', (done) => {
-    const address = testing.btcHolder.regtestAddress;
+    const address = btcHolder.regtestAddress;
     client.getTxHistory('BTC', { address }, (err, txs) => {
       assert(err === null, err);
       assert(txs.length > 0, 'btcHolder address should have more than one transaction in history');      
@@ -207,8 +207,8 @@ describe('Bitcoin', () => {
   })
 
   it('Should form a transaction and send 0.1 BTC to address 0', (done) => {
-    const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.regtestWif, regtest);
-    client.getBalance('BTC', { address: testing.btcHolder.regtestAddress }, (err, d) => {
+    const signer = bitcoin.ECPair.fromWIF(btcHolder.regtestWif, regtest);
+    client.getBalance('BTC', { address: btcHolder.regtestAddress }, (err, d) => {
       assert(err === null, err);
       const utxo = d.utxos[0];
       const txb = new bitcoin.TransactionBuilder(regtest);
@@ -222,11 +222,11 @@ describe('Bitcoin', () => {
       const tx = txb.build().toHex();
       client.broadcast('BTC', { tx }, (err, txHash) => {
         assert(err === null, err);
-        client.getTx('BTC', txHash, { addresses: testing.btcHolder.regtestAddress }, (err, retTx) => {
+        client.getTx('BTC', txHash, { addresses: btcHolder.regtestAddress }, (err, retTx) => {
           assert(err === null, err);
           assert(retTx.value === -0.1);
           assert(retTx.height === -1, 'Transaction was mined but should not have been');
-          assert(retTx.from === testing.btcHolder.regtestAddress, 'Tx not sent from the right address');
+          assert(retTx.from === btcHolder.regtestAddress, 'Tx not sent from the right address');
           done();
         });
       });

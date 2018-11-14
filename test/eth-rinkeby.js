@@ -1,20 +1,25 @@
 // Basic tests for atomic SDK functionality
 import assert from 'assert';
 import Tx from 'ethereumjs-tx';
-import config, { testing } from '../src/config.js';
+import config from '../src/config.js';
 import { Client, providers } from 'index';
 import NodeCrypto from 'gridplus-node-crypto';
 const TIMEOUT_SEC = 59;
-const { erc20Src, ethHolder } = testing;
-
+const { erc20Src } = require('./config.json');
+const { ethHolder, etherscanApiKey } = require('../secrets.json');
 let client, addr, erc20Addr, sender, senderPriv, addr2;
 const transferAmount = 54;
 
 describe('Ethereum via Etherscan: ether transfers', () => {
 
   before(() => {
+    const opts = {
+      network: 'rinkeby', 
+      etherscan: true, 
+      apiKey: etherscanApiKey 
+    }
 
-    const eth = new providers.Ethereum({ network: 'rinkeby', etherscan: true, apiKey: config.etherscanApiKey });
+    const eth = new providers.Ethereum(opts);
     client = new Client({
       clientConfig: {
         name: 'basic-test',
@@ -87,7 +92,7 @@ describe('Ethereum via Etherscan: ether transfers', () => {
 
   const toSend = Math.pow(10, 15);
   it('Should transfer ETH to the address (20s)', (done) => {
-    sender = testing.ethHolder;
+    sender = ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
     // Build a tx for the sender
     const tx = {
@@ -205,7 +210,7 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
   });
 
   it('Should deploy an ERC20 token', (done) => {
-    sender = testing.ethHolder;
+    sender = ethHolder;
     senderPriv = Buffer.from(sender.privKey, 'hex');
     const tx = {
       nonce: null,

@@ -1,15 +1,14 @@
 import { BigNumber } from 'bignumber.js';
 import ethers from 'ethers';
-import config from '../../config.js';
 const defaultOpts = {
   network: 'homestead', // No idea why mainnet is still being called homestead...
-  apiKey: config.etherscanApiKey,
 }
 
 export default class EtherscanApi {
 
   constructor(opts=defaultOpts) {
     this.network = opts.network;
+    if (!opts.apiKey) throw new Error('You must provide an `apiKey` argument to use an Etherscan provider');
     this.provider = new ethers.providers.EtherscanProvider(this.network, opts.apiKey);
   }
 

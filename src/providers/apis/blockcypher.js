@@ -10,6 +10,7 @@ export default class BlockCypherApi {
     this.blockcypherBaseUrl = `https://api.blockcypher.com/v1/${this.coin}/${this.network}`;
     this.timeout = opts.timeout ? opts.timeout : 0; // Timeout between requests to avoid getting 429s from blockcypher
     this.sat = opts.sat ? opts.sat : false;
+    if (!opts.apiKey) throw new Error('You must provide an `apiKey` argument to use Blockcypher provider');    
     this.apiKey = opts.apiKey;
   }
 

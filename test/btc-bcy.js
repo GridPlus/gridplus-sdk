@@ -2,8 +2,7 @@ import { Client, providers } from 'index';
 import bitcoin from 'bitcoinjs-lib';
 import NodeCrypto from 'gridplus-node-crypto';
 import { assert } from 'elliptic/lib/elliptic/utils';
-import { blockcypherApiKey, testing } from '../src/config.js';
-const { btcHolder } = testing;
+const { btcHolder, blockcypherApiKey } = require('../secrets.json');
 let client, deviceAddresses, utxo;
 const balance0 = 0;
 process.on('unhandledRejection', e => { throw e; });
@@ -143,7 +142,7 @@ describe('Bitcoin via BlockCypher: transfers', () => {
 
   it('Should spend a small amount from the holder address', (done) => {
     if (balance0 === 0) {
-      const signer = bitcoin.ECPair.fromWIF(testing.btcHolder.bcyWif, bcy);
+      const signer = bitcoin.ECPair.fromWIF(btcHolder.bcyWif, bcy);
       const txb = new bitcoin.TransactionBuilder(bcy);
       txb.addInput(utxo.hash, utxo.index);
       // // Note; this will throw if the address does not conform to the testnet
