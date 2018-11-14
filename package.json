@@ -1,11 +1,11 @@
 {
   "name": "gridplus-sdk",
-  "version": "0.0.3-development",
+  "version": "0.0.4-development",
   "description": "SDK to interact with GridPlus agent devices",
   "scripts": {
     "commit": "git-cz",
-    "build": "rm -rf dist/* && babel src -d dist",
-    "build:prod": "NODE_ENV=production rm -rf dist/* && babel src -d dist",
+    "build": "rm -rf dist/* && babel src -d dist --copy-files",
+    "build:prod": "NODE_ENV=production rm -rf dist/* && babel src -d dist --copy-files",
     "build:watch": "babel src -d dist -w",
     "lint": "eslint src test __tests__",
     "lint:fix": "eslint --fix src test __tests__",
