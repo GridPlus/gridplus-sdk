@@ -1,13 +1,13 @@
 pipeline {
-  agent none
-
+  agent {
+    label "build-cluster"
+  }
   options {
     buildDiscarder(logRotator(numToKeepStr: '2'))
     disableConcurrentBuilds()
   }
   stages {
     stage("notify") {
-      agent any
       steps {
         slackSend(
           color: "info",
@@ -40,9 +40,6 @@ pipeline {
     //   }
     // }
     stage("build") {
-      agent {
-        label "build"
-      }
       steps {
         script {
           repo = 'gridplus'
@@ -61,9 +58,6 @@ pipeline {
       }
     }
     stage("release") {
-      agent {
-        label "build"
-      }
       steps {
         dockerRelease(repo,container,tag)
         dockerRelease(repo,container,'latest')
