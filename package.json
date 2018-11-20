@@ -1,6 +1,6 @@
 {
   "name": "gridplus-sdk",
-  "version": "0.0.5-development",
+  "version": "0.0.6-development",
   "description": "SDK to interact with GridPlus agent devices",
   "scripts": {
     "commit": "git-cz",

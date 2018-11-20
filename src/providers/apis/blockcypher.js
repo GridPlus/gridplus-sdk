@@ -172,25 +172,35 @@ export default class BlockCypherApi {
       const oldTxs = (txs && txs.length !== undefined) ? txs : [ txs ];
       const newTxs = [];
       const addresses = typeof address === 'string' ? [ address ] : address;
+
       oldTxs.forEach((tx) => {
+        let value = 0;
         tx.inputs.forEach((i) => {
-          const inputAddress = i.addresses[0];
-          const outputAddress = tx.outputs[0].addresses[0];
-          if (addresses.indexOf(inputAddress) > -1) {
-            const filteredTx = this._filterTx(tx, outputAddress, inputAddress, this._getInputValue(i, tx.outputs, addresses));
-            if (filteredTx) newTxs.push(filteredTx);
+          if (addresses.indexOf(i.addresses[0]) > -1) {
+            value -= i.output_value;
           }
         })
         tx.outputs.forEach((o) => {
           // Really not sure why output.addresses is an array. I don't know when you would
           // send an output with multiple recipients...
-          const outputAddress = o.addresses[0];
-          const inputAddress = tx.inputs[0].addresses[0];
-          if (addresses.indexOf(outputAddress) > -1) {
-            const filteredTx = this._filterTx(tx, outputAddress, inputAddress, o.value, true);
-            if (filteredTx) newTxs.push(filteredTx);
+          if (addresses.indexOf(o.addresses[0]) > -1) {
+            value += o.value;
           }
         })
+        if (value < 0) value += tx.fees;
+        else           value -= tx.fees;
+        newTxs.push({
+          to: tx.outputs[0].addresses[0],
+          from: tx.inputs[0].addresses[0],
+          fee: tx.fees / Math.pow(10, 8),
+          in: value > 0 ? 1 :0,
+          hash: tx.hash,
+          currency: 'BTC',
+          height: tx.block_height,
+          timestamp: tx.confirmed ? this._getUnixTimestamp(tx.confirmed) : this._getUnixTimestamp(tx.received),
+          value: value / Math.pow(10, 8),
+          data: tx,
+        });
       })
       if (txs.length !== undefined) return newTxs
       else                          return newTxs[0];
@@ -205,34 +215,34 @@ export default class BlockCypherApi {
   //   return this._filterTx(tx, output.addresses[0], sender, output.value);
   // }
 
-  _getInputValue(input, outputs, addresses) {
-    let val = input.output_value;
-    outputs.forEach((o) => {
-      if (addresses.indexOf(o.addresses[0]) > -1) val -= o.value;
-    })
-    return val;
-  }
+  // _getInputValue(input, outputs, addresses) {
+  //   let val = input.output_value;
+  //   outputs.forEach((o) => {
+  //     if (addresses.indexOf(o.addresses[0]) > -1) val -= o.value;
+  //   })
+  //   return val;
+  // }
 
-  _filterTx(tx, to, from, value, input=false) {
-    const allowed = (to !== from);
-    if (allowed) {
-      const t = tx.confirmed ? tx.confirmed : tx.received;
-      return {
-        to,
-        from,
-        fee: this._getBitcoinValue(tx.fees),
-        in: input,
-        hash: tx.hash,
-        currency: 'BTC',
-        height: tx.block_height,
-        timestamp: this._getUnixTimestamp(t),
-        value: this._getBitcoinValue(value),
-        data: tx,
-      }
-    } else {
-      return undefined;
-    }
-  }
+  // _filterTx(tx, to, from, value, input=false) {
+  //   const allowed = (to !== from);
+  //   if (allowed) {
+  //     const t = tx.confirmed ? tx.confirmed : tx.received;
+  //     return {
+  //       to,
+  //       from,
+  //       fee: this._getBitcoinValue(tx.fees),
+  //       in: input,
+  //       hash: tx.hash,
+  //       currency: 'BTC',
+  //       height: tx.block_height,
+  //       timestamp: this._getUnixTimestamp(t),
+  //       value: this._getBitcoinValue(value),
+  //       data: tx,
+  //     }
+  //   } else {
+  //     return undefined;
+  //   }
+  // }
 
   _getUnixTimestamp(t) {
     return new Date(t).getTime() / 1000;
