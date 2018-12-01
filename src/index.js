@@ -50,17 +50,17 @@ export default class SdkClient {
     });
   }
 
-  addManualPermission(cb) {
-    this.client.pairedRequest('addManualPermission', { }, (err) => {
-      return cb(err);
-    });
-  }
-
   addPermission(param, cb) {
     const req = buildPermissionRequest(param);
     if (typeof req === 'string') return cb(req);
-    this.client.pairedRequest('addPermission', { param: req }, (err) => {
-      return cb(err);
+    this.client.pairedRequest('addPermission', { param: req }, (err, res) => {
+      let success = null;
+      try {
+        success = res.result.success;
+      } catch (e) {
+        ;
+      }
+      return cb(err, success);
     });
   }
 
@@ -190,6 +190,7 @@ export default class SdkClient {
       if (err) return cb(err);
       this.client.pairedRequest('sign', { param: newReq }, (err, res) => {
         if (err) return cb(err)
+        else if (res === null) return cb(null, null)   // User rejects request --> return no error and sigData=null
         else if (!res || res.result === undefined || res.result.data === undefined || res.result.data.sigData === undefined) return cb('Incorrect response');
         
         res.result.data.params = newReq.params;

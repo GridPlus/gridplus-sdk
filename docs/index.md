@@ -114,14 +114,6 @@ If you receive a callback with `err==null`, the pairing has been made successful
 
 *NOTE: There is a timeout on the callback, so if the user does not enter the secret in 60 seconds, you will receive an error to that effect.*
 
-## Adding a Manual Permission
-
-**THIS WILL BE DEPRECATED SOON**
-
-```
-client.addManualPermission((err, res) => {
-})
-```
 
 ## <a href="getting-addresses">Getting Addresses</a>
 
@@ -172,7 +164,7 @@ const opts = {
 
 ### <a href="requesting-the-sig">Requesting the Signature</a>
 
-Without a specified permission, an SDK user with a pairing can always request a signature that the Lattice user can manually accept on the device (similar to the experience of other hardware wallets).
+Without a specified permission, an SDK user with a pairing can always request a signature that the Lattice user can manually accept on the device (similar to the experience of other hardware wallets). Note that if the user rejects the transaction, `signedTx=null` below.
 
 Once your transaction has been built by the SDK, you can send it to the device, which checks the boundaries of your request in the secure compute module and, if it conforms to the desired schema, is passed to the secure enclave for signing (pending user authorization).
 
@@ -265,7 +257,6 @@ With a permission in hand, an app can make a request in exactly the same way as 
 ```
 const schemaCode = 'ETH';
 const opts = {
-    usePermission: true,    // Needs to be true to request automated signature!
     schemaCode,
     params: {
       nonce: null,          // This will be filled in by the SDK
@@ -567,10 +558,6 @@ Retrieve one or more addresses from a paired device.
 * `addresses`: array of strings (if multiple) or a string (if one).
 
 
-## addManualPermission(cb)
-
-**This will be deprecated soon**
-
 ## <a href="add-permission">addPermission(param, cb)</a>
 
 Request a new permission based on a rule set you provide.
@@ -608,9 +595,10 @@ Request a new permission based on a rule set you provide.
     </tr>    
 </table>
 
-#### cb(err)
+#### cb(err, success)
 
 * `err`: string or `null`.
+* `success`: boolean indicating whether the user accepted the request
 
 ## <a href="broadcast">broadcast(shortcode, payload, cb)</a>
 
@@ -887,8 +875,7 @@ Required options:
     schemaCode: <string>,     // The schema code (e.g. ETH, ETH-ERC20, BTC)
     params: {
         ... // Set of parameters based on the type of request
-    },
-    usePermission: <bool>     // Default false, use true if you want to utilize an automatic signing permission
+    }
 }
 ```
 
@@ -930,7 +917,7 @@ Optional options:
 #### cb(err, sigData)
 
 * `err` - string representing the error message (or `null`)
-* `sigData` - object containing signature data which can be broadcast with `client.broadcast()`. Format depends on the network used:
+* `sigData` - object (or `null`, if the request has no matching permission and the user rejects it) containing signature data which can be broadcast with `client.broadcast()`. Format depends on the network used:
 
 *Bitcoin*:
 ```
