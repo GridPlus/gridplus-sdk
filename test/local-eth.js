@@ -52,13 +52,6 @@ describe('Ethereum', () => {
     });
   });
 
-  it('Should create a manual permission', (done) => {
-    client.addManualPermission((err) => {
-      assert(err === null, err);
-      done();
-    })
-  });
-
   it('Should get the ETH address', (done) => {
     const req = {
       total: 1,

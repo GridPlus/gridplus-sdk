@@ -184,13 +184,11 @@ export default class SdkClient {
 
   sign(param, cb) {
     const req = buildSigRequest(param);
-    const automated = param.usePermission ? param.usePermission : false;
-    const route = automated === true ? 'signAutomated' : 'signManual';
     if (typeof req === 'string') return cb(req);
     const providerCode = getProviderShortCode(param.schemaCode);
     this._getStatefulParams(providerCode, req, (err, newReq) => {
       if (err) return cb(err);
-      this.client.pairedRequest(route, { param: newReq }, (err, res) => {
+      this.client.pairedRequest('sign', { param: newReq }, (err, res) => {
         if (err) return cb(err)
         else if (!res || res.result === undefined || res.result.data === undefined || res.result.data.sigData === undefined) return cb('Incorrect response');
         

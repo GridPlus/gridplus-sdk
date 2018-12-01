@@ -21,7 +21,7 @@ const regtest = {  // regtest config from bcoin: http://bcoin.io/docs/protocol_n
 import crypto from 'crypto';
 
 let deviceAddresses, startBal, startUtxos, TX_VALUE;
-const CHANGE_INDEX = 2
+const CHANGE_INDEX = 1
 
 const { host, network, port } = bitcoinNode;
 const { btcHolder }= require('../secrets.json');
@@ -139,21 +139,14 @@ describe('Bitcoin', () => {
     });
   });
 
-  it('Should create a manual permission', (done) => {
-    client.addManualPermission((err) => {
-      assert(err === null, err);
-      done();
-    })
-  });
-
   it('Should get the first 2 Bitcoin addresses of the manual permission and log address 0', (done) => {
     const req = {
-      total: 4,
+      total: 2,
       network: 'regtest'
     }
     client.addresses(req, (err, addresses) => {
       assert(err === null, err);
-      assert(addresses.length === 4);
+      assert(addresses.length === 2);
       deviceAddresses = addresses;
       // Get the baseline balance for the addresses
       client.getBalance('BTC', { address: deviceAddresses[0] }, (err, d) => {
@@ -308,7 +301,7 @@ describe('Bitcoin', () => {
 
   it('Should ensure the correct change address got the change', (done) => {
     const req = {
-      total: 4,
+      total: 2,
       network: 'regtest'
     }
     client.addresses(req, (err, addresses) => {

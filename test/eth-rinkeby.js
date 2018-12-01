@@ -57,13 +57,6 @@ describe('Ethereum via Etherscan: ether transfers', () => {
     });
   });
 
-  it('Should create a manual permission', (done) => {
-    client.addManualPermission((err) => {
-      assert(err === null, err);
-      done();
-    })
-  });
-
   it('Should get the Rinkeby balance of the holder account', (done) => {
     client.getBalance('ETH', { address: ethHolder.address }, (err, data) => {
       assert.equal(err, null, err);
