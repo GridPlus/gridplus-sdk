@@ -8,7 +8,7 @@ export const providers = {
   Bitcoin,
   Ethereum,
 };
-import { buildPermissionRequest, buildSigRequest } from './permissions';
+import { buildPermissionRequest, buildSigRequest, parsePermissions } from './permissions';
 // const tokenList = require('../tokensByAddress.json')
 const log = debug('gridplus-sdk');
 
@@ -177,9 +177,18 @@ export default class SdkClient {
       return cb(null, info);
     }).catch(err => cb(err));
   }
-  // appSecret
+
   pair(appSecret, cb) {
     return this.client.pair(appSecret, cb);
+  }
+
+  permissions(cb) {
+    this.client.pairedRequest('getPermissions', { }, (err, res) => {
+      if (err) return cb(err);  
+      if (!res.result || !res.result.data) return cb('Incorrect response.');
+      if (!res.result.data.permissions) res.result.data.permissions = [];
+      return cb(null, parsePermissions(res.result.data.permissions));
+    });
   }
 
   sign(param, cb) {

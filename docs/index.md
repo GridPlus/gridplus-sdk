@@ -862,6 +862,27 @@ String representation of the entropy you have generated. **Must be 6 characters 
 
 * `err` - string representing the error message (or `null`)
 
+
+## <a href="permissions">permissions(cb)</a>
+
+Get a list of permissions associated with your permission.
+
+#### cb(err, permissions)
+
+* `err` - string representing the error message (or `null`)
+* `permissions` - array of permissions of form:
+
+```
+[{
+    schemaCode: <string>,
+    timeLimit: <int>,
+    params: <object>,
+}]
+```
+
+*Note that the params will be the same format that you specified when you created the permission via [addPermission](#add-permission).*
+
+
 ## <a href="sign">sign(options, cb)</a>
 
 Request a signature to be returned automatically (i.e. *without* user authorization). This must be requested within constraints of a pre-established permission.

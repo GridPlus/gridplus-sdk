@@ -81,6 +81,14 @@ describe('Basic stateless tests (no providers)', () => {
     })
   });
 
+  it('Should find zero permissions saved', (done) => {
+    client.permissions((err, permissions) => {
+      assert(err === null, err);
+      assert(permissions.length === 0, 'Did not find zero permissions');
+      done();
+    })
+  })
+
   it('Should create an automated permission', (done) => {
     const req = {
       schemaCode: 'ETH',
@@ -103,6 +111,16 @@ describe('Basic stateless tests (no providers)', () => {
       done();
     })
   });
+
+  it('Should find one permission saved', (done) => {
+    client.permissions((err, permissions) => {
+      assert(err === null, err);
+      assert(permissions.length === 1, 'Did not find one permission');
+      assert(permissions[0].timeLimit === 10000, 'Incorrect timeLimit on permission');
+      assert(permissions[0].params.value.eq === 1000, 'Incorrect permission found');
+      done();
+    })
+  })
 
   it('Should get the Ethereum address and request a signature from it', (done) => {
     const req2 = {
@@ -180,4 +198,5 @@ describe('Basic stateless tests (no providers)', () => {
       done();
     });
   });
+  
 });
