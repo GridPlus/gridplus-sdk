@@ -6,7 +6,8 @@ import { Client } from 'index';
 import ReactNativeCrypto from 'gridplus-react-native-crypto';
 import crypto from 'crypto';
 
-let client, reactNative;
+let client, reactNative, btcAddrs, ethAddrs;
+process.on('unhandledRejection', e => { throw e; });
 
 describe('Basic stateless tests (no providers)', () => {
 
@@ -39,38 +40,54 @@ describe('Basic stateless tests (no providers)', () => {
     });
   });
 
-  it('Should create a manual permission', (done) => {
-    client.addManualPermission((err) => {
-      assert(err === null, err);
-      done();
-    })
-  });
-
-  it('Should get the Bitcoin addresses of the manual permission', (done) => {
+  it('Should get the Bitcoin addresses', (done) => {
     const req = {
-      total: 3,
+      total: 2,
     }
     client.addresses(req, (err, addresses) => {
       assert(err === null, err);
-      assert(addresses.length === 3);
+      assert(addresses.length === 2);
       assert(addresses[0].slice(0, 1) === '3', 'Not a segwit address');
+      btcAddrs = addresses;
       done();
     })
   });
 
   it('Should get testnet addresses', (done) => {
     const req = {
-      total: 3,
+      total: 2,
       network: 'testnet'
     }
     client.addresses(req, (err, addresses) => {
 
       assert(err === null, err);
-      assert(addresses.length === 3);
+      assert(addresses.length === 2);
       assert(addresses[0].slice(0, 1) === '2', 'Not a testnet address');
       done();
     });
   });
+
+  it('Should get the Ethereum addresses', (done) => {
+    const req = {
+      total: 2,
+      coin_type: '60\'',
+    }
+    client.addresses(req, (err, addresses) => {
+      assert(err === null, err);
+      assert(addresses.length === 2);
+      assert(addresses[0].slice(0, 2) === '0x', 'Not an Ethereum address');
+      ethAddrs = addresses;
+      done();
+    })
+  });
+
+  it('Should find zero permissions saved', (done) => {
+    client.permissions((err, permissions) => {
+      assert(err === null, err);
+      assert(permissions.length === 0, 'Did not find zero permissions');
+      done();
+    })
+  })
 
   it('Should create an automated permission', (done) => {
     const req = {
@@ -95,13 +112,18 @@ describe('Basic stateless tests (no providers)', () => {
     })
   });
 
+  it('Should find one permission saved', (done) => {
+    client.permissions((err, permissions) => {
+      assert(err === null, err);
+      assert(permissions.length === 1, 'Did not find one permission');
+      assert(permissions[0].timeLimit === 10000, 'Incorrect timeLimit on permission');
+      assert(permissions[0].params.value.eq === 1000, 'Incorrect permission found');
+      done();
+    })
+  })
+
   it('Should get the Ethereum address and request a signature from it', (done) => {
-    // TODO: remove permissionIndex and isManual from request
-    const req1 = {
-      coin_type: '60\''
-    };
     const req2 = {
-      usePermission: true,
       schemaCode: 'ETH',
       params: {
         nonce: 1,   // Need to specify nonce in this test file because we have not instantied any providers
@@ -113,32 +135,27 @@ describe('Basic stateless tests (no providers)', () => {
       },
       accountIndex: 0
     }
-
-    client.addresses(req1, (err, address) => {
+    client.sign(req2, (err, sigData) => {
       assert(err === null, err);
-      client.sign(req2, (err, sigData) => {
-        assert(err === null, err);
-        // The message includes the preImage payload concatenated to a signature,
-        // separated by a standard string/buffer
-        const preImage = Buffer.from(sigData.unsignedTx, 'hex');
-        const msg = sha3(preImage);
-        const sig = sigData.sig;
-        assert(sig.length === 129, 'Incorrect signature length');
-        const parsedSig = {
-          r: sig.substr(0, 64),
-          s: sig.substr(64, 128),
-          v: parseInt(sig.slice(-1)),
-        } 
-        const recoveredPubKey = Buffer.from(recoverPubKey(msg, parsedSig), 'hex');
-        const recoveredAddress = `0x${pubToAddress(recoveredPubKey.slice(1)).toString('hex')}`;
-        assert(recoveredAddress === address, 'Incorrect signature');
-        done();
-      });
+      // The message includes the preImage payload concatenated to a signature,
+      // separated by a standard string/buffer
+      const preImage = Buffer.from(sigData.unsignedTx, 'hex');
+      const msg = sha3(preImage);
+      const sig = sigData.sig;
+      assert(sig.length === 129, 'Incorrect signature length');
+      const parsedSig = {
+        r: sig.substr(0, 64),
+        s: sig.substr(64, 128),
+        v: parseInt(sig.slice(-1)),
+      } 
+      const recoveredPubKey = Buffer.from(recoverPubKey(msg, parsedSig), 'hex');
+      const recoveredAddress = `0x${pubToAddress(recoveredPubKey.slice(1)).toString('hex')}`;
+      assert(recoveredAddress === ethAddrs[0], 'Incorrect signature');
+      done();
     });
   });
 
   it('Should create an automated permission to send Bitcoins', (done) => {
-
     const req = {
       schemaCode: 'BTC',
       timeLimit: 0,
@@ -148,7 +165,6 @@ describe('Basic stateless tests (no providers)', () => {
         value: { lte: 12000 },
       }
     };
-
     client.addPermission(req, (err) => {
       assert(err === null, err);
       done();
@@ -156,12 +172,8 @@ describe('Basic stateless tests (no providers)', () => {
   });
 
   it('Should create an automated Bitcoin transaction', (done) => {
-    const req1 = {
-      coin_type: '0\''
-    };
     // Build the request
-    const req2 = {
-      usePermission: true,
+    const req = {
       schemaCode: 'BTC',
       params: {
         version: 1,
@@ -180,16 +192,11 @@ describe('Basic stateless tests (no providers)', () => {
       }],
       accountIndex: 0,
     };
-    client.addresses(req1, (err, res) => {
+    client.sign(req, (err, sigData) => {
       assert(err === null, err);
-      assert(res !== undefined);
-      // const addr = res.result.data.addresses;
-      client.sign(req2, (err, sigData) => {
-        assert(err === null, err);
-        assert(sigData !== undefined);
-        done();
-      });
+      assert(sigData !== undefined);
+      done();
     });
   });
-
+  
 });

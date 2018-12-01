@@ -63,13 +63,6 @@ describe('Bitcoin via BlockCypher: transfers', () => {
     });
   });
 
-  it('Should create a manual permission', (done) => {
-    client.addManualPermission((err) => {
-      assert(err === null, err);
-      done();
-    })
-  });
-
   it('Should get the first 2 Bitcoin addresses of the manual permission and log address 0', (done) => {
     const req = {
       total: 2,

@@ -8,7 +8,7 @@ export const providers = {
   Bitcoin,
   Ethereum,
 };
-import { buildPermissionRequest, buildSigRequest } from './permissions';
+import { buildPermissionRequest, buildSigRequest, parsePermissions } from './permissions';
 // const tokenList = require('../tokensByAddress.json')
 const log = debug('gridplus-sdk');
 
@@ -50,17 +50,17 @@ export default class SdkClient {
     });
   }
 
-  addManualPermission(cb) {
-    this.client.pairedRequest('addManualPermission', { }, (err) => {
-      return cb(err);
-    });
-  }
-
   addPermission(param, cb) {
     const req = buildPermissionRequest(param);
     if (typeof req === 'string') return cb(req);
-    this.client.pairedRequest('addPermission', { param: req }, (err) => {
-      return cb(err);
+    this.client.pairedRequest('addPermission', { param: req }, (err, res) => {
+      let success = null;
+      try {
+        success = res.result.success;
+      } catch (e) {
+        ;
+      }
+      return cb(err, success);
     });
   }
 
@@ -177,21 +177,29 @@ export default class SdkClient {
       return cb(null, info);
     }).catch(err => cb(err));
   }
-  // appSecret
+
   pair(appSecret, cb) {
     return this.client.pair(appSecret, cb);
   }
 
+  permissions(cb) {
+    this.client.pairedRequest('getPermissions', { }, (err, res) => {
+      if (err) return cb(err);  
+      if (!res.result || !res.result.data) return cb('Incorrect response.');
+      if (!res.result.data.permissions) res.result.data.permissions = [];
+      return cb(null, parsePermissions(res.result.data.permissions));
+    });
+  }
+
   sign(param, cb) {
     const req = buildSigRequest(param);
-    const automated = param.usePermission ? param.usePermission : false;
-    const route = automated === true ? 'signAutomated' : 'signManual';
     if (typeof req === 'string') return cb(req);
     const providerCode = getProviderShortCode(param.schemaCode);
     this._getStatefulParams(providerCode, req, (err, newReq) => {
       if (err) return cb(err);
-      this.client.pairedRequest(route, { param: newReq }, (err, res) => {
+      this.client.pairedRequest('sign', { param: newReq }, (err, res) => {
         if (err) return cb(err)
+        else if (res === null) return cb(null, null)   // User rejects request --> return no error and sigData=null
         else if (!res || res.result === undefined || res.result.data === undefined || res.result.data.sigData === undefined) return cb('Incorrect response');
         
         res.result.data.params = newReq.params;

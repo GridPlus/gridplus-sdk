@@ -13,6 +13,15 @@
       "type": 2
     }
   },
+  "invCode": {
+    "0": {
+      "0": "ETH",
+      "1": "ETH-ERC20"
+    },
+    "1": {
+      "2": "BTC"
+    }
+  },
   "schemaTypes": {
     "0": [ "number", "number", "number", "string", "number", "string" ],
     "1": [ "number", "number", "string", "number", "number", "number" ]

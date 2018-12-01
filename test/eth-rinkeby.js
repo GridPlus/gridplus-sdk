@@ -9,17 +9,16 @@ const { erc20Src } = require('./config.json');
 const { ethHolder, etherscanApiKey } = require('../secrets.json');
 let client, addr, erc20Addr, sender, senderPriv, addr2;
 const transferAmount = 54;
+const providerOpts = {
+  network: 'rinkeby', 
+  etherscan: true, 
+  apiKey: etherscanApiKey 
+}
 
 describe('Ethereum via Etherscan: ether transfers', () => {
 
   before(() => {
-    const opts = {
-      network: 'rinkeby', 
-      etherscan: true, 
-      apiKey: etherscanApiKey 
-    }
-
-    const eth = new providers.Ethereum(opts);
+    const eth = new providers.Ethereum(providerOpts);
     client = new Client({
       clientConfig: {
         name: 'basic-test',
@@ -55,13 +54,6 @@ describe('Ethereum via Etherscan: ether transfers', () => {
       assert(err === null, err)
       done();
     });
-  });
-
-  it('Should create a manual permission', (done) => {
-    client.addManualPermission((err) => {
-      assert(err === null, err);
-      done();
-    })
   });
 
   it('Should get the Rinkeby balance of the holder account', (done) => {
@@ -197,7 +189,7 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
 
   before(() => {
 
-    const eth = new providers.Ethereum({ network: 'rinkeby', etherscan: true });
+    const eth = new providers.Ethereum(providerOpts);
     client = new Client({
       clientConfig: {
         name: 'basic-test',

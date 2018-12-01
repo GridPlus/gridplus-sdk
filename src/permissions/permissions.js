@@ -49,6 +49,37 @@ exports.buildSigRequest = function(opts) {
   else     return req;
 }
 
+exports.parsePermissions = function(permissions) {
+  const parsedPermissions = [];
+  permissions.forEach((p) => {
+    const parsedP = {
+      schemaCode: codes.invCode[p.schemaIndex][p.typeIndex],
+      timeLimit: p.timeLimit,
+      params: {}
+    };
+    p.rules.forEach((ruleType, i) => {
+      if (i % 3 === 0) {
+        const ruleIndex = i / 3;
+        const ruleName = codes.schemaNames[p.schemaIndex][ruleIndex];
+        switch (ruleType) {
+          case null:
+            break;
+          case 'between':
+            parsedP.params[ruleName] = {};
+            parsedP.params[ruleName][ruleType] = [ p.rules[i + 1], p.rules[i + 2] ];
+          break;
+          default:
+            parsedP.params[ruleName] = {};
+            parsedP.params[ruleName][ruleType] = p.rules[i + 1];
+            break;
+        }
+      }
+    });
+    parsedPermissions.push(parsedP);
+  })
+  return parsedPermissions;
+}
+
 // Parse the human-readable params object into an instruction set for the Lattice
 function getRule(x) {
   const range = {
@@ -59,7 +90,7 @@ function getRule(x) {
   Object.keys(x).forEach((k) => {
     switch(k) {
       case 'eq':
-        toReturn = ['equals', x[k], null];
+        toReturn = [k, x[k], null];
         break;
       case 'gt': 
         range.bounds[0] = x[k];
