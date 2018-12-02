@@ -636,6 +636,25 @@ Serial of the Lattice. This is device-specific.
 
 * `err` - string representing the error message (or `null`)
 
+## <a href="delete-pairing">deletePairing(cb)</a>
+
+Delete your pairing with the connected Lattice. You will not be able to make any more requests after you do this. *This also deletes all of your permissions, meaning they will not be recovered if you re-pair later!*
+
+### cb(err)
+
+* `err` - string representing the error message (or `null`)
+
+## <a href="delete-permission">deletePermission(index, cb)</a>
+
+Delete a given permission based on an index, which can be found via [permissions](#permissions).
+
+### index [integer], required
+
+The index of the permission, based on the array returned from [permissions](#permissions).
+
+### cb(err)
+
+* `err` - string representing the error message (or `null`)
 
 ## <a href="get-balance">getBalance(shortcode, opts, cb)</a>
 
