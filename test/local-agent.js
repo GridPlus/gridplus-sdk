@@ -155,6 +155,21 @@ describe('Basic stateless tests (no providers)', () => {
     });
   });
 
+  it('Should delete the permission', (done) => {
+    client.deletePermission(0, (err) => {
+      assert(err === null, err);
+      done();
+    })
+  })
+
+  it('Should now find 0 permissions', (done) => {
+    client.permissions((err, permissions) => {
+      assert(err === null, err);
+      assert(permissions.length === 0, 'Permission was not deleted');
+      done();
+    })
+  })
+
   it('Should create an automated permission to send Bitcoins', (done) => {
     const req = {
       schemaCode: 'BTC',
@@ -198,5 +213,20 @@ describe('Basic stateless tests (no providers)', () => {
       done();
     });
   });
+
+  it('Should delete the pairing', (done) => {
+    client.deletePairing((err) => {
+      assert(err === null, err);
+      done();
+    })
+  })
+
+  it('Should not be able to request permissions now', (done) => {
+    client.permissions((err, permissions) => {
+      assert(err !== null, 'Error was null but should not have been.');
+      assert(permissions === undefined);
+      done();
+    })
+  })
   
 });
