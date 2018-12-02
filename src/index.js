@@ -84,8 +84,19 @@ export default class SdkClient {
     return this.client.request('connect', cb);
   }
 
+  // Delete the pairing
   deletePairing(cb) {
     return this.client.pairedRequest('deletePairing', {}, cb);
+  }
+
+  // Delete the permission at index i. This index is the element in the array returned
+  // from `permissions`
+  deletePermission(i, cb) {
+    if (typeof i === 'function') {
+      cb = i;
+      i = 0;
+    }
+    return this.client.pairedRequest('deletePermission', { index: i }, cb);
   }
 
    // Get a balance for an account.
