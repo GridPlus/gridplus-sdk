@@ -116,9 +116,24 @@ export default class Ethereum {
         in: 0,  // For now, we can assume any transactions are outgoing. TODO: figure a way to get incoming txs
         data: txRaw,
       }
-      return cb(null, tx); 
+      return cb(null, this._postProcessTx(tx)); 
     })
     .catch((err) => { return cb(err); })
+  }
+
+  _postProcessTx(tx) {
+    const d = tx.data.data;
+    switch(d.slice(0, 10)) {
+      case '0xa9059cbb':
+        // ERC20
+        tx.to = `0x${d.slice(34, 74)}`;
+        tx.value = parseInt(`0x${d.slice(74)}`, 16);
+        tx.contractAddress = tx.data.to;
+        break;
+      default:
+        break;
+    }
+    return tx;
   }
 
   _getValue(tx) {

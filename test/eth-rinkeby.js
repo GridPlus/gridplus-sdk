@@ -302,12 +302,15 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
         assert(err === null, err);
         let count = 0;
         const interval = setInterval(() => {
-          client.getTx('ETH', txHash, (err, txs) => {
+          client.getTx('ETH', txHash, (err, tx2) => {
             if (count > TIMEOUT_SEC) {
               assert(err === null, err);
-              assert(txs.height > 0, 'Tx was not mined');
+              assert(tx2.height > 0, 'Tx was not mined');
               done();
-            } else if (txs.height > 0) {
+            } else if (tx2.height > 0) {
+              assert(tx2.value === transferAmount, 'ERC20 transfer value incorrect');
+              assert(tx2.to === addr2, 'ERC20 transfer not sent to correct recipient');
+              assert(tx2.contractAddress === erc20Addr, 'ERC20 transfer - contractAddress not correct');
               clearInterval(interval);
               done();
             } else {
@@ -372,5 +375,4 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
       done();
     })
   })
-
 })
