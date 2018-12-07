@@ -23,11 +23,21 @@
     }
   },
   "schemaTypes": {
-    "0": [ "number", "number", "number", "string", "number", "string" ],
-    "1": [ "number", "number", "string", "number", "number", "number" ]
+    "0": {
+      "0": [ "number", "number", "number", "string", "number", "string" ],
+      "1": [ "number", "number", "number", "string", "number", "object" ]
+    },
+    "1": {
+      "2": [ "number", "number", "string", "number", "number", "string" ]
+    }
   },
   "schemaNames": {
-    "0": [ "nonce", "gasPrice", "gas", "to", "value", "data" ],
-    "1": [ "version", "lockTime", "recipient", "value", "change", "changeAccountIndex" ]
+    "0": {
+      "0": [ ["nonce", null], ["gasPrice", null], ["gas", null], ["to", null], ["value", null], ["data", null] ],
+      "1": [ ["nonce", null], ["gasPrice", null], ["gas", null], ["to", null], ["value", null], ["data", ["to", "value"]] ]
+    },
+    "1": {
+      "2": [ ["version", null], ["lockTime", null], ["recipient", null], ["value", null], ["change", null], ["changeAccountIndex", null] ]
+    }
   }
 }

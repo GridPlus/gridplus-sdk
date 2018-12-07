@@ -428,4 +428,97 @@ describe('Ethereum', () => {
       })
   });
 
+  it('Should create an ERC20 permission.', (done) => {
+    const req = {
+      schemaCode: 'ETH-ERC20',
+      timeLimit: 0,
+      params: {
+        value: {
+          'eq': 0,
+        },
+        data: {
+          value: {
+            'lte': 120000
+          }
+        }
+      }
+    };
+    client.addPermission(req, (err) => {
+      assert(err === null, err);
+      done();
+    });
+  });
+
+  it('Should make an automated ERC20 transfer.', (done) => {
+    client.providers.ETH.getNonce(addr)
+    .then((nonce) => {
+      const req = {
+        schemaCode: 'ETH-ERC20',
+        params: {
+          nonce,
+          gasPrice: 100000000,
+          gas: 100000,
+          to: erc20Addr,
+          value: 0,
+          data: {
+            to: randAddr,
+            value: 1
+          }
+        },
+        accountIndex: 0,
+        sender: addr,
+      };
+      client.sign(req, (err, sigData) => {
+        assert(err === null, err);
+        client.broadcast('ETH', sigData, (err, txHash) => {
+          assert(err === null, err);
+          client.getTx('ETH', txHash, (err, tx) => {
+            assert(tx.value === 1);
+            assert(tx.contractAddress === erc20Addr);
+            done();
+          });
+        });
+      });
+    })
+    .catch((err) => {
+      assert(err === null, err);
+    })
+  });
+
+  it('Should fail to make an automated ERC20 transfer for too high a value.', (done) => {
+    client.providers.ETH.getNonce(addr)
+    .then((nonce) => {
+      const req = {
+        schemaCode: 'ETH-ERC20',
+        params: {
+          nonce,
+          gasPrice: 100000000,
+          gas: 100000,
+          to: erc20Addr,
+          value: 0,
+          data: {
+            to: randAddr,
+            value: 120001
+          }
+        },
+        accountIndex: 0,
+        sender: addr,
+      };
+      client.sign(req, (err, sigData) => {
+        console.log('sign', err, sigData)
+        done();
+        // assert(err === null, err);
+        // client.broadcast('ETH', sigData, (err, txHash) => {
+        //   assert(err === null, err);
+        //   client.getTx('ETH', txHash, (err, tx) => {
+        //     done();
+        //   });
+        // });
+      });
+    })
+    .catch((err) => {
+      assert(err === null, err);
+    })
+  });
+
 });

@@ -15,17 +15,18 @@ exports.buildPermissionRequest = function(opts) {
     timeLimit: opts.timeLimit,
   };
   // const expectedTypes = codes.schemaTypes[req.schemaIndex];
-  const expectedNames = codes.schemaNames[req.schemaIndex];
-  expectedNames.forEach((paramName) => {
+  const expectedNames = codes.schemaNames[req.schemaIndex][req.typeIndex];
+  expectedNames.forEach((name, i) => {
+    const paramName = expectedNames[i][0];
     if (opts.params[paramName] !== undefined) {
-      // if (typeof opts.params[paramName] !== expectedTypes[i]) return `Incorrect param type (${paramName}): Expected ${expectedTypes[i]}, got ${typeof opts.params[paramName]}`;
-      const rule = getRule(opts.params[paramName]);
+      const rule = getRule(name, opts.params[paramName]);
       if (rule === null) return 'Could not parse params into rule set. Please see documentation for correct formatting.';
       req.rules = req.rules.concat(rule);
     } else {
       req.rules = req.rules.concat([null, null, null]);
     }
   })
+  req.rules = _postProcessRules(req.rules, code.schema, code.type)
   return req;
 }
 
@@ -39,12 +40,14 @@ exports.buildSigRequest = function(opts) {
     params: []
   };
   let err = null;
-  codes.schemaNames[req.schemaIndex].forEach((paramName) => {
+  codes.schemaNames[req.schemaIndex][req.typeIndex].forEach((x) => {
+    const paramName = x[0];
     if (opts.params[paramName] === undefined) err = `You are missing parameter ${paramName}`;
     req.params.push(opts.params[paramName]);
   });
   // Some schema types will add additional stuff (e.g. BTC utxo inputs)
   req = addExtraParams(opts, req);
+  console.log('built req', req)
   if (err) return err;
   else     return req;
 }
@@ -81,53 +84,90 @@ exports.parsePermissions = function(permissions) {
 }
 
 // Parse the human-readable params object into an instruction set for the Lattice
-function getRule(x) {
-  const range = {
-    bounds: [null, null],
-    inclusive: [null, null], // if true, it means it can be equal
-  };
-  let toReturn = null;
-  Object.keys(x).forEach((k) => {
-    switch(k) {
-      case 'eq':
-        toReturn = [k, x[k], null];
-        break;
-      case 'gt': 
-        range.bounds[0] = x[k];
-        range.inclusive[0] = false;
-        break;
-      case 'gte':
-        range.bounds[0] = x[k];
-        range.inclusive[0] = true;
-        break;
-      case 'lt':
-        range.bounds[1] = x[k];
-        range.inclusive[1] = false;
-        break;
-      case 'lte':
-        range.bounds[1] = x[k];
-        range.inclusive[1] = true;
+function getRule(name, param) {
+  const names = [];
+  const ranges = [];
+  if (name[1] !== null) {
+    name[1].forEach((subName) => {
+      names.push(subName)
+      ranges.push({
+        bounds: [null, null],
+        inclusive: [null, null], // if true, it means it can be equal
+      })
+    })
+  } else {
+    names.push(name[0]);
+    ranges.push({
+      bounds: [null, null],
+      inclusive: [null, null],
+    })
+  }
+  console.log('names', names)
+  console.log('param', param)
+  const toReturn = [];
+  names.forEach((name, i) => {
+    const p = names.length === 1 ? param : param[name];
+    if (!p) {
+      ranges[i].bounds = [null, null];
+      ranges[i].inclusive = [false, false];
+      toReturn.push(null);
+    } else {
+      Object.keys(p).forEach((k) => {
+        switch (k) {
+          case 'eq':
+            toReturn.push([k, p[k], null]);
+            break;
+          case 'gt': 
+            ranges[i].bounds[0] = p[k];
+            ranges[i].inclusive[0] = false;
+            toReturn.push(null);
+            break;
+          case 'gte':
+            ranges[i].bounds[0] = p[k];
+            ranges[i].inclusive[0] = true;
+            toReturn.push(null);
+            break;
+          case 'lt':
+            ranges[i].bounds[1] = p[k];
+            ranges[i].inclusive[1] = false;
+            toReturn.push(null);
+            break;
+          case 'lte':
+            ranges[i].bounds[1] = p[k];
+            ranges[i].inclusive[1] = true;
+            toReturn.push(null);
+            break;
+        }
+      })
     }
   });
-
-  // Assuming we have a range (i.e. this is not an "equals" param), we need to
-  // go through a series of options
-  if (toReturn !== null) {
-    return toReturn;
-  } else if (range.bounds[0] === null && range.inclusive[1] === false) {
-    return ['lt', range.bounds[1], null];
-  } else if (range.bounds[0] === null && range.inclusive[1] === true) {
-    return ['lte', range.bounds[1], null];
-  } else if (range.bounds[1] === null && range.inclusive[0] === false) {
-    return ['gt', range.bounds[0], null];
-  } else if (range.bounds[1] === null && range.inclusive[0] === true) {
-    return ['gte', range.bounds[0], null];
-  } else if (range.bounds[0] !== null && range.bounds[1] !== null) {
-    // NOTE: right now, "between" is inclusive on both sides of the range
-    return ['between', range.bounds[0], range.bounds[1]];
-  } else {
-    return null;
-  }
+  console.log('ranges', ranges)
+  let rules = [];
+  ranges.forEach((range, i) => {
+    console.log('checking range', range, i, toReturn)
+    // Assuming we have a range (i.e. this is not an "equals" param), we need to
+    // go through a series of options
+    if (toReturn[i] !== null) {
+      rules = rules.concat(toReturn[i]);
+    } else if (range.bounds[0] === null && range.bounds[1] === null) {
+      rules = rules.concat([null, null, null]);
+    } else if (range.bounds[0] === null && range.inclusive[1] === false) {
+      rules = rules.concat(['lt', range.bounds[1], null]);
+    } else if (range.bounds[0] === null && range.inclusive[1] === true) {
+      rules = rules.concat(['lte', range.bounds[1], null]);
+    } else if (range.bounds[1] === null && range.inclusive[0] === false) {
+      rules = rules.concat(['gt', range.bounds[0], null]);
+    } else if (range.bounds[1] === null && range.inclusive[0] === true) {
+      rules = rules.concat(['gte', range.bounds[0], null]);
+    } else if (range.bounds[0] !== null && range.bounds[1] !== null) {
+      // NOTE: right now, "between" is inclusive on both sides of the range
+      rules = rules.concat(['between', range.bounds[0], range.bounds[1]]);
+    } else {
+      rules = rules.concat([null, null, null]);
+    }
+  })
+  console.log('rules?', rules)
+  return rules;
 }
 
 function addExtraParams(opts, req) {
@@ -149,4 +189,19 @@ function addExtraParams(opts, req) {
   if (opts.accountIndex) req.accountIndex = opts.accountIndex;
   if (opts.network)      req.network = opts.network;
   return req;
+}
+
+function _postProcessRules(rules, schemaIdx, typeIdx) {
+  try {
+    const schemaName = codes.invCode[schemaIdx][typeIdx];
+    if (schemaName === 'ETH-ERC20') {
+      // Need to splice in function call
+      rules.splice(rules.length - 6, 0, 'eq')
+      rules.splice(rules.length - 6, 0, '0xa9059cbb')
+      rules.splice(rules.length - 6, 0, null)
+    }
+  } catch (e) {
+    null;
+  }
+  return rules;
 }
