@@ -362,7 +362,7 @@ describe('Ethereum', () => {
       });
     });
   });
-
+/*
   it('Should get a list of tokens and check a balance', (done) => {
     const tokenList = tokens;
     assert(tokenList && Object.keys(tokenList).length > 0);
@@ -520,5 +520,5 @@ describe('Ethereum', () => {
       assert(err === null, err);
     })
   });
-
+*/
 });

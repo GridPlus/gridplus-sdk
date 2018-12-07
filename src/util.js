@@ -55,6 +55,9 @@ export function ecdhKeyPair (priv) {
 
 // left-pad with zeros up to 64 bytes
 export function pad64 (x) {
+  console.log('pad64 1', x)
+  if (typeof x === 'number') x = x.toString(16);
+  console.log('pad64 2', x)
   return leftPad(x.substr(0, 2) === '0x' ? x.slice(2) : x, 64, '0');
 }
 
@@ -153,22 +156,33 @@ function parseBtcTx(res) {
 
 function parseEthTx(res) {
   const sigData = res.result.data.sigData.split(config.api.SPLIT_BUF);
-  const { params } = res.result.data;
+  const { params, typeIndex } = res.result.data;
   const s = sigData[1];
   const d = {
     sig: s,
     vrs: [ parseInt(s.slice(-1)) + 27, s.slice(0, 64), s.slice(64, 128) ],
-    to: params[3],
+    to: getEthRecipient(params, typeIndex),
     value: getEthValue(params),
     height: -1,  // Everything passing through here will be unmined
   }
 
   // Transaction should be an array of all the original params plus the v,r,s array (there should only be one of those)
   const vrsToUse = [ d.vrs[0], Buffer.from(d.vrs[1], 'hex'), Buffer.from(d.vrs[2], 'hex') ];
-  d.tx = `0x${rlpEncode(params.concat(vrsToUse)).toString('hex')}`;
+  console.log('\n\n\nPARSEETHTX PARAMS', params, '\n\n\n')
+  // d.tx = `0x${rlpEncode(params.concat(vrsToUse)).toString('hex')}`;
+  d.tx = getEthTx(params, typeIndex, vrsToUse);
   d.txHash = null;
   d.unsignedTx = sigData[0];
   return d;
+}
+
+function getEthRecipient(params, typeIndex) {
+  if (typeIndex === 0) {
+    return params[3];
+  } else if (typeIndex === 1) {
+    // ERC20
+    return params[3]
+  }
 }
 
 function getEthValue(params) {
@@ -176,6 +190,17 @@ function getEthValue(params) {
   const gas = params[2];
   const value = params[4];
   return -1 * ((gas * gasPrice) - value);
+}
+
+function getEthTx(params, typeIndex, vrs) {
+  if (typeIndex === 1) {
+    const amount = params.pop();
+    const recipient = params.pop();
+    const fCode = params.pop();
+    const d = `${fCode}${pad64(recipient)}${pad64(amount)}`;
+    params.push(d);
+  }
+  return `0x${rlpEncode(params.concat(vrs)).toString('hex')}`
 }
 
 

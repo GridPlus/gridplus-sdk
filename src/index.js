@@ -69,7 +69,6 @@ export default class SdkClient {
     if (! this.providers[shortcode]) {
       return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
     }
-
     return this.providers[shortcode].broadcast(payload, cb);
   }
 
@@ -207,6 +206,7 @@ export default class SdkClient {
     if (typeof req === 'string') return cb(req);
     const providerCode = getProviderShortCode(param.schemaCode);
     this._getStatefulParams(providerCode, req, (err, newReq) => {
+      console.log('request with stateful params', newReq)
       if (err) return cb(err);
       this.client.pairedRequest('sign', { param: newReq }, (err, res) => {
         if (err) return cb(err)

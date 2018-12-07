@@ -19,7 +19,7 @@ export default class Ethereum {
     .then((txHash) => {
       return cb(null, txHash);
     })
-    .catch((err) => { 
+    .catch((err) => {
       return cb(err);
     })
   }

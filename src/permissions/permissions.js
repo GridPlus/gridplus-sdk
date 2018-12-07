@@ -47,7 +47,6 @@ exports.buildSigRequest = function(opts) {
   });
   // Some schema types will add additional stuff (e.g. BTC utxo inputs)
   req = addExtraParams(opts, req);
-  console.log('built req', req)
   if (err) return err;
   else     return req;
 }
@@ -102,8 +101,6 @@ function getRule(name, param) {
       inclusive: [null, null],
     })
   }
-  console.log('names', names)
-  console.log('param', param)
   const toReturn = [];
   names.forEach((name, i) => {
     const p = names.length === 1 ? param : param[name];
@@ -141,10 +138,8 @@ function getRule(name, param) {
       })
     }
   });
-  console.log('ranges', ranges)
   let rules = [];
   ranges.forEach((range, i) => {
-    console.log('checking range', range, i, toReturn)
     // Assuming we have a range (i.e. this is not an "equals" param), we need to
     // go through a series of options
     if (toReturn[i] !== null) {
@@ -166,7 +161,6 @@ function getRule(name, param) {
       rules = rules.concat([null, null, null]);
     }
   })
-  console.log('rules?', rules)
   return rules;
 }
 
@@ -181,7 +175,12 @@ function addExtraParams(opts, req) {
       }
       break;
     case 'ETH-ERC20':
-      req.params[req.params.length - 1] = config.erc20.transfer(opts.params.data.to, opts.params.data.value);
+      req.params = req.params.slice(0, -1);
+      req.params.push('0xa9059cbb');
+      req.params.push(opts.params.data.to)
+      req.params.push(opts.params.data.value);
+      // req.params[req.params.length - 1] = config.erc20.transfer(opts.params.data.to, opts.params.data.value);
+      
       break;
   }
   // Extras
