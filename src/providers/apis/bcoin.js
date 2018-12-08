@@ -40,12 +40,12 @@ export default class BcoinApi {
   
   broadcast(txData, cb) {
     const { tx } = txData;
-    console.log('\nBroadcast', tx)
-    let { txHash, opts } = txData;
-    if (!opts) opts = {};
-    if (!txHash) txHash = getTxHash(tx);
-    console.log('Broadcast: txHash', txHash)
-    this.client.broadcast(tx)
+    let txHash;
+    this.client.execute('decoderawtransaction', [ tx ])
+    .then((decoded) => {
+      txHash = decoded.txid;
+      return this.client.broadcast(tx)
+    })
     .then((success) => {
       if (!success.success) return cb('Could not broadcast transaction. Please try again later.');
       return cb(null, txHash);

@@ -197,11 +197,9 @@ function getEthTx(params, typeIndex, vrs) {
 
 
 export function getTxHash(x) {
-  // console.log('util:getting tx hash for', x)
   if (typeof x === 'string') x = Buffer.from(x, 'hex');
   const h1 = ec.hash().update(x).digest();
   const h2 = ec.hash().update(h1).digest('hex');
-  // console.log('util:gettxHash', Buffer.from(h2, 'hex').reverse().toString('hex'))
   return Buffer.from(h2, 'hex').reverse().toString('hex');
 }
 

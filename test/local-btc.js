@@ -346,11 +346,11 @@ describe('Bitcoin', () => {
       perByteFee: 1,
       multisig: false,
     };
-    let txHash;
     client.sign(req, (err, sigData) => {
-      txHash = sigData.txHash;
+      console.log('sigData', sigData)
       assert(err === null, err);
-      client.broadcast('BTC', sigData, (err) => {
+      client.broadcast('BTC', sigData, (err, txHash) => {
+        console.log('broadcast txHash', txHash)
         assert(err === null, err);
         client.getBalance('BTC', { address: recipient }, (err, d) => {
           assert(err === null, err);
