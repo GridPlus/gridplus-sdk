@@ -331,7 +331,6 @@ describe('Bitcoin', () => {
   it('Should make an automated signature request and broadcast the response in a transaction.', (done) => {
     const recipient = deviceAddresses[0];
     const req = {
-      usePermission: true,
       schemaCode: 'BTC',
       params: {
         version: 1,
@@ -347,21 +346,20 @@ describe('Bitcoin', () => {
       perByteFee: 1,
       multisig: false,
     };
-    console.log('req', req)
+    let txHash;
     client.sign(req, (err, sigData) => {
-      console.log('sigData', sigData)
+      txHash = sigData.txHash;
       assert(err === null, err);
-      client.broadcast('BTC', sigData, (err, txHash) => {
-        console.log('broadcast', err, txHash)
+      client.broadcast('BTC', sigData, (err) => {
         assert(err === null, err);
         client.getBalance('BTC', { address: recipient }, (err, d) => {
-          console.log(`balance for ${recipient}`, d)
           assert(err === null, err);
           assert(d.utxos[0].height === -1);
           nodeClient.execute('generate', [ 1 ])
           .then(() => {
             assert(err === null, err);
             client.getBalance('BTC', { address: recipient }, (err, d) => {
+              assert(err === null, err);
               const h = d.utxos[d.utxos.length -1].hash;
               assert(h === txHash, `Incorrect txHash: expected ${txHash}, got ${h}`);
               done();

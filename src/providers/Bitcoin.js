@@ -32,15 +32,14 @@ export default class Bitcoin {
   getStatefulParams(opts, cb) {
     if (opts.sender) {
       const schema = schemas.schemaNames[opts.schemaIndex][opts.typeIndex];
-      const valueIndex = this._getParam(schema, 'value');
-      const changeIndex = this._getParam(schema, 'change');
+      const valueIndex = this._getParamIndex(schema, 'value');
+      const changeIndex = this._getParamIndex(schema, 'change');
       const value = opts.params[valueIndex];
       this._getUtxos(opts.sender, opts.accountIndex, opts, value, (err, utxos) => {
         if (err) return cb(err);
         this.provider.buildInputs(utxos, (err, inputs) => {
           if (err) return cb(err);
           const change = this._getChange(opts, utxos, value);
-          console.log('change', change)
           if (change < 0) {
             return cb('You are not sending enough to cover ')
           }
@@ -59,11 +58,12 @@ export default class Bitcoin {
     }
   }
 
-  _getParam(schema, name) {
+  _getParamIndex(schema, name) {
+    let paramIndex = 0;
     schema.forEach((x, i) => {
-      if (x[0] === name) return i;
+      if (x[0] === name) paramIndex = i;
     })
-    return 0;
+    return paramIndex;
   }
 
 

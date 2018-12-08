@@ -71,7 +71,7 @@ export default class BlockCypherApi {
     return this._request(url, { tx: rawTx })
       .then((res) => { 
         if (!res || !res.tx || !res.tx.hash) return cb(`Could not properly broadcast transaction. Got response: ${JSON.stringify(res)}`)
-        else                                 return cb(null, res.tx.hash )
+        else                                 return cb(null, res.tx.hash)
       })
       .catch((err) => { return cb(err); })
   }

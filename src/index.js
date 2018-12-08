@@ -207,6 +207,7 @@ export default class SdkClient {
     const providerCode = getProviderShortCode(param.schemaCode);
     this._getStatefulParams(providerCode, req, (err, newReq) => {
       if (err) return cb(err);
+      console.log('Requesting signature: ', newReq)
       this.client.pairedRequest('sign', { param: newReq }, (err, res) => {
         if (err) return cb(err)
         else if (res === null) return cb(null, null)   // User rejects request --> return no error and sigData=null
