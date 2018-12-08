@@ -362,7 +362,7 @@ describe('Ethereum', () => {
       });
     });
   });
-/*
+
   it('Should get a list of tokens and check a balance', (done) => {
     const tokenList = tokens;
     assert(tokenList && Object.keys(tokenList).length > 0);
@@ -485,40 +485,14 @@ describe('Ethereum', () => {
     })
   });
 
-  it('Should fail to make an automated ERC20 transfer for too high a value.', (done) => {
-    client.providers.ETH.getNonce(addr)
-    .then((nonce) => {
-      const req = {
-        schemaCode: 'ETH-ERC20',
-        params: {
-          nonce,
-          gasPrice: 100000000,
-          gas: 100000,
-          to: erc20Addr,
-          value: 0,
-          data: {
-            to: randAddr,
-            value: 120001
-          }
-        },
-        accountIndex: 0,
-        sender: addr,
-      };
-      client.sign(req, (err, sigData) => {
-        console.log('sign', err, sigData)
-        done();
-        // assert(err === null, err);
-        // client.broadcast('ETH', sigData, (err, txHash) => {
-        //   assert(err === null, err);
-        //   client.getTx('ETH', txHash, (err, tx) => {
-        //     done();
-        //   });
-        // });
-      });
-    })
-    .catch((err) => {
+  it('Should find a permission', (done) => {
+    client.permissions((err, permissions) => {
       assert(err === null, err);
+      assert(permissions.length === 2);
+      assert(permissions[1].schemaCode === 'ETH-ERC20');
+      assert(permissions[1].params.data.value.lte === 120000);
+      done();
     })
-  });
-*/
+  })
+
 });

@@ -55,21 +55,14 @@ export function ecdhKeyPair (priv) {
 
 // left-pad with zeros up to 64 bytes
 export function pad64 (x) {
-  console.log('pad64 1', x)
   if (typeof x === 'number') x = x.toString(16);
-  console.log('pad64 2', x)
   return leftPad(x.substr(0, 2) === '0x' ? x.slice(2) : x, 64, '0');
 }
 
 // Remove all leading zeros in piece of data
 export function unpad (x) {
   if (x.substr(0, 2) === '0x') x = x.slice(2);
-  let _i = 0;
-  for (let i = 0; i < x.length; i++) {
-    if (x[i] === '0') _i += 1;
-    else return x.slice(_i);
-  }
-  return x.slice(_i);
+  return x.slice(24);
 }
 
 // Derive a shared secret using ECDH via curve25519
@@ -168,7 +161,6 @@ function parseEthTx(res) {
 
   // Transaction should be an array of all the original params plus the v,r,s array (there should only be one of those)
   const vrsToUse = [ d.vrs[0], Buffer.from(d.vrs[1], 'hex'), Buffer.from(d.vrs[2], 'hex') ];
-  console.log('\n\n\nPARSEETHTX PARAMS', params, '\n\n\n')
   // d.tx = `0x${rlpEncode(params.concat(vrsToUse)).toString('hex')}`;
   d.tx = getEthTx(params, typeIndex, vrsToUse);
   d.txHash = null;

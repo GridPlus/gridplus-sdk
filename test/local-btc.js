@@ -346,12 +346,16 @@ describe('Bitcoin', () => {
       accountIndex: CHANGE_INDEX,
       perByteFee: 1,
       multisig: false,
-    }
+    };
+    console.log('req', req)
     client.sign(req, (err, sigData) => {
+      console.log('sigData', sigData)
       assert(err === null, err);
       client.broadcast('BTC', sigData, (err, txHash) => {
+        console.log('broadcast', err, txHash)
         assert(err === null, err);
         client.getBalance('BTC', { address: recipient }, (err, d) => {
+          console.log(`balance for ${recipient}`, d)
           assert(err === null, err);
           assert(d.utxos[0].height === -1);
           nodeClient.execute('generate', [ 1 ])

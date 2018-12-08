@@ -59,21 +59,41 @@ exports.parsePermissions = function(permissions) {
       timeLimit: p.timeLimit,
       params: {}
     };
+    let nextI = 0;
     p.rules.forEach((ruleType, i) => {
-      if (i % 3 === 0) {
+      if (i % 3 === 0 && nextI <= i) {
         const ruleIndex = i / 3;
-        const ruleName = codes.schemaNames[p.schemaIndex][ruleIndex];
-        switch (ruleType) {
-          case null:
-            break;
-          case 'between':
-            parsedP.params[ruleName] = {};
-            parsedP.params[ruleName][ruleType] = [ p.rules[i + 1], p.rules[i + 2] ];
-          break;
-          default:
-            parsedP.params[ruleName] = {};
-            parsedP.params[ruleName][ruleType] = p.rules[i + 1];
-            break;
+        const rule = codes.schemaNames[p.schemaIndex][p.typeIndex][ruleIndex];
+        const ruleName = rule[0];
+        const nestedRules = rule[1];
+        if (ruleType === null) {
+          null;
+        } else if (nestedRules === null) {
+          parsedP.params[ruleName] = {
+            [ruleType]: _parseRule(ruleType, p, i)
+          };
+        } else {
+          const nested = {};
+          switch(parsedP.schemaCode) {
+            case 'ETH-ERC20':
+              // Skip the function definition
+              if (p.rules[i+3] !== null) { // to
+                nested[nestedRules[0]] = {
+                  [p.rules[i+3]]: _parseRule(p.rules[i+3], p, i+3)
+                };
+              }
+              if (p.rules[i+6] !== null) {
+                nested[nestedRules[1]] = { // value
+                  [p.rules[i+6]]: _parseRule(p.rules[i+6], p, i+6)
+                };
+              }
+              parsedP.params[ruleName] = nested;
+              nextI = i+9;
+              break;
+            default:
+              parsedP.params[ruleName] = {};
+              break;
+          }
         }
       }
     });
@@ -81,6 +101,18 @@ exports.parsePermissions = function(permissions) {
   })
   return parsedPermissions;
 }
+
+function _parseRule(ruleType, p, i) {
+  switch (ruleType) {
+    case null:
+      return;
+    case 'between':
+      return [ p.rules[i + 1], p.rules[i + 2] ];
+    default:
+      return p.rules[i + 1];
+  }
+}
+
 
 // Parse the human-readable params object into an instruction set for the Lattice
 function getRule(name, param) {
