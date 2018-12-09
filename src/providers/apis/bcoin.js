@@ -305,7 +305,7 @@ export default class BcoinApi {
         hash: tx.hash,
         currency: 'BTC',
         height: tx.height,
-        timestamp: tx.mtime,
+        timestamp: tx.mtime || new Date().getTime() / 1000,
         value: value / Math.pow(10, 8),
         data: tx,
       });

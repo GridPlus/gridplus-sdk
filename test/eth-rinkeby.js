@@ -227,6 +227,7 @@ describe('Ethereum via Etherscan: ERC20 transfers',  () => {
             if (count > TIMEOUT_SEC) {
               assert(err === null, err);
               assert(tx.height > 0, 'Tx was not mined');
+              assert(tx.timestamp !== undefined);
               done();
             } else if (tx && tx.height > 0) {
               clearInterval(interval);

@@ -318,6 +318,7 @@ describe('Ethereum', () => {
         client.getTx('ETH', txHash, (err, tx) => {
           assert(err === null, err);
           assert(tx.height > -1, 'Block was not mined');
+          assert(tx.timestamp !== undefined);
           assert(tx.from.toLowerCase() === addr.toLowerCase(), `Incorrect signer: got ${tx.from}, expected ${addr}`);
           client.getBalance('ETH', { address: addr }, (err, data) => {
             assert(err === null, err);

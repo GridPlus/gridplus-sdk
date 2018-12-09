@@ -200,11 +200,12 @@ describe('Bitcoin via BlockCypher: transfers', () => {
           assert(err2 === null, err2);
           let count = 0;
           const interval = setInterval(() => {
-            client.getTx('BTC', txHash, (err, data) => {
+            client.getTx('BTC', txHash, (err, tx) => {
               if (count > 10) {
                 assert.equal(err, null, err);      
                 throw new Error('Transaction did not mine in time');
-              } else if (data.block_height > -1) {
+              } else if (tx.height > -1) {
+                assert(tx.timestamp !== undefined);
                 clearInterval(interval);
                 done();
               } else {
@@ -258,16 +259,16 @@ describe('Bitcoin via BlockCypher: transfers', () => {
           assert(err2 === null, err2);
           let count = 0;
           const interval = setInterval(() => {
-            client.getTx('BTC', txHash, (err, data) => {
+            client.getTx('BTC', txHash, (err, tx) => {
               if (count > 10) {
                 assert.equal(err, null, err);      
                 throw new Error('Transaction did not mine in time');
-              } else if (data && data.block_height > -1) {
-                const o1 = data.outputs[0].addresses[0];
+              } else if (tx && tx.height > -1) {
+                const o1 = tx.data.outputs[0].addresses[0];
                 if (o1 !== recipient) throw new Error(`Recipient did not receive output. Sent to ${o1}, but expected ${recipient}`);
-                const v1 = data.outputs[0].value;
+                const v1 = tx.data.outputs[0].value;
                 if (v1 !== req.params.value) throw new Error(`Output value incorrect. Sent ${v1}, but expected ${req.params.value}`);
-                const o2 = data.outputs[1].addresses[0];
+                const o2 = tx.data.outputs[1].addresses[0];
                 const expectedO2 = deviceAddresses[req.params.changeAccountIndex]
                 if (o2 !== expectedO2) throw new Error(`Change did not go to correct address. Sent to ${o2} but expected ${expectedO2}`);
                 clearInterval(interval);
