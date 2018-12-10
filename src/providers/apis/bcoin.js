@@ -40,10 +40,12 @@ export default class BcoinApi {
   
   broadcast(txData, cb) {
     const { tx } = txData;
-    let { txHash, opts } = txData;
-    if (!opts) opts = {};
-    if (!txHash) txHash = getTxHash(tx);
-    this.client.broadcast(tx)
+    let txHash;
+    this.client.execute('decoderawtransaction', [ tx ])
+    .then((decoded) => {
+      txHash = decoded.txid;
+      return this.client.broadcast(tx)
+    })
     .then((success) => {
       if (!success.success) return cb('Could not broadcast transaction. Please try again later.');
       return cb(null, txHash);
@@ -303,7 +305,7 @@ export default class BcoinApi {
         hash: tx.hash,
         currency: 'BTC',
         height: tx.height,
-        timestamp: tx.mtime,
+        timestamp: tx.mtime || new Date().getTime() / 1000,
         value: value / Math.pow(10, 8),
         data: tx,
       });

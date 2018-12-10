@@ -318,6 +318,7 @@ describe('Ethereum', () => {
         client.getTx('ETH', txHash, (err, tx) => {
           assert(err === null, err);
           assert(tx.height > -1, 'Block was not mined');
+          assert(tx.timestamp !== undefined);
           assert(tx.from.toLowerCase() === addr.toLowerCase(), `Incorrect signer: got ${tx.from}, expected ${addr}`);
           client.getBalance('ETH', { address: addr }, (err, data) => {
             assert(err === null, err);
@@ -427,5 +428,72 @@ describe('Ethereum', () => {
         assert(err === null, err);
       })
   });
+
+  it('Should create an ERC20 permission.', (done) => {
+    const req = {
+      schemaCode: 'ETH-ERC20',
+      timeLimit: 0,
+      params: {
+        value: {
+          'eq': 0,
+        },
+        data: {
+          value: {
+            'lte': 120000
+          }
+        }
+      }
+    };
+    client.addPermission(req, (err) => {
+      assert(err === null, err);
+      done();
+    });
+  });
+
+  it('Should make an automated ERC20 transfer.', (done) => {
+    client.providers.ETH.getNonce(addr)
+    .then((nonce) => {
+      const req = {
+        schemaCode: 'ETH-ERC20',
+        params: {
+          nonce,
+          gasPrice: 100000000,
+          gas: 100000,
+          to: erc20Addr,
+          value: 0,
+          data: {
+            to: randAddr,
+            value: 1
+          }
+        },
+        accountIndex: 0,
+        sender: addr,
+      };
+      client.sign(req, (err, sigData) => {
+        assert(err === null, err);
+        client.broadcast('ETH', sigData, (err, txHash) => {
+          assert(err === null, err);
+          client.getTx('ETH', txHash, (err, tx) => {
+            assert(tx.value === 1);
+            assert(tx.contractAddress === erc20Addr);
+            done();
+          });
+        });
+      });
+    })
+    .catch((err) => {
+      assert(err === null, err);
+    })
+  });
+
+  it('Should find a permission', (done) => {
+    client.permissions((err, permissions) => {
+      assert(err === null, err);
+      assert(permissions.length === 2);
+      assert(permissions[1].schemaCode === 'ETH-ERC20');
+      assert(permissions[1].params.data.value.lte === 120000);
+      done();
+    })
+  })
 
 });

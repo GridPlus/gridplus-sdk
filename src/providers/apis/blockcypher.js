@@ -56,7 +56,7 @@ export default class BlockCypherApi {
         if (err) return cb(err);
         txs.forEach((tx, i) => {
           const u = utxos[i];
-          const o = tx.outputs[u.index];
+          const o = tx.data.outputs[u.index];
           const input = [ u.hash, u.index, getOutputScriptType(o.script), u.accountIndex, o.value ];
           inputs = inputs.concat(input);
         })
@@ -71,7 +71,7 @@ export default class BlockCypherApi {
     return this._request(url, { tx: rawTx })
       .then((res) => { 
         if (!res || !res.tx || !res.tx.hash) return cb(`Could not properly broadcast transaction. Got response: ${JSON.stringify(res)}`)
-        else                                 return cb(null, res.tx.hash )
+        else                                 return cb(null, res.tx.hash)
       })
       .catch((err) => { return cb(err); })
   }
@@ -166,9 +166,10 @@ export default class BlockCypherApi {
   }
 
   _filterTxs(txs, address=[]) {
-    if (!address || address.length === 0) {
-      return txs;
-    } else {
+    // if (!address || address.length === 0) {
+    //   return txs;
+    // } else {
+      if (!address) address = [];
       const oldTxs = (txs && txs.length !== undefined) ? txs : [ txs ];
       const newTxs = [];
       const addresses = typeof address === 'string' ? [ address ] : address;
@@ -204,7 +205,7 @@ export default class BlockCypherApi {
       })
       if (txs.length !== undefined) return newTxs
       else                          return newTxs[0];
-    }
+    // }
   }
 
   // _filterBroadcastedTx(res) {

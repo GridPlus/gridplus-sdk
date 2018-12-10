@@ -109,7 +109,7 @@ export default class EtherscanApi {
         hash: tx.hash,
         currency: 'ETH',
         height: tx.blockNumber,
-        timestamp: tx.timestamp,
+        timestamp: tx.timestamp || new Date().getTime() / 1000,
         value,
         data: tx,
         contractAddress,

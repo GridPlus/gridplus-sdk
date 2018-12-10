@@ -19,7 +19,7 @@ export default class Ethereum {
     .then((txHash) => {
       return cb(null, txHash);
     })
-    .catch((err) => { 
+    .catch((err) => {
       return cb(err);
     })
   }
@@ -111,6 +111,7 @@ export default class Ethereum {
         height: txRaw.blockNumber || -1,
         from: txRaw.from,
         to: txRaw.to,
+        timestamp: txRaw.timestamp || new Date().getTime() / 1000,
         value: this._getValue(txRaw),
         fee: this._getFee(txRaw),
         in: 0,  // For now, we can assume any transactions are outgoing. TODO: figure a way to get incoming txs

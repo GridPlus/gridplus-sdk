@@ -31,9 +31,9 @@ export default class Bitcoin {
 
   getStatefulParams(opts, cb) {
     if (opts.sender) {
-      const schema = schemas.schemaNames[opts.schemaIndex];
-      const valueIndex = schema.indexOf('value');
-      const changeIndex = schema.indexOf('change');
+      const schema = schemas.schemaNames[opts.schemaIndex][opts.typeIndex];
+      const valueIndex = this._getParamIndex(schema, 'value');
+      const changeIndex = this._getParamIndex(schema, 'change');
       const value = opts.params[valueIndex];
       this._getUtxos(opts.sender, opts.accountIndex, opts, value, (err, utxos) => {
         if (err) return cb(err);
@@ -57,6 +57,15 @@ export default class Bitcoin {
       return cb(null, opts);
     }
   }
+
+  _getParamIndex(schema, name) {
+    let paramIndex = 0;
+    schema.forEach((x, i) => {
+      if (x[0] === name) paramIndex = i;
+    })
+    return paramIndex;
+  }
+
 
   getTxHistory(opts, cb) {
     if (!opts.address && !opts.addresses) return cb('No address or addresses included in options.');
