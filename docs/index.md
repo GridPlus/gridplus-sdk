@@ -4,11 +4,11 @@
 
 The Grid+ SDK allows any application to establish a connection and interact with a Grid+ Lattice device. 
 
-# <a href="Quickstart">Quickstart</a>
+# Quickstart
 
-The following tutorial will cover all the steps you need to start using the SDK at a basic level. For documentation on all functionality, please see the [API Reference section](#API-Reference).
+The following tutorial will cover all the steps you need to start using the SDK at a basic level. For documentation on all functionality, please see the [API Reference section](#api-reference).
 
-## <a href="installation">Installation</a>
+## Installation
 
 This SDK is currently only available as a `node.js` module. You can add it to your project with:
 
@@ -28,7 +28,7 @@ or, for older style syntax:
 const Sdk = require('gridplus-sdk').Client;
 ```
 
-## <a href="initializing-a-client">Initializing a Client</a>
+## Initializing a Client
 
 Once imported, you can initialize your SDK client with a `clientConfig` object, which at minimum requires the name of your app (`name`) and a private key with which to sign requests (`privKey`). The latter is not meant to e.g. hold onto any cryptocurrencies; it is simply a way of maintaining a secure communication channel between the device and your application.
 
@@ -39,7 +39,7 @@ const clientConfig = {
 }
 ```
 
-### <a href="adding-providers">Adding Providers</a>
+### Adding Providers
 
 To connect the SDK to supported cryptocurrency networks, you will need to add *providers* to the `clientConfig`. We have two from which to choose:
 
@@ -60,10 +60,10 @@ const btc = new providers.Bitcoin({
 clientConfig.providers = [ eth, btc ];
 ```
 
-To see the full list of configuration options for these providers (and how to add your own), please see the [Providers](#Providers) section.
+To see the full list of configuration options for these providers (and how to add your own), please see the [Providers](#providers) section.
 
 
-### <a href="adding-a-crypto-module">Adding Crypto Module [Optional]</a>
+### Adding Crypto Module [Optional]
 
 By default, this client will use the build in `node.js` [`crypto`](https://nodejs.org/api/crypto.html) module. If you are using React Native, you may want to add another option to the `clientConfig` which specifies a limited "crypto library". We have an [example library](https://github.com/GridPlus/gridplus-react-native-crypto), which you are free to use:
 
@@ -73,7 +73,7 @@ const cryptoLib = new ReactNativeCrypto(clientConfig.privKey);
 clientConfig.crypto = cryptoLib;
 ```
 
-### <a href="initialize">Initialize!</a>
+### Initialize!
 
 With the `clientConfig` filled out, you can initialize a new SDK object:
 
@@ -84,7 +84,7 @@ client.initialize((err, connections) => { })
 
 This returns an array of connections to the providers you have specified.
 
-## <a href="connecting-to-a-lattice">Connecting to a Lattice</a>
+## Connecting to a Lattice
 
 Once you have a client initialized, you can make a connection to any Lattice device which is connected to the internet:
 
@@ -97,7 +97,7 @@ client.connect(serial, (err, res) => {
 
 If you get a non-error response, it means you can talk to the device. 
 
-## <a href="pairing-with-a-device">Pairing with a Device</a>
+## Pairing with a Device
 
 We can now *pair* with a Lattice device, which means establishing a permanent, secure channel between your app and the device. We do this by generating a 6-digit secret, signing it, and sending that signature (plus some other content) to the device. The user then enters the secret you generated into the device (out of band).
 
@@ -115,7 +115,7 @@ If you receive a callback with `err==null`, the pairing has been made successful
 *NOTE: There is a timeout on the callback, so if the user does not enter the secret in 60 seconds, you will receive an error to that effect.*
 
 
-## <a href="getting-addresses">Getting Addresses</a>
+## Getting Addresses
 
 You may retrieve some number of addresses for supported cryptocurrencies. The Grid+ Lattice uses [BIP44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)-compliant highly-deterministic (HD) wallets for generating addresses. This means that for each currency you want to access, you must specify a `coin_type` (by default it will choose Bitcoin, or `0'`). You may also specify `start` (the starting index) and `total` the total number of addresses to generate, starting at the starting index.
 
@@ -133,13 +133,13 @@ client.addresses(req, (err, res) => {
 })
 ```
 
-## <a href="requesting-sigs">Requesting Signatures</a>
+## Requesting Signatures
 
-The Lattice device, at its core, is a tightly controlled, highly configurable, cryptographic signing machine. By default, each pairing (the persistent association between your app and a user's lattice) allows the app an ability to request signatures that the user must manually authorize. However, this SDK also gives the app an ability to establish "automated signatures", which conform to permissions established by the user. For more information on that functionality, please see the [Permissions section](#Permissions). This section will focus on the more basic *manual signature request* functionality.
+The Lattice device, at its core, is a tightly controlled, highly configurable, cryptographic signing machine. By default, each pairing (the persistent association between your app and a user's lattice) allows the app an ability to request signatures that the user must manually authorize. However, this SDK also gives the app an ability to establish "automated signatures", which conform to permissions established by the user. For more information on that functionality, please see the [Permissions section](#permissions). This section will focus on the more basic *manual signature request* functionality.
 
-### <a name="Build-Tx"></a>Building a Transaction
+### Building a Transaction
 
-For security reasons, transactions must be built according to pre-defined [schema](#Schema-Reference). Here we will use an ether transfer as an example, but several others are available (see [here](#Schema-Reference)).
+For security reasons, transactions must be built according to pre-defined [schema](#schema-reference). Here we will use an ether transfer as an example, but several others are available (see [here](#schema-reference).
 
 All supported schema are available in the SDK with a string representing its code:
 
@@ -162,7 +162,7 @@ const opts = {
 
 *Note that `accountIndex` and `sender` must associate to the same address! For example, you might request the first address (index 0) from the client ([see method](#addresses)) and then use that result in this call along with `accountIndex=0`*
 
-### <a href="requesting-the-sig">Requesting the Signature</a>
+### Requesting the Signature
 
 Without a specified permission, an SDK user with a pairing can always request a signature that the Lattice user can manually accept on the device (similar to the experience of other hardware wallets). Note that if the user rejects the transaction, `signedTx=null` below.
 
@@ -174,9 +174,9 @@ client.sign(opts, (err, signedTx) => {
 })
 ```
 
-### <a href="broadcasting-a-tx">Broadcasting a Transaction</a>
+### Broadcasting a Transaction
 
-Once you have your transaction (`signedTx`, from the previous section) signed, you can use the `client` to *broadcast* that transaction on the appropriate network. Note that this requires you to have instantiated a [provider](#Providers) properly and to know the [schema name](#Schema-Reference) of the network you are trying to use. Here is a simple example of broadcasting on Ethereum:
+Once you have your transaction (`signedTx`, from the previous section) signed, you can use the `client` to *broadcast* that transaction on the appropriate network. Note that this requires you to have instantiated a [provider](#providers) properly and to know the [schema name](#schema-reference) of the network you are trying to use. Here is a simple example of broadcasting on Ethereum:
 
 ```
 const schemaName = 'ETH';
@@ -185,11 +185,11 @@ client.broadcast(schemaName, signedTx, (err, txHash) => {
 })
 ```
 
-## <a name="Permissions">Permissions</a>
+## Permissions
 
 The Lattice1 offers an extended API which enables "automated" signatures, which are based on user-authorized *permissions*.
 
-#### <a href="requesting-a-permission">Requesting a Permission</a>
+#### Requesting a Permission
 
 Before requesting automated signatures, the paired application or service must create a permission. For example, your service can establish a permission with a particular Lattice that will enable automated signatures on up to 0.1 ETH per 24 hours. Such a request would look like this:
 
@@ -212,7 +212,7 @@ client.requestPermission(permission, (err, res) => {
 })
 ```
 
-Let's walk through this request. Again we are using a `schemaCode` identical to the one in the [Building a Transaction](#Build-Tx) section. We are also defining a series of parameters that set boundaries on the transaction. In this example, we are saying that `gasPrice` must be between 10^8 and 10^9 (`gte` stands for greater than or equal, `lte` stands for less than or equal). Similarly, the `value` must be less than or equal to 0.1 ETH. Finally, the `timeLimit` shows that this permission resets every 86,400 seconds, or 24 hours.
+Let's walk through this request. Again we are using a `schemaCode` identical to the one in the [Building a Transaction](#building-a-transaction) section. We are also defining a series of parameters that set boundaries on the transaction. In this example, we are saying that `gasPrice` must be between 10^8 and 10^9 (`gte` stands for greater than or equal, `lte` stands for less than or equal). Similarly, the `value` must be less than or equal to 0.1 ETH. Finally, the `timeLimit` shows that this permission resets every 86,400 seconds, or 24 hours.
 
 Available range options include:
 
@@ -222,7 +222,7 @@ Available range options include:
 * `gt`: greater than
 * `lt`: less than
 
-*Note: The `params` fields depend on the schema (see [Schema Reference](#Schema-Reference)), but `schemaCode` must be a string and `timeLimit` must be an integer (in seconds). These three first-level fields are **required***.
+*Note: The `params` fields depend on the schema (see [Schema Reference](#schema-reference)), but `schemaCode` must be a string and `timeLimit` must be an integer (in seconds). These three first-level fields are **required***.
 
 Once we send this request, the user will be shown a screen on her Lattice which parses the request and awaits her confirmation. Once confirmed, the permission will be created and associated with the pairing of the requested it.
 
@@ -250,7 +250,7 @@ params: {
 }
 ```
 
-### <a href="requesting-an-automated-sig">Requesting an Automated Signature</a>
+### Requesting an Automated Signature
 
 With a permission in hand, an app can make a request in exactly the same way as before.
 
@@ -277,13 +277,13 @@ client.sign(opts, (err, res) => {
 
 Notice how this process is nearly identical to requesting a manual signature. If the request does not conform to an established permission associated with your app, it will be converted to a manual signature request, which times out after a period of time.
 
-#<a name="Providers">Providers</a>
+# Providers
 
 The Lattice is designed to compartmentalize security and delegate logic to the appropriate level of security. As such, it is by default stateless, in the sense that it does not know the state of any blockchain network. Rather, it securely holds the entropy, which determines the cryptocurrency wallets according to BIP39/44 standards.
 
 As such, network providers must be utilized at the application level by default. Providers are available through the SDK, though you are also able to import your own so long as it conforms to the same API.
 
-## <a href="importing-and-using-a-provider">Importing and Using a Provider</a>
+## Importing and Using a Provider
 
 Providers may be imported from this module separately from the `client`. Currently, the following provider *types* are supported
 
@@ -325,7 +325,7 @@ A few notes:
 * `clientConfig` must be passed as an object. `name` and `privKey` are required fields.
 * `providers` must be passed as an array of instantiated provider objects. Order does not matter here, as the client will automatically detect which provider corresponds to which currency (so long as the provider was intantiated properly).
 
-## <a href="list-of-providers">List of Built-In Providers</a>
+## List of Built-In Providers
 
 The following section outlines options related to built-in providers.
 
@@ -339,7 +339,7 @@ const Bitcoin = providers.Bitcoin;
 const btc = new Bitcoin(params);
 ```
 
-#### <a href="Bitcoin-Provider-Options"></a>API Options
+#### API Options
 
 <table>
     <tr>
@@ -490,11 +490,12 @@ This section outlines the schema types, param names, and restrictions for the ac
 * Restrictions: `version=1`, `lockTime=0`
 
 
-# <a name="API-Reference">API Reference</a>
+# API Reference
 
 This section includes a full reference for the `client` API.
 
-## <a href="#addresses">addresses(param, cb)</a>
+## addresses
+### Params: (param, cb)
 
 Retrieve one or more addresses from a paired device.
 
@@ -558,7 +559,8 @@ Retrieve one or more addresses from a paired device.
 * `addresses`: array of strings (if multiple) or a string (if one).
 
 
-## <a href="add-permission">addPermission(param, cb)</a>
+## addPermission
+### (param, cb)
 
 Request a new permission based on a rule set you provide.
 
@@ -600,7 +602,8 @@ Request a new permission based on a rule set you provide.
 * `err`: string or `null`.
 * `success`: boolean indicating whether the user accepted the request
 
-## <a href="broadcast">broadcast(shortcode, payload, cb)</a>
+## broadcast
+### (shortcode, payload, cb)
 
 Given a signed transaction from `sign`, broadcast to the desired network using the specified provider.
 
@@ -624,7 +627,8 @@ Where `tx` is the encoded transaction payload specific to the network being used
 * `err` string or `null`
 * `txHash` string, transaction hash
 
-## <a href="connect">connect(serial, cb)</a>
+## connect
+### (serial, cb)
 
 Reach out to a Lattice device using a `serial`. This will attempt to make a brief connection to retrieve the first encryption key needed for pairing.
 
@@ -636,7 +640,8 @@ Serial of the Lattice. This is device-specific.
 
 * `err` - string representing the error message (or `null`)
 
-## <a href="delete-pairing">deletePairing(cb)</a>
+## deletePairing
+### (cb)
 
 Delete your pairing with the connected Lattice. You will not be able to make any more requests after you do this. *This also deletes all of your permissions, meaning they will not be recovered if you re-pair later!*
 
@@ -644,7 +649,8 @@ Delete your pairing with the connected Lattice. You will not be able to make any
 
 * `err` - string representing the error message (or `null`)
 
-## <a href="delete-permission">deletePermission(index, cb)</a>
+## deletePermission
+### (index, cb)
 
 Delete a given permission based on an index, which can be found via [permissions](#permissions).
 
@@ -656,7 +662,8 @@ The index of the permission, based on the array returned from [permissions](#per
 
 * `err` - string representing the error message (or `null`)
 
-## <a href="get-balance">getBalance(shortcode, opts, cb)</a>
+## getBalance
+### (shortcode, opts, cb)
 
 Use a provider to get the balance of a particular account for a particular network.
 
@@ -713,7 +720,8 @@ Provider code you want to broadcast to (e.g. ETH, BTC)
 ```
 
 
-## <a href="get-token-balance">getTokenBalance(opts, cb) [Ethereum only]</a>
+## getTokenBalance [Ethereum only]
+### (opts, cb)
 
 Use a provider to get the ERC20 balance for one or more tokens, for one or more addresses.
 
@@ -754,7 +762,8 @@ Use a provider to get the ERC20 balance for one or more tokens, for one or more 
 }
 ```
 
-## <a href="get-tx-history">getTxHistory(shortcode, opts)</a>
+## getTxHistory
+### (shortcode, opts)
 
 Get transaction history for a given address or addresses.
 
@@ -835,7 +844,8 @@ Provider code you want to broadcast to (e.g. ETH, BTC)
 
 *Note that if only one address is sent, the return object will be a single array, rather than an object indexed by address.*
 
-## <a href="get-tx">getTx(shortcode, hashes, [opts], cb)</a>
+## getTx
+### (shortcode, hashes, opts, cb)
 
 Get the full transaction object(s) using one (or more) transaction hashes.
 
@@ -859,7 +869,8 @@ This option may be deprecated. It currently only allows the user to pass `addres
 * `res` - array of transaction objects (see `getTxHistory`)
 
 
-## <a href="initialize">initialize(cb)</a>
+## initialize
+### (cb)
 
 Once the `client` object is created, you must initialize the providers. This establishes a connection to the desired networks through the providers.
 
@@ -869,7 +880,8 @@ Once the `client` object is created, you must initialize the providers. This est
 * `connections` - array of connections to the desired networks. The format depends on the network and provider combination, but they should be non-empty for each provider.
 
 
-## <a href="pair">pair(appSecret, cb)</a>
+## pair
+### (appSecret, cb)
 
 Establish a secure connection with the desired device.
 
@@ -882,7 +894,8 @@ String representation of the entropy you have generated. **Must be 6 characters 
 * `err` - string representing the error message (or `null`)
 
 
-## <a href="permissions">permissions(cb)</a>
+## permissions
+### (cb)
 
 Get a list of permissions associated with your permission.
 
@@ -902,7 +915,8 @@ Get a list of permissions associated with your permission.
 *Note that the params will be the same format that you specified when you created the permission via [addPermission](#add-permission).*
 
 
-## <a href="sign">sign(options, cb)</a>
+## sign
+### (options, cb)
 
 Request a signature to be returned automatically (i.e. *without* user authorization). This must be requested within constraints of a pre-established permission.
 
@@ -921,7 +935,7 @@ Required options:
 
 Notes about `options.params`:
 * **All values are required!**
-* The values will depend on the schema being used. For a full list of specific schema params, see the [Schema Reference](#Schema-Reference) section.
+* The values will depend on the schema being used. For a full list of specific schema params, see the [Schema Reference](#schema-reference) section.
 
 Optional options:
 ```
