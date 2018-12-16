@@ -2,7 +2,7 @@
 
 **WARNING: This is alpha software and may contain bugs. Please limit cryptocurrency-related use to small amounts.**
 
-The Grid+ SDK allows any application to establish a connection and interact with a Grid+ Lattice device. 
+The [Grid+ SDK](https://github.com/GridPlus/gridplus-sdk) allows any application to establish a connection and interact with a Grid+ Lattice device. 
 
 # Quickstart
 
@@ -645,7 +645,7 @@ Serial of the Lattice. This is device-specific.
 
 Delete your pairing with the connected Lattice. You will not be able to make any more requests after you do this. *This also deletes all of your permissions, meaning they will not be recovered if you re-pair later!*
 
-### cb(err)
+#### cb(err)
 
 * `err` - string representing the error message (or `null`)
 
@@ -654,11 +654,11 @@ Delete your pairing with the connected Lattice. You will not be able to make any
 
 Delete a given permission based on an index, which can be found via [permissions](#permissions).
 
-### index [integer], required
+#### index [integer], required
 
 The index of the permission, based on the array returned from [permissions](#permissions).
 
-### cb(err)
+#### cb(err)
 
 * `err` - string representing the error message (or `null`)
 
@@ -859,11 +859,11 @@ Provider code you want to broadcast to (e.g. ETH, BTC)
 
 Single hash (string) or array of hashes to look up.
 
-#### opts [object]
+##### opts [object]
 
 This option may be deprecated. It currently only allows the user to pass `addresses` to filter out txs that don't involve those addresses.
 
-### cb(err, txs)
+#### cb(err, txs)
 
 * `err` - string representing the error message (or `null`)
 * `res` - array of transaction objects (see `getTxHistory`)
