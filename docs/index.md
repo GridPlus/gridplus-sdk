@@ -39,6 +39,42 @@ const clientConfig = {
 }
 ```
 
+### Client options
+
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Default</td>
+        <td>Description</td>
+    </tr>
+    <tr>
+        <td>baseUrl</td>
+        <td>string</td>
+        <td>`http://localhost`</td>
+        <td>Hostname of Lattice request handler</td>
+    </tr>
+    <tr>
+        <td>name</td>
+        <td>string</td>
+        <td>`gridplus-sdk`</td>
+        <td>Name of the app. This will appear on the Lattice screen for requests. Not required, but strongly suggested.</td>
+    </tr>
+    <tr>
+        <td>privKey</td>
+        <td>String or Buffer</td>
+        <td></td>
+        <td>Private key buffer used for encryption/decryption of Lattice messages. A random private key will be generated and stored if none is provided.</td>
+    </tr>
+    <tr>
+        <td>crypto</td>
+        <td>Object</td>
+        <td>`NodeCrypto`</td>
+        <td>Crypto function package. You only need to specify a different value if you are using React Native</td>
+    </tr>
+</table>
+
+
 ### Adding Providers
 
 To connect the SDK to supported cryptocurrency networks, you will need to add *providers* to the `clientConfig`. We have two from which to choose:
@@ -63,7 +99,7 @@ clientConfig.providers = [ eth, btc ];
 To see the full list of configuration options for these providers (and how to add your own), please see the [Providers](#providers) section.
 
 
-### Adding Crypto Module [Optional]
+### Adding A Different Crypto Module [Optional]
 
 By default, this client will use the build in `node.js` [`crypto`](https://nodejs.org/api/crypto.html) module. If you are using React Native, you may want to add another option to the `clientConfig` which specifies a limited "crypto library". We have an [example library](https://github.com/GridPlus/gridplus-react-native-crypto), which you are free to use:
 
@@ -78,7 +114,7 @@ clientConfig.crypto = cryptoLib;
 With the `clientConfig` filled out, you can initialize a new SDK object:
 
 ```
-const client = new Client({ clientConfig: clientConfig });
+const client = new Client(clientConfig);
 client.initialize((err, connections) => { })
 ```
 
@@ -101,7 +137,7 @@ If you get a non-error response, it means you can talk to the device.
 
 We can now *pair* with a Lattice device, which means establishing a permanent, secure channel between your app and the device. We do this by generating a 6-digit secret, signing it, and sending that signature (plus some other content) to the device. The user then enters the secret you generated into the device (out of band).
 
-*NOTE: The library of possible characters includes digits 0-9 and letters a-f,w,x,y,z (upper and lowercase), making it **base40**. You must generate a 6-digit secret that uses only these characters*
+*NOTE: The library of possible characters includes digits 0-9 and letters a-f,w,x,y,z (upper and lowercase), making it **base40**. You must generate a **6-digit** secret that uses only these characters*
 
 ```
 const secret = crypto.randomBytes(3).toString('hex');
@@ -457,7 +493,7 @@ const eth = new Ethereum(paramss);
 * `ropsten`
 * `homestead`: mainnet
 
-#<a name="Schema-Reference">Schema Reference</a>
+# Schema Reference
 
 This section outlines the schema types, param names, and restrictions for the accepted `schemaCodes`:
 
@@ -480,6 +516,13 @@ This section outlines the schema types, param names, and restrictions for the ac
 * Restrictions: `data` must be of form `{ to: <string>, value: <integer> }` where `to` is the recipient of the tokens and `value` is the number of tokens (atomic units) to send.
 
 **Note: ERC20 transfers require the `to` value in the `param` array to be the address of the token contract!**
+
+#### 'ETH-Unstructured': Unstructured Ethereum Contract Calls
+
+* Types: `[ "number", "number", "number", "string", "number", "string" ]`
+* ParamNames: `[ "nonce", "gasPrice", "gas", "to", "value", "data" ]`
+* Restrictions: No permissions allowed.
+
 
 *Bitcoin*
 

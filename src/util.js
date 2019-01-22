@@ -21,6 +21,8 @@ export function getProviderShortCode(schemaCode) {
       return 'ETH';
     case 'ETH-ERC20':
       return 'ETH';
+    case 'ETH-Unstructured':
+      return 'ETH';
     case 'BTC':
       return 'BTC';
   }

@@ -4,6 +4,7 @@ import debug from 'debug';
 import Ethereum from './providers/Ethereum';
 import AgentRestClient from './rest/client';
 import { parseSigResponse, getProviderShortCode } from './util';
+import NodeCrypto from 'gridplus-node-crypto';
 export const providers = {
   Bitcoin,
   Ethereum,
@@ -17,20 +18,23 @@ export default class SdkClient {
   constructor(options) {
     options = options || {};
 
-    options.clientConfig = options.clientConfig || {};
-    options.clientConfig.baseUrl = options.clientConfig.baseUrl || config.api.baseUrl;
-    options.clientConfig.name = options.clientConfig.name || 'gridplus-sdk';
-    options.clientConfig.privKey = options.clientConfig.privKey;
+    options = options || {};
+    options.baseUrl = options.baseUrl || config.api.baseUrl;
+    options.name = options.name || 'gridplus-sdk';
+    options.privKey = options.privKey;
+    options.crypto = options.crypto || NodeCrypto;
 
-    if ( ! options.clientConfig.crypto) {
-      throw new Error('options.clientConfig.crypto provider must be specified');
+    if (!options.privKey) {
+      const priv = options.crypto.randomBytes(32);
+      if (typeof priv === 'string') options.privKey = priv
+      else                          options.privKey = priv.toString('hex');
+    } else {
+      const priv = typeof options.privKey === 'string' ? options.privKey : options.privKey.toString('hex');
+      if (priv.length != 64) throw new Error('options.privKey must be 32 bytes (hex encoding)');
+      options.privKey = priv;
     }
 
-    if ( ! options.clientConfig.privKey || options.clientConfig.privKey.length !== 64 || typeof options.clientConfig.privKey !== 'string') {
-      throw new Error('options.clientConfig.privKey must be provided as a 32 byte hex string')
-    }
-
-    this.client = new AgentRestClient(options.clientConfig);
+    this.client = new AgentRestClient(options);
 
     this.providers = {};
 
