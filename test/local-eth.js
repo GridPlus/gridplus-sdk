@@ -4,6 +4,7 @@ import Tx from 'ethereumjs-tx';
 import config from '../src/config.js';
 import { Client, providers, tokens } from 'index';
 import NodeCrypto from 'gridplus-node-crypto';
+const crypto = require('crypto');
 const { erc20Src } = require('./config.json');
 const { ethHolder } = require('../secrets.json');
 const transferAmount = 154;
@@ -114,7 +115,7 @@ describe('Ethereum', () => {
       done();
     });
   });
-
+/*
   it('Should deploy an ERC20 token', (done) => {
     const tx = {
       nonce: null,
@@ -493,6 +494,41 @@ describe('Ethereum', () => {
       assert(permissions[1].schemaCode === 'ETH-ERC20');
       assert(permissions[1].params.data.value.lte === 120000);
       done();
+    })
+  })
+  */
+
+  it('Should create an unstructured transaction', (done) => {
+    client.providers.ETH.getNonce(addr)
+    .then((nonce) => {
+      const data = '0x8f76ccf7000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000000010000000000000000000000005c9b369856ee82f72b44ad9fdf331e73c5f071cb0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000249165d4faa2905c3010eb16e8473b617d56b97b0000000000000000000000000000000000000000000000000000000000000001708000000000016400000000000000000000000000000000000000000000002c00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001'
+      const req = {
+        schemaCode: 'ETH-Unstructured',
+        params: {
+          nonce,
+          gasPrice: 10**9,
+          gas: 10**6,
+          to: `0x${crypto.randomBytes(20).toString('hex')}`,
+          value: 0,
+          data,
+        },
+        accountIndex: 0,
+        sender: addr,
+      };
+      // Build tx with ethereumjs-tx
+      const txObj = new Tx(req.params);
+      txObj.raw = txObj.raw.slice(0, 6);
+      txObj._fields = txObj._fields.slice(0, 6);
+      const serTx = txObj.serialize();
+      const tx = `0x${serTx.toString('hex')}`;
+      client.sign(req, (err, sigData) => {
+        assert.equal(err, null)
+        assert.equal(`0x${sigData.unsignedTx}`, tx, 'Incorrect tx built');
+        done();
+      })
+    })
+    .catch((err) => {
+      assert.equal(err, null);
     })
   })
 

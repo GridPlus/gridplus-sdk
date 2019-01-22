@@ -34,6 +34,7 @@ describe('Basic stateless tests (no providers)', () => {
 
   it('Should pair with the agent', (done) => {
     const appSecret = process.env.APP_SECRET;
+    
     client.pair(appSecret, (err) => {
       assert(err === null, err)
       done();

@@ -457,7 +457,7 @@ const eth = new Ethereum(paramss);
 * `ropsten`
 * `homestead`: mainnet
 
-#<a name="Schema-Reference">Schema Reference</a>
+# Schema Reference
 
 This section outlines the schema types, param names, and restrictions for the accepted `schemaCodes`:
 
@@ -480,6 +480,13 @@ This section outlines the schema types, param names, and restrictions for the ac
 * Restrictions: `data` must be of form `{ to: <string>, value: <integer> }` where `to` is the recipient of the tokens and `value` is the number of tokens (atomic units) to send.
 
 **Note: ERC20 transfers require the `to` value in the `param` array to be the address of the token contract!**
+
+#### 'ETH-Unstructured': Unstructured Ethereum Contract Calls
+
+* Types: `[ "number", "number", "number", "string", "number", "string" ]`
+* ParamNames: `[ "nonce", "gasPrice", "gas", "to", "value", "data" ]`
+* Restrictions: No permissions allowed.
+
 
 *Bitcoin*
 

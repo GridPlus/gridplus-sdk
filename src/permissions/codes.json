@@ -8,6 +8,10 @@
       "schema": 0,
       "type": 1
     },
+    "ETH-Unstructured": {
+      "schema": 0,
+      "type": 3
+    },
     "BTC": {
       "schema": 1,
       "type": 2
@@ -16,7 +20,8 @@
   "invCode": {
     "0": {
       "0": "ETH",
-      "1": "ETH-ERC20"
+      "1": "ETH-ERC20",
+      "2": "ETH-Unstructured"
     },
     "1": {
       "2": "BTC"
@@ -34,7 +39,8 @@
   "schemaNames": {
     "0": {
       "0": [ ["nonce", null], ["gasPrice", null], ["gas", null], ["to", null], ["value", null], ["data", null] ],
-      "1": [ ["nonce", null], ["gasPrice", null], ["gas", null], ["to", null], ["value", null], ["data", ["to", "value"]] ]
+      "1": [ ["nonce", null], ["gasPrice", null], ["gas", null], ["to", null], ["value", null], ["data", ["to", "value"]] ],
+      "3": [ ["nonce", null], ["gasPrice", null], ["gas", null], ["to", null], ["value", null], ["data", null] ]    
     },
     "1": {
       "2": [ ["version", null], ["lockTime", null], ["recipient", null], ["value", null], ["change", null], ["changeAccountIndex", null] ]
