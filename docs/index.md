@@ -46,35 +46,30 @@ const clientConfig = {
         <td>Param</td>
         <td>Type</td>
         <td>Default</td>
-        <td>Required</td>
         <td>Description</td>
     </tr>
     <tr>
         <td>baseUrl</td>
         <td>string</td>
         <td>`http://localhost`</td>
-        <td>No</td>
         <td>Hostname of Lattice request handler</td>
     </tr>
     <tr>
         <td>name</td>
         <td>string</td>
         <td>`gridplus-sdk`</td>
-        <td>No</td>
         <td>Name of the app. This will appear on the Lattice screen for requests. Not required, but strongly suggested.</td>
     </tr>
     <tr>
         <td>privKey</td>
         <td>Buffer</td>
-        <td> </td>
-        <td>Yes</td>
+        <td>Random</td>
         <td>Private key buffer used for encryption/decryption of Lattice messages</td>
     </tr>
     <tr>
         <td>crypto</td>
         <td>Object</td>
         <td>`NodeCrypto`</td>
-        <td>No</td>
         <td>Crypto function package. You only need to specify a different value if you are using React Native</td>
     </tr>
 </table>
@@ -119,7 +114,7 @@ clientConfig.crypto = cryptoLib;
 With the `clientConfig` filled out, you can initialize a new SDK object:
 
 ```
-const client = new Client({ clientConfig: clientConfig });
+const client = new Client(clientConfig);
 client.initialize((err, connections) => { })
 ```
 
