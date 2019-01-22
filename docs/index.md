@@ -62,9 +62,9 @@ const clientConfig = {
     </tr>
     <tr>
         <td>privKey</td>
-        <td>Buffer</td>
-        <td>Random</td>
-        <td>Private key buffer used for encryption/decryption of Lattice messages</td>
+        <td>String or Buffer</td>
+        <td></td>
+        <td>Private key buffer used for encryption/decryption of Lattice messages. A random private key will be generated and stored if none is provided.</td>
     </tr>
     <tr>
         <td>crypto</td>
