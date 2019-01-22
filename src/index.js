@@ -4,6 +4,7 @@ import debug from 'debug';
 import Ethereum from './providers/Ethereum';
 import AgentRestClient from './rest/client';
 import { parseSigResponse, getProviderShortCode } from './util';
+import NodeCrypto from 'gridplus-node-crypto';
 export const providers = {
   Bitcoin,
   Ethereum,
@@ -21,10 +22,7 @@ export default class SdkClient {
     options.clientConfig.baseUrl = options.clientConfig.baseUrl || config.api.baseUrl;
     options.clientConfig.name = options.clientConfig.name || 'gridplus-sdk';
     options.clientConfig.privKey = options.clientConfig.privKey;
-
-    if ( ! options.clientConfig.crypto) {
-      throw new Error('options.clientConfig.crypto provider must be specified');
-    }
+    options.clientConfig.crypto = options.clientConfig.crypto || NodeCrypto;
 
     if ( ! options.clientConfig.privKey || options.clientConfig.privKey.length !== 64 || typeof options.clientConfig.privKey !== 'string') {
       throw new Error('options.clientConfig.privKey must be provided as a 32 byte hex string')

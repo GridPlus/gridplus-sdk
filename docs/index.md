@@ -39,6 +39,47 @@ const clientConfig = {
 }
 ```
 
+### Client options
+
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Default</td>
+        <td>Required</td>
+        <td>Description</td>
+    </tr>
+    <tr>
+        <td>baseUrl</td>
+        <td>string</td>
+        <td>`http://localhost`</td>
+        <td>No</td>
+        <td>Hostname of Lattice request handler</td>
+    </tr>
+    <tr>
+        <td>name</td>
+        <td>string</td>
+        <td>`gridplus-sdk`</td>
+        <td>No</td>
+        <td>Name of the app. This will appear on the Lattice screen for requests. Not required, but strongly suggested.</td>
+    </tr>
+    <tr>
+        <td>privKey</td>
+        <td>Buffer</td>
+        <td> </td>
+        <td>Yes</td>
+        <td>Private key buffer used for encryption/decryption of Lattice messages</td>
+    </tr>
+    <tr>
+        <td>crypto</td>
+        <td>Object</td>
+        <td>`NodeCrypto`</td>
+        <td>No</td>
+        <td>Crypto function package. You only need to specify a different value if you are using React Native</td>
+    </tr>
+</table>
+
+
 ### Adding Providers
 
 To connect the SDK to supported cryptocurrency networks, you will need to add *providers* to the `clientConfig`. We have two from which to choose:
@@ -63,7 +104,7 @@ clientConfig.providers = [ eth, btc ];
 To see the full list of configuration options for these providers (and how to add your own), please see the [Providers](#providers) section.
 
 
-### Adding Crypto Module [Optional]
+### Adding A Different Crypto Module [Optional]
 
 By default, this client will use the build in `node.js` [`crypto`](https://nodejs.org/api/crypto.html) module. If you are using React Native, you may want to add another option to the `clientConfig` which specifies a limited "crypto library". We have an [example library](https://github.com/GridPlus/gridplus-react-native-crypto), which you are free to use:
 
