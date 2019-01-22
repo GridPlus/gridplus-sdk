@@ -47,6 +47,7 @@ describe('Ethereum', () => {
 
   it('Should pair with the agent', (done) => {
     const appSecret = process.env.APP_SECRET;
+    console.log('Pairing with secret', appSecret)
     client.pair(appSecret, (err) => {
       assert(err === null, err)
       done();
@@ -115,7 +116,7 @@ describe('Ethereum', () => {
       done();
     });
   });
-/*
+
   it('Should deploy an ERC20 token', (done) => {
     const tx = {
       nonce: null,
@@ -496,7 +497,6 @@ describe('Ethereum', () => {
       done();
     })
   })
-  */
 
   it('Should create an unstructured transaction', (done) => {
     client.providers.ETH.getNonce(addr)
