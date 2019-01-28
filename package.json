@@ -1,6 +1,6 @@
 {
   "name": "gridplus-sdk",
-  "version": "0.0.13-development",
+  "version": "0.0.14-development",
   "description": "SDK to interact with GridPlus agent devices",
   "scripts": {
     "commit": "git-cz",
@@ -17,6 +17,9 @@
     "sendBTC": "node --require babel-core/register support/scripts/sendBTC.js",
     "sendETH": "node --require babel-core/register support/scripts/sendETH.js",
     "test": "mocha --timeout 30000 -R spec --require babel-core/register test/local-*.js --recursive --exit",
+    "test:lattice": "mocha --timeout 30000 -R spec --require babel-core/register test/local-agent.js --recursive --exit",
+    "test:local-btc": "mocha --timeout 30000 -R spec --require babel-core/register test/local-btc.js --recursive --exit",    
+    "test:local-eth": "mocha --timeout 30000 -R spec --require babel-core/register test/local-eth.js --recursive --exit",
     "test:rinkeby": "mocha --timeout 60000 -R spec --require babel-core/register test/eth-rinkeby.js --recursive --exit",
     "test:bcy": "mocha --timeout 100000 -R spec --require babel-core/register test/btc-bcy.js --recursive --exit",
     "test:testnet3": "mocha --timeout 60000 -R spec --require babel-core/register test/btc-testnet3.js --recursive --exit",

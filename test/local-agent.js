@@ -2,25 +2,24 @@
 import assert from 'assert';
 import { sha3, pubToAddress } from 'ethereumjs-util';
 import { recoverPubKey } from '../src/util.js';
-import { Client } from 'index';
-import ReactNativeCrypto from 'gridplus-react-native-crypto';
+import { Client } from 'index';;
 import crypto from 'crypto';
-
-let client, reactNative, btcAddrs, ethAddrs;
+let client, ethAddrs, config;
 process.on('unhandledRejection', e => { throw e; });
-
 describe('Basic stateless tests (no providers)', () => {
 
   before(() => {
+    try { config = require('../secrets.json'); } 
+    catch (e) { ; }
     // Use React Native crypto for this series of tests.
     // The node.js version is faster, but we want to test both
     const privKey = crypto.randomBytes(32).toString('hex');
-    reactNative = new ReactNativeCrypto(privKey);
-    client = new Client({ clientConfig: {
+    // reactNative = new ReactNativeCrypto(privKey);
+    client = new Client({
+      baseUrl: config ? config.baseUrl : undefined,
       name: 'basic-test',
-      crypto: reactNative,
       privKey
-    }});
+    });
   });
 
   it('Should connect to an agent', (done) => {
@@ -34,7 +33,6 @@ describe('Basic stateless tests (no providers)', () => {
 
   it('Should pair with the agent', (done) => {
     const appSecret = process.env.APP_SECRET;
-    
     client.pair(appSecret, (err) => {
       assert(err === null, err)
       done();
@@ -229,5 +227,5 @@ describe('Basic stateless tests (no providers)', () => {
       done();
     })
   })
-  
+
 });

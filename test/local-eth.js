@@ -10,20 +10,21 @@ const { ethHolder } = require('../secrets.json');
 const transferAmount = 154;
 const randAddr = '0xdde20a2810ff23775585cf2d87991c7f5ddb8c22';
 
-let client, addr, erc20Addr, erc20Addr2, sender, senderPriv, balance;
+let client, addr, erc20Addr, erc20Addr2, sender, senderPriv, balance, secrets;
 
 describe('Ethereum', () => {
 
   before(() => {
-
-    const eth = new providers.Ethereum();
+    try { secrets = require('../secrets.json'); } 
+    catch (e) { ; }
+    const ethConfig = secrets ? secrets.ethNode : undefined; 
+    const eth = new providers.Ethereum(ethConfig);
     client = new Client({
-      clientConfig: {
+        baseUrl: secrets ? secrets.baseUrl : undefined,
         name: 'basic-test',
         crypto: NodeCrypto,
         privKey: NodeCrypto.randomBytes(32).toString('hex'),
-      },
-      providers: [ eth ],
+        providers: [ eth ],
     });
 
   });

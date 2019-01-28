@@ -2,7 +2,7 @@ import { Client, providers } from 'index';
 import bitcoin from 'bitcoinjs-lib';
 import NodeCrypto from 'gridplus-node-crypto';
 import { assert } from 'elliptic/lib/elliptic/utils';
-const { btcHolder, blockcypherApiKey } = require('../secrets.json');
+const { baseUrl, btcHolder, blockcypherApiKey } = require('../secrets.json');
 let client, deviceAddresses, utxo;
 const balance0 = 0;
 process.on('unhandledRejection', e => { throw e; });
@@ -27,11 +27,10 @@ describe('Bitcoin via BlockCypher: transfers', () => {
   before(() => {
     const btc = new providers.Bitcoin({ apiKey: blockcypherApiKey, network, blockcypher: true, timeout: 750 });
     client = new Client({
-      clientConfig: {
-        name: 'blockcypher-test',
-        crypto: NodeCrypto,
-        privKey: NodeCrypto.randomBytes(32).toString('hex'),
-      },
+      baseUrl: baseUrl ? baseUrl : undefined,
+      name: 'blockcypher-test',
+      crypto: NodeCrypto,
+      privKey: NodeCrypto.randomBytes(32).toString('hex'),
       providers: [ btc ],
     }) 
   })

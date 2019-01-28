@@ -73,6 +73,76 @@ const client = new Client({ clientConfig: clientConfig });
 client.initialize((err, connections) => { })
 ```
 
+
+## Running Tests
+
+You can run the tests in this repo, but you need to ensure you have proper configuration. You should create a file called `secrets.json` in the root of this repo, which should be of the following form:
+
+```
+{
+  "ethHolder": {
+    "address": <ETH address>,
+    "privKey": <32 byte hex string>
+  },
+  "btcHolder": {
+    "address": <BTC recipient regtest address>,
+    "wif": <BTC recipient regtest wif>,
+    "regtestAddress": <BTC sender regtest address>,
+    "regtestWif": <BTC sender regtest wif>,
+    "bcyAddress": <BTC sender blockcypher testnet address>,
+    "bcyWif": <BTC sender blockcypher testnet address>
+  },
+  "etherscanApiKey": <key>,
+  "blockcypherApiKey": <key>,
+  "baseUrl": <URL of host>,
+  "ethNode": {
+    "host": "localhost",
+    "port": 7545
+  },
+  "btcNode": {
+      "host": "localhost",
+      "port": 48332,
+      "network": "regtest"
+  }
+}
+```
+
+Note that only `baseUrl` is needed to run basic tests with:
+
+```
+npm run test:lattice
+```
+
+which should be enough to validate all of the signing endpoints. The other fields are needed for currency-specific tests.
+
+**Testing with Ethereum**
+
+You can test with a local Ethereum provider such as [Ganache](https://truffleframework.com/ganache) by utilizing the `ethNode` and `ethHolder` objects in your `secrets.json` file and running
+
+```
+npm run test:local-eth
+```
+
+You can also run a test on the [Rinkeby](https://rinkeby.io) test network using the `etherscanApiKey` param (i.e. your API key for [Etherscan](https://etherscan.io)) and running:
+
+```
+npm run test:rinkeby
+```
+
+**Testing with Bitcoin**
+
+To run Bitcoin-based tests, you should have a local [bcoin](https://bcoin.io/) client running, preferably in `regtest` mode, and run:
+
+```
+npm run test:local-btc
+```
+
+You can also run a test using the [Blockcypher](https://blockcypher.com) testnet (BCY), which runs much faster than testnet3. You will need to utilize the `blockcypherApiKey` param in `secrets.json` and run:
+
+```
+npm run test:bcy
+```
+
 ## Bug Testing and Contributing
 
 We welcome UX-related pull requests and any feedback from Lattice1 developers. To learn more about the Lattice1, please visit our [website](https://gridplus.io/technology).

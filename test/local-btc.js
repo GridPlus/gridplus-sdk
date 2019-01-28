@@ -2,10 +2,7 @@
 import { NodeClient } from 'gridplus-bclient';
 import assert from 'assert';
 import bitcoin from 'bitcoinjs-lib';
-import { bitcoinNode } from '../src/config.js';
 import { Client, providers  } from 'index';
-import NodeCrypto from 'gridplus-node-crypto';
-
 const regtest = {  // regtest config from bcoin: http://bcoin.io/docs/protocol_networks.js.html
   messagePrefix: '\x18Bitcoin Signed Message:\n',
   bech32: 'rb',
@@ -20,19 +17,15 @@ const regtest = {  // regtest config from bcoin: http://bcoin.io/docs/protocol_n
 
 import crypto from 'crypto';
 
-let deviceAddresses, startBal, startUtxos, TX_VALUE;
+let deviceAddresses, startBal, startUtxos, TX_VALUE, secrets;
 const CHANGE_INDEX = 1
 
-const { host, network, port } = bitcoinNode;
+// const { host, network, port } = bitcoinNode;
 const { btcHolder }= require('../secrets.json');
 const { regtestAddress } = btcHolder;
 // Start bcoin client. There is also one running through the SDK,
 // but we will use this instance to mine blocks
-const nodeClient = new NodeClient({
-  host,
-  network,
-  port,
-});
+let nodeClient;
 
 // Receiving addresses
 const receiving = [];
@@ -59,14 +52,20 @@ process.on('unhandledRejection', e => { throw e; });
 describe('Bitcoin', () => {
 
   before(() => {
+    try { secrets = require('../secrets.json'); } 
+    catch (e) { ; }
+    const btcConfig = secrets ? (secrets.btcNode ? secrets.btcNode : {}) : {};
+    nodeClient = new NodeClient({
+      host: btcConfig.host || 'localhost',
+      network: btcConfig.network || 'regtest',
+      port: btcConfig.port || 48332,
+    });
 
-    const btcProvider = new providers.Bitcoin();
+    const btcProvider = new providers.Bitcoin(btcConfig);
     client = new Client({
-      clientConfig: {
-        name: 'basic-test',
-        crypto: NodeCrypto,
-        privKey: crypto.randomBytes(32).toString('hex'),
-      },
+      baseUrl: secrets ? secrets.baseUrl : undefined,
+      name: 'basic-test',
+      privKey: crypto.randomBytes(32).toString('hex'),
       providers: [ btcProvider ]
     });
 

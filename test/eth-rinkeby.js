@@ -6,8 +6,8 @@ import { Client, providers } from 'index';
 import NodeCrypto from 'gridplus-node-crypto';
 const TIMEOUT_SEC = 59;
 const { erc20Src } = require('./config.json');
-const { ethHolder, etherscanApiKey } = require('../secrets.json');
-let client, addr, erc20Addr, sender, senderPriv, addr2;
+const { baseUrl, ethHolder, etherscanApiKey } = require('../secrets.json');
+let client, addr, erc20Addr, sender, senderPriv, addr2, secrets;
 const transferAmount = 54;
 const providerOpts = {
   network: 'rinkeby', 
@@ -20,14 +20,13 @@ describe('Ethereum via Etherscan: ether transfers', () => {
   before(() => {
     const eth = new providers.Ethereum(providerOpts);
     client = new Client({
-      clientConfig: {
-        name: 'basic-test',
-        crypto: NodeCrypto,
-        privKey: NodeCrypto.randomBytes(32).toString('hex'),
-      },
+      baseUrl: baseUrl ? baseUrl : undefined,
+      name: 'basic-test',
+      crypto: NodeCrypto,
+      privKey: NodeCrypto.randomBytes(32).toString('hex'),
       providers: [ eth ],
     });
-
+    console.log(4)
   });
 
   it('Should connect to an ETH node', (done) => {
