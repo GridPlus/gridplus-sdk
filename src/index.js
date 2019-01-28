@@ -13,7 +13,7 @@ import { buildPermissionRequest, buildSigRequest, parsePermissions } from './per
 // const tokenList = require('../tokensByAddress.json')
 const log = debug('gridplus-sdk');
 
-export default class SdkClient {
+export default class Client {
 
   constructor(options) {
     options = options || {};
@@ -21,7 +21,6 @@ export default class SdkClient {
     options = options || {};
     options.baseUrl = options.baseUrl || config.api.baseUrl;
     options.name = options.name || 'gridplus-sdk';
-    options.privKey = options.privKey;
     options.crypto = options.crypto || NodeCrypto;
 
     if (!options.privKey) {
@@ -30,7 +29,7 @@ export default class SdkClient {
       else                          options.privKey = priv.toString('hex');
     } else {
       const priv = typeof options.privKey === 'string' ? options.privKey : options.privKey.toString('hex');
-      if (priv.length != 64) throw new Error('options.privKey must be 32 bytes (hex encoding)');
+      if (priv.length !== 64) throw new Error('options.privKey must be 32 bytes (hex encoding)');
       options.privKey = priv;
     }
 
@@ -61,8 +60,8 @@ export default class SdkClient {
       let success = null;
       try {
         success = res.result.success;
-      } catch (e) {
-        ;
+      } catch (e) { 
+        console.warn('Error adding permission: ', e); 
       }
       return cb(err, success);
     });
@@ -237,7 +236,7 @@ export default class SdkClient {
 
 }
 
-export const Client = SdkClient;
+export const Client = Client;
 export const tokens = require('../tokensBySymbol.json');
 export const tokensBySymbol = require('../tokensBySymbol.json');
 export const tokensByAddress = require('../tokensByAddress.json');

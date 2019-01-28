@@ -1,6 +1,6 @@
 // BCoin API
 import { NodeClient } from 'gridplus-bclient';
-import { getTxHash, sortByHeight, getOutputScriptType } from '../../util';
+import { sortByHeight, getOutputScriptType } from '../../util';
 
 export default class BcoinApi {
 

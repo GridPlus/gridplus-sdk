@@ -1,9 +1,6 @@
 {
   "env": {
-    "browser": true,
     "es6": true,
-    "jest": true,
-    "jest/globals": true,
     "mocha": true,
     "node": true
   },
@@ -24,13 +21,9 @@
     "shallow":true,
     "render":true,
     "mount":true,
-    "jest":true,
     "beforeAll":true,
     "cy":true
   },
-  "plugins": [
-    "jest"
-  ],
   "rules": {
     "eqeqeq": [
       "error"
@@ -53,11 +46,6 @@
     "quotes": [
       "error", "single"
     ],
-    "react/react-in-jsx-scope": "off",
-    "jest/no-disabled-tests": "warn",
-    "jest/no-focused-tests": "error",
-    "jest/no-identical-title": "error",
-    "jest/prefer-to-have-length": "warn",
-    "jest/valid-expect": "error"
+    "react/react-in-jsx-scope": "off"
   }
 }

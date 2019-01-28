@@ -1,5 +1,5 @@
 const codes = require('./codes.json');
-const config = require('../config.js');
+// const config = require('../config.js');
 
 // Build a request to create a permission
 exports.buildPermissionRequest = function(opts) {
