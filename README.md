@@ -40,6 +40,7 @@ Once imported, you can initialize your SDK client with a `clientConfig` object, 
 
 ```
 const clientConfig = {
+    baseUrl: 'http://192.168.18.92'
     name: 'MyApp',
     privKey: crypto.randomBytes(32).toString('hex')
 }

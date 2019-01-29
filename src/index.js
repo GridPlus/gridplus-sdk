@@ -13,7 +13,7 @@ import { buildPermissionRequest, buildSigRequest, parsePermissions } from './per
 // const tokenList = require('../tokensByAddress.json')
 const log = debug('gridplus-sdk');
 
-export default class Client {
+export default class SdkClient {
 
   constructor(options) {
     options = options || {};
@@ -236,7 +236,7 @@ export default class Client {
 
 }
 
-export const Client = Client;
+export const Client = SdkClient;
 export const tokens = require('../tokensBySymbol.json');
 export const tokensBySymbol = require('../tokensBySymbol.json');
 export const tokensByAddress = require('../tokensByAddress.json');
