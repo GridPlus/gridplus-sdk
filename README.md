@@ -70,7 +70,7 @@ clientConfig.providers = [ eth, btc ];
 With the `clientConfig` filled out, you can initialize a new SDK object:
 
 ```
-const client = new Client({ clientConfig: clientConfig });
+const client = new Client(clientConfig);
 client.initialize((err, connections) => { })
 ```
 

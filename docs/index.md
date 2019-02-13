@@ -972,7 +972,8 @@ Required options:
     schemaCode: <string>,     // The schema code (e.g. ETH, ETH-ERC20, BTC)
     params: {
         ... // Set of parameters based on the type of request
-    }
+    },
+    network: <string>,         // Required only for Bitcoin non-mainnet txs. See options in `List of Built-In Providers` section above
 }
 ```
 
