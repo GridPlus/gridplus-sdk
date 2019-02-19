@@ -146,51 +146,6 @@ export default class SdkClient {
     return this.providers[shortcode].getTx(hashes, cb, opts);
   }
 
-  initialize(options, cb) {
-    if (typeof options === 'function') {
-      cb = options;
-      options = {};
-    }
-
-    let shortcodes = [];
-
-    if ( ! options.shortcodes && options.shortcode) {
-      shortcodes = [ options.shortcode ];
-    }
-    else if (options.shortcodes) {
-      shortcodes = options.shortcodes;
-    } else {
-      shortcodes = Object.keys(this.providers);
-    }
-
-    if ( ! shortcodes.length) return cb(new Error('cannot initialize sdk. no providers specified'));
-
-    const promises = shortcodes.map(shortcode => {
-      return new Promise((resolve, reject) => {
-
-        const provider = this.providers[shortcode];
-
-        if ( ! provider) return reject(new Error(`no provider found with shortcode ${shortcode}`));
-
-        log(`initializing provider ${shortcode}`);
-
-        provider.initialize((err, info) => {
-          if (err) return reject(err);
-
-          this.providers[shortcode] = provider;
-
-          log(`initialized provider ${shortcode}`);
-          resolve(info);
-        });
-
-      });
-    });
-
-    return Promise.all(promises).then((info) => {
-      return cb(null, info);
-    }).catch(err => cb(err));
-  }
-
   pair(appSecret, cb) {
     return this.client.pair(appSecret, cb);
   }

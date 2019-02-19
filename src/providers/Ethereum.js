@@ -90,10 +90,6 @@ export default class Ethereum {
     }
   }
 
-  initialize (cb) {
-    return cb(null, this.provider);
-  }
-
   getTxHistory(opts, cb) {
     this.provider.getTxHistory(opts)
     .then((history) => { return cb(null, history); })
