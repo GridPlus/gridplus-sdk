@@ -38,12 +38,6 @@ export default class BlockCypherApi {
     }
   }
 
-  initialize(cb) {
-    return this._request(this.blockcypherBaseUrl)
-    .then((res) => { return cb(null, res); })
-    .catch((err) => cb(err));
-  }
-
   buildInputs(utxos, cb) {
     if (utxos.length === 0) {
       return cb(null, utxos);
@@ -257,7 +251,7 @@ export default class BlockCypherApi {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (body === null) {
-          return request.get(url)
+          return request.get(url).timeout(3000)
             .then((res) => { return resolve(res.body); })
             .catch((err) => { return reject(err); })
         } else {

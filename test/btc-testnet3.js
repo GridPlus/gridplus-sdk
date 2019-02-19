@@ -36,15 +36,6 @@
 //     }) 
 //   })
 
-//   it('Should connect to a BTC node provider', (done) => {
-//     client.initialize((err, provider) => {
-//       assert(err === null, err);
-//       assert(typeof provider === 'object');
-//       assert(provider[0].height > 0);
-//       setTimeout(() => { done() }, 750);
-//     });
-//   });
-
 //   it('Should connect to an agent', (done) => {
 //     const serial = process.env.AGENT_SERIAL;
 //     client.connect(serial, (err, res) => {

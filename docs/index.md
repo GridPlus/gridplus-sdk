@@ -28,9 +28,9 @@ or, for older style syntax:
 const Sdk = require('gridplus-sdk').Client;
 ```
 
-## Initializing a Client
+## Instantiating a Client
 
-Once imported, you can initialize your SDK client with a `clientConfig` object, which at minimum requires the name of your app (`name`) and a private key with which to sign requests (`privKey`). The latter is not meant to e.g. hold onto any cryptocurrencies; it is simply a way of maintaining a secure communication channel between the device and your application.
+Once imported, you can instantiate your SDK client with a `clientConfig` object, which at minimum requires the name of your app (`name`) and a private key with which to sign requests (`privKey`). The latter is not meant to e.g. hold onto any cryptocurrencies; it is simply a way of maintaining a secure communication channel between the device and your application.
 
 ```
 const clientConfig = {
@@ -109,20 +109,19 @@ const cryptoLib = new ReactNativeCrypto(clientConfig.privKey);
 clientConfig.crypto = cryptoLib;
 ```
 
-### Initialize!
+### Instantiate
 
-With the `clientConfig` filled out, you can initialize a new SDK object:
+With the `clientConfig` filled out, you can instantiate a new SDK object:
 
 ```
 const client = new Client(clientConfig);
-client.initialize((err, connections) => { })
 ```
 
 This returns an array of connections to the providers you have specified.
 
 ## Connecting to a Lattice
 
-Once you have a client initialized, you can make a connection to any Lattice device which is connected to the internet:
+With the client object, you can make a connection to any Lattice device which is connected to the internet:
 
 ```
 const serial = 'MY_LATTICE';
@@ -910,18 +909,6 @@ This option may be deprecated. It currently only allows the user to pass `addres
 
 * `err` - string representing the error message (or `null`)
 * `res` - array of transaction objects (see `getTxHistory`)
-
-
-## initialize
-### (cb)
-
-Once the `client` object is created, you must initialize the providers. This establishes a connection to the desired networks through the providers.
-
-#### cb(err, connections)
-
-* `err` - string representing the error message (or `null`)
-* `connections` - array of connections to the desired networks. The format depends on the network and provider combination, but they should be non-empty for each provider.
-
 
 ## pair
 ### (appSecret, cb)

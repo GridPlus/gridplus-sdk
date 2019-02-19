@@ -68,15 +68,6 @@ describe('Bitcoin', () => {
       privKey: crypto.randomBytes(32).toString('hex'),
       providers: [ btcProvider ]
     });
-
-  });
-
-  it('Should connect to a BTC node', (done) => {
-    client.initialize((err, connections) => {
-      assert.equal(err, null, err);
-      assert.equal(connections[0].network, 'regtest', 'Did not connect to testnet');
-      done();
-    })
   });
 
   it('Should check the balance of a single address and set a baseline', (done) => {
