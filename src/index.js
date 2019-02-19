@@ -83,7 +83,7 @@ export default class SdkClient {
       cb = serial;
       serial = null;
     }
-    return this.client.request('connect', cb);
+    return this.client._request({ method: 'connect' }, cb);
   }
 
   // Delete the pairing
