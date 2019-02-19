@@ -4,7 +4,6 @@ import debug from 'debug';
 import Ethereum from './providers/Ethereum';
 import AgentRestClient from './rest/client';
 import { parseSigResponse, getProviderShortCode } from './util';
-import NodeCrypto from 'gridplus-node-crypto';
 export const providers = {
   Bitcoin,
   Ethereum,
@@ -21,7 +20,7 @@ export default class SdkClient {
     options = options || {};
     options.baseUrl = options.baseUrl || config.api.baseUrl;
     options.name = options.name || 'gridplus-sdk';
-    options.crypto = options.crypto || NodeCrypto;
+    options.crypto = options.crypto;
 
     if (!options.privKey) {
       const priv = options.crypto.randomBytes(32);
@@ -42,7 +41,6 @@ export default class SdkClient {
     });
 
     log(`gridplus sdk created with providers [${Object.keys(this.providers)}]`);
-
   }
 
   addresses(param, cb) {

@@ -33,8 +33,10 @@ const Sdk = require('gridplus-sdk').Client;
 Once imported, you can instantiate your SDK client with a `clientConfig` object, which at minimum requires the name of your app (`name`) and a private key with which to sign requests (`privKey`). The latter is not meant to e.g. hold onto any cryptocurrencies; it is simply a way of maintaining a secure communication channel between the device and your application.
 
 ```
+const crypto = require('crypto');
 const clientConfig = {
     name: 'MyApp',
+    crypto: crypto,
     privKey: crypto.randomBytes(32).toString('hex')
 }
 ```
@@ -51,8 +53,8 @@ const clientConfig = {
     <tr>
         <td>baseUrl</td>
         <td>string</td>
-        <td>`http://localhost`</td>
-        <td>Hostname of Lattice request handler</td>
+        <td>`http://signing.staging-gridpl.us`</td>
+        <td>Hostname of Lattice request handler. For now, this should point to a GridPlus cloud proxy server</td>
     </tr>
     <tr>
         <td>name</td>
@@ -70,7 +72,7 @@ const clientConfig = {
         <td>crypto</td>
         <td>Object</td>
         <td>`NodeCrypto`</td>
-        <td>Crypto function package. You only need to specify a different value if you are using React Native</td>
+        <td>Crypto function package. If you are using React Native, you should use `gridplus-react-native-crypto`, otherwise you can use the native Nodejs `crypto` module</td>
     </tr>
 </table>
 

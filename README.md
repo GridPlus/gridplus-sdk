@@ -39,9 +39,10 @@ const Sdk = require('gridplus-sdk').Client;
 Once imported, you can instantiate your SDK client with a `clientConfig` object, which at minimum requires the name of your app (`name`) and a private key with which to sign requests (`privKey`). The latter is not meant to e.g. hold onto any cryptocurrencies; it is simply a way of maintaining a secure communication channel between the device and your application.
 
 ```
+const crypto = require('crypto');
 const clientConfig = {
-    baseUrl: 'http://192.168.18.92'
     name: 'MyApp',
+    crypto: crypto,
     privKey: crypto.randomBytes(32).toString('hex')
 }
 ```
