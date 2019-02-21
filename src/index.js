@@ -77,11 +77,7 @@ export default class SdkClient {
   // connects to all configured network providers, returning the first of any encountered errors.
   // else continues via supplied callback when done.
   connect(serial, cb) {
-    if (typeof serial === 'function') {
-      cb = serial;
-      serial = null;
-    }
-    return this.client._request({ method: 'connect' }, cb);
+    return this.client.connect(serial, cb);
   }
 
   // Delete the pairing

@@ -6,16 +6,16 @@ import {
   ecdhKeyPair,
   ecdsaKeyPair,
 } from '../util';
-
+const config = require('../config');
 const debug = require('debug')('@gridplus/sdk:rest/client');
 
 export default class Client {
   constructor({ baseUrl, crypto, name, privKey, httpRequest } = {}) {
-    if (!baseUrl) throw new Error('baseUrl is required');
+    // if (!baseUrl) throw new Error('baseUrl is required');
     if (!name) throw new Error('name is required');
     if (!crypto) throw new Error('crypto provider is required');
     if (httpRequest) this.httpRequest = httpRequest;
-    this.baseUrl = baseUrl;
+    this.baseUrl = baseUrl || config.api.baseUrl;
     this.crypto = crypto;
     this.name = name;
     this.privKey = privKey || this.crypto.generateEntropy();
@@ -27,13 +27,29 @@ export default class Client {
     this.ecdhPub = ecdhKeyPair(this.privKey).getPublic().encode('hex');
 
     this.counter = 5;
-    this.headerSecret = null;
     this.sharedSecret = null;
 
     this.timeout = null;
     this.timeoutMs = 5000;
 
     debug(`created rest client for ${this.baseUrl}`);
+  }
+
+  // `Connect` will attempt to contact a device based on its serial number
+  // The response should include an ephemeral public key, which is used to
+  // pair with the device in a later request
+  connect(serial, cb) {
+    this._request({ method: `connect/${serial}`, params: this.pubKey }, (err, res) => {
+      if (err) return cb(err);
+      try {
+        // Save the ephemeral public key for use with `pair`
+        const data = JSON.parse(res);
+        deriveSecret(this.privKey, data.Key);
+        return cb(null);
+      } catch (e) {
+        return cb(e);
+      }
+    });
   }
 
   pair(appSecret, cb) {
@@ -54,8 +70,8 @@ export default class Client {
       const hash = this.crypto.createHash(preImage);
       const sig = this.key.sign(hash).toDER();
       const param = { name: this.name , sig };
-      const data = this._createRequestData(param, id, type);
-      return this.request('pair', { key: this.ecdhPub, data, id }, (err, res) => {
+      const req = this._createRequestData(param, id, type);
+      return this.request('pair', req, (err, res) => {
         if (err) return cb(err);
         return this._decryptResponse(res, cb);
       });
@@ -66,8 +82,8 @@ export default class Client {
 
   pairedRequest(method, { param = {}, id = this._newId() }, cb) {
     try {
-      const data = this._createRequestData(param, id, method);
-      return this.request(method, { key: this.ecdhPub, data, id }, (err, res) => {
+      const req = this._createRequestData(param, id, method);
+      return this.request(method, req, (err, res) => {
         if (err) return cb(err);
         return this._decryptResponse(res, cb);
       });
@@ -114,19 +130,15 @@ export default class Client {
     debug(`creating request data: ${JSON.stringify(data)} id: ${id} type: ${type}`);
 
     const encBody = encrypt(body, this.sharedSecret, this.counter);
-    const request = {
-      ecdhKey: this.ecdhPub,
+    return {
       body: encBody,
       id,
-      pubKey: this.pubKey.toString('hex'),
     };
-    return encrypt(JSON.stringify(request), this.headerSecret, this.counter);
   }
 
   _decryptResponse(res, cb) {
-    const encryptedResult = decrypt(res.result, this.headerSecret, this.counter);
     try {
-      res.result = JSON.parse(encryptedResult);
+      res.result = JSON.parse(res.result);
     } catch (err) {
       return cb(err);
     }
@@ -149,20 +161,7 @@ export default class Client {
   }
 
   _prepareNextRequest(result) {
-    if (result.headerKey) {
-      this.headerSecret = deriveSecret(this.privKey, result.headerKey);
-    }
-    let token = decrypt(result.newToken || result, this.headerSecret, this.counter);
-    token = JSON.parse(token);
-
-    // Hacky parsing of different return schema
-    // MWW NOTE: Alex, can we replace this with just always replying with the same return param structure (json)?
-    // MWW NOTE: Actually, I'm not noticing any string tokens returned. Can we nuke this and use the object version only?
-    if (typeof token === 'string') {
-      token = JSON.parse(decrypt(token, this.headerSecret, this.counter));
-    } else if (token.data === undefined) {
-      token = { data: token };
-    }
+    token = JSON.parse(result.newToken);
 
     if (token.data.status && token.data.status !== 200) throw new Error(`remote agent signing error: status code: ${token.data.status} message: ${token.data.message}`);
     if (
