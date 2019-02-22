@@ -30,8 +30,11 @@ export const bitcoinNode = {
   port: 48332,
 }
 
+// Number of bytes for app secret (using base25 dictionary)
+export const APP_SECRET_LEN = 9;
 
 export default {
+  APP_SECRET_LEN,
   SPLIT_BUF,
   defaults,
   ethFunctionCodes,

@@ -5,14 +5,38 @@ import leftPad from 'left-pad';
 import elliptic from 'elliptic';
 import config from './config';
 const EC = elliptic.ec;
-const ec = new EC('curve25519');
-const ecSecp256k1 = new EC('secp256k1');
+const ec = new EC('p256');
+const dict = [ 
+  '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
+  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 
+  'L', 'M', 'N', 'P', 'Q'
+];
 
 const OPs = {
   'a9': 'OP_HASH160',
   '76': 'OP_DUP',
   '87': 'OP_EQUAL',
   'ac': 'OP_CHECKSIG',
+}
+
+// Create a new appSecret of specified length
+export function genAppSecret(L) {
+  let secret = '';
+  for (i = 0; i < L; i++) {
+    const j = Math.floor(Math.random() * dict.length);
+    secret += dict[j];
+  }
+  return secret;
+}
+
+// Ensure provided app secret is a string and matches
+// the desired dictionary
+export function checkAppSecret(s) {
+  if (typeof s !== 'string') return false;
+  for (i = 0; i < s.length; i++) {
+    if (dict.indexOf(s[i]) === -1) return false;
+  }
+  return true;
 }
 
 export function getProviderShortCode(schemaCode) {
@@ -44,14 +68,7 @@ export function getOutputScriptType(s, multisig=false) {
   }
 }
 
-export function ecdsaKeyPair (privKey) {
-  const curve = new EC('secp256k1');
-  const key = curve.keyFromPrivate(privKey, 'hex');
-  key.getPublic();
-  return key;
-}
-
-export function ecdhKeyPair (priv) {
+export function getP256KeyPair (priv) {
   return ec.keyFromPrivate(priv, 'hex');
 }
 
@@ -91,18 +108,6 @@ export function encrypt (payload, secret, counter=5) {
   const aesCtr = new aes.ModeOfOperation.ctr(secret, new aes.Counter(counter));
   const enc = aesCtr.encrypt(b);
   return aes.utils.hex.fromBytes(enc);
-}
-
-export function recoverPubKey (msg, sig) {
-  if (typeof msg === 'string') msg = Buffer.from(msg, 'hex');
-  const v = sig.v > 1 ? sig.v - 27 : sig.v;
-  const { r, s } = sig;
-  const sigObj = {
-    r: Buffer.from(r, 'hex'),
-    s: Buffer.from(s, 'hex'),
-  }
-  const pubKey = ecSecp256k1.recoverPubKey(Buffer.from(msg, 'hex'), sigObj, v);
-  return pubKey.encode('hex');
 }
 
 export function parseSigResponse(res) {

@@ -9,7 +9,6 @@ export const providers = {
   Ethereum,
 };
 import { buildPermissionRequest, buildSigRequest, parsePermissions } from './permissions';
-// const tokenList = require('../tokensByAddress.json')
 const log = debug('gridplus-sdk');
 
 export default class SdkClient {
@@ -138,6 +137,10 @@ export default class SdkClient {
       opts = {};
     }
     return this.providers[shortcode].getTx(hashes, cb, opts);
+  }
+
+  newAppSecret() {
+    return util.genAppSecret(config.APP_SECRET_LEN);
   }
 
   pair(appSecret, cb) {
