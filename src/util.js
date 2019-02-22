@@ -19,6 +19,13 @@ const OPs = {
   'ac': 'OP_CHECKSIG',
 }
 
+export const deviceCodes = {
+  'ENCRYPTED_REQUEST': 0x00,
+  'NEW_EPHEM_KEY': 0x01,
+  'START_PAIRING_MODE': 0x02,
+  'PAIR': 0x03,
+}
+
 // Create a new appSecret of specified length
 export function genAppSecret(L) {
   let secret = '';

@@ -3,14 +3,14 @@ import {
   decrypt,
   encrypt,
   deriveSecret,
-  getKeyPair,
+  getP256KeyPair,
 } from '../util';
+const Buffer = require('buffer/').Buffer;
 const config = require('../config');
 const debug = require('debug')('@gridplus/sdk:rest/client');
 
 export default class Client {
   constructor({ baseUrl, crypto, name, privKey, httpRequest } = {}) {
-
     // Definitions
     // if (!baseUrl) throw new Error('baseUrl is required');
     if (!name) throw new Error('name is required');
@@ -37,6 +37,7 @@ export default class Client {
     this.ephemeralPub = null;
     this.sharedSecret = null;
     this.timeout = null;
+    this.serial = null;
 
     debug(`created rest client for ${this.baseUrl}`);
   }
@@ -45,15 +46,14 @@ export default class Client {
   // The response should include an ephemeral public key, which is used to
   // pair with the device in a later request
   connect(serial, cb) {
-    this._request({ method: `connect/${serial}` }, (err, res) => {
+    this.serial = serial;
+    this._request('', (err, res) => {
       if (err) return cb(err);
       try {
-        // Save the ephemeral public key for use with `pair`
-        const data = JSON.parse(res);
-        if (data.Err !== "") return cb(data.Err)
-        else if (data.PairingSalt.length !== 64) return cb('Could not get salt from connect call. Please try again.');
-        // If we have a pairing salt, save it as a buffer
-        this.pairingSalt = Buffer.from(data.Salt, 'hex');
+        if (res[0] !== util.deviceCodes.START_PAIRING_MODE) return cb('Incorrect code returned from device. Please try again.');
+        // If there are no errors, recover the salt
+        const success = this._handleConnect(res);
+        if (!success) return cb('Could not handle response from device. Please try again.');
         return cb(null);
       } catch (e) {
         return cb(e);
@@ -80,15 +80,13 @@ export default class Client {
     const sig = this.key.sign(hash).toDER();
     const param = { Name: this.name , Sig: sig };
 
-    return this._request('pair', param, (err, res) => {
+    return this._request(JSON.stringify(param), (err, res) => {
       if (err) return cb(err);
       try {
-        // Get the ephemeral public key
-        const data = JSON.parse(res);
-        if (data.Err !== "") return cb(data.Err);
-        else if (data.NewEphemPubKey.length !== 66) return cb('Invalid response from device. Please call `connect` again.');
-        this.ephemPub = data.newEphemPubKey;
-        this.pairingSecret = null;
+        if (res[0] !== util.deviceCodes.PAIR) return cb('Incorrect code returned from device. Please try again.');
+        // Recover the ephemeral key
+        const success = this._handlePair(res);
+        if (!success) return cb('Could not handle response from device. Please try again.');
         return cb(null);
       } catch (e) {
         return cb(e);
@@ -182,19 +180,62 @@ export default class Client {
     }
   }
 */
-  _request({ method, param }, cb) {
-    const url = `${this.baseUrl}/${method}`;
+  _request(data, cb) {
+    if (!this.serial) return cb('Serial is not set. Please set it and try again.');
+    const url = `${this.baseUrl}/${this.serial}`;
     if (this.httpRequest) {
-      this.httpRequest(url, param)
-      .then((res) => { cb(null, res) })
-      .catch((err) => { cb(err); })
+      this.httpRequest(url, data)
+      .then((res) => { 
+        if (!_responseChecks(res)) return cb('Invalid response from device. Please try again.')
+        else if (_responseStatus(res) !== 0) return cb(`Error from device: status ${_responseStatus(res)}`);
+        return cb(null, res) 
+      })
+      .catch((err) => { return cb(err); })
     } else {
       superagent.post(url)
-      .send(param)
+      .send(data)
       .set('Accept', 'application/json')
-      .then(res => { cb(null, res) })
+      .then(res => { 
+        if (!_responseChecks(res)) return cb('Invalid response from device. Please try again.')
+        else if (_responseStatus(res) !== 0) return cb(`Error from device: status ${_responseStatus(res)}`);
+        cb(null, res); 
+      })
       .catch(err => cb(err));
     }
+  }
+
+  // Pass sanity checks on data returned from the device
+  _responseChecks(res) {
+    return Buffer.isBuffer(res) && res.length < 5 && status === 0;
+  }
+  
+  // Check if there is a non-zero status code from the device
+  // Success is 0, error is anything else
+  _responseStatus(res) {
+    return parseInt(res.slice(1, 5).toString('hex'));
+  }
+
+  // ----- Device response handlers -----
+
+  // Connect will call `StartPairingMode` on the device, which returns salt
+  // which is good for 60 seconds to make a pairing with
+  _handleConnect(res) {
+    const salt = res.slice(5);
+    if (salt.length !== 32) return false;
+    this.pairingSalt = salt;
+    return true;
+  }
+
+  // Pair will create a new pairing if the user successfully enters the secret
+  // into the device in time. If successful (status=0), the device will return
+  // a new ephemeral public key, which is used to derive a shared secret
+  // for the next request
+  _handlePair(res) {
+    const newEphemPubKey = res.slice(5);
+    if (newEphemKey.length !== 33) return false;
+    this.ephemPub = newEphemPubKey;
+    this.pairingSecret = null;
+    return true;
   }
 
 }
