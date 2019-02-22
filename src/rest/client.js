@@ -13,7 +13,8 @@ export default class Client {
   constructor({ baseUrl, crypto, name, privKey, httpRequest } = {}) {
     // Definitions
     // if (!baseUrl) throw new Error('baseUrl is required');
-    if (!name) throw new Error('name is required');
+    if (!name) throw new Error('name is required')
+    else if (name.length > 20) throw new Error('name must be <20 characters');
     if (!crypto) throw new Error('crypto provider is required');
     if (httpRequest) this.httpRequest = httpRequest;
     this.baseUrl = baseUrl || config.api.baseUrl;
@@ -47,7 +48,8 @@ export default class Client {
   // pair with the device in a later request
   connect(serial, cb) {
     this.serial = serial;
-    this._request('', (err, res) => {
+    const param = util.deviceCodes.START_PAIRING_MODE;
+    this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
         if (res[0] !== util.deviceCodes.START_PAIRING_MODE) return cb('Incorrect code returned from device. Please try again.');
@@ -69,7 +71,7 @@ export default class Client {
       appSecret.length !== config.APP_SECRET_LEN || 
       !util.checkAppSecret(appSecret)
     ) return cb('Invalid app secret. Please call `newAppSecret` for a valid one.');
-    
+
     // Ensure we have a pairing secret
     if (!this.pairingSecret) return cb('Unable to pair. Please call `connect` to initialize pairing process.');
 
@@ -78,9 +80,9 @@ export default class Client {
     const preImage = `${this.pairingSalt}${appSecret}`;
     const hash = this.crypto.createHash(preImage);
     const sig = this.key.sign(hash).toDER();
-    const param = { Name: this.name , Sig: sig };
+    const param = `${util.deviceCodes.PAIR}${sig}${this.name.length}${this.name}`;
 
-    return this._request(JSON.stringify(param), (err, res) => {
+    return this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
         if (res[0] !== util.deviceCodes.PAIR) return cb('Incorrect code returned from device. Please try again.');
