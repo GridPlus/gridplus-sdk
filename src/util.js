@@ -26,6 +26,11 @@ export const deviceCodes = {
   'PAIR': 0x03,
 }
 
+export const deviceResponses = {
+  START_CODE_INDEX: 1, // Beginning of 4-byte status code in Lattice response
+  START_DATA_INDEX: 5, // Beginning of data field for Lattice responses
+}
+
 // Create a new appSecret of specified length
 export function genAppSecret(L) {
   let secret = '';

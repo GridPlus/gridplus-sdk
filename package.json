@@ -16,7 +16,7 @@
     "buildTokenList": "node support/getTokenList.js",
     "sendBTC": "node --require babel-core/register support/scripts/sendBTC.js",
     "sendETH": "node --require babel-core/register support/scripts/sendETH.js",
-    "test": "mocha --timeout 30000 -R spec --require babel-core/register test/local-*.js --recursive --exit",
+    "test": "mocha --timeout 30000 -R spec --require babel-core/register test/connectivity*.js --recursive --exit",
     "test:lattice": "mocha --timeout 30000 -R spec --require babel-core/register test/local-agent.js --recursive --exit",
     "test:local-btc": "mocha --timeout 30000 -R spec --require babel-core/register test/local-btc.js --recursive --exit",
     "test:local-eth": "mocha --timeout 30000 -R spec --require babel-core/register test/local-eth.js --recursive --exit",

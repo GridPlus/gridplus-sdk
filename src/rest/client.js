@@ -1,9 +1,11 @@
 import superagent from 'superagent';
 import {
-  decrypt,
-  encrypt,
-  deriveSecret,
+  // decrypt,
+  // encrypt,
+  // deriveSecret,
   getP256KeyPair,
+  deviceCodes,
+  deviceResponses,
 } from '../util';
 const Buffer = require('buffer/').Buffer;
 const config = require('../config');
@@ -48,11 +50,12 @@ export default class Client {
   // pair with the device in a later request
   connect(serial, cb) {
     this.serial = serial;
-    const param = util.deviceCodes.START_PAIRING_MODE;
+    // The payload is simply the START_PAIRING_MODE route code
+    const param = deviceCodes.START_PAIRING_MODE;
     this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
-        if (res[0] !== util.deviceCodes.START_PAIRING_MODE) return cb('Incorrect code returned from device. Please try again.');
+        if (res[0] !== deviceCodes.START_PAIRING_MODE) return cb('Incorrect code returned from device. Please try again.');
         // If there are no errors, recover the salt
         const success = this._handleConnect(res);
         if (!success) return cb('Could not handle response from device. Please try again.');
@@ -76,16 +79,17 @@ export default class Client {
     if (!this.pairingSecret) return cb('Unable to pair. Please call `connect` to initialize pairing process.');
 
     // Build the secret hash from the salt
-    const type = 'addPairing';
     const preImage = `${this.pairingSalt}${appSecret}`;
     const hash = this.crypto.createHash(preImage);
     const sig = this.key.sign(hash).toDER();
-    const param = `${util.deviceCodes.PAIR}${sig}${this.name.length}${this.name}`;
+
+    // The payload adheres to the serialization format of the PAIR route
+    const param = `${deviceCodes.PAIR}${sig}${this.name.length}${this.name}`;
 
     return this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
-        if (res[0] !== util.deviceCodes.PAIR) return cb('Incorrect code returned from device. Please try again.');
+        if (res[0] !== deviceCodes.PAIR) return cb('Incorrect code returned from device. Please try again.');
         // Recover the ephemeral key
         const success = this._handlePair(res);
         if (!success) return cb('Could not handle response from device. Please try again.');
@@ -208,13 +212,13 @@ export default class Client {
 
   // Pass sanity checks on data returned from the device
   _responseChecks(res) {
-    return Buffer.isBuffer(res) && res.length < 5 && status === 0;
+    return Buffer.isBuffer(res) && res.length < deviceResponses.START_DATA_IDX && status === 0;
   }
   
   // Check if there is a non-zero status code from the device
   // Success is 0, error is anything else
   _responseStatus(res) {
-    return parseInt(res.slice(1, 5).toString('hex'));
+    return parseInt(res.slice(deviceResponses.START_CODE_IDX, deviceResponses.START_DATA_IDX).toString('hex'));
   }
 
   // ----- Device response handlers -----
@@ -222,7 +226,7 @@ export default class Client {
   // Connect will call `StartPairingMode` on the device, which returns salt
   // which is good for 60 seconds to make a pairing with
   _handleConnect(res) {
-    const salt = res.slice(5);
+    const salt = res.slice(deviceResponses.START_DATA_IDX);
     if (salt.length !== 32) return false;
     this.pairingSalt = salt;
     return true;
@@ -233,7 +237,7 @@ export default class Client {
   // a new ephemeral public key, which is used to derive a shared secret
   // for the next request
   _handlePair(res) {
-    const newEphemPubKey = res.slice(5);
+    const newEphemPubKey = res.slice(deviceResponses.START_DATA_IDX);
     if (newEphemKey.length !== 33) return false;
     this.ephemPub = newEphemPubKey;
     this.pairingSecret = null;
