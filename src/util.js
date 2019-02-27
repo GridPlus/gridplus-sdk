@@ -20,15 +20,15 @@ const OPs = {
 }
 
 export const deviceCodes = {
-  'ENCRYPTED_REQUEST': 0x00,
-  'NEW_EPHEM_KEY': 0x01,
-  'START_PAIRING_MODE': 0x02,
-  'PAIR': 0x03,
+  'ENCRYPTED_REQUEST': '00',
+  'NEW_EPHEM_KEY': '01',
+  'START_PAIRING_MODE': '02',
+  'PAIR': '03',
 }
 
 export const deviceResponses = {
-  START_CODE_INDEX: 1, // Beginning of 4-byte status code in Lattice response
-  START_DATA_INDEX: 5, // Beginning of data field for Lattice responses
+  START_CODE_IDX: 1, // Beginning of 4-byte status code in Lattice response
+  START_DATA_IDX: 5, // Beginning of data field for Lattice responses
 }
 
 // Create a new appSecret of specified length

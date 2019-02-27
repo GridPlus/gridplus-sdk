@@ -191,9 +191,9 @@ export default class Client {
     const url = `${this.baseUrl}/${this.serial}`;
     if (this.httpRequest) {
       this.httpRequest(url, data)
-      .then((res) => { 
-        if (!_responseChecks(res)) return cb('Invalid response from device. Please try again.')
-        else if (_responseStatus(res) !== 0) return cb(`Error from device: status ${_responseStatus(res)}`);
+      .then((res) => {
+        if (!this._responseChecks(res)) return cb('Invalid response from device. Please try again.')
+        else if (this._responseStatus(res) !== 0) return cb(`Error from device: status ${this._responseStatus(res)}`);
         return cb(null, res) 
       })
       .catch((err) => { return cb(err); })
@@ -201,10 +201,13 @@ export default class Client {
       superagent.post(url)
       .send(data)
       .set('Accept', 'application/json')
-      .then(res => { 
-        if (!_responseChecks(res)) return cb('Invalid response from device. Please try again.')
-        else if (_responseStatus(res) !== 0) return cb(`Error from device: status ${_responseStatus(res)}`);
-        cb(null, res); 
+      .then(res => {
+        console.log(res.body)
+        if (!res || !res.body) return cb(`Invalid response: ${res}`)
+        else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
+        else if (!this._responseChecks(res.body.message)) return cb('Invalid response from device. Please try again.')
+        else if (this._responseStatus(res.body) !== 0) return cb(`Error from device: status ${this._responseStatus(res.body)}`);
+        cb(null, res.body); 
       })
       .catch(err => cb(err));
     }
