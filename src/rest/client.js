@@ -7,6 +7,12 @@ import {
   deviceCodes,
   deviceResponses,
 } from '../util';
+import {
+  deviceCodes,
+  responseCodes,
+  deviceResponses,
+  SUCCESS_RESPONSE_CODE,
+} from '../constants';
 const Buffer = require('buffer/').Buffer;
 const config = require('../config');
 const debug = require('debug')('@gridplus/sdk:rest/client');
@@ -192,8 +198,10 @@ export default class Client {
     if (this.httpRequest) {
       this.httpRequest(url, data)
       .then((res) => {
-        if (!this._responseChecks(res)) return cb('Invalid response from device. Please try again.')
-        else if (this._responseStatus(res) !== 0) return cb(`Error from device: status ${this._responseStatus(res)}`);
+        // Check for an error code
+        const resCode = this._getResponseCode(res);
+        if (resCode) return cb(`Error from device: ${resCode}`)
+        // If there is no error, return the response payload
         return cb(null, res) 
       })
       .catch((err) => { return cb(err); })
@@ -205,25 +213,25 @@ export default class Client {
         console.log(res.body)
         if (!res || !res.body) return cb(`Invalid response: ${res}`)
         else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
-        else if (!this._responseChecks(res.body.message)) return cb('Invalid response from device. Please try again.')
-        else if (this._responseStatus(res.body) !== 0) return cb(`Error from device: status ${this._responseStatus(res.body)}`);
+        const resCode = this._getResponseCode(res.body.message);
+        if (resCode) return cb(`Error from device: ${resCode}`);
         cb(null, res.body); 
       })
       .catch(err => cb(err));
     }
   }
 
-  // Pass sanity checks on data returned from the device
-  _responseChecks(res) {
-    return Buffer.isBuffer(res) && res.length < deviceResponses.START_DATA_IDX && status === 0;
+  // Determine the response code
+  _getResponseCode(res) {
+    if (res.length < deviceResponses.START_DATA_IDX) return 'Invalid Response';
+    try {
+      const code = parseInt(res.slice(deviceResponses.START_CODE_IDX, deviceResponses.START_DATA_IDX)).toString('hex');
+      if (code == SUCCESS_RESPONSE_CODE) return null;
+      return responseCodes[code];
+    } catch (err) {
+      return 'Could not parse response from device';
+    }
   }
-  
-  // Check if there is a non-zero status code from the device
-  // Success is 0, error is anything else
-  _responseStatus(res) {
-    return parseInt(res.slice(deviceResponses.START_CODE_IDX, deviceResponses.START_DATA_IDX).toString('hex'));
-  }
-
   // ----- Device response handlers -----
 
   // Connect will call `StartPairingMode` on the device, which returns salt

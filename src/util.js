@@ -4,32 +4,9 @@ import aes from 'aes-js';
 import leftPad from 'left-pad';
 import elliptic from 'elliptic';
 import config from './config';
+import { dict, OPs } from './constants';
 const EC = elliptic.ec;
 const ec = new EC('p256');
-const dict = [ 
-  '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
-  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 
-  'L', 'M', 'N', 'P', 'Q'
-];
-
-const OPs = {
-  'a9': 'OP_HASH160',
-  '76': 'OP_DUP',
-  '87': 'OP_EQUAL',
-  'ac': 'OP_CHECKSIG',
-}
-
-export const deviceCodes = {
-  'ENCRYPTED_REQUEST': '00',
-  'NEW_EPHEM_KEY': '01',
-  'START_PAIRING_MODE': '02',
-  'PAIR': '03',
-}
-
-export const deviceResponses = {
-  START_CODE_IDX: 1, // Beginning of 4-byte status code in Lattice response
-  START_DATA_IDX: 5, // Beginning of data field for Lattice responses
-}
 
 // Create a new appSecret of specified length
 export function genAppSecret(L) {

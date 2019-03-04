@@ -1,7 +1,6 @@
 // Basic tests for atomic SDK functionality
 import assert from 'assert';
 import { Client, providers } from 'index';
-import NodeCrypto from 'gridplus-node-crypto';
 const crypto = require('crypto');
 const TIMEOUT_SEC = 59;
 const { baseUrl, agent_serial } = require('../secrets.json');
