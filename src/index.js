@@ -4,7 +4,6 @@ import debug from 'debug';
 import Ethereum from './providers/Ethereum';
 import AgentRestClient from './rest/client';
 import { parseSigResponse, getProviderShortCode } from './util';
-import NodeCrypto from 'gridplus-node-crypto';
 export const providers = {
   Bitcoin,
   Ethereum,
@@ -21,7 +20,7 @@ export default class SdkClient {
     options = options || {};
     options.baseUrl = options.baseUrl || config.api.baseUrl;
     options.name = options.name || 'gridplus-sdk';
-    options.crypto = options.crypto || NodeCrypto;
+    options.crypto = options.crypto;
 
     if (!options.privKey) {
       const priv = options.crypto.randomBytes(32);
@@ -42,7 +41,6 @@ export default class SdkClient {
     });
 
     log(`gridplus sdk created with providers [${Object.keys(this.providers)}]`);
-
   }
 
   addresses(param, cb) {
@@ -83,7 +81,7 @@ export default class SdkClient {
       cb = serial;
       serial = null;
     }
-    return this.client.request('connect', cb);
+    return this.client._request({ method: 'connect' }, cb);
   }
 
   // Delete the pairing
@@ -144,51 +142,6 @@ export default class SdkClient {
       opts = {};
     }
     return this.providers[shortcode].getTx(hashes, cb, opts);
-  }
-
-  initialize(options, cb) {
-    if (typeof options === 'function') {
-      cb = options;
-      options = {};
-    }
-
-    let shortcodes = [];
-
-    if ( ! options.shortcodes && options.shortcode) {
-      shortcodes = [ options.shortcode ];
-    }
-    else if (options.shortcodes) {
-      shortcodes = options.shortcodes;
-    } else {
-      shortcodes = Object.keys(this.providers);
-    }
-
-    if ( ! shortcodes.length) return cb(new Error('cannot initialize sdk. no providers specified'));
-
-    const promises = shortcodes.map(shortcode => {
-      return new Promise((resolve, reject) => {
-
-        const provider = this.providers[shortcode];
-
-        if ( ! provider) return reject(new Error(`no provider found with shortcode ${shortcode}`));
-
-        log(`initializing provider ${shortcode}`);
-
-        provider.initialize((err, info) => {
-          if (err) return reject(err);
-
-          this.providers[shortcode] = provider;
-
-          log(`initialized provider ${shortcode}`);
-          resolve(info);
-        });
-
-      });
-    });
-
-    return Promise.all(promises).then((info) => {
-      return cb(null, info);
-    }).catch(err => cb(err));
   }
 
   pair(appSecret, cb) {

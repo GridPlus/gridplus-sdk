@@ -6,7 +6,7 @@ import { Client, providers } from 'index';
 import NodeCrypto from 'gridplus-node-crypto';
 const TIMEOUT_SEC = 59;
 const { erc20Src } = require('./config.json');
-const { baseUrl, ethHolder, etherscanApiKey } = require('../secrets.json');
+const { baseUrl, ethHolder, etherscanApiKey, agent_serial } = require('../secrets.json');
 let client, addr, erc20Addr, sender, senderPriv, addr2, secrets;
 const transferAmount = 54;
 const providerOpts = {
@@ -29,17 +29,9 @@ describe('Ethereum via Etherscan: ether transfers', () => {
     console.log(4)
   });
 
-  it('Should connect to an ETH node', (done) => {
-    client.initialize((err, provider) => {
-      assert(err === null, err);
-      assert(typeof provider === 'object');
-      done();
-    })
-  });
-
   it('Should connect to an agent', (done) => {
-    const serial = process.env.AGENT_SERIAL;
-    client.connect(serial, (err, res) => {
+    // const serial = process.env.AGENT_SERIAL;
+    client.connect(agent_serial, (err, res) => {
       assert(err === null, err);
       assert(client.client.ecdhPub === res.key, 'Mismatched key on response')
       done()
@@ -95,6 +87,7 @@ describe('Ethereum via Etherscan: ether transfers', () => {
       value: toSend,
       data: '',
     };
+    console.log('Sending to address:', addr)
     client.providers.ETH.getNonce(tx.from)
     .then((nonce) => {
       tx.nonce = nonce;

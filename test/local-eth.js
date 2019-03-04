@@ -29,17 +29,9 @@ describe('Ethereum', () => {
 
   });
 
-  it('Should connect to an ETH node', (done) => {
-    client.initialize((err, provider) => {
-      assert(err === null, err);
-      assert(typeof provider === 'object');
-      done();
-    })
-  });
-
   it('Should connect to an agent', (done) => {
-    const serial = process.env.AGENT_SERIAL;
-    client.connect(serial, (err, res) => {
+    // const serial = process.env.AGENT_SERIAL;
+    client.connect(secrets.serial, (err, res) => {
       assert(err === null, err);
       assert(client.client.ecdhPub === res.key, 'Mismatched key on response')
       done()
@@ -61,6 +53,7 @@ describe('Ethereum', () => {
       coin_type: '60\''
     }
     client.addresses(req, (err, addresses) => {
+      console.log('err', err, 'addr', addresses)
       assert(err === null, err);
       addr = addresses;
       client.getBalance('ETH', { address: addr }, (err, data) => {

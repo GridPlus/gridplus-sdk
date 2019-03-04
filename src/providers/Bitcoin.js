@@ -80,10 +80,6 @@ export default class Bitcoin {
     }, opts);
   }
 
-  initialize (cb) {
-    return this.provider.initialize(cb);
-  }
-
   _getChange(opts, utxos, value) {
     const feeRate = opts.perByteFee === undefined ? DEFAULT_FEE : opts.perByteFee;
     // Estimate the number of bytes of a transaction with (10 + 180*n_inputs + 32*n_outputs)

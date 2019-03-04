@@ -8,15 +8,6 @@ export default class BcoinApi {
     this.client = new NodeClient(opts);
   }
 
-  initialize(cb) {
-    this.client.getInfo()
-    .then((info) => {
-      if (!info || !info.network) return cb(new Error('Could not connect to node'));
-      return cb(null, info);
-    })
-    .catch((err) => cb(err))
-  }
-
   addBalanceMultiple(utxos, sat=true) {
     const d = {};
     Object.keys(utxos).forEach((u) => {
