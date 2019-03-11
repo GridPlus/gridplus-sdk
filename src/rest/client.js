@@ -1,18 +1,19 @@
+const crc32 = require('crc-32');
 import superagent from 'superagent';
 import {
   // decrypt,
   // encrypt,
   // deriveSecret,
   getP256KeyPair,
-  deviceCodes,
-  deviceResponses,
 } from '../util';
 import {
   deviceCodes,
   responseCodes,
   deviceResponses,
   SUCCESS_RESPONSE_CODE,
+  VERSION_BYTE,
 } from '../constants';
+const leftPad = require('left-pad');
 const Buffer = require('buffer/').Buffer;
 const config = require('../config');
 const debug = require('debug')('@gridplus/sdk:rest/client');
@@ -56,8 +57,8 @@ export default class Client {
   // pair with the device in a later request
   connect(serial, cb) {
     this.serial = serial;
-    // The payload is simply the START_PAIRING_MODE route code
-    const param = deviceCodes.START_PAIRING_MODE;
+    // Build the request
+    const param = this._buildRequest(deviceCodes.START_PAIRING_MODE, null);
     this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
@@ -88,9 +89,12 @@ export default class Client {
     const preImage = `${this.pairingSalt}${appSecret}`;
     const hash = this.crypto.createHash(preImage);
     const sig = this.key.sign(hash).toDER();
-
+    
     // The payload adheres to the serialization format of the PAIR route
-    const param = `${deviceCodes.PAIR}${sig}${this.name.length}${this.name}`;
+    const payload = `${sig}${this.name.length}${this.name}`;
+    
+    // Build the request
+    const param = this._buildRequest(deviceCodes.PAIR, Buffer.from(payload, 'hex'));
 
     return this._request(param, (err, res) => {
       if (err) return cb(err);
@@ -105,6 +109,22 @@ export default class Client {
       }
     })
   }
+
+  // Build a request to send to the device.
+  // @param [code] {string}  - 2 character string (1 byte) representing the type of message to send the device
+  // @param [payload] {buffer} - serialized payload
+  _buildRequest(code, payload) {
+    let l = 0;
+    let payloadStr = '';
+    if (payload && Buffer.isBuffer(payload)) {
+      payloadStr = payload.toString('hex');  // hex string
+      l = payload.length.toString(16);       // number of bytes
+    }
+    const req = `${VERSION_BYTE}${code}${l}${payloadStr}`;
+    const cs = crc32.buf(Buffer.from(req), 0xedb88320);
+    return `${req}${cs.toString(16)}`
+  }
+
 /*
   pairedRequest(method, { param = {}, id = this._newId() }, cb) {
     try {
@@ -208,16 +228,15 @@ export default class Client {
     } else {
       superagent.post(url)
       .send(data)
-      .set('Accept', 'application/json')
+      // .set('Accept', 'application/json')
       .then(res => {
-        console.log(res.body)
         if (!res || !res.body) return cb(`Invalid response: ${res}`)
         else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
         const resCode = this._getResponseCode(res.body.message);
         if (resCode) return cb(`Error from device: ${resCode}`);
         cb(null, res.body); 
       })
-      .catch(err => cb(err));
+      .catch(err => { cb(err)});
     }
   }
 
@@ -232,6 +251,7 @@ export default class Client {
       return 'Could not parse response from device';
     }
   }
+
   // ----- Device response handlers -----
 
   // Connect will call `StartPairingMode` on the device, which returns salt

@@ -1,4 +1,4 @@
-docks/_build
+docs/_build
 .DS_Store
 secrets.json
 mkdocs.yml

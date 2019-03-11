@@ -19,8 +19,8 @@ describe('Ethereum via Etherscan: ether transfers', () => {
   it('Should connect to an agent', (done) => {
     client.connect(agent_serial, (err, res) => {
         console.log('err', err)
-        //   assert(err === null, err);
-    //   assert(client.client.ecdhPub === res.key, 'Mismatched key on response')
+        // assert(err === null, err);
+        // assert(client.client.ecdhPub === res.key, 'Mismatched key on response')
       done()
     });
   });

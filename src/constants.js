@@ -23,10 +23,12 @@ export const responseCodes = {
     '81': 'Invalid Request',
     '82': 'Pairing Failure' 
 }
-  
+ 
 export const SUCCESS_RESPONSE_CODE = '00';
   
 export const deviceResponses = {
     START_CODE_IDX: 1, // Beginning of 4-byte status code in Lattice response
     START_DATA_IDX: 5, // Beginning of data field for Lattice responses
 }
+
+export const VERSION_BYTE = '00';
