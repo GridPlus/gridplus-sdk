@@ -12,10 +12,10 @@ export const OPs = {
 }
   
 export const deviceCodes = {
-    'ENCRYPTED_REQUEST': '00',
-    'NEW_EPHEM_KEY': '01',
-    'START_PAIRING_MODE': '02',
-    'PAIR': '03',
+    'ENCRYPTED_REQUEST': 0,
+    'NEW_EPHEM_KEY': 1,
+    'START_PAIRING_MODE': 2,
+    'PAIR': 3,
 }
   
 export const responseCodes = {
@@ -24,11 +24,11 @@ export const responseCodes = {
     '82': 'Pairing Failure' 
 }
  
-export const SUCCESS_RESPONSE_CODE = '00';
+export const SUCCESS_RESPONSE_CODE = 0;
   
 export const deviceResponses = {
     START_CODE_IDX: 1, // Beginning of 4-byte status code in Lattice response
     START_DATA_IDX: 5, // Beginning of data field for Lattice responses
 }
 
-export const VERSION_BYTE = '00';
+export const VERSION_BYTE = 0;

@@ -20,8 +20,8 @@ export const ethFunctionCodes = {
 }
 
 export const api = {
-  baseUrl: 'http://signing.staging-gridpl.us' || 'http://localhost',
-  // baseUrl: 'http://localhost:3000',
+  // baseUrl: 'http://signing.staging-gridpl.us' || 'http://localhost',
+  baseUrl: 'http://localhost:3000',
   SPLIT_BUF,
 }
 

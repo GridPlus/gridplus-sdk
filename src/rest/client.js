@@ -113,16 +113,20 @@ export default class Client {
   // Build a request to send to the device.
   // @param [code] {string}  - 2 character string (1 byte) representing the type of message to send the device
   // @param [payload] {buffer} - serialized payload
+  // @returns {buffer}
   _buildRequest(code, payload) {
-    let l = 0;
-    let payloadStr = '';
-    if (payload && Buffer.isBuffer(payload)) {
-      payloadStr = payload.toString('hex');  // hex string
-      l = payload.length.toString(16);       // number of bytes
-    }
-    const req = `${VERSION_BYTE}${code}${l}${payloadStr}`;
-    const cs = crc32.buf(Buffer.from(req), 0xedb88320);
-    return `${req}${cs.toString(16)}`
+    const L = payload && Buffer.isBuffer(payload) ? payload.length : 0;
+    let i = 0;
+    const preReq = Buffer.alloc(L + 3);
+    i = preReq.writeUInt8(VERSION_BYTE, i);
+    i = preReq.writeUInt16BE(L, i);
+    if (L > 0) i = payload.copy(preReq, i);
+    // Concatenate request with checksum
+    const cs = crc32.buf(preReq, 0xedb88320);
+    const req = Buffer.alloc(preReq.length + 4);
+    i = preReq.copy(req);
+    req.writeUInt32BE(cs, i);
+    return req;
   }
 
 /*
@@ -227,7 +231,7 @@ export default class Client {
       .catch((err) => { return cb(err); })
     } else {
       superagent.post(url)
-      .send(data)
+      .send({data})
       // .set('Accept', 'application/json')
       .then(res => {
         if (!res || !res.body) return cb(`Invalid response: ${res}`)
