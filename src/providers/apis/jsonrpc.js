@@ -1,8 +1,8 @@
-import ethers from 'ethers';
-import { pad64, unpad } from '../../util.js';
-import { erc20 } from '../../config.js';
+const ethers = require('ethers');
+const { pad64, unpad } = require('../../util.js');
+const { erc20 } = require('../../config.js');
 
-export default class JsonRpcApi {
+class JsonRpcApi {
   constructor(opts) {
     const url = typeof opts === 'string' ? opts : (opts && opts.host && opts.port ? `http://${opts.host}:${opts.port}` : 'http://localhost:8545');
     this.provider = new ethers.providers.JsonRpcProvider(url);
@@ -198,3 +198,5 @@ export default class JsonRpcApi {
   }
 
 }
+
+module.exports = JsonRpcApi;

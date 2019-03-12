@@ -1,17 +1,13 @@
-import config from './config';
-import Bitcoin from './providers/Bitcoin';
-import debug from 'debug';
-import Ethereum from './providers/Ethereum';
-import AgentRestClient from './rest/client';
-import { parseSigResponse, getProviderShortCode } from './util';
-export const providers = {
-  Bitcoin,
-  Ethereum,
-};
-import { buildPermissionRequest, buildSigRequest, parsePermissions } from './permissions';
+const config = require('./config');
+const Bitcoin = require('./providers/Bitcoin');
+const debug = require('debug');
+const Ethereum = require('./providers/Ethereum');
+const AgentRestClient = require('./rest/client');
+const { parseSigResponse, getProviderShortCode } = require('./util');
+const { buildPermissionRequest, buildSigRequest, parsePermissions } = require('./permissions');
 const log = debug('gridplus-sdk');
 
-export default class SdkClient {
+class SdkClient {
 
   constructor(options) {
     options = options || {};
@@ -32,7 +28,6 @@ export default class SdkClient {
     }
 
     this.client = new AgentRestClient(options);
-
     this.providers = {};
 
     (options.providers || []).map((provider) => {
@@ -188,7 +183,13 @@ export default class SdkClient {
 
 }
 
-export const Client = SdkClient;
-export const tokens = require('../tokensBySymbol.json');
-export const tokensBySymbol = require('../tokensBySymbol.json');
-export const tokensByAddress = require('../tokensByAddress.json');
+module.exports = {
+  Client: SdkClient,
+  tokens: require('../tokensBySymbol.json'),
+  tokensBySymbol: require('../tokensBySymbol.json'),
+  tokensByAddress: require('../tokensByAddress.json'),
+  providers: {
+    Bitcoin,
+    Ethereum,
+  }
+};
