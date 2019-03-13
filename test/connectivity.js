@@ -1,6 +1,6 @@
 // Basic tests for atomic SDK functionality
-import assert from 'assert';
-import { Client, providers } from 'index';
+const assert = require('assert');
+const { Client, providers } = require('../src/index.js');
 const crypto = require('crypto');
 const TIMEOUT_SEC = 59;
 const { baseUrl, agent_serial } = require('../secrets.json');

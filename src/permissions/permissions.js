@@ -1,8 +1,7 @@
 const codes = require('./codes.json');
-// const config = require('../config.js');
 
 // Build a request to create a permission
-exports.buildPermissionRequest = function(opts) {
+function buildPermissionRequest(opts) {
   if (opts.schemaCode === undefined || opts.params === undefined || opts.timeLimit === undefined) return 'You must include "schemaCode", "params", and "timeLimit" params in this request.';
   if (typeof opts.timeLimit !== 'number' || opts.timeLimit < 0) return '"timeLimit" must be a non-negative integer';
   if (typeof opts.schemaCode !== 'string') return '"schemaCode" must be a string';
@@ -19,7 +18,7 @@ exports.buildPermissionRequest = function(opts) {
   expectedNames.forEach((name, i) => {
     const paramName = expectedNames[i][0];
     if (opts.params[paramName] !== undefined) {
-      const rule = getRule(name, opts.params[paramName]);
+      const rule = _getRule(name, opts.params[paramName]);
       if (rule === null) return 'Could not parse params into rule set. Please see documentation for correct formatting.';
       req.rules = req.rules.concat(rule);
     } else {
@@ -31,7 +30,7 @@ exports.buildPermissionRequest = function(opts) {
 }
 
 // Build a signature request against a permission
-exports.buildSigRequest = function(opts) {
+function buildSigRequest(opts) {
   if (opts.schemaCode === undefined || opts.params === undefined) return 'You must include "schemaCode" and "params" in this request.';
   const code = codes.code[opts.schemaCode];
   let req = {
@@ -46,12 +45,12 @@ exports.buildSigRequest = function(opts) {
     req.params.push(opts.params[paramName]);
   });
   // Some schema types will add additional stuff (e.g. BTC utxo inputs)
-  req = addExtraParams(opts, req);
+  req = _addExtraParams(opts, req);
   if (err) return err;
   else     return req;
 }
 
-exports.parsePermissions = function(permissions) {
+function parsePermissions(permissions) {
   const parsedPermissions = [];
   permissions.forEach((p) => {
     const parsedP = {
@@ -115,7 +114,7 @@ function _parseRule(ruleType, p, i) {
 
 
 // Parse the human-readable params object into an instruction set for the Lattice
-function getRule(name, param) {
+function _getRule(name, param) {
   const names = [];
   const ranges = [];
   if (name[1] !== null) {
@@ -196,7 +195,7 @@ function getRule(name, param) {
   return rules;
 }
 
-function addExtraParams(opts, req) {
+function _addExtraParams(opts, req) {
   switch(opts.schemaCode) {
     case 'BTC':
       if (opts.inputs && Array.isArray(opts.inputs)) {
@@ -235,4 +234,10 @@ function _postProcessRules(rules, schemaIdx, typeIdx) {
     null;
   }
   return rules;
+}
+
+module.exports = {
+  buildPermissionRequest,
+  buildSigRequest,
+  parsePermissions,
 }

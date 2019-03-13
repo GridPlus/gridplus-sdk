@@ -1,8 +1,8 @@
 // BCoin API
-import { NodeClient } from 'gridplus-bclient';
-import { sortByHeight, getOutputScriptType } from '../../util';
+const { NodeClient } = require('gridplus-bclient');
+const { sortByHeight, getOutputScriptType } = require('../../util');
 
-export default class BcoinApi {
+class BcoinApi {
 
   constructor(opts) {
     this.client = new NodeClient(opts);
@@ -349,3 +349,5 @@ export default class BcoinApi {
   }
 
 }
+
+module.exports = BcoinApi;
