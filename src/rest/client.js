@@ -117,13 +117,14 @@ class Client {
   _buildRequest(code, payload) {
     const L = payload && Buffer.isBuffer(payload) ? payload.length : 0;
     let i = 0;
-    const preReq = Buffer.alloc(L + 3);
+    const preReq = Buffer.alloc(L + 4);
     i = preReq.writeUInt8(VERSION_BYTE, i);
     i = preReq.writeUInt8(code, i);
     i = preReq.writeUInt16BE(L, i);
     if (L > 0) i = payload.copy(preReq, i);
     // Concatenate request with checksum
-    const cs = crc32.buf(preReq, 0xedb88320);
+    // crc32 returns a signed integer - need to cast it to unsigned
+    const cs = crc32.buf(preReq, 0xedb88320) >>> 0;
     const req = Buffer.alloc(preReq.length + 4);
     i = preReq.copy(req);
     req.writeUInt32BE(cs, i);
