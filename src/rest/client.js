@@ -119,6 +119,7 @@ export default class Client {
     let i = 0;
     const preReq = Buffer.alloc(L + 3);
     i = preReq.writeUInt8(VERSION_BYTE, i);
+    i = preReq.writeUInt8(code, i);
     i = preReq.writeUInt16BE(L, i);
     if (L > 0) i = payload.copy(preReq, i);
     // Concatenate request with checksum
@@ -219,6 +220,7 @@ export default class Client {
   _request(data, cb) {
     if (!this.serial) return cb('Serial is not set. Please set it and try again.');
     const url = `${this.baseUrl}/${this.serial}`;
+    console.log('Making request', url, data);
     if (this.httpRequest) {
       this.httpRequest(url, data)
       .then((res) => {
