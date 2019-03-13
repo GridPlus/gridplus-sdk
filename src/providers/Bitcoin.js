@@ -1,14 +1,14 @@
-import config from '../config.js';
-import { BlockCypherApi, BcoinApi } from './apis'
+const { bitcoinNode } = require('../config.js');
+const { BlockCypherApi, BcoinApi } = require('./apis');
 const schemas = require('../permissions/codes.json');
 const defaultOpts = {
-  host: config.bitcoinNode.host,
-  network: config.bitcoinNode.network,
-  port: config.bitcoinNode.port,
+  host: bitcoinNode.host,
+  network: bitcoinNode.network,
+  port: bitcoinNode.port,
 };
 const DEFAULT_FEE = 3;
 
-export default class Bitcoin {
+class Bitcoin {
   constructor (opts=defaultOpts) {
     this.name = 'bitcoin';
     this.shortcode = 'BTC';
@@ -120,6 +120,7 @@ export default class Bitcoin {
     })
   }
 
-
-
 }
+
+exports.default = Bitcoin;
+exports.Bitcion = Bitcoin;

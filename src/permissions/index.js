@@ -1,5 +1,7 @@
-import { buildPermissionRequest, buildSigRequest, parsePermissions } from './permissions';
+const { buildPermissionRequest, buildSigRequest, parsePermissions } = require('./permissions');
 
-exports.buildPermissionRequest = buildPermissionRequest;
-exports.buildSigRequest = buildSigRequest;
-exports.parsePermissions = parsePermissions;
+module.exports = {
+    buildPermissionRequest,
+    buildSigRequest,
+    parsePermissions,
+};

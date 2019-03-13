@@ -1,4 +1,11 @@
-export { default as BlockCypherApi } from './blockcypher';
-export { default as BcoinApi } from './bcoin';
-export { default as EtherscanApi } from './etherscan';
-export { default as JsonRpcApi } from './jsonrpc';
+const BlockCypherApi = require('./blockcypher');
+const BcoinApi = require('./bcoin');
+const EtherscanApi = require('./etherscan');
+const JsonRpcApi = require('./jsonrpc');
+
+exports = {
+    BlockCypherApi,
+    BcoinApi,
+    EtherscanApi,
+    JsonRpcApi,
+}

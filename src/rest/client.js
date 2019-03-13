@@ -1,24 +1,24 @@
 const crc32 = require('crc-32');
-import superagent from 'superagent';
-import {
+const superagent = require('superagent');
+const {
   // decrypt,
   // encrypt,
   // deriveSecret,
   getP256KeyPair,
-} from '../util';
-import {
+} = require('../util');
+const {
   deviceCodes,
   responseCodes,
   deviceResponses,
   SUCCESS_RESPONSE_CODE,
   VERSION_BYTE,
-} from '../constants';
+} = require('../constants');
 const leftPad = require('left-pad');
 const Buffer = require('buffer/').Buffer;
 const config = require('../config');
 const debug = require('debug')('@gridplus/sdk:rest/client');
 
-export default class Client {
+class Client {
   constructor({ baseUrl, crypto, name, privKey, httpRequest } = {}) {
     // Definitions
     // if (!baseUrl) throw new Error('baseUrl is required');
@@ -282,3 +282,5 @@ export default class Client {
   }
 
 }
+
+module.exports = Client;

@@ -1,10 +1,10 @@
-import { BigNumber } from 'bignumber.js';
-import ethers from 'ethers';
+const { BigNumber } = require('bignumber.js');
+const ethers = require('ethers');
 const defaultOpts = {
   network: 'homestead', // No idea why mainnet is still being called homestead...
 }
 
-export default class EtherscanApi {
+class EtherscanApi {
 
   constructor(opts=defaultOpts) {
     this.network = opts.network;
@@ -120,3 +120,5 @@ export default class EtherscanApi {
 
 
 }
+
+module.exports = EtherscanApi;
