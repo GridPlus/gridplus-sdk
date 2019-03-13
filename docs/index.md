@@ -43,12 +43,38 @@ const clientConfig = {
 
 ### Client options
 
-| Param      | Type      | Default          | Description           |
-|:-----------|:----------|:-----------------|:----------------------|
-| `baseUrl`    | string    |`http://localhost`| Hostname of Lattice request handlerName of the app. |
-| `name`     | string    | None             | Name of the app. This will appear on the Lattice <br>                                                screen for requests. Not required, but strongly <br>                                                 suggested. |
-| `privKey`  | string/buffer| None          | Private key buffer used for encryption/decryption<br>                                                of Lattice messages. A random private key will be<br>                                                generated and stored if none is provided. | 
-| `crypto`   | object    | None             | Crypto function package |
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Default</td>
+        <td>Description</td>
+    </tr>
+    <tr>
+        <td>baseUrl</td>
+        <td>string</td>
+        <td>`http://signing.staging-gridpl.us`</td>
+        <td>Hostname of Lattice request handler. For now, this should point to a GridPlus cloud proxy server</td>
+    </tr>
+    <tr>
+        <td>name</td>
+        <td>string</td>
+        <td>`gridplus-sdk`</td>
+        <td>Name of the app. This will appear on the Lattice screen for requests. Not required, but strongly suggested.</td>
+    </tr>
+    <tr>
+        <td>privKey</td>
+        <td>String or Buffer</td>
+        <td></td>
+        <td>Private key buffer used for encryption/decryption of Lattice messages. A random private key will be generated and stored if none is provided.</td>
+    </tr>
+    <tr>
+        <td>crypto</td>
+        <td>Object</td>
+        <td>`NodeCrypto`</td>
+        <td>Crypto function package. If you are using React Native, you should use `gridplus-react-native-crypto`, otherwise you can use the native Nodejs `crypto` module</td>
+    </tr>
+</table>
 
 
 ### Adding Providers
@@ -340,7 +366,7 @@ A few notes:
 
 The following section outlines options related to built-in providers.
 
-### Bitcoin
+*Bitcoin*
 
 The built-in Bitcoin provider allows you to connect either to [blockcypher](https://blockcypher.com) or to a custom node that you define.
 
@@ -352,15 +378,59 @@ const btc = new Bitcoin(params);
 
 #### API Options
 
-|  Param       |   Type   | Description                   |   Options        | Default    |
-|:-------------|:---------|:------------------------------|:-----------------|:-----------|
-| `network`    | string   | Name of the network to which<br> you wish to connect      | `test3` (Testnet3)<br>`mainnet`<br>`test` (BCY testnet)<br>`regtest` (local dev)<br>| `regtest` |
-| `blockcypher`| bool     | Use blockcypher provider     | `true`<br>`false` | `false` |
-| `apiKey`     | string   | API key of blockcypher       | Any               | None    |
-| `host`       | string   | Hostname of custom node      | Any               | None    |
-| `port`       | int      | Port of custom node          | Any               | None    |
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Description</td>
+        <td>Options</td>
+        <td>Default</td>
+    </tr>
+    <tr>
+        <td>network</td>
+        <td>string</td>
+        <td>Name of the network to which you wish to connect</td>
+        <td>test3 (Testnet3), mainnet, test (BCY testnet), regtest (local development)</td>
+        <td>regtest</td>
+    </tr>
+     <tr>
+        <td>blockcypher</td>
+        <td>bool</td>
+        <td>True if you want to use blockcypher</td>
+        <td>true, false</td>
+        <td>false</td>
+    </tr>
+    <tr>
+        <td>apiKey</td>
+        <td>string</td>
+        <td>The API key of the service you are using</td>
+        <td>Any</td>
+        <td>None</td>
+    </tr>
+    <tr>
+        <td>host</td>
+        <td>string</td>
+        <td>Hostname of the node you wish to connect to. Only needed when blockcypher=false</td>
+        <td>Any</td>
+        <td>localhost<td>
+    <tr>
+    <tr>
+        <td>port</td>
+        <td>integer</td>
+        <td>Port to connect to node. Only needed when blockcypher=false</td>
+        <td>Any</td>
+        <td>48332</td>
+    </tr>
+</table>
 
-### Ethereum
+#### Network Options:
+
+* `testnet`: Testnet3
+* `bitcoin`: mainnet
+* `bcy`: BCY (blockcypher) testnet
+* `regtest`: local development network
+
+*Ethereum*
 
 The built-in Ethereum provider allows you to connect either to [etherscan](https://etherscan.io) or to a custom node that you define.
 
@@ -372,13 +442,57 @@ const eth = new Ethereum(paramss);
 
 #### API Options
 
-|  Param       |   Type   | Description                   |   Options        | Default    |
-|:-------------|:---------|:------------------------------|:-----------------|:-----------|
-| `network`    | string   | Name of the network to which<br> you wish to connect      | `rinkeby`<br>`homestead` (mainnet)<br>`kovan`<br>`ropsten`        | `homestead` |
-| `etherscan`  | bool     | Use etherscan provider       | `true`<br>`false` | `false` |
-| `apiKey`     | string   | API key for etherscan        | Any               | None    |
-| `host`       | string   | Hostname of custom node      | Any               | None    |
-| `port`       | int      | Port of custom node          | Any               | None    |
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Description</td>
+        <td>Options</td>
+        <td>Default</td>
+    </tr>
+    <tr>
+        <td>network</td>
+        <td>string</td>
+        <td>Name of the network to which you wish to connect. Only needs to be specified if etherscan=true; can be null if using custom node.</td>
+        <td>rinkeby, kovan, ropsten, homestead (mainnet)</td>
+        <td>regtest</td>
+    </tr>
+     <tr>
+        <td>etherscan</td>
+        <td>bool</td>
+        <td>True if you want to use etherscan</td>
+        <td>true, false</td>
+        <td>false</td>
+    </tr>
+    <tr>
+        <td>apiKey</td>
+        <td>string</td>
+        <td>The API key of the service you are using</td>
+        <td>Any</td>
+        <td>None</td>
+    </tr>
+    <tr>
+        <td>host</td>
+        <td>string</td>
+        <td>Hostname of the node you wish to connect to. Only needed when etherscan=false</td>
+        <td>Any</td>
+        <td>localhost<td>
+    <tr>
+    <tr>
+        <td>port</td>
+        <td>integer</td>
+        <td>Port to connect to node. Only needed when etherscan=false</td>
+        <td>Any</td>
+        <td>8545</td>
+    </tr>
+</table>
+
+#### Network Options:
+
+* `rinkeby`
+* `kovan`
+* `ropsten`
+* `homestead`: mainnet
 
 # Schema Reference
 
@@ -388,7 +502,7 @@ This section outlines the schema types, param names, and restrictions for the ac
 * **ParamNames** show the naems of the parameters that will go into building a schema
 * **Restrictions** show required param values, if applicable
 
-### Ethereum
+*Ethereum*
 
 #### 'ETH': Ether Transfers
 
@@ -431,15 +545,57 @@ Retrieve one or more addresses from a paired device.
 
 #### param [object], required
 
-|  Param       |   Type   | Default         | Required | Description                 |
-|:-------------|:---------|:----------------|:---------|:----------------------------|
-| `permissionIndex` | int | None            | Yes      | **Will be deprecated soon.**<br>Refers to specific index of permission<br>we are requesting addresses against |
-| `start`      | int      | `0`             | No       | Starting index of account to scan<br>(`m/44'/x/0'/0/start`) |
-| `total`      | int      | `1`             | No       | Number of addresses to return.<br>They will be in sequential order<br>starting at `start` |
-| `coin_type`  | string   | `0'`            | No       | `0'` for Bitcoin, `60'` for Ethereum |
-| `network`    | stirng   | `bitcoin`       | No       | Only used for Bitcoin `coin_type`.<br>Options in previous section. |
-| `segwit`     | bool     | `true`          | No       | Only used for Bitcoin `coin_type`
-
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Default</td>
+        <td>Required</td>
+        <td>Description</td>
+    </tr>
+    <tr>
+        <td>permissionIndex</td>
+        <td>integer</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>Will be deprecated soon. Refers to specific index of permission we are requesting addresses against</td>
+    </tr>
+        <tr>
+        <td>start</td>
+        <td>integer</td>
+        <td>0</td>
+        <td>No</td>
+        <td>Starting index of account to scan (m/44'/x/x/start)</td>
+    </tr>    
+    <tr>
+        <td>total</td>
+        <td>integer</td>
+        <td>1</td>
+        <td>No</td>
+        <td>Number of addresses to return. These will be in sequential order starting at `start`.</td>
+    </tr>    
+    <tr>
+        <td>coin_type</td>
+        <td>string</td>
+        <td>0'</td>
+        <td>No</td>
+        <td>BIP44 code for coin being requested. 0' for Bitcoin, 60' for Ethereum</td>
+    </tr>
+    <tr>
+        <td>network</td>
+        <td>string</td>
+        <td>bitcoin</td>
+        <td>No</td>
+        <td>Name of network (see relevant provider options in previous section)</td>
+    </tr>
+    <tr>
+        <td>segwit</td>
+        <td>bool</td>
+        <td>true</td>
+        <td>No</td>
+        <td>True if you want segwit addresses. Is only used for Bitcoin addresses</td>
+    </tr>
+</table>
 
 #### cb(err, addresses)
 
@@ -454,11 +610,36 @@ Request a new permission based on a rule set you provide.
 
 #### param [object], required
 
-|  Param       |   Type   | Default         | Required | Description                 |
-|:-------------|:---------|:----------------|:---------|:----------------------------|
-| `schemaCode` | string   | None            | Yes      | Structure of permission.<br>`ETH`, `BTC`, or `ETH-ERC20` |
-| `timeLimit`  | int      | None            | Yes      | Seconds after which permission window resets. |
-| `params`     | object   | None            | Yes      | Parameters of permission. See Permissions section for examples. |
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Default</td>
+        <td>Required</td>
+        <td>Description</td>
+    </tr>
+    <tr>
+        <td>schemaCode</td>
+        <td>string</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>Schema code you want to create a permission for (e.g. ETH, ETH-ERC20, BTC)</td>
+    </tr>
+        <tr>
+        <td>timeLimit</td>
+        <td>integer</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>Time (in seconds) constraining permission. For example, a permission might set a limit of 0.5 ETH to be auto-signed over a period of 60 seconds. This permission would reset every 60 seconds.</td>
+    </tr>    
+    <tr>
+        <td>params</td>
+        <td>object</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>An object whose keys are named after schema param names. Sub-object keys are range options. See Permissions section for examples.</td>
+    </tr>    
+</table>
 
 #### cb(err, success)
 
@@ -536,11 +717,29 @@ Provider code you want to broadcast to (e.g. ETH, BTC)
 
 #### opts [object]
 
-|  Param       |   Type   | Default         | Required | Description                 |
-|:-------------|:---------|:----------------|:---------|:----------------------------|
-| `address`    | string/array | None        | Yes      | One or more addresses to query.<br>*This Must be a single address for<br>Ethereum requests!* |
-| `sat`        | bool     | `true`          | No       | Bitcoin only: Get balances in satoshis |
-
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Default</td>
+        <td>Required</td>
+        <td>Description</td>
+    </tr>
+    <tr>
+        <td>address</td>
+        <td>string or array</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>One or more addresses to query the balance for. NOTE: This must be a single address for Ethereum requests!</td>
+    </tr>
+    <tr>
+        <td>sat</td>
+        <td>bool</td>
+        <td>true</td>
+        <td>No</td>
+        <td>(Bitcoin only) Get balance in satoshis (rather than BTC).</td>
+    </tr>
+</table>
 
 #### cb(err, res)
 
@@ -572,10 +771,29 @@ Use a provider to get the ERC20 balance for one or more tokens, for one or more 
 
 #### opts [object]
 
-|  Param       |   Type   | Default         | Required | Description                 |
-|:-------------|:---------|:----------------|:---------|:----------------------------|
-| `address`    | string   | None            | Yes      | Address to scan             |
-| `tokens`     | string/array | None        | Yes      | Token contract address(es) to scan |
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Default</td>
+        <td>Required</td>
+        <td>Description</td>
+    </tr>
+    <tr>
+        <td>address</td>
+        <td>string</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>Address to scan balances for.</td>
+    </tr>
+    <tr>
+        <td>tokens</td>
+        <td>string or array</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>One or more token contract addresses to scan over.</td>
+    </tr>
+</table>
 
 #### cb(err, res)
 
@@ -599,10 +817,29 @@ Provider code you want to broadcast to (e.g. ETH, BTC)
 
 #### opts [object], required
 
-|  Param       |   Type   | Default         | Required | Description                 |
-|:-------------|:---------|:----------------|:---------|:----------------------------|
-| `address`    | string/array | None        | Yes      | Address(es) to scan         |
-| `ERC20Token` | string/array | None        | No       | *ETH only*: Token contract(s) to scan |
+<table>
+    <tr>
+        <td>Param</td>
+        <td>Type</td>
+        <td>Default</td>
+        <td>Required</td>
+        <td>Description</td>
+    </tr>
+    <tr>
+        <td>address</td>
+        <td>string or array</td>
+        <td>None</td>
+        <td>Yes</td>
+        <td>Address (or addresses) to scan history for.</td>
+    </tr>
+    <tr>
+        <td>ERC20Token</td>
+        <td>string or array</td>
+        <td>None</td>
+        <td>No</td>
+        <td>[Ethereum only] One or more token contract addresses to scan over.</td>
+    </tr>
+</table>
 
 #### cb(err, res)
 
