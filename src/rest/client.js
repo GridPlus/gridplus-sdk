@@ -11,6 +11,7 @@ const {
   responseCodes,
   deviceResponses,
   SUCCESS_RESPONSE_CODE,
+  TYPE_BYTE,
   VERSION_BYTE,
 } = require('../constants');
 const leftPad = require('left-pad');
@@ -111,21 +112,29 @@ class Client {
   }
 
   // Build a request to send to the device.
-  // @param [code] {string}  - 2 character string (1 byte) representing the type of message to send the device
+  // @param [request_code] {uint8}  - 8-bit unsigned integer representing the message request code
   // @param [payload] {buffer} - serialized payload
   // @returns {buffer}
-  _buildRequest(code, payload) {
-    const L = payload && Buffer.isBuffer(payload) ? payload.length : 0;
+  _buildRequest(request_code, payload) {
+    // Length of payload;
+    // we add 1 to the payload length to account for the request_code byte
+    const L = payload && Buffer.isBuffer(payload) ? payload.length + 1 : 1;
     let i = 0;
     const preReq = Buffer.alloc(L + 4);
+
+    // Build the header
     i = preReq.writeUInt8(VERSION_BYTE, i);
-    i = preReq.writeUInt8(code, i);
+    i = preReq.writeUInt8(TYPE_BYTE, i);
     i = preReq.writeUInt16BE(L, i);
-    if (L > 0) i = payload.copy(preReq, i);
-    // Concatenate request with checksum
+
+    // Build the payload
+    i = preReq.writeUInt8(request_code, i);
+    if (L > 1) i = payload.copy(preReq, i);
+    
+    // Add the checksum
     // crc32 returns a signed integer - need to cast it to unsigned
     const cs = crc32.buf(preReq, 0xedb88320) >>> 0;
-    const req = Buffer.alloc(preReq.length + 4);
+    const req = Buffer.alloc(preReq.length + 4); // 4-byte checksum
     i = preReq.copy(req);
     req.writeUInt32BE(cs, i);
     return req;

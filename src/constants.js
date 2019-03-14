@@ -33,6 +33,7 @@ const deviceResponses = {
 
 const SUCCESS_RESPONSE_CODE = 0;
 const VERSION_BYTE = 0;
+const TYPE_BYTE = 0x02;
 
 module.exports = {
     dict,
@@ -41,5 +42,6 @@ module.exports = {
     responseCodes,
     deviceResponses,
     SUCCESS_RESPONSE_CODE,
+    TYPE_BYTE,
     VERSION_BYTE,
 }
