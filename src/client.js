@@ -5,7 +5,7 @@ const {
   // encrypt,
   // deriveSecret,
   getP256KeyPair,
-} = require('../util');
+} = require('./util');
 const {
   deviceCodes,
   responseCodes,
@@ -13,27 +13,26 @@ const {
   SUCCESS_RESPONSE_CODE,
   TYPE_BYTE,
   VERSION_BYTE,
-} = require('../constants');
+} = require('./constants');
 const leftPad = require('left-pad');
 const Buffer = require('buffer/').Buffer;
 const config = require('../config');
-const debug = require('debug')('@gridplus/sdk:rest/client');
+const debug = require('debug')('@gridplus/sdk:client');
 
 class Client {
-  constructor({ baseUrl, crypto, name, privKey, httpRequest } = {}) {
+  constructor({ baseUrl, crypto, name, privKey, httpRequest, providers } = {}) {
     // Definitions
     // if (!baseUrl) throw new Error('baseUrl is required');
-    if (!name) throw new Error('name is required')
-    else if (name.length > 20) throw new Error('name must be <20 characters');
+    if (name && name.length > 20) throw new Error('name must be <20 characters');
     if (!crypto) throw new Error('crypto provider is required');
     if (httpRequest) this.httpRequest = httpRequest;
     this.baseUrl = baseUrl || config.api.baseUrl;
     this.crypto = crypto;
-    this.name = name;
+    this.name = name || 'Unknown';
     
     // Derive an ECDSA keypair using the p256 curve. The public key will
     // be used as an identifier
-    this.privKey = privKey || this.crypto.generateEntropy();
+    this.privKey = privKey || this.crypto.randomBytes(32);
     this.keyPair = getP256KeyPair(this.privKey).getPublic().encode('hex');
 
     // Pairing salt is retrieved from calling `connect` on the device. This
@@ -50,8 +49,18 @@ class Client {
     this.timeout = null;
     this.serial = null;
 
+    // Crypto node providers
+    this.providers = {};
+    (providers || []).map((provider) => {
+      this.providers[provider.shortcode] = provider;
+    });
+
     debug(`created rest client for ${this.baseUrl}`);
   }
+
+  //=======================================================================
+  // LATTICE FUNCTIONS
+  //=======================================================================
 
   // `Connect` will attempt to contact a device based on its serial number
   // The response should include an ephemeral public key, which is used to
@@ -110,6 +119,45 @@ class Client {
       }
     })
   }
+
+  //=======================================================================
+  // PROVIDER FUNCTIONS
+  // These functions interact directly with the node providers (e.g. BTC or ETH)
+  // and do not interact with the lattice. They will only work if the 
+  // client has been instantated with providers
+  //=======================================================================
+
+  getBalance(shortcode, options, cb) {
+    if (!this.providers[shortcode])
+      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
+    return this.providers[shortcode].getBalance(options, cb);
+  }
+
+  getTokenBalance(options, cb) {
+    if (!this.providers['ETH'])
+      return cb(new Error('Cannot request token balance. ETH provider is not set.'))
+    return this.providers['ETH'].getTokenBalance(options, cb);
+  }
+
+  getTxHistory(shortcode, options, cb) {
+    if (!this.providers[shortcode])
+      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
+    return this.providers[shortcode].getTxHistory(options, cb);
+  }
+
+  // Get (one or more) transaction(s) and return (one or more) object(s) that conform to a common schema across currencies
+  getTx(shortcode, hashes, opts, cb) {
+    if (!this.providers[shortcode])
+      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
+    return this.providers[shortcode].getTx(hashes, cb, opts);
+  }
+
+  //=======================================================================
+  // INTERNAL FUNCTIONS
+  // These handle the logic around building requests and consuming
+  // responses. They take into account the Lattice's serialization scheme
+  // among other protocols.
+  //=======================================================================
 
   // Build a request to send to the device.
   // @param [request_code] {uint8}  - 8-bit unsigned integer representing the message request code

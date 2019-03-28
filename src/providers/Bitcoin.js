@@ -1,4 +1,4 @@
-const { bitcoinNode } = require('../config.js');
+const { bitcoinNode } = require('../../config.js');
 const { BlockCypherApi, BcoinApi } = require('./apis');
 const schemas = require('../permissions/codes.json');
 const defaultOpts = {
