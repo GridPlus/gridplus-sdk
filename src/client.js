@@ -11,7 +11,7 @@ const {
   responseCodes,
   deviceResponses,
   SUCCESS_RESPONSE_CODE,
-  TYPE_BYTE,
+  REQUEST_TYPE_BYTE,
   VERSION_BYTE,
 } = require('./constants');
 const leftPad = require('left-pad');
@@ -168,17 +168,16 @@ class Client {
     // we add 1 to the payload length to account for the request_code byte
     const L = payload && Buffer.isBuffer(payload) ? payload.length + 1 : 1;
     let i = 0;
-    const preReq = Buffer.alloc(L + 4);
-
+    const preReq = Buffer.alloc(L + 8);
+    const id = this.crypto.randomBytes(4);
     // Build the header
     i = preReq.writeUInt8(VERSION_BYTE, i);
-    i = preReq.writeUInt8(TYPE_BYTE, i);
+    i = preReq.writeUInt8(REQUEST_TYPE_BYTE, i);
+    i = preReq.writeUInt32BE(parseInt(`0x${id.toString('hex')}`), i);
     i = preReq.writeUInt16BE(L, i);
-
     // Build the payload
     i = preReq.writeUInt8(request_code, i);
     if (L > 1) i = payload.copy(preReq, i);
-    
     // Add the checksum
     // crc32 returns a signed integer - need to cast it to unsigned
     const cs = crc32.buf(preReq, 0xedb88320) >>> 0;

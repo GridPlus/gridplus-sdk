@@ -33,7 +33,7 @@ const deviceResponses = {
 
 const SUCCESS_RESPONSE_CODE = 0;
 const VERSION_BYTE = 0;
-const TYPE_BYTE = 0x02;
+const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
 
 module.exports = {
     dict,
@@ -42,6 +42,6 @@ module.exports = {
     responseCodes,
     deviceResponses,
     SUCCESS_RESPONSE_CODE,
-    TYPE_BYTE,
+    REQUEST_TYPE_BYTE,
     VERSION_BYTE,
 }
