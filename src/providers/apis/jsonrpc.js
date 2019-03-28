@@ -1,6 +1,6 @@
 const ethers = require('ethers');
 const { pad64, unpad } = require('../../util.js');
-const { erc20 } = require('../../config.js');
+const { erc20 } = require('../../../config.js');
 
 class JsonRpcApi {
   constructor(opts) {
