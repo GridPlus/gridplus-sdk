@@ -20,7 +20,7 @@ function genAppSecret(L) {
 
 // Ensure provided app secret is a string and matches
 // the desired dictionary
-function checkAppSecret(s) {
+function checkPairingSecret(s) {
   if (typeof s !== 'string') return false;
   for (i = 0; i < s.length; i++) {
     if (dict.indexOf(s[i]) === -1) return false;

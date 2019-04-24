@@ -33,7 +33,7 @@ class Client {
     // Derive an ECDSA keypair using the p256 curve. The public key will
     // be used as an identifier
     this.privKey = privKey || this.crypto.randomBytes(32);
-    this.keyPair = getP256KeyPair(this.privKey).getPublic().encode('hex');
+    this.pubKey = getP256KeyPair(this.privKey).getPublic().encode('hex');
 
     // Pairing salt is retrieved from calling `connect` on the device. This
     // is only valid for 60 seconds and is not used once we pair.
@@ -84,24 +84,24 @@ class Client {
   }
 
   // `Pair` requires a `pairingSalt` and a secret
-  pair(appSecret, cb) {
+  pair(pairingSecret, cb) {
     // Ensure app secret is valid
     if (
-      typeof appSecret !== 'string' || 
-      appSecret.length !== config.APP_SECRET_LEN || 
-      !util.checkAppSecret(appSecret)
-    ) return cb('Invalid app secret. Please call `newAppSecret` for a valid one.');
+      typeof pairingSecret !== 'string' || 
+      pairingSecret.length !== config.APP_SECRET_LEN || 
+      !util.checkPairingSecret(pairingSecret)
+    ) return cb('Invalid app secret.');
 
     // Ensure we have a pairing secret
     if (!this.pairingSecret) return cb('Unable to pair. Please call `connect` to initialize pairing process.');
 
     // Build the secret hash from the salt
-    const preImage = `${this.pairingSalt}${appSecret}`;
+    const preImage = `${this.pubKey}${this.name}${pairingSecret}${this.pairingSalt}`;
     const hash = this.crypto.createHash(preImage);
     const sig = this.key.sign(hash).toDER();
     
     // The payload adheres to the serialization format of the PAIR route
-    const payload = `${sig}${this.name.length}${this.name}`;
+    const payload = `${this.pubKey}${sig}${this.name}`;
     
     // Build the request
     const param = this._buildRequest(deviceCodes.PAIR, Buffer.from(payload, 'hex'));
