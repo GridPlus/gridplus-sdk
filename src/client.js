@@ -47,7 +47,7 @@ class Client {
     this.ephemeralPub = null;
     this.sharedSecret = null;
     this.timeout = null;
-    this.serial = null;
+    this.deviceId = null;
 
     // Crypto node providers
     this.providers = {};
@@ -62,17 +62,17 @@ class Client {
   // LATTICE FUNCTIONS
   //=======================================================================
 
-  // `Connect` will attempt to contact a device based on its serial number
+  // `Connect` will attempt to contact a device based on its deviceId.
   // The response should include an ephemeral public key, which is used to
   // pair with the device in a later request
-  connect(serial, cb) {
-    this.serial = serial;
+  connect(deviceId, cb) {
+    this.deviceId = deviceId;
     // Build the request
-    const param = this._buildRequest(deviceCodes.START_PAIRING_MODE, null);
+    const param = this._buildRequest(deviceCodes.CONNECT, null);
     this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
-        if (res[0] !== deviceCodes.START_PAIRING_MODE) return cb('Incorrect code returned from device. Please try again.');
+        if (res[0] !== deviceCodes.CONNECT) return cb('Incorrect code returned from device. Please try again.');
         // If there are no errors, recover the salt
         const success = this._handleConnect(res);
         if (!success) return cb('Could not handle response from device. Please try again.');
@@ -104,12 +104,12 @@ class Client {
     const payload = `${this.pubKey}${sig}${this.name}`;
     
     // Build the request
-    const param = this._buildRequest(deviceCodes.PAIR, Buffer.from(payload, 'hex'));
+    const param = this._buildRequest(deviceCodes.FINALIZE_PAIRING, Buffer.from(payload, 'hex'));
 
     return this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
-        if (res[0] !== deviceCodes.PAIR) return cb('Incorrect code returned from device. Please try again.');
+        if (res[0] !== deviceCodes.FINALIZE_PAIRING) return cb('Incorrect code returned from device. Please try again.');
         // Recover the ephemeral key
         const success = this._handlePair(res);
         if (!success) return cb('Could not handle response from device. Please try again.');
@@ -180,7 +180,10 @@ class Client {
     if (L > 1) i = payload.copy(preReq, i);
     // Add the checksum
     // crc32 returns a signed integer - need to cast it to unsigned
-    const cs = crc32.buf(preReq, 0xedb88320) >>> 0;
+    // const cs = crc32.buf(preReq, 0x04C11DB7, 0xFFFFFFFF) >>> 0;
+    const cs = crc32.buf(preReq, 0x04C11DB7, 0xFFFFFFFF)
+    console.log('cs', cs)
+    console.log('cs >>> 0', cs >>> 0);
     const req = Buffer.alloc(preReq.length + 4); // 4-byte checksum
     i = preReq.copy(req);
     req.writeUInt32BE(cs, i);
@@ -275,8 +278,8 @@ class Client {
   }
 */
   _request(data, cb) {
-    if (!this.serial) return cb('Serial is not set. Please set it and try again.');
-    const url = `${this.baseUrl}/${this.serial}`;
+    if (!this.deviceId) return cb('Serial is not set. Please set it and try again.');
+    const url = `${this.baseUrl}/${this.deviceId}`;
     console.log('Making request', url, data);
     if (this.httpRequest) {
       this.httpRequest(url, data)
@@ -295,6 +298,7 @@ class Client {
       .then(res => {
         if (!res || !res.body) return cb(`Invalid response: ${res}`)
         else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
+        console.log('res.body.message', res.body.message)
         const resCode = this._getResponseCode(res.body.message);
         if (resCode) return cb(`Error from device: ${resCode}`);
         cb(null, res.body); 

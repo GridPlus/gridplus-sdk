@@ -13,9 +13,8 @@ const OPs = {
   
 const deviceCodes = {
     'ENCRYPTED_REQUEST': 0,
-    'NEW_EPHEM_KEY': 1,
-    'START_PAIRING_MODE': 2,
-    'PAIR': 3,
+    'CONNECT': 1,
+    'FINALIZE_PAIRING': 2,
 }
   
 const responseCodes = {
@@ -32,7 +31,7 @@ const deviceResponses = {
 
 
 const SUCCESS_RESPONSE_CODE = 0;
-const VERSION_BYTE = 0;
+const VERSION_BYTE = 1;
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
 
 module.exports = {

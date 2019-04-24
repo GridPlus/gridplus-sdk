@@ -287,7 +287,7 @@ function _rlpEncode(input) {
 
 module.exports = {
   genAppSecret,
-  checkAppSecret,
+  checkPairingSecret,
   getProviderShortCode,
   getOutputScriptType,
   getP256KeyPair,
