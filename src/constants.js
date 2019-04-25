@@ -18,9 +18,16 @@ const deviceCodes = {
 }
   
 const responseCodes = {
-    '80': 'Device Busy',
-    '81': 'Invalid Request',
-    '82': 'Pairing Failure' 
+    'SUCCESS': 0x00,
+    0x80: 'Invalid Request',
+    0x81: 'Unsupported Version',
+    0x82: 'Device Busy',
+    0x83: 'Timeout Waiting for User',
+    0x84: 'Request Declined by User',
+    0x85: 'Pairing Failed',
+    0x86: 'Pairing is Currently Disabled',
+    0x87: 'Automated Signing is Currently Disabled',
+    0x88: 'Device Error', 
 }
  
 
@@ -29,8 +36,6 @@ const deviceResponses = {
     START_DATA_IDX: 5, // Beginning of data field for Lattice responses
 }
 
-
-const SUCCESS_RESPONSE_CODE = 0;
 const VERSION_BYTE = 1;
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
 
@@ -40,7 +45,6 @@ module.exports = {
     deviceCodes,
     responseCodes,
     deviceResponses,
-    SUCCESS_RESPONSE_CODE,
     REQUEST_TYPE_BYTE,
     VERSION_BYTE,
 }

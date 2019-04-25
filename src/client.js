@@ -5,12 +5,12 @@ const {
   // encrypt,
   // deriveSecret,
   getP256KeyPair,
+  parseLattice1Response,
 } = require('./util');
 const {
   deviceCodes,
   responseCodes,
   deviceResponses,
-  SUCCESS_RESPONSE_CODE,
   REQUEST_TYPE_BYTE,
   VERSION_BYTE,
 } = require('./constants');
@@ -33,7 +33,7 @@ class Client {
     // Derive an ECDSA keypair using the p256 curve. The public key will
     // be used as an identifier
     this.privKey = privKey || this.crypto.randomBytes(32);
-    this.pubKey = getP256KeyPair(this.privKey).getPublic().encode('hex');
+    this.pubKey = getP256KeyPair(this.privKey).getPublic();//.encode('hex');
 
     // Pairing salt is retrieved from calling `connect` on the device. This
     // is only valid for 60 seconds and is not used once we pair.
@@ -57,7 +57,6 @@ class Client {
 
     debug(`created rest client for ${this.baseUrl}`);
   }
-
   //=======================================================================
   // LATTICE FUNCTIONS
   //=======================================================================
@@ -68,7 +67,8 @@ class Client {
   connect(deviceId, cb) {
     this.deviceId = deviceId;
     // Build the request
-    const param = this._buildRequest(deviceCodes.CONNECT, null);
+    const param = this._buildRequest(deviceCodes.CONNECT, this.pubKeyBytes());
+    // const param = this._buildRequest(deviceCodes.CONNECT, null);    
     this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
@@ -278,11 +278,11 @@ class Client {
   _request(data, cb) {
     if (!this.deviceId) return cb('Serial is not set. Please set it and try again.');
     const url = `${this.baseUrl}/${this.deviceId}`;
-    console.log('Making request', url, data);
     if (this.httpRequest) {
       this.httpRequest(url, data)
       .then((res) => {
         // Check for an error code
+        parseLattice1Response(res);
         const resCode = this._getResponseCode(res);
         if (resCode) return cb(`Error from device: ${resCode}`)
         // If there is no error, return the response payload
@@ -310,7 +310,7 @@ class Client {
     if (res.length < deviceResponses.START_DATA_IDX) return 'Invalid Response';
     try {
       const code = parseInt(res.slice(deviceResponses.START_CODE_IDX, deviceResponses.START_DATA_IDX)).toString('hex');
-      if (code == SUCCESS_RESPONSE_CODE) return null;
+      if (code == responseCodes.SUCCESS) return null;
       return responseCodes[code];
     } catch (err) {
       return 'Could not parse response from device';
@@ -338,6 +338,12 @@ class Client {
     this.ephemPub = newEphemPubKey;
     this.pairingSecret = null;
     return true;
+  }
+
+  pubKeyBytes() {
+    const x = this.pubKey.getX().toBuffer();
+    const y = this.pubKey.getY().toBuffer();
+    return Buffer.concat([x, y])
   }
 
 }

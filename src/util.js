@@ -4,9 +4,47 @@ const aes = require('aes-js');
 const leftPad = require('left-pad');
 const elliptic = require('elliptic');
 const config = require('../config');
-const { dict, OPs } = require('./constants');
+const { dict, responseCodes, OPs, VERSION_BYTE } = require('./constants');
 const EC = elliptic.ec;
 const ec = new EC('p256');
+
+// Parse a response from the Lattice1
+function parseLattice1Response(r) {
+  const parsed = {
+    err: null,
+    data: null,
+  }
+  const b = Buffer.from(r, 'hex');
+  let off = 0;
+  
+  // Get protocol version
+  const protoVer = b.readUInt8(off); off++;
+  if (protoVer !== VERSION_BYTE) {
+    parsed.err = 'Incorrect protocol version. Please update your SDK';
+    return parsed;
+  }
+
+  // Get response code
+  const responseCode = b.readUInt8(off); off++;
+  if (responseCode !== responseCodes.SUCCESS) {
+    parsed.err = responseCodes[responseCode] ? responseCodes[responseCode] : 'Unknown Error';
+    return parsed;
+  }
+
+  // Get the type of response
+  const msgType = b.readUInt8(off); off++;
+  if (msgType != 0x00) {
+    parsed.err = 'Incorrect response from Lattice1';
+    return parsed;
+  }
+
+  // Get the payload
+  const id = b.readUInt32(off); off+=4;
+  const len = b.readUInt16(off); off+=2;
+  const payload = b.slice(off, off+len); off+=len;
+  const cs = b.readUInt32(off);
+}
+
 
 // Create a new appSecret of specified length
 function genAppSecret(L) {
@@ -286,6 +324,7 @@ function _rlpEncode(input) {
 }
 
 module.exports = {
+  parseLattice1Response,
   genAppSecret,
   checkPairingSecret,
   getProviderShortCode,
