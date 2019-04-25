@@ -180,10 +180,8 @@ class Client {
     if (L > 1) i = payload.copy(preReq, i);
     // Add the checksum
     // crc32 returns a signed integer - need to cast it to unsigned
-    // const cs = crc32.buf(preReq, 0x04C11DB7, 0xFFFFFFFF) >>> 0;
-    const cs = crc32.buf(preReq, 0x04C11DB7, 0xFFFFFFFF)
-    console.log('cs', cs)
-    console.log('cs >>> 0', cs >>> 0);
+    // Note that this uses the default 0xedb88320 polynomial
+    const cs = crc32.buf(preReq) >>> 0; // Need this to be a uint, hence the bit shift
     const req = Buffer.alloc(preReq.length + 4); // 4-byte checksum
     i = preReq.copy(req);
     req.writeUInt32BE(cs, i);
