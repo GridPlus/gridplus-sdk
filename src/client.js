@@ -4,6 +4,7 @@ const {
   // decrypt,
   // encrypt,
   // deriveSecret,
+  checksum,
   getP256KeyPair,
   parseLattice1Response,
 } = require('./util');
@@ -68,7 +69,7 @@ class Client {
     this.deviceId = deviceId;
     // Build the request
     const param = this._buildRequest(deviceCodes.CONNECT, this.pubKeyBytes());
-    // const param = this._buildRequest(deviceCodes.CONNECT, null);    
+    
     this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
@@ -179,9 +180,7 @@ class Client {
     i = preReq.writeUInt8(request_code, i);
     if (L > 1) i = payload.copy(preReq, i);
     // Add the checksum
-    // crc32 returns a signed integer - need to cast it to unsigned
-    // Note that this uses the default 0xedb88320 polynomial
-    const cs = crc32.buf(preReq) >>> 0; // Need this to be a uint, hence the bit shift
+    const cs = checksum(preReq);
     const req = Buffer.alloc(preReq.length + 4); // 4-byte checksum
     i = preReq.copy(req);
     req.writeUInt32BE(cs, i);
@@ -278,15 +277,13 @@ class Client {
   _request(data, cb) {
     if (!this.deviceId) return cb('Serial is not set. Please set it and try again.');
     const url = `${this.baseUrl}/${this.deviceId}`;
+    console.log(url);
     if (this.httpRequest) {
       this.httpRequest(url, data)
       .then((res) => {
-        // Check for an error code
-        parseLattice1Response(res);
-        const resCode = this._getResponseCode(res);
-        if (resCode) return cb(`Error from device: ${resCode}`)
-        // If there is no error, return the response payload
-        return cb(null, res) 
+        const parsed = parseLattice1Response(res);
+        if (parsed.err) return cb(parsed.err);
+        return cb(null, parsed.data) 
       })
       .catch((err) => { return cb(err); })
     } else {
@@ -296,10 +293,9 @@ class Client {
       .then(res => {
         if (!res || !res.body) return cb(`Invalid response: ${res}`)
         else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
-        console.log('res.body.message', res.body.message)
-        const resCode = this._getResponseCode(res.body.message);
-        if (resCode) return cb(`Error from device: ${resCode}`);
-        cb(null, res.body); 
+        const parsed = parseLattice1Response(res.body.message);
+        if (parsed.err) return cb(parsed.err);
+        return cb(null, parsed.data) 
       })
       .catch(err => { cb(err)});
     }

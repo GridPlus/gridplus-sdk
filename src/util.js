@@ -1,6 +1,7 @@
 // Static utility functions
 const Buffer = require('buffer/').Buffer
 const aes = require('aes-js');
+const crc32 = require('crc-32');
 const leftPad = require('left-pad');
 const elliptic = require('elliptic');
 const config = require('../config');
@@ -24,13 +25,6 @@ function parseLattice1Response(r) {
     return parsed;
   }
 
-  // Get response code
-  const responseCode = b.readUInt8(off); off++;
-  if (responseCode !== responseCodes.SUCCESS) {
-    parsed.err = responseCodes[responseCode] ? responseCodes[responseCode] : 'Unknown Error';
-    return parsed;
-  }
-
   // Get the type of response
   const msgType = b.readUInt8(off); off++;
   if (msgType != 0x00) {
@@ -39,10 +33,35 @@ function parseLattice1Response(r) {
   }
 
   // Get the payload
-  const id = b.readUInt32(off); off+=4;
-  const len = b.readUInt16(off); off+=2;
+  const id = b.readUInt32BE(off); off+=4;
+  const len = b.readUInt16BE(off); off+=2;
   const payload = b.slice(off, off+len); off+=len;
-  const cs = b.readUInt32(off);
+
+  // Get response code
+  const responseCode = payload.readUInt8(0);
+  if (responseCode !== responseCodes.SUCCESS) {
+    parsed.err = responseCodes[responseCode] ? responseCodes[responseCode] : 'Unknown Error';
+    return parsed;
+  } else {
+    parsed.data = payload.slice(1, payload.length);
+  }
+
+  // Verify checksum
+  const cs = b.readUInt32BE(off);
+  const expectedCs = checksum(b.slice(0, b.length - 4));
+  if (cs !== expectedCs) {
+    parsed.err = 'Invalid checksum from device response'
+    parsed.data = null;
+    return parsed;
+  }
+  
+  return parsed;
+}
+
+function checksum(x) {
+  // crc32 returns a signed integer - need to cast it to unsigned
+  // Note that this uses the default 0xedb88320 polynomial
+  return crc32.buf(x) >>> 0; // Need this to be a uint, hence the bit shift
 }
 
 
@@ -324,6 +343,7 @@ function _rlpEncode(input) {
 }
 
 module.exports = {
+  checksum,
   parseLattice1Response,
   genAppSecret,
   checkPairingSecret,

@@ -9,6 +9,10 @@ const client = new Sdk.Client({
 })
 
 
+const util = require('./src/util.js');
+// const parsed = util.parseLattice1Response('0100bc4956e4000180241d20f8');
+
+console.log('Connecting')
 client.connect('40a36bc23f0a', (res) => {
     console.log('Did I connect?', res);
 })
