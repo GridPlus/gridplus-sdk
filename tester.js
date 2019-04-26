@@ -10,4 +10,4 @@ const client = new Sdk.Client({
 
 // client.connect('40a36bc23f0a', (err) => { console.log('Connect err? ', err); });
 // client.pairingSalt = crypto.randomBytes(32);
-// client.pair('test', (err) => { console.log('Pairing error?', err); })
+// client.pair('QPY8TXPZ', (err) => { console.log('Pairing error?', err); })

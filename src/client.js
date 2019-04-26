@@ -26,12 +26,12 @@ class Client {
   constructor({ baseUrl, crypto, name, privKey, httpRequest, providers } = {}) {
     // Definitions
     // if (!baseUrl) throw new Error('baseUrl is required');
-    if (name && name.length > 20) throw new Error('name must be <20 characters');
+    if (name && name.length > 24) throw new Error('name must be less than 24 characters');
     if (!crypto) throw new Error('crypto provider is required');
     if (httpRequest) this.httpRequest = httpRequest;
     this.baseUrl = baseUrl || config.api.baseUrl;
     this.crypto = crypto;
-    this.name = `${name || 'Unknown'}\0`;
+    this.name = name || 'Unknown';
     
     // Derive an ECDSA keypair using the p256 curve. The public key will
     // be used as an identifier
@@ -93,7 +93,8 @@ class Client {
 
     // Build the secret hash from the salt
     const pubKey = this.pubKeyBytes();
-    const nameBuf = Buffer.from(this.name);
+    const nameBuf = Buffer.alloc(25);
+    nameBuf.write(this.name);
     const pairingSecretBuf = Buffer.from(pairingSecret);
     const preImage = Buffer.concat([pubKey, nameBuf, pairingSecretBuf, this.pairingSalt]);
    
@@ -104,7 +105,7 @@ class Client {
     const payload = Buffer.concat([pubKey, Buffer.from(sig), nameBuf]);
     // Build the request
     const param = this._buildRequest(deviceCodes.FINALIZE_PAIRING, payload);
-    
+    console.log('Sending param: ', param.toString('hex'))
     return this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
