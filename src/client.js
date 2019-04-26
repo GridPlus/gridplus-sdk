@@ -31,12 +31,12 @@ class Client {
     if (httpRequest) this.httpRequest = httpRequest;
     this.baseUrl = baseUrl || config.api.baseUrl;
     this.crypto = crypto;
-    this.name = name || 'Unknown';
+    this.name = `${name || 'Unknown'}\0`;
     
     // Derive an ECDSA keypair using the p256 curve. The public key will
     // be used as an identifier
     this.privKey = privKey || this.crypto.randomBytes(32);
-    this.pubKey = getP256KeyPair(this.privKey).getPublic();//.encode('hex');
+    this.key = getP256KeyPair(this.privKey);//.encode('hex');
 
     // Pairing salt is retrieved from calling `connect` on the device. This
     // is only valid for 60 seconds and is not used once we pair.
@@ -75,7 +75,6 @@ class Client {
     this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
-        console.log('res', res);
         if (res[0] !== deviceCodes.CONNECT) return cb('Incorrect code returned from device. Please try again.');
         // If there are no errors, recover the salt
         const success = this._handleConnect(res);
@@ -89,27 +88,24 @@ class Client {
 
   // `Pair` requires a `pairingSalt` and a secret
   pair(pairingSecret, cb) {
-    // Ensure app secret is valid
-    if (
-      typeof pairingSecret !== 'string' || 
-      pairingSecret.length !== config.APP_SECRET_LEN || 
-      !util.checkPairingSecret(pairingSecret)
-    ) return cb('Invalid app secret.');
-
     // Ensure we have a pairing secret
-    if (!this.pairingSecret) return cb('Unable to pair. Please call `connect` to initialize pairing process.');
+    if (!this.pairingSalt) return cb('Unable to pair. Please call `connect` to initialize pairing process.');
 
     // Build the secret hash from the salt
-    const preImage = `${this.pubKey}${this.name}${pairingSecret}${this.pairingSalt}`;
-    const hash = this.crypto.createHash(preImage);
-    const sig = this.key.sign(hash).toDER();
-    
+    const pubKey = this.pubKeyBytes();
+    const nameBuf = Buffer.from(this.name);
+    const pairingSecretBuf = Buffer.from(pairingSecret);
+    const preImage = Buffer.concat([pubKey, nameBuf, pairingSecretBuf, this.pairingSalt]);
+   
+    // const preImage = `${pubKey.toString('hex')}${this.name}${pairingSecret}${this.pairingSalt}`;
+    const hash = this.crypto.createHash('sha256').update(preImage).digest();
+    const sig = this.key.sign(hash).toDER().toString('hex'); // returns an array, not a buffer
+
     // The payload adheres to the serialization format of the PAIR route
-    const payload = `${this.pubKey}${sig}${this.name}`;
-    
+    const payload = Buffer.concat([pubKey, Buffer.from(sig), nameBuf]);
     // Build the request
     const param = this._buildRequest(deviceCodes.FINALIZE_PAIRING, Buffer.from(payload, 'hex'));
-
+    
     return this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
@@ -122,6 +118,7 @@ class Client {
         return cb(e);
       }
     })
+  
   }
 
   //=======================================================================
@@ -325,7 +322,7 @@ class Client {
     const pairingStatus = res.readUInt8(off); off++;
     if (pairingStatus === messageConstants.NOT_PAIRED) {
       // Result is a pairing salt
-      this.salt = res.slice(off, res.length - 1);
+      this.pairingSalt = res.slice(off, res.length - 1);
       return true;
     } else if (pairingStatus === messageConstants.PAIRED) {
       // If we are already paired, we get the next ephemeral key
@@ -351,8 +348,9 @@ class Client {
   }
 
   pubKeyBytes() {
-    const x = this.pubKey.getX().toBuffer();
-    const y = this.pubKey.getY().toBuffer();
+    const k = this.key.getPublic();
+    const x = k.getX().toBuffer();
+    const y = k.getY().toBuffer();
     return Buffer.concat([x, y])
   }
 

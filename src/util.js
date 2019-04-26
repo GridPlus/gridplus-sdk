@@ -76,16 +76,6 @@ function genAppSecret(L) {
   return secret;
 }
 
-// Ensure provided app secret is a string and matches
-// the desired dictionary
-function checkPairingSecret(s) {
-  if (typeof s !== 'string') return false;
-  for (i = 0; i < s.length; i++) {
-    if (dict.indexOf(s[i]) === -1) return false;
-  }
-  return true;
-}
-
 function getProviderShortCode(schemaCode) {
   switch (schemaCode) {
     case 'ETH':
@@ -121,6 +111,7 @@ function getP256KeyPair (priv) {
 }
 
 function getP256KeyPairFromPub(pub) {
+  console.log('getting keypar from pub', pub)
   return ec.keyFromPublic(pub, 'hex');
 }
 
@@ -351,7 +342,6 @@ module.exports = {
   checksum,
   parseLattice1Response,
   genAppSecret,
-  checkPairingSecret,
   getProviderShortCode,
   getOutputScriptType,
   getP256KeyPair,

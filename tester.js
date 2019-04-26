@@ -8,11 +8,6 @@ const client = new Sdk.Client({
     name: 'SdkTester',
 })
 
+client.connect('40a36bc23f0a', (err) => { console.log('Connect err? ', err); });
 
-const util = require('./src/util.js');
-// const parsed = util.parseLattice1Response('0100bc4956e4000180241d20f8');
-
-console.log('Connecting')
-client.connect('40a36bc23f0a', (res) => {
-    console.log('Did I connect?', res);
-})
+// client.pair('test', (err) => { console.log('Pairing error?', err); })
