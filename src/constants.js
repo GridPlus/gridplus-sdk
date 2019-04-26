@@ -16,6 +16,11 @@ const deviceCodes = {
     'CONNECT': 1,
     'FINALIZE_PAIRING': 2,
 }
+
+const messageConstants = {
+    'NOT_PAIRED': 0x00,
+    'PAIRED': 0x01,
+}
   
 const responseCodes = {
     'SUCCESS': 0x00,
@@ -43,6 +48,7 @@ module.exports = {
     dict,
     OPs,
     deviceCodes,
+    messageConstants,
     responseCodes,
     deviceResponses,
     REQUEST_TYPE_BYTE,

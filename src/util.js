@@ -26,6 +26,7 @@ function parseLattice1Response(r) {
   }
 
   // Get the type of response
+  // Should always be 0x00
   const msgType = b.readUInt8(off); off++;
   if (msgType != 0x00) {
     parsed.err = 'Incorrect response from Lattice1';
@@ -117,6 +118,10 @@ function getOutputScriptType(s, multisig=false) {
 
 function getP256KeyPair (priv) {
   return ec.keyFromPrivate(priv, 'hex');
+}
+
+function getP256KeyPairFromPub(pub) {
+  return ec.keyFromPublic(pub, 'hex');
 }
 
 // left-pad with zeros up to 64 bytes
@@ -350,6 +355,7 @@ module.exports = {
   getProviderShortCode,
   getOutputScriptType,
   getP256KeyPair,
+  getP256KeyPairFromPub,
   pad64,
   unpad,
   deriveSecret,

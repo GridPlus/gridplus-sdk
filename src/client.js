@@ -6,6 +6,7 @@ const {
   // deriveSecret,
   checksum,
   getP256KeyPair,
+  getP256KeyPairFromPub,
   parseLattice1Response,
 } = require('./util');
 const {
@@ -14,6 +15,7 @@ const {
   deviceResponses,
   REQUEST_TYPE_BYTE,
   VERSION_BYTE,
+  messageConstants,
 } = require('./constants');
 const leftPad = require('left-pad');
 const Buffer = require('buffer/').Buffer;
@@ -69,10 +71,11 @@ class Client {
     this.deviceId = deviceId;
     // Build the request
     const param = this._buildRequest(deviceCodes.CONNECT, this.pubKeyBytes());
-    
+
     this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
+        console.log('res', res);
         if (res[0] !== deviceCodes.CONNECT) return cb('Incorrect code returned from device. Please try again.');
         // If there are no errors, recover the salt
         const success = this._handleConnect(res);
@@ -318,10 +321,21 @@ class Client {
   // Connect will call `StartPairingMode` on the device, which returns salt
   // which is good for 60 seconds to make a pairing with
   _handleConnect(res) {
-    const salt = res.slice(deviceResponses.START_DATA_IDX);
-    if (salt.length !== 32) return false;
-    this.pairingSalt = salt;
-    return true;
+    let off = 0;
+    const pairingStatus = res.readUInt8(off); off++;
+    if (pairingStatus === messageConstants.NOT_PAIRED) {
+      // Result is a pairing salt
+      this.salt = res.slice(off, res.length - 1);
+      return true;
+    } else if (pairingStatus === messageConstants.PAIRED) {
+      // If we are already paired, we get the next ephemeral key
+      const pub = `04${res.slice(off, res.length - 1).toString('hex')}`
+      this.ephemeralPub = getP256KeyPairFromPub(pub);
+      this.updateEphemKey(pub);
+      return true;
+    }
+
+    return false;
   }
 
   // Pair will create a new pairing if the user successfully enters the secret
