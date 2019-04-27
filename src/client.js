@@ -339,10 +339,9 @@ class Client {
   // a new ephemeral public key, which is used to derive a shared secret
   // for the next request
   _handlePair(res) {
-    const newEphemPubKey = res.slice(deviceResponses.START_DATA_IDX);
-    if (newEphemKey.length !== 33) return false;
-    this.ephemPub = newEphemPubKey;
-    this.pairingSecret = null;
+    const pub = `04${res.slice(0, res.length - 1).toString('hex')}`;
+    this.ephemeralPub = getP256KeyPairFromPub(pub);
+    this.updateEphemKey(pub);
     return true;
   }
 
