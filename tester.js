@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const Sdk = require('./index.js');
+const readline = require('readline');
 
 const client = new Sdk.Client({
     crypto,
@@ -8,6 +9,20 @@ const client = new Sdk.Client({
     name: 'SdkTester',
 })
 
-// client.connect('40a36bc23f0a', (err) => { console.log('Connect err? ', err); });
-// client.pairingSalt = crypto.randomBytes(32);
-// client.pair('QPY8TXPZ', (err) => { console.log('Pairing error?', err); })
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+});
+
+
+client.connect('40a36bc23f0a', (err) => { 
+    if (err) throw new Error(err);
+    console.log('Connected!');
+    rl.question('Please enter the pairing secret: ', (secret) => {
+        rl.close();
+        client.pair(secret, (err) => { 
+            if (err) throw new Error(err);
+            console.log('Paired!');
+        })
+    })
+});
