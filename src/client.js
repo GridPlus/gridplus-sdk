@@ -102,6 +102,12 @@ class Client {
     const hash = this.crypto.createHash('sha256').update(preImage).digest();
     const sig = this.key.sign(hash); // returns an array, not a buffer
 
+    console.log("Salt: ", this.pairingSalt.toString("hex"));
+    console.log("Hash: ", hash.toString("hex"));
+    console.log("PubKey: ", pubKey.toString("hex"));
+    console.log("Sig.r: ", sig.r.toBuffer().toString("hex"));
+    console.log("Sig.s: ", sig.s.toBuffer().toString("hex"));
+
     // The payload adheres to the serialization format of the PAIR route
     const payload = Buffer.concat([pubKey, sig.r.toBuffer(), sig.s.toBuffer(), nameBuf]);
 
@@ -323,7 +329,7 @@ class Client {
     const pairingStatus = res.readUInt8(off); off++;
     if (pairingStatus === messageConstants.NOT_PAIRED) {
       // Result is a pairing salt
-      this.pairingSalt = res.slice(off, res.length - 1);
+      this.pairingSalt = res.slice(off, res.length);
       return true;
     } else if (pairingStatus === messageConstants.PAIRED) {
       // If we are already paired, we get the next ephemeral key
