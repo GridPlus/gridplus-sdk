@@ -97,15 +97,17 @@ class Client {
     nameBuf.write(this.name);
     const pairingSecretBuf = Buffer.from(pairingSecret);
     const preImage = Buffer.concat([pubKey, nameBuf, pairingSecretBuf, this.pairingSalt]);
-   
+    
     // const preImage = `${pubKey.toString('hex')}${this.name}${pairingSecret}${this.pairingSalt}`;
     const hash = this.crypto.createHash('sha256').update(preImage).digest();
-    const sig = this.key.sign(hash).toDER(); // returns an array, not a buffer
+    const sig = this.key.sign(hash); // returns an array, not a buffer
+
     // The payload adheres to the serialization format of the PAIR route
-    const payload = Buffer.concat([pubKey, Buffer.from(sig), nameBuf]);
+    const payload = Buffer.concat([pubKey, sig.r.toBuffer(), sig.s.toBuffer(), nameBuf]);
+
     // Build the request
     const param = this._buildRequest(deviceCodes.FINALIZE_PAIRING, payload);
-    console.log('Sending param: ', param.toString('hex'))
+    console.log('Sending param: ', param.length, param.toString('hex'))
     return this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
