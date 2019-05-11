@@ -20,8 +20,7 @@ const ethFunctionCodes = {
 }
 
 const api = {
-  // baseUrl: 'http://signing.staging-gridpl.us' || 'http://localhost',
-  baseUrl: 'http://localhost:3000',
+  baseUrl: 'http://signing.staging-gridpl.us',
   SPLIT_BUF,
 }
 

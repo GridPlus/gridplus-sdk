@@ -102,18 +102,11 @@ class Client {
     const hash = this.crypto.createHash('sha256').update(preImage).digest();
     const sig = this.key.sign(hash); // returns an array, not a buffer
 
-    console.log("Salt: ", this.pairingSalt.toString("hex"));
-    console.log("Hash: ", hash.toString("hex"));
-    console.log("PubKey: ", pubKey.toString("hex"));
-    console.log("Sig.r: ", sig.r.toBuffer().toString("hex"));
-    console.log("Sig.s: ", sig.s.toBuffer().toString("hex"));
-
     // The payload adheres to the serialization format of the PAIR route
     const payload = Buffer.concat([pubKey, sig.r.toBuffer(), sig.s.toBuffer(), nameBuf]);
 
     // Build the request
     const param = this._buildRequest(deviceCodes.FINALIZE_PAIRING, payload);
-    console.log('Sending param: ', param.length, param.toString('hex'))
     return this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
@@ -284,7 +277,6 @@ class Client {
   _request(data, cb) {
     if (!this.deviceId) return cb('Serial is not set. Please set it and try again.');
     const url = `${this.baseUrl}/${this.deviceId}`;
-    console.log(url);
     if (this.httpRequest) {
       this.httpRequest(url, data)
       .then((res) => {
