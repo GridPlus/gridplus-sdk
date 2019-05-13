@@ -62,7 +62,7 @@
     "semantic-release": "^15.11.0"
   },
   "files": [
-    "."
+    "index.js", "src", "support", "config.js"
   ],
   "license": "ISC"
 }
