@@ -21,7 +21,7 @@
       "path": "./node_modules/cz-conventional-changelog"
     }
   },
-  "main": "dist/index.js",
+  "main": "./index.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/GridPlus/gridplus-sdk.git"
@@ -62,9 +62,7 @@
     "semantic-release": "^15.11.0"
   },
   "files": [
-    "dist",
-    "src",
-    "support"
+    "."
   ],
   "license": "ISC"
 }
