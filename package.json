@@ -8,7 +8,7 @@
     "lint:fix": "eslint --fix src test __tests__",
     "precommit": "npm run lint:fix && npm run test",
     "prepublish": "",
-    "postinstall": "npm run buildTokenList",
+    "postinstall": "",
     "sleep": "sleep 20",
     "buildTokenList": "node support/getTokenList.js",
     "sendBTC": "node support/scripts/sendBTC.js",
