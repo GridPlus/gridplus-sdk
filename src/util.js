@@ -111,7 +111,6 @@ function getP256KeyPair (priv) {
 }
 
 function getP256KeyPairFromPub(pub) {
-  console.log('getting keypar from pub', pub)
   return ec.keyFromPublic(pub, 'hex');
 }
 

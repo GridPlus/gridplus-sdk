@@ -4,10 +4,10 @@ const Sdk = require('../index.js');
 const crypto = require('crypto');
 const readline = require('readline');
 
-let client, rl;
+let client, rl, id;
 let connected = false;
 
-const DEVICE_ID = '40a36bc23f0a';
+// const DEVICE_ID = '40a36bc23f0a';
 
 describe('Connect and Pair', () => {
 
@@ -23,22 +23,33 @@ describe('Connect and Pair', () => {
   });
 
   it('Should connect to an agent', (done) => {
-    client.connect('40a36bc23f0a', (err) => { 
-      assert(err === null, err);
-      connected = true;
-      done();
-    });
+    rl.question('Please enter the ID of your test device: ', (_id) => {
+      id = _id;
+      client.connect(id, (err) => { 
+        assert(err === null, err);
+        connected = true;
+        done();
+      });
+    })
   });
 
   it('Should attempt to pair with pairing secret', (done) => {
     if (!connected) assert(false == true, 'Could not connect')
     rl.question('Please enter the pairing secret: ', (secret) => {
       rl.close();
-      client.pair(secret, (err) => { 
+      client.pair(secret, (err) => {
         assert(err === null, err);
         done();
       });
     });
   });
+
+  it('Should try to connect again but recognize the pairing already exists', (done) => {
+    client.connect(id, (err) => {
+      assert(err === null, err);
+      assert(client.pairingSalt === null, 'Pairing salt was updated, but should not have been');
+      done();
+    })
+  })
 
 });

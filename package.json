@@ -13,7 +13,7 @@
     "buildTokenList": "node support/getTokenList.js",
     "sendBTC": "node support/scripts/sendBTC.js",
     "sendETH": "node support/scripts/sendETH.js",
-    "test": "mocha --timeout 30000 -R spec test/ --recursive --exit",
+    "test": "mocha --timeout 65000 -R spec test/ --recursive --exit",
     "semantic-release": "semantic-release"
   },
   "config": {

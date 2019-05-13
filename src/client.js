@@ -71,11 +71,9 @@ class Client {
     this.deviceId = deviceId;
     // Build the request
     const param = this._buildRequest(deviceCodes.CONNECT, this.pubKeyBytes());
-
     this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
-        if (res[0] !== deviceCodes.CONNECT) return cb('Incorrect code returned from device. Please try again.');
         // If there are no errors, recover the salt
         const success = this._handleConnect(res);
         if (!success) return cb('Could not handle response from device. Please try again.');
@@ -97,8 +95,6 @@ class Client {
     nameBuf.write(this.name);
     const pairingSecretBuf = Buffer.from(pairingSecret);
     const preImage = Buffer.concat([pubKey, nameBuf, pairingSecretBuf, this.pairingSalt]);
-    
-    // const preImage = `${pubKey.toString('hex')}${this.name}${pairingSecret}${this.pairingSalt}`;
     const hash = this.crypto.createHash('sha256').update(preImage).digest();
     const sig = this.key.sign(hash); // returns an array, not a buffer
 
@@ -110,7 +106,6 @@ class Client {
     return this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
-        if (res[0] !== deviceCodes.FINALIZE_PAIRING) return cb('Incorrect code returned from device. Please try again.');
         // Recover the ephemeral key
         const success = this._handlePair(res);
         if (!success) return cb('Could not handle response from device. Please try again.');
@@ -325,9 +320,8 @@ class Client {
       return true;
     } else if (pairingStatus === messageConstants.PAIRED) {
       // If we are already paired, we get the next ephemeral key
-      const pub = `04${res.slice(off, res.length - 1).toString('hex')}`
+      const pub = `04${res.slice(off, res.length).toString('hex')}`
       this.ephemeralPub = getP256KeyPairFromPub(pub);
-      this.updateEphemKey(pub);
       return true;
     }
 
@@ -339,9 +333,9 @@ class Client {
   // a new ephemeral public key, which is used to derive a shared secret
   // for the next request
   _handlePair(res) {
-    const pub = `04${res.slice(0, res.length - 1).toString('hex')}`;
+    const pub = `04${res.slice(0, res.length).toString('hex')}`;
     this.ephemeralPub = getP256KeyPairFromPub(pub);
-    this.updateEphemKey(pub);
+    this.pairingSalt = null;
     return true;
   }
 
