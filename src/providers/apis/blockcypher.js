@@ -1,8 +1,8 @@
 // Blockcypher API
-import { getOutputScriptType } from '../../util';
+const { getOutputScriptType } = require('../../util');
 const request = require('superagent');
 
-export default class BlockCypherApi {
+class BlockCypherApi {
 
   constructor(opts={}) {
     this.network = this.getNetwork(opts.network);
@@ -266,3 +266,5 @@ export default class BlockCypherApi {
   }
 
 }
+
+module.exports = BlockCypherApi;

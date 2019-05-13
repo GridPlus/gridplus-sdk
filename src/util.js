@@ -1,21 +1,82 @@
 // Static utility functions
 const Buffer = require('buffer/').Buffer
-import aes from 'aes-js';
-import leftPad from 'left-pad';
-import elliptic from 'elliptic';
-import config from './config';
+const aes = require('aes-js');
+const crc32 = require('crc-32');
+const leftPad = require('left-pad');
+const elliptic = require('elliptic');
+const config = require('../config');
+const { dict, responseCodes, OPs, VERSION_BYTE } = require('./constants');
 const EC = elliptic.ec;
-const ec = new EC('curve25519');
-const ecSecp256k1 = new EC('secp256k1');
+const ec = new EC('p256');
 
-const OPs = {
-  'a9': 'OP_HASH160',
-  '76': 'OP_DUP',
-  '87': 'OP_EQUAL',
-  'ac': 'OP_CHECKSIG',
+// Parse a response from the Lattice1
+function parseLattice1Response(r) {
+  const parsed = {
+    err: null,
+    data: null,
+  }
+  const b = Buffer.from(r, 'hex');
+  let off = 0;
+  
+  // Get protocol version
+  const protoVer = b.readUInt8(off); off++;
+  if (protoVer !== VERSION_BYTE) {
+    parsed.err = 'Incorrect protocol version. Please update your SDK';
+    return parsed;
+  }
+
+  // Get the type of response
+  // Should always be 0x00
+  const msgType = b.readUInt8(off); off++;
+  if (msgType != 0x00) {
+    parsed.err = 'Incorrect response from Lattice1';
+    return parsed;
+  }
+
+  // Get the payload
+  const id = b.readUInt32BE(off); off+=4;
+  const len = b.readUInt16BE(off); off+=2;
+  const payload = b.slice(off, off+len); off+=len;
+
+  // Get response code
+  const responseCode = payload.readUInt8(0);
+  if (responseCode !== responseCodes.SUCCESS) {
+    parsed.err = responseCodes[responseCode] ? responseCodes[responseCode] : 'Unknown Error';
+    return parsed;
+  } else {
+    parsed.data = payload.slice(1, payload.length);
+  }
+
+  // Verify checksum
+  const cs = b.readUInt32BE(off);
+  const expectedCs = checksum(b.slice(0, b.length - 4));
+  if (cs !== expectedCs) {
+    parsed.err = 'Invalid checksum from device response'
+    parsed.data = null;
+    return parsed;
+  }
+  
+  return parsed;
 }
 
-export function getProviderShortCode(schemaCode) {
+function checksum(x) {
+  // crc32 returns a signed integer - need to cast it to unsigned
+  // Note that this uses the default 0xedb88320 polynomial
+  return crc32.buf(x) >>> 0; // Need this to be a uint, hence the bit shift
+}
+
+
+// Create a new appSecret of specified length
+function genAppSecret(L) {
+  let secret = '';
+  for (i = 0; i < L; i++) {
+    const j = Math.floor(Math.random() * dict.length);
+    secret += dict[j];
+  }
+  return secret;
+}
+
+function getProviderShortCode(schemaCode) {
   switch (schemaCode) {
     case 'ETH':
       return 'ETH';
@@ -28,7 +89,7 @@ export function getProviderShortCode(schemaCode) {
   }
 }
 
-export function getOutputScriptType(s, multisig=false) {
+function getOutputScriptType(s, multisig=false) {
   const OP_first = s.slice(0, 2);
   const OP_last = s.slice(s.length - 2, s.length);
   const p2pkh = (OPs[OP_first] === 'OP_DUP' && OPs[OP_last] === 'OP_CHECKSIG');
@@ -44,31 +105,29 @@ export function getOutputScriptType(s, multisig=false) {
   }
 }
 
-export function ecdsaKeyPair (privKey) {
-  const curve = new EC('secp256k1');
-  const key = curve.keyFromPrivate(privKey, 'hex');
-  key.getPublic();
-  return key;
-}
 
-export function ecdhKeyPair (priv) {
+function getP256KeyPair (priv) {
   return ec.keyFromPrivate(priv, 'hex');
 }
 
+function getP256KeyPairFromPub(pub) {
+  return ec.keyFromPublic(pub, 'hex');
+}
+
 // left-pad with zeros up to 64 bytes
-export function pad64 (x) {
+function pad64 (x) {
   if (typeof x === 'number') x = x.toString(16);
   return leftPad(x.substr(0, 2) === '0x' ? x.slice(2) : x, 64, '0');
 }
 
 // Remove all leading zeros in piece of data
-export function unpad (x) {
+ function unpad (x) {
   if (x.substr(0, 2) === '0x') x = x.slice(2);
   return x.slice(24);
 }
 
 // Derive a shared secret using ECDH via curve25519
-export function deriveSecret (privKey, pubKey) {
+function deriveSecret (privKey, pubKey) {
   if (typeof privKey !== 'string') privKey = privKey.toString('hex');
   if (typeof pubKey !== 'string') pubKey = pubKey.toString('hex');
   const privInst = ec.keyFromPrivate(privKey, 'hex');
@@ -77,7 +136,7 @@ export function deriveSecret (privKey, pubKey) {
 }
 
 // Decrypt using an AES secret and a counter
-export function decrypt (payload, secret, counter=5) {
+function decrypt (payload, secret, counter=5) {
   if (typeof secret === 'string') secret = Buffer.from(secret, 'hex');
   const b = aes.utils.hex.toBytes(payload);
   const aesCtr = new aes.ModeOfOperation.ctr(secret, new aes.Counter(counter));
@@ -85,7 +144,7 @@ export function decrypt (payload, secret, counter=5) {
   return aes.utils.utf8.fromBytes(dec);
 }
 
-export function encrypt (payload, secret, counter=5) {
+function encrypt (payload, secret, counter=5) {
   if (typeof secret === 'string') secret = Buffer.from(secret, 'hex');
   const b = aes.utils.utf8.toBytes(payload);
   const aesCtr = new aes.ModeOfOperation.ctr(secret, new aes.Counter(counter));
@@ -93,25 +152,13 @@ export function encrypt (payload, secret, counter=5) {
   return aes.utils.hex.fromBytes(enc);
 }
 
-export function recoverPubKey (msg, sig) {
-  if (typeof msg === 'string') msg = Buffer.from(msg, 'hex');
-  const v = sig.v > 1 ? sig.v - 27 : sig.v;
-  const { r, s } = sig;
-  const sigObj = {
-    r: Buffer.from(r, 'hex'),
-    s: Buffer.from(s, 'hex'),
-  }
-  const pubKey = ecSecp256k1.recoverPubKey(Buffer.from(msg, 'hex'), sigObj, v);
-  return pubKey.encode('hex');
-}
-
-export function parseSigResponse(res) {
+function parseSigResponse(res) {
   if (res.result && res.result.status === 200) {    
     switch (res.result.data.schemaIndex) {
       case 0: // ETH
-        return parseEthTx(res);
+        return _parseEthTx(res);
       case 1: // BTC
-        return parseBtcTx(res);
+        return _parseBtcTx(res);
       default:
         return null;
     }
@@ -120,7 +167,7 @@ export function parseSigResponse(res) {
   }
 }
 
-export const sortByHeight = (_utxos) => {
+const sortByHeight = (_utxos) => {
   if (!_utxos) return [];
   return _utxos.sort((a, b) => {
     return (a.height > b.height) ? 1 : ((b.height > a.height) ? -1 : 0)
@@ -128,7 +175,7 @@ export const sortByHeight = (_utxos) => {
 }
 
 // Get the serialized transaction and the appropriate txHash
-function parseBtcTx(res) {
+function _parseBtcTx(res) {
   const sigData = res.result.data.sigData.split(config.api.SPLIT_BUF);
   const witnessData = res.result.witnessData;
   const d = {
@@ -149,28 +196,28 @@ function parseBtcTx(res) {
   return d;
 }
 
-function parseEthTx(res) {
+function _parseEthTx(res) {
   const sigData = res.result.data.sigData.split(config.api.SPLIT_BUF);
   const { params, typeIndex } = res.result.data;
   const s = sigData[1];
   const d = {
     sig: s,
     vrs: [ parseInt(s.slice(-1)) + 27, s.slice(0, 64), s.slice(64, 128) ],
-    to: getEthRecipient(params, typeIndex),
-    value: getEthValue(params),
+    to: _getEthRecipient(params, typeIndex),
+    value: _getEthValue(params),
     height: -1,  // Everything passing through here will be unmined
   }
 
   // Transaction should be an array of all the original params plus the v,r,s array (there should only be one of those)
   const vrsToUse = [ d.vrs[0], Buffer.from(d.vrs[1], 'hex'), Buffer.from(d.vrs[2], 'hex') ];
-  // d.tx = `0x${rlpEncode(params.concat(vrsToUse)).toString('hex')}`;
-  d.tx = getEthTx(params, typeIndex, vrsToUse);
+  // d.tx = `0x${_rlpEncode(params.concat(vrsToUse)).toString('hex')}`;
+  d.tx = _getEthTx(params, typeIndex, vrsToUse);
   d.txHash = null;
   d.unsignedTx = sigData[0];
   return d;
 }
 
-function getEthRecipient(params, typeIndex) {
+function _getEthRecipient(params, typeIndex) {
   if (typeIndex === 0) {
     return params[3];
   } else if (typeIndex === 1) {
@@ -179,14 +226,14 @@ function getEthRecipient(params, typeIndex) {
   }
 }
 
-function getEthValue(params) {
+function _getEthValue(params) {
   const gasPrice = params[1];
   const gas = params[2];
   const value = params[4];
   return -1 * ((gas * gasPrice) - value);
 }
 
-function getEthTx(params, typeIndex, vrs) {
+function _getEthTx(params, typeIndex, vrs) {
   if (typeIndex === 1) {
     const amount = params.pop();
     const recipient = params.pop();
@@ -194,29 +241,28 @@ function getEthTx(params, typeIndex, vrs) {
     const d = `${fCode}${pad64(recipient)}${pad64(amount)}`;
     params.push(d);
   }
-  return `0x${rlpEncode(params.concat(vrs)).toString('hex')}`
+  return `0x${_rlpEncode(params.concat(vrs)).toString('hex')}`
 }
 
-
-export function getTxHash(x) {
+function getTxHash(x) {
   if (typeof x === 'string') x = Buffer.from(x, 'hex');
   const h1 = ec.hash().update(x).digest();
   const h2 = ec.hash().update(h1).digest('hex');
   return Buffer.from(h2, 'hex').reverse().toString('hex');
 }
 
-function encodeLength (len, offset) {
+function _encodeLength (len, offset) {
   if (len < 56) {
     return Buffer.from([len + offset])
   } else {
-    const hexLength = intToHex(len)
+    const hexLength = _intToHex(len)
     const lLength = hexLength.length / 2
-    const firstByte = intToHex(offset + 55 + lLength)
+    const firstByte = _intToHex(offset + 55 + lLength)
     return Buffer.from(firstByte + hexLength, 'hex')
   }
 }
 
-function intToHex (i) {
+function _intToHex (i) {
   let hex = i.toString(16)
   if (hex.length % 2) {
     hex = '0' + hex
@@ -224,32 +270,32 @@ function intToHex (i) {
   return hex
 }
 
-function intToBuffer (i) {
-  const hex = intToHex(i)
+function _intToBuffer (i) {
+  const hex = _intToHex(i)
   return Buffer.from(hex, 'hex')
 }
 
-function isHexPrefixed (str) {
+function _isHexPrefixed (str) {
   return str.slice(0, 2) === '0x'
 }
 
-function padToEven (a) {
+function _padToEven (a) {
   if (a.length % 2) a = '0' + a
   return a
 }
 
-function stripHexPrefix (str) {
+function _stripHexPrefix (str) {
   if (typeof str !== 'string') {
     return str
   }
-  return isHexPrefixed(str) ? str.slice(2) : str
+  return _isHexPrefixed(str) ? str.slice(2) : str
 }
 
-function toBuffer (v) {
+function _toBuffer (v) {
   if (!Buffer.isBuffer(v)) {
     if (typeof v === 'string') {
-      if (isHexPrefixed(v)) {
-        v = Buffer.from(padToEven(stripHexPrefix(v)), 'hex')
+      if (_isHexPrefixed(v)) {
+        v = Buffer.from(_padToEven(_stripHexPrefix(v)), 'hex')
       } else {
         v = Buffer.from(v)
       }
@@ -257,7 +303,7 @@ function toBuffer (v) {
       if (!v) {
         v = Buffer.from([])
       } else {
-        v = intToBuffer(v)
+        v = _intToBuffer(v)
       }
     } else if (v === null || v === undefined) {
       v = Buffer.from([])
@@ -273,20 +319,38 @@ function toBuffer (v) {
   return v
 }
 
-function rlpEncode(input) {
+function _rlpEncode(input) {
   if (input instanceof Array) {
     const output = []
     for (let i = 0; i < input.length; i++) {
-      output.push(rlpEncode(input[i]))
+      output.push(_rlpEncode(input[i]))
     }
     const buf = Buffer.concat(output)
-    return Buffer.concat([encodeLength(buf.length, 192), buf])
+    return Buffer.concat([_encodeLength(buf.length, 192), buf])
   } else {
-    input = toBuffer(input)
+    input = _toBuffer(input)
     if (input.length === 1 && input[0] < 128) {
       return input
     } else {
-      return Buffer.concat([encodeLength(input.length, 128), input])
+      return Buffer.concat([_encodeLength(input.length, 128), input])
     }
   }
+}
+
+module.exports = {
+  checksum,
+  parseLattice1Response,
+  genAppSecret,
+  getProviderShortCode,
+  getOutputScriptType,
+  getP256KeyPair,
+  getP256KeyPairFromPub,
+  pad64,
+  unpad,
+  deriveSecret,
+  decrypt,
+  encrypt,
+  parseSigResponse,
+  sortByHeight,
+  getTxHash,
 }

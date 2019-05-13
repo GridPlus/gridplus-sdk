@@ -1,6 +1,7 @@
-import { BigNumber } from 'bignumber.js';
-import { EtherscanApi, JsonRpcApi } from './apis'
-export default class Ethereum {
+const { BigNumber } = require('bignumber.js');
+const { EtherscanApi, JsonRpcApi } = require('./apis');
+
+class Ethereum {
   constructor (opts) {
     this.name = 'ethereum';
     this.shortcode = 'ETH';
@@ -148,5 +149,6 @@ export default class Ethereum {
     const weiFee = new BigNumber(tx.gasPrice.mul(tx.gasLimit).toString());
     return weiFee.div(factor).toString();
   }
-
 }
+
+module.exports = Ethereum;

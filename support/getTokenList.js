@@ -5,7 +5,7 @@ const tokens = [ ['main', mainTokens ], ['rinkeby', rinkebyTokens ] ];
 const fs = require('fs');
 const tokensBySymbol = {}, tokensByAddress = {};
 let count = 0;
-try {
+/*try {
   tokens.forEach((tokenMetaData) => {
     const tokenType = tokenMetaData[0];
     const tokenList = tokenMetaData[1];
@@ -41,3 +41,4 @@ try {
 } catch (err) {
   throw new Error(`Error parsing token list on item ${count}: ${err}`);
 }
+*/
