@@ -60,6 +60,11 @@ class Client {
 
     debug(`created rest client for ${this.baseUrl}`);
   }
+
+  isConnected() {
+    return (this.pairingSalt !== null || this.ephemeralPub !== null);
+  }
+  
   //=======================================================================
   // LATTICE FUNCTIONS
   //=======================================================================
