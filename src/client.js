@@ -23,12 +23,11 @@ const config = require('../config');
 const debug = require('debug')('@gridplus/sdk:client');
 
 class Client {
-  constructor({ baseUrl, crypto, name, privKey, httpRequest, providers } = {}) {
+  constructor({ baseUrl, crypto, name, privKey, providers } = {}) {
     // Definitions
     // if (!baseUrl) throw new Error('baseUrl is required');
     if (name && name.length > 24) throw new Error('name must be less than 24 characters');
     if (!crypto) throw new Error('crypto provider is required');
-    if (httpRequest) this.httpRequest = httpRequest;
     this.baseUrl = baseUrl || config.api.baseUrl;
     this.crypto = crypto;
     this.name = name || 'Unknown';
@@ -277,27 +276,17 @@ class Client {
   _request(data, cb) {
     if (!this.deviceId) return cb('Serial is not set. Please set it and try again.');
     const url = `${this.baseUrl}/${this.deviceId}`;
-    if (this.httpRequest) {
-      this.httpRequest(url, data)
-      .then((res) => {
-        const parsed = parseLattice1Response(res);
-        if (parsed.err) return cb(parsed.err);
-        return cb(null, parsed.data) 
-      })
-      .catch((err) => { return cb(err); })
-    } else {
-      superagent.post(url)
-      .send({data})
-      // .set('Accept', 'application/json')
-      .then(res => {
-        if (!res || !res.body) return cb(`Invalid response: ${res}`)
-        else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
-        const parsed = parseLattice1Response(res.body.message);
-        if (parsed.err) return cb(parsed.err);
-        return cb(null, parsed.data) 
-      })
-      .catch(err => { cb(err)});
-    }
+    superagent.post(url)
+    .send({data})
+    // .set('Accept', 'application/json')
+    .then(res => {
+      if (!res || !res.body) return cb(`Invalid response: ${res}`)
+      else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
+      const parsed = parseLattice1Response(res.body.message);
+      if (parsed.err) return cb(parsed.err);
+      return cb(null, parsed.data) 
+    })
+    .catch(err => { cb(err)});
   }
 
   // Determine the response code
@@ -344,11 +333,12 @@ class Client {
     return true;
   }
 
+  // Get 64 bytes representing the public key
+  // This is the uncompressed key without the leading 04 byte
   pubKeyBytes() {
     const k = this.key.getPublic();
-    const x = k.getX().toBuffer();
-    const y = k.getY().toBuffer();
-    return Buffer.concat([x, y])
+    const p = k.encode('hex');
+    return Buffer.from(p, 'hex').slice(1);
   }
 
 }
