@@ -41,7 +41,7 @@ function parseLattice1Response(r) {
   // Get response code
   const responseCode = payload.readUInt8(0);
   if (responseCode !== responseCodes.SUCCESS) {
-    parsed.err = responseCodes[responseCode] ? responseCodes[responseCode] : 'Unknown Error';
+    parsed.err = `Error from device: ${responseCodes[responseCode] ? responseCodes[responseCode] : 'Unknown Error'}`;
     return parsed;
   } else {
     parsed.data = payload.slice(1, payload.length);

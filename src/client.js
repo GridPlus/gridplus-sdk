@@ -102,8 +102,10 @@ class Client {
     const hash = this.crypto.createHash('sha256').update(preImage).digest();
     const sig = this.key.sign(hash); // returns an array, not a buffer
 
-    // The payload adheres to the serialization format of the PAIR route
-    const payload = Buffer.concat([pubKey, sig.r.toBuffer(), sig.s.toBuffer(), nameBuf]);
+    // The payload adheres to the serialization format of the PAIR route 
+    const r = Buffer.from(sig.r.toString('hex'), 'hex');
+    const s = Buffer.from(sig.s.toString('hex'), 'hex');
+    const payload = Buffer.concat([pubKey, r, s, nameBuf]);
 
     // Build the request
     const param = this._buildRequest(deviceCodes.FINALIZE_PAIRING, payload);
