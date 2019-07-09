@@ -126,15 +126,6 @@ function pad64 (x) {
   return x.slice(24);
 }
 
-// Derive a shared secret using ECDH via curve25519
-function deriveSecret (privKey, pubKey) {
-  if (typeof privKey !== 'string') privKey = privKey.toString('hex');
-  if (typeof pubKey !== 'string') pubKey = pubKey.toString('hex');
-  const privInst = ec.keyFromPrivate(privKey, 'hex');
-  const pubInst = ec.keyFromPublic(pubKey, 'hex');
-  return privInst.derive(pubInst.getPublic()).toString('hex');
-}
-
 // Decrypt using an AES secret and a counter
 function decrypt (payload, secret, counter=5) {
   if (typeof secret === 'string') secret = Buffer.from(secret, 'hex');
@@ -347,7 +338,6 @@ module.exports = {
   getP256KeyPairFromPub,
   pad64,
   unpad,
-  deriveSecret,
   decrypt,
   encrypt,
   parseSigResponse,

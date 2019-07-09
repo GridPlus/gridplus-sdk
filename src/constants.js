@@ -12,9 +12,15 @@ const OPs = {
 }
   
 const deviceCodes = {
-    'ENCRYPTED_REQUEST': 0,
     'CONNECT': 1,
-    'FINALIZE_PAIRING': 2,
+    'ENCRYPTED_REQUEST': 2,
+}
+
+const encReqCodes = {
+    'FINALIZE_PAIRING': 1,
+    'GET_ADDRESSES': 2,
+    'ADD_PERMISSION': 3,
+    'SIGN_TRANSACTION': 4,
 }
 
 const messageConstants = {
