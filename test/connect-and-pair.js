@@ -44,7 +44,6 @@ describe('Connect and Pair', () => {
     });
   });
 
-/*
   it('Should try to connect again but recognize the pairing already exists', (done) => {
     if (timeout) assert(false == true, 'Initial connect timed out');    
     client.connect(id, (err) => {
@@ -53,5 +52,5 @@ describe('Connect and Pair', () => {
       done();
     })
   })
-*/
+
 });

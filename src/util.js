@@ -71,7 +71,6 @@ function checksum(x) {
 function aes256_encrypt(data, key) {
   const iv = Buffer.from(AES_IV);
   const aesCbc = new aes.ModeOfOperation.cbc(key, iv);
-  console.log('encrypting with ', iv.toString('hex'))
   const paddedData = (data.length) % 16 == 0 ? data : aes.padding.pkcs7.pad(data);
   return Buffer.from(aesCbc.encrypt(paddedData));
 }

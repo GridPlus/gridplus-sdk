@@ -9,6 +9,7 @@ const {
   parseLattice1Response,
 } = require('./util');
 const {
+  ENC_MSG_LEN,
   deviceCodes,
   encReqCodes,
   responseCodes,
@@ -70,7 +71,6 @@ class Client {
     this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
-        console.log('connect res', res.toString('hex'))
         this._handleConnect(res);
         return cb(null);
       } catch (e) {
@@ -93,8 +93,6 @@ class Client {
     const r = Buffer.from(sig.r.toString('hex'), 'hex');
     const s = Buffer.from(sig.s.toString('hex'), 'hex');
     const payload = Buffer.concat([nameBuf, r, s]);
-    const secret = this._getSharedSecret();
-    console.log('sharedSecret', secret.toString('hex'));
 
     // Build the request
     const param = this._buildEncRequest(encReqCodes.FINALIZE_PAIRING, payload);
@@ -174,14 +172,12 @@ class Client {
     // Get the ephemeral id - all encrypted requests require there to be an
     // epehemeral public key in order to send
     const ephemId = parseInt(this._getEphemId().toString('hex'), 16)
-    console.log('getEphemId', this._getEphemId());
     let i = 0;
     // Prefix the payload with the encrypted request code
-    const TOTAL_PAYLOAD_SIZE = 276;
-    const newPayload = Buffer.alloc(TOTAL_PAYLOAD_SIZE);
+    const newPayload = Buffer.alloc(ENC_MSG_LEN + 4); // add 4 bytes for the checksum
     
     // Build the payload to be encrypted
-    const payloadBuf = Buffer.alloc(TOTAL_PAYLOAD_SIZE - 4);
+    const payloadBuf = Buffer.alloc(ENC_MSG_LEN);
     const payloadPreCs = Buffer.concat([Buffer.from([enc_request_code]), payload]);
     const cs = checksum(payloadPreCs);
     // Lattice validates checksums in little endian
@@ -192,8 +188,6 @@ class Client {
 
     // Encrypt this payload
     const secret = this._getSharedSecret().reverse();
-
-    console.log('pre-encryption', payloadBuf.toString('hex'));
     const newEncPayload = aes256_encrypt(payloadBuf, secret);
 
     // Write to the overall payload
@@ -329,7 +323,6 @@ class Client {
     superagent.post(url)
     .send({data})
     .then(res => {
-
       if (!res || !res.body) return cb(`Invalid response: ${res}`)
       else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
       const parsed = parseLattice1Response(res.body.message);
@@ -365,7 +358,6 @@ class Client {
     this.isPaired = (pairingStatus === messageConstants.PAIRED);
     // If we are already paired, we get the next ephemeral key
     const pub = `04${res.slice(off, res.length).toString('hex')}`
-    console.log('ephempub', pub);
     this.ephemeralPub = getP256KeyPairFromPub(pub);
   }
 
@@ -373,9 +365,23 @@ class Client {
   // into the device in time. If successful (status=0), the device will return
   // a new ephemeral public key, which is used to derive a shared secret
   // for the next request
-  _handlePair(res) {
-    const pub = `04${res.slice(0, res.length).toString('hex')}`;
+  _handlePair(encRes) {
+    const secret = this._getSharedSecret().reverse();
+    const encData = encRes.slice(0, ENC_MSG_LEN);
+    const res = aes256_decrypt(encData, secret);
+
+    // Verify the checksum. This will be based on endian flipped fields.
+    const ephemX = res.slice(0, 32).reverse();
+    const ephemY = res.slice(32, 64).reverse();
+    const cs = parseInt(`0x${res.slice(64, 68).toString('hex')}`);
+    const csCheck = checksum(Buffer.concat([ephemX, ephemY]));
+    if (cs !== csCheck) return false;
+
+    // Update the ephemeral key
+    const pub = `04${ephemX.toString('hex')}${ephemY.toString('hex')}`;
     this.ephemeralPub = getP256KeyPairFromPub(pub);
+
+    // Remove the pairing salt - we're paired!
     this.pairingSalt = null;
     return true;
   }
