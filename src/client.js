@@ -1,8 +1,8 @@
 const crc32 = require('crc-32');
 const superagent = require('superagent');
 const {
-  // decrypt,
-  // encrypt,
+  aes256_decrypt,
+  aes256_encrypt,
   checksum,
   getP256KeyPair,
   getP256KeyPairFromPub,
@@ -10,6 +10,7 @@ const {
 } = require('./util');
 const {
   deviceCodes,
+  encReqCodes,
   responseCodes,
   deviceResponses,
   REQUEST_TYPE_BYTE,
@@ -65,11 +66,11 @@ class Client {
   // pair with the device in a later request
   connect(deviceId, cb) {
     this.deviceId = deviceId;
-    // Build the request
     const param = this._buildRequest(deviceCodes.CONNECT, this.pubKeyBytes());
     this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
+        console.log('connect res', res.toString('hex'))
         this._handleConnect(res);
         return cb(null);
       } catch (e) {
@@ -91,10 +92,12 @@ class Client {
     // The payload adheres to the serialization format of the PAIR route 
     const r = Buffer.from(sig.r.toString('hex'), 'hex');
     const s = Buffer.from(sig.s.toString('hex'), 'hex');
-    const payload = Buffer.concat([pubKey, r, s, nameBuf]);
+    const payload = Buffer.concat([nameBuf, r, s]);
+    const secret = this._getSharedSecret();
+    console.log('sharedSecret', secret.toString('hex'));
 
     // Build the request
-    const param = this._buildEncRequest(deviceCodes.ENCRYPTED_REQUEST, payload);
+    const param = this._buildEncRequest(encReqCodes.FINALIZE_PAIRING, payload);
     return this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
@@ -149,39 +152,77 @@ class Client {
 
   // Get the shared secret, derived via ECDH from the local private key
   // and the ephemeral public key
+  // @returns Buffer
   _getSharedSecret() {
-    return this.key.derive(this.ephemeralPub.getPublic());
+    return Buffer.from(this.key.derive(this.ephemeralPub.getPublic()).toArray());
   }
 
   // Get the ephemeral id, which is the first 4 bytes of the shared secret
   // generated from the local private key and the ephemeral public key from
   // the device.
+  // @returns Buffer
   _getEphemId() {
-    return this._getSharedSecret().slice(0, 4);
+    if (this.ephemeralPub == null) return null;
+    // EphemId is the first 4 bytes of the hash of the shared secret
+    // Note that the secret and slice must be in host byte order (little endian)
+    const secret = this._getSharedSecret().reverse(); // stored in BE, reversed to LE
+    const hash = this.crypto.createHash('sha256').update(secret).digest();
+    return hash.slice(0, 4);
   }
 
-  _buildEncRequest(request_code, payload) {
-    const id = this._getEphemId();
-    console.log('id', id);
-    const newPayload = id.concat(payload);
-    console.log('newPayload', newPayload);
-    return this._buildRequest(request_code, newPayload);
+  _buildEncRequest(enc_request_code, payload) {
+    // Get the ephemeral id - all encrypted requests require there to be an
+    // epehemeral public key in order to send
+    const ephemId = parseInt(this._getEphemId().toString('hex'), 16)
+    console.log('getEphemId', this._getEphemId());
+    let i = 0;
+    // Prefix the payload with the encrypted request code
+    const TOTAL_PAYLOAD_SIZE = 276;
+    const newPayload = Buffer.alloc(TOTAL_PAYLOAD_SIZE);
+    
+    // Build the payload to be encrypted
+    const payloadBuf = Buffer.alloc(TOTAL_PAYLOAD_SIZE - 4);
+    const payloadPreCs = Buffer.concat([Buffer.from([enc_request_code]), payload]);
+    const cs = checksum(payloadPreCs);
+    // Lattice validates checksums in little endian
+    payloadBuf.writeUInt8(enc_request_code, 0);
+    payload.copy(payloadBuf, 1);
+
+    payloadBuf.writeUInt32LE(cs, 1 + payload.length);
+
+    // Encrypt this payload
+    const secret = this._getSharedSecret().reverse();
+
+    console.log('pre-encryption', payloadBuf.toString('hex'));
+    const newEncPayload = aes256_encrypt(payloadBuf, secret);
+
+    // Write to the overall payload
+    // First 4 bytes are the ephemeral id (in little endian)
+    i = newPayload.writeUInt32LE(ephemId, i);
+    // Next N bytes
+    newEncPayload.copy(newPayload, 4);
+    return this._buildRequest(deviceCodes.ENCRYPTED_REQUEST, newPayload);
+  
   }
 
   // Build a request to send to the device.
   // @param [request_code] {uint8}  - 8-bit unsigned integer representing the message request code
+  // @param [id] {buffer} - 4 byte identifier (comes from HSM for subsequent encrypted reqs)
   // @param [payload] {buffer} - serialized payload
   // @returns {buffer}
   _buildRequest(request_code, payload) {
     // Length of payload;
     // we add 1 to the payload length to account for the request_code byte
-    const L = payload && Buffer.isBuffer(payload) ? payload.length + 1 : 1;
+    let L = payload && Buffer.isBuffer(payload) ? payload.length + 1 : 1;
+    if (request_code == deviceCodes.ENCRYPTED_REQUEST) {
+      L = 1 + payload.length;
+    }
     let i = 0;
     const preReq = Buffer.alloc(L + 8);
-    const id = this.crypto.randomBytes(4);
     // Build the header
     i = preReq.writeUInt8(VERSION_BYTE, i);
     i = preReq.writeUInt8(REQUEST_TYPE_BYTE, i);
+    const id = this.crypto.randomBytes(4);
     i = preReq.writeUInt32BE(parseInt(`0x${id.toString('hex')}`), i);
     i = preReq.writeUInt16BE(L, i);
     // Build the payload
@@ -285,14 +326,12 @@ class Client {
   _request(data, cb) {
     if (!this.deviceId) return cb('Serial is not set. Please set it and try again.');
     const url = `${this.baseUrl}/${this.deviceId}`;
-    console.log('requesting', url)
     superagent.post(url)
     .send({data})
-    // .set('Accept', 'application/json')
     .then(res => {
+
       if (!res || !res.body) return cb(`Invalid response: ${res}`)
       else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
-      console.log('request res', res.body.message);
       const parsed = parseLattice1Response(res.body.message);
       if (parsed.err) return cb(parsed.err);
       return cb(null, parsed.data) 
@@ -321,13 +360,12 @@ class Client {
   // to encrypt the next request. If the device is not paired, it is needed
   // to pair the device within 60 seconds.
   _handleConnect(res) {
-    console.log('handleConnect', res)
     let off = 0;
     const pairingStatus = res.readUInt8(off); off++;
     this.isPaired = (pairingStatus === messageConstants.PAIRED);
     // If we are already paired, we get the next ephemeral key
     const pub = `04${res.slice(off, res.length).toString('hex')}`
-    console.log('pub', pub)
+    console.log('ephempub', pub);
     this.ephemeralPub = getP256KeyPairFromPub(pub);
   }
 

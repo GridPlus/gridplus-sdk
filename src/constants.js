@@ -1,3 +1,8 @@
+
+// Consistent with Lattice's IV
+const AES_IV = [0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64]
+
+
 const dict = [ 
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 
@@ -51,9 +56,11 @@ const VERSION_BYTE = 1;
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
 
 module.exports = {
+    AES_IV,
     dict,
     OPs,
     deviceCodes,
+    encReqCodes,
     messageConstants,
     responseCodes,
     deviceResponses,

@@ -5,7 +5,7 @@ const crc32 = require('crc-32');
 const leftPad = require('left-pad');
 const elliptic = require('elliptic');
 const config = require('../config');
-const { dict, responseCodes, OPs, VERSION_BYTE } = require('./constants');
+const { AES_IV, dict, responseCodes, OPs, VERSION_BYTE } = require('./constants');
 const EC = elliptic.ec;
 const ec = new EC('p256');
 
@@ -65,15 +65,21 @@ function checksum(x) {
   return crc32.buf(x) >>> 0; // Need this to be a uint, hence the bit shift
 }
 
+//--------------------------------------------------
+// CRYPTO UTILS
+//--------------------------------------------------
+function aes256_encrypt(data, key) {
+  const iv = Buffer.from(AES_IV);
+  const aesCbc = new aes.ModeOfOperation.cbc(key, iv);
+  console.log('encrypting with ', iv.toString('hex'))
+  const paddedData = (data.length) % 16 == 0 ? data : aes.padding.pkcs7.pad(data);
+  return Buffer.from(aesCbc.encrypt(paddedData));
+}
 
-// Create a new appSecret of specified length
-function genAppSecret(L) {
-  let secret = '';
-  for (i = 0; i < L; i++) {
-    const j = Math.floor(Math.random() * dict.length);
-    secret += dict[j];
-  }
-  return secret;
+function aes256_decrypt(data, key) {
+  const iv = Buffer.from(AES_IV);
+  const aesCbc = new aes.ModeOfOperation.cbc(key, iv);
+  return Buffer.from(aesCbc.decrypt(data));
 }
 
 function getProviderShortCode(schemaCode) {
@@ -124,23 +130,6 @@ function pad64 (x) {
  function unpad (x) {
   if (x.substr(0, 2) === '0x') x = x.slice(2);
   return x.slice(24);
-}
-
-// Decrypt using an AES secret and a counter
-function decrypt (payload, secret, counter=5) {
-  if (typeof secret === 'string') secret = Buffer.from(secret, 'hex');
-  const b = aes.utils.hex.toBytes(payload);
-  const aesCtr = new aes.ModeOfOperation.ctr(secret, new aes.Counter(counter));
-  const dec = aesCtr.decrypt(b);
-  return aes.utils.utf8.fromBytes(dec);
-}
-
-function encrypt (payload, secret, counter=5) {
-  if (typeof secret === 'string') secret = Buffer.from(secret, 'hex');
-  const b = aes.utils.utf8.toBytes(payload);
-  const aesCtr = new aes.ModeOfOperation.ctr(secret, new aes.Counter(counter));
-  const enc = aesCtr.encrypt(b);
-  return aes.utils.hex.fromBytes(enc);
 }
 
 function parseSigResponse(res) {
@@ -329,17 +318,16 @@ function _rlpEncode(input) {
 }
 
 module.exports = {
+  aes256_decrypt,
+  aes256_encrypt,
   checksum,
   parseLattice1Response,
-  genAppSecret,
   getProviderShortCode,
   getOutputScriptType,
   getP256KeyPair,
   getP256KeyPairFromPub,
   pad64,
   unpad,
-  decrypt,
-  encrypt,
   parseSigResponse,
   sortByHeight,
   getTxHash,
