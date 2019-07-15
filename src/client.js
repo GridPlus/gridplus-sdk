@@ -355,6 +355,7 @@ class Client {
   _handleConnect(res) {
     let off = 0;
     const pairingStatus = res.readUInt8(off); off++;
+    console.log('pairingStatus', pairingStatus)
     this.isPaired = (pairingStatus === messageConstants.PAIRED);
     // If we are already paired, we get the next ephemeral key
     const pub = `04${res.slice(off, res.length).toString('hex')}`

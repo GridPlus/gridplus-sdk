@@ -25,8 +25,8 @@ const encReqCodes = {
 }
 
 const messageConstants = {
-    'NOT_PAIRED': 0x01,
-    'PAIRED': 0x00,
+    'NOT_PAIRED': 0x00,
+    'PAIRED': 0x01,
 }
   
 const responseCodes = {
