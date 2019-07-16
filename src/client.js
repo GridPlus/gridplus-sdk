@@ -188,6 +188,7 @@ class Client {
 
     // Encrypt this payload
     const secret = this._getSharedSecret().reverse();
+   
     const newEncPayload = aes256_encrypt(payloadBuf, secret);
 
     // Write to the overall payload
@@ -355,7 +356,6 @@ class Client {
   _handleConnect(res) {
     let off = 0;
     const pairingStatus = res.readUInt8(off); off++;
-    console.log('pairingStatus', pairingStatus)
     this.isPaired = (pairingStatus === messageConstants.PAIRED);
     // If we are already paired, we get the next ephemeral key
     const pub = `04${res.slice(off, res.length).toString('hex')}`
