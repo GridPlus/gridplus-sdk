@@ -1,16 +1,17 @@
 const crc32 = require('crc-32');
 const superagent = require('superagent');
 const {
-  // decrypt,
-  // encrypt,
-  // deriveSecret,
+  aes256_decrypt,
+  aes256_encrypt,
   checksum,
   getP256KeyPair,
   getP256KeyPairFromPub,
   parseLattice1Response,
 } = require('./util');
 const {
+  ENC_MSG_LEN,
   deviceCodes,
+  encReqCodes,
   responseCodes,
   deviceResponses,
   REQUEST_TYPE_BYTE,
@@ -37,10 +38,6 @@ class Client {
     this.privKey = privKey || this.crypto.randomBytes(32);
     this.key = getP256KeyPair(this.privKey);//.encode('hex');
 
-    // Pairing salt is retrieved from calling `connect` on the device. This
-    // is only valid for 60 seconds and is not used once we pair.
-    this.pairingSalt = null;
-
     // Config stuff
     this.counter = 5;
     this.timeoutMs = 5000;
@@ -50,6 +47,7 @@ class Client {
     this.sharedSecret = null;
     this.timeout = null;
     this.deviceId = null;
+    this.isPaired = false;
 
     // Crypto node providers
     this.providers = {};
@@ -58,10 +56,6 @@ class Client {
     });
 
     debug(`created rest client for ${this.baseUrl}`);
-  }
-
-  isConnected() {
-    return (this.pairingSalt !== null || this.ephemeralPub !== null);
   }
   
   //=======================================================================
@@ -73,14 +67,11 @@ class Client {
   // pair with the device in a later request
   connect(deviceId, cb) {
     this.deviceId = deviceId;
-    // Build the request
     const param = this._buildRequest(deviceCodes.CONNECT, this.pubKeyBytes());
     this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
-        // If there are no errors, recover the salt
-        const success = this._handleConnect(res);
-        if (!success) return cb('Could not handle response from device. Please try again.');
+        this._handleConnect(res);
         return cb(null);
       } catch (e) {
         return cb(e);
@@ -88,27 +79,23 @@ class Client {
     });
   }
 
-  // `Pair` requires a `pairingSalt` and a secret
   pair(pairingSecret, cb) {
-    // Ensure we have a pairing secret
-    if (!this.pairingSalt) return cb('Unable to pair. Please call `connect` to initialize pairing process.');
-
     // Build the secret hash from the salt
     const pubKey = this.pubKeyBytes();
     const nameBuf = Buffer.alloc(25);
     nameBuf.write(this.name);
     const pairingSecretBuf = Buffer.from(pairingSecret);
-    const preImage = Buffer.concat([pubKey, nameBuf, pairingSecretBuf, this.pairingSalt]);
+    const preImage = Buffer.concat([pubKey, nameBuf, pairingSecretBuf]);
     const hash = this.crypto.createHash('sha256').update(preImage).digest();
     const sig = this.key.sign(hash); // returns an array, not a buffer
 
     // The payload adheres to the serialization format of the PAIR route 
     const r = Buffer.from(sig.r.toString('hex'), 'hex');
     const s = Buffer.from(sig.s.toString('hex'), 'hex');
-    const payload = Buffer.concat([pubKey, r, s, nameBuf]);
+    const payload = Buffer.concat([nameBuf, r, s]);
 
     // Build the request
-    const param = this._buildRequest(deviceCodes.FINALIZE_PAIRING, payload);
+    const param = this._buildEncRequest(encReqCodes.FINALIZE_PAIRING, payload);
     return this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
@@ -161,20 +148,76 @@ class Client {
   // among other protocols.
   //=======================================================================
 
+  // Get the shared secret, derived via ECDH from the local private key
+  // and the ephemeral public key
+  // @returns Buffer
+  _getSharedSecret() {
+    return Buffer.from(this.key.derive(this.ephemeralPub.getPublic()).toArray());
+  }
+
+  // Get the ephemeral id, which is the first 4 bytes of the shared secret
+  // generated from the local private key and the ephemeral public key from
+  // the device.
+  // @returns Buffer
+  _getEphemId() {
+    if (this.ephemeralPub == null) return null;
+    // EphemId is the first 4 bytes of the hash of the shared secret
+    // Note that the secret and slice must be in host byte order (little endian)
+    const secret = this._getSharedSecret().reverse(); // stored in BE, reversed to LE
+    const hash = this.crypto.createHash('sha256').update(secret).digest();
+    return hash.slice(0, 4);
+  }
+
+  _buildEncRequest(enc_request_code, payload) {
+    // Get the ephemeral id - all encrypted requests require there to be an
+    // epehemeral public key in order to send
+    const ephemId = parseInt(this._getEphemId().toString('hex'), 16)
+    let i = 0;
+    // Prefix the payload with the encrypted request code
+    const newPayload = Buffer.alloc(ENC_MSG_LEN + 4); // add 4 bytes for the checksum
+    
+    // Build the payload to be encrypted
+    const payloadBuf = Buffer.alloc(ENC_MSG_LEN);
+    const payloadPreCs = Buffer.concat([Buffer.from([enc_request_code]), payload]);
+    const cs = checksum(payloadPreCs);
+    // Lattice validates checksums in little endian
+    payloadBuf.writeUInt8(enc_request_code, 0);
+    payload.copy(payloadBuf, 1);
+
+    payloadBuf.writeUInt32LE(cs, 1 + payload.length);
+
+    // Encrypt this payload
+    const secret = this._getSharedSecret().reverse();
+   
+    const newEncPayload = aes256_encrypt(payloadBuf, secret);
+
+    // Write to the overall payload
+    // First 4 bytes are the ephemeral id (in little endian)
+    i = newPayload.writeUInt32LE(ephemId, i);
+    // Next N bytes
+    newEncPayload.copy(newPayload, 4);
+    return this._buildRequest(deviceCodes.ENCRYPTED_REQUEST, newPayload);
+  
+  }
+
   // Build a request to send to the device.
   // @param [request_code] {uint8}  - 8-bit unsigned integer representing the message request code
+  // @param [id] {buffer} - 4 byte identifier (comes from HSM for subsequent encrypted reqs)
   // @param [payload] {buffer} - serialized payload
   // @returns {buffer}
   _buildRequest(request_code, payload) {
     // Length of payload;
     // we add 1 to the payload length to account for the request_code byte
-    const L = payload && Buffer.isBuffer(payload) ? payload.length + 1 : 1;
+    let L = payload && Buffer.isBuffer(payload) ? payload.length + 1 : 1;
+    if (request_code == deviceCodes.ENCRYPTED_REQUEST) {
+      L = 1 + payload.length;
+    }
     let i = 0;
     const preReq = Buffer.alloc(L + 8);
-    const id = this.crypto.randomBytes(4);
     // Build the header
     i = preReq.writeUInt8(VERSION_BYTE, i);
     i = preReq.writeUInt8(REQUEST_TYPE_BYTE, i);
+    const id = this.crypto.randomBytes(4);
     i = preReq.writeUInt32BE(parseInt(`0x${id.toString('hex')}`), i);
     i = preReq.writeUInt16BE(L, i);
     // Build the payload
@@ -280,7 +323,6 @@ class Client {
     const url = `${this.baseUrl}/${this.deviceId}`;
     superagent.post(url)
     .send({data})
-    // .set('Accept', 'application/json')
     .then(res => {
       if (!res || !res.body) return cb(`Invalid response: ${res}`)
       else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
@@ -305,32 +347,42 @@ class Client {
 
   // ----- Device response handlers -----
 
-  // Connect will call `StartPairingMode` on the device, which returns salt
-  // which is good for 60 seconds to make a pairing with
+  // Connect will call `StartPairingMode` on the device, which gives the
+  // user 60 seconds to finalize the pairing
+  // This will return an ephemeral public key, which is needed for the next
+  // request. If the device is already paired, this ephemPub is simply used
+  // to encrypt the next request. If the device is not paired, it is needed
+  // to pair the device within 60 seconds.
   _handleConnect(res) {
     let off = 0;
     const pairingStatus = res.readUInt8(off); off++;
-    if (pairingStatus === messageConstants.NOT_PAIRED) {
-      // Result is a pairing salt
-      this.pairingSalt = res.slice(off, res.length);
-      return true;
-    } else if (pairingStatus === messageConstants.PAIRED) {
-      // If we are already paired, we get the next ephemeral key
-      const pub = `04${res.slice(off, res.length).toString('hex')}`
-      this.ephemeralPub = getP256KeyPairFromPub(pub);
-      return true;
-    }
-
-    return false;
+    this.isPaired = (pairingStatus === messageConstants.PAIRED);
+    // If we are already paired, we get the next ephemeral key
+    const pub = `04${res.slice(off, res.length).toString('hex')}`
+    this.ephemeralPub = getP256KeyPairFromPub(pub);
   }
 
   // Pair will create a new pairing if the user successfully enters the secret
   // into the device in time. If successful (status=0), the device will return
   // a new ephemeral public key, which is used to derive a shared secret
   // for the next request
-  _handlePair(res) {
-    const pub = `04${res.slice(0, res.length).toString('hex')}`;
+  _handlePair(encRes) {
+    const secret = this._getSharedSecret().reverse();
+    const encData = encRes.slice(0, ENC_MSG_LEN);
+    const res = aes256_decrypt(encData, secret);
+
+    // Verify the checksum. This will be based on endian flipped fields.
+    const ephemX = res.slice(0, 32).reverse();
+    const ephemY = res.slice(32, 64).reverse();
+    const cs = parseInt(`0x${res.slice(64, 68).toString('hex')}`);
+    const csCheck = checksum(Buffer.concat([ephemX, ephemY]));
+    if (cs !== csCheck) return false;
+
+    // Update the ephemeral key
+    const pub = `04${ephemX.toString('hex')}${ephemY.toString('hex')}`;
     this.ephemeralPub = getP256KeyPairFromPub(pub);
+
+    // Remove the pairing salt - we're paired!
     this.pairingSalt = null;
     return true;
   }
