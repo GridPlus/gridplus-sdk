@@ -24,7 +24,7 @@ const config = require('../config');
 const debug = require('debug')('@gridplus/sdk:client');
 
 class Client {
-  constructor({ baseUrl, crypto, name, privKey, providers } = {}) {
+  constructor({ baseUrl, crypto, name, privKey, providers, timeout } = {}) {
     // Definitions
     // if (!baseUrl) throw new Error('baseUrl is required');
     if (name && name.length > 24) throw new Error('name must be less than 24 characters');
@@ -38,14 +38,10 @@ class Client {
     this.privKey = privKey || this.crypto.randomBytes(32);
     this.key = getP256KeyPair(this.privKey);//.encode('hex');
 
-    // Config stuff
-    this.counter = 5;
-    this.timeoutMs = 5000;
-
     // Stateful params
     this.ephemeralPub = null;
     this.sharedSecret = null;
-    this.timeout = null;
+    this.timeout = timeout || 60000;
     this.deviceId = null;
     this.isPaired = false;
 
@@ -71,7 +67,7 @@ class Client {
     this._request(param, (err, res) => {
       if (err) return cb(err);
       try {
-        this._handleConnect(res);
+        this.isPaired = this._handleConnect(res);
         return cb(null);
       } catch (e) {
         return cb(e);
@@ -100,9 +96,8 @@ class Client {
       if (err) return cb(err);
       try {
         // Recover the ephemeral key
-        const success = this._handlePair(res);
-        if (!success) return cb('Could not handle response from device. Please try again.');
-        return cb(null);
+        const errStr = this._handlePair(res);
+        return cb(errStr);
       } catch (e) {
         return cb(e);
       }
@@ -321,7 +316,7 @@ class Client {
   _request(data, cb) {
     if (!this.deviceId) return cb('Serial is not set. Please set it and try again.');
     const url = `${this.baseUrl}/${this.deviceId}`;
-    superagent.post(url)
+    superagent.post(url).timeout(this.timeout)
     .send({data})
     .then(res => {
       if (!res || !res.body) return cb(`Invalid response: ${res}`)
@@ -330,7 +325,7 @@ class Client {
       if (parsed.err) return cb(parsed.err);
       return cb(null, parsed.data) 
     })
-    .catch(err => { cb(err)});
+    .catch(err => { return cb(err)});
   }
 
   // Determine the response code
@@ -353,19 +348,22 @@ class Client {
   // request. If the device is already paired, this ephemPub is simply used
   // to encrypt the next request. If the device is not paired, it is needed
   // to pair the device within 60 seconds.
+  // @returns true if we are paired to the device already
   _handleConnect(res) {
     let off = 0;
     const pairingStatus = res.readUInt8(off); off++;
-    this.isPaired = (pairingStatus === messageConstants.PAIRED);
     // If we are already paired, we get the next ephemeral key
     const pub = `04${res.slice(off, res.length).toString('hex')}`
     this.ephemeralPub = getP256KeyPairFromPub(pub);
+    // return the state of our pairing
+    return (pairingStatus === messageConstants.PAIRED);
   }
 
   // Pair will create a new pairing if the user successfully enters the secret
   // into the device in time. If successful (status=0), the device will return
   // a new ephemeral public key, which is used to derive a shared secret
   // for the next request
+  // @returns error (or null)
   _handlePair(encRes) {
     const secret = this._getSharedSecret().reverse();
     const encData = encRes.slice(0, ENC_MSG_LEN);
@@ -376,15 +374,18 @@ class Client {
     const ephemY = res.slice(32, 64).reverse();
     const cs = parseInt(`0x${res.slice(64, 68).toString('hex')}`);
     const csCheck = checksum(Buffer.concat([ephemX, ephemY]));
-    if (cs !== csCheck) return false;
+    if (cs !== csCheck) return 'Checksum mismatch in response from Lattice';
 
     // Update the ephemeral key
     const pub = `04${ephemX.toString('hex')}${ephemY.toString('hex')}`;
-    this.ephemeralPub = getP256KeyPairFromPub(pub);
-
-    // Remove the pairing salt - we're paired!
-    this.pairingSalt = null;
-    return true;
+    try {
+      this.ephemeralPub = getP256KeyPairFromPub(pub); 
+      // Remove the pairing salt - we're paired!
+      this.pairingSalt = null;
+      return null;
+    } catch (err) {
+      return `Error handling pairing response: ${err.toString()}`;
+    }
   }
 
   // Get 64 bytes representing the public key

@@ -1,8 +1,10 @@
 // Basic tests for atomic SDK functionality
 const assert = require('assert');
+const expect = require('chai').expect;
 const Sdk = require('../index.js');
 const crypto = require('crypto');
 const readline = require('readline');
+const question = require('readline-sync').question;
 
 let client, rl, id;
 let timeout = false;
@@ -15,42 +17,46 @@ describe('Connect and Pair', () => {
       name: 'ConnectAndPairClient',
       crypto,
     });
-    rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
   });
 
-  it('Should connect to an agent', (done) => {
-    rl.question('Please enter the ID of your test device: ', (_id) => {
-      id = _id;
-      client.connect(id, (err) => { 
-        assert(err === null, err);
-        timeout = err !== null;
-        assert(client.isPaired === false, 'Could not enter pairing mode');
-        done();
-      });
+  function connect(client, id) {
+    return new Promise((resolve, reject) => {
+      client.connect(id, (err) => {
+        return resolve(err);
+      })
     })
-  });
+  }
 
-  it('Should attempt to pair with pairing secret', (done) => {
-    if (timeout) assert(false == true, 'Initial connect timed out');
-    rl.question('Please enter the pairing secret: ', (secret) => {
-      rl.close();
+  function pair(client, secret) {
+    return new Promise((resolve, reject) => {
       client.pair(secret, (err) => {
-        assert(err === null, err);
-        done();
-      });
-    });
+        return resolve(err);
+      })
+    })
+  }
+
+  it('Should connect to an agent', async () => {
+    const _id = question('Please enter the ID of your test device: ');
+    id = _id;
+    const connectErr = await connect(client, id);
+    timeout = connectErr !== null;
+    expect(connectErr).to.equal(null);
+    expect(client.isPaired).to.equal(false);
   });
 
-  it('Should try to connect again but recognize the pairing already exists', (done) => {
-    if (timeout) assert(false == true, 'Initial connect timed out');    
-    client.connect(id, (err) => {
-      assert(err === null, err);
-      assert(client.pairingSalt === null, 'Pairing salt was updated, but should not have been');
-      done();
-    })
+  it('Should attempt to pair with pairing secret', async () => {
+    expect(timeout).to.equal(false);
+    const secret = question('Please enter the pairing secret: ');
+    const pairErr = await pair(client, secret);
+    expect(pairErr).to.equal(null);
+  });
+
+  it('Should try to connect again but recognize the pairing already exists', async () => {
+    expect(timeout).to.equal(false);
+    const connectErr = await connect(client, id);
+    timeout = connectErr !== null;
+    expect(connectErr).to.equal(null);
+    expect(client.isPaired).to.equal(true);
   })
 
 });
