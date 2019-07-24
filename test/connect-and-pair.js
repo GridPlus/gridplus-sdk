@@ -7,7 +7,7 @@ const readline = require('readline');
 const question = require('readline-sync').question;
 
 let client, rl, id;
-let timeout = false;
+let caughtErr = false;
 // const DEVICE_ID = '40a36bc23f0a';
 
 describe('Connect and Pair', () => {
@@ -39,24 +39,29 @@ describe('Connect and Pair', () => {
     const _id = question('Please enter the ID of your test device: ');
     id = _id;
     const connectErr = await connect(client, id);
-    timeout = connectErr !== null;
+    caughtErr = connectErr !== null;
     expect(connectErr).to.equal(null);
     expect(client.isPaired).to.equal(false);
   });
 
   it('Should attempt to pair with pairing secret', async () => {
-    expect(timeout).to.equal(false);
-    const secret = question('Please enter the pairing secret: ');
-    const pairErr = await pair(client, secret);
-    expect(pairErr).to.equal(null);
+    expect(caughtErr).to.equal(false);
+    if (caughtErr == false) {
+      const secret = question('Please enter the pairing secret: ');
+      const pairErr = await pair(client, secret);
+      caughtErr = pairErr !== null;
+      expect(pairErr).to.equal(null);
+    }
   });
 
   it('Should try to connect again but recognize the pairing already exists', async () => {
-    expect(timeout).to.equal(false);
-    const connectErr = await connect(client, id);
-    timeout = connectErr !== null;
-    expect(connectErr).to.equal(null);
-    expect(client.isPaired).to.equal(true);
+    expect(caughtErr).to.equal(false);
+    if (caughtErr == false) {
+      const connectErr = await connect(client, id);
+      caughtErr = connectErr !== null;
+      expect(connectErr).to.equal(null);
+      expect(client.isPaired).to.equal(true);
+    }
   })
 
 });
