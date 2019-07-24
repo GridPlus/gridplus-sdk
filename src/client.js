@@ -382,6 +382,7 @@ class Client {
       this.ephemeralPub = getP256KeyPairFromPub(pub); 
       // Remove the pairing salt - we're paired!
       this.pairingSalt = null;
+      this.isPaired = true;
       return null;
     } catch (err) {
       return `Error handling pairing response: ${err.toString()}`;
