@@ -7,6 +7,7 @@ const {
   getP256KeyPair,
   getP256KeyPairFromPub,
   parseLattice1Response,
+  toPaddedDER,
 } = require('./util');
 const {
   ENC_MSG_LEN,
@@ -79,16 +80,16 @@ class Client {
     // Build the secret hash from the salt
     const pubKey = this.pubKeyBytes();
     const nameBuf = Buffer.alloc(25);
+    if (this.name.length > 24) {
+      return cb('Name is too many characters. Please change it to <25 characters.');
+    }
     nameBuf.write(this.name);
-    const pairingSecretBuf = Buffer.from(pairingSecret);
-    const preImage = Buffer.concat([pubKey, nameBuf, pairingSecretBuf]);
+    // Make sure we add a null termination byte to the pairing secret
+    const preImage = Buffer.concat([pubKey, nameBuf, Buffer.from(pairingSecret)]);
     const hash = this.crypto.createHash('sha256').update(preImage).digest();
     const sig = this.key.sign(hash); // returns an array, not a buffer
-
-    // The payload adheres to the serialization format of the PAIR route 
-    const r = Buffer.from(sig.r.toString('hex'), 'hex');
-    const s = Buffer.from(sig.s.toString('hex'), 'hex');
-    const payload = Buffer.concat([nameBuf, r, s]);
+    const derSig = toPaddedDER(sig);
+    const payload = Buffer.concat([nameBuf, derSig]);
 
     // Build the request
     const param = this._buildEncRequest(encReqCodes.FINALIZE_PAIRING, payload);
@@ -157,8 +158,7 @@ class Client {
   _getEphemId() {
     if (this.ephemeralPub == null) return null;
     // EphemId is the first 4 bytes of the hash of the shared secret
-    // Note that the secret and slice must be in host byte order (little endian)
-    const secret = this._getSharedSecret().reverse(); // stored in BE, reversed to LE
+    const secret = this._getSharedSecret();
     const hash = this.crypto.createHash('sha256').update(secret).digest();
     return hash.slice(0, 4);
   }
@@ -182,7 +182,7 @@ class Client {
     payloadBuf.writeUInt32LE(cs, 1 + payload.length);
 
     // Encrypt this payload
-    const secret = this._getSharedSecret().reverse();
+    const secret = this._getSharedSecret();
    
     const newEncPayload = aes256_encrypt(payloadBuf, secret);
 
@@ -353,7 +353,7 @@ class Client {
     let off = 0;
     const pairingStatus = res.readUInt8(off); off++;
     // If we are already paired, we get the next ephemeral key
-    const pub = `04${res.slice(off, res.length).toString('hex')}`
+    const pub = res.slice(off, res.length).toString('hex');
     this.ephemeralPub = getP256KeyPairFromPub(pub);
     // return the state of our pairing
     return (pairingStatus === messageConstants.PAIRED);
@@ -365,19 +365,16 @@ class Client {
   // for the next request
   // @returns error (or null)
   _handlePair(encRes) {
-    const secret = this._getSharedSecret().reverse();
+    const secret = this._getSharedSecret();
     const encData = encRes.slice(0, ENC_MSG_LEN);
     const res = aes256_decrypt(encData, secret);
-
-    // Verify the checksum. This will be based on endian flipped fields.
-    const ephemX = res.slice(0, 32).reverse();
-    const ephemY = res.slice(32, 64).reverse();
-    const cs = parseInt(`0x${res.slice(64, 68).toString('hex')}`);
-    const csCheck = checksum(Buffer.concat([ephemX, ephemY]));
+    // Decrypted response is [pubKey|checksum]
+    const pubBuf = res.slice(0, 65);
+    const pub = pubBuf.toString('hex');
+    const cs = parseInt(`0x${res.slice(65, 69).toString('hex')}`);
+    // Verify checksum on returned pubkey
+    const csCheck = checksum(pubBuf);
     if (cs !== csCheck) return 'Checksum mismatch in response from Lattice';
-
-    // Update the ephemeral key
-    const pub = `04${ephemX.toString('hex')}${ephemY.toString('hex')}`;
     try {
       this.ephemeralPub = getP256KeyPairFromPub(pub); 
       // Remove the pairing salt - we're paired!
@@ -391,10 +388,18 @@ class Client {
 
   // Get 64 bytes representing the public key
   // This is the uncompressed key without the leading 04 byte
-  pubKeyBytes() {
+  pubKeyBytes(LE=false) {
     const k = this.key.getPublic();
     const p = k.encode('hex');
-    return Buffer.from(p, 'hex').slice(1);
+    const pb = Buffer.from(p, 'hex');
+    if (LE === true) {
+      // Need to flip X and Y components to little endian
+      const x = pb.slice(1, 33).reverse();
+      const y = pb.slice(33, 65).reverse();
+      return Buffer.concat([pb[0], x, y]);
+    } else {
+      return pb;
+    }
   }
 
 }
