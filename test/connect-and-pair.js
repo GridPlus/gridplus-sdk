@@ -16,6 +16,7 @@ describe('Connect and Pair', () => {
     client = new Sdk.Client({
       name: 'ConnectAndPairClient',
       crypto,
+      timeout: 120000,
     });
   });
 
@@ -36,8 +37,9 @@ describe('Connect and Pair', () => {
   }
 
   it('Should connect to an agent', async () => {
-    const _id = question('Please enter the ID of your test device: ');
-    id = _id;
+    // const _id = question('Please enter the ID of your test device: ');
+    // id = _id;
+    id = '05afee8105303f3c';
     const connectErr = await connect(client, id);
     caughtErr = connectErr !== null;
     expect(connectErr).to.equal(null);

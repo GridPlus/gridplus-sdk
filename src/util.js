@@ -9,6 +9,10 @@ const { AES_IV, dict, responseCodes, OPs, VERSION_BYTE } = require('./constants'
 const EC = elliptic.ec;
 const ec = new EC('p256');
 
+//--------------------------------------------------
+// LATTICE UTILS
+//--------------------------------------------------
+
 // Parse a response from the Lattice1
 function parseLattice1Response(r) {
   const parsed = {
@@ -63,6 +67,17 @@ function checksum(x) {
   // crc32 returns a signed integer - need to cast it to unsigned
   // Note that this uses the default 0xedb88320 polynomial
   return crc32.buf(x) >>> 0; // Need this to be a uint, hence the bit shift
+}
+
+// Get a 74-byte padded DER-encoded signature buffer
+// `sig` must be the signature output from elliptic.js
+function toPaddedDER(sig) {
+  // We use 74 as the maximum length of a DER signature. All sigs must
+  // be right-padded with zeros so that this can be a fixed size field
+  const b = Buffer.alloc(74);
+  const ds = Buffer.from(sig.toDER());
+  ds.copy(b);
+  return b;
 }
 
 //--------------------------------------------------
@@ -330,4 +345,5 @@ module.exports = {
   parseSigResponse,
   sortByHeight,
   getTxHash,
+  toPaddedDER,
 }
