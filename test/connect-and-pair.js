@@ -36,10 +36,19 @@ describe('Connect and Pair', () => {
     })
   }
 
+  function getAddresses(client, currency, startIdx, n) {
+    return new Promise((resolve, reject) => {
+      client.getAddresses(currency, startIdx, n, (data, err) => {
+        if (err) return reject(err);
+        return resolve(data);
+      })
+    })
+  }
+
   it('Should connect to an agent', async () => {
     // const _id = question('Please enter the ID of your test device: ');
     // id = _id;
-    id = '05afee8105303f3c';
+    id = 'daf68f71bf37a3c5';
     const connectErr = await connect(client, id);
     caughtErr = connectErr !== null;
     expect(connectErr).to.equal(null);
@@ -64,6 +73,19 @@ describe('Connect and Pair', () => {
       expect(connectErr).to.equal(null);
       expect(client.isPaired).to.equal(true);
     }
-  })
+  });
+
+  it('Should get addresses', async () => {
+    expect(caughtErr).to.equal(false);
+    if (caughtErr == false) {
+      try {
+        const addrs = await getAddresses(client, 'BTC', 1000, 5);
+        console.log('Got addrs!', addrs);
+      } catch (err) {
+        caughtErr = err !== null;
+        expect(err).to.equal(null);
+      }
+    }
+  });
 
 });

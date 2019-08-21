@@ -11,10 +11,13 @@ const {
 } = require('./util');
 const {
   ENC_MSG_LEN,
+  addressSizes,
+  currencyCodes,
   deviceCodes,
   encReqCodes,
   responseCodes,
   deviceResponses,
+  MAX_NUM_ADDRS,
   REQUEST_TYPE_BYTE,
   VERSION_BYTE,
   messageConstants,
@@ -105,6 +108,20 @@ class Client {
     })  
   }
 
+  getAddresses(currency, startIndex, n, cb) {
+    if (currencyCodes[currency] === undefined) return cb('Unsupported currency');
+    const payload = Buffer.alloc(6);
+    payload.writeUInt8(currencyCodes[currency]);
+    payload.writeUInt32BE(startIndex, 1);
+    payload.writeUInt8(n, 5);
+    const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
+    return this._request(param, (err, res) => {
+      if (err) return cb(err);
+      const parsedRes = this._handleGetAddresses(res, currency);
+      if (parsedRes.err) return cb(parsedRes.err);
+      return cb(parsedRes.data);
+    })
+  }
   //=======================================================================
   // PROVIDER FUNCTIONS
   // These functions interact directly with the node providers (e.g. BTC or ETH)
@@ -180,7 +197,6 @@ class Client {
     payload.copy(payloadBuf, 1);
 
     payloadBuf.writeUInt32LE(cs, 1 + payload.length);
-
     // Encrypt this payload
     const secret = this._getSharedSecret();
    
@@ -226,93 +242,6 @@ class Client {
     return req;
   }
 
-/*
-  pairedRequest(method, { param = {}, id = this._newId() }, cb) {
-    try {
-      const req = this._createRequestData(param, id, method);
-      return this.request(method, req, (err, res) => {
-        if (err) return cb(err);
-        return this._decryptResponse(res, cb);
-      });
-    } catch (err) {
-      return cb(err);
-    }
-  }
-
-  request(method, param, cb) {
-    if (typeof param === 'function') {
-      cb = param;
-      param = null;
-    }
-    param = param || {};
-
-    param.key = param.key || this.ecdhPub;
-    // param.key = this.ecdhPub;
-    param.data = param.data || null;
-    param.id = param.id || this._newId();
-
-    debug(`requesting ${method} ${JSON.stringify(param)}`);
-
-    return this._request({ method, param }, (err, res) => {
-      if (err) return cb(err)
-      else if (!res || !res.body || !res.body.result) return cb('Could not get a response from the device.');
-      try {
-        this._prepareNextRequest(res.body.result);
-      } catch (err) {
-        return cb(err);
-      }
-      return cb(null, res.body);
-    });
-  }
-
-  _createRequestData(data, id, type) {
-    const req = JSON.stringify(data);
-    const msg = this.crypto.createHash(`${id}${type}${req}`);
-    const body = JSON.stringify({
-      data: req,
-      sig: this.key.sign(msg).toDER(),
-      type,
-    });
-
-    debug(`creating request data: ${JSON.stringify(data)} id: ${id} type: ${type}`);
-
-    const encBody = encrypt(body, this.sharedSecret, this.counter);
-    return {
-      body: encBody,
-      id,
-    };
-  }
-
-  _decryptResponse(res, cb) {
-    try {
-      res.result = JSON.parse(res.result);
-    } catch (err) {
-      return cb(err);
-    }
-    return cb(null, res);
-  }
-
-  _newId() {
-    // if we have a shared secret, derive a new id from it. else use random bytes.
-    if (this.sharedSecret === null) {
-      return this.crypto.randomBytes(32);
-    }
-    return this.crypto.createHash(this.sharedSecret).toString('hex');
-  }
-
-  _prepareNextRequest(result) {
-    token = JSON.parse(result.newToken);
-
-    if (token.data.status && token.data.status !== 200) throw new Error(`remote agent signing error: status code: ${token.data.status} message: ${token.data.message}`);
-    if (
-      (token.data && token.data.counter && token.data.ephemPublicKey) ||
-      (token.data.newToken && token.data.newToken.counter && token.data.newToken.ephemPublicKey)
-    ) {
-      this.counter = token.data.counter || token.data.newToken.counter;
-      this.sharedSecret = deriveSecret(this.privKey, token.data.ephemPublicKey || token.data.newToken.ephemPublicKey).toString('hex');
-    }
-  }
-*/
   _request(data, cb) {
     if (!this.deviceId) return cb('Serial is not set. Please set it and try again.');
     const url = `${this.baseUrl}/${this.deviceId}`;
@@ -374,7 +303,7 @@ class Client {
     const cs = parseInt(`0x${res.slice(65, 69).toString('hex')}`);
     // Verify checksum on returned pubkey
     const csCheck = checksum(pubBuf);
-    if (cs !== csCheck) return 'Checksum mismatch in response from Lattice';
+    if (cs !== csCheck) return `Checksum mismatch in response from Lattice (got ${cs}, wanted ${csCheck})`;
     try {
       this.ephemeralPub = getP256KeyPairFromPub(pub); 
       // Remove the pairing salt - we're paired!
@@ -383,6 +312,47 @@ class Client {
       return null;
     } catch (err) {
       return `Error handling pairing response: ${err.toString()}`;
+    }
+  }
+
+  // GetAddresses will return an array of pubkey hashes
+  _handleGetAddresses(encRes, currency) {
+    // Decrypt response
+    const secret = this._getSharedSecret();
+    const encData = encRes.slice(0, ENC_MSG_LEN);
+    const res = aes256_decrypt(encData, secret);
+    let off = 0;
+
+    // Get the size of each expected address
+    if (addressSizes[currency] === undefined) return { err: 'Unsupported currency' };
+    const addrSize = addressSizes[currency];
+    
+    // Validate checksum
+    const resLen = 66 + (addrSize * MAX_NUM_ADDRS); // PubkeyLen (65 bytes) + NumAddrs (1 byte) + Addresses
+    const toCheck = res.slice(0, resLen);
+    const cs = parseInt(`0x${res.slice(resLen, resLen + 4).toString('hex')}`);
+    const csCheck = checksum(toCheck);
+    if (cs !== csCheck) return { err: `Checksum mismatch in response from Lattice (calculated ${csCheck}, wanted ${cs})` };
+
+    // First 65 bytes is the next ephemeral pubkey
+    const pub = res.slice(off, 65).toString('hex'); off += 65;
+    
+    // After that, we can start parsing the addresses
+    // Number of addresses
+    const numAddr = parseInt(res[off]); off++;
+    let addrs = [];
+    // Get the addresses
+    for (let i = 0; i < numAddr; i++) {
+      // Pull the address off. It should be in little endian, so we need to reverse
+      const a = res.slice(off, off + addrSize).reverse();
+      addrs.push(a);
+      off += addrSize;
+    }
+    try {
+      this.ephemeralPub = getP256KeyPairFromPub(pub);
+      return { data: addrs, err: null };
+    } catch (err) {
+      return { err: `Error handling getAddresses response: ${err.toString()}` };
     }
   }
 

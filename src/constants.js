@@ -18,15 +18,25 @@ const deviceCodes = {
 }
 
 const encReqCodes = {
-    'FINALIZE_PAIRING': 1,
-    'GET_ADDRESSES': 2,
-    'ADD_PERMISSION': 3,
-    'SIGN_TRANSACTION': 4,
+    'FINALIZE_PAIRING': 0,
+    'GET_ADDRESSES': 1,
+    'ADD_PERMISSION': 2,
+    'SIGN_TRANSACTION': 3,
 }
 
 const messageConstants = {
     'NOT_PAIRED': 0x00,
     'PAIRED': 0x01,
+}
+
+const currencyCodes = {
+    'BTC': 0,
+    'ETH': 1,
+}
+
+const addressSizes = {
+    'BTC': 20,  // 20 byte pubkeyhash
+    'ETH': 20,  // 20 byte address not including 0x prefix
 }
   
 const responseCodes = {
@@ -48,18 +58,22 @@ const deviceResponses = {
     START_DATA_IDX: 5, // Beginning of data field for Lattice responses
 }
 
-const VERSION_BYTE = 1;
+const MAX_NUM_ADDRS = 10; // Maximum number of addresses we can request
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
+const VERSION_BYTE = 1;
 
 module.exports = {
     AES_IV,
     ENC_MSG_LEN,
     OPs,
+    addressSizes,
+    currencyCodes,
     deviceCodes,
     encReqCodes,
     messageConstants,
     responseCodes,
     deviceResponses,
+    MAX_NUM_ADDRS,
     REQUEST_TYPE_BYTE,
     VERSION_BYTE,
 }
