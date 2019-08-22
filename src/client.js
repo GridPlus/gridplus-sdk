@@ -4,6 +4,7 @@ const {
   aes256_decrypt,
   aes256_encrypt,
   checksum,
+  getBitcoinAddress,
   getP256KeyPair,
   getP256KeyPairFromPub,
   parseLattice1Response,
@@ -108,50 +109,23 @@ class Client {
     })  
   }
 
-  getAddresses(currency, startIndex, n, cb) {
-    if (currencyCodes[currency] === undefined) return cb('Unsupported currency');
+  getAddresses(opts, cb) {
+    const { currency, startIndex, n, version } = opts;
+    if (currency === undefined || startIndex == undefined || n == undefined) {
+      return cb({ err: 'Please provide `currency`, `startIndex`, and `n` options' });
+    } else if (currencyCodes[currency] === undefined) {
+      return cb({ err: 'Unsupported currency' });
+    }
     const payload = Buffer.alloc(6);
     payload.writeUInt8(currencyCodes[currency]);
     payload.writeUInt32BE(startIndex, 1);
     payload.writeUInt8(n, 5);
     const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
     return this._request(param, (err, res) => {
-      if (err) return cb(err);
-      const parsedRes = this._handleGetAddresses(res, currency);
-      if (parsedRes.err) return cb(parsedRes.err);
-      return cb(parsedRes.data);
+      if (err) return cb({ err });
+      const parsedRes = this._handleGetAddresses(res, currency, version);
+      return cb(parsedRes);
     })
-  }
-  //=======================================================================
-  // PROVIDER FUNCTIONS
-  // These functions interact directly with the node providers (e.g. BTC or ETH)
-  // and do not interact with the lattice. They will only work if the 
-  // client has been instantated with providers
-  //=======================================================================
-
-  getBalance(shortcode, options, cb) {
-    if (!this.providers[shortcode])
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    return this.providers[shortcode].getBalance(options, cb);
-  }
-
-  getTokenBalance(options, cb) {
-    if (!this.providers['ETH'])
-      return cb(new Error('Cannot request token balance. ETH provider is not set.'))
-    return this.providers['ETH'].getTokenBalance(options, cb);
-  }
-
-  getTxHistory(shortcode, options, cb) {
-    if (!this.providers[shortcode])
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    return this.providers[shortcode].getTxHistory(options, cb);
-  }
-
-  // Get (one or more) transaction(s) and return (one or more) object(s) that conform to a common schema across currencies
-  getTx(shortcode, hashes, opts, cb) {
-    if (!this.providers[shortcode])
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    return this.providers[shortcode].getTx(hashes, cb, opts);
   }
 
   //=======================================================================
@@ -316,7 +290,7 @@ class Client {
   }
 
   // GetAddresses will return an array of pubkey hashes
-  _handleGetAddresses(encRes, currency) {
+  _handleGetAddresses(encRes, currency, version='LEGACY') {
     // Decrypt response
     const secret = this._getSharedSecret();
     const encData = encRes.slice(0, ENC_MSG_LEN);
@@ -343,9 +317,22 @@ class Client {
     let addrs = [];
     // Get the addresses
     for (let i = 0; i < numAddr; i++) {
-      // Pull the address off. It should be in little endian, so we need to reverse
-      const a = res.slice(off, off + addrSize).reverse();
-      addrs.push(a);
+      // Get the address-like data (depends on currnecy) -- data is in little endian
+      // so we need to endian flip it
+      const d = res.slice(off, off + addrSize).reverse();
+      let addr;
+      switch (currency) {
+        case 'BTC':
+          addr = getBitcoinAddress(d, version);
+          if (addr === null) return { err: 'Unsupported version byte' };
+          break;
+        case 'ETH':
+          addr = `0x${d.toString('hex')}`;
+          break;
+        default:
+          return { err: 'Unsupported currency' };
+      }
+      addrs.push(addr);
       off += addrSize;
     }
     try {

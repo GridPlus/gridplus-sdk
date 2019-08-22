@@ -38,6 +38,12 @@ const addressSizes = {
     'BTC': 20,  // 20 byte pubkeyhash
     'ETH': 20,  // 20 byte address not including 0x prefix
 }
+
+const bitcoinVersionByte = {
+    'LEGACY': 0x00,
+    'P2SH': 0x05,
+    'TESTNET': 0x6F,
+}
   
 const responseCodes = {
     'SUCCESS': 0x00,
@@ -67,6 +73,7 @@ module.exports = {
     ENC_MSG_LEN,
     OPs,
     addressSizes,
+    bitcoinVersionByte,
     currencyCodes,
     deviceCodes,
     encReqCodes,
