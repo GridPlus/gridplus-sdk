@@ -123,7 +123,7 @@ class Client {
     const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
     return this._request(param, (err, res) => {
       if (err) return cb({ err });
-      const parsedRes = this._handleGetAddresses(res, currency, version);
+      const parsedRes = this._handleGetAddresses(res, currency, n, version);
       return cb(parsedRes);
     })
   }
@@ -290,7 +290,7 @@ class Client {
   }
 
   // GetAddresses will return an array of pubkey hashes
-  _handleGetAddresses(encRes, currency, version='LEGACY') {
+  _handleGetAddresses(encRes, currency, numAddr, version='LEGACY') {
     // Decrypt response
     const secret = this._getSharedSecret();
     const encData = encRes.slice(0, ENC_MSG_LEN);
@@ -302,7 +302,7 @@ class Client {
     const addrSize = addressSizes[currency];
     
     // Validate checksum
-    const resLen = 66 + (addrSize * MAX_NUM_ADDRS); // PubkeyLen (65 bytes) + NumAddrs (1 byte) + Addresses
+    const resLen = 65 + (addrSize * MAX_NUM_ADDRS); // PubkeyLen (65 bytes) + Addresses
     const toCheck = res.slice(0, resLen);
     const cs = parseInt(`0x${res.slice(resLen, resLen + 4).toString('hex')}`);
     const csCheck = checksum(toCheck);
@@ -312,8 +312,6 @@ class Client {
     const pub = res.slice(off, 65).toString('hex'); off += 65;
     
     // After that, we can start parsing the addresses
-    // Number of addresses
-    const numAddr = parseInt(res[off]); off++;
     let addrs = [];
     // Get the addresses
     for (let i = 0; i < numAddr; i++) {
