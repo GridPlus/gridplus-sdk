@@ -173,7 +173,6 @@ class Client {
     payloadBuf.writeUInt32LE(cs, 1 + payload.length);
     // Encrypt this payload
     const secret = this._getSharedSecret();
-   
     const newEncPayload = aes256_encrypt(payloadBuf, secret);
 
     // Write to the overall payload
