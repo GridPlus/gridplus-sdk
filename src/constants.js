@@ -58,10 +58,15 @@ const responseCodes = {
     0x88: 'Device Error', 
 }
  
-
 const deviceResponses = {
     START_CODE_IDX: 1, // Beginning of 4-byte status code in Lattice response
     START_DATA_IDX: 5, // Beginning of data field for Lattice responses
+}
+
+const signingSchema = {
+    BTC_TRANSFER: 0,
+    ETH_TRANSFER: 1,
+    ERC20_TRANSFER: 2
 }
 
 const MAX_NUM_ADDRS = 10; // Maximum number of addresses we can request
@@ -80,6 +85,7 @@ module.exports = {
     messageConstants,
     responseCodes,
     deviceResponses,
+    signingSchema,
     MAX_NUM_ADDRS,
     REQUEST_TYPE_BYTE,
     VERSION_BYTE,

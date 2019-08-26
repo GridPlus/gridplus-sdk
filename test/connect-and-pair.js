@@ -44,6 +44,14 @@ describe('Connect and Pair', () => {
     })
   }
 
+  function sign(client, opts) {
+    return new Promise((resolve, reject) => {
+      client.sign((res) => {
+        return resolve(res);
+      })
+    })
+  }
+
   it('Should connect to an agent', async () => {
     // const _id = question('Please enter the ID of your test device: ');
     // id = _id;
@@ -111,7 +119,14 @@ describe('Connect and Pair', () => {
       addrData.n = 11;
       addrs = await getAddresses(client, addrData);
       expect(addrs.err).to.not.equal(null);
+      
     }
   });
+
+  it('Should sign a tx (dummy)', async () => {
+    const sig = await sign(client, {});
+    expect(sig.err).to.equal(null);
+  })
+  
 
 });

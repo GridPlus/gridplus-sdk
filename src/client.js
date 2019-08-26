@@ -1,4 +1,5 @@
-const crc32 = require('crc-32');
+const EthereumTx = require('ethereumjs-tx').Transaction;
+const rlp = require('rlp');
 const superagent = require('superagent');
 const {
   aes256_decrypt,
@@ -18,6 +19,7 @@ const {
   encReqCodes,
   responseCodes,
   deviceResponses,
+  signingSchema,
   MAX_NUM_ADDRS,
   REQUEST_TYPE_BYTE,
   VERSION_BYTE,
@@ -124,6 +126,22 @@ class Client {
     return this._request(param, (err, res) => {
       if (err) return cb({ err });
       const parsedRes = this._handleGetAddresses(res, currency, n, version);
+      return cb(parsedRes);
+    })
+  }
+
+  sign(cb) {
+    const rlpEncoded = Buffer.from('f849808609184e72a00082271094000000000000000000000000000000000000000080a47f7465737432000000000000000000000000000000000000000000000000000000600057808080', 'hex');
+    const ETH_TX_MAX_SIZE = 180;
+    if (rlpEncoded.length > ETH_TX_MAX_SIZE) return cb({ err: 'Ethereum transaction data too big' });
+    const payload = Buffer.alloc(6 + ETH_TX_MAX_SIZE);
+    payload.writeUInt16BE(signingSchema.ETH_TRANSFER, 0);
+    payload.writeUInt32BE(0, 2); // Signing index (param not yet in spec)
+    rlpEncoded.copy(payload, 6);
+    const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
+    return this._request(param, (err, res) => {
+      if (err) return cb({ err });
+      const parsedRes = this._handleSign(res);
       return cb(parsedRes);
     })
   }
@@ -288,28 +306,48 @@ class Client {
     }
   }
 
-  // GetAddresses will return an array of pubkey hashes
-  _handleGetAddresses(encRes, currency, numAddr, version='LEGACY') {
+  // All encrypted responses must be decrypted with the previous shared secret. Per specification,
+  // decrypted responses will all contain a 65-byte public key as the prefix, which becomes the 
+  // new ephemeralPub.
+  _handleEncResponse(encRes, expectedLen) {
     // Decrypt response
     const secret = this._getSharedSecret();
     const encData = encRes.slice(0, ENC_MSG_LEN);
     const res = aes256_decrypt(encData, secret);
-    let off = 0;
-
-    // Get the size of each expected address
-    if (addressSizes[currency] === undefined) return { err: 'Unsupported currency' };
-    const addrSize = addressSizes[currency];
-    
+    console.log('decrypted', res.toString('hex'));
     // Validate checksum
-    const resLen = 65 + (addrSize * MAX_NUM_ADDRS); // PubkeyLen (65 bytes) + Addresses
+    const resLen = 65 + expectedLen
     const toCheck = res.slice(0, resLen);
     const cs = parseInt(`0x${res.slice(resLen, resLen + 4).toString('hex')}`);
     const csCheck = checksum(toCheck);
+    console.log('cs', cs, 'csCheck', csCheck)
     if (cs !== csCheck) return { err: `Checksum mismatch in response from Lattice (calculated ${csCheck}, wanted ${cs})` };
 
     // First 65 bytes is the next ephemeral pubkey
-    const pub = res.slice(off, 65).toString('hex'); off += 65;
-    
+    const pub = res.slice(0, 65).toString('hex');
+    try {
+      this.ephemeralPub = getP256KeyPairFromPub(pub);
+      return { err: null, data: res };
+    } catch (e) {
+      return { err: `Error handling getAddresses response: ${e.toString()}` };
+    }
+  }
+
+  // GetAddresses will return an array of pubkey hashes
+  _handleGetAddresses(encRes, currency, numAddr, version='LEGACY') {
+    // Get the size of each expected address
+    if (addressSizes[currency] === undefined) return { err: 'Unsupported currency' };
+    const addrSize = addressSizes[currency];
+    // const resLen = 65 + (addrSize * MAX_NUM_ADDRS); // PubkeyLen (65 bytes) + Addresses
+    const expectedLen = addrSize * MAX_NUM_ADDRS;
+
+    // Handle the encrypted response
+    const decrypted = this._handleEncResponse(encRes, expectedLen);
+    if (decrypted.err !== null ) return decrypted;
+
+    let off = 65; // Skip past pubkey prefix
+    const res = decrypted.data;
+
     // After that, we can start parsing the addresses
     let addrs = [];
     // Get the addresses
@@ -331,13 +369,20 @@ class Client {
       }
       addrs.push(addr);
       off += addrSize;
-    }
-    try {
-      this.ephemeralPub = getP256KeyPairFromPub(pub);
-      return { data: addrs, err: null };
-    } catch (err) {
-      return { err: `Error handling getAddresses response: ${err.toString()}` };
-    }
+    }      
+    return { data: addrs, err: null };
+  }
+
+
+  _handleSign(encRes) {
+    console.log('handling sign', encRes.toString('hex'));
+    // Handle the encrypted response
+    const decrypted = this._handleEncResponse(encRes, 65);
+    if (decrypted.err !== null ) return decrypted;
+
+    const off = 65; // Skip past pubkey prefix
+    const res = decrypted.data;
+    console.log('sigdata', res.toString('hex'));
   }
 
   // Get 64 bytes representing the public key
