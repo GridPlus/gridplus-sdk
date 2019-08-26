@@ -36,10 +36,18 @@ describe('Connect and Pair', () => {
     })
   }
 
+  function getAddresses(client, opts) {
+    return new Promise((resolve, reject) => {
+      client.getAddresses(opts, (res) => {
+        return resolve(res);
+      })
+    })
+  }
+
   it('Should connect to an agent', async () => {
     // const _id = question('Please enter the ID of your test device: ');
     // id = _id;
-    id = '05afee8105303f3c';
+    id = 'daf68f71bf37a3c5';
     const connectErr = await connect(client, id);
     caughtErr = connectErr !== null;
     expect(connectErr).to.equal(null);
@@ -64,6 +72,46 @@ describe('Connect and Pair', () => {
       expect(connectErr).to.equal(null);
       expect(client.isPaired).to.equal(true);
     }
-  })
+  });
+
+  it('Should get addresses', async () => {
+    expect(caughtErr).to.equal(false);
+    if (caughtErr == false) {
+      const addrData = { currency: 'BTC', startIndex: 1000, n: 5 }
+      // Legacy addresses (default `version`)
+      let addrs = await getAddresses(client, addrData);
+      expect(addrs.err).to.equal(null);
+      expect(addrs.data.length).to.equal(5);
+      expect(addrs.data[0][0]).to.equal('1');
+      // P2SH addresses
+      addrData.version = 'P2SH';
+      addrData.n = 4;
+      addrs = await getAddresses(client, addrData);
+      expect(addrs.err).to.equal(null);
+      expect(addrs.data.length).to.equal(4);
+      expect(addrs.data[0][0]).to.equal('3');
+      // Ethereum addresses
+      addrData.currency = 'ETH';
+      addrs = await getAddresses(client, addrData);
+      expect(addrs.err).to.equal(null);
+      expect(addrs.data.length).to.equal(4);
+      expect(addrs.data[0].slice(0, 2)).to.equal('0x');
+      // Failure cases
+      // Unsupported currency
+      addrData.currency = 'BCH';
+      addrs = await getAddresses(client, addrData);
+      expect(addrs.err).to.not.equal(null);
+      // Unsupported version byte
+      addrData.currency = 'BTC';
+      addrData.version = 'P2WKH';
+      addrs = await getAddresses(client, addrData);      
+      expect(addrs.err).to.not.equal(null);
+      // Too many addresses (n>10)
+      addrData.version = 'P2SH';
+      addrData.n = 11;
+      addrs = await getAddresses(client, addrData);
+      expect(addrs.err).to.not.equal(null);
+    }
+  });
 
 });

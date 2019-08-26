@@ -31,6 +31,7 @@
     "bignumber.js": "^8.0.1",
     "bitcoinjs-lib": "^4.0.1",
     "bn.js": "^4.11.8",
+    "bs58check": "^2.1.2",
     "buffer": "^5.1.0",
     "crc-32": "^1.2.0",
     "debug": "^4.1.0",

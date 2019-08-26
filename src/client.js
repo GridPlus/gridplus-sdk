@@ -4,6 +4,7 @@ const {
   aes256_decrypt,
   aes256_encrypt,
   checksum,
+  getBitcoinAddress,
   getP256KeyPair,
   getP256KeyPairFromPub,
   parseLattice1Response,
@@ -11,10 +12,13 @@ const {
 } = require('./util');
 const {
   ENC_MSG_LEN,
+  addressSizes,
+  currencyCodes,
   deviceCodes,
   encReqCodes,
   responseCodes,
   deviceResponses,
+  MAX_NUM_ADDRS,
   REQUEST_TYPE_BYTE,
   VERSION_BYTE,
   messageConstants,
@@ -105,36 +109,23 @@ class Client {
     })  
   }
 
-  //=======================================================================
-  // PROVIDER FUNCTIONS
-  // These functions interact directly with the node providers (e.g. BTC or ETH)
-  // and do not interact with the lattice. They will only work if the 
-  // client has been instantated with providers
-  //=======================================================================
-
-  getBalance(shortcode, options, cb) {
-    if (!this.providers[shortcode])
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    return this.providers[shortcode].getBalance(options, cb);
-  }
-
-  getTokenBalance(options, cb) {
-    if (!this.providers['ETH'])
-      return cb(new Error('Cannot request token balance. ETH provider is not set.'))
-    return this.providers['ETH'].getTokenBalance(options, cb);
-  }
-
-  getTxHistory(shortcode, options, cb) {
-    if (!this.providers[shortcode])
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    return this.providers[shortcode].getTxHistory(options, cb);
-  }
-
-  // Get (one or more) transaction(s) and return (one or more) object(s) that conform to a common schema across currencies
-  getTx(shortcode, hashes, opts, cb) {
-    if (!this.providers[shortcode])
-      return cb(new Error(`no provider loaded for shortcode ${shortcode}`));
-    return this.providers[shortcode].getTx(hashes, cb, opts);
+  getAddresses(opts, cb) {
+    const { currency, startIndex, n, version } = opts;
+    if (currency === undefined || startIndex == undefined || n == undefined) {
+      return cb({ err: 'Please provide `currency`, `startIndex`, and `n` options' });
+    } else if (currencyCodes[currency] === undefined) {
+      return cb({ err: 'Unsupported currency' });
+    }
+    const payload = Buffer.alloc(6);
+    payload.writeUInt8(currencyCodes[currency]);
+    payload.writeUInt32BE(startIndex, 1);
+    payload.writeUInt8(n, 5);
+    const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
+    return this._request(param, (err, res) => {
+      if (err) return cb({ err });
+      const parsedRes = this._handleGetAddresses(res, currency, n, version);
+      return cb(parsedRes);
+    })
   }
 
   //=======================================================================
@@ -180,7 +171,6 @@ class Client {
     payload.copy(payloadBuf, 1);
 
     payloadBuf.writeUInt32LE(cs, 1 + payload.length);
-
     // Encrypt this payload
     const secret = this._getSharedSecret();
    
@@ -226,93 +216,6 @@ class Client {
     return req;
   }
 
-/*
-  pairedRequest(method, { param = {}, id = this._newId() }, cb) {
-    try {
-      const req = this._createRequestData(param, id, method);
-      return this.request(method, req, (err, res) => {
-        if (err) return cb(err);
-        return this._decryptResponse(res, cb);
-      });
-    } catch (err) {
-      return cb(err);
-    }
-  }
-
-  request(method, param, cb) {
-    if (typeof param === 'function') {
-      cb = param;
-      param = null;
-    }
-    param = param || {};
-
-    param.key = param.key || this.ecdhPub;
-    // param.key = this.ecdhPub;
-    param.data = param.data || null;
-    param.id = param.id || this._newId();
-
-    debug(`requesting ${method} ${JSON.stringify(param)}`);
-
-    return this._request({ method, param }, (err, res) => {
-      if (err) return cb(err)
-      else if (!res || !res.body || !res.body.result) return cb('Could not get a response from the device.');
-      try {
-        this._prepareNextRequest(res.body.result);
-      } catch (err) {
-        return cb(err);
-      }
-      return cb(null, res.body);
-    });
-  }
-
-  _createRequestData(data, id, type) {
-    const req = JSON.stringify(data);
-    const msg = this.crypto.createHash(`${id}${type}${req}`);
-    const body = JSON.stringify({
-      data: req,
-      sig: this.key.sign(msg).toDER(),
-      type,
-    });
-
-    debug(`creating request data: ${JSON.stringify(data)} id: ${id} type: ${type}`);
-
-    const encBody = encrypt(body, this.sharedSecret, this.counter);
-    return {
-      body: encBody,
-      id,
-    };
-  }
-
-  _decryptResponse(res, cb) {
-    try {
-      res.result = JSON.parse(res.result);
-    } catch (err) {
-      return cb(err);
-    }
-    return cb(null, res);
-  }
-
-  _newId() {
-    // if we have a shared secret, derive a new id from it. else use random bytes.
-    if (this.sharedSecret === null) {
-      return this.crypto.randomBytes(32);
-    }
-    return this.crypto.createHash(this.sharedSecret).toString('hex');
-  }
-
-  _prepareNextRequest(result) {
-    token = JSON.parse(result.newToken);
-
-    if (token.data.status && token.data.status !== 200) throw new Error(`remote agent signing error: status code: ${token.data.status} message: ${token.data.message}`);
-    if (
-      (token.data && token.data.counter && token.data.ephemPublicKey) ||
-      (token.data.newToken && token.data.newToken.counter && token.data.newToken.ephemPublicKey)
-    ) {
-      this.counter = token.data.counter || token.data.newToken.counter;
-      this.sharedSecret = deriveSecret(this.privKey, token.data.ephemPublicKey || token.data.newToken.ephemPublicKey).toString('hex');
-    }
-  }
-*/
   _request(data, cb) {
     if (!this.deviceId) return cb('Serial is not set. Please set it and try again.');
     const url = `${this.baseUrl}/${this.deviceId}`;
@@ -374,7 +277,7 @@ class Client {
     const cs = parseInt(`0x${res.slice(65, 69).toString('hex')}`);
     // Verify checksum on returned pubkey
     const csCheck = checksum(pubBuf);
-    if (cs !== csCheck) return 'Checksum mismatch in response from Lattice';
+    if (cs !== csCheck) return `Checksum mismatch in response from Lattice (got ${cs}, wanted ${csCheck})`;
     try {
       this.ephemeralPub = getP256KeyPairFromPub(pub); 
       // Remove the pairing salt - we're paired!
@@ -383,6 +286,58 @@ class Client {
       return null;
     } catch (err) {
       return `Error handling pairing response: ${err.toString()}`;
+    }
+  }
+
+  // GetAddresses will return an array of pubkey hashes
+  _handleGetAddresses(encRes, currency, numAddr, version='LEGACY') {
+    // Decrypt response
+    const secret = this._getSharedSecret();
+    const encData = encRes.slice(0, ENC_MSG_LEN);
+    const res = aes256_decrypt(encData, secret);
+    let off = 0;
+
+    // Get the size of each expected address
+    if (addressSizes[currency] === undefined) return { err: 'Unsupported currency' };
+    const addrSize = addressSizes[currency];
+    
+    // Validate checksum
+    const resLen = 65 + (addrSize * MAX_NUM_ADDRS); // PubkeyLen (65 bytes) + Addresses
+    const toCheck = res.slice(0, resLen);
+    const cs = parseInt(`0x${res.slice(resLen, resLen + 4).toString('hex')}`);
+    const csCheck = checksum(toCheck);
+    if (cs !== csCheck) return { err: `Checksum mismatch in response from Lattice (calculated ${csCheck}, wanted ${cs})` };
+
+    // First 65 bytes is the next ephemeral pubkey
+    const pub = res.slice(off, 65).toString('hex'); off += 65;
+    
+    // After that, we can start parsing the addresses
+    let addrs = [];
+    // Get the addresses
+    for (let i = 0; i < numAddr; i++) {
+      // Get the address-like data (depends on currnecy) -- data is in little endian
+      // so we need to endian flip it
+      const d = res.slice(off, off + addrSize).reverse();
+      let addr;
+      switch (currency) {
+        case 'BTC':
+          addr = getBitcoinAddress(d, version);
+          if (addr === null) return { err: 'Unsupported version byte' };
+          break;
+        case 'ETH':
+          addr = `0x${d.toString('hex')}`;
+          break;
+        default:
+          return { err: 'Unsupported currency' };
+      }
+      addrs.push(addr);
+      off += addrSize;
+    }
+    try {
+      this.ephemeralPub = getP256KeyPairFromPub(pub);
+      return { data: addrs, err: null };
+    } catch (err) {
+      return { err: `Error handling getAddresses response: ${err.toString()}` };
     }
   }
 

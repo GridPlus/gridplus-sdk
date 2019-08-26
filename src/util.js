@@ -1,10 +1,12 @@
 // Static utility functions
+const bs58check = require('bs58check')
 const Buffer = require('buffer/').Buffer
 const aes = require('aes-js');
 const crc32 = require('crc-32');
 const leftPad = require('left-pad');
 const elliptic = require('elliptic');
 const config = require('../config');
+const constants = require('./constants');
 const { AES_IV, dict, responseCodes, OPs, VERSION_BYTE } = require('./constants');
 const EC = elliptic.ec;
 const ec = new EC('p256');
@@ -94,6 +96,15 @@ function aes256_decrypt(data, key) {
   const iv = Buffer.from(AES_IV);
   const aesCbc = new aes.ModeOfOperation.cbc(key, iv);
   return Buffer.from(aesCbc.decrypt(data));
+}
+
+// Convert a pubkeyhash to a bitcoin base58check address with a version byte
+function getBitcoinAddress(pubkeyhash, version) {
+  const vb = constants.bitcoinVersionByte[version];
+  if (vb === undefined) {
+    return null;
+  }
+  return bs58check.encode(Buffer.concat([Buffer.from([vb]), pubkeyhash]));
 }
 
 function getProviderShortCode(schemaCode) {
@@ -335,6 +346,7 @@ module.exports = {
   aes256_decrypt,
   aes256_encrypt,
   checksum,
+  getBitcoinAddress,
   parseLattice1Response,
   getProviderShortCode,
   getOutputScriptType,
