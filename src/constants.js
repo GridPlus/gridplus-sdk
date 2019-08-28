@@ -1,9 +1,12 @@
-
 // Consistent with Lattice's IV
 const AES_IV = [0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64]
 
 // Per Lattice spec, all encrypted messages must fit in a 272 byte buffer
 const ENC_MSG_LEN = 272;
+// Encrypted result length must be smaller than the message length. This is also
+// fixed across all encrypted responses. Note that it includes the ephem pubkey
+// which is 65 bytes, AND a 4 byte checksum
+const ENC_RES_LEN = 269; 
   
 const OPs = {
     'a9': 'OP_HASH160',
@@ -69,13 +72,14 @@ const signingSchema = {
     ERC20_TRANSFER: 2
 }
 
-const MAX_NUM_ADDRS = 10; // Maximum number of addresses we can request
+const ETH_DATA_MAX_SIZE = 100; // Maximum number of bytes that can go in the data field
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
 const VERSION_BYTE = 1;
 
 module.exports = {
     AES_IV,
     ENC_MSG_LEN,
+    ENC_RES_LEN,
     OPs,
     addressSizes,
     bitcoinVersionByte,
@@ -86,7 +90,7 @@ module.exports = {
     responseCodes,
     deviceResponses,
     signingSchema,
-    MAX_NUM_ADDRS,
+    ETH_DATA_MAX_SIZE,
     REQUEST_TYPE_BYTE,
     VERSION_BYTE,
 }

@@ -1,10 +1,11 @@
 // Basic tests for atomic SDK functionality
-const assert = require('assert');
 const expect = require('chai').expect;
 const Sdk = require('../index.js');
 const crypto = require('crypto');
-const readline = require('readline');
 const question = require('readline-sync').question;
+const constants = require('../src/constants.js');
+
+const ETH_TX_DATA_MAX = 100;
 
 let client, rl, id;
 let caughtErr = false;
@@ -46,7 +47,7 @@ describe('Connect and Pair', () => {
 
   function sign(client, opts) {
     return new Promise((resolve, reject) => {
-      client.sign((res) => {
+      client.sign(opts, (res) => {
         return resolve(res);
       })
     })
@@ -56,6 +57,7 @@ describe('Connect and Pair', () => {
     // const _id = question('Please enter the ID of your test device: ');
     // id = _id;
     id = 'daf68f71bf37a3c5';
+    // id = '56237bc33a5f1fee';
     const connectErr = await connect(client, id);
     caughtErr = connectErr !== null;
     expect(connectErr).to.equal(null);
@@ -82,6 +84,91 @@ describe('Connect and Pair', () => {
     }
   });
 
+  it('Should sign Ethereum transactions', async () => {
+    // Constants from firmware
+    const GAS_PRICE_MAX = 100000000000;
+    const GAS_LIMIT_MIN = 22000;
+    const GAS_LIMIT_MAX = 10000000;
+
+    let txData = {
+      nonce: 5,
+      gasPrice: 1200000000,
+      gasLimit: 122000,
+      to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+      value: 0.3 * 10 **18,
+      data: null
+    };
+    let req = {
+      currency: 'ETH',
+      data: {
+        signerIndex: 0,
+        txData,
+      }
+    }
+    // [TODO] Add signature verification mechanism once
+    // signatures map directly to derived addresses
+
+    // Sign a legit tx
+    let sig = await sign(client, req);
+    expect(sig.err).to.equal(null);
+    
+    // Nonce too large (>u16)
+    req.data.txData.nonce = 0xffff + 1;
+    sig = await sign(client, req);
+    expect(sig.err).to.not.equal(null);
+    // Reset to valid param
+    req.data.txData.nonce = 5;
+
+    // GasLimit too low
+    req.data.txData.gasLimit = GAS_LIMIT_MIN - 1;
+    sig = await sign(client, req);
+    expect(sig.err).to.not.equal(null);
+
+    // GasLimit too high (>u32)
+    req.data.txData.gasLimit = GAS_LIMIT_MAX + 1;
+    sig = await sign(client, req);
+    expect(sig.err).to.not.equal(null);
+    // Reset to valid param
+    req.data.txData.gasLimit = 122000;
+
+    // GasPrice too high
+    req.data.txData.gasPrice = GAS_PRICE_MAX + 1;
+    sig = await sign(client, req);
+    expect(sig.err).to.not.equal(null);
+    // Reset to valid param
+    req.data.txData.gasLimit = 1200000000;
+    
+    // `to` wrong size
+    req.data.txData.to = '0xe242e54155b1abc71fc118065270cecaaf8b77'
+    sig = await sign(client, req);
+    expect(sig.err).to.not.equal(null);
+    // Reset to valid param 
+    req.data.txData.to = '0xe242e54155b1abc71fc118065270cecaaf8b7768'
+    
+    // Value too high
+    req.data.txData.value = 2 ** 256;
+    sig = await sign(client, req);
+    expect(sig.err).to.not.equal(null);
+    // Reset to valid param
+    req.data.txData.value = 0.3 * 10 ** 18;
+    
+    // Data too large
+    req.data.txData.data = crypto.randomBytes(constants.ETH_DATA_MAX_SIZE + 1).toString('hex');
+    sig = await sign(client, req);
+    expect(sig.err).to.not.equal(null);
+
+    // Reset all values at max
+    req.data.txData.nonce = 0xfffe;
+    req.data.txData.gasLimit = GAS_LIMIT_MAX;
+    req.data.txData.gasPrice = GAS_PRICE_MAX;
+    req.data.txData.value = 123456000000000000000000;
+    
+    req.data.txData.data = crypto.randomBytes(constants.ETH_DATA_MAX_SIZE).toString('hex');
+    sig = await sign(client, req);
+    expect(sig.err).to.equal(null);
+ 
+  })
+/*
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
@@ -119,14 +206,7 @@ describe('Connect and Pair', () => {
       addrData.n = 11;
       addrs = await getAddresses(client, addrData);
       expect(addrs.err).to.not.equal(null);
-      
     }
   });
-
-  it('Should sign a tx (dummy)', async () => {
-    const sig = await sign(client, {});
-    expect(sig.err).to.equal(null);
-  })
-  
-
+*/
 });

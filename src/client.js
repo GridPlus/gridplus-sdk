@@ -1,7 +1,6 @@
-const EthereumTx = require('ethereumjs-tx').Transaction;
-const rlp = require('rlp');
 const superagent = require('superagent');
 const {
+  txBuildingResolver,
   aes256_decrypt,
   aes256_encrypt,
   checksum,
@@ -13,6 +12,7 @@ const {
 } = require('./util');
 const {
   ENC_MSG_LEN,
+  ENC_RES_LEN,
   addressSizes,
   currencyCodes,
   deviceCodes,
@@ -20,7 +20,6 @@ const {
   responseCodes,
   deviceResponses,
   signingSchema,
-  MAX_NUM_ADDRS,
   REQUEST_TYPE_BYTE,
   VERSION_BYTE,
   messageConstants,
@@ -130,14 +129,32 @@ class Client {
     })
   }
 
-  sign(cb) {
-    const rlpEncoded = Buffer.from('f849808609184e72a00082271094000000000000000000000000000000000000000080a47f7465737432000000000000000000000000000000000000000000000000000000600057808080', 'hex');
-    const ETH_TX_MAX_SIZE = 180;
-    if (rlpEncoded.length > ETH_TX_MAX_SIZE) return cb({ err: 'Ethereum transaction data too big' });
-    const payload = Buffer.alloc(6 + ETH_TX_MAX_SIZE);
+  sign(opts, cb) {
+   const { currency, data } = opts;
+    if (currency == undefined || data == undefined) {
+      return cb({ err: 'Please provide `currency` and `data` options'});
+    } else if (currencyCodes[currency] === undefined) {
+      return cb({ err: 'Unsupported currency' });
+    }
+    
+    // Build the transaction payload to send to the device. If we catch
+    // bad params, return an error instead
+    const tx = txBuildingResolver[currency](data);
+    if (tx.err !== undefined) return cb({ err: tx.err, data: null });
+
+    // All transaction requests must be put into the same sized buffer
+    // so that checksums may be validated
+    // [TODO]: Incorporate bitcoin max size into this. Currently we only
+    //          have `GpEthereumTransactionRequest_t` to set this boundary
+    //          in firmware
+    const MAX_TX_SIZE = 4 + 200;
+    if (tx.payload.length > MAX_TX_SIZE) {
+      return cb({ err: 'Transaction is too large' });
+    }
+    const payload = Buffer.alloc(2 + MAX_TX_SIZE);
     payload.writeUInt16BE(signingSchema.ETH_TRANSFER, 0);
-    payload.writeUInt32BE(0, 2); // Signing index (param not yet in spec)
-    rlpEncoded.copy(payload, 6);
+    tx.payload.copy(payload, 2);
+
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
     return this._request(param, (err, res) => {
       if (err) return cb({ err });
@@ -309,18 +326,15 @@ class Client {
   // All encrypted responses must be decrypted with the previous shared secret. Per specification,
   // decrypted responses will all contain a 65-byte public key as the prefix, which becomes the 
   // new ephemeralPub.
-  _handleEncResponse(encRes, expectedLen) {
+  _handleEncResponse(encRes) {
     // Decrypt response
     const secret = this._getSharedSecret();
     const encData = encRes.slice(0, ENC_MSG_LEN);
     const res = aes256_decrypt(encData, secret);
-    console.log('decrypted', res.toString('hex'));
     // Validate checksum
-    const resLen = 65 + expectedLen
-    const toCheck = res.slice(0, resLen);
-    const cs = parseInt(`0x${res.slice(resLen, resLen + 4).toString('hex')}`);
+    const toCheck = res.slice(0, ENC_RES_LEN - 4);
+    const cs = parseInt(`0x${res.slice(ENC_RES_LEN - 4, ENC_RES_LEN).toString('hex')}`);
     const csCheck = checksum(toCheck);
-    console.log('cs', cs, 'csCheck', csCheck)
     if (cs !== csCheck) return { err: `Checksum mismatch in response from Lattice (calculated ${csCheck}, wanted ${cs})` };
 
     // First 65 bytes is the next ephemeral pubkey
@@ -338,11 +352,9 @@ class Client {
     // Get the size of each expected address
     if (addressSizes[currency] === undefined) return { err: 'Unsupported currency' };
     const addrSize = addressSizes[currency];
-    // const resLen = 65 + (addrSize * MAX_NUM_ADDRS); // PubkeyLen (65 bytes) + Addresses
-    const expectedLen = addrSize * MAX_NUM_ADDRS;
 
     // Handle the encrypted response
-    const decrypted = this._handleEncResponse(encRes, expectedLen);
+    const decrypted = this._handleEncResponse(encRes);
     if (decrypted.err !== null ) return decrypted;
 
     let off = 65; // Skip past pubkey prefix
@@ -373,16 +385,23 @@ class Client {
     return { data: addrs, err: null };
   }
 
-
   _handleSign(encRes) {
-    console.log('handling sign', encRes.toString('hex'));
     // Handle the encrypted response
-    const decrypted = this._handleEncResponse(encRes, 65);
+    const decrypted = this._handleEncResponse(encRes);
     if (decrypted.err !== null ) return decrypted;
 
     const off = 65; // Skip past pubkey prefix
     const res = decrypted.data;
-    console.log('sigdata', res.toString('hex'));
+
+    // [TODO] figure out how this applies to bitcoin
+
+    // Grab the DER signature
+    if (res[off] != 0x30) {
+      return { err: 'Invalid response: no signature returned' };
+    }
+    // Second byte is the length of the remaining DER sig
+    const sig = res.slice(off, (off + 2 + res[off + 1]));
+    return { err: null, data: sig };
   }
 
   // Get 64 bytes representing the public key
