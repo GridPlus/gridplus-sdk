@@ -1,9 +1,17 @@
-
 // Consistent with Lattice's IV
 const AES_IV = [0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64]
 
 // Per Lattice spec, all encrypted messages must fit in a 272 byte buffer
-const ENC_MSG_LEN = 272;
+const ENC_MSG_LEN = 544;
+
+// Decrypted response lengths will be fixed for any given message type.
+// These are defined in the Lattice spec.
+// Every decrypted response should have a 65-byte pubkey prefixing it
+const decResLengths = {
+    finalizePair: 0,   // Only contains the pubkey
+    getAddresses: 200, // 20-byte address * 10 max slots
+    sign: 74,          // Max DER signature length - THIS WILL CHANGE
+}
   
 const OPs = {
     'a9': 'OP_HASH160',
@@ -58,13 +66,18 @@ const responseCodes = {
     0x88: 'Device Error', 
 }
  
-
 const deviceResponses = {
     START_CODE_IDX: 1, // Beginning of 4-byte status code in Lattice response
     START_DATA_IDX: 5, // Beginning of data field for Lattice responses
 }
 
-const MAX_NUM_ADDRS = 10; // Maximum number of addresses we can request
+const signingSchema = {
+    BTC_TRANSFER: 0,
+    ETH_TRANSFER: 1,
+    ERC20_TRANSFER: 2
+}
+
+const ETH_DATA_MAX_SIZE = 100; // Maximum number of bytes that can go in the data field
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
 const VERSION_BYTE = 1;
 
@@ -75,12 +88,14 @@ module.exports = {
     addressSizes,
     bitcoinVersionByte,
     currencyCodes,
+    decResLengths,
     deviceCodes,
     encReqCodes,
     messageConstants,
     responseCodes,
     deviceResponses,
-    MAX_NUM_ADDRS,
+    signingSchema,
+    ETH_DATA_MAX_SIZE,
     REQUEST_TYPE_BYTE,
     VERSION_BYTE,
 }

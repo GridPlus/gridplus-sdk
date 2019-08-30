@@ -1,6 +1,6 @@
-const crc32 = require('crc-32');
 const superagent = require('superagent');
 const {
+  txBuildingResolver,
   aes256_decrypt,
   aes256_encrypt,
   checksum,
@@ -14,16 +14,16 @@ const {
   ENC_MSG_LEN,
   addressSizes,
   currencyCodes,
+  decResLengths,
   deviceCodes,
   encReqCodes,
   responseCodes,
   deviceResponses,
-  MAX_NUM_ADDRS,
+  signingSchema,
   REQUEST_TYPE_BYTE,
   VERSION_BYTE,
   messageConstants,
 } = require('./constants');
-const leftPad = require('left-pad');
 const Buffer = require('buffer/').Buffer;
 const config = require('../config');
 const debug = require('debug')('@gridplus/sdk:client');
@@ -128,6 +128,45 @@ class Client {
     })
   }
 
+  sign(opts, cb) {
+   const { currency, data } = opts;
+    if (currency == undefined || data == undefined) {
+      return cb({ err: 'Please provide `currency` and `data` options'});
+    } else if (currencyCodes[currency] === undefined) {
+      return cb({ err: 'Unsupported currency' });
+    }
+    
+    // Build the transaction payload to send to the device. If we catch
+    // bad params, return an error instead
+    const tx = txBuildingResolver[currency](data);
+    if (tx.err !== undefined) return cb({ err: tx.err, data: null });
+
+    // All transaction requests must be put into the same sized buffer
+    // so that checksums may be validated. The full size is 530 bytes,
+    // but that includes a 1-byte prefix (`SIGN_TRANSACTION`), 2 bytes
+    // indicating the schema type, and 4 bytes for a checksum.
+    // That leaves 523 bytes for the transaction request. It will be
+    // deserialized according to the schema type and extra zeros will be
+    // discarded.
+    const MAX_TX_REQ_DATA_SIZE = 523;
+    if (tx.payload.length > MAX_TX_REQ_DATA_SIZE) {
+      return cb({ err: 'Transaction is too large' });
+    }
+
+    // Build the payload
+    const payload = Buffer.alloc(2 + MAX_TX_REQ_DATA_SIZE);
+    payload.writeUInt16BE(signingSchema.ETH_TRANSFER, 0);
+    tx.payload.copy(payload, 2);
+
+    // Construct the encrypted request and send it
+    const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
+    return this._request(param, (err, res) => {
+      if (err) return cb({ err });
+      const parsedRes = this._handleSign(res);
+      return cb(parsedRes);
+    })
+  }
+
   //=======================================================================
   // INTERNAL FUNCTIONS
   // These handle the logic around building requests and consuming
@@ -159,23 +198,24 @@ class Client {
     // epehemeral public key in order to send
     const ephemId = parseInt(this._getEphemId().toString('hex'), 16)
     let i = 0;
-    // Prefix the payload with the encrypted request code
-    const newPayload = Buffer.alloc(ENC_MSG_LEN + 4); // add 4 bytes for the checksum
     
-    // Build the payload to be encrypted
-    const payloadBuf = Buffer.alloc(ENC_MSG_LEN);
+    // Build the payload and checksum
     const payloadPreCs = Buffer.concat([Buffer.from([enc_request_code]), payload]);
     const cs = checksum(payloadPreCs);
-    // Lattice validates checksums in little endian
-    payloadBuf.writeUInt8(enc_request_code, 0);
-    payload.copy(payloadBuf, 1);
+    const payloadBuf = Buffer.alloc(payloadPreCs.length + 4);
 
-    payloadBuf.writeUInt32LE(cs, 1 + payload.length);
+    // Lattice validates checksums in little endian
+    payloadPreCs.copy(payloadBuf, 0);
+    payloadBuf.writeUInt32LE(cs, payloadPreCs.length);
+
     // Encrypt this payload
     const secret = this._getSharedSecret();
     const newEncPayload = aes256_encrypt(payloadBuf, secret);
 
-    // Write to the overall payload
+    // Write to the overall payload. We must use the same length
+    // for every encrypted request and must include a 32-bit ephemId
+    // along with the encrypted data
+    const newPayload = Buffer.alloc(ENC_MSG_LEN + 4);
     // First 4 bytes are the ephemeral id (in little endian)
     i = newPayload.writeUInt32LE(ephemId, i);
     // Next N bytes
@@ -261,55 +301,61 @@ class Client {
     return (pairingStatus === messageConstants.PAIRED);
   }
 
+  // All encrypted responses must be decrypted with the previous shared secret. Per specification,
+  // decrypted responses will all contain a 65-byte public key as the prefix, which becomes the 
+  // new ephemeralPub.
+  _handleEncResponse(encRes, len) {
+    // Decrypt response
+    const secret = this._getSharedSecret();
+    const encData = encRes.slice(0, ENC_MSG_LEN);
+    const res = aes256_decrypt(encData, secret);
+    // len does not include a 65-byte pubkey that prefies each encResponse
+    len += 65;
+
+    // Validate checksum. It will be the last 4 bytes of the decrypted payload.
+    // The length of the decrypted payload will be fixed for each given message type.
+    const toCheck = res.slice(0, len);
+    const cs = parseInt(`0x${res.slice(len, len+4).toString('hex')}`);
+    const csCheck = checksum(toCheck);
+    if (cs !== csCheck) return { err: `Checksum mismatch in response from Lattice (calculated ${csCheck}, wanted ${cs})` };
+
+    // First 65 bytes is the next ephemeral pubkey
+    const pub = res.slice(0, 65).toString('hex');
+    try {
+      this.ephemeralPub = getP256KeyPairFromPub(pub);
+      return { err: null, data: res };
+    } catch (e) {
+      return { err: `Error handling getAddresses response: ${e.toString()}` };
+    }
+  }
+
   // Pair will create a new pairing if the user successfully enters the secret
   // into the device in time. If successful (status=0), the device will return
   // a new ephemeral public key, which is used to derive a shared secret
   // for the next request
   // @returns error (or null)
   _handlePair(encRes) {
-    const secret = this._getSharedSecret();
-    const encData = encRes.slice(0, ENC_MSG_LEN);
-    const res = aes256_decrypt(encData, secret);
-    // Decrypted response is [pubKey|checksum]
-    const pubBuf = res.slice(0, 65);
-    const pub = pubBuf.toString('hex');
-    const cs = parseInt(`0x${res.slice(65, 69).toString('hex')}`);
-    // Verify checksum on returned pubkey
-    const csCheck = checksum(pubBuf);
-    if (cs !== csCheck) return `Checksum mismatch in response from Lattice (got ${cs}, wanted ${csCheck})`;
-    try {
-      this.ephemeralPub = getP256KeyPairFromPub(pub); 
-      // Remove the pairing salt - we're paired!
-      this.pairingSalt = null;
-      this.isPaired = true;
-      return null;
-    } catch (err) {
-      return `Error handling pairing response: ${err.toString()}`;
-    }
+    const d = this._handleEncResponse(encRes, decResLengths.finalizePair);
+    if (d.err) return d.err;
+    // Remove the pairing salt - we're paired!
+    this.pairingSalt = null;
+    this.isPaired = true;
+    return null;
   }
 
   // GetAddresses will return an array of pubkey hashes
   _handleGetAddresses(encRes, currency, numAddr, version='LEGACY') {
-    // Decrypt response
-    const secret = this._getSharedSecret();
-    const encData = encRes.slice(0, ENC_MSG_LEN);
-    const res = aes256_decrypt(encData, secret);
-    let off = 0;
-
     // Get the size of each expected address
     if (addressSizes[currency] === undefined) return { err: 'Unsupported currency' };
     const addrSize = addressSizes[currency];
-    
-    // Validate checksum
-    const resLen = 65 + (addrSize * MAX_NUM_ADDRS); // PubkeyLen (65 bytes) + Addresses
-    const toCheck = res.slice(0, resLen);
-    const cs = parseInt(`0x${res.slice(resLen, resLen + 4).toString('hex')}`);
-    const csCheck = checksum(toCheck);
-    if (cs !== csCheck) return { err: `Checksum mismatch in response from Lattice (calculated ${csCheck}, wanted ${cs})` };
 
-    // First 65 bytes is the next ephemeral pubkey
-    const pub = res.slice(off, 65).toString('hex'); off += 65;
-    
+    // Handle the encrypted response
+    const decrypted = this._handleEncResponse(encRes, decResLengths.getAddresses);
+    if (decrypted.err !== null ) return decrypted;
+
+    let off = 65; // Skip past pubkey prefix
+    const res = decrypted.data;
+
     // After that, we can start parsing the addresses
     let addrs = [];
     // Get the addresses
@@ -331,13 +377,27 @@ class Client {
       }
       addrs.push(addr);
       off += addrSize;
+    }      
+    return { data: addrs, err: null };
+  }
+
+  _handleSign(encRes) {
+    // Handle the encrypted response
+    const decrypted = this._handleEncResponse(encRes, decResLengths.sign);
+    if (decrypted.err !== null ) return decrypted;
+
+    const off = 65; // Skip past pubkey prefix
+    const res = decrypted.data;
+
+    // [TODO] figure out how this applies to bitcoin
+
+    // Grab the DER signature
+    if (res[off] != 0x30) {
+      return { err: 'Invalid response: no signature returned' };
     }
-    try {
-      this.ephemeralPub = getP256KeyPairFromPub(pub);
-      return { data: addrs, err: null };
-    } catch (err) {
-      return { err: `Error handling getAddresses response: ${err.toString()}` };
-    }
+    // Second byte is the length of the remaining DER sig
+    const sig = res.slice(off, (off + 2 + res[off + 1]));
+    return { err: null, data: sig };
   }
 
   // Get 64 bytes representing the public key

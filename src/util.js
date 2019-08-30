@@ -1,4 +1,6 @@
 // Static utility functions
+const EthereumTx = require('ethereumjs-tx');
+const rlp = require('rlp');
 const bs58check = require('bs58check')
 const Buffer = require('buffer/').Buffer
 const aes = require('aes-js');
@@ -7,7 +9,7 @@ const leftPad = require('left-pad');
 const elliptic = require('elliptic');
 const config = require('../config');
 const constants = require('./constants');
-const { AES_IV, dict, responseCodes, OPs, VERSION_BYTE } = require('./constants');
+const { AES_IV, responseCodes, OPs, VERSION_BYTE } = require('./constants');
 const EC = elliptic.ec;
 const ec = new EC('p256');
 
@@ -80,6 +82,46 @@ function toPaddedDER(sig) {
   const ds = Buffer.from(sig.toDER());
   ds.copy(b);
   return b;
+}
+
+//--------------------------------------------------
+// TRANSACTION UTILS
+//--------------------------------------------------
+function buildEthereumTxRequest(data) {
+  try {
+    const { txData, signerIndex } = data;
+    // Ensure all fields are 0x-prefixed hex strings
+    Object.keys(txData).forEach((k) => {
+      txData[k] = ensureHex(txData[k]);
+    })
+    // Ensure data field isn't too long
+    if (txData.data && Buffer.from(txData.data, 'hex').length > constants.ETH_DATA_MAX_SIZE) {
+      return { err: `Data field too large (must be <=${constants.ETH_DATA_MAX_SIZE} bytes)` }
+    }
+    // RLP-encode the transaction request
+    const tx = new EthereumTx(txData);
+    const encoded = rlp.encode(tx.raw);
+    // Build the payload to send to the Lattice
+    const payload = Buffer.alloc(encoded.length + 4);
+    payload.writeUInt32BE(signerIndex, 0);
+    encoded.copy(payload, 4);
+    return { payload };
+  } catch (err) {
+    return { err };
+  }
+}
+
+function ensureHex(x) {
+  if (typeof x == 'number') return `0x${x.toString(16)}`
+  else if (Buffer.isBuffer(x)) return `0x${x.toString('hex')}`
+  else if (typeof x == 'string' && x.slice(0, 2) !== '0x') return `0x${x}`;
+  return x;
+}
+
+
+const txBuildingResolver = {
+  'BTC': null,
+  'ETH': buildEthereumTxRequest,
 }
 
 //--------------------------------------------------
@@ -343,6 +385,7 @@ function _rlpEncode(input) {
 }
 
 module.exports = {
+  txBuildingResolver,
   aes256_decrypt,
   aes256_encrypt,
   checksum,
