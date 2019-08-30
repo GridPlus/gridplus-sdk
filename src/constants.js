@@ -2,11 +2,16 @@
 const AES_IV = [0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64]
 
 // Per Lattice spec, all encrypted messages must fit in a 272 byte buffer
-const ENC_MSG_LEN = 272;
-// Encrypted result length must be smaller than the message length. This is also
-// fixed across all encrypted responses. Note that it includes the ephem pubkey
-// which is 65 bytes, AND a 4 byte checksum
-const ENC_RES_LEN = 269; 
+const ENC_MSG_LEN = 544;
+
+// Decrypted response lengths will be fixed for any given message type.
+// These are defined in the Lattice spec.
+// Every decrypted response should have a 65-byte pubkey prefixing it
+const decResLengths = {
+    finalizePair: 0,   // Only contains the pubkey
+    getAddresses: 200, // 20-byte address * 10 max slots
+    sign: 74,          // Max DER signature length - THIS WILL CHANGE
+}
   
 const OPs = {
     'a9': 'OP_HASH160',
@@ -79,11 +84,11 @@ const VERSION_BYTE = 1;
 module.exports = {
     AES_IV,
     ENC_MSG_LEN,
-    ENC_RES_LEN,
     OPs,
     addressSizes,
     bitcoinVersionByte,
     currencyCodes,
+    decResLengths,
     deviceCodes,
     encReqCodes,
     messageConstants,

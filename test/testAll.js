@@ -84,12 +84,54 @@ describe('Connect and Pair', () => {
     }
   });
 
+  it('Should get addresses', async () => {
+    expect(caughtErr).to.equal(false);
+    if (caughtErr == false) {
+      const addrData = { currency: 'BTC', startIndex: 1000, n: 5 }
+      // Legacy addresses (default `version`)
+      let addrs = await getAddresses(client, addrData);
+      expect(addrs.err).to.equal(null);
+      expect(addrs.data.length).to.equal(5);
+      expect(addrs.data[0][0]).to.equal('1');
+      
+      // P2SH addresses
+      addrData.version = 'P2SH';
+      addrData.n = 4;
+      addrs = await getAddresses(client, addrData);
+      expect(addrs.err).to.equal(null);
+      expect(addrs.data.length).to.equal(4);
+      expect(addrs.data[0][0]).to.equal('3');
+      // Ethereum addresses
+      addrData.currency = 'ETH';
+      addrs = await getAddresses(client, addrData);
+      expect(addrs.err).to.equal(null);
+      expect(addrs.data.length).to.equal(4);
+      expect(addrs.data[0].slice(0, 2)).to.equal('0x');
+      // Failure cases
+      // Unsupported currency
+      addrData.currency = 'BCH';
+      addrs = await getAddresses(client, addrData);
+      expect(addrs.err).to.not.equal(null);
+      // Unsupported version byte
+      addrData.currency = 'BTC';
+      addrData.version = 'P2WKH';
+      addrs = await getAddresses(client, addrData);      
+      expect(addrs.err).to.not.equal(null);
+      // Too many addresses (n>10)
+      addrData.version = 'P2SH';
+      addrData.n = 11;
+      addrs = await getAddresses(client, addrData);
+      expect(addrs.err).to.not.equal(null);
+      
+    }
+  });
+
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
     const GAS_LIMIT_MIN = 22000;
     const GAS_LIMIT_MAX = 10000000;
-
+    
     let txData = {
       nonce: 5,
       gasPrice: 1200000000,
@@ -107,7 +149,7 @@ describe('Connect and Pair', () => {
     }
     // [TODO] Add signature verification mechanism once
     // signatures map directly to derived addresses
-
+    
     // Sign a legit tx
     let sig = await sign(client, req);
     expect(sig.err).to.equal(null);
@@ -166,47 +208,7 @@ describe('Connect and Pair', () => {
     req.data.txData.data = crypto.randomBytes(constants.ETH_DATA_MAX_SIZE).toString('hex');
     sig = await sign(client, req);
     expect(sig.err).to.equal(null);
- 
-  })
-/*
-  it('Should get addresses', async () => {
-    expect(caughtErr).to.equal(false);
-    if (caughtErr == false) {
-      const addrData = { currency: 'BTC', startIndex: 1000, n: 5 }
-      // Legacy addresses (default `version`)
-      let addrs = await getAddresses(client, addrData);
-      expect(addrs.err).to.equal(null);
-      expect(addrs.data.length).to.equal(5);
-      expect(addrs.data[0][0]).to.equal('1');
-      // P2SH addresses
-      addrData.version = 'P2SH';
-      addrData.n = 4;
-      addrs = await getAddresses(client, addrData);
-      expect(addrs.err).to.equal(null);
-      expect(addrs.data.length).to.equal(4);
-      expect(addrs.data[0][0]).to.equal('3');
-      // Ethereum addresses
-      addrData.currency = 'ETH';
-      addrs = await getAddresses(client, addrData);
-      expect(addrs.err).to.equal(null);
-      expect(addrs.data.length).to.equal(4);
-      expect(addrs.data[0].slice(0, 2)).to.equal('0x');
-      // Failure cases
-      // Unsupported currency
-      addrData.currency = 'BCH';
-      addrs = await getAddresses(client, addrData);
-      expect(addrs.err).to.not.equal(null);
-      // Unsupported version byte
-      addrData.currency = 'BTC';
-      addrData.version = 'P2WKH';
-      addrs = await getAddresses(client, addrData);      
-      expect(addrs.err).to.not.equal(null);
-      // Too many addresses (n>10)
-      addrData.version = 'P2SH';
-      addrData.n = 11;
-      addrs = await getAddresses(client, addrData);
-      expect(addrs.err).to.not.equal(null);
-    }
+    
   });
-*/
+
 });
