@@ -1,4 +1,6 @@
 // Static utility functions
+const Bitcoin = require('bitcoinjs-lib');
+const bs58 = require('bs58');
 const EthereumTx = require('ethereumjs-tx');
 const rlp = require('rlp');
 const bs58check = require('bs58check')
@@ -111,6 +113,58 @@ function buildEthereumTxRequest(data) {
   }
 }
 
+// We need to build two different objects here:
+// 1. bitcoinjs-lib TransactionBuilder object, which will be used in conjunction
+//    with the returned signatures to build and serialize the transaction before
+//    broadcasting it. We will replace `bitcoinjs-lib`'s signatures with the ones
+//    we get from the Lattice
+// 2. The serialized Lattice request, which includes data (outlined in the specification)
+//    that is needed to sign all of the inputs and build a change output. 
+// @inputs (contained in `data`)
+// `prevOuts`: an array of objects with the following properties:
+//           a. txHash
+//           b. value
+//           c. index          -- the index of the output in the transaction
+//           d. recipientIndex -- the index of the address in our wallet
+// `recipient`: receiving address, which must be converted to a pubkeyhash
+// `value`:     number of satoshis to send the recipient
+// `fee`:       number of satoshis to use for a transaction fee (should have been calculated)
+//              already based on the number of inputs plus two outputs
+// `isSegwit`: a boolean which determines how we serialize the data and parameterize txb
+function buildBitcoinTxRequest(data) {
+  try {
+    const { prevOuts, recipient, value, changeIndex, fee, isSegwit } = data;
+    // Start building the transaction
+    const txb = new bitcoinjs.TransactionBuilder();
+    prevOuts.forEach((o) => {
+      resp.txb.addInput(o.txHash, o.index);
+    })
+    resp.txb.addOutput(recipient, value);
+
+    // Serialize the request
+    const req = Buffer.alloc(37 + (47 * prevOuts.length));
+    let off = 0;
+    req.writeUInt32LE(changeIndex); off += 4;
+    req.writeUInt32LE(fee); off += 4;
+    const recipientVersionByte = bs58.decode(recipient)[0];
+    const recipientPubkeyhash = bs58check.decode(recipient);
+    req.writeUInt8(recipientVersionByte); off++;
+    recipientPubkeyhash.copy(req, off); off += recipientPubkeyhash.length;
+    req.writeUInt64LE(value); off += 8;
+    prevOuts.forEach((input) => {
+      req.writeUInt32LE(input.recipientIndex); off += 4;
+      req.writeUInt16LE(input.index); off += 2;
+      req.writeUInt64LE(input.value); off += 8;
+      inputs.txHash.copy(req, off); off += inputs.txHash.length;
+    })
+
+    // Send them back!
+    return { txb, req };
+  } catch (err) {
+    return { err };
+  }
+}
+
 function ensureHex(x) {
   if (typeof x == 'number') return `0x${x.toString(16)}`
   else if (Buffer.isBuffer(x)) return `0x${x.toString('hex')}`
@@ -120,7 +174,7 @@ function ensureHex(x) {
 
 
 const txBuildingResolver = {
-  'BTC': null,
+  'BTC': buildBitcoinTxRequest,
   'ETH': buildEthereumTxRequest,
 }
 
