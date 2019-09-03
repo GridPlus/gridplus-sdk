@@ -2,7 +2,7 @@
 const AES_IV = [0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64]
 
 // Per Lattice spec, all encrypted messages must fit in a 272 byte buffer
-const ENC_MSG_LEN = 528;
+const ENC_MSG_LEN = 576;
 
 // Decrypted response lengths will be fixed for any given message type.
 // These are defined in the Lattice spec.

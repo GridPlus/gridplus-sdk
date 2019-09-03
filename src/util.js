@@ -129,14 +129,15 @@ function buildEthereumTxRequest(data) {
 //           b. value
 //           c. index          -- the index of the output in the transaction
 //           d. recipientIndex -- the index of the address in our wallet
-// `recipient`: receiving address, which must be converted to a pubkeyhash
-// `value`:     number of satoshis to send the recipient
-// `fee`:       number of satoshis to use for a transaction fee (should have been calculated)
+// `recipient`: Receiving address, which must be converted to a pubkeyhash
+// `value`:     Number of satoshis to send the recipient
+// `fee`:       Number of satoshis to use for a transaction fee (should have been calculated)
 //              already based on the number of inputs plus two outputs
+// `version`:   Transaction version of the inputs. All inputs must be of the same version! 
 // `isSegwit`: a boolean which determines how we serialize the data and parameterize txb
 function buildBitcoinTxRequest(data) {
   try {
-    const { prevOuts, recipient, value, changeIndex, fee, isSegwit } = data;
+    const { prevOuts, recipient, value, changeIndex=0, fee, isSegwit } = data;
     // Start building the transaction
     const txb = new Bitcoin.TransactionBuilder();
     prevOuts.forEach((o) => {
@@ -145,28 +146,29 @@ function buildBitcoinTxRequest(data) {
     txb.addOutput(recipient, value);
 
     // Serialize the request
-    const payload = Buffer.alloc(37 + (47 * prevOuts.length));
+    const payload = Buffer.alloc(37 + (51 * prevOuts.length));
     let off = 0;
-    payload.writeUInt32LE(changeIndex); off += 4;
-    payload.writeUInt32LE(fee); off += 4;
+    payload.writeUInt32LE(changeIndex, off); off += 4;
+    payload.writeUInt32LE(fee, off); off += 4;
     const recipientVersionByte = bs58.decode(recipient)[0];
-    const recipientPubkeyhash = bs58check.decode(recipient);
-    payload.writeUInt8(recipientVersionByte); off++;
+    const recipientPubkeyhash = bs58check.decode(recipient).slice(1);
+    payload.writeUInt8(recipientVersionByte, off); off++;
     recipientPubkeyhash.copy(payload, off); off += recipientPubkeyhash.length;
     writeUInt64LE(value, payload, off); off += 8;
+    
     // Build the inputs from the previous outputs
+    payload.writeUInt8(prevOuts.length, off); off++;
     const scriptType = isSegwit === true ? 
                         constants.bitcoinScriptTypes.P2SH : 
                         constants.bitcoinScriptTypes.P2PKH; // No support for multisig p2sh in v1 (p2sh == segwit here)
     prevOuts.forEach((input) => {
-      payload.writeUInt32LE(input.recipientIndex); off += 4;
-      payload.writeUInt16LE(input.index); off += 2;
+      payload.writeUInt32LE(input.recipientIndex, off); off += 4;
+      payload.writeUInt32LE(input.index, off); off += 4;
       writeUInt64LE(input.value, payload, off); off += 8;
-      payload.writeUInt8(scriptType); off++;
+      payload.writeUInt8(scriptType, off); off++;
       if (!Buffer.isBuffer(input.txHash)) input.txHash = Buffer.from(input.txHash, 'hex');
       input.txHash.copy(payload, off); off += input.txHash.length;
     })
-
     // Send them back!
     return { 
       txb, 
@@ -180,7 +182,8 @@ function buildBitcoinTxRequest(data) {
 
 function writeUInt64LE(n, buf, off) {
   const preBuf = Buffer.alloc(8);
-  const nBuf = Buffer.from(n.toString(16), 'hex');
+  const nStr = n.length % 2 == 0 ? n.toString(16) : `0${n.toString(16)}`;
+  const nBuf = Buffer.from(nStr, 'hex');
   nBuf.reverse().copy(preBuf, 0);
   preBuf.copy(buf, off);
   return preBuf;

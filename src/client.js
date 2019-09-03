@@ -152,7 +152,7 @@ class Client {
     // That leaves 514 bytes for the transaction request. It will be
     // deserialized according to the schema type and extra zeros will be
     // discarded.
-    const MAX_TX_REQ_DATA_SIZE = 517;
+    const MAX_TX_REQ_DATA_SIZE = 557;
     if (tx.payload.length > MAX_TX_REQ_DATA_SIZE) {
       return cb({ err: 'Transaction is too large' });
     }
@@ -161,8 +161,6 @@ class Client {
     const payload = Buffer.alloc(2 + MAX_TX_REQ_DATA_SIZE);
     payload.writeUInt16BE(tx.schema, 0);
     tx.payload.copy(payload, 2);
-
-    console.log('payload', payload.toString('hex'))
 
     // Construct the encrypted request and send it
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
@@ -208,8 +206,6 @@ class Client {
     // Build the payload and checksum
     const payloadPreCs = Buffer.concat([Buffer.from([enc_request_code]), payload]);
     const cs = checksum(payloadPreCs);
-    console.log('checksumming bytes: ', payloadPreCs.length);
-    console.log('using checksum', cs.toString(16));
     const payloadBuf = Buffer.alloc(payloadPreCs.length + 4);
 
     // Lattice validates checksums in little endian

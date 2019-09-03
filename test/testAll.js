@@ -215,27 +215,38 @@ describe('Connect and Pair', () => {
   });
 */  
 
- it('Should sign Bitcoin transactions', async () => {  
+  function calcVal(txData) {
+    let val = 0;
+    txData.prevOuts.forEach((o) => {
+      val += o.value;
+    })
+    val -= txData.fee;
+    return val;
+  }
+
+  it('Should sign Bitcoin transactions', async () => {  
     let txData = {
       prevOuts: [
         { 
           txHash: '4c7846a8ff8415945e96937dea27bdb3144c15d793648d725602784826052586',
           value: 87654321,
-          index: 0,
-          recipientIndex: 0,
+          index: 5,
+          recipientIndex: 8,
         },
         {
           txHash: 'a88387ca68a67f7f74e91723de0069154b532bf024c0e4054e36ea2234251181',
           value: 4912341139,
           index: 3,
-          recipientIndex: 1,
+          recipientIndex: 3,
         }
       ],
       recipient: '3DXitEC8uiub18mCGCRk4KF39wD4tJQVJm',
-      value: 3999995460,
+      value: 0,
       fee: 10000,
       isSegwit: false,
+      changeIndex: 1111,
     };
+    txData.value = calcVal(txData);
     let req = {
       currency: 'BTC',
       data: txData,
