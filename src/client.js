@@ -129,34 +129,40 @@ class Client {
   }
 
   sign(opts, cb) {
-   const { currency, data } = opts;
+    // [TODO] Build transaction serialization util for Bitcoin
+    //        (note that version=2 and lockTime=0)
+    // [TODO] Return serialized transations + signatures (if necessary)
+    //        (the response should be all the user needs to broadcast the tx)
+    const { currency, data } = opts;
     if (currency == undefined || data == undefined) {
       return cb({ err: 'Please provide `currency` and `data` options'});
     } else if (currencyCodes[currency] === undefined) {
       return cb({ err: 'Unsupported currency' });
     }
-    
+
     // Build the transaction payload to send to the device. If we catch
     // bad params, return an error instead
     const tx = txBuildingResolver[currency](data);
-    if (tx.err !== undefined) return cb({ err: tx.err, data: null });
+    if (tx.err !== undefined) return cb({ err: tx.err });
 
     // All transaction requests must be put into the same sized buffer
     // so that checksums may be validated. The full size is 530 bytes,
     // but that includes a 1-byte prefix (`SIGN_TRANSACTION`), 2 bytes
     // indicating the schema type, and 4 bytes for a checksum.
-    // That leaves 523 bytes for the transaction request. It will be
+    // That leaves 514 bytes for the transaction request. It will be
     // deserialized according to the schema type and extra zeros will be
     // discarded.
-    const MAX_TX_REQ_DATA_SIZE = 523;
+    const MAX_TX_REQ_DATA_SIZE = 517;
     if (tx.payload.length > MAX_TX_REQ_DATA_SIZE) {
       return cb({ err: 'Transaction is too large' });
     }
 
     // Build the payload
     const payload = Buffer.alloc(2 + MAX_TX_REQ_DATA_SIZE);
-    payload.writeUInt16BE(signingSchema.ETH_TRANSFER, 0);
+    payload.writeUInt16BE(tx.schema, 0);
     tx.payload.copy(payload, 2);
+
+    console.log('payload', payload.toString('hex'))
 
     // Construct the encrypted request and send it
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
@@ -202,6 +208,8 @@ class Client {
     // Build the payload and checksum
     const payloadPreCs = Buffer.concat([Buffer.from([enc_request_code]), payload]);
     const cs = checksum(payloadPreCs);
+    console.log('checksumming bytes: ', payloadPreCs.length);
+    console.log('using checksum', cs.toString(16));
     const payloadBuf = Buffer.alloc(payloadPreCs.length + 4);
 
     // Lattice validates checksums in little endian

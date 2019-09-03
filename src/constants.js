@@ -2,7 +2,7 @@
 const AES_IV = [0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64]
 
 // Per Lattice spec, all encrypted messages must fit in a 272 byte buffer
-const ENC_MSG_LEN = 544;
+const ENC_MSG_LEN = 528;
 
 // Decrypted response lengths will be fixed for any given message type.
 // These are defined in the Lattice spec.
@@ -77,6 +77,11 @@ const signingSchema = {
     ERC20_TRANSFER: 2
 }
 
+const bitcoinScriptTypes = {
+    P2PKH: 0x01,
+    P2SH: 0x02,
+}
+
 const ETH_DATA_MAX_SIZE = 100; // Maximum number of bytes that can go in the data field
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
 const VERSION_BYTE = 1;
@@ -86,6 +91,7 @@ module.exports = {
     ENC_MSG_LEN,
     OPs,
     addressSizes,
+    bitcoinScriptTypes,
     bitcoinVersionByte,
     currencyCodes,
     decResLengths,

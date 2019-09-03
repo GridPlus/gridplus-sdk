@@ -107,7 +107,10 @@ function buildEthereumTxRequest(data) {
     const payload = Buffer.alloc(encoded.length + 4);
     payload.writeUInt32BE(signerIndex, 0);
     encoded.copy(payload, 4);
-    return { payload };
+    return { 
+      payload,
+      schema: constants.signingSchema.ETH_TRANSFER,  // We will use eth transfer for all ETH txs for v1 
+    };
   } catch (err) {
     return { err };
   }
@@ -135,34 +138,52 @@ function buildBitcoinTxRequest(data) {
   try {
     const { prevOuts, recipient, value, changeIndex, fee, isSegwit } = data;
     // Start building the transaction
-    const txb = new bitcoinjs.TransactionBuilder();
+    const txb = new Bitcoin.TransactionBuilder();
     prevOuts.forEach((o) => {
-      resp.txb.addInput(o.txHash, o.index);
+      txb.addInput(o.txHash, o.index);
     })
-    resp.txb.addOutput(recipient, value);
+    txb.addOutput(recipient, value);
 
     // Serialize the request
-    const req = Buffer.alloc(37 + (47 * prevOuts.length));
+    const payload = Buffer.alloc(37 + (47 * prevOuts.length));
     let off = 0;
-    req.writeUInt32LE(changeIndex); off += 4;
-    req.writeUInt32LE(fee); off += 4;
+    payload.writeUInt32LE(changeIndex); off += 4;
+    payload.writeUInt32LE(fee); off += 4;
     const recipientVersionByte = bs58.decode(recipient)[0];
     const recipientPubkeyhash = bs58check.decode(recipient);
-    req.writeUInt8(recipientVersionByte); off++;
-    recipientPubkeyhash.copy(req, off); off += recipientPubkeyhash.length;
-    req.writeUInt64LE(value); off += 8;
+    payload.writeUInt8(recipientVersionByte); off++;
+    recipientPubkeyhash.copy(payload, off); off += recipientPubkeyhash.length;
+    writeUInt64LE(value, payload, off); off += 8;
+    // Build the inputs from the previous outputs
+    const scriptType = isSegwit === true ? 
+                        constants.bitcoinScriptTypes.P2SH : 
+                        constants.bitcoinScriptTypes.P2PKH; // No support for multisig p2sh in v1 (p2sh == segwit here)
     prevOuts.forEach((input) => {
-      req.writeUInt32LE(input.recipientIndex); off += 4;
-      req.writeUInt16LE(input.index); off += 2;
-      req.writeUInt64LE(input.value); off += 8;
-      inputs.txHash.copy(req, off); off += inputs.txHash.length;
+      payload.writeUInt32LE(input.recipientIndex); off += 4;
+      payload.writeUInt16LE(input.index); off += 2;
+      writeUInt64LE(input.value, payload, off); off += 8;
+      payload.writeUInt8(scriptType); off++;
+      if (!Buffer.isBuffer(input.txHash)) input.txHash = Buffer.from(input.txHash, 'hex');
+      input.txHash.copy(payload, off); off += input.txHash.length;
     })
 
     // Send them back!
-    return { txb, req };
+    return { 
+      txb, 
+      payload, 
+      schema: constants.signingSchema.BTC_TRANSFER 
+    };
   } catch (err) {
     return { err };
   }
+}
+
+function writeUInt64LE(n, buf, off) {
+  const preBuf = Buffer.alloc(8);
+  const nBuf = Buffer.from(n.toString(16), 'hex');
+  nBuf.reverse().copy(preBuf, 0);
+  preBuf.copy(buf, off);
+  return preBuf;
 }
 
 function ensureHex(x) {
@@ -203,18 +224,6 @@ function getBitcoinAddress(pubkeyhash, version) {
   return bs58check.encode(Buffer.concat([Buffer.from([vb]), pubkeyhash]));
 }
 
-function getProviderShortCode(schemaCode) {
-  switch (schemaCode) {
-    case 'ETH':
-      return 'ETH';
-    case 'ETH-ERC20':
-      return 'ETH';
-    case 'ETH-Unstructured':
-      return 'ETH';
-    case 'BTC':
-      return 'BTC';
-  }
-}
 
 function getOutputScriptType(s, multisig=false) {
   const OP_first = s.slice(0, 2);
@@ -445,7 +454,6 @@ module.exports = {
   checksum,
   getBitcoinAddress,
   parseLattice1Response,
-  getProviderShortCode,
   getOutputScriptType,
   getP256KeyPair,
   getP256KeyPairFromPub,
