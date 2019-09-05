@@ -64,8 +64,7 @@ describe('Connect and Pair', () => {
     expect(connectErr).to.equal(null);
     // expect(client.isPaired).to.equal(false);
   });
-
-  /*
+/*
   it('Should attempt to pair with pairing secret', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
@@ -85,17 +84,15 @@ describe('Connect and Pair', () => {
     }
   });
 */
-
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
-      const addrData = { currency: 'BTC', startIndex: 1000, n: 5 }
+      const addrData = { currency: 'BTC', startIndex: 0, n: 5 }
       // Legacy addresses (default `version`)
       let addrs = await getAddresses(client, addrData);
       expect(addrs.err).to.equal(null);
       expect(addrs.data.length).to.equal(5);
       expect(addrs.data[0][0]).to.equal('1');
-      
       // P2SH addresses
       addrData.version = 'P2SH';
       addrData.n = 4;
@@ -127,7 +124,7 @@ describe('Connect and Pair', () => {
       
     }
   });
-
+  
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
@@ -209,6 +206,13 @@ describe('Connect and Pair', () => {
     sig = await sign(client, req);
     expect(sig.err).to.equal(null);
     expect(sig.sigs.length).to.equal(1);
+
+
+
+    // [TODO] Validate that signer matches up with the address
+    // we get from `getAddresses`
+
+
   });
 
   function calcVal(txData) {
@@ -264,6 +268,15 @@ describe('Connect and Pair', () => {
     let sigResp = await sign(client, req);
     expect(sigResp.err).to.equal(null);
     expect(sigResp.sigs.length).to.equal(2);
+
+
+
+
+    // [TODO] Validate that signer matches up with the address
+    // we get from `getAddresses`
+
+
+
   });
 
 });
