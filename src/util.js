@@ -1,5 +1,8 @@
 // Static utility functions
+const Bitcoin = require('bitcoinjs-lib');
+const bs58 = require('bs58');
 const EthereumTx = require('ethereumjs-tx');
+const ethereum = require('./ethereum');
 const rlp = require('rlp');
 const bs58check = require('bs58check')
 const Buffer = require('buffer/').Buffer
@@ -105,10 +108,86 @@ function buildEthereumTxRequest(data) {
     const payload = Buffer.alloc(encoded.length + 4);
     payload.writeUInt32BE(signerIndex, 0);
     encoded.copy(payload, 4);
-    return { payload };
+    return { 
+      payload,
+      schema: constants.signingSchema.ETH_TRANSFER,  // We will use eth transfer for all ETH txs for v1 
+    };
   } catch (err) {
     return { err };
   }
+}
+
+// We need to build two different objects here:
+// 1. bitcoinjs-lib TransactionBuilder object, which will be used in conjunction
+//    with the returned signatures to build and serialize the transaction before
+//    broadcasting it. We will replace `bitcoinjs-lib`'s signatures with the ones
+//    we get from the Lattice
+// 2. The serialized Lattice request, which includes data (outlined in the specification)
+//    that is needed to sign all of the inputs and build a change output. 
+// @inputs (contained in `data`)
+// `prevOuts`: an array of objects with the following properties:
+//           a. txHash
+//           b. value
+//           c. index          -- the index of the output in the transaction
+//           d. recipientIndex -- the index of the address in our wallet
+// `recipient`: Receiving address, which must be converted to a pubkeyhash
+// `value`:     Number of satoshis to send the recipient
+// `fee`:       Number of satoshis to use for a transaction fee (should have been calculated)
+//              already based on the number of inputs plus two outputs
+// `version`:   Transaction version of the inputs. All inputs must be of the same version! 
+// `isSegwit`: a boolean which determines how we serialize the data and parameterize txb
+function buildBitcoinTxRequest(data) {
+  try {
+    const { prevOuts, recipient, value, changeIndex=0, fee, isSegwit } = data;
+    // Start building the transaction
+    const txb = new Bitcoin.TransactionBuilder();
+    prevOuts.forEach((o) => {
+      txb.addInput(o.txHash, o.index);
+    })
+    txb.addOutput(recipient, value);
+
+    // Serialize the request
+    const payload = Buffer.alloc(37 + (51 * prevOuts.length));
+    let off = 0;
+    payload.writeUInt32LE(changeIndex, off); off += 4;
+    payload.writeUInt32LE(fee, off); off += 4;
+    const recipientVersionByte = bs58.decode(recipient)[0];
+    const recipientPubkeyhash = bs58check.decode(recipient).slice(1);
+    payload.writeUInt8(recipientVersionByte, off); off++;
+    recipientPubkeyhash.copy(payload, off); off += recipientPubkeyhash.length;
+    writeUInt64LE(value, payload, off); off += 8;
+    
+    // Build the inputs from the previous outputs
+    payload.writeUInt8(prevOuts.length, off); off++;
+    const scriptType = isSegwit === true ? 
+                        constants.bitcoinScriptTypes.P2SH : 
+                        constants.bitcoinScriptTypes.P2PKH; // No support for multisig p2sh in v1 (p2sh == segwit here)
+    prevOuts.forEach((input) => {
+      payload.writeUInt32LE(input.recipientIndex, off); off += 4;
+      payload.writeUInt32LE(input.index, off); off += 4;
+      writeUInt64LE(input.value, payload, off); off += 8;
+      payload.writeUInt8(scriptType, off); off++;
+      if (!Buffer.isBuffer(input.txHash)) input.txHash = Buffer.from(input.txHash, 'hex');
+      input.txHash.copy(payload, off); off += input.txHash.length;
+    })
+    // Send them back!
+    return { 
+      txb, 
+      payload, 
+      schema: constants.signingSchema.BTC_TRANSFER 
+    };
+  } catch (err) {
+    return { err };
+  }
+}
+
+function writeUInt64LE(n, buf, off) {
+  const preBuf = Buffer.alloc(8);
+  const nStr = n.length % 2 == 0 ? n.toString(16) : `0${n.toString(16)}`;
+  const nBuf = Buffer.from(nStr, 'hex');
+  nBuf.reverse().copy(preBuf, 0);
+  preBuf.copy(buf, off);
+  return preBuf;
 }
 
 function ensureHex(x) {
@@ -120,7 +199,7 @@ function ensureHex(x) {
 
 
 const txBuildingResolver = {
-  'BTC': null,
+  'BTC': buildBitcoinTxRequest,
   'ETH': buildEthereumTxRequest,
 }
 
@@ -149,18 +228,27 @@ function getBitcoinAddress(pubkeyhash, version) {
   return bs58check.encode(Buffer.concat([Buffer.from([vb]), pubkeyhash]));
 }
 
-function getProviderShortCode(schemaCode) {
-  switch (schemaCode) {
-    case 'ETH':
-      return 'ETH';
-    case 'ETH-ERC20':
-      return 'ETH';
-    case 'ETH-Unstructured':
-      return 'ETH';
-    case 'BTC':
-      return 'BTC';
-  }
+// Decode a DER signature. Returns signature object {r, s } or null if there is an error
+function parseDER(sigBuf) {
+  if (sigBuf[0] != 0x30 || sigBuf[2] != 0x02) return null;
+  let off = 3;
+  let sig = { r: null, s: null }
+  const rLen = sigBuf[off]; off++;
+  sig.r = sigBuf.slice(off, off + rLen); off += rLen
+  if (sigBuf[off] != 0x02) return null;
+  off++;
+  const sLen = sigBuf[off]; off++;
+  sig.s = sigBuf.slice(off, off + sLen);
+  return sig;
 }
+
+// Given a 64-byte signature [r,s] we need to figure out the v value.
+// We can brute force since v is a single bit.
+function buildFullEthSig(payload, sig, address) {
+  // EthUtil doesn't like our UInt8 buffers :\
+  return ethereum.addRecoveryParam(payload, sig, address);
+}
+
 
 function getOutputScriptType(s, multisig=false) {
   const OP_first = s.slice(0, 2);
@@ -388,10 +476,11 @@ module.exports = {
   txBuildingResolver,
   aes256_decrypt,
   aes256_encrypt,
+  parseDER,
+  buildFullEthSig,
   checksum,
   getBitcoinAddress,
   parseLattice1Response,
-  getProviderShortCode,
   getOutputScriptType,
   getP256KeyPair,
   getP256KeyPairFromPub,
