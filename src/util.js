@@ -1,9 +1,8 @@
 // Static utility functions
 const Bitcoin = require('bitcoinjs-lib');
 const bs58 = require('bs58');
-const EthereumTx = require('ethereumjs-tx');
 const ethereum = require('./ethereum');
-const rlp = require('rlp');
+const rlp = require('rlp-browser');
 const bs58check = require('bs58check')
 const Buffer = require('buffer/').Buffer
 const aes = require('aes-js');
@@ -94,16 +93,17 @@ function buildEthereumTxRequest(data) {
   try {
     const { txData, signerIndex } = data;
     // Ensure all fields are 0x-prefixed hex strings
+    let rawTx = [];
     Object.keys(txData).forEach((k) => {
-      txData[k] = ensureHex(txData[k]);
+      const item = ensureHexBuffer(txData[k]);
+      rawTx.push(item);
     })
     // Ensure data field isn't too long
-    if (txData.data && Buffer.from(txData.data, 'hex').length > constants.ETH_DATA_MAX_SIZE) {
+    if (txData.data && ensureHexBuffer(txData.data).length > constants.ETH_DATA_MAX_SIZE) {
       return { err: `Data field too large (must be <=${constants.ETH_DATA_MAX_SIZE} bytes)` }
     }
     // RLP-encode the transaction request
-    const tx = new EthereumTx(txData);
-    const encoded = rlp.encode(tx.raw);
+    const encoded = rlp.encode(rawTx);
     // Build the payload to send to the Lattice
     const payload = Buffer.alloc(encoded.length + 4);
     payload.writeUInt32BE(signerIndex, 0);
@@ -115,6 +115,15 @@ function buildEthereumTxRequest(data) {
   } catch (err) {
     return { err };
   }
+}
+
+function ensureHexBuffer(x) {
+  if (x === null) return Buffer.alloc(0);
+  else if (Buffer.isBuffer(x)) return x;
+  if (typeof x == 'number') x = `${x.toString(16)}`;
+  else if (typeof x == 'string' && x.slice(0, 2) === '0x') x = x.slice(2);
+  if (x.length % 2 > 0) x = `0${x}`;
+  return Buffer.from(x, 'hex');
 }
 
 // We need to build two different objects here:
@@ -189,14 +198,6 @@ function writeUInt64LE(n, buf, off) {
   preBuf.copy(buf, off);
   return preBuf;
 }
-
-function ensureHex(x) {
-  if (typeof x == 'number') return `0x${x.toString(16)}`
-  else if (Buffer.isBuffer(x)) return `0x${x.toString('hex')}`
-  else if (typeof x == 'string' && x.slice(0, 2) !== '0x') return `0x${x}`;
-  return x;
-}
-
 
 const txBuildingResolver = {
   'BTC': buildBitcoinTxRequest,
