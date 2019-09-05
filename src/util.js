@@ -2,6 +2,7 @@
 const Bitcoin = require('bitcoinjs-lib');
 const bs58 = require('bs58');
 const EthereumTx = require('ethereumjs-tx');
+const ethereum = require('./ethereum');
 const rlp = require('rlp');
 const bs58check = require('bs58check')
 const Buffer = require('buffer/').Buffer
@@ -225,6 +226,27 @@ function getBitcoinAddress(pubkeyhash, version) {
     return null;
   }
   return bs58check.encode(Buffer.concat([Buffer.from([vb]), pubkeyhash]));
+}
+
+// Decode a DER signature. Returns signature object {r, s } or null if there is an error
+function parseDER(sigBuf) {
+  if (sigBuf[0] != 0x30 || sigBuf[2] != 0x02) return null;
+  let off = 3;
+  let sig = { r: null, s: null }
+  const rLen = sigBuf[off]; off++;
+  sig.r = sigBuf.slice(off, off + rLen); off += rLen
+  if (sigBuf[off] != 0x02) return null;
+  off++;
+  const sLen = sigBuf[off]; off++;
+  sig.s = sigBuf.slice(off, off + sLen);
+  return sig;
+}
+
+// Given a 64-byte signature [r,s] we need to figure out the v value.
+// We can brute force since v is a single bit.
+function buildFullEthSig(payload, sig, address) {
+  // EthUtil doesn't like our UInt8 buffers :\
+  return ethereum.addRecoveryParam(payload, sig, address);
 }
 
 
@@ -454,6 +476,8 @@ module.exports = {
   txBuildingResolver,
   aes256_decrypt,
   aes256_encrypt,
+  parseDER,
+  buildFullEthSig,
   checksum,
   getBitcoinAddress,
   parseLattice1Response,

@@ -3,6 +3,8 @@ const {
   txBuildingResolver,
   aes256_decrypt,
   aes256_encrypt,
+  buildFullEthSig,
+  parseDER,
   checksum,
   getBitcoinAddress,
   getP256KeyPair,
@@ -19,7 +21,6 @@ const {
   encReqCodes,
   responseCodes,
   deviceResponses,
-  signingSchema,
   REQUEST_TYPE_BYTE,
   VERSION_BYTE,
   messageConstants,
@@ -144,7 +145,6 @@ class Client {
     // bad params, return an error instead
     const tx = txBuildingResolver[currency](data);
     if (tx.err !== undefined) return cb({ err: tx.err });
-
     // All transaction requests must be put into the same sized buffer
     // so that checksums may be validated. The full size is 530 bytes,
     // but that includes a 1-byte prefix (`SIGN_TRANSACTION`), 2 bytes
@@ -166,7 +166,7 @@ class Client {
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
     return this._request(param, (err, res) => {
       if (err) return cb({ err });
-      const parsedRes = this._handleSign(res);
+      const parsedRes = this._handleSign(res, currency, tx.payload.slice(4));
       return cb(parsedRes);
     })
   }
@@ -385,23 +385,45 @@ class Client {
     return { data: addrs, err: null };
   }
 
-  _handleSign(encRes) {
+  _handleSign(encRes, currencyType, payload=null) {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(encRes, decResLengths.sign);
     if (decrypted.err !== null ) return decrypted;
 
-    const off = 65; // Skip past pubkey prefix
+    let off = 65; // Skip past pubkey prefix
     const res = decrypted.data;
-
-    // [TODO] figure out how this applies to bitcoin
 
     // Grab the DER signature
     if (res[off] != 0x30) {
       return { err: 'Invalid response: no signature returned' };
     }
     // Second byte is the length of the remaining DER sig
-    const sig = res.slice(off, (off + 2 + res[off + 1]));
-    return { err: null, data: sig };
+    const sigs = [ parseDER(res.slice(off, (off + 2 + res[off + 1]))) ];
+
+    const DERLength = 74; // max size of a DER signature -- all Lattice sigs are this long
+    off += DERLength;
+    
+    switch (currencyType) {
+      case 'BTC':
+        // Bitcoin may have more than one signature
+        while (off < res.length) {
+          // Exit out if we have seen all the returned sigs
+          if (res[off] != 0x30) return { err: null, data: sigs };
+          // Otherwise grab another one
+          sigs.push(parseDER(res.slice(off, (off + 2 + res[off + 1]))));
+          off += DERLength;
+        }
+        break;
+      case 'ETH':
+        // Ethereum returns an address as well
+        const ethAddr = res.slice(off, off + 20);
+        // Determine the `v` param and add it to the sig before returning
+        const newSig = buildFullEthSig(payload, sigs[0], ethAddr);
+        if (newSig.err) return newSig;
+        break;
+    }
+
+    return { err: null, data: sigs };
   }
 
   // Get 64 bytes representing the public key
