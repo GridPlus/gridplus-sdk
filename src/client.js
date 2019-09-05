@@ -359,14 +359,13 @@ class Client {
 
     let off = 65; // Skip past pubkey prefix
     const res = decrypted.data;
-
     // After that, we can start parsing the addresses
     let addrs = [];
     // Get the addresses
     for (let i = 0; i < numAddr; i++) {
       // Get the address-like data (depends on currnecy) -- data is in little endian
       // so we need to endian flip it
-      const d = res.slice(off, off + addrSize).reverse();
+      const d = res.slice(off, off + addrSize);
       let addr;
       switch (currency) {
         case 'BTC':
