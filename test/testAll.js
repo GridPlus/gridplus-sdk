@@ -153,6 +153,7 @@ describe('Connect and Pair', () => {
     // Sign a legit tx 
     let sig = await sign(client, req);
     expect(sig.err).to.equal(null);
+    expect(sig.sigs.length).to.equal(1);
   
     // Nonce too large (>u16)
     req.data.txData.nonce = 0xffff + 1;
@@ -207,6 +208,7 @@ describe('Connect and Pair', () => {
     req.data.txData.data = crypto.randomBytes(constants.ETH_DATA_MAX_SIZE).toString('hex');
     sig = await sign(client, req);
     expect(sig.err).to.equal(null);
+    expect(sig.sigs.length).to.equal(1);
   });
 
   function calcVal(txData) {
@@ -261,7 +263,7 @@ describe('Connect and Pair', () => {
     // Sign a legit tx
     let sigResp = await sign(client, req);
     expect(sigResp.err).to.equal(null);
-    expect(sigResp.data.length).to.equal(2);
+    expect(sigResp.sigs.length).to.equal(2);
   });
 
 });

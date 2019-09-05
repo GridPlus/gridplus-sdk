@@ -397,8 +397,12 @@ class Client {
     if (res[off] != 0x30) {
       return { err: 'Invalid response: no signature returned' };
     }
+
+    // Start building return data
+    const returnData = { err: null, sigs: null, tx: null };
+
     // Second byte is the length of the remaining DER sig
-    const sigs = [ parseDER(res.slice(off, (off + 2 + res[off + 1]))) ];
+    returnData.sigs = [ parseDER(res.slice(off, (off + 2 + res[off + 1]))) ];
 
     const DERLength = 74; // max size of a DER signature -- all Lattice sigs are this long
     off += DERLength;
@@ -408,9 +412,9 @@ class Client {
         // Bitcoin may have more than one signature
         while (off < res.length) {
           // Exit out if we have seen all the returned sigs
-          if (res[off] != 0x30) return { err: null, data: sigs };
+          if (res[off] != 0x30) return returnData;
           // Otherwise grab another one
-          sigs.push(parseDER(res.slice(off, (off + 2 + res[off + 1]))));
+          returnData.sigs.push(parseDER(res.slice(off, (off + 2 + res[off + 1]))));
           off += DERLength;
         }
         break;
@@ -418,12 +422,14 @@ class Client {
         // Ethereum returns an address as well
         const ethAddr = res.slice(off, off + 20);
         // Determine the `v` param and add it to the sig before returning
-        const newSig = buildFullEthSig(payload, sigs[0], ethAddr);
-        if (newSig.err) return newSig;
+        const newSig = buildFullEthSig(payload, returnData.sigs[0], ethAddr);
+        if (newSig.err) return { err: newSig.err };
+        returnData.sigs = [newSig];
+        returnData.tx = payload;
         break;
     }
 
-    return { err: null, data: sigs };
+    return returnData;
   }
 
   // Get 64 bytes representing the public key
