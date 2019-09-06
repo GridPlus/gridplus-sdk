@@ -15,6 +15,7 @@ const {
 const {
   ENC_MSG_LEN,
   addressSizes,
+  bitcoinVersionByte,
   currencyCodes,
   decResLengths,
   deviceCodes,
@@ -111,12 +112,17 @@ class Client {
   }
 
   getAddresses(opts, cb) {
-    const { currency, startIndex, n, version } = opts;
+    const { currency, startIndex, n, version="LEGACY" } = opts;
     if (currency === undefined || startIndex == undefined || n == undefined) {
       return cb({ err: 'Please provide `currency`, `startIndex`, and `n` options' });
     } else if (currencyCodes[currency] === undefined) {
       return cb({ err: 'Unsupported currency' });
     }
+    // Bitcoin requires a version byte
+    if (currency === 'BTC' && bitcoinVersionByte[version] === undefined) {
+      return cb({ err: 'Unsupported Bitcoin version. Options are: LEGACY, P2SH, SEGWIT, TESTNET' });
+    }
+
     const payload = Buffer.alloc(6);
     payload.writeUInt8(currencyCodes[currency]);
     payload.writeUInt32BE(startIndex, 1);
@@ -124,7 +130,7 @@ class Client {
     const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
     return this._request(param, (err, res) => {
       if (err) return cb({ err });
-      const parsedRes = this._handleGetAddresses(res, currency, n, version);
+      const parsedRes = this._handleGetAddresses(res, currency, n, bitcoinVersionByte[version]);
       return cb(parsedRes);
     })
   }
@@ -143,7 +149,9 @@ class Client {
 
     // Build the transaction payload to send to the device. If we catch
     // bad params, return an error instead
+    console.log(0, data)
     const tx = txBuildingResolver[currency](data);
+    // console.log(1, tx)
     if (tx.err !== undefined) return cb({ err: tx.err });
     // All transaction requests must be put into the same sized buffer
     // so that checksums may be validated. The full size is 530 bytes,
@@ -348,7 +356,7 @@ class Client {
   }
 
   // GetAddresses will return an array of pubkey hashes
-  _handleGetAddresses(encRes, currency, numAddr, version='LEGACY') {
+  _handleGetAddresses(encRes, currency, numAddr, version) {
     // Get the size of each expected address
     if (addressSizes[currency] === undefined) return { err: 'Unsupported currency' };
     const addrSize = addressSizes[currency];

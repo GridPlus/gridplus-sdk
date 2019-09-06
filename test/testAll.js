@@ -89,6 +89,7 @@ describe('Connect and Pair', () => {
     if (caughtErr == false) {
       const addrData = { currency: 'BTC', startIndex: 0, n: 5 }
       // Legacy addresses (default `version`)
+/*
       let addrs = await getAddresses(client, addrData);
       expect(addrs.err).to.equal(null);
       expect(addrs.data.length).to.equal(5);
@@ -121,7 +122,17 @@ describe('Connect and Pair', () => {
       addrData.n = 11;
       addrs = await getAddresses(client, addrData);
       expect(addrs.err).to.not.equal(null);
-      
+*/
+      // Testnet
+      addrData.version = 'TESTNET';
+      addrData.n = 2;
+      addrData.startIndex = 0;
+      addrs = await getAddresses(client, addrData);
+      expect(addrs.err).to.equal(null);
+      expect(addrs.data.length).to.equal(2);
+      const isTestnet = ['2', 'm', 'n'].indexOf(addrs.data[0][0]);
+      expect(isTestnet).to.be.above(-1);
+      console.log('addrs.data', addrs.data)
     }
   });
   
@@ -228,23 +239,23 @@ describe('Connect and Pair', () => {
     let txData = {
       prevOuts: [
         { 
-          txHash: '4c7846a8ff8415945e96937dea27bdb3144c15d793648d725602784826052586',
-          value: 87654321,
-          index: 5,
+          txHash: 'edca754e9b90dbc4cb9fda6899b2e0581fb7c5bde01bd2157c13d15e9aa3a198',
+          value: 143784,
+          index: 0,
           recipientIndex: 0,
         },
-        {
-          txHash: 'a88387ca68a67f7f74e91723de0069154b532bf024c0e4054e36ea2234251181',
-          value: 4912341139,
-          index: 3,
-          recipientIndex: 3,
-        }
+        // {
+        //   txHash: 'a88387ca68a67f7f74e91723de0069154b532bf024c0e4054e36ea2234251181',
+        //   value: 4912341139,
+        //   index: 3,
+        //   recipientIndex: 3,
+        // }
       ],
-      recipient: '3DXitEC8uiub18mCGCRk4KF39wD4tJQVJm',
-      value: 0,
-      fee: 10000,
+      recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
+      value: 1000,
+      fee: 1000,
       isSegwit: false,
-      changeIndex: 1111,
+      changeIndex: 1,
     };
     txData.value = calcVal(txData);
     let req = {

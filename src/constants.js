@@ -53,6 +53,7 @@ const addressSizes = {
 const bitcoinVersionByte = {
     'LEGACY': 0x00,
     'P2SH': 0x05,
+    'SEGWIT': 0x05,
     'TESTNET': 0x6F,
 }
   

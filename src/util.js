@@ -149,7 +149,7 @@ function buildBitcoinTxRequest(data) {
   try {
     const { prevOuts, recipient, value, changeIndex=0, fee, isSegwit } = data;
     // Start building the transaction
-    const txb = new Bitcoin.TransactionBuilder();
+    const txb = new Bitcoin.TransactionBuilder(Bitcoin.networks.testnet);
     prevOuts.forEach((o) => {
       txb.addInput(o.txHash, o.index);
     })
@@ -164,6 +164,7 @@ function buildBitcoinTxRequest(data) {
     const recipientPubkeyhash = bs58check.decode(recipient).slice(1);
     payload.writeUInt8(recipientVersionByte, off); off++;
     recipientPubkeyhash.copy(payload, off); off += recipientPubkeyhash.length;
+    console.log('sending', value)
     writeUInt64LE(value, payload, off); off += 8;
     
     // Build the inputs from the previous outputs
@@ -222,11 +223,7 @@ function aes256_decrypt(data, key) {
 
 // Convert a pubkeyhash to a bitcoin base58check address with a version byte
 function getBitcoinAddress(pubkeyhash, version) {
-  const vb = constants.bitcoinVersionByte[version];
-  if (vb === undefined) {
-    return null;
-  }
-  return bs58check.encode(Buffer.concat([Buffer.from([vb]), pubkeyhash]));
+  return bs58check.encode(Buffer.concat([Buffer.from([version]), pubkeyhash]));
 }
 
 // Decode a DER signature. Returns signature object {r, s } or null if there is an error
