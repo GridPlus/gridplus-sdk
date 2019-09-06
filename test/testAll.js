@@ -84,7 +84,7 @@ describe('Connect and Pair', () => {
     }
   });
 */
-/*
+
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
@@ -136,7 +136,7 @@ describe('Connect and Pair', () => {
       console.log('addrs.data', addrs.data)
     }
   });
-*/
+/*
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
@@ -234,7 +234,8 @@ describe('Connect and Pair', () => {
     // we get from `getAddresses`
 
   });
-
+*/  
+/*
   function calcVal(txData) {
     let val = 0;
     txData.prevOuts.forEach((o) => {
@@ -264,9 +265,10 @@ describe('Connect and Pair', () => {
       value: 1000,
       fee: 1000,
       isSegwit: false,
-      changeIndex: 1,
+      changeIndex: 1,            // Default 0
+      changeVersion: 'TESTNET',  // Default 'LEGACY'
     };
-    txData.value = calcVal(txData);
+    // txData.value = calcVal(txData);
     let req = {
       currency: 'BTC',
       data: txData,
@@ -287,7 +289,7 @@ describe('Connect and Pair', () => {
     // Sign a legit tx
     let sigResp = await sign(client, req);
     expect(sigResp.err).to.equal(null);
-    expect(sigResp.sigs.length).to.equal(2);
+    // expect(sigResp.sigs.length).to.equal(2);
 
 
 
@@ -298,5 +300,5 @@ describe('Connect and Pair', () => {
 
 
   });
-
+*/
 });

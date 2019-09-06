@@ -1,5 +1,7 @@
 const superagent = require('superagent');
 const {
+  addBitcoinChangeOutput,
+  serializeBitcoinTx,
   txBuildingResolver,
   aes256_decrypt,
   aes256_encrypt,
@@ -149,9 +151,7 @@ class Client {
 
     // Build the transaction payload to send to the device. If we catch
     // bad params, return an error instead
-    console.log(0, data)
     const tx = txBuildingResolver[currency](data);
-    // console.log(1, tx)
     if (tx.err !== undefined) return cb({ err: tx.err });
     // All transaction requests must be put into the same sized buffer
     // so that checksums may be validated. The full size is 530 bytes,
@@ -399,38 +399,43 @@ class Client {
 
     let off = 65; // Skip past pubkey prefix
     const res = decrypted.data;
-
-    // Grab the DER signature
-    if (res[off] != 0x30) {
-      return { err: 'Invalid response: no signature returned' };
+    
+    // Get the change data if we are making a BTC transaction
+    let changePubkeyhash
+    let changeValue;
+    if (currencyType === 'BTC') {
+      changePubkeyhash = res.slice(off, off + 20); off += 20;
+      changeValue = tx.metadata.inputSum - (tx.metadata.value + tx.metadata.fee);
     }
 
     // Start building return data
     const returnData = { err: null, data: null };
-
-    // Second byte is the length of the remaining DER sig
-    const sig1 = parseDER(res.slice(off, (off + 2 + res[off + 1])));
-    
     const DERLength = 74; // max size of a DER signature -- all Lattice sigs are this long
-    off += DERLength;
     
     switch (currencyType) {
       case 'BTC':
-        returnData.sigs = [ sig1 ];
+        const compressedPubLength = 33;  // Size of compressed public key
+        let pubkeys = [];
+        let sigs = [];
         // Bitcoin may have more than one signature
         while (off < res.length) {
-          // Exit out if we have seen all the returned sigs
-          if (res[off] != 0x30) return returnData;
-          // Otherwise grab another one
-          returnData.sigs.push(parseDER(res.slice(off, (off + 2 + res[off + 1]))));
-          off += DERLength;
+          // Exit out if we have seen all the returned sigs and pubkeys
+          if (res[off] != 0x02 && res[off] != 0x03) break;
+          // Otherwise grab another set
+          pubkeys.push(res.slice(off, off + compressedPubLength)); off += compressedPubLength;
+          sigs.push(parseDER(res.slice(off, (off + 2 + res[off + 1])))); off += DERLength;
         }
+        // Build the change address and add this as an output
+        tx.txb = addBitcoinChangeOutput(tx.txb, changePubkeyhash, changeValue, tx.metadata.changeVersion);
+        // Add the signatures and pubkeys to the builder and zip it up!
+        returnData.data = serializeBitcoinTx(tx.txb, pubkeys, sigs);
         break;
       case 'ETH':
+        const sig = parseDER(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;
         // Ethereum returns an address as well
         const ethAddr = res.slice(off, off + 20);
         // Determine the `v` param and add it to the sig before returning
-        returnData.data = `0x${buildEthRawTx(tx, sig1, ethAddr)}`;
+        returnData.data = `0x${buildEthRawTx(tx, sig, ethAddr)}`;
         break;
     }
 

@@ -179,7 +179,7 @@ function ensureHexBuffer(x) {
 // `isSegwit`: a boolean which determines how we serialize the data and parameterize txb
 function buildBitcoinTxRequest(data) {
   try {
-    const { prevOuts, recipient, value, changeIndex=0, fee, isSegwit } = data;
+    const { prevOuts, recipient, value, changeIndex=0, fee, isSegwit, changeVersion='LEGACY' } = data;
     // Start building the transaction
     const txb = new Bitcoin.TransactionBuilder(Bitcoin.networks.testnet);
     prevOuts.forEach((o) => {
@@ -188,7 +188,7 @@ function buildBitcoinTxRequest(data) {
     txb.addOutput(recipient, value);
 
     // Serialize the request
-    const payload = Buffer.alloc(37 + (51 * prevOuts.length));
+    const payload = Buffer.alloc(38 + (51 * prevOuts.length));
     let off = 0;
     payload.writeUInt32LE(changeIndex, off); off += 4;
     payload.writeUInt32LE(fee, off); off += 4;
@@ -196,7 +196,6 @@ function buildBitcoinTxRequest(data) {
     const recipientPubkeyhash = bs58check.decode(recipient).slice(1);
     payload.writeUInt8(recipientVersionByte, off); off++;
     recipientPubkeyhash.copy(payload, off); off += recipientPubkeyhash.length;
-    console.log('sending', value)
     writeUInt64LE(value, payload, off); off += 8;
     
     // Build the inputs from the previous outputs
@@ -204,24 +203,66 @@ function buildBitcoinTxRequest(data) {
     const scriptType = isSegwit === true ? 
                         constants.bitcoinScriptTypes.P2SH : 
                         constants.bitcoinScriptTypes.P2PKH; // No support for multisig p2sh in v1 (p2sh == segwit here)
+    let inputSum = 0;
     prevOuts.forEach((input) => {
       payload.writeUInt32LE(input.recipientIndex, off); off += 4;
       payload.writeUInt32LE(input.index, off); off += 4;
       writeUInt64LE(input.value, payload, off); off += 8;
+      inputSum += input.value;
       payload.writeUInt8(scriptType, off); off++;
       if (!Buffer.isBuffer(input.txHash)) input.txHash = Buffer.from(input.txHash, 'hex');
       input.txHash.copy(payload, off); off += input.txHash.length;
     })
+
+    // Finally, write the change script type (determines how we build the output)
+    // on the Lattice)
+    payload.writeUInt8(scriptType);
+
     // Send them back!
-    return { 
+    return {
       txb, 
       payload, 
-      schema: constants.signingSchema.BTC_TRANSFER 
+      schema: constants.signingSchema.BTC_TRANSFER,
+      metadata: {
+        changeVersion,
+        value,
+        fee,
+        inputSum,
+      }
     };
   } catch (err) {
     return { err };
   }
 }
+
+// Add a change output to a bitcoinjs-lib transaction builder
+function addBitcoinChangeOutput(txb, pubkeyhash, changeValue, changeVersion) {
+  // Build the change address
+  const versionByte = constants.bitcoinVersionByte[changeVersion];
+  if (versionByte === undefined) throw new Error('Unsupported change version provided');
+  const version = Buffer.alloc(1);
+  version.writeUInt8(versionByte);
+  if (!Buffer.isBuffer(pubkeyhash)) pubkeyhash = Buffer.from(pubkeyhash, 'hex');
+  const address = bs58check.encode(Buffer.concat([version, pubkeyhash]));
+  // Add the output
+  txb.addOutput(address, changeValue);
+  return txb;
+}
+
+// Add the signatures + pubkeys to the transaction builder and serialize
+function serializeBitcoinTx(txb, pubkeys, sigs) {
+
+  // WE MAY NEED TO ADD OUR OWN SERIALIZER IF REACT NATIVE CANT
+  // HANDLE BITCOINJS
+  // FORTUNATELY, I ALREADY WROTE ONE:
+  // https://github.com/GridPlus/signing-service/blob/master/lib/k81Lib/currencies/bitcoin.js#L91
+
+  // txb.__INPUTS.forEach((input) => {
+
+  // })
+}
+
+
 
 function writeUInt64LE(n, buf, off) {
   const preBuf = Buffer.alloc(8);
@@ -495,6 +536,8 @@ function _rlpEncode(input) {
 }
 
 module.exports = {
+  addBitcoinChangeOutput,
+  serializeBitcoinTx,
   txBuildingResolver,
   aes256_decrypt,
   aes256_encrypt,

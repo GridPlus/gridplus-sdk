@@ -7,13 +7,13 @@ const AES_IV = [0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73
 const decResLengths = {
     finalizePair: 0,   // Only contains the pubkey
     getAddresses: 200, // 20-byte address * 10 max slots
-    sign: 740,          // 1 DER signature for ETH, 10 for BTC (not all are used for BTC)       
+    sign: 1090,          // 1 DER signature for ETH, 10 for BTC (not all are used for BTC)       
 }
 
 // Per Lattice spec, all encrypted messages must fit in a buffer of this size.
 // The length comes from the largest request/response data type size minus payload metadata
 // (12 bytes are stripped from the payload -- another 4 are needed for the checksum)
-const ENC_MSG_LEN = 816;
+const ENC_MSG_LEN = 1168;
 
   
 const OPs = {
