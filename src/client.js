@@ -3,7 +3,7 @@ const {
   txBuildingResolver,
   aes256_decrypt,
   aes256_encrypt,
-  buildFullEthSig,
+  buildEthRawTx,
   parseDER,
   checksum,
   getBitcoinAddress,
@@ -174,7 +174,7 @@ class Client {
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
     return this._request(param, (err, res) => {
       if (err) return cb({ err });
-      const parsedRes = this._handleSign(res, currency, tx.payload.slice(4));
+      const parsedRes = this._handleSign(res, currency, tx);
       return cb(parsedRes);
     })
   }
@@ -392,7 +392,7 @@ class Client {
     return { data: addrs, err: null };
   }
 
-  _handleSign(encRes, currencyType, payload=null) {
+  _handleSign(encRes, currencyType, tx=null) {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(encRes, decResLengths.sign);
     if (decrypted.err !== null ) return decrypted;
@@ -406,16 +406,17 @@ class Client {
     }
 
     // Start building return data
-    const returnData = { err: null, sigs: null, tx: null };
+    const returnData = { err: null, data: null };
 
     // Second byte is the length of the remaining DER sig
-    returnData.sigs = [ parseDER(res.slice(off, (off + 2 + res[off + 1]))) ];
-
+    const sig1 = parseDER(res.slice(off, (off + 2 + res[off + 1])));
+    
     const DERLength = 74; // max size of a DER signature -- all Lattice sigs are this long
     off += DERLength;
     
     switch (currencyType) {
       case 'BTC':
+        returnData.sigs = [ sig1 ];
         // Bitcoin may have more than one signature
         while (off < res.length) {
           // Exit out if we have seen all the returned sigs
@@ -429,10 +430,7 @@ class Client {
         // Ethereum returns an address as well
         const ethAddr = res.slice(off, off + 20);
         // Determine the `v` param and add it to the sig before returning
-        const newSig = buildFullEthSig(payload, returnData.sigs[0], ethAddr);
-        if (newSig.err) return { err: newSig.err };
-        returnData.sigs = [newSig];
-        returnData.tx = payload;
+        returnData.data = `0x${buildEthRawTx(tx, sig1, ethAddr)}`;
         break;
     }
 

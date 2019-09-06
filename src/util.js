@@ -91,13 +91,26 @@ function toPaddedDER(sig) {
 //--------------------------------------------------
 function buildEthereumTxRequest(data) {
   try {
-    const { txData, signerIndex } = data;
+    let { txData, signerIndex, chainId=1, preventReplays=true } = data;
+    if (typeof chainId !== 'number') chainId = ethereum.chainIds[chainId];
+    if (!chainId) throw new Error('Unsupported chain name');
+    
     // Ensure all fields are 0x-prefixed hex strings
-    let rawTx = [];
-    Object.keys(txData).forEach((k) => {
-      const item = ensureHexBuffer(txData[k]);
-      rawTx.push(item);
-    })
+    let rawTx = []
+    // Build the transaction buffer array
+    rawTx.push(ensureHexBuffer(txData.nonce));
+    rawTx.push(ensureHexBuffer(txData.gasPrice));
+    rawTx.push(ensureHexBuffer(txData.gasLimit));
+    rawTx.push(ensureHexBuffer(txData.to));
+    rawTx.push(ensureHexBuffer(txData.value));
+    rawTx.push(ensureHexBuffer(txData.data));
+    // Add empty v,r,s values
+    if (preventReplays === true) {
+      rawTx.push(ensureHexBuffer(chainId)); // v
+      rawTx.push(ensureHexBuffer(null));    // r
+      rawTx.push(ensureHexBuffer(null));    // s
+    }
+
     // Ensure data field isn't too long
     if (txData.data && ensureHexBuffer(txData.data).length > constants.ETH_DATA_MAX_SIZE) {
       return { err: `Data field too large (must be <=${constants.ETH_DATA_MAX_SIZE} bytes)` }
@@ -109,17 +122,36 @@ function buildEthereumTxRequest(data) {
     payload.writeUInt32BE(signerIndex, 0);
     encoded.copy(payload, 4);
     return { 
+      rawTx,
       payload,
       schema: constants.signingSchema.ETH_TRANSFER,  // We will use eth transfer for all ETH txs for v1 
+      chainId
     };
   } catch (err) {
     return { err };
   }
 }
 
+// Given a 64-byte signature [r,s] we need to figure out the v value
+// and attah the full signature to the end of the transaction payload
+function buildEthRawTx(tx, sig, address) {
+  // Get the new signature (with valid recovery param `v`) given the
+  // RLP-encoded transaction payload
+  // NOTE: The first 4 bytes of the payload were for the `signerIndex`, which
+  //      was part of the Lattice request. We discard that here.
+  const newSig = ethereum.addRecoveryParam(tx.payload.slice(4), sig, address, tx.chainId);
+  // Use the signature to generate a new raw transaction payload
+  const newRawTx = tx.rawTx.slice(0, 6);
+  newRawTx.push(Buffer.from((newSig.v).toString(16), 'hex'));
+  newRawTx.push(newSig.r);
+  newRawTx.push(newSig.s);
+  return rlp.encode(newRawTx).toString('hex');
+}
+
+// Ensure a param is represented by a buffer
 function ensureHexBuffer(x) {
-  if (x === null) return Buffer.alloc(0);
-  else if (Buffer.isBuffer(x)) return x;
+  if (x === null || x === 0) return Buffer.alloc(0);
+  else if (Buffer.isBuffer(x)) x = x.toString('hex');
   if (typeof x == 'number') x = `${x.toString(16)}`;
   else if (typeof x == 'string' && x.slice(0, 2) === '0x') x = x.slice(2);
   if (x.length % 2 > 0) x = `0${x}`;
@@ -239,14 +271,6 @@ function parseDER(sigBuf) {
   sig.s = sigBuf.slice(off, off + sLen);
   return sig;
 }
-
-// Given a 64-byte signature [r,s] we need to figure out the v value.
-// We can brute force since v is a single bit.
-function buildFullEthSig(payload, sig, address) {
-  // EthUtil doesn't like our UInt8 buffers :\
-  return ethereum.addRecoveryParam(payload, sig, address);
-}
-
 
 function getOutputScriptType(s, multisig=false) {
   const OP_first = s.slice(0, 2);
@@ -475,7 +499,7 @@ module.exports = {
   aes256_decrypt,
   aes256_encrypt,
   parseDER,
-  buildFullEthSig,
+  buildEthRawTx,
   checksum,
   getBitcoinAddress,
   parseLattice1Response,

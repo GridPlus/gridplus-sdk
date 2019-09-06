@@ -54,7 +54,7 @@ describe('Connect and Pair', () => {
     })
   }
 
-  it('Should connect to an agent', async () => {
+  it('Should connect to a Lattice', async () => {
     // const _id = question('Please enter the ID of your test device: ');
     // id = _id;
     id = 'daf68f71bf37a3c5';
@@ -84,6 +84,7 @@ describe('Connect and Pair', () => {
     }
   });
 */
+/*
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
@@ -135,7 +136,7 @@ describe('Connect and Pair', () => {
       console.log('addrs.data', addrs.data)
     }
   });
-  
+*/
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
@@ -147,7 +148,8 @@ describe('Connect and Pair', () => {
       gasPrice: 1200000000,
       gasLimit: 122000,
       to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-      value: 0.3 * 10 **18,
+      // value: 0.05 * 10 **18,
+      value: 6,
       data: null
     };
     let req = {
@@ -155,58 +157,66 @@ describe('Connect and Pair', () => {
       data: {
         signerIndex: 0,
         txData,
+        chainId: 'rinkeby', // Can also be an integer
+        preventReplays: true
       }
     }
 
     // Sign a legit tx 
-    let sig = await sign(client, req);
-    expect(sig.err).to.equal(null);
-    expect(sig.sigs.length).to.equal(1);
-  
+    let tx = await sign(client, req);
+    expect(tx.err).to.equal(null);
+    expect(tx.data).to.not.equal(null);
+
+    // Invalid chainId
+    req.data.chainId = 'notachain';
+    tx = await(sign(client, req));
+    expect(tx.err).to.not.equal(null);
+    req.data.chainId = 'rinkeby';
+
     // Nonce too large (>u16)
     req.data.txData.nonce = 0xffff + 1;
-    sig = await sign(client, req);
-    expect(sig.err).to.not.equal(null);
+    tx = await sign(client, req);
+    expect(tx.err).to.not.equal(null);
     // Reset to valid param
     req.data.txData.nonce = 5;
 
     // GasLimit too low
     req.data.txData.gasLimit = GAS_LIMIT_MIN - 1;
-    sig = await sign(client, req);
-    expect(sig.err).to.not.equal(null);
+    tx = await sign(client, req);
+    expect(tx.err).to.not.equal(null);
 
     // GasLimit too high (>u32)
     req.data.txData.gasLimit = GAS_LIMIT_MAX + 1;
-    sig = await sign(client, req);
-    expect(sig.err).to.not.equal(null);
+    tx = await sign(client, req);
+    expect(tx.err).to.not.equal(null);
     // Reset to valid param
     req.data.txData.gasLimit = 122000;
 
     // GasPrice too high
     req.data.txData.gasPrice = GAS_PRICE_MAX + 1;
-    sig = await sign(client, req);
-    expect(sig.err).to.not.equal(null);
+    tx = await sign(client, req);
+    expect(tx.err).to.not.equal(null);
     // Reset to valid param
     req.data.txData.gasLimit = 1200000000;
     
     // `to` wrong size
     req.data.txData.to = '0xe242e54155b1abc71fc118065270cecaaf8b77'
-    sig = await sign(client, req);
-    expect(sig.err).to.not.equal(null);
+    tx = await sign(client, req);
+    expect(tx.err).to.not.equal(null);
     // Reset to valid param 
     req.data.txData.to = '0xe242e54155b1abc71fc118065270cecaaf8b7768'
     
     // Value too high
     req.data.txData.value = 2 ** 256;
-    sig = await sign(client, req);
-    expect(sig.err).to.not.equal(null);
+    tx = await sign(client, req);
+    expect(tx.err).to.not.equal(null);
     // Reset to valid param
     req.data.txData.value = 0.3 * 10 ** 18;
     
     // Data too large
     req.data.txData.data = crypto.randomBytes(constants.ETH_DATA_MAX_SIZE + 1).toString('hex');
-    sig = await sign(client, req);
-    expect(sig.err).to.not.equal(null);
+    tx = await sign(client, req);
+    expect(tx.err).to.not.equal(null);
 
     // Reset all values at max
     req.data.txData.nonce = 0xfffe;
@@ -214,15 +224,14 @@ describe('Connect and Pair', () => {
     req.data.txData.gasPrice = GAS_PRICE_MAX;
     req.data.txData.value = 123456000000000000000000;
     req.data.txData.data = crypto.randomBytes(constants.ETH_DATA_MAX_SIZE).toString('hex');
-    sig = await sign(client, req);
-    expect(sig.err).to.equal(null);
-    expect(sig.sigs.length).to.equal(1);
+    tx = await sign(client, req);
+    expect(tx.err).to.equal(null);
+    expect(tx.data).to.not.equal(null);
 
 
 
     // [TODO] Validate that signer matches up with the address
     // we get from `getAddresses`
-
 
   });
 
