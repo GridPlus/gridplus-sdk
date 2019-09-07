@@ -306,23 +306,6 @@ function parseDER(sigBuf) {
   return sig;
 }
 
-function getOutputScriptType(s, multisig=false) {
-  const OP_first = s.slice(0, 2);
-  const OP_last = s.slice(s.length - 2, s.length);
-  const p2pkh = (OPs[OP_first] === 'OP_DUP' && OPs[OP_last] === 'OP_CHECKSIG');
-  const p2sh = (OPs[OP_first] === 'OP_HASH160' && OPs[OP_last] === 'OP_EQUAL');
-  if (p2pkh) {
-    return 'p2pkh';
-  } else if (p2sh && multisig === true) {
-    return 'p2sh';
-  } else if (p2sh && multisig !== true) {
-    return 'p2sh(p2wpkh)';
-  } else {
-    return null;
-  }
-}
-
-
 function getP256KeyPair (priv) {
   return ec.keyFromPrivate(priv, 'hex');
 }
@@ -539,7 +522,6 @@ module.exports = {
   checksum,
   getBitcoinAddress,
   parseLattice1Response,
-  getOutputScriptType,
   getP256KeyPair,
   getP256KeyPairFromPub,
   pad64,
