@@ -235,15 +235,6 @@ describe('Connect and Pair', () => {
 
   });
 */  
-/*
-  function calcVal(txData) {
-    let val = 0;
-    txData.prevOuts.forEach((o) => {
-      val += o.value;
-    })
-    val -= txData.fee;
-    return val;
-  }
 
   it('Should sign Bitcoin transactions', async () => {  
     let txData = {
@@ -267,13 +258,19 @@ describe('Connect and Pair', () => {
       isSegwit: false,
       changeIndex: 1,            // Default 0
       changeVersion: 'TESTNET',  // Default 'LEGACY'
+      network: 'TESTNET',        // Default 'MAINNET'
     };
-    // txData.value = calcVal(txData);
     let req = {
       currency: 'BTC',
       data: txData,
     };
-  
+    
+    // Sign a legit tx
+    let sigResp = await sign(client, req);
+    expect(sigResp.err).to.equal(null);
+    // expect(sigResp.sigs.length).to.equal(2);
+
+    // Compare to bitcoinjs-lib
     // const bitcoin = require('bitcoinjs-lib');
     // const txb = new bitcoin.TransactionBuilder();
     // // const alice = new bitcoin.ECPair.fromPrivateKey(Buffer.from('a88387ca68a67f7f74e91723de0069154b532bf024c0e4054e36ea2234251181', 'hex'));
@@ -285,13 +282,6 @@ describe('Connect and Pair', () => {
     // const prevOutScript0 = Buffer.from('76a91499b680a8a1b37fa8d44fa7c0f950c002d1d9542a88ac', 'hex');
     // const hash0 = tx.hashForSignature(0, prevOutScript0, hashType)
     // console.log('hash0', hash0.toString('hex'));
-    
-    // Sign a legit tx
-    let sigResp = await sign(client, req);
-    expect(sigResp.err).to.equal(null);
-    // expect(sigResp.sigs.length).to.equal(2);
-
-
 
 
     // [TODO] Validate that signer matches up with the address
@@ -300,5 +290,5 @@ describe('Connect and Pair', () => {
 
 
   });
-*/
+
 });

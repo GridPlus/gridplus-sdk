@@ -425,10 +425,18 @@ class Client {
           pubkeys.push(res.slice(off, off + compressedPubLength)); off += compressedPubLength;
           sigs.push(parseDER(res.slice(off, (off + 2 + res[off + 1])))); off += DERLength;
         }
+
+        // Build inputs and outputs for serialization
+        
+        // Add the change output
+
+        
+
+
         // Build the change address and add this as an output
-        tx.txb = addBitcoinChangeOutput(tx.txb, changePubkeyhash, changeValue, tx.metadata.changeVersion);
+        // tx.txb = addBitcoinChangeOutput(tx.txb, changePubkeyhash, changeValue, tx.metadata.changeVersion);
         // Add the signatures and pubkeys to the builder and zip it up!
-        returnData.data = serializeBitcoinTx(tx.txb, pubkeys, sigs);
+        // returnData.data = serializeBitcoinTx(tx.txb, pubkeys, sigs);
         break;
       case 'ETH':
         const sig = parseDER(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;

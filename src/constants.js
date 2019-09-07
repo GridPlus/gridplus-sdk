@@ -14,14 +14,6 @@ const decResLengths = {
 // The length comes from the largest request/response data type size minus payload metadata
 // (12 bytes are stripped from the payload -- another 4 are needed for the checksum)
 const ENC_MSG_LEN = 1168;
-
-  
-const OPs = {
-    'a9': 'OP_HASH160',
-    '76': 'OP_DUP',
-    '87': 'OP_EQUAL',
-    'ac': 'OP_CHECKSIG',
-}
   
 const deviceCodes = {
     'CONNECT': 1,
@@ -93,7 +85,6 @@ const VERSION_BYTE = 1;
 module.exports = {
     AES_IV,
     ENC_MSG_LEN,
-    OPs,
     addressSizes,
     bitcoinScriptTypes,
     bitcoinVersionByte,

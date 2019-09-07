@@ -1,9 +1,9 @@
 // Static utility functions
 const Bitcoin = require('bitcoinjs-lib');
 const bs58 = require('bs58');
+const bs58check = require('bs58check')
 const ethereum = require('./ethereum');
 const rlp = require('rlp-browser');
-const bs58check = require('bs58check')
 const Buffer = require('buffer/').Buffer
 const aes = require('aes-js');
 const crc32 = require('crc-32');
@@ -180,13 +180,6 @@ function ensureHexBuffer(x) {
 function buildBitcoinTxRequest(data) {
   try {
     const { prevOuts, recipient, value, changeIndex=0, fee, isSegwit, changeVersion='LEGACY' } = data;
-    // Start building the transaction
-    const txb = new Bitcoin.TransactionBuilder(Bitcoin.networks.testnet);
-    prevOuts.forEach((o) => {
-      txb.addInput(o.txHash, o.index);
-    })
-    txb.addOutput(recipient, value);
-
     // Serialize the request
     const payload = Buffer.alloc(38 + (51 * prevOuts.length));
     let off = 0;
@@ -220,10 +213,10 @@ function buildBitcoinTxRequest(data) {
 
     // Send them back!
     return {
-      txb, 
       payload, 
       schema: constants.signingSchema.BTC_TRANSFER,
-      metadata: {
+      origData: data,   // We will need the original data for serializing the tx
+      metadata: {       // This data helps fill in the change output
         changeVersion,
         value,
         fee,
@@ -555,4 +548,5 @@ module.exports = {
   sortByHeight,
   getTxHash,
   toPaddedDER,
+  writeUInt64LE,
 }
