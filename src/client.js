@@ -1,14 +1,13 @@
 const superagent = require('superagent');
+const bitcoin = require('./bitcoin');
+const ethereum = require('./ethereum');
+const bs58check = require('bs58check');
 const {
-  addBitcoinChangeOutput,
-  serializeBitcoinTx,
   txBuildingResolver,
   aes256_decrypt,
   aes256_encrypt,
-  buildEthRawTx,
   parseDER,
   checksum,
-  getBitcoinAddress,
   getP256KeyPair,
   getP256KeyPairFromPub,
   parseLattice1Response,
@@ -17,7 +16,6 @@ const {
 const {
   ENC_MSG_LEN,
   addressSizes,
-  bitcoinVersionByte,
   currencyCodes,
   decResLengths,
   deviceCodes,
@@ -121,7 +119,7 @@ class Client {
       return cb({ err: 'Unsupported currency' });
     }
     // Bitcoin requires a version byte
-    if (currency === 'BTC' && bitcoinVersionByte[version] === undefined) {
+    if (currency === 'BTC' && bitcoin.addressVersion[version] === undefined) {
       return cb({ err: 'Unsupported Bitcoin version. Options are: LEGACY, P2SH, SEGWIT, TESTNET' });
     }
 
@@ -132,7 +130,7 @@ class Client {
     const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
     return this._request(param, (err, res) => {
       if (err) return cb({ err });
-      const parsedRes = this._handleGetAddresses(res, currency, n, bitcoinVersionByte[version]);
+      const parsedRes = this._handleGetAddresses(res, currency, n, bitcoin.addressVersion[version]);
       return cb(parsedRes);
     })
   }
@@ -377,7 +375,7 @@ class Client {
       let addr;
       switch (currency) {
         case 'BTC':
-          addr = getBitcoinAddress(d, version);
+          addr = bitcoin.getBitcoinAddress(d, version);
           if (addr === null) return { err: 'Unsupported version byte' };
           break;
         case 'ETH':
@@ -401,11 +399,11 @@ class Client {
     const res = decrypted.data;
     
     // Get the change data if we are making a BTC transaction
-    let changePubkeyhash
-    let changeValue;
+    let changeRecipient;
     if (currencyType === 'BTC') {
-      changePubkeyhash = res.slice(off, off + 20); off += 20;
-      changeValue = tx.metadata.inputSum - (tx.metadata.value + tx.metadata.fee);
+      const changeVersion = bitcoinVersionByte[tx.origData.changeVersion];
+      const changePubkeyhash = res.slice(off, off + 20); off += 20;
+      changeRecipient = bitcoin.getBitcoinAddress(changePubkeyhash, changeVersion);
     }
 
     // Start building return data
@@ -417,7 +415,9 @@ class Client {
         const compressedPubLength = 33;  // Size of compressed public key
         let pubkeys = [];
         let sigs = [];
-        // Bitcoin may have more than one signature
+        // Parse the signature for each output -- they are returned
+        // in the serialized payload in form [pubkey, sig]
+        // There is one signature per output
         while (off < res.length) {
           // Exit out if we have seen all the returned sigs and pubkeys
           if (res[off] != 0x02 && res[off] != 0x03) break;
@@ -426,24 +426,45 @@ class Client {
           sigs.push(parseDER(res.slice(off, (off + 2 + res[off + 1])))); off += DERLength;
         }
 
-        // Build inputs and outputs for serialization
-        
-        // Add the change output
+        // Build the transaction data to be serialized
+        let preSerializedData = {
+          inputs: [],
+          outputs: [],
+          isSegwitSpend: tx.origData.isSegwit,
+          network: tx.origData.network,
+        };
 
-        
+        // First output comes from request dta
+        preSerializedData.outputs.push({
+          value: tx.origData.value,
+          recipient: tx.origData.recipient,
+        });
 
+        // Second output comes from change data
+        preSerializedData.outputs.push({
+          value: changeValue,
+          recipient: changeRecipient,
+        });
 
-        // Build the change address and add this as an output
-        // tx.txb = addBitcoinChangeOutput(tx.txb, changePubkeyhash, changeValue, tx.metadata.changeVersion);
-        // Add the signatures and pubkeys to the builder and zip it up!
-        // returnData.data = serializeBitcoinTx(tx.txb, pubkeys, sigs);
+        // Add the inputs
+        for (let i = 0; i < sigs.length; i++) {
+          preSerializedData.push({
+            hash: tx.origData.inputs[i].hash,
+            index: tx.origData.inputs[i].index,
+            sig: sigs[i],
+            pubkey: pubkeys[i],
+          });
+        }
+
+        // Finally, serialize the transaction
+        returnData.data = bitcoin.serializeTx(preSerializedData);
         break;
       case 'ETH':
         const sig = parseDER(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;
         // Ethereum returns an address as well
         const ethAddr = res.slice(off, off + 20);
         // Determine the `v` param and add it to the sig before returning
-        returnData.data = `0x${buildEthRawTx(tx, sig, ethAddr)}`;
+        returnData.data = `0x${ethereum.buildEthRawTx(tx, sig, ethAddr)}`;
         break;
     }
 

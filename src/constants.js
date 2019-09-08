@@ -41,13 +41,6 @@ const addressSizes = {
     'BTC': 20,  // 20 byte pubkeyhash
     'ETH': 20,  // 20 byte address not including 0x prefix
 }
-
-const bitcoinVersionByte = {
-    'LEGACY': 0x00,
-    'P2SH': 0x05,
-    'SEGWIT': 0x05,
-    'TESTNET': 0x6F,
-}
   
 const responseCodes = {
     'SUCCESS': 0x00,
@@ -73,11 +66,6 @@ const signingSchema = {
     ERC20_TRANSFER: 2
 }
 
-const bitcoinScriptTypes = {
-    P2PKH: 0x01,
-    P2SH: 0x02,
-}
-
 const ETH_DATA_MAX_SIZE = 100; // Maximum number of bytes that can go in the data field
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
 const VERSION_BYTE = 1;
@@ -86,8 +74,6 @@ module.exports = {
     AES_IV,
     ENC_MSG_LEN,
     addressSizes,
-    bitcoinScriptTypes,
-    bitcoinVersionByte,
     currencyCodes,
     decResLengths,
     deviceCodes,
