@@ -29,7 +29,6 @@
   "dependencies": {
     "aes-js": "^3.1.1",
     "bignumber.js": "^8.0.1",
-    "bitcoinjs-lib": "^4.0.5",
     "bn.js": "^4.11.8",
     "bs58": "^4.0.1",
     "bs58check": "^2.1.2",
@@ -50,6 +49,7 @@
     "superagent": "^3.8.3"
   },
   "devDependencies": {
+    "bitcoinjs-lib": "^5.1.6",
     "chai": "^4.2.0",
     "commitizen": "^3.0.4",
     "cz-conventional-changelog": "^2.1.0",

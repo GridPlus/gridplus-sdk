@@ -1,7 +1,6 @@
 const superagent = require('superagent');
 const bitcoin = require('./bitcoin');
 const ethereum = require('./ethereum');
-const bs58check = require('bs58check');
 const {
   txBuildingResolver,
   aes256_decrypt,
@@ -401,11 +400,10 @@ class Client {
     // Get the change data if we are making a BTC transaction
     let changeRecipient;
     if (currencyType === 'BTC') {
-      const changeVersion = bitcoinVersionByte[tx.origData.changeVersion];
+      const changeVersion = bitcoin.addressVersion[tx.changeData.changeVersion];
       const changePubkeyhash = res.slice(off, off + 20); off += 20;
       changeRecipient = bitcoin.getBitcoinAddress(changePubkeyhash, changeVersion);
     }
-
     // Start building return data
     const returnData = { err: null, data: null };
     const DERLength = 74; // max size of a DER signature -- all Lattice sigs are this long
@@ -423,7 +421,7 @@ class Client {
           if (res[off] != 0x02 && res[off] != 0x03) break;
           // Otherwise grab another set
           pubkeys.push(res.slice(off, off + compressedPubLength)); off += compressedPubLength;
-          sigs.push(parseDER(res.slice(off, (off + 2 + res[off + 1])))); off += DERLength;
+          sigs.push(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;
         }
 
         // Build the transaction data to be serialized
@@ -439,18 +437,17 @@ class Client {
           value: tx.origData.value,
           recipient: tx.origData.recipient,
         });
-
         // Second output comes from change data
         preSerializedData.outputs.push({
-          value: changeValue,
+          value: tx.changeData.value,
           recipient: changeRecipient,
         });
-
+        
         // Add the inputs
         for (let i = 0; i < sigs.length; i++) {
-          preSerializedData.push({
-            hash: tx.origData.inputs[i].hash,
-            index: tx.origData.inputs[i].index,
+          preSerializedData.inputs.push({
+            hash: tx.origData.prevOuts[i].txHash,
+            index: tx.origData.prevOuts[i].index,
             sig: sigs[i],
             pubkey: pubkeys[i],
           });
@@ -458,6 +455,13 @@ class Client {
 
         // Finally, serialize the transaction
         returnData.data = bitcoin.serializeTx(preSerializedData);
+        // Add extra data for debugging/lookup purposes
+        let txHash = this.crypto.createHash('sha256').update(Buffer.from(returnData.data, 'hex')).digest();
+        txHash = this.crypto.createHash('sha256').update(txHash).digest().reverse().toString('hex');
+        returnData.extraData = {
+          txHash,
+          changeRecipient,
+        }
         break;
       case 'ETH':
         const sig = parseDER(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;

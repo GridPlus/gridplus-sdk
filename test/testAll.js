@@ -1,11 +1,9 @@
 // Basic tests for atomic SDK functionality
+const Bitcoin = require('bitcoinjs-lib');
 const expect = require('chai').expect;
 const Sdk = require('../index.js');
 const crypto = require('crypto');
 const question = require('readline-sync').question;
-const constants = require('../src/constants.js');
-
-const ETH_TX_DATA_MAX = 100;
 
 let client, rl, id;
 let caughtErr = false;
@@ -234,29 +232,23 @@ describe('Connect and Pair', () => {
     // we get from `getAddresses`
 
   });
-*/  
+*/
 
   it('Should sign Bitcoin transactions', async () => {  
     let txData = {
       prevOuts: [
         { 
-          txHash: 'edca754e9b90dbc4cb9fda6899b2e0581fb7c5bde01bd2157c13d15e9aa3a198',
-          value: 143784,
-          index: 0,
+          txHash: 'c0fb89034692788f4bccbec433a197d68a5eb61417b367ee1994b42be5d68ba7',
+          value: 139784,
+          index: 1,
           recipientIndex: 0,
         },
-        // {
-        //   txHash: 'a88387ca68a67f7f74e91723de0069154b532bf024c0e4054e36ea2234251181',
-        //   value: 4912341139,
-        //   index: 3,
-        //   recipientIndex: 3,
-        // }
       ],
       recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
       value: 1000,
       fee: 1000,
       isSegwit: false,
-      changeIndex: 1,            // Default 0
+      changeIndex: 0,            // Default 0
       changeVersion: 'TESTNET',  // Default 'LEGACY'
       network: 'TESTNET',        // Default 'MAINNET'
     };
@@ -268,21 +260,8 @@ describe('Connect and Pair', () => {
     // Sign a legit tx
     let sigResp = await sign(client, req);
     expect(sigResp.err).to.equal(null);
-    // expect(sigResp.sigs.length).to.equal(2);
-
-    // Compare to bitcoinjs-lib
-    // const bitcoin = require('bitcoinjs-lib');
-    // const txb = new bitcoin.TransactionBuilder();
-    // // const alice = new bitcoin.ECPair.fromPrivateKey(Buffer.from('a88387ca68a67f7f74e91723de0069154b532bf024c0e4054e36ea2234251181', 'hex'));
-    // txb.addInput(txData.prevOuts[0].txHash, txData.prevOuts[0].index);
-    // txb.addInput(txData.prevOuts[1].txHash, txData.prevOuts[1].index);
-    // txb.addOutput(txData.recipient, txData.value);
-    // const tx = txb.__tx;
-    // const hashType = 0x01; // SIGHASH_ALL
-    // const prevOutScript0 = Buffer.from('76a91499b680a8a1b37fa8d44fa7c0f950c002d1d9542a88ac', 'hex');
-    // const hash0 = tx.hashForSignature(0, prevOutScript0, hashType)
-    // console.log('hash0', hash0.toString('hex'));
-
+    expect(sigResp.data).to.not.equal(null);
+    expect(sigResp.extraData.txHash).to.not.equal(null);
 
     // [TODO] Validate that signer matches up with the address
     // we get from `getAddresses`

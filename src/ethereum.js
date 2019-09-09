@@ -1,6 +1,7 @@
 // Utils for Ethereum transactions. This is effecitvely a shim of ethereumjs-util, which
 // does not have browser (or, by proxy, React-Native) support.
 const Buffer = require('buffer/').Buffer
+const constants = require('./constants');
 const keccak256 = require('js-sha3').keccak256;
 const rlp = require('rlp-browser');
 const secp256k1 = require('secp256k1');
@@ -8,7 +9,7 @@ const secp256k1 = require('secp256k1');
 exports.buildEthereumTxRequest = function(data) {
   try {
     let { txData, signerIndex, chainId=1, preventReplays=true } = data;
-    if (typeof chainId !== 'number') chainId = ethereum.chainIds[chainId];
+    if (typeof chainId !== 'number') chainId = chainIds[chainId];
     if (!chainId) throw new Error('Unsupported chain name');
     
     // Ensure all fields are 0x-prefixed hex strings
@@ -55,7 +56,7 @@ exports.buildEthRawTx = function(tx, sig, address) {
   // RLP-encoded transaction payload
   // NOTE: The first 4 bytes of the payload were for the `signerIndex`, which
   //      was part of the Lattice request. We discard that here.
-  const newSig = ethereum.addRecoveryParam(tx.payload.slice(4), sig, address, tx.chainId);
+  const newSig = addRecoveryParam(tx.payload.slice(4), sig, address, tx.chainId);
   // Use the signature to generate a new raw transaction payload
   const newRawTx = tx.rawTx.slice(0, 6);
   newRawTx.push(Buffer.from((newSig.v).toString(16), 'hex'));
@@ -65,7 +66,7 @@ exports.buildEthRawTx = function(tx, sig, address) {
 }
 
 // Attach a recovery parameter to a signature by brute-forcing ECRecover
-exports.addRecoveryParam = function(payload, sig, address, chainId=1, preventReplays=true) {
+function addRecoveryParam(payload, sig, address, chainId=1, preventReplays=true) {
   try {
     // Rebuild the keccak256 hash here so we can `ecrecover`
     const hash = Buffer.from(keccak256(payload), 'hex');
@@ -95,6 +96,7 @@ exports.addRecoveryParam = function(payload, sig, address, chainId=1, preventRep
     throw new Error(err);
   }
 }
+exports.addRecoveryParam = addRecoveryParam;
 
 // Ensure a param is represented by a buffer
 function ensureHexBuffer(x) {
@@ -125,10 +127,11 @@ function updateRecoveryParam(v, chainId) {
 }
 
 
-exports.chainIds = {
+const chainIds = {
   mainnet: 1,
   roptsten: 3,
   rinkeby: 4,
   kovan: 42,
   goerli: 6284
 }
+exports.chainIds = chainIds;

@@ -7,6 +7,7 @@ const crc32 = require('crc-32');
 const leftPad = require('left-pad');
 const elliptic = require('elliptic');
 const config = require('../config');
+const SHA256 = require('jshashes').SHA256;
 const { AES_IV, responseCodes, OPs, VERSION_BYTE } = require('./constants');
 const EC = elliptic.ec;
 const ec = new EC('p256');
@@ -85,15 +86,6 @@ function toPaddedDER(sig) {
 //--------------------------------------------------
 // TRANSACTION UTILS
 //--------------------------------------------------
-function writeUInt64LE(n, buf, off) {
-  const preBuf = Buffer.alloc(8);
-  const nStr = n.length % 2 == 0 ? n.toString(16) : `0${n.toString(16)}`;
-  const nBuf = Buffer.from(nStr, 'hex');
-  nBuf.reverse().copy(preBuf, 0);
-  preBuf.copy(buf, off);
-  return preBuf;
-}
-
 const txBuildingResolver = {
   'BTC': bitcoin.buildBitcoinTxRequest,
   'ETH': ethereum.buildEthereumTxRequest,
@@ -349,5 +341,4 @@ module.exports = {
   sortByHeight,
   getTxHash,
   toPaddedDER,
-  writeUInt64LE,
 }
