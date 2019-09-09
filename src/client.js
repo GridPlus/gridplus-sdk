@@ -1,12 +1,12 @@
 const superagent = require('superagent');
+const bitcoin = require('./bitcoin');
+const ethereum = require('./ethereum');
 const {
   txBuildingResolver,
   aes256_decrypt,
   aes256_encrypt,
-  buildEthRawTx,
   parseDER,
   checksum,
-  getBitcoinAddress,
   getP256KeyPair,
   getP256KeyPairFromPub,
   parseLattice1Response,
@@ -111,12 +111,17 @@ class Client {
   }
 
   getAddresses(opts, cb) {
-    const { currency, startIndex, n, version } = opts;
+    const { currency, startIndex, n, version="LEGACY" } = opts;
     if (currency === undefined || startIndex == undefined || n == undefined) {
       return cb({ err: 'Please provide `currency`, `startIndex`, and `n` options' });
     } else if (currencyCodes[currency] === undefined) {
       return cb({ err: 'Unsupported currency' });
     }
+    // Bitcoin requires a version byte
+    if (currency === 'BTC' && bitcoin.addressVersion[version] === undefined) {
+      return cb({ err: 'Unsupported Bitcoin version. Options are: LEGACY, P2SH, SEGWIT, TESTNET' });
+    }
+
     const payload = Buffer.alloc(6);
     payload.writeUInt8(currencyCodes[currency]);
     payload.writeUInt32BE(startIndex, 1);
@@ -124,7 +129,7 @@ class Client {
     const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
     return this._request(param, (err, res) => {
       if (err) return cb({ err });
-      const parsedRes = this._handleGetAddresses(res, currency, n, version);
+      const parsedRes = this._handleGetAddresses(res, currency, n, bitcoin.addressVersion[version]);
       return cb(parsedRes);
     })
   }
@@ -348,7 +353,7 @@ class Client {
   }
 
   // GetAddresses will return an array of pubkey hashes
-  _handleGetAddresses(encRes, currency, numAddr, version='LEGACY') {
+  _handleGetAddresses(encRes, currency, numAddr, version) {
     // Get the size of each expected address
     if (addressSizes[currency] === undefined) return { err: 'Unsupported currency' };
     const addrSize = addressSizes[currency];
@@ -369,7 +374,7 @@ class Client {
       let addr;
       switch (currency) {
         case 'BTC':
-          addr = getBitcoinAddress(d, version);
+          addr = bitcoin.getBitcoinAddress(d, version);
           if (addr === null) return { err: 'Unsupported version byte' };
           break;
         case 'ETH':
@@ -391,38 +396,79 @@ class Client {
 
     let off = 65; // Skip past pubkey prefix
     const res = decrypted.data;
-
-    // Grab the DER signature
-    if (res[off] != 0x30) {
-      return { err: 'Invalid response: no signature returned' };
+    
+    // Get the change data if we are making a BTC transaction
+    let changeRecipient;
+    if (currencyType === 'BTC') {
+      const changeVersion = bitcoin.addressVersion[tx.changeData.changeVersion];
+      const changePubkeyhash = res.slice(off, off + 20); off += 20;
+      changeRecipient = bitcoin.getBitcoinAddress(changePubkeyhash, changeVersion);
     }
-
     // Start building return data
     const returnData = { err: null, data: null };
-
-    // Second byte is the length of the remaining DER sig
-    const sig1 = parseDER(res.slice(off, (off + 2 + res[off + 1])));
-    
     const DERLength = 74; // max size of a DER signature -- all Lattice sigs are this long
-    off += DERLength;
     
     switch (currencyType) {
       case 'BTC':
-        returnData.sigs = [ sig1 ];
-        // Bitcoin may have more than one signature
+        const compressedPubLength = 33;  // Size of compressed public key
+        let pubkeys = [];
+        let sigs = [];
+        // Parse the signature for each output -- they are returned
+        // in the serialized payload in form [pubkey, sig]
+        // There is one signature per output
         while (off < res.length) {
-          // Exit out if we have seen all the returned sigs
-          if (res[off] != 0x30) return returnData;
-          // Otherwise grab another one
-          returnData.sigs.push(parseDER(res.slice(off, (off + 2 + res[off + 1]))));
-          off += DERLength;
+          // Exit out if we have seen all the returned sigs and pubkeys
+          if (res[off] != 0x02 && res[off] != 0x03) break;
+          // Otherwise grab another set
+          pubkeys.push(res.slice(off, off + compressedPubLength)); off += compressedPubLength;
+          sigs.push(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;
+        }
+
+        // Build the transaction data to be serialized
+        let preSerializedData = {
+          inputs: [],
+          outputs: [],
+          isSegwitSpend: tx.origData.isSegwit,
+          network: tx.origData.network,
+        };
+
+        // First output comes from request dta
+        preSerializedData.outputs.push({
+          value: tx.origData.value,
+          recipient: tx.origData.recipient,
+        });
+        // Second output comes from change data
+        preSerializedData.outputs.push({
+          value: tx.changeData.value,
+          recipient: changeRecipient,
+        });
+        
+        // Add the inputs
+        for (let i = 0; i < sigs.length; i++) {
+          preSerializedData.inputs.push({
+            hash: tx.origData.prevOuts[i].txHash,
+            index: tx.origData.prevOuts[i].index,
+            sig: sigs[i],
+            pubkey: pubkeys[i],
+          });
+        }
+
+        // Finally, serialize the transaction
+        returnData.data = bitcoin.serializeTx(preSerializedData);
+        // Add extra data for debugging/lookup purposes
+        let txHash = this.crypto.createHash('sha256').update(Buffer.from(returnData.data, 'hex')).digest();
+        txHash = this.crypto.createHash('sha256').update(txHash).digest().reverse().toString('hex');
+        returnData.extraData = {
+          txHash,
+          changeRecipient,
         }
         break;
       case 'ETH':
+        const sig = parseDER(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;
         // Ethereum returns an address as well
         const ethAddr = res.slice(off, off + 20);
         // Determine the `v` param and add it to the sig before returning
-        returnData.data = `0x${buildEthRawTx(tx, sig1, ethAddr)}`;
+        returnData.data = `0x${ethereum.buildEthRawTx(tx, sig, ethAddr)}`;
         break;
     }
 

@@ -7,21 +7,13 @@ const AES_IV = [0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73
 const decResLengths = {
     finalizePair: 0,   // Only contains the pubkey
     getAddresses: 200, // 20-byte address * 10 max slots
-    sign: 740,          // 1 DER signature for ETH, 10 for BTC (not all are used for BTC)       
+    sign: 1090,          // 1 DER signature for ETH, 10 for BTC (not all are used for BTC)       
 }
 
 // Per Lattice spec, all encrypted messages must fit in a buffer of this size.
 // The length comes from the largest request/response data type size minus payload metadata
 // (12 bytes are stripped from the payload -- another 4 are needed for the checksum)
-const ENC_MSG_LEN = 816;
-
-  
-const OPs = {
-    'a9': 'OP_HASH160',
-    '76': 'OP_DUP',
-    '87': 'OP_EQUAL',
-    'ac': 'OP_CHECKSIG',
-}
+const ENC_MSG_LEN = 1168;
   
 const deviceCodes = {
     'CONNECT': 1,
@@ -49,12 +41,6 @@ const addressSizes = {
     'BTC': 20,  // 20 byte pubkeyhash
     'ETH': 20,  // 20 byte address not including 0x prefix
 }
-
-const bitcoinVersionByte = {
-    'LEGACY': 0x00,
-    'P2SH': 0x05,
-    'TESTNET': 0x6F,
-}
   
 const responseCodes = {
     'SUCCESS': 0x00,
@@ -80,11 +66,6 @@ const signingSchema = {
     ERC20_TRANSFER: 2
 }
 
-const bitcoinScriptTypes = {
-    P2PKH: 0x01,
-    P2SH: 0x02,
-}
-
 const ETH_DATA_MAX_SIZE = 100; // Maximum number of bytes that can go in the data field
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
 const VERSION_BYTE = 1;
@@ -92,10 +73,7 @@ const VERSION_BYTE = 1;
 module.exports = {
     AES_IV,
     ENC_MSG_LEN,
-    OPs,
     addressSizes,
-    bitcoinScriptTypes,
-    bitcoinVersionByte,
     currencyCodes,
     decResLengths,
     deviceCodes,

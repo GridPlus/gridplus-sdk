@@ -1,6 +1,6 @@
 {
   "name": "gridplus-sdk",
-  "version": "0.0.14-dev2-unstable",
+  "version": "0.0.16-dev2-unstable",
   "description": "SDK to interact with GridPlus agent devices",
   "scripts": {
     "commit": "git-cz",
@@ -29,7 +29,6 @@
   "dependencies": {
     "aes-js": "^3.1.1",
     "bignumber.js": "^8.0.1",
-    "bitcoinjs-lib": "^4.0.5",
     "bn.js": "^4.11.8",
     "bs58": "^4.0.1",
     "bs58check": "^2.1.2",
@@ -41,6 +40,7 @@
     "ethers": "GridPlus/ethers.js#master",
     "gridplus-bclient": "^0.1.2",
     "js-sha3": "^0.8.0",
+    "jshashes": "^1.0.7",
     "left-pad": "^1.3.0",
     "rlp-browser": "^1.0.1",
     "secp256k1": "^3.7.1",
@@ -49,6 +49,7 @@
     "superagent": "^3.8.3"
   },
   "devDependencies": {
+    "bitcoinjs-lib": "^5.1.6",
     "chai": "^4.2.0",
     "commitizen": "^3.0.4",
     "cz-conventional-changelog": "^2.1.0",

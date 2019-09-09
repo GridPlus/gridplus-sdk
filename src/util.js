@@ -1,16 +1,13 @@
 // Static utility functions
-const Bitcoin = require('bitcoinjs-lib');
-const bs58 = require('bs58');
+const bitcoin = require('./bitcoin');
 const ethereum = require('./ethereum');
-const rlp = require('rlp-browser');
-const bs58check = require('bs58check')
 const Buffer = require('buffer/').Buffer
 const aes = require('aes-js');
 const crc32 = require('crc-32');
 const leftPad = require('left-pad');
 const elliptic = require('elliptic');
 const config = require('../config');
-const constants = require('./constants');
+const SHA256 = require('jshashes').SHA256;
 const { AES_IV, responseCodes, OPs, VERSION_BYTE } = require('./constants');
 const EC = elliptic.ec;
 const ec = new EC('p256');
@@ -89,151 +86,9 @@ function toPaddedDER(sig) {
 //--------------------------------------------------
 // TRANSACTION UTILS
 //--------------------------------------------------
-function buildEthereumTxRequest(data) {
-  try {
-    let { txData, signerIndex, chainId=1, preventReplays=true } = data;
-    if (typeof chainId !== 'number') chainId = ethereum.chainIds[chainId];
-    if (!chainId) throw new Error('Unsupported chain name');
-    
-    // Ensure all fields are 0x-prefixed hex strings
-    let rawTx = []
-    // Build the transaction buffer array
-    rawTx.push(ensureHexBuffer(txData.nonce));
-    rawTx.push(ensureHexBuffer(txData.gasPrice));
-    rawTx.push(ensureHexBuffer(txData.gasLimit));
-    rawTx.push(ensureHexBuffer(txData.to));
-    rawTx.push(ensureHexBuffer(txData.value));
-    rawTx.push(ensureHexBuffer(txData.data));
-    // Add empty v,r,s values
-    if (preventReplays === true) {
-      rawTx.push(ensureHexBuffer(chainId)); // v
-      rawTx.push(ensureHexBuffer(null));    // r
-      rawTx.push(ensureHexBuffer(null));    // s
-    }
-
-    // Ensure data field isn't too long
-    if (txData.data && ensureHexBuffer(txData.data).length > constants.ETH_DATA_MAX_SIZE) {
-      return { err: `Data field too large (must be <=${constants.ETH_DATA_MAX_SIZE} bytes)` }
-    }
-    // RLP-encode the transaction request
-    const encoded = rlp.encode(rawTx);
-    // Build the payload to send to the Lattice
-    const payload = Buffer.alloc(encoded.length + 4);
-    payload.writeUInt32BE(signerIndex, 0);
-    encoded.copy(payload, 4);
-    return { 
-      rawTx,
-      payload,
-      schema: constants.signingSchema.ETH_TRANSFER,  // We will use eth transfer for all ETH txs for v1 
-      chainId
-    };
-  } catch (err) {
-    return { err };
-  }
-}
-
-// Given a 64-byte signature [r,s] we need to figure out the v value
-// and attah the full signature to the end of the transaction payload
-function buildEthRawTx(tx, sig, address) {
-  // Get the new signature (with valid recovery param `v`) given the
-  // RLP-encoded transaction payload
-  // NOTE: The first 4 bytes of the payload were for the `signerIndex`, which
-  //      was part of the Lattice request. We discard that here.
-  const newSig = ethereum.addRecoveryParam(tx.payload.slice(4), sig, address, tx.chainId);
-  // Use the signature to generate a new raw transaction payload
-  const newRawTx = tx.rawTx.slice(0, 6);
-  newRawTx.push(Buffer.from((newSig.v).toString(16), 'hex'));
-  newRawTx.push(newSig.r);
-  newRawTx.push(newSig.s);
-  return rlp.encode(newRawTx).toString('hex');
-}
-
-// Ensure a param is represented by a buffer
-function ensureHexBuffer(x) {
-  if (x === null || x === 0) return Buffer.alloc(0);
-  else if (Buffer.isBuffer(x)) x = x.toString('hex');
-  if (typeof x == 'number') x = `${x.toString(16)}`;
-  else if (typeof x == 'string' && x.slice(0, 2) === '0x') x = x.slice(2);
-  if (x.length % 2 > 0) x = `0${x}`;
-  return Buffer.from(x, 'hex');
-}
-
-// We need to build two different objects here:
-// 1. bitcoinjs-lib TransactionBuilder object, which will be used in conjunction
-//    with the returned signatures to build and serialize the transaction before
-//    broadcasting it. We will replace `bitcoinjs-lib`'s signatures with the ones
-//    we get from the Lattice
-// 2. The serialized Lattice request, which includes data (outlined in the specification)
-//    that is needed to sign all of the inputs and build a change output. 
-// @inputs (contained in `data`)
-// `prevOuts`: an array of objects with the following properties:
-//           a. txHash
-//           b. value
-//           c. index          -- the index of the output in the transaction
-//           d. recipientIndex -- the index of the address in our wallet
-// `recipient`: Receiving address, which must be converted to a pubkeyhash
-// `value`:     Number of satoshis to send the recipient
-// `fee`:       Number of satoshis to use for a transaction fee (should have been calculated)
-//              already based on the number of inputs plus two outputs
-// `version`:   Transaction version of the inputs. All inputs must be of the same version! 
-// `isSegwit`: a boolean which determines how we serialize the data and parameterize txb
-function buildBitcoinTxRequest(data) {
-  try {
-    const { prevOuts, recipient, value, changeIndex=0, fee, isSegwit } = data;
-    // Start building the transaction
-    const txb = new Bitcoin.TransactionBuilder();
-    prevOuts.forEach((o) => {
-      txb.addInput(o.txHash, o.index);
-    })
-    txb.addOutput(recipient, value);
-
-    // Serialize the request
-    const payload = Buffer.alloc(37 + (51 * prevOuts.length));
-    let off = 0;
-    payload.writeUInt32LE(changeIndex, off); off += 4;
-    payload.writeUInt32LE(fee, off); off += 4;
-    const recipientVersionByte = bs58.decode(recipient)[0];
-    const recipientPubkeyhash = bs58check.decode(recipient).slice(1);
-    payload.writeUInt8(recipientVersionByte, off); off++;
-    recipientPubkeyhash.copy(payload, off); off += recipientPubkeyhash.length;
-    writeUInt64LE(value, payload, off); off += 8;
-    
-    // Build the inputs from the previous outputs
-    payload.writeUInt8(prevOuts.length, off); off++;
-    const scriptType = isSegwit === true ? 
-                        constants.bitcoinScriptTypes.P2SH : 
-                        constants.bitcoinScriptTypes.P2PKH; // No support for multisig p2sh in v1 (p2sh == segwit here)
-    prevOuts.forEach((input) => {
-      payload.writeUInt32LE(input.recipientIndex, off); off += 4;
-      payload.writeUInt32LE(input.index, off); off += 4;
-      writeUInt64LE(input.value, payload, off); off += 8;
-      payload.writeUInt8(scriptType, off); off++;
-      if (!Buffer.isBuffer(input.txHash)) input.txHash = Buffer.from(input.txHash, 'hex');
-      input.txHash.copy(payload, off); off += input.txHash.length;
-    })
-    // Send them back!
-    return { 
-      txb, 
-      payload, 
-      schema: constants.signingSchema.BTC_TRANSFER 
-    };
-  } catch (err) {
-    return { err };
-  }
-}
-
-function writeUInt64LE(n, buf, off) {
-  const preBuf = Buffer.alloc(8);
-  const nStr = n.length % 2 == 0 ? n.toString(16) : `0${n.toString(16)}`;
-  const nBuf = Buffer.from(nStr, 'hex');
-  nBuf.reverse().copy(preBuf, 0);
-  preBuf.copy(buf, off);
-  return preBuf;
-}
-
 const txBuildingResolver = {
-  'BTC': buildBitcoinTxRequest,
-  'ETH': buildEthereumTxRequest,
+  'BTC': bitcoin.buildBitcoinTxRequest,
+  'ETH': ethereum.buildEthereumTxRequest,
 }
 
 //--------------------------------------------------
@@ -252,15 +107,6 @@ function aes256_decrypt(data, key) {
   return Buffer.from(aesCbc.decrypt(data));
 }
 
-// Convert a pubkeyhash to a bitcoin base58check address with a version byte
-function getBitcoinAddress(pubkeyhash, version) {
-  const vb = constants.bitcoinVersionByte[version];
-  if (vb === undefined) {
-    return null;
-  }
-  return bs58check.encode(Buffer.concat([Buffer.from([vb]), pubkeyhash]));
-}
-
 // Decode a DER signature. Returns signature object {r, s } or null if there is an error
 function parseDER(sigBuf) {
   if (sigBuf[0] != 0x30 || sigBuf[2] != 0x02) return null;
@@ -274,23 +120,6 @@ function parseDER(sigBuf) {
   sig.s = sigBuf.slice(off, off + sLen);
   return sig;
 }
-
-function getOutputScriptType(s, multisig=false) {
-  const OP_first = s.slice(0, 2);
-  const OP_last = s.slice(s.length - 2, s.length);
-  const p2pkh = (OPs[OP_first] === 'OP_DUP' && OPs[OP_last] === 'OP_CHECKSIG');
-  const p2sh = (OPs[OP_first] === 'OP_HASH160' && OPs[OP_last] === 'OP_EQUAL');
-  if (p2pkh) {
-    return 'p2pkh';
-  } else if (p2sh && multisig === true) {
-    return 'p2sh';
-  } else if (p2sh && multisig !== true) {
-    return 'p2sh(p2wpkh)';
-  } else {
-    return null;
-  }
-}
-
 
 function getP256KeyPair (priv) {
   return ec.keyFromPrivate(priv, 'hex');
@@ -502,11 +331,8 @@ module.exports = {
   aes256_decrypt,
   aes256_encrypt,
   parseDER,
-  buildEthRawTx,
   checksum,
-  getBitcoinAddress,
   parseLattice1Response,
-  getOutputScriptType,
   getP256KeyPair,
   getP256KeyPairFromPub,
   pad64,

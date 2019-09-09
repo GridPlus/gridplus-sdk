@@ -1,11 +1,9 @@
 // Basic tests for atomic SDK functionality
+const constants = require('./../src/constants')
 const expect = require('chai').expect;
 const Sdk = require('../index.js');
 const crypto = require('crypto');
 const question = require('readline-sync').question;
-const constants = require('../src/constants.js');
-
-const ETH_TX_DATA_MAX = 100;
 
 let client, rl, id;
 let caughtErr = false;
@@ -84,12 +82,13 @@ describe('Connect and Pair', () => {
     }
   });
 */
-/*
+
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
       const addrData = { currency: 'BTC', startIndex: 0, n: 5 }
       // Legacy addresses (default `version`)
+
       let addrs = await getAddresses(client, addrData);
       expect(addrs.err).to.equal(null);
       expect(addrs.data.length).to.equal(5);
@@ -122,10 +121,21 @@ describe('Connect and Pair', () => {
       addrData.n = 11;
       addrs = await getAddresses(client, addrData);
       expect(addrs.err).to.not.equal(null);
-      
+
+      // Testnet
+      addrData.version = 'TESTNET';
+      addrData.n = 2;
+      addrData.startIndex = 0;
+      addrs = await getAddresses(client, addrData);
+      expect(addrs.err).to.equal(null);
+      expect(addrs.data.length).to.equal(2);
+      const isTestnet = ['2', 'm', 'n'].indexOf(addrs.data[0][0]);
+      expect(isTestnet).to.be.above(-1);
+      console.log('addrs.data', addrs.data)
     }
   });
-*/
+
+
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
@@ -224,62 +234,35 @@ describe('Connect and Pair', () => {
 
   });
 
-  function calcVal(txData) {
-    let val = 0;
-    txData.prevOuts.forEach((o) => {
-      val += o.value;
-    })
-    val -= txData.fee;
-    return val;
-  }
 
   it('Should sign Bitcoin transactions', async () => {  
     let txData = {
       prevOuts: [
         { 
-          txHash: '4c7846a8ff8415945e96937dea27bdb3144c15d793648d725602784826052586',
-          value: 87654321,
-          index: 5,
+          txHash: 'c0fb89034692788f4bccbec433a197d68a5eb61417b367ee1994b42be5d68ba7',
+          value: 139784,
+          index: 1,
           recipientIndex: 0,
         },
-        {
-          txHash: 'a88387ca68a67f7f74e91723de0069154b532bf024c0e4054e36ea2234251181',
-          value: 4912341139,
-          index: 3,
-          recipientIndex: 3,
-        }
       ],
-      recipient: '3DXitEC8uiub18mCGCRk4KF39wD4tJQVJm',
-      value: 0,
-      fee: 10000,
+      recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
+      value: 1000,
+      fee: 1000,
       isSegwit: false,
-      changeIndex: 1111,
+      changeIndex: 0,            // Default 0
+      changeVersion: 'TESTNET',  // Default 'LEGACY'
+      network: 'TESTNET',        // Default 'MAINNET'
     };
-    txData.value = calcVal(txData);
     let req = {
       currency: 'BTC',
       data: txData,
     };
-  
-    // const bitcoin = require('bitcoinjs-lib');
-    // const txb = new bitcoin.TransactionBuilder();
-    // // const alice = new bitcoin.ECPair.fromPrivateKey(Buffer.from('a88387ca68a67f7f74e91723de0069154b532bf024c0e4054e36ea2234251181', 'hex'));
-    // txb.addInput(txData.prevOuts[0].txHash, txData.prevOuts[0].index);
-    // txb.addInput(txData.prevOuts[1].txHash, txData.prevOuts[1].index);
-    // txb.addOutput(txData.recipient, txData.value);
-    // const tx = txb.__tx;
-    // const hashType = 0x01; // SIGHASH_ALL
-    // const prevOutScript0 = Buffer.from('76a91499b680a8a1b37fa8d44fa7c0f950c002d1d9542a88ac', 'hex');
-    // const hash0 = tx.hashForSignature(0, prevOutScript0, hashType)
-    // console.log('hash0', hash0.toString('hex'));
     
     // Sign a legit tx
     let sigResp = await sign(client, req);
     expect(sigResp.err).to.equal(null);
-    expect(sigResp.sigs.length).to.equal(2);
-
-
-
+    expect(sigResp.data).to.not.equal(null);
+    expect(sigResp.extraData.txHash).to.not.equal(null);
 
     // [TODO] Validate that signer matches up with the address
     // we get from `getAddresses`
