@@ -11,7 +11,6 @@ exports.buildEthereumTxRequest = function(data) {
     let { txData, signerIndex, chainId=1, preventReplays=true } = data;
     if (typeof chainId !== 'number') chainId = chainIds[chainId];
     if (!chainId) throw new Error('Unsupported chain name');
-    
     // Ensure all fields are 0x-prefixed hex strings
     let rawTx = []
     // Build the transaction buffer array
@@ -27,7 +26,6 @@ exports.buildEthereumTxRequest = function(data) {
       rawTx.push(ensureHexBuffer(null));    // r
       rawTx.push(ensureHexBuffer(null));    // s
     }
-
     // Ensure data field isn't too long
     if (txData.data && ensureHexBuffer(txData.data).length > constants.ETH_DATA_MAX_SIZE) {
       return { err: `Data field too large (must be <=${constants.ETH_DATA_MAX_SIZE} bytes)` }

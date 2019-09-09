@@ -1,5 +1,5 @@
 // Basic tests for atomic SDK functionality
-const Bitcoin = require('bitcoinjs-lib');
+const constants = require('./../src/constants')
 const expect = require('chai').expect;
 const Sdk = require('../index.js');
 const crypto = require('crypto');
@@ -88,7 +88,7 @@ describe('Connect and Pair', () => {
     if (caughtErr == false) {
       const addrData = { currency: 'BTC', startIndex: 0, n: 5 }
       // Legacy addresses (default `version`)
-/*
+
       let addrs = await getAddresses(client, addrData);
       expect(addrs.err).to.equal(null);
       expect(addrs.data.length).to.equal(5);
@@ -121,7 +121,7 @@ describe('Connect and Pair', () => {
       addrData.n = 11;
       addrs = await getAddresses(client, addrData);
       expect(addrs.err).to.not.equal(null);
-*/
+
       // Testnet
       addrData.version = 'TESTNET';
       addrData.n = 2;
@@ -134,7 +134,8 @@ describe('Connect and Pair', () => {
       console.log('addrs.data', addrs.data)
     }
   });
-/*
+
+
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
@@ -232,7 +233,7 @@ describe('Connect and Pair', () => {
     // we get from `getAddresses`
 
   });
-*/
+
 
   it('Should sign Bitcoin transactions', async () => {  
     let txData = {
