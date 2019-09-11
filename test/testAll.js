@@ -72,6 +72,7 @@ describe('Connect and Pair', () => {
       expect(pairErr).to.equal(null);
     }
   });
+*/
   it('Should try to connect again but recognize the pairing already exists', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
@@ -81,14 +82,14 @@ describe('Connect and Pair', () => {
       expect(client.isPaired).to.equal(true);
     }
   });
-*/
+
 
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
       const addrData = { currency: 'BTC', startIndex: 0, n: 5 }
       // Legacy addresses (default `version`)
-
+/*
       let addrs = await getAddresses(client, addrData);
       expect(addrs.err).to.equal(null);
       expect(addrs.data.length).to.equal(5);
@@ -131,11 +132,20 @@ describe('Connect and Pair', () => {
       expect(addrs.data.length).to.equal(2);
       const isTestnet = ['2', 'm', 'n'].indexOf(addrs.data[0][0]);
       expect(isTestnet).to.be.above(-1);
-      console.log('addrs.data', addrs.data)
+*/
+      // Segwit
+      addrData.version = 'SEGWIT_TESTNET';
+      addrData.n = 2;
+      addrs = await getAddresses(client, addrData);
+      expect(addrs.err).to.equal(null);
+      console.log(addrs)
+      // expect(addrs.data.length).to.equal(2);
+      // const isTestnet = ['2', 'm', 'n'].indexOf(addrs.data[0][0]);
+      // expect(isTestnet).to.be.above(-1);
     }
   });
 
-
+/*
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
@@ -233,9 +243,9 @@ describe('Connect and Pair', () => {
     // we get from `getAddresses`
 
   });
-
-
-  it('Should sign Bitcoin transactions', async () => {  
+*/
+/*
+  it('Should sign legacy Bitcoin inputs', async () => {  
     let txData = {
       prevOuts: [
         { 
@@ -270,5 +280,49 @@ describe('Connect and Pair', () => {
 
 
   });
+*/
+
+  it('Should sign segwit Bitcoin inputs', async () => {  
+    let txData = {
+      prevOuts: [
+        { 
+          txHash: '08911991c5659349fa507419a20fd398d66d59e823bca1b1b94f8f19e21be44c',
+          value: 3469416,
+          index: 1,
+          recipientIndex: 0,
+        },
+        {
+          txHash: '19e7aa056a82b790c478e619153c35195211b58923a8e74d3540f8ff1f25ecef',
+          value: 3461572,
+          index: 0,
+          recipientIndex: 1,
+        }
+      ],
+      recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
+      value: 1000,
+      fee: 1000,
+      isSegwit: true,
+      changeIndex: 0,            // Default 0
+      changeVersion: 'SEGWIT_TESTNET',  // Default 'LEGACY'
+      network: 'TESTNET',        // Default 'MAINNET'
+    };
+    let req = {
+      currency: 'BTC',
+      data: txData,
+    };
+    
+    // Sign a legit tx
+    let sigResp = await sign(client, req);
+    expect(sigResp.err).to.equal(null);
+    expect(sigResp.data).to.not.equal(null);
+    expect(sigResp.extraData.txHash).to.not.equal(null);
+    console.log(sigResp)
+    // [TODO] Validate that signer matches up with the address
+    // we get from `getAddresses`
+
+
+
+  });
+
 
 });

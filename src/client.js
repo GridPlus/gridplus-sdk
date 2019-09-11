@@ -121,11 +121,16 @@ class Client {
     if (currency === 'BTC' && bitcoin.addressVersion[version] === undefined) {
       return cb({ err: 'Unsupported Bitcoin version. Options are: LEGACY, P2SH, SEGWIT, TESTNET' });
     }
+    // Bitcoin segwit addresses require a P2SH_P2WPKH script type -- the script type
+    // is otherwise ignored and is only needed for BTC
+    const bitcoinScriptType = (version === 'SEGWIT' || version === 'SEGWIT_TESTNET') ? 
+                              bitcoin.scriptTypes.P2SH_P2WPKH: 0;
 
-    const payload = Buffer.alloc(6);
+    const payload = Buffer.alloc(7);
     payload.writeUInt8(currencyCodes[currency]);
     payload.writeUInt32BE(startIndex, 1);
     payload.writeUInt8(n, 5);
+    payload.writeUInt8(bitcoinScriptType || 0, 6);
     const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
     return this._request(param, (err, res) => {
       if (err) return cb({ err });
@@ -430,6 +435,7 @@ class Client {
           outputs: [],
           isSegwitSpend: tx.origData.isSegwit,
           network: tx.origData.network,
+          crypto: this.crypto,
         };
 
         // First output comes from request dta

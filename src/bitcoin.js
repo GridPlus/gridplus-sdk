@@ -3,11 +3,11 @@ const bs58 = require('bs58');
 const bs58check = require('bs58check')
 const Buffer = require('buffer/').Buffer;
 const constants = require('./constants')
-const RMD160 = require('jshashes').RMD160;
 const DEFAULT_SEQUENCE = 0xffffffff;
 const DEFAULT_SIGHASH_BUFFER = Buffer.from('01', 'hex'); // SIGHASH_ALL = 0x01
 
 const OP = {
+  '0': 0x00,
   HASH160: 0xa9,
   DUP: 0x76,
   EQUAL: 0x87,
@@ -25,13 +25,17 @@ const addressVersion = {
   'P2SH': 0x05,
   'SEGWIT': 0x05,
   'TESTNET': 0x6F,
+  'SEGWIT_TESTNET': 0xC4,
 }
 exports.addressVersion = addressVersion;
 
-const bitcoinScriptTypes = {
+// Bitcoin script types -- defined by the Lattice protocol spec
+const scriptTypes = {
   P2PKH: 0x01,
   P2SH: 0x02,
+  P2SH_P2WPKH: 0x03,
 }
+exports.scriptTypes = scriptTypes
 
 // We need to build two different objects here:
 // 1. bitcoinjs-lib TransactionBuilder object, which will be used in conjunction
@@ -61,8 +65,8 @@ exports.buildBitcoinTxRequest = function(data) {
     // Build the change data
     payload.writeUInt32LE(changeIndex, off); off += 4;
     const scriptType = isSegwit === true ? 
-                        bitcoinScriptTypes.P2SH : 
-                        bitcoinScriptTypes.P2PKH; // No support for multisig p2sh in v1 (p2sh == segwit here)
+                        scriptTypes.P2SH_P2WPKH :  // Only support p2sh(p2wpkh) for segwit spends for now
+                        scriptTypes.P2PKH; // No support for multisig p2sh in v1 (p2sh == segwit here)
     payload.writeUInt8(scriptType, off); off++; // change script type
     // Fee is a param
     payload.writeUInt32LE(fee, off); off += 4;
@@ -109,14 +113,17 @@ exports.buildBitcoinTxRequest = function(data) {
 // -- network = Name of network, used to determine transaction version
 // -- lockTime = Will probably always be 0
 exports.serializeTx = function(data) {
-  const { inputs, outputs, isSegwitSpend, network, lockTime=0 } = data;
+  const { inputs, outputs, isSegwitSpend, network, lockTime=0, crypto } = data;
   let payload = Buffer.alloc(4);
   let off = 0;
 
   // Determine the transaction version
   const version = txVersion[network] || 1;
   payload.writeUInt32LE(version, off); off += 4;
-
+  if (isSegwitSpend === true) {
+    payload = concat(payload, Buffer.from('00', 'hex')); // marker = 0x00
+    payload = concat(payload, Buffer.from('01', 'hex')); // flag = 0x01
+  }
   // Serialize signed inputs
   const numInputs = getVarInt(inputs.length);
   payload = concat(payload, numInputs); off += numInputs.length;
@@ -125,8 +132,13 @@ exports.serializeTx = function(data) {
     const index = getU32LE(input.index);
     payload = concat(payload, index); off += index.length;
     if (isSegwitSpend === true) {
-      // Build a var slice of the redeem script
-      throw new Error('Segwit not yet implemented')
+      // Build a vector (varSlice of varSlice) containing the redeemScript
+      const redeemScript = buildRedeemScript(input.pubkey, crypto);
+      const redeemScriptLen = getVarInt(redeemScript.length);
+      const slice = Buffer.concat([redeemScriptLen, redeemScript]);
+      const sliceLen = getVarInt(slice.length);
+      payload = concat(payload, sliceLen); off += sliceLen.length;
+      payload = concat(payload, slice); off += slice.length;
     } else {
       // Build the signature + pubkey script to spend this input
       const slice = buildSig(input.sig, input.pubkey);
@@ -148,12 +160,17 @@ exports.serializeTx = function(data) {
     payload = concat(payload, scriptLen); off += scriptLen.length;
     payload = concat(payload, script); off += script.length;
   })
-
   // Add witness data if needed
   if (isSegwitSpend === true) {
-    throw new Error('Segwit not yet implemented')
+    let sigs = [];
+    let pubkeys = [];
+    for (let i = 0; i < inputs.length; i++) {
+      sigs.push(inputs[i].sig);
+      pubkeys.push(inputs[i].pubkey);
+    }
+    const witnessSlice = buildWitness(sigs, pubkeys);
+    payload = concat(payload, witnessSlice); off += witnessSlice.length;
   }
-
   // Finish with locktime
   return Buffer.concat([payload, getU32LE(lockTime)]).toString('hex');
 }
@@ -166,19 +183,40 @@ exports.getBitcoinAddress = function(pubkeyhash, version) {
 
 // Builder utils
 //-----------------------
-function buildSig(sig, pubkey, redeemScript=null) {
-  if (redeemScript) {
-    throw new Error('Segwit not yet supported')
-  } else {
-    // Var slice of signature + var slice of pubkey
-    sig = Buffer.concat([sig, DEFAULT_SIGHASH_BUFFER])
-    const sigLen = getVarInt(sig.length);
-    const pubkeyLen = getVarInt(pubkey.length);
+function buildRedeemScript(pubkey, crypto) {
+  const redeemScript = Buffer.alloc(22);
+  const shaHash = crypto.createHash('sha256').update(pubkey).digest();
+  const pubkeyhash = crypto.createHash('rmd160').update(shaHash).digest();
+  redeemScript.writeUInt8(OP['0']);
+  redeemScript.writeUInt8(pubkeyhash.length, 1);
+  pubkeyhash.copy(redeemScript, 2);
+  return redeemScript;
+}
 
-    const slice = Buffer.concat([sigLen, sig, pubkeyLen, pubkey]);
-    const sliceLen = getVarInt(slice.length);
-    return Buffer.concat([sliceLen, slice]);
+// Var slice of signature + var slice of pubkey
+function buildSig(sig, pubkey) {
+  sig = Buffer.concat([sig, DEFAULT_SIGHASH_BUFFER])
+  const sigLen = getVarInt(sig.length);
+  const pubkeyLen = getVarInt(pubkey.length);
+  const slice = Buffer.concat([sigLen, sig, pubkeyLen, pubkey]);
+  const len = getVarInt(slice.length);
+  return Buffer.concat([len, slice]);
+}
+
+// Witness is written as a "vector", which is a list of varSlices
+// prefixed by the number of items
+function buildWitness(sigs, pubkeys) {
+  let witness = Buffer.alloc(0);
+  // Two items in each vector (sig, pubkey)
+  const len = Buffer.alloc(1); len.writeUInt8(2);
+  for (let i = 0; i < sigs.length; i++) {
+    const sig = Buffer.concat([sigs[i], DEFAULT_SIGHASH_BUFFER]);
+    const sigLen = getVarInt(sig.length);
+    const pubkey = pubkeys[i];
+    const pubkeyLen = getVarInt(pubkey.length);
+    witness = Buffer.concat([witness, len, sigLen, sig, pubkeyLen, pubkey]);
   }
+  return witness;
 }
 
 // Locking script buiders
@@ -186,7 +224,7 @@ function buildSig(sig, pubkey, redeemScript=null) {
 function buildLockingScript(address) {
   const versionByte = bs58.decode(address)[0];
   const pubkeyhash = bs58check.decode(address).slice(1);
-  if (versionByte === addressVersion.SEGWIT) { 
+  if (versionByte === addressVersion.SEGWIT || versionByte === addressVersion.SEGWIT_TESTNET) { 
     // Also works for p2sh
     return buildP2shLockingScript(pubkeyhash);
   } else {
@@ -208,7 +246,7 @@ function buildP2pkhLockingScript(pubkeyhash) {
 }
 
 function buildP2shLockingScript(pubkeyhash) {
-  let out = Buffer.alloc(4 + pubkeyhash.length);
+  let out = Buffer.alloc(3 + pubkeyhash.length);
   let off = 0;
   out.writeUInt8(OP.HASH160, off); off++;
   out.writeUInt8(pubkeyhash.length, off); off++;
@@ -221,12 +259,6 @@ function buildP2shLockingScript(pubkeyhash) {
 //----------------------
 function concat(base, addition) {
   return Buffer.concat([base, addition]);
-}
-
-function getPubkeyhash(pubkey) {
-  const pubkeystr = Buffer.isBuffer(pubkey) ? pubkey.toString('hex') : pubkey;
-  const hash = new RMD160;
-  return Buffer.from(hash.hex(pubkeystr), 'hex');
 }
 
 function getU64LE(x) {
