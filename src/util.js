@@ -7,7 +7,6 @@ const crc32 = require('crc-32');
 const leftPad = require('left-pad');
 const elliptic = require('elliptic');
 const config = require('../config');
-const SHA256 = require('jshashes').SHA256;
 const { AES_IV, responseCodes, OPs, VERSION_BYTE } = require('./constants');
 const EC = elliptic.ec;
 const ec = new EC('p256');

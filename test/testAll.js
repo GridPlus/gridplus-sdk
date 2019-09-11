@@ -244,7 +244,7 @@ describe('Connect and Pair', () => {
 
   });
 */
-/*
+
   it('Should sign legacy Bitcoin inputs', async () => {  
     let txData = {
       prevOuts: [
@@ -273,14 +273,13 @@ describe('Connect and Pair', () => {
     expect(sigResp.err).to.equal(null);
     expect(sigResp.data).to.not.equal(null);
     expect(sigResp.extraData.txHash).to.not.equal(null);
-
     // [TODO] Validate that signer matches up with the address
     // we get from `getAddresses`
 
 
 
   });
-*/
+
 
   it('Should sign segwit Bitcoin inputs', async () => {  
     let txData = {

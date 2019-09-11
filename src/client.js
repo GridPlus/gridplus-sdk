@@ -461,9 +461,20 @@ class Client {
 
         // Finally, serialize the transaction
         returnData.data = bitcoin.serializeTx(preSerializedData);
-        // Add extra data for debugging/lookup purposes
-        let txHash = this.crypto.createHash('sha256').update(Buffer.from(returnData.data, 'hex')).digest();
+
+        // Generate the transaction hash so the user can look this transaction up later
+        let preImageTxHash = returnData.data;
+        if (preSerializedData.isSegwitSpend === true) {
+          // Segwit transactions need to be re-serialized using legacy serialization
+          // before the transaction hash is calculated. This allows legacy clients
+          // to validate the transactions.
+          preSerializedData.isSegwitSpend = false;
+          preImageTxHash = bitcoin.serializeTx(preSerializedData);
+        }  
+        let txHash = this.crypto.createHash('sha256').update(Buffer.from(preImageTxHash, 'hex')).digest();
         txHash = this.crypto.createHash('sha256').update(txHash).digest().reverse().toString('hex');
+        
+        // Add extra data for debugging/lookup purposes
         returnData.extraData = {
           txHash,
           changeRecipient,
