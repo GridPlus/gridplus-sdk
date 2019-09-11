@@ -207,20 +207,16 @@ function buildSig(sig, pubkey) {
 // prefixed by the number of items
 function buildWitness(sigs, pubkeys) {
   let witness = Buffer.alloc(0);
-  let numItems = 0;
+  // Two items in each vector (sig, pubkey)
+  const len = Buffer.alloc(1); len.writeUInt8(2);
   for (let i = 0; i < sigs.length; i++) {
     const sig = Buffer.concat([sigs[i], DEFAULT_SIGHASH_BUFFER]);
     const sigLen = getVarInt(sig.length);
     const pubkey = pubkeys[i];
     const pubkeyLen = getVarInt(pubkey.length);
-    witness = Buffer.concat([witness, sigLen, sig, pubkeyLen, pubkey]);
-    numItems += 2;
+    witness = Buffer.concat([witness, len, sigLen, sig, pubkeyLen, pubkey]);
   }
-  const len = Buffer.alloc(1);
-  // NOTE: this means we cannot have more than 255 inputs! I don't think the Lattice
-  //        spec will ever allow for that, but just making a note
-  len.writeUInt8(numItems); 
-  return Buffer.concat([len, witness]);
+  return witness;
 }
 
 // Locking script buiders

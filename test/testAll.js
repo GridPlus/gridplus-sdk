@@ -286,11 +286,17 @@ describe('Connect and Pair', () => {
     let txData = {
       prevOuts: [
         { 
-          txHash: '8751c3b0b80b96a426d2848582cdb70e05964f786150fd6cedc479ae5be30283',
-          value: 3471416,
+          txHash: '08911991c5659349fa507419a20fd398d66d59e823bca1b1b94f8f19e21be44c',
+          value: 3469416,
           index: 1,
           recipientIndex: 0,
         },
+        {
+          txHash: '19e7aa056a82b790c478e619153c35195211b58923a8e74d3540f8ff1f25ecef',
+          value: 3461572,
+          index: 0,
+          recipientIndex: 1,
+        }
       ],
       recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
       value: 1000,
