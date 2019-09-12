@@ -22,7 +22,6 @@ const txVersion = {
 
 const addressVersion = {
   'LEGACY': 0x00,
-  'P2SH': 0x05,
   'SEGWIT': 0x05,
   'TESTNET': 0x6F,
   'SEGWIT_TESTNET': 0xC4,
@@ -58,7 +57,7 @@ exports.scriptTypes = scriptTypes
 // `isSegwit`: a boolean which determines how we serialize the data and parameterize txb
 exports.buildBitcoinTxRequest = function(data) {
   try {
-    const { prevOuts, recipient, value, changeIndex=0, fee, isSegwit, changeVersion='LEGACY' } = data;
+    const { prevOuts, recipient, value, changeIndex=0, fee, isSegwit, changeVersion='SEGWIT' } = data;
     // Serialize the request
     const payload = Buffer.alloc(37 + (51 * prevOuts.length));
     let off = 0;

@@ -38,7 +38,8 @@ describe('Connect and Pair', () => {
 
   function getAddresses(client, opts) {
     return new Promise((resolve, reject) => {
-      client.getAddresses(opts, (res) => {
+      client.getAddresses(opts, (err, res) => {
+        if (err) return reject(err);
         return resolve(res);
       })
     })
@@ -46,7 +47,8 @@ describe('Connect and Pair', () => {
 
   function sign(client, opts) {
     return new Promise((resolve, reject) => {
-      client.sign(opts, (res) => {
+      client.sign(opts, (err, res) => {
+        if (err) return reject(err);
         return resolve(res);
       })
     })
