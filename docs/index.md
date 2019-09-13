@@ -139,6 +139,15 @@ const txData = {
 | `value`    | number    | None               |
 | `data`     | string    | Must be <557 bytes |
 
+### Extra Data
+
+Ethereum transaction requests require additional data (Bitcoin transactions, covered below, need only the transaction data)
+
+        signerIndex: 0,
+        txData,
+        chainId: 'rinkeby', // Can also be an integer
+        preventReplays: true
+
 ## Building a Transaction (BTC)
 
 Bitcoin transactions are constructed by referencing a set of inputs to spend and a recipient + output value. You must also

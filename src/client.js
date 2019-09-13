@@ -113,13 +113,13 @@ class Client {
   getAddresses(opts, cb) {
     const { currency, startIndex, n, version="SEGWIT" } = opts;
     if (currency === undefined || startIndex == undefined || n == undefined) {
-      return cb({ err: 'Please provide `currency`, `startIndex`, and `n` options' });
+      return cb('Please provide `currency`, `startIndex`, and `n` options');
     } else if (currencyCodes[currency] === undefined) {
-      return cb({ err: 'Unsupported currency' });
+      return cb('Unsupported currency');
     }
     // Bitcoin requires a version byte
     if (currency === 'BTC' && bitcoin.addressVersion[version] === undefined) {
-      return cb({ err: 'Unsupported Bitcoin version. Options are: LEGACY, SEGWIT, TESTNET, SEGWIT_TESTNET' });
+      return cb('Unsupported Bitcoin version. Options are: LEGACY, SEGWIT, TESTNET, SEGWIT_TESTNET');
     }
     // Bitcoin segwit addresses require a P2SH_P2WPKH script type -- the script type
     // is otherwise ignored and is only needed for BTC
@@ -136,7 +136,7 @@ class Client {
       if (err) return cb(err);
       const parsedRes = this._handleGetAddresses(res, currency, n, bitcoin.addressVersion[version]);
       if (parsedRes.err) return cb(parsedRes.err);
-      return cb(null, parsedRes);
+      return cb(null, parsedRes.data);
     })
   }
 
@@ -462,10 +462,10 @@ class Client {
         }
 
         // Finally, serialize the transaction
-        const tx = bitcoin.serializeTx(preSerializedData);
+        const serializedTx = bitcoin.serializeTx(preSerializedData);
 
         // Generate the transaction hash so the user can look this transaction up later
-        let preImageTxHash = tx;
+        let preImageTxHash = serializedTx;
         if (preSerializedData.isSegwitSpend === true) {
           // Segwit transactions need to be re-serialized using legacy serialization
           // before the transaction hash is calculated. This allows legacy clients
@@ -478,7 +478,7 @@ class Client {
         
         // Add extra data for debugging/lookup purposes
         returnData.data = {
-          tx,
+          tx: serializedTx,
           txHash,
           changeRecipient,
         }
@@ -488,9 +488,10 @@ class Client {
         // Ethereum returns an address as well
         const ethAddr = res.slice(off, off + 20);
         // Determine the `v` param and add it to the sig before returning
+        const rawTx = ethereum.buildEthRawTx(tx, sig, ethAddr);
         returnData.data = {
-          tx: `0x${ethereum.buildEthRawTx(tx, sig, ethAddr)}`,
-          txHash: null,  // [TODO] fill this in
+          tx: `0x${rawTx}`,
+          txHash: ethereum.hashTransaction(rawTx),
         };
         break;
     }

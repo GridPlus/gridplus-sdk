@@ -90,64 +90,74 @@ describe('Connect and Pair', () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
       const addrData = { currency: 'BTC', startIndex: 0, n: 5 }
-      // Legacy addresses (default `version`)
-/*
+      // Segwit addresses (default `version`)
+      let isError;
       let addrs = await getAddresses(client, addrData);
-      expect(addrs.err).to.equal(null);
-      expect(addrs.data.length).to.equal(5);
-      expect(addrs.data[0][0]).to.equal('1');
-      // P2SH addresses
-      addrData.version = 'P2SH';
+      expect(addrs.length).to.equal(5);
+      expect(addrs[0][0]).to.equal('3');
+
+      // Legacy addresses
+      addrData.version = 'LEGACY';
       addrData.n = 4;
       addrs = await getAddresses(client, addrData);
-      expect(addrs.err).to.equal(null);
-      expect(addrs.data.length).to.equal(4);
-      expect(addrs.data[0][0]).to.equal('3');
+      expect(addrs.length).to.equal(4);
+      expect(addrs[0][0]).to.equal('1');
+
       // Ethereum addresses
       addrData.currency = 'ETH';
       addrs = await getAddresses(client, addrData);
-      expect(addrs.err).to.equal(null);
-      expect(addrs.data.length).to.equal(4);
-      expect(addrs.data[0].slice(0, 2)).to.equal('0x');
+      expect(addrs.length).to.equal(4);
+      expect(addrs[0].slice(0, 2)).to.equal('0x');
+
       // Failure cases
       // Unsupported currency
       addrData.currency = 'BCH';
-      addrs = await getAddresses(client, addrData);
-      expect(addrs.err).to.not.equal(null);
+      try {
+        addrs = await getAddresses(client, addrData);
+        expect(addrs).to.equal(null);
+      } catch (err) {
+        expect(err).to.not.equal(null);
+      }
       // Unsupported version byte
       addrData.currency = 'BTC';
       addrData.version = 'P2WKH';
-      addrs = await getAddresses(client, addrData);      
-      expect(addrs.err).to.not.equal(null);
+      try {
+        addrs = await getAddresses(client, addrData);
+        expect(addrs).to.equal(null);
+      } catch (err) {
+        expect(err).to.not.equal(null);
+      }
       // Too many addresses (n>10)
       addrData.version = 'P2SH';
       addrData.n = 11;
-      addrs = await getAddresses(client, addrData);
-      expect(addrs.err).to.not.equal(null);
+      try {
+        addrs = await getAddresses(client, addrData);
+        expect(addrs).to.equal(null);
+      } catch (err) {
+        expect(err).to.not.equal(null);
+      }
 
       // Testnet
       addrData.version = 'TESTNET';
       addrData.n = 2;
       addrData.startIndex = 0;
       addrs = await getAddresses(client, addrData);
-      expect(addrs.err).to.equal(null);
-      expect(addrs.data.length).to.equal(2);
-      const isTestnet = ['2', 'm', 'n'].indexOf(addrs.data[0][0]);
+      expect(addrs.length).to.equal(2);
+      let isTestnet = ['2', 'm', 'n'].indexOf(addrs[0][0]);
       expect(isTestnet).to.be.above(-1);
-*/
-      // Segwit
+      
+      // Segwit Testnet
       addrData.version = 'SEGWIT_TESTNET';
       addrData.n = 2;
       addrs = await getAddresses(client, addrData);
-      expect(addrs.err).to.equal(null);
-      console.log(addrs)
-      // expect(addrs.data.length).to.equal(2);
-      // const isTestnet = ['2', 'm', 'n'].indexOf(addrs.data[0][0]);
-      // expect(isTestnet).to.be.above(-1);
+      console.log('Segwit Testnet -- First two addresses:\n', addrs);
+      expect(addrs.length).to.equal(2);
+      isTestnet = ['2', 'm', 'n'].indexOf(addrs[0][0]);
+      expect(isTestnet).to.be.above(-1);
+      
     }
   });
 
-/*
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
@@ -155,11 +165,10 @@ describe('Connect and Pair', () => {
     const GAS_LIMIT_MAX = 10000000;
     
     let txData = {
-      nonce: 5,
+      nonce: 8,
       gasPrice: 1200000000,
       gasLimit: 122000,
       to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-      // value: 0.05 * 10 **18,
       value: 6,
       data: null
     };
@@ -175,59 +184,91 @@ describe('Connect and Pair', () => {
 
     // Sign a legit tx 
     let tx = await sign(client, req);
-    expect(tx.err).to.equal(null);
-    expect(tx.data).to.not.equal(null);
-
+    expect(tx.tx).to.not.equal(null);
+    console.log(tx)
+/*
     // Invalid chainId
     req.data.chainId = 'notachain';
-    tx = await(sign(client, req));
-    expect(tx.err).to.not.equal(null);
+    try {
+      tx = await(sign(client, req));
+      expect(tx.tx).to.equal(null);
+    } catch (err) {
+      expect(err).to.not.equal(null);
+    }
     req.data.chainId = 'rinkeby';
 
     // Nonce too large (>u16)
     req.data.txData.nonce = 0xffff + 1;
-    tx = await sign(client, req);
-    expect(tx.err).to.not.equal(null);
+        try {
+      tx = await(sign(client, req));
+      expect(tx.tx).to.equal(null);
+    } catch (err) {
+      expect(err).to.not.equal(null);
+    }
     // Reset to valid param
     req.data.txData.nonce = 5;
 
     // GasLimit too low
     req.data.txData.gasLimit = GAS_LIMIT_MIN - 1;
-    tx = await sign(client, req);
-    expect(tx.err).to.not.equal(null);
+        try {
+      tx = await(sign(client, req));
+      expect(tx.tx).to.equal(null);
+    } catch (err) {
+      expect(err).to.not.equal(null);
+    }
 
     // GasLimit too high (>u32)
     req.data.txData.gasLimit = GAS_LIMIT_MAX + 1;
-    tx = await sign(client, req);
-    expect(tx.err).to.not.equal(null);
+        try {
+      tx = await(sign(client, req));
+      expect(tx.tx).to.equal(null);
+    } catch (err) {
+      expect(err).to.not.equal(null);
+    }
     // Reset to valid param
     req.data.txData.gasLimit = 122000;
 
     // GasPrice too high
     req.data.txData.gasPrice = GAS_PRICE_MAX + 1;
-    tx = await sign(client, req);
-    expect(tx.err).to.not.equal(null);
+        try {
+      tx = await(sign(client, req));
+      expect(tx.tx).to.equal(null);
+    } catch (err) {
+      expect(err).to.not.equal(null);
+    }
     // Reset to valid param
     req.data.txData.gasLimit = 1200000000;
     
     // `to` wrong size
     req.data.txData.to = '0xe242e54155b1abc71fc118065270cecaaf8b77'
-    tx = await sign(client, req);
-    expect(tx.err).to.not.equal(null);
+        try {
+      tx = await(sign(client, req));
+      expect(tx.tx).to.equal(null);
+    } catch (err) {
+      expect(err).to.not.equal(null);
+    }
     // Reset to valid param 
     req.data.txData.to = '0xe242e54155b1abc71fc118065270cecaaf8b7768'
     
     // Value too high
     req.data.txData.value = 2 ** 256;
-    tx = await sign(client, req);
-    expect(tx.err).to.not.equal(null);
+        try {
+      tx = await(sign(client, req));
+      expect(tx.tx).to.equal(null);
+    } catch (err) {
+      expect(err).to.not.equal(null);
+    }
     // Reset to valid param
     req.data.txData.value = 0.3 * 10 ** 18;
     
     // Data too large
     req.data.txData.data = crypto.randomBytes(constants.ETH_DATA_MAX_SIZE + 1).toString('hex');
-    tx = await sign(client, req);
-    expect(tx.err).to.not.equal(null);
+        try {
+      tx = await(sign(client, req));
+      expect(tx.tx).to.equal(null);
+    } catch (err) {
+      expect(err).to.not.equal(null);
+    }
 
     // Reset all values at max
     req.data.txData.nonce = 0xfffe;
@@ -236,17 +277,10 @@ describe('Connect and Pair', () => {
     req.data.txData.value = 123456000000000000000000;
     req.data.txData.data = crypto.randomBytes(constants.ETH_DATA_MAX_SIZE).toString('hex');
     tx = await sign(client, req);
-    expect(tx.err).to.equal(null);
-    expect(tx.data).to.not.equal(null);
-
-
-
-    // [TODO] Validate that signer matches up with the address
-    // we get from `getAddresses`
-
-  });
+    expect(tx.tx).to.not.equal(null);
 */
-
+  });
+/*
   it('Should sign legacy Bitcoin inputs', async () => {  
     let txData = {
       prevOuts: [
@@ -272,16 +306,9 @@ describe('Connect and Pair', () => {
     
     // Sign a legit tx
     let sigResp = await sign(client, req);
-    expect(sigResp.err).to.equal(null);
-    expect(sigResp.data).to.not.equal(null);
-    expect(sigResp.extraData.txHash).to.not.equal(null);
-    // [TODO] Validate that signer matches up with the address
-    // we get from `getAddresses`
-
-
-
+    expect(sigResp.tx).to.not.equal(null);
+    expect(sigResp.txHash).to.not.equal(null);
   });
-
 
   it('Should sign segwit Bitcoin inputs', async () => {  
     let txData = {
@@ -314,16 +341,8 @@ describe('Connect and Pair', () => {
     
     // Sign a legit tx
     let sigResp = await sign(client, req);
-    expect(sigResp.err).to.equal(null);
-    expect(sigResp.data).to.not.equal(null);
-    expect(sigResp.extraData.txHash).to.not.equal(null);
-    console.log(sigResp)
-    // [TODO] Validate that signer matches up with the address
-    // we get from `getAddresses`
-
-
-
+    expect(sigResp.tx).to.not.equal(null);
+    expect(sigResp.txHash).to.not.equal(null);
   });
-
-
+*/
 });
