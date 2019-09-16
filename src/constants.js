@@ -70,8 +70,11 @@ const ETH_DATA_MAX_SIZE = 100; // Maximum number of bytes that can go in the dat
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
 const VERSION_BYTE = 1;
 
+const BASE_URL = 'https://signing.staging-gridpl.us';
+
 module.exports = {
     AES_IV,
+    BASE_URL,
     ENC_MSG_LEN,
     addressSizes,
     currencyCodes,

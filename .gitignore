@@ -1,12 +1,6 @@
 docs/_build
 .DS_Store
-secrets.json
-mkdocs.yml
-tokensByAddress.json
-tokensbySymbol.json
 package-lock.json
-.app-secret
-.bcoin
 dist
 node_modules
 coverage

@@ -1,7 +1,7 @@
 {
   "name": "gridplus-sdk",
-  "version": "0.0.20-dev2-unstable",
-  "description": "SDK to interact with GridPlus agent devices",
+  "version": "0.1.1",
+  "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
     "commit": "git-cz",
     "lint": "eslint src",
@@ -9,17 +9,7 @@
     "precommit": "npm run lint:fix && npm run test",
     "prepublish": "",
     "postinstall": "",
-    "sleep": "sleep 20",
-    "buildTokenList": "node support/getTokenList.js",
-    "sendBTC": "node support/scripts/sendBTC.js",
-    "sendETH": "node support/scripts/sendETH.js",
-    "test": "mocha --timeout 120000 -R spec test/ --recursive --exit",
-    "semantic-release": "semantic-release"
-  },
-  "config": {
-    "commitizen": {
-      "path": "./node_modules/cz-conventional-changelog"
-    }
+    "test": "mocha --timeout 120000 -R spec test/ --recursive --exit"
   },
   "main": "./index.js",
   "repository": {
@@ -28,49 +18,30 @@
   },
   "dependencies": {
     "aes-js": "^3.1.1",
-    "bignumber.js": "^8.0.1",
-    "bn.js": "^4.11.8",
     "bs58": "^4.0.1",
     "bs58check": "^2.1.2",
     "buffer": "^5.1.0",
     "crc-32": "^1.2.0",
-    "debug": "^4.1.0",
-    "eccrypto": "^1.0.3",
     "elliptic": "^6.4.0",
-    "ethers": "GridPlus/ethers.js#master",
-    "gridplus-bclient": "^0.1.2",
     "js-sha3": "^0.8.0",
-    "left-pad": "^1.3.0",
     "rlp-browser": "^1.0.1",
     "secp256k1": "^3.7.1",
-    "semantic-release-cli": "^4.0.9",
-    "sjcl": "^1.0.7",
     "superagent": "^3.8.3"
   },
   "devDependencies": {
-    "bitcoinjs-lib": "^5.1.6",
     "chai": "^4.2.0",
-    "commitizen": "^3.0.4",
-    "cz-conventional-changelog": "^2.1.0",
     "eslint": "^5.9.0",
     "eslint-config-standard": "^12.0.0",
     "eslint-plugin-import": "^2.7.0",
-    "eslint-plugin-jest": "^22.0.0",
     "eslint-plugin-node": "^8.0.0",
     "eslint-plugin-promise": "^4.0.1",
     "eslint-plugin-standard": "^4.0.0",
-    "ethereumjs-util": "^5.2.0",
-    "jest": "^23.4.0",
-    "meta-npm": "0.0.28",
     "mocha": "^5.2.0",
-    "readline-sync": "^1.4.9",
-    "semantic-release": "^15.11.0"
+    "readline-sync": "^1.4.9"
   },
   "files": [
     "index.js",
-    "src",
-    "support",
-    "config.js"
+    "src"
   ],
   "license": "MIT"
 }

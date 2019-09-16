@@ -7,7 +7,6 @@ const question = require('readline-sync').question;
 
 let client, rl, id;
 let caughtErr = false;
-// const DEVICE_ID = '40a36bc23f0a';
 
 describe('Connect and Pair', () => {
 
@@ -16,7 +15,7 @@ describe('Connect and Pair', () => {
       name: 'ConnectAndPairClient',
       crypto,
       timeout: 120000,
-      privKey: Buffer.from('0fb6b6f2504680ffab98b87d95e9f733c53a90044854ad77503498ddca09578c', 'hex'),
+      // privKey: Buffer.from('0fb6b6f2504680ffab98b87d95e9f733c53a90044854ad77503498ddca09578c', 'hex'),
     });
   });
 
@@ -58,13 +57,12 @@ describe('Connect and Pair', () => {
     // const _id = question('Please enter the ID of your test device: ');
     // id = _id;
     id = 'daf68f71bf37a3c5';
-    // id = '56237bc33a5f1fee';
     const connectErr = await connect(client, id);
     caughtErr = connectErr !== null;
     expect(connectErr).to.equal(null);
     // expect(client.isPaired).to.equal(false);
   });
-/*
+
   it('Should attempt to pair with pairing secret', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
@@ -74,7 +72,7 @@ describe('Connect and Pair', () => {
       expect(pairErr).to.equal(null);
     }
   });
-*/
+
   it('Should try to connect again but recognize the pairing already exists', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
@@ -85,7 +83,6 @@ describe('Connect and Pair', () => {
     }
   });
 
-/*
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
@@ -150,14 +147,14 @@ describe('Connect and Pair', () => {
       addrData.version = 'SEGWIT_TESTNET';
       addrData.n = 2;
       addrs = await getAddresses(client, addrData);
-      console.log('Segwit Testnet -- First two addresses:\n', addrs);
+      // console.log('Segwit Testnet -- First two addresses:\n', addrs);
       expect(addrs.length).to.equal(2);
       isTestnet = ['2', 'm', 'n'].indexOf(addrs[0][0]);
       expect(isTestnet).to.be.above(-1);
       
     }
   });
-*/
+
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
@@ -185,8 +182,8 @@ describe('Connect and Pair', () => {
     // Sign a legit tx 
     let tx = await sign(client, req);
     expect(tx.tx).to.not.equal(null);
-    console.log(tx)
-/*
+    // console.log(tx)
+
     // Invalid chainId
     req.data.chainId = 'notachain';
     try {
@@ -198,7 +195,7 @@ describe('Connect and Pair', () => {
     req.data.chainId = 'rinkeby';
 
     // Nonce too large (>u16)
-    req.data.txData.nonce = 0xffff + 1;
+    req.data.nonce = 0xffff + 1;
         try {
       tx = await(sign(client, req));
       expect(tx.tx).to.equal(null);
@@ -206,10 +203,10 @@ describe('Connect and Pair', () => {
       expect(err).to.not.equal(null);
     }
     // Reset to valid param
-    req.data.txData.nonce = 5;
+    req.data.nonce = 5;
 
     // GasLimit too low
-    req.data.txData.gasLimit = GAS_LIMIT_MIN - 1;
+    req.data.gasLimit = GAS_LIMIT_MIN - 1;
         try {
       tx = await(sign(client, req));
       expect(tx.tx).to.equal(null);
@@ -218,7 +215,7 @@ describe('Connect and Pair', () => {
     }
 
     // GasLimit too high (>u32)
-    req.data.txData.gasLimit = GAS_LIMIT_MAX + 1;
+    req.data.gasLimit = GAS_LIMIT_MAX + 1;
         try {
       tx = await(sign(client, req));
       expect(tx.tx).to.equal(null);
@@ -226,10 +223,10 @@ describe('Connect and Pair', () => {
       expect(err).to.not.equal(null);
     }
     // Reset to valid param
-    req.data.txData.gasLimit = 122000;
+    req.data.gasLimit = 122000;
 
     // GasPrice too high
-    req.data.txData.gasPrice = GAS_PRICE_MAX + 1;
+    req.data.gasPrice = GAS_PRICE_MAX + 1;
         try {
       tx = await(sign(client, req));
       expect(tx.tx).to.equal(null);
@@ -237,10 +234,10 @@ describe('Connect and Pair', () => {
       expect(err).to.not.equal(null);
     }
     // Reset to valid param
-    req.data.txData.gasLimit = 1200000000;
+    req.data.gasLimit = 1200000000;
     
     // `to` wrong size
-    req.data.txData.to = '0xe242e54155b1abc71fc118065270cecaaf8b77'
+    req.data.to = '0xe242e54155b1abc71fc118065270cecaaf8b77'
         try {
       tx = await(sign(client, req));
       expect(tx.tx).to.equal(null);
@@ -248,10 +245,10 @@ describe('Connect and Pair', () => {
       expect(err).to.not.equal(null);
     }
     // Reset to valid param 
-    req.data.txData.to = '0xe242e54155b1abc71fc118065270cecaaf8b7768'
+    req.data.to = '0xe242e54155b1abc71fc118065270cecaaf8b7768'
     
     // Value too high
-    req.data.txData.value = 2 ** 256;
+    req.data.value = 2 ** 256;
         try {
       tx = await(sign(client, req));
       expect(tx.tx).to.equal(null);
@@ -259,10 +256,10 @@ describe('Connect and Pair', () => {
       expect(err).to.not.equal(null);
     }
     // Reset to valid param
-    req.data.txData.value = 0.3 * 10 ** 18;
+    req.data.value = 0.3 * 10 ** 18;
     
     // Data too large
-    req.data.txData.data = crypto.randomBytes(constants.ETH_DATA_MAX_SIZE + 1).toString('hex');
+    req.data.data = crypto.randomBytes(constants.ETH_DATA_MAX_SIZE + 1).toString('hex');
         try {
       tx = await(sign(client, req));
       expect(tx.tx).to.equal(null);
@@ -271,16 +268,16 @@ describe('Connect and Pair', () => {
     }
 
     // Reset all values at max
-    req.data.txData.nonce = 0xfffe;
-    req.data.txData.gasLimit = GAS_LIMIT_MAX;
-    req.data.txData.gasPrice = GAS_PRICE_MAX;
-    req.data.txData.value = 123456000000000000000000;
-    req.data.txData.data = crypto.randomBytes(constants.ETH_DATA_MAX_SIZE).toString('hex');
+    req.data.nonce = 0xfffe;
+    req.data.gasLimit = GAS_LIMIT_MAX;
+    req.data.gasPrice = GAS_PRICE_MAX;
+    req.data.value = 123456000000000000000000;
+    req.data.data = crypto.randomBytes(constants.ETH_DATA_MAX_SIZE).toString('hex');
     tx = await sign(client, req);
     expect(tx.tx).to.not.equal(null);
-*/
+
   });
-/*
+
   it('Should sign legacy Bitcoin inputs', async () => {  
     let txData = {
       prevOuts: [
@@ -344,5 +341,5 @@ describe('Connect and Pair', () => {
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
-*/
+
 });

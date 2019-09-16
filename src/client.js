@@ -24,10 +24,9 @@ const {
   REQUEST_TYPE_BYTE,
   VERSION_BYTE,
   messageConstants,
+  BASE_URL,
 } = require('./constants');
 const Buffer = require('buffer/').Buffer;
-const config = require('../config');
-const debug = require('debug')('@gridplus/sdk:client');
 
 class Client {
   constructor({ baseUrl, crypto, name, privKey, providers, timeout } = {}) {
@@ -35,7 +34,7 @@ class Client {
     // if (!baseUrl) throw new Error('baseUrl is required');
     if (name && name.length > 24) throw new Error('name must be less than 24 characters');
     if (!crypto) throw new Error('crypto provider is required');
-    this.baseUrl = baseUrl || config.api.baseUrl;
+    this.baseUrl = baseUrl || BASE_URL;
     this.crypto = crypto;
     this.name = name || 'Unknown';
     
@@ -56,8 +55,6 @@ class Client {
     (providers || []).map((provider) => {
       this.providers[provider.shortcode] = provider;
     });
-
-    debug(`created rest client for ${this.baseUrl}`);
   }
   
   //=======================================================================
