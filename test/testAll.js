@@ -178,7 +178,7 @@ describe('Connect and Pair', () => {
         signerIndex: 0,
         ...txData,
         chainId: 'rinkeby', // Can also be an integer
-        preventReplays: true
+        useEIP155: false  // Rinkeby doesn't support EIP155
       }
     }
 

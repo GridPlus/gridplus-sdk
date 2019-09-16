@@ -488,7 +488,7 @@ class Client {
         // Ethereum returns an address as well
         const ethAddr = res.slice(off, off + 20);
         // Determine the `v` param and add it to the sig before returning
-        const rawTx = ethereum.buildEthRawTx(tx, sig, ethAddr);
+        const rawTx = ethereum.buildEthRawTx(tx, sig, ethAddr, tx.useEIP155);
         returnData.data = {
           tx: `0x${rawTx}`,
           txHash: ethereum.hashTransaction(rawTx),

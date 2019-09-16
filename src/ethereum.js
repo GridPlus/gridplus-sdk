@@ -8,7 +8,7 @@ const secp256k1 = require('secp256k1');
 
 exports.buildEthereumTxRequest = function(data) {
   try {
-    let { signerIndex, chainId=1, preventReplays=true } = data;
+    let { signerIndex, chainId=1, useEIP155=true } = data;
     if (typeof chainId !== 'number') chainId = chainIds[chainId];
     if (!chainId) throw new Error('Unsupported chain name');
     // Ensure all fields are 0x-prefixed hex strings
@@ -21,7 +21,7 @@ exports.buildEthereumTxRequest = function(data) {
     rawTx.push(ensureHexBuffer(data.value));
     rawTx.push(ensureHexBuffer(data.data));
     // Add empty v,r,s values
-    if (preventReplays === true) {
+    if (useEIP155 === true) {
       console.log('chainId', chainId)
       rawTx.push(ensureHexBuffer(chainId)); // v
       rawTx.push(ensureHexBuffer(null));    // r
@@ -41,7 +41,8 @@ exports.buildEthereumTxRequest = function(data) {
       rawTx,
       payload,
       schema: constants.signingSchema.ETH_TRANSFER,  // We will use eth transfer for all ETH txs for v1 
-      chainId
+      chainId,
+      useEIP155
     };
   } catch (err) {
     return { err };
@@ -50,12 +51,12 @@ exports.buildEthereumTxRequest = function(data) {
 
 // Given a 64-byte signature [r,s] we need to figure out the v value
 // and attah the full signature to the end of the transaction payload
-exports.buildEthRawTx = function(tx, sig, address) {
+exports.buildEthRawTx = function(tx, sig, address, useEIP155=true) {
   // Get the new signature (with valid recovery param `v`) given the
   // RLP-encoded transaction payload
   // NOTE: The first 4 bytes of the payload were for the `signerIndex`, which
   //      was part of the Lattice request. We discard that here.
-  const newSig = addRecoveryParam(tx.payload.slice(4), sig, address, tx.chainId);
+  const newSig = addRecoveryParam(tx.payload.slice(4), sig, address, tx.chainId, useEIP155);
   // Use the signature to generate a new raw transaction payload
   const newRawTx = tx.rawTx.slice(0, 6);
   newRawTx.push(Buffer.from((newSig.v).toString(16), 'hex'));
@@ -65,7 +66,7 @@ exports.buildEthRawTx = function(tx, sig, address) {
 }
 
 // Attach a recovery parameter to a signature by brute-forcing ECRecover
-function addRecoveryParam(payload, sig, address, chainId=1, preventReplays=true) {
+function addRecoveryParam(payload, sig, address, chainId, useEIP155) {
   try {
     // Rebuild the keccak256 hash here so we can `ecrecover`
     const hash = Buffer.from(keccak256(payload), 'hex');
@@ -79,7 +80,7 @@ function addRecoveryParam(payload, sig, address, chainId=1, preventReplays=true)
     // If the first `v` value is a match, return the sig!
     if (pubToAddrStr(pubkey) === address.toString('hex')) {
       console.log('matched addr:', address.toString('hex'))
-      if (preventReplays === true) sig.v  = updateRecoveryParam(sig.v, chainId);
+      if (useEIP155 === true) sig.v  = updateRecoveryParam(sig.v, chainId);
       return sig;
     }
     // Otherwise, try the other `v` value
@@ -88,7 +89,7 @@ function addRecoveryParam(payload, sig, address, chainId=1, preventReplays=true)
     if (pubToAddrStr(pubkey) === address.toString('hex')) {
       console.log('matched addr:', address.toString('hex'))
 
-      if (preventReplays === true) sig.v  = updateRecoveryParam(sig.v, chainId);
+      if (useEIP155 === true) sig.v  = updateRecoveryParam(sig.v, chainId);
       return sig;
     } else {
       // If neither is a match, we should return an error
