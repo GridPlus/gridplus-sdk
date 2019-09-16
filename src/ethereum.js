@@ -22,7 +22,6 @@ exports.buildEthereumTxRequest = function(data) {
     rawTx.push(ensureHexBuffer(data.data));
     // Add empty v,r,s values
     if (useEIP155 === true) {
-      console.log('chainId', chainId)
       rawTx.push(ensureHexBuffer(chainId)); // v
       rawTx.push(ensureHexBuffer(null));    // r
       rawTx.push(ensureHexBuffer(null));    // s
@@ -79,7 +78,6 @@ function addRecoveryParam(payload, sig, address, chainId, useEIP155) {
     let pubkey = secp256k1.recover(hash, rs, sig.v - 27, false).slice(1);
     // If the first `v` value is a match, return the sig!
     if (pubToAddrStr(pubkey) === address.toString('hex')) {
-      console.log('matched addr:', address.toString('hex'))
       if (useEIP155 === true) sig.v  = updateRecoveryParam(sig.v, chainId);
       return sig;
     }
@@ -87,8 +85,6 @@ function addRecoveryParam(payload, sig, address, chainId, useEIP155) {
     sig.v = 28;
     pubkey = secp256k1.recover(hash, rs, sig.v - 27, false).slice(1);
     if (pubToAddrStr(pubkey) === address.toString('hex')) {
-      console.log('matched addr:', address.toString('hex'))
-
       if (useEIP155 === true) sig.v  = updateRecoveryParam(sig.v, chainId);
       return sig;
     } else {
@@ -103,7 +99,7 @@ exports.addRecoveryParam = addRecoveryParam;
 
 // Convert an RLP-serialized transaction (plus signature) into a transaction hash
 exports.hashTransaction = function(serializedTx) {
-  return keccak256(serializedTx); 
+  return keccak256(Buffer.from(serializedTx, 'hex')); 
 }
 
 // Ensure a param is represented by a buffer
@@ -131,7 +127,6 @@ function fixLen(msg, length) {
 }
 
 function updateRecoveryParam(v, chainId) {
-  console.log('new recoveryParam', v + (chainId * 2) + 8);
   return v + (chainId * 2) + 8;
 }
 

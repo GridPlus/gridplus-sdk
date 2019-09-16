@@ -491,7 +491,7 @@ class Client {
         const rawTx = ethereum.buildEthRawTx(tx, sig, ethAddr, tx.useEIP155);
         returnData.data = {
           tx: `0x${rawTx}`,
-          txHash: ethereum.hashTransaction(rawTx),
+          txHash: `0x${ethereum.hashTransaction(rawTx)}`,
         };
         break;
     }

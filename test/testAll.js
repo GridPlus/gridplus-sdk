@@ -165,7 +165,7 @@ describe('Connect and Pair', () => {
     const GAS_LIMIT_MAX = 10000000;
     
     let txData = {
-      nonce: 8,
+      nonce: 9,
       gasPrice: 1200000000,
       gasLimit: 122000,
       to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
