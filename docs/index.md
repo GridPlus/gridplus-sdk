@@ -127,6 +127,9 @@ const txData = {
     to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
     value: 0,
     data: '0x12345678'
+    signerIndex: 0,
+    chainId: 'rinkeby',
+    preventReplays: true,
 }
 ```
 
@@ -138,15 +141,14 @@ const txData = {
 | `to`       | string    | Must be 20 bytes (excluding optional `0x` prefix) |
 | `value`    | number    | None               |
 | `data`     | string    | Must be <557 bytes |
+| `signerIndex` | number | Address index of the Lattice Ethereum wallet to sign this transaction |
+| `chainId`  | string    | Name of the chain to use, options provided below |
+| `preventReplays` | bool | Default=true. Whether to use EIP155 to prevent replay attacks on the transaction. |
 
-### Extra Data
 
-Ethereum transaction requests require additional data (Bitcoin transactions, covered below, need only the transaction data)
-
-        signerIndex: 0,
-        txData,
-        chainId: 'rinkeby', // Can also be an integer
-        preventReplays: true
+| Param    | Default  | Options                           |
+|:---------|:---------|:----------------------------------|
+| `chainId`| `mainnet` | `mainnet`, `ropsten`, `rinkeby`, `kovan`, `goerli` |
 
 ## Building a Transaction (BTC)
 

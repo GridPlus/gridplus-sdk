@@ -85,7 +85,7 @@ describe('Connect and Pair', () => {
     }
   });
 
-
+/*
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
@@ -157,7 +157,7 @@ describe('Connect and Pair', () => {
       
     }
   });
-
+*/
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
@@ -176,7 +176,7 @@ describe('Connect and Pair', () => {
       currency: 'ETH',
       data: {
         signerIndex: 0,
-        txData,
+        ...txData,
         chainId: 'rinkeby', // Can also be an integer
         preventReplays: true
       }

@@ -8,18 +8,18 @@ const secp256k1 = require('secp256k1');
 
 exports.buildEthereumTxRequest = function(data) {
   try {
-    let { txData, signerIndex, chainId=1, preventReplays=true } = data;
+    let { signerIndex, chainId=1, preventReplays=true } = data;
     if (typeof chainId !== 'number') chainId = chainIds[chainId];
     if (!chainId) throw new Error('Unsupported chain name');
     // Ensure all fields are 0x-prefixed hex strings
     let rawTx = []
     // Build the transaction buffer array
-    rawTx.push(ensureHexBuffer(txData.nonce));
-    rawTx.push(ensureHexBuffer(txData.gasPrice));
-    rawTx.push(ensureHexBuffer(txData.gasLimit));
-    rawTx.push(ensureHexBuffer(txData.to));
-    rawTx.push(ensureHexBuffer(txData.value));
-    rawTx.push(ensureHexBuffer(txData.data));
+    rawTx.push(ensureHexBuffer(data.nonce));
+    rawTx.push(ensureHexBuffer(data.gasPrice));
+    rawTx.push(ensureHexBuffer(data.gasLimit));
+    rawTx.push(ensureHexBuffer(data.to));
+    rawTx.push(ensureHexBuffer(data.value));
+    rawTx.push(ensureHexBuffer(data.data));
     // Add empty v,r,s values
     if (preventReplays === true) {
       console.log('chainId', chainId)
@@ -28,7 +28,7 @@ exports.buildEthereumTxRequest = function(data) {
       rawTx.push(ensureHexBuffer(null));    // s
     }
     // Ensure data field isn't too long
-    if (txData.data && ensureHexBuffer(txData.data).length > constants.ETH_DATA_MAX_SIZE) {
+    if (data.data && ensureHexBuffer(data.data).length > constants.ETH_DATA_MAX_SIZE) {
       return { err: `Data field too large (must be <=${constants.ETH_DATA_MAX_SIZE} bytes)` }
     }
     // RLP-encode the transaction request
