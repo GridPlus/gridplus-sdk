@@ -8,26 +8,26 @@ const secp256k1 = require('secp256k1');
 
 exports.buildEthereumTxRequest = function(data) {
   try {
-    let { txData, signerIndex, chainId=1, preventReplays=true } = data;
+    let { signerIndex, chainId=1, useEIP155=true } = data;
     if (typeof chainId !== 'number') chainId = chainIds[chainId];
     if (!chainId) throw new Error('Unsupported chain name');
     // Ensure all fields are 0x-prefixed hex strings
     let rawTx = []
     // Build the transaction buffer array
-    rawTx.push(ensureHexBuffer(txData.nonce));
-    rawTx.push(ensureHexBuffer(txData.gasPrice));
-    rawTx.push(ensureHexBuffer(txData.gasLimit));
-    rawTx.push(ensureHexBuffer(txData.to));
-    rawTx.push(ensureHexBuffer(txData.value));
-    rawTx.push(ensureHexBuffer(txData.data));
+    rawTx.push(ensureHexBuffer(data.nonce));
+    rawTx.push(ensureHexBuffer(data.gasPrice));
+    rawTx.push(ensureHexBuffer(data.gasLimit));
+    rawTx.push(ensureHexBuffer(data.to));
+    rawTx.push(ensureHexBuffer(data.value));
+    rawTx.push(ensureHexBuffer(data.data));
     // Add empty v,r,s values
-    if (preventReplays === true) {
+    if (useEIP155 === true) {
       rawTx.push(ensureHexBuffer(chainId)); // v
       rawTx.push(ensureHexBuffer(null));    // r
       rawTx.push(ensureHexBuffer(null));    // s
     }
     // Ensure data field isn't too long
-    if (txData.data && ensureHexBuffer(txData.data).length > constants.ETH_DATA_MAX_SIZE) {
+    if (data.data && ensureHexBuffer(data.data).length > constants.ETH_DATA_MAX_SIZE) {
       return { err: `Data field too large (must be <=${constants.ETH_DATA_MAX_SIZE} bytes)` }
     }
     // RLP-encode the transaction request
@@ -40,7 +40,8 @@ exports.buildEthereumTxRequest = function(data) {
       rawTx,
       payload,
       schema: constants.signingSchema.ETH_TRANSFER,  // We will use eth transfer for all ETH txs for v1 
-      chainId
+      chainId,
+      useEIP155
     };
   } catch (err) {
     return { err };
@@ -49,12 +50,12 @@ exports.buildEthereumTxRequest = function(data) {
 
 // Given a 64-byte signature [r,s] we need to figure out the v value
 // and attah the full signature to the end of the transaction payload
-exports.buildEthRawTx = function(tx, sig, address) {
+exports.buildEthRawTx = function(tx, sig, address, useEIP155=true) {
   // Get the new signature (with valid recovery param `v`) given the
   // RLP-encoded transaction payload
   // NOTE: The first 4 bytes of the payload were for the `signerIndex`, which
   //      was part of the Lattice request. We discard that here.
-  const newSig = addRecoveryParam(tx.payload.slice(4), sig, address, tx.chainId);
+  const newSig = addRecoveryParam(tx.payload.slice(4), sig, address, tx.chainId, useEIP155);
   // Use the signature to generate a new raw transaction payload
   const newRawTx = tx.rawTx.slice(0, 6);
   newRawTx.push(Buffer.from((newSig.v).toString(16), 'hex'));
@@ -64,7 +65,7 @@ exports.buildEthRawTx = function(tx, sig, address) {
 }
 
 // Attach a recovery parameter to a signature by brute-forcing ECRecover
-function addRecoveryParam(payload, sig, address, chainId=1, preventReplays=true) {
+function addRecoveryParam(payload, sig, address, chainId, useEIP155) {
   try {
     // Rebuild the keccak256 hash here so we can `ecrecover`
     const hash = Buffer.from(keccak256(payload), 'hex');
@@ -77,14 +78,14 @@ function addRecoveryParam(payload, sig, address, chainId=1, preventReplays=true)
     let pubkey = secp256k1.recover(hash, rs, sig.v - 27, false).slice(1);
     // If the first `v` value is a match, return the sig!
     if (pubToAddrStr(pubkey) === address.toString('hex')) {
-      if (preventReplays === true) sig.v  = updateRecoveryParam(sig.v, chainId);
+      if (useEIP155 === true) sig.v  = updateRecoveryParam(sig.v, chainId);
       return sig;
     }
     // Otherwise, try the other `v` value
     sig.v = 28;
     pubkey = secp256k1.recover(hash, rs, sig.v - 27, false).slice(1);
     if (pubToAddrStr(pubkey) === address.toString('hex')) {
-      if (preventReplays === true) sig.v  = updateRecoveryParam(sig.v, chainId);
+      if (useEIP155 === true) sig.v  = updateRecoveryParam(sig.v, chainId);
       return sig;
     } else {
       // If neither is a match, we should return an error
@@ -95,6 +96,11 @@ function addRecoveryParam(payload, sig, address, chainId=1, preventReplays=true)
   }
 }
 exports.addRecoveryParam = addRecoveryParam;
+
+// Convert an RLP-serialized transaction (plus signature) into a transaction hash
+exports.hashTransaction = function(serializedTx) {
+  return keccak256(Buffer.from(serializedTx, 'hex')); 
+}
 
 // Ensure a param is represented by a buffer
 function ensureHexBuffer(x) {

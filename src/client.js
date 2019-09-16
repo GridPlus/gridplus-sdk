@@ -111,15 +111,15 @@ class Client {
   }
 
   getAddresses(opts, cb) {
-    const { currency, startIndex, n, version="LEGACY" } = opts;
+    const { currency, startIndex, n, version="SEGWIT" } = opts;
     if (currency === undefined || startIndex == undefined || n == undefined) {
-      return cb({ err: 'Please provide `currency`, `startIndex`, and `n` options' });
+      return cb('Please provide `currency`, `startIndex`, and `n` options');
     } else if (currencyCodes[currency] === undefined) {
-      return cb({ err: 'Unsupported currency' });
+      return cb('Unsupported currency');
     }
     // Bitcoin requires a version byte
     if (currency === 'BTC' && bitcoin.addressVersion[version] === undefined) {
-      return cb({ err: 'Unsupported Bitcoin version. Options are: LEGACY, P2SH, SEGWIT, TESTNET' });
+      return cb('Unsupported Bitcoin version. Options are: LEGACY, SEGWIT, TESTNET, SEGWIT_TESTNET');
     }
     // Bitcoin segwit addresses require a P2SH_P2WPKH script type -- the script type
     // is otherwise ignored and is only needed for BTC
@@ -133,9 +133,10 @@ class Client {
     payload.writeUInt8(bitcoinScriptType || 0, 6);
     const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
     return this._request(param, (err, res) => {
-      if (err) return cb({ err });
+      if (err) return cb(err);
       const parsedRes = this._handleGetAddresses(res, currency, n, bitcoin.addressVersion[version]);
-      return cb(parsedRes);
+      if (parsedRes.err) return cb(parsedRes.err);
+      return cb(null, parsedRes.data);
     })
   }
 
@@ -146,9 +147,9 @@ class Client {
     //        (the response should be all the user needs to broadcast the tx)
     const { currency, data } = opts;
     if (currency == undefined || data == undefined) {
-      return cb({ err: 'Please provide `currency` and `data` options'});
+      return cb('Please provide `currency` and `data` options');
     } else if (currencyCodes[currency] === undefined) {
-      return cb({ err: 'Unsupported currency' });
+      return cb('Unsupported currency');
     }
 
     // Build the transaction payload to send to the device. If we catch
@@ -164,7 +165,7 @@ class Client {
     // discarded.
     const MAX_TX_REQ_DATA_SIZE = 557;
     if (tx.payload.length > MAX_TX_REQ_DATA_SIZE) {
-      return cb({ err: 'Transaction is too large' });
+      return cb('Transaction is too large');
     }
 
     // Build the payload
@@ -175,9 +176,10 @@ class Client {
     // Construct the encrypted request and send it
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
     return this._request(param, (err, res) => {
-      if (err) return cb({ err });
+      if (err) return cb(err);
       const parsedRes = this._handleSign(res, currency, tx);
-      return cb(parsedRes);
+      if (parsedRes.err) return cb(parsedRes.err);
+      return cb(null, parsedRes.data);
     })
   }
 
@@ -397,7 +399,7 @@ class Client {
   _handleSign(encRes, currencyType, tx=null) {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(encRes, decResLengths.sign);
-    if (decrypted.err !== null ) return decrypted;
+    if (decrypted.err !== null ) return { err: decrypted.err };
 
     let off = 65; // Skip past pubkey prefix
     const res = decrypted.data;
@@ -460,10 +462,10 @@ class Client {
         }
 
         // Finally, serialize the transaction
-        returnData.data = bitcoin.serializeTx(preSerializedData);
+        const serializedTx = bitcoin.serializeTx(preSerializedData);
 
         // Generate the transaction hash so the user can look this transaction up later
-        let preImageTxHash = returnData.data;
+        let preImageTxHash = serializedTx;
         if (preSerializedData.isSegwitSpend === true) {
           // Segwit transactions need to be re-serialized using legacy serialization
           // before the transaction hash is calculated. This allows legacy clients
@@ -475,7 +477,8 @@ class Client {
         txHash = this.crypto.createHash('sha256').update(txHash).digest().reverse().toString('hex');
         
         // Add extra data for debugging/lookup purposes
-        returnData.extraData = {
+        returnData.data = {
+          tx: serializedTx,
           txHash,
           changeRecipient,
         }
@@ -485,7 +488,11 @@ class Client {
         // Ethereum returns an address as well
         const ethAddr = res.slice(off, off + 20);
         // Determine the `v` param and add it to the sig before returning
-        returnData.data = `0x${ethereum.buildEthRawTx(tx, sig, ethAddr)}`;
+        const rawTx = ethereum.buildEthRawTx(tx, sig, ethAddr, tx.useEIP155);
+        returnData.data = {
+          tx: `0x${rawTx}`,
+          txHash: `0x${ethereum.hashTransaction(rawTx)}`,
+        };
         break;
     }
 
