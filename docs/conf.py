@@ -24,7 +24,7 @@ source_parsers = {
 # -- Project information -----------------------------------------------------
 
 project = u'GridPlus SDK'
-copyright = u'2019, Alex Miller'
+copyright = u'2019, GridPlus, Inc.'
 author = u'Alex Miller'
 
 # The short X.Y version
