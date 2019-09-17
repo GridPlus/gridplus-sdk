@@ -15,7 +15,6 @@ describe('Connect and Pair', () => {
       name: 'ConnectAndPairClient',
       crypto,
       timeout: 120000,
-      // privKey: Buffer.from('0fb6b6f2504680ffab98b87d95e9f733c53a90044854ad77503498ddca09578c', 'hex'),
     });
   });
 
@@ -54,13 +53,12 @@ describe('Connect and Pair', () => {
   }
 
   it('Should connect to a Lattice', async () => {
-    // const _id = question('Please enter the ID of your test device: ');
-    // id = _id;
-    id = 'daf68f71bf37a3c5';
+    const _id = question('Please enter the ID of your test device: ');
+    id = _id;
     const connectErr = await connect(client, id);
     caughtErr = connectErr !== null;
     expect(connectErr).to.equal(null);
-    // expect(client.isPaired).to.equal(false);
+    expect(client.isPaired).to.equal(false);
   });
 
   it('Should attempt to pair with pairing secret', async () => {
@@ -92,7 +90,6 @@ describe('Connect and Pair', () => {
       let addrs = await getAddresses(client, addrData);
       expect(addrs.length).to.equal(5);
       expect(addrs[0][0]).to.equal('3');
-
       // Legacy addresses
       addrData.version = 'LEGACY';
       addrData.n = 4;

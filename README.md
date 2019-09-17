@@ -10,3 +10,11 @@ The GridPlus SDK lets any application establish a connection and interact with a
 ## [Documentation](https://gridplus-sdk.readthedocs.io)
 
 The documentation for this SDK can be found [here](https://gridplus-sdk.readthedocs.io). There you will find a complete quickstart guide and API docs for the above functionality.
+
+## Testing
+
+If you have a Lattice1 device that is connected to the internet, you can run the full test suite with:
+
+```
+npm test
+```
