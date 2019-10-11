@@ -141,11 +141,11 @@ const chainIds = {
 }
 
 const eip155 = {
-  mainnet: true,
-  ropsten: false,
-  rinkeby:false,
-  kovan: true,
-  goerli: true
+  1: true,
+  3: false,
+  4:false,
+  42: true,
+  5: true
 }
 
 
