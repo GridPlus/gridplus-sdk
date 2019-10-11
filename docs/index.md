@@ -129,7 +129,6 @@ const txData = {
     data: '0x12345678'
     signerIndex: 0,
     chainId: 'rinkeby',
-    useEIP155: true,
 }
 ```
 
@@ -142,9 +141,7 @@ const txData = {
 | `value`    | number    | None               |
 | `data`     | string    | Must be <557 bytes |
 | `signerIndex` | number | Address index of the Lattice Ethereum wallet to sign this transaction |
-| `chainId`  | string    | Name of the chain to use, options provided below |
-| `useEIP155` | bool | Default=true. Whether to use EIP155 to prevent replay attacks on the transaction. |
-
+| `chainId`  | string/number    | Name of the chain to use, options provided below. If a number is passed, it will use that. |
 
 | Param    | Default  | Options                           |
 |:---------|:---------|:----------------------------------|
