@@ -8,9 +8,10 @@ const secp256k1 = require('secp256k1');
 
 exports.buildEthereumTxRequest = function(data) {
   try {
-    let { signerIndex, chainId=1, useEIP155=true } = data;
+    let { signerIndex, chainId=1 } = data;
     if (typeof chainId !== 'number') chainId = chainIds[chainId];
     if (!chainId) throw new Error('Unsupported chain name');
+    const useEIP155 = eip155[chainId];
     // Ensure all fields are 0x-prefixed hex strings
     let rawTx = []
     // Build the transaction buffer array
@@ -136,6 +137,16 @@ const chainIds = {
   roptsten: 3,
   rinkeby: 4,
   kovan: 42,
-  goerli: 6284
+  goerli: 5
 }
+
+const eip155 = {
+  mainnet: true,
+  ropsten: false,
+  rinkeby:false,
+  kovan: true,
+  goerli: true
+}
+
+
 exports.chainIds = chainIds;
