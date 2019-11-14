@@ -13,6 +13,7 @@ describe('Connect and Pair', () => {
   before(() => {
     client = new Sdk.Client({
       name: 'ConnectAndPairClient',
+      // baseUrl: 'https://signing.staging-gridpl.us'
       crypto,
       timeout: 120000,
     });
