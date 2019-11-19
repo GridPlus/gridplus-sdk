@@ -4,7 +4,7 @@ const expect = require('chai').expect;
 const Sdk = require('../index.js');
 const crypto = require('crypto');
 const question = require('readline-sync').question;
-
+const HARDENED_OFFSET = 0x80000000;
 let client, rl, id;
 let caughtErr = false;
 
@@ -13,7 +13,7 @@ describe('Connect and Pair', () => {
   before(() => {
     client = new Sdk.Client({
       name: 'ConnectAndPairClient',
-      // baseUrl: 'https://signing.staging-gridpl.us'
+      baseUrl: 'https://signing.staging-gridpl.us',
       crypto,
       timeout: 120000,
     });
@@ -85,7 +85,11 @@ describe('Connect and Pair', () => {
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
-      const addrData = { currency: 'BTC', startIndex: 0, n: 5 }
+      const addrData = { 
+        currency: 'BTC', 
+        startPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0], 
+        n: 5
+      }
       // Segwit addresses (default `version`)
       let isError;
       let addrs = await getAddresses(client, addrData);
@@ -135,7 +139,6 @@ describe('Connect and Pair', () => {
       // Testnet
       addrData.version = 'TESTNET';
       addrData.n = 2;
-      addrData.startIndex = 0;
       addrs = await getAddresses(client, addrData);
       expect(addrs.length).to.equal(2);
       let isTestnet = ['2', 'm', 'n'].indexOf(addrs[0][0]);
@@ -170,7 +173,7 @@ describe('Connect and Pair', () => {
     let req = {
       currency: 'ETH',
       data: {
-        signerIndex: 0,
+        signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+60, HARDENED_OFFSET, 0, 0],
         ...txData,
         chainId: 'rinkeby', // Can also be an integer
       }
@@ -282,14 +285,14 @@ describe('Connect and Pair', () => {
           txHash: 'c0fb89034692788f4bccbec433a197d68a5eb61417b367ee1994b42be5d68ba7',
           value: 139784,
           index: 1,
-          recipientIndex: 0,
+          signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0],
         },
       ],
       recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
       value: 1000,
       fee: 1000,
       isSegwit: false,
-      changeIndex: 0,            // Default 0
+      changePath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 1, 0],
       changeVersion: 'TESTNET',  // Default 'LEGACY'
       network: 'TESTNET',        // Default 'MAINNET'
     };
@@ -311,20 +314,20 @@ describe('Connect and Pair', () => {
           txHash: '08911991c5659349fa507419a20fd398d66d59e823bca1b1b94f8f19e21be44c',
           value: 3469416,
           index: 1,
-          recipientIndex: 0,
+          signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0],
         },
         {
           txHash: '19e7aa056a82b790c478e619153c35195211b58923a8e74d3540f8ff1f25ecef',
           value: 3461572,
           index: 0,
-          recipientIndex: 1,
+          signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 1],
         }
       ],
       recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
       value: 1000,
       fee: 1000,
       isSegwit: true,
-      changeIndex: 0,            // Default 0
+      changePath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 1, 1],
       changeVersion: 'SEGWIT_TESTNET',  // Default 'LEGACY'
       network: 'TESTNET',        // Default 'MAINNET'
     };

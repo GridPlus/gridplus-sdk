@@ -90,8 +90,11 @@ You may retrieve some number of addresses for supported cryptocurrencies. The La
 An example request looks like:
 
 ```
+// Hardened offset is , referenced in the BIP44 spec here: https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#purpose
+const HARDENED_OFFSET = 0x80000000;
 const req = {
-    start: 0,
+    // -- m/44'/0'/0'/0/0
+    startPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0],
     n: 4,
     currency: 'BTC'
     version: 'SEGWIT'
@@ -105,8 +108,8 @@ client.addresses(req, (err, res) => {
 
 | Param      | Type      | Default          | Options         | Description           |
 |:-----------|:----------|:-----------------|:----------------|:----------------------|
-| `start`    | number    | none             | n/a             | First address index in BIP44 tree to return |
-| `n`        | number    | 1                | n/a             | Number of subsequent addresses after `start` to derive |
+| `startPath` | Array    | none             | n/a             | First address path in BIP44 tree to return. You must provide 5 indices to form the path. |
+| `n`        | number    | 1                | n/a             | Number of subsequent addresses after `start` to derive. These will increment over the final index in the path |
 | `currency` | string    | `BTC`            | `BTC`, `ETH`    | Currency to get addresses for |
 | `version`  | string    | `SEGWIT`         | `LEGACY`, `SEGWIT`, `TESTNET`, `SEGWIT_TESTNET` | Bitcoin only -- type of addresses to retrieve |
 
@@ -127,7 +130,8 @@ const txData = {
     to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
     value: 0,
     data: '0x12345678'
-    signerIndex: 0,
+    // -- m/44'/60'/0'/0/0
+    signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+60, HARDENED_OFFSET, 0, 0],
     chainId: 'rinkeby',
 }
 ```
@@ -140,7 +144,7 @@ const txData = {
 | `to`       | string    | Must be 20 bytes (excluding optional `0x` prefix) |
 | `value`    | number    | None               |
 | `data`     | string    | Must be <557 bytes |
-| `signerIndex` | number | Address index of the Lattice Ethereum wallet to sign this transaction |
+| `signerPath`| Array | Address path from which to sign this transaction. NOTE: Ethereum wallets typically use the path specified in the example above for all transactions. |
 | `chainId`  | string/number    | Name of the chain to use, options provided below. If a number is passed, it will use that. |
 
 | Param    | Default  | Options                           |
@@ -149,8 +153,7 @@ const txData = {
 
 ## Building a Transaction (BTC)
 
-Bitcoin transactions are constructed by referencing a set of inputs to spend and a recipient + output value. You must also
-specify a change address index (defaults to 0):
+Bitcoin transactions are constructed by referencing a set of inputs to spend and a recipient + output value. You should also specify a change address path (defaults to `m/44'/0'/0'/1/0`):
 
 ```
 let txData = {
@@ -159,20 +162,20 @@ let txData = {
             txHash: '08911991c5659349fa507419a20fd398d66d59e823bca1b1b94f8f19e21be44c',
             value: 3469416,
             index: 1,
-            recipientIndex: 0,
+            signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 1, 0],
         },
         {
             txHash: '19e7aa056a82b790c478e619153c35195211b58923a8e74d3540f8ff1f25ecef',
             value: 3461572,
             index: 0,
-            recipientIndex: 1,
+            signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 5],
         }
     ],
     recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
     value: 1000,
     fee: 1000,
     isSegwit: true,
-    changeIndex: 0,
+    changePath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 1, 1],
     changeVersion: 'SEGWIT_TESTNET',
     network: 'TESTNET',
 };
@@ -183,13 +186,13 @@ let txData = {
 | `prevOuts->txHash`        | string    | Must be 32 bytes             | Transaction hash of the previous output |
 | `prevOuts->value`         | number    | Must be >0                   | Value of the previous output |
 | `prevOuts->index`         | number    | Must be <255                 | Index of this previous output in the transaction |
-| `prevOuts->recipientIndex`| number    | None                         | Address index in the Lattice wallet that received this output |
+| `prevOuts->signerPath`| Array    | Must have 5x 4-byte numbers                         | BIP44 address path needed to sign this input |
 | `recipient`               | string    | Must be a valid address      | Address you are sending to |
 | `value`                   | number    | Must be >0                   | Number of satoshis you are sending to `recipient` |
 | `fee`                     | number    | Must be >0                   | Number of satoshis reserved for the transaction fee |
 | `isSegwit`                | bool      | Must be true/false           | True if the inputs are encumbered by P2SH(P2WPKH), i.e. segwit |
-| `changeIndex`             | number    | None                         | Address index in the Lattice wallet where the change will go |
-| `changeVersion`           | string    | Must be one of below options | Version byte to build change address based on `changeIndex` |
+| `changePath`             | Array    |  Must have 5x 4-byte numbers                          | BIP44 address path to which the change will go |
+| `changeVersion`           | string    | Must be one of below options | Version byte to build change address based on `changePath` |
 | `network`                 | string    | Must be one of below options | Bitcoin network this transaction will be broadcast on |
 
 | Param            | Default          |   Options              |

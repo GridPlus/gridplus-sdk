@@ -8,9 +8,10 @@ const secp256k1 = require('secp256k1');
 
 exports.buildEthereumTxRequest = function(data) {
   try {
-    let { signerIndex, chainId=1 } = data;
+    let { signerPath, chainId=1 } = data;
     if (typeof chainId !== 'number') chainId = chainIds[chainId];
     if (!chainId) throw new Error('Unsupported chain name');
+    else if (!signerPath || signerPath.length != 5) throw new Error('Please provider full signer path (`signerPath`)')
     const useEIP155 = eip155[chainId];
     // Ensure all fields are 0x-prefixed hex strings
     let rawTx = []
@@ -34,9 +35,11 @@ exports.buildEthereumTxRequest = function(data) {
     // RLP-encode the transaction request
     const encoded = rlp.encode(rawTx);
     // Build the payload to send to the Lattice
-    const payload = Buffer.alloc(encoded.length + 4);
-    payload.writeUInt32BE(signerIndex, 0);
-    encoded.copy(payload, 4);
+    const payload = Buffer.alloc(encoded.length + 4 * signerPath.length);
+    for (let i = 0; i < signerPath.length; i++) {
+      payload.writeUInt32BE(signerPath[i], 4 * i);
+    }
+    encoded.copy(payload, 4 * signerPath.length);
     return { 
       rawTx,
       payload,
@@ -54,9 +57,9 @@ exports.buildEthereumTxRequest = function(data) {
 exports.buildEthRawTx = function(tx, sig, address, useEIP155=true) {
   // Get the new signature (with valid recovery param `v`) given the
   // RLP-encoded transaction payload
-  // NOTE: The first 4 bytes of the payload were for the `signerIndex`, which
+  // NOTE: The first 20 bytes of the payload were for the `signerPath`, which
   //      was part of the Lattice request. We discard that here.
-  const newSig = addRecoveryParam(tx.payload.slice(4), sig, address, tx.chainId, useEIP155);
+  const newSig = addRecoveryParam(tx.payload.slice(20), sig, address, tx.chainId, useEIP155);
   // Use the signature to generate a new raw transaction payload
   const newRawTx = tx.rawTx.slice(0, 6);
   newRawTx.push(Buffer.from((newSig.v).toString(16), 'hex'));

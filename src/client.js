@@ -108,9 +108,9 @@ class Client {
   }
 
   getAddresses(opts, cb) {
-    const { currency, startIndex, n, version="SEGWIT" } = opts;
-    if (currency === undefined || startIndex == undefined || n == undefined) {
-      return cb('Please provide `currency`, `startIndex`, and `n` options');
+    const { currency, startPath, n, version="SEGWIT" } = opts;
+    if (currency === undefined || startPath == undefined || n == undefined || startPath.length != 5) {
+      return cb('Please provide `currency`, `startPath`, and `n` options');
     } else if (currencyCodes[currency] === undefined) {
       return cb('Unsupported currency');
     }
@@ -123,11 +123,15 @@ class Client {
     const bitcoinScriptType = (version === 'SEGWIT' || version === 'SEGWIT_TESTNET') ? 
                               bitcoin.scriptTypes.P2SH_P2WPKH: 0;
 
-    const payload = Buffer.alloc(7);
-    payload.writeUInt8(currencyCodes[currency]);
-    payload.writeUInt32BE(startIndex, 1);
-    payload.writeUInt8(n, 5);
-    payload.writeUInt8(bitcoinScriptType || 0, 6);
+    const payload = Buffer.alloc(3 + startPath.length * 4);
+    let off = 0;
+    payload.writeUInt8(currencyCodes[currency]); off++;
+    for (let i = 0; i < startPath.length; i++) {
+      payload.writeUInt32BE(startPath[i], off);
+      off += 4;
+    }
+    payload.writeUInt8(n, off); off++;
+    payload.writeUInt8(bitcoinScriptType || 0, off); off++;
     const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
     return this._request(param, (err, res) => {
       if (err) return cb(err);
