@@ -113,6 +113,18 @@ client.addresses(req, (err, res) => {
 | `currency` | string    | `BTC`            | `BTC`, `ETH`    | Currency to get addresses for |
 | `version`  | string    | `SEGWIT`         | `LEGACY`, `SEGWIT`, `TESTNET`, `SEGWIT_TESTNET` | Bitcoin only -- type of addresses to retrieve |
 
+**Response:**
+
+Returns an array of address strings:
+
+```
+res = [
+    '3PKEDaainApM4u5Tqm1nn3txzZWbtFXUQ2', 
+    '3He2JrsT33DEnjCgdpPgc6RXD3UogALCNF', 
+    '3QybQyM8i9YR9e9Tgb1zLsYHHRXWF1eDAR', 
+    '3PNwCSHKNfCjzvcU8XE9N8wp8DRxrUzsyL'
+]
+```
 
 # Requesting Signatures
 
@@ -210,6 +222,8 @@ client.sign(opts, (err, signedTx) => {
     
 })
 ```
+
+**Response**
 
 The returned `signedTx` object has the following properties:
 
