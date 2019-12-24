@@ -59,34 +59,32 @@ exports.buildBitcoinTxRequest = function(data) {
   try {
     const { prevOuts, recipient, value, changeIndex=0, fee, isSegwit, changeVersion='SEGWIT' } = data;
     // Serialize the request
-    const payload = Buffer.alloc(37 + (51 * prevOuts.length));
-    let off = 0;
-    // Build the change data
-    payload.writeUInt32LE(changeIndex, off); off += 4;
+    let payload = nullBuf();
+    payload = Buffer.concat([payload, getU32LE(changeIndex)]);
     const scriptType = isSegwit === true ? 
                         scriptTypes.P2SH_P2WPKH :  // Only support p2sh(p2wpkh) for segwit spends for now
                         scriptTypes.P2PKH; // No support for multisig p2sh in v1 (p2sh == segwit here)
-    payload.writeUInt8(scriptType, off); off++; // change script type
+
     // Fee is a param
-    payload.writeUInt32LE(fee, off); off += 4;
+    payload = Buffer.concat([payload, getU32LE(fee)]);
     const recipientVersionByte = bs58.decode(recipient)[0];
     const recipientPubkeyhash = bs58check.decode(recipient).slice(1);
     // Parameterize the recipient output
-    payload.writeUInt8(recipientVersionByte, off); off++;
-    recipientPubkeyhash.copy(payload, off); off += recipientPubkeyhash.length;
-    writeUInt64LE(value, payload, off); off += 8;
+    payload = Buffer.concat([payload, getU8(recipientVersionByte)]);
+    payload = Buffer.concat([payload, getU8(recipientPubkeyhash)]);
+    payload = Buffer.concat([payload, getU64LE(value)]);
     // Build the inputs from the previous outputs
-    payload.writeUInt8(prevOuts.length, off); off++;
+    payload = Buffer.concat([payload, getU8(prevOuts.length)]);
     let inputSum = 0;
     prevOuts.forEach((input) => {
-      payload.writeUInt32LE(input.recipientIndex, off); off += 4;
-      payload.writeUInt32LE(input.index, off); off += 4;
-      writeUInt64LE(input.value, payload, off); off += 8;
+      payload = Buffer.concat([payload, getU32LE(input.recipientIndex)]);
+      payload = Buffer.concat([payload, getU32LE(input.index)]);
+      payload = Buffer.concat([payload, getU64LE(input.value)]);
       inputSum += input.value;
-      payload.writeUInt8(scriptType, off); off++;
+      payload = Buffer.concat([payload, getU8(scriptType)]);
 
       if (!Buffer.isBuffer(input.txHash)) input.txHash = Buffer.from(input.txHash, 'hex');
-      input.txHash.copy(payload, off); off += input.txHash.length;
+      payload = Buffer.concat([payload, input.txHash]);
     })
     // Send them back!
     return {
@@ -113,51 +111,39 @@ exports.buildBitcoinTxRequest = function(data) {
 // -- lockTime = Will probably always be 0
 exports.serializeTx = function(data) {
   const { inputs, outputs, isSegwitSpend, network, lockTime=0, crypto } = data;
-  let payload = Buffer.alloc(4);
-  let off = 0;
+  let payload = nullBuf();
 
   // Determine the transaction version
-  const version = txVersion[network] || 1;
-  payload.writeUInt32LE(version, off); off += 4;
+  payload = Buffer.concat(payload, getU32LE(txVersion[network] || 1));
   if (isSegwitSpend === true) {
-    payload = concat(payload, Buffer.from('00', 'hex')); // marker = 0x00
-    payload = concat(payload, Buffer.from('01', 'hex')); // flag = 0x01
+    payload = Buffer.concat([payload, Buffer.from('00', 'hex')]); // marker = 0x00
+    payload = Buffer.concat([payload, Buffer.from('01', 'hex')]); // flag = 0x01
   }
   // Serialize signed inputs
-  const numInputs = getVarInt(inputs.length);
-  payload = concat(payload, numInputs); off += numInputs.length;
+  payload = Buffer.concat([payload, getVarInt(inputs.length)]);
   inputs.forEach((input) => {
-    payload = concat(payload, input.hash.reverse()); off += input.hash.length;
-    const index = getU32LE(input.index);
-    payload = concat(payload, index); off += index.length;
+    payload = Buffer.concat([payload, input.hash.reverse()]);
+    payload = Buffer.concat([payload, getU32LE(input.index)]);
     if (isSegwitSpend === true) {
       // Build a vector (varSlice of varSlice) containing the redeemScript
       const redeemScript = buildRedeemScript(input.pubkey, crypto);
-      const redeemScriptLen = getVarInt(redeemScript.length);
-      const slice = Buffer.concat([redeemScriptLen, redeemScript]);
-      const sliceLen = getVarInt(slice.length);
-      payload = concat(payload, sliceLen); off += sliceLen.length;
-      payload = concat(payload, slice); off += slice.length;
+      const redeemScriptVarSlice = varSlice(redeemScript);
+      payload = addVarSlice(payload, redeemScriptVarSlice);
     } else {
       // Build the signature + pubkey script to spend this input
       const slice = buildSig(input.sig, input.pubkey);
-      payload = concat(payload, slice); off += slice.length;
+      payload = Buffer.concat(payload, slice);
     }
     // Use the default sequence for all transactions
-    const sequence = getU32LE(DEFAULT_SEQUENCE);
-    payload = concat(payload, sequence); off += sequence.length;
+    payload = Buffer.concat(payload, getU32LE(DEFAULT_SEQUENCE));
   })
   // Serialize outputs
-  const numOutputs = getVarInt(outputs.length);
-  payload = concat(payload, numOutputs); off += numOutputs.length;
+  payload = Buffer.concat(payload, getVarInt(outputs.length));
   outputs.forEach((output) => {
-    const value = getU64LE(output.value);
-    payload = concat(payload, value); off += value.length;
+    payload = Buffer.concat(payload, getU64LE(output.value));
     // Build the output locking script and write it as a var slice
     const script = buildLockingScript(output.recipient);
-    const scriptLen = getVarInt(script.length);
-    payload = concat(payload, scriptLen); off += scriptLen.length;
-    payload = concat(payload, script); off += script.length;
+    payload = addVarSlice(payload, script);
   })
   // Add witness data if needed
   if (isSegwitSpend === true) {
@@ -168,7 +154,7 @@ exports.serializeTx = function(data) {
       pubkeys.push(inputs[i].pubkey);
     }
     const witnessSlice = buildWitness(sigs, pubkeys);
-    payload = concat(payload, witnessSlice); off += witnessSlice.length;
+    payload = Buffer.concat([payload, witnessSlice]);
   }
   // Finish with locktime
   return Buffer.concat([payload, getU32LE(lockTime)]).toString('hex');
@@ -182,30 +168,33 @@ exports.getBitcoinAddress = function(pubkeyhash, version) {
 
 // Builder utils
 //-----------------------
+
+function varSlice(slice) {
+  return Buffer.concat([ getVarInt(slice.length), slice]);
+}
+
+function addVarSlice(buf, slice) {
+  return Buffer.concat([buf, varSlice(slice)])
+}
+
+
 function buildRedeemScript(pubkey, crypto) {
-  const redeemScript = Buffer.alloc(22);
   const shaHash = crypto.createHash('sha256').update(pubkey).digest();
   const pubkeyhash = crypto.createHash('rmd160').update(shaHash).digest();
-  redeemScript.writeUInt8(OP['0']);
-  redeemScript.writeUInt8(pubkeyhash.length, 1);
-  pubkeyhash.copy(redeemScript, 2);
-  return redeemScript;
+  return Buffer.concat([getU8(OP['0'], pubkeyhash.length, pubkeyhash));
 }
 
 // Var slice of signature + var slice of pubkey
 function buildSig(sig, pubkey) {
   sig = Buffer.concat([sig, DEFAULT_SIGHASH_BUFFER])
-  const sigLen = getVarInt(sig.length);
-  const pubkeyLen = getVarInt(pubkey.length);
-  const slice = Buffer.concat([sigLen, sig, pubkeyLen, pubkey]);
-  const len = getVarInt(slice.length);
-  return Buffer.concat([len, slice]);
+  const slice = Buffer.concat([getVarInt(sig.length), sig, getVarInt(pubkey.length), pubkey]);
+  return varSlice(slice);
 }
 
 // Witness is written as a "vector", which is a list of varSlices
 // prefixed by the number of items
 function buildWitness(sigs, pubkeys) {
-  let witness = Buffer.alloc(0);
+  let witness = nullBuf();
   // Two items in each vector (sig, pubkey)
   const len = Buffer.alloc(1); len.writeUInt8(2);
   for (let i = 0; i < sigs.length; i++) {
@@ -233,42 +222,52 @@ function buildLockingScript(address) {
 }
 
 function buildP2pkhLockingScript(pubkeyhash) {
-  let out = Buffer.alloc(5 + pubkeyhash.length);
-  let off = 0;
-  out.writeUInt8(OP.DUP, off); off++;
-  out.writeUInt8(OP.HASH160, off); off++;
-  out.writeUInt8(pubkeyhash.length, off); off++;
-  pubkeyhash.copy(out, off); off += pubkeyhash.length;
-  out.writeUInt8(OP.EQUALVERIFY, off); off++;
-  out.writeUInt8(OP.CHECKSIG, off); off++;
-  return out;
+  return Buffer.concat([
+    getU8(OP.DUP),
+    getU8(OP.HASH160),
+    varSlice(pubkeyhash),
+    getU8(OP.EQUALVERIFY),
+    getU8(OP.CHECKSIG)
+  ])
 }
 
 function buildP2shLockingScript(pubkeyhash) {
-  let out = Buffer.alloc(3 + pubkeyhash.length);
-  let off = 0;
-  out.writeUInt8(OP.HASH160, off); off++;
-  out.writeUInt8(pubkeyhash.length, off); off++;
-  pubkeyhash.copy(out, off); off += pubkeyhash.length;
-  out.writeUInt8(OP.EQUAL, off); off++;
-  return out;
+  return Buffer.concat([
+    getU8(OP.HASH160),
+    varSlice(pubkeyhash),
+    getU8(OP.EQUAL)
+  ])
 }
 
 // Static Utils
 //----------------------
-function concat(base, addition) {
-  return Buffer.concat([base, addition]);
+function nullBuf() {
+  return Buffer.alloc(0);
 }
 
-function getU64LE(x) {
-  let buffer = Buffer.alloc(8);
-  writeUInt64LE(x, buffer, 0);
+function getU8(x) {
+  let buffer = Buffer.alloc(1);
+  buffer.writeUInt8(x);
   return buffer;
 }
 
 function getU32LE(x) {
   let buffer = Buffer.alloc(4);
   buffer.writeUInt32LE(x);
+  return buffer;
+}
+
+function getU64LE(x) {
+  let buffer = Buffer.alloc(8);
+  if (parseInt(process.version.split(".")[0].slice(1)) >= 12) {
+    // node added big int parsing to Buffer in v12!
+    buffer.writeBigUInt64LE(x)
+  } else {
+    // Older version can use our polyfill
+    const nStr = n.length % 2 == 0 ? n.toString(16) : `0${n.toString(16)}`;
+    const nBuf = Buffer.from(nStr, 'hex');
+    nBuf.reverse().copy(buffer, 0);
+  }
   return buffer;
 }
 
@@ -292,14 +291,4 @@ function getVarInt (x) {
     buffer.writeUInt32LE((x / 0x100000000) | 0, 5);
   }
   return buffer;
-}
-
-function writeUInt64LE(n, buf, off) {
-  if (typeof n == 'number') n = n.toString(16);
-  const preBuf = Buffer.alloc(8);
-  const nStr = n.length % 2 == 0 ? n.toString(16) : `0${n.toString(16)}`;
-  const nBuf = Buffer.from(nStr, 'hex');
-  nBuf.reverse().copy(preBuf, 0);
-  preBuf.copy(buf, off);
-  return preBuf;
 }
