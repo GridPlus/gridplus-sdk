@@ -259,7 +259,7 @@ function getU32LE(x) {
 
 function getU64LE(x) {
   let buffer = Buffer.alloc(8);
-  if (parseInt(process.version.split(".")[0].slice(1)) >= 12) {
+  if (process && process.version && parseInt(process.version.split(".")[0].slice(1)) >= 12) {
     // node added big int parsing to Buffer in v12!
     buffer.writeBigUInt64LE(x)
   } else {
