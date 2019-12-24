@@ -71,7 +71,7 @@ describe('Connect and Pair', () => {
       expect(pairErr).to.equal(null);
     }
   });
-
+/*
   it('Should try to connect again but recognize the pairing already exists', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
@@ -341,5 +341,5 @@ describe('Connect and Pair', () => {
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
-
+*/
 });
