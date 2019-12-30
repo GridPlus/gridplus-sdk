@@ -21,6 +21,7 @@ const {
   encReqCodes,
   responseCodes,
   deviceResponses,
+  GET_WALLETS_NUM,
   REQUEST_TYPE_BYTE,
   VERSION_BYTE,
   messageConstants,
@@ -49,6 +50,10 @@ class Client {
     this.timeout = timeout || 60000;
     this.deviceId = null;
     this.isPaired = false;
+
+    // Information about the current wallet. Should be null unless we know a wallet is present
+    this.currentWalletUID = null;
+    this.currentWalletName = null;
 
     // Crypto node providers
     this.providers = {};
@@ -105,6 +110,17 @@ class Client {
         return cb(e);
       }
     })  
+  }
+
+  getActiveWallet(cb) {
+    const payload = Buffer.alloc(0);
+    const param = this._buildEncRequest(encReqCodes.GET_WALLETS, payload);
+    return this._request(param, (err, res) => {
+      if (err) return cb(err);
+      const parsedRes = this._handleGetWallets(res);
+      if (parsedRes.err) return cb(parsedRes.err);
+      return cb(null, parsedRes.data);
+    })
   }
 
   getAddresses(opts, cb) {
@@ -391,6 +407,26 @@ class Client {
       off += addrSize;
     }      
     return { data: addrs, err: null };
+  }
+
+  _handleGetWallets(encRes) {
+    const decrypted = this._handleEncResponse(encRes, decResLengths.getWallets);
+    if (decrypted.err !== null) return decrypted;
+    let off = 65; // Skip past pubkey prefix
+    const res = decrypted.data;
+    let walletUID, isPresent, name;
+    for (let i = 0; i < GET_WALLETS_NUM; i++) {
+      walletUID = res.slice(off, off+32); off += 32;
+      isPresent = Boolean(res[off]); off++;
+      name = res.slice(off, off+20); off += 20;
+
+      if (isPresent === true) {
+        this.currentWalletUID = walletUID;
+        this.currentWalletName = name;
+        return { data: { uid: walletUID, name } };
+      }
+    }
+    return { err: 'No active wallet' };
   }
 
   _handleSign(encRes, currencyType, tx=null) {
