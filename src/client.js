@@ -30,7 +30,7 @@ const {
 const Buffer = require('buffer/').Buffer;
 
 class Client {
-  constructor({ baseUrl, crypto, name, privKey, providers, timeout } = {}) {
+  constructor({ baseUrl, crypto, name, privKey, timeout } = {}) {
     // Definitions
     // if (!baseUrl) throw new Error('baseUrl is required');
     if (name && name.length > 24) throw new Error('name must be less than 24 characters');
@@ -54,12 +54,6 @@ class Client {
     // Information about the current wallet. Should be null unless we know a wallet is present
     this.currentWalletUID = null;
     this.currentWalletName = null;
-
-    // Crypto node providers
-    this.providers = {};
-    (providers || []).map((provider) => {
-      this.providers[provider.shortcode] = provider;
-    });
   }
   
   //=======================================================================
@@ -74,13 +68,30 @@ class Client {
     const param = this._buildRequest(deviceCodes.CONNECT, this.pubKeyBytes());
     this._request(param, (err, res) => {
       if (err) return cb(err);
-      try {
-        this.isPaired = this._handleConnect(res);
-        return cb(null);
-      } catch (e) {
-        return cb(e);
-      }
+      this.isPaired = this._handleConnect(res);
+      return cb(null);
     });
+  }
+
+  // Get the active wallet in the device. If we already have one recorded,
+  // we don't need to do anything
+  // returns cb(err) -- err is a string
+  getActiveWallet(cb) {
+    if (this.hasActiveWallet() === true) {
+      // If the active wallet already exists, skip the request
+      return cb(null);
+    } else {
+      // No active wallet? Get it from the device
+      const payload = Buffer.alloc(0);
+      const param = this._buildEncRequest(encReqCodes.GET_WALLETS, payload);
+      return this._request(param, (err, res) => {
+        if (err) {
+          this._resetActiveWallet();
+          return cb('Error getting active wallet after pairing.');
+        }
+        return cb(this._handleGetWallets(res));
+      })
+    }
   }
 
   pair(pairingSecret, cb) {
@@ -96,31 +107,18 @@ class Client {
     const hash = this.crypto.createHash('sha256').update(preImage).digest();
     const sig = this.key.sign(hash); // returns an array, not a buffer
     const derSig = toPaddedDER(sig);
-    const payload = Buffer.concat([nameBuf, derSig]);
+    let payload = Buffer.concat([nameBuf, derSig]);
 
     // Build the request
     const param = this._buildEncRequest(encReqCodes.FINALIZE_PAIRING, payload);
-    return this._request(param, (err, res) => {
+    this._request(param, (err, res) => {
       if (err) return cb(err);
-      try {
-        // Recover the ephemeral key
-        const errStr = this._handlePair(res);
-        return cb(errStr);
-      } catch (e) {
-        return cb(e);
-      }
+      // Recover the ephemeral key
+      const errStr = this._handlePair(res);
+      if (errStr) return cb(errStr);
+      // Get the active wallet before returning anything
+      this.getActiveWallet(cb);
     })  
-  }
-
-  getActiveWallet(cb) {
-    const payload = Buffer.alloc(0);
-    const param = this._buildEncRequest(encReqCodes.GET_WALLETS, payload);
-    return this._request(param, (err, res) => {
-      if (err) return cb(err);
-      const parsedRes = this._handleGetWallets(res);
-      if (parsedRes.err) return cb(parsedRes.err);
-      return cb(null, parsedRes.data);
-    })
   }
 
   getAddresses(opts, cb) {
@@ -134,22 +132,30 @@ class Client {
     if (currency === 'BTC' && bitcoin.addressVersion[version] === undefined) {
       return cb('Unsupported Bitcoin version. Options are: LEGACY, SEGWIT, TESTNET, SEGWIT_TESTNET');
     }
-    // Bitcoin segwit addresses require a P2SH_P2WPKH script type -- the script type
-    // is otherwise ignored and is only needed for BTC
-    const bitcoinScriptType = (version === 'SEGWIT' || version === 'SEGWIT_TESTNET') ? 
-                              bitcoin.scriptTypes.P2SH_P2WPKH: 0;
 
-    const payload = Buffer.alloc(7);
-    payload.writeUInt8(currencyCodes[currency]);
-    payload.writeUInt32BE(startIndex, 1);
-    payload.writeUInt8(n, 5);
-    payload.writeUInt8(bitcoinScriptType || 0, 6);
-    const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
-    return this._request(param, (err, res) => {
+    // Ensure we have an active wallet. If we don't, determine what it is before
+    // making any other requests.
+    this.getActiveWallet((err) => {
       if (err) return cb(err);
-      const parsedRes = this._handleGetAddresses(res, currency, n, bitcoin.addressVersion[version]);
-      if (parsedRes.err) return cb(parsedRes.err);
-      return cb(null, parsedRes.data);
+      // We have a wallet. Continue.
+      // Bitcoin segwit addresses require a P2SH_P2WPKH script type -- the script type
+      // is otherwise ignored and is only needed for BTC
+      const bitcoinScriptType = (version === 'SEGWIT' || version === 'SEGWIT_TESTNET') ? 
+                                bitcoin.scriptTypes.P2SH_P2WPKH: 0;
+
+      const payload = Buffer.alloc(39);
+      payload.writeUInt8(currencyCodes[currency]);
+      payload.writeUInt32BE(startIndex, 1);
+      this.currentWalletUID.copy(payload, 5);
+      payload.writeUInt8(n, 37);
+      payload.writeUInt8(bitcoinScriptType || 0, 38);
+      const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
+      return this._request(param, (err, res) => {
+        if (err) return cb(err);
+        const parsedRes = this._handleGetAddresses(res, currency, n, bitcoin.addressVersion[version]);
+        if (parsedRes.err) return cb(parsedRes.err);
+        return cb(null, parsedRes.data);
+      })
     })
   }
 
@@ -181,18 +187,22 @@ class Client {
       return cb('Transaction is too large');
     }
 
-    // Build the payload
-    const payload = Buffer.alloc(2 + MAX_TX_REQ_DATA_SIZE);
-    payload.writeUInt16BE(tx.schema, 0);
-    tx.payload.copy(payload, 2);
+    // Ensure we have an active wallet. If we don't, determine what it is before
+    // making any other requests.
+    this.getActiveWallet((err) => {
+      // Build the payload
+      const payload = Buffer.alloc(2 + MAX_TX_REQ_DATA_SIZE);
+      payload.writeUInt16BE(tx.schema, 0);
+      tx.payload.copy(payload, 2);
 
-    // Construct the encrypted request and send it
-    const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
-    return this._request(param, (err, res) => {
-      if (err) return cb(err);
-      const parsedRes = this._handleSign(res, currency, tx);
-      if (parsedRes.err) return cb(parsedRes.err);
-      return cb(null, parsedRes.data);
+      // Construct the encrypted request and send it
+      const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
+      return this._request(param, (err, res) => {
+        if (err) return cb(err);
+        const parsedRes = this._handleSign(res, currency, tx);
+        if (parsedRes.err) return cb(parsedRes.err);
+        return cb(null, parsedRes.data);
+      })
     })
   }
 
@@ -293,22 +303,13 @@ class Client {
       if (!res || !res.body) return cb(`Invalid response: ${res}`)
       else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
       const parsed = parseLattice1Response(res.body.message);
+      // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old ative walletUID
+      if (parsed.responseCode === 0x90) this._resetActiveWallet();
+      // If there was an error in the response, return it
       if (parsed.err) return cb(parsed.err);
       return cb(null, parsed.data) 
     })
     .catch(err => { return cb(err)});
-  }
-
-  // Determine the response code
-  _getResponseCode(res) {
-    if (res.length < deviceResponses.START_DATA_IDX) return 'Invalid Response';
-    try {
-      const code = parseInt(res.slice(deviceResponses.START_CODE_IDX, deviceResponses.START_DATA_IDX)).toString('hex');
-      if (code == responseCodes.SUCCESS) return null;
-      return responseCodes[code];
-    } catch (err) {
-      return 'Could not parse response from device';
-    }
   }
 
   // ----- Device response handlers -----
@@ -423,10 +424,10 @@ class Client {
       if (isPresent === true) {
         this.currentWalletUID = walletUID;
         this.currentWalletName = name;
-        return { data: { uid: walletUID, name } };
+        return null;
       }
     }
-    return { err: 'No active wallet' };
+    return 'No active wallet';
   }
 
   _handleSign(encRes, currencyType, tx=null) {
@@ -532,6 +533,16 @@ class Client {
     return returnData;
   }
 
+  _resetActiveWallet() {
+    this.currentWalletUID = null;
+    this.currentWalletName = null;
+    return;
+  }
+
+  hasActiveWallet() {
+    return this.currentWalletUID !== null && this.currentWalletName !== null;
+  }
+  
   // Get 64 bytes representing the public key
   // This is the uncompressed key without the leading 04 byte
   pubKeyBytes(LE=false) {

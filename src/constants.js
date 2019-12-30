@@ -55,6 +55,7 @@ const responseCodes = {
     0x86: 'Pairing is Currently Disabled',
     0x87: 'Automated Signing is Currently Disabled',
     0x88: 'Device Error', 
+    0x90: 'No active wallet found',
 }
  
 const deviceResponses = {
