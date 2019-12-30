@@ -55,12 +55,13 @@ const responseCodes = {
     0x86: 'Pairing is Currently Disabled',
     0x87: 'Automated Signing is Currently Disabled',
     0x88: 'Device Error', 
-    0x90: 'No active wallet found',
+    0x90: 'Incorrect Wallet UID Provided',
 }
  
 const deviceResponses = {
     START_CODE_IDX: 1, // Beginning of 4-byte status code in Lattice response
     START_DATA_IDX: 5, // Beginning of data field for Lattice responses
+    ERR_WRONG_WALLET_UID: 0x90,
 }
 
 const signingSchema = {
