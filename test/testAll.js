@@ -13,7 +13,7 @@ describe('Connect and Pair', () => {
   before(() => {
     client = new Sdk.Client({
       name: 'ConnectAndPairClient',
-      // baseUrl: 'https://signing.staging-gridpl.us'
+      baseUrl: 'https://signing.staging-gridpl.us',
       crypto,
       timeout: 120000,
     });
@@ -81,7 +81,7 @@ describe('Connect and Pair', () => {
       expect(client.isPaired).to.equal(true);
     }
   });
-
+/*
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
@@ -338,5 +338,5 @@ describe('Connect and Pair', () => {
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
-
+*/
 });

@@ -21,7 +21,6 @@ const {
   encReqCodes,
   responseCodes,
   deviceResponses,
-  GET_WALLETS_NUM,
   REQUEST_TYPE_BYTE,
   VERSION_BYTE,
   messageConstants,
@@ -107,7 +106,7 @@ class Client {
         // be encountered later when getting addresses or making a signature, as
         // they are typically downstream in most workflows.
         return cb(null, this.hasActiveWallet());
-      }));
+      });
     })  
   }
 
@@ -442,7 +441,7 @@ class Client {
     let off = 65; // Skip past pubkey prefix
     const res = decrypted.data;
     let walletUID, isPresent, name;
-    for (let i = 0; i < GET_WALLETS_NUM; i++) {
+    for (let i = 0; i < 2; i++) { // loop through internal and external wallet data
       walletUID = res.slice(off, off+32); off += 32;
       isPresent = Boolean(res[off]); off++;
       name = res.slice(off, off+20); off += 20;

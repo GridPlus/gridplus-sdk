@@ -8,7 +8,7 @@ const decResLengths = {
     finalizePair: 0,   // Only contains the pubkey
     getAddresses: 200, // 20-byte address * 10 max slots
     sign: 1090,          // 1 DER signature for ETH, 10 for BTC (not all are used for BTC)
-    getWallets: 53 * GET_WALLETS_NUM,  // 53 bytes per wallet record     
+    getWallets: 112,  // 56 bytes per wallet record (response contains internal and external)   
 }
 
 // Per Lattice spec, all encrypted messages must fit in a buffer of this size.
@@ -73,7 +73,6 @@ const signingSchema = {
 const ETH_DATA_MAX_SIZE = 100; // Maximum number of bytes that can go in the data field
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
 const VERSION_BYTE = 1;
-const GET_WALLETS_NUM = 10;
 
 const BASE_URL = 'https://signing.gridpl.us';
 
@@ -91,7 +90,6 @@ module.exports = {
     deviceResponses,
     signingSchema,
     ETH_DATA_MAX_SIZE,
-    GET_WALLETS_NUM,
     REQUEST_TYPE_BYTE,
     VERSION_BYTE,
 }
