@@ -12,8 +12,8 @@ const decResLengths = {
 
 // Per Lattice spec, all encrypted messages must fit in a buffer of this size.
 // The length comes from the largest request/response data type size minus payload metadata
-// (12 bytes are stripped from the payload -- another 4 are needed for the checksum)
-const ENC_MSG_LEN = 1168;
+// Note that this does not include the 5 bytes containing (1 msg_id) and (4 checksum)
+const ENC_MSG_LEN = 1360;
   
 const deviceCodes = {
     'CONNECT': 1,
