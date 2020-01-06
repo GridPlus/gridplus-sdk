@@ -71,7 +71,7 @@ describe('Connect and Pair', () => {
       expect(pairErr).to.equal(null);
     }
   });
-/*
+
   it('Should try to connect again but recognize the pairing already exists', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
@@ -155,7 +155,7 @@ describe('Connect and Pair', () => {
       
     }
   });
-
+/*
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;

@@ -123,9 +123,13 @@ class Client {
     const bitcoinScriptType = (version === 'SEGWIT' || version === 'SEGWIT_TESTNET') ? 
                               bitcoin.scriptTypes.P2SH_P2WPKH: 0;
 
-    const payload = Buffer.alloc(3 + startPath.length * 4);
+    const payload = Buffer.alloc(2 + 32 + startPath.length * 4);
     let off = 0;
-    payload.writeUInt8(currencyCodes[currency]); off++;
+
+    // Temporary -- use empty wallet UID
+    const tmpWalletUID = Buffer.alloc(32);
+    tmpWalletUID.copy(payload, off); off += 32;
+
     for (let i = 0; i < startPath.length; i++) {
       payload.writeUInt32BE(startPath[i], off);
       off += 4;
