@@ -42,7 +42,7 @@ const clientConfig = {
 | Param      | Type      | Default          | Description           |
 |:-----------|:----------|:-----------------|:----------------------|
 | `name`     | string    | None             | Name of the app. This will appear on the Lattice <br>                                                                                 screen for requests. Not required, but strongly <br>                                                                                  suggested. |
-| `privKey`  | buffer    | None             | Private key buffer used for encryption/decryption<br>                                                                                 of Lattice messages. A random private key will be<br>                                                                                 generated and stored if none is provided. |
+| `privKey`  | buffer    | None             | Private key buffer used for encryption/decryption<br>                                                                                 of Lattice messages. A random private key will be<br>                                                                                 generated and stored if none is provided. **Note that you will need to persist the private key between SDK sessions!** |
 | `crypto`   | object    | None             | Crypto function package (e.g. `node.js`' native `crypto` module) |
 | `timeout`  | number    | 60000            | Number of milliseconds to needed to timeout on a Lattice request |
 | `baseUrl`  | string    |`https://signing.gridpl.us`| Hostname of Lattice request handlerName of the app. You probably don't need to ever change this. |
@@ -83,9 +83,11 @@ client.pair('SECRET', (err) => {
 
 # Getting Addresses
 
-You may retrieve some number of addresses for supported cryptocurrencies. The Lattice uses [BIP44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)-compliant highly-deterministic (HD) wallets for generating addresses. You may request a set of contiguous addresses (e.g. indices 5 to 10 or 33 to 36) based on a currency (`ETH` or `BTC`).
+You may retrieve some number of addresses for supported cryptocurrencies. The Lattice uses [BIP44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)-compliant highly-deterministic (HD) wallets for generating addresses. You may request a set of contiguous addresses (e.g. indices 5 to 10 or 33 to 36). You will need to specify the path to the starting index (including the `currenty_type` index to capture the type of address; note that only ETH and BTC addresses are currently supported).
 
 > NOTE: For now, you may only request a maximum of 10 addresses at a time from the Lattice per request
+
+> NOTE: For BTC, the type of address returned will be based on the user's setting. For example, if the user's latter is configured to return segwit addresses, you will get addresses that start with `3`.
 
 An example request looks like:
 
@@ -93,11 +95,9 @@ An example request looks like:
 // Hardened offset is , referenced in the BIP44 spec here: https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#purpose
 const HARDENED_OFFSET = 0x80000000;
 const req = {
-    // -- m/44'/0'/0'/0/0
+    // -- m/44'/0'/0'/0/0, i.e. first BTC address
     startPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0],
-    n: 4,
-    currency: 'BTC'
-    version: 'SEGWIT'
+    n: 4
 };
 client.addresses(req, (err, res) => {
     ...
@@ -110,12 +110,10 @@ client.addresses(req, (err, res) => {
 |:-----------|:----------|:-----------------|:----------------|:----------------------|
 | `startPath` | Array    | none             | n/a             | First address path in BIP44 tree to return. You must provide 5 indices to form the path. |
 | `n`        | number    | 1                | n/a             | Number of subsequent addresses after `start` to derive. These will increment over the final index in the path |
-| `currency` | string    | `BTC`            | `BTC`, `ETH`    | Currency to get addresses for |
-| `version`  | string    | `SEGWIT`         | `LEGACY`, `SEGWIT`, `TESTNET`, `SEGWIT_TESTNET` | Bitcoin only -- type of addresses to retrieve |
 
 **Response:**
 
-Returns an array of address strings:
+Returns an array of address strings (if the user's Lattice is configured to return segwit addresses):
 
 ```
 res = [
