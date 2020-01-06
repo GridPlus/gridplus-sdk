@@ -5,8 +5,8 @@ const AES_IV = [0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73
 // These are defined in the Lattice spec.
 // Every decrypted response should have a 65-byte pubkey prefixing it
 const decResLengths = {
-    finalizePair: 0,   // Only contains the pubkey
-    getAddresses: 200, // 20-byte address * 10 max slots
+    finalizePair: 0,     // Only contains the pubkey
+    getAddresses: 1290,  // 10x 129 byte strings (128 bytes + null terminator)
     sign: 1090,          // 1 DER signature for ETH, 10 for BTC (not all are used for BTC)       
 }
 
