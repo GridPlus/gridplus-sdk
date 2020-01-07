@@ -52,8 +52,11 @@ class Client {
     this.isPaired = false;
 
     // Information about the current wallet. Should be null unless we know a wallet is present
-    this.currentWalletUID = EMPTY_WALLET_UID;
-    this.currentWalletName = null;
+    this.activeWallet = {
+      uid: EMPTY_WALLET_UID,           // 32 byte id
+      name: null,                      // 20 char (max) string
+      capabilities: null,              // 4 byte flag
+    }
   }
   
   //=======================================================================
@@ -131,7 +134,7 @@ class Client {
     const payload = Buffer.alloc(39);
     payload.writeUInt8(currencyCodes[currency]);
     payload.writeUInt32BE(startIndex, 1);
-    this.currentWalletUID.copy(payload, 5);
+    this.activeWallet.uid.copy(payload, 5);
     payload.writeUInt8(n, 37);
     payload.writeUInt8(bitcoinScriptType || 0, 38);
     const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
@@ -438,17 +441,21 @@ class Client {
   _handleGetWallets(encRes) {
     const decrypted = this._handleEncResponse(encRes, decResLengths.getWallets);
     if (decrypted.err !== null) return decrypted;
-    let off = 65; // Skip past pubkey prefix
     const res = decrypted.data;
     let walletUID, isPresent, name;
-    for (let i = 0; i < 2; i++) { // loop through internal and external wallet data
-      walletUID = res.slice(off, off+32); off += 32;
-      isPresent = Boolean(res[off]); off++;
-      name = res.slice(off, off+20); off += 20;
 
-      if (isPresent === true) {
-        this.currentWalletUID = walletUID;
-        this.currentWalletName = name;
+    // Read the external wallet data first. If it is non-null, the external wallet will
+    // be the active wallet of the device and we should save it.
+    // If the external wallet is blank, it means there is no card present and we should 
+    // save and use the interal wallet.
+    // If both wallets are empty, it means the device still needs to be set up.
+    for (let i = 1; i > -1; i--) { // loop through internal and external wallet data
+      const off = 65 + i * 56; // Skip 65byte pubkey prefix. WalletDescriptor contains 32byte id + 4byte flag + 20byte name
+      const walletUID = res.slice(off, off+32);
+      if (!walletUID.equals(EMPTY_WALLET_UID)) {
+        this.activeWallet.uid = walletUID;
+        this.activeWallet.capabilities = Buffer.readUInt32BE(off+32);
+        this.activeWallet.name = res.slice(off+36, off+56);
         return null;
       }
     }
@@ -559,13 +566,14 @@ class Client {
   }
 
   _resetActiveWallet() {
-    this.currentWalletUID = EMPTY_WALLET_UID;
-    this.currentWalletName = null;
+    this.activeWallet.uid = EMPTY_WALLET_UID;
+    this.activeWallet.name = null;
+    this.activeWallet.capabilities = null;
     return;
   }
 
   hasActiveWallet() {
-    return this.currentWalletUID !== EMPTY_WALLET_UID && this.currentWalletName !== null;
+    return !EMPTY_WALLET_UID.equals(this.activeWallet.uid);
   }
   
   // Get 64 bytes representing the public key
