@@ -234,7 +234,7 @@ class Client {
       return this._request(param, (err, res) => {
         if (err) {
           this._resetActiveWallet();
-          return cb('Error getting active wallet after pairing.');
+          return cb('Error getting active wallet.');
         }
         return cb(this._handleGetWallets(res));
       })
@@ -369,7 +369,6 @@ class Client {
     const res = aes256_decrypt(encData, secret);
     // len does not include a 65-byte pubkey that prefies each encResponse
     len += 65;
-
     // Validate checksum. It will be the last 4 bytes of the decrypted payload.
     // The length of the decrypted payload will be fixed for each given message type.
     const toCheck = res.slice(0, len);
@@ -443,19 +442,19 @@ class Client {
     if (decrypted.err !== null) return decrypted;
     const res = decrypted.data;
     let walletUID, isPresent, name;
-
     // Read the external wallet data first. If it is non-null, the external wallet will
     // be the active wallet of the device and we should save it.
     // If the external wallet is blank, it means there is no card present and we should 
     // save and use the interal wallet.
     // If both wallets are empty, it means the device still needs to be set up.
+    const walletDescriptorLen = 71;
     for (let i = 1; i > -1; i--) { // loop through internal and external wallet data
-      const off = 65 + i * 56; // Skip 65byte pubkey prefix. WalletDescriptor contains 32byte id + 4byte flag + 20byte name
+      const off = 65 + i * walletDescriptorLen; // Skip 65byte pubkey prefix. WalletDescriptor contains 32byte id + 4byte flag + 35byte name
       const walletUID = res.slice(off, off+32);
       if (!walletUID.equals(EMPTY_WALLET_UID)) {
         this.activeWallet.uid = walletUID;
-        this.activeWallet.capabilities = Buffer.readUInt32BE(off+32);
-        this.activeWallet.name = res.slice(off+36, off+56);
+        this.activeWallet.capabilities = res.readUInt32BE(off+32);
+        this.activeWallet.name = res.slice(off+36, off+walletDescriptorLen);
         return null;
       }
     }
