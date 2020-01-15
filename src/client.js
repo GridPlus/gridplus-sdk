@@ -27,9 +27,10 @@ const {
   BASE_URL,
 } = require('./constants');
 const Buffer = require('buffer/').Buffer;
+const EMPTY_WALLET_UID = Buffer.alloc(32);
 
 class Client {
-  constructor({ baseUrl, crypto, name, privKey, providers, timeout } = {}) {
+  constructor({ baseUrl, crypto, name, privKey, timeout } = {}) {
     // Definitions
     // if (!baseUrl) throw new Error('baseUrl is required');
     if (name && name.length > 24) throw new Error('name must be less than 24 characters');
@@ -50,11 +51,12 @@ class Client {
     this.deviceId = null;
     this.isPaired = false;
 
-    // Crypto node providers
-    this.providers = {};
-    (providers || []).map((provider) => {
-      this.providers[provider.shortcode] = provider;
-    });
+    // Information about the current wallet. Should be null unless we know a wallet is present
+    this.activeWallet = {
+      uid: EMPTY_WALLET_UID,           // 32 byte id
+      name: null,                      // 20 char (max) string
+      capabilities: null,              // 4 byte flag
+    }
   }
   
   //=======================================================================
@@ -69,12 +71,11 @@ class Client {
     const param = this._buildRequest(deviceCodes.CONNECT, this.pubKeyBytes());
     this._request(param, (err, res) => {
       if (err) return cb(err);
-      try {
-        this.isPaired = this._handleConnect(res);
-        return cb(null);
-      } catch (e) {
-        return cb(e);
-      }
+      this.isPaired = this._handleConnect(res);
+      // Check for an active wallet. This will get bypassed if we are not paired.
+      this._getActiveWallet((err) => {
+        return cb(err, this.isPaired);
+      });
     });
   }
 
@@ -91,19 +92,24 @@ class Client {
     const hash = this.crypto.createHash('sha256').update(preImage).digest();
     const sig = this.key.sign(hash); // returns an array, not a buffer
     const derSig = toPaddedDER(sig);
-    const payload = Buffer.concat([nameBuf, derSig]);
+    let payload = Buffer.concat([nameBuf, derSig]);
 
     // Build the request
     const param = this._buildEncRequest(encReqCodes.FINALIZE_PAIRING, payload);
-    return this._request(param, (err, res) => {
+    this._request(param, (err, res) => {
       if (err) return cb(err);
-      try {
-        // Recover the ephemeral key
-        const errStr = this._handlePair(res);
-        return cb(errStr);
-      } catch (e) {
-        return cb(e);
-      }
+      // Recover the ephemeral key
+      const errStr = this._handlePair(res);
+      if (errStr) return cb(errStr);
+      // Try to get the active wallet once pairing is successful
+      this._getActiveWallet(() => {
+        // Bypass the error if there is no active wallet. Instead, capture whether
+        // there is an active wallet in the response. We do not want to indicate
+        // that pairing has failed when we don't have a wallet. This error will
+        // be encountered later when getting addresses or making a signature, as
+        // they are typically downstream in most workflows.
+        return cb(null, this.hasActiveWallet());
+      });
     })  
   }
 
@@ -118,22 +124,38 @@ class Client {
     if (currency === 'BTC' && bitcoin.addressVersion[version] === undefined) {
       return cb('Unsupported Bitcoin version. Options are: LEGACY, SEGWIT, TESTNET, SEGWIT_TESTNET');
     }
+
     // Bitcoin segwit addresses require a P2SH_P2WPKH script type -- the script type
     // is otherwise ignored and is only needed for BTC
     const bitcoinScriptType = (version === 'SEGWIT' || version === 'SEGWIT_TESTNET') ? 
                               bitcoin.scriptTypes.P2SH_P2WPKH: 0;
 
-    const payload = Buffer.alloc(7);
+    // Build the payload
+    const payload = Buffer.alloc(39);
     payload.writeUInt8(currencyCodes[currency]);
     payload.writeUInt32BE(startIndex, 1);
-    payload.writeUInt8(n, 5);
-    payload.writeUInt8(bitcoinScriptType || 0, 6);
+    this.activeWallet.uid.copy(payload, 5);
+    payload.writeUInt8(n, 37);
+    payload.writeUInt8(bitcoinScriptType || 0, 38);
     const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
-    return this._request(param, (err, res) => {
-      if (err) return cb(err);
-      const parsedRes = this._handleGetAddresses(res, currency, n, bitcoin.addressVersion[version]);
-      if (parsedRes.err) return cb(parsedRes.err);
-      return cb(null, parsedRes.data);
+
+    // Make the request to get addresses from the device
+    return this._request(param, (err, res, responseCode) => {
+      if (responseCode == deviceResponses.ERR_WRONG_WALLET_UID) {
+        // If we catch a case where the wallet has changed, try getting the new active wallet
+        // and recursively make the original request.
+        this._getActiveWallet((err) => {
+          if (err) return cb(err)
+          else     return this.getAddresses(opts, cb);
+        })
+      } else if (err) {
+        // If there was another error caught, return it
+        return cb(err);
+      } else {
+        // Correct wallet and no errors -- handle the response
+        const parsedRes = this._handleGetAddresses(res, currency, n, bitcoin.addressVersion[version]);
+        return cb(parsedRes.err, parsedRes.data);
+      }
     })
   }
 
@@ -172,11 +194,22 @@ class Client {
 
     // Construct the encrypted request and send it
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
-    return this._request(param, (err, res) => {
-      if (err) return cb(err);
-      const parsedRes = this._handleSign(res, currency, tx);
-      if (parsedRes.err) return cb(parsedRes.err);
-      return cb(null, parsedRes.data);
+    return this._request(param, (err, res, responseCode) => {
+      if (responseCode == deviceResponses.ERR_WRONG_WALLET_UID) {
+        // If we catch a case where the wallet has changed, try getting the new active wallet
+        // and recursively make the original request.
+        this._getActiveWallet((err) => {
+          if (err) return cb(err)
+          else     return this.sign(opts, cb);
+        })
+      } else if (err) {
+        // If there was another error caught, return it
+        if (err) return cb(err);
+      } else {
+        // Correct wallet and no errors -- handle the response
+        const parsedRes = this._handleSign(res, currency, tx);
+        return cb(parsedRes.err, parsedRes.data);
+      }
     })
   }
 
@@ -186,6 +219,27 @@ class Client {
   // responses. They take into account the Lattice's serialization scheme
   // among other protocols.
   //=======================================================================
+
+  // Get the active wallet in the device. If we already have one recorded,
+  // we don't need to do anything
+  // returns cb(err) -- err is a string
+  _getActiveWallet(cb) {
+    if (this.hasActiveWallet() === true || this.isPaired !== true) {
+      // If the active wallet already exists, or if we are not paired, skip the request
+      return cb(null);
+    } else {
+      // No active wallet? Get it from the device
+      const payload = Buffer.alloc(0);
+      const param = this._buildEncRequest(encReqCodes.GET_WALLETS, payload);
+      return this._request(param, (err, res) => {
+        if (err) {
+          this._resetActiveWallet();
+          return cb('Error getting active wallet.');
+        }
+        return cb(this._handleGetWallets(res));
+      })
+    }
+  }
 
   // Get the shared secret, derived via ECDH from the local private key
   // and the ephemeral public key
@@ -277,22 +331,13 @@ class Client {
       if (!res || !res.body) return cb(`Invalid response: ${res}`)
       else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
       const parsed = parseLattice1Response(res.body.message);
+      // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old ative walletUID
+      if (parsed.responseCode === deviceResponses.ERR_WRONG_WALLET_UID) this._resetActiveWallet();
+      // If there was an error in the response, return it
       if (parsed.err) return cb(parsed.err);
-      return cb(null, parsed.data) 
+      return cb(null, parsed.data, parsed.responseCode); 
     })
     .catch(err => { return cb(err)});
-  }
-
-  // Determine the response code
-  _getResponseCode(res) {
-    if (res.length < deviceResponses.START_DATA_IDX) return 'Invalid Response';
-    try {
-      const code = parseInt(res.slice(deviceResponses.START_CODE_IDX, deviceResponses.START_DATA_IDX)).toString('hex');
-      if (code == responseCodes.SUCCESS) return null;
-      return responseCodes[code];
-    } catch (err) {
-      return 'Could not parse response from device';
-    }
   }
 
   // ----- Device response handlers -----
@@ -324,7 +369,6 @@ class Client {
     const res = aes256_decrypt(encData, secret);
     // len does not include a 65-byte pubkey that prefies each encResponse
     len += 65;
-
     // Validate checksum. It will be the last 4 bytes of the decrypted payload.
     // The length of the decrypted payload will be fixed for each given message type.
     const toCheck = res.slice(0, len);
@@ -391,6 +435,30 @@ class Client {
       off += addrSize;
     }      
     return { data: addrs, err: null };
+  }
+
+  _handleGetWallets(encRes) {
+    const decrypted = this._handleEncResponse(encRes, decResLengths.getWallets);
+    if (decrypted.err !== null) return decrypted;
+    const res = decrypted.data;
+    let walletUID, isPresent, name;
+    // Read the external wallet data first. If it is non-null, the external wallet will
+    // be the active wallet of the device and we should save it.
+    // If the external wallet is blank, it means there is no card present and we should 
+    // save and use the interal wallet.
+    // If both wallets are empty, it means the device still needs to be set up.
+    const walletDescriptorLen = 71;
+    for (let i = 1; i > -1; i--) { // loop through internal and external wallet data
+      const off = 65 + i * walletDescriptorLen; // Skip 65byte pubkey prefix. WalletDescriptor contains 32byte id + 4byte flag + 35byte name
+      const walletUID = res.slice(off, off+32);
+      if (!walletUID.equals(EMPTY_WALLET_UID)) {
+        this.activeWallet.uid = walletUID;
+        this.activeWallet.capabilities = res.readUInt32BE(off+32);
+        this.activeWallet.name = res.slice(off+36, off+walletDescriptorLen);
+        return null;
+      }
+    }
+    return 'No active wallet.';
   }
 
   _handleSign(encRes, currencyType, tx=null) {
@@ -496,6 +564,17 @@ class Client {
     return returnData;
   }
 
+  _resetActiveWallet() {
+    this.activeWallet.uid = EMPTY_WALLET_UID;
+    this.activeWallet.name = null;
+    this.activeWallet.capabilities = null;
+    return;
+  }
+
+  hasActiveWallet() {
+    return !EMPTY_WALLET_UID.equals(this.activeWallet.uid);
+  }
+  
   // Get 64 bytes representing the public key
   // This is the uncompressed key without the leading 04 byte
   pubKeyBytes(LE=false) {

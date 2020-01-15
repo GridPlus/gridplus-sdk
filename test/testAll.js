@@ -4,16 +4,18 @@ const expect = require('chai').expect;
 const Sdk = require('../index.js');
 const crypto = require('crypto');
 const question = require('readline-sync').question;
-
+const Buffer = require('buffer/').Buffer;
 let client, rl, id;
 let caughtErr = false;
+const EMPTY_WALLET_UID = Buffer.alloc(32);
 
 describe('Connect and Pair', () => {
 
   before(() => {
     client = new Sdk.Client({
-      name: 'ConnectAndPairClient',
-      // baseUrl: 'https://signing.staging-gridpl.us'
+      name: 'SDK Test',
+      baseUrl: 'https://signing.staging-gridpl.us',
+      // privKey: Buffer.from('3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca', 'hex'),
       crypto,
       timeout: 120000,
     });
@@ -60,7 +62,9 @@ describe('Connect and Pair', () => {
     caughtErr = connectErr !== null;
     expect(connectErr).to.equal(null);
     expect(client.isPaired).to.equal(false);
+    expect(client.activeWallet.uid.equals(EMPTY_WALLET_UID)).to.equal(true);
   });
+
 
   it('Should attempt to pair with pairing secret', async () => {
     expect(caughtErr).to.equal(false);
@@ -69,6 +73,7 @@ describe('Connect and Pair', () => {
       const pairErr = await pair(client, secret);
       caughtErr = pairErr !== null;
       expect(pairErr).to.equal(null);
+      expect(client.activeWallet.uid.equals(EMPTY_WALLET_UID)).to.equal(false);
     }
   });
 
@@ -79,9 +84,11 @@ describe('Connect and Pair', () => {
       caughtErr = connectErr !== null;
       expect(connectErr).to.equal(null);
       expect(client.isPaired).to.equal(true);
+      expect(client.activeWallet.uid.equals(EMPTY_WALLET_UID)).to.equal(false);
     }
   });
 
+/*
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
@@ -338,5 +345,5 @@ describe('Connect and Pair', () => {
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
-
+*/
 });

@@ -7,7 +7,8 @@ const AES_IV = [0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73
 const decResLengths = {
     finalizePair: 0,   // Only contains the pubkey
     getAddresses: 200, // 20-byte address * 10 max slots
-    sign: 1090,          // 1 DER signature for ETH, 10 for BTC (not all are used for BTC)       
+    sign: 1090,        // 1 DER signature for ETH, 10 for BTC (not all are used for BTC)
+    getWallets: 142,   // 71 bytes per wallet record (response contains internal and external)   
 }
 
 // Per Lattice spec, all encrypted messages must fit in a buffer of this size.
@@ -21,10 +22,11 @@ const deviceCodes = {
 }
 
 const encReqCodes = {
-    'FINALIZE_PAIRING': 0,
-    'GET_ADDRESSES': 1,
-    'ADD_PERMISSION': 2,
-    'SIGN_TRANSACTION': 3,
+    'FINALIZE_PAIRING': 0x00,
+    'GET_ADDRESSES': 0x01,
+    'ADD_PERMISSION': 0x02,
+    'SIGN_TRANSACTION': 0x03,
+    'GET_WALLETS': 0x04,
 }
 
 const messageConstants = {
@@ -53,11 +55,13 @@ const responseCodes = {
     0x86: 'Pairing is Currently Disabled',
     0x87: 'Automated Signing is Currently Disabled',
     0x88: 'Device Error', 
+    0x90: 'Incorrect Wallet UID Provided',
 }
  
 const deviceResponses = {
     START_CODE_IDX: 1, // Beginning of 4-byte status code in Lattice response
     START_DATA_IDX: 5, // Beginning of data field for Lattice responses
+    ERR_WRONG_WALLET_UID: 0x90,
 }
 
 const signingSchema = {
