@@ -1,7 +1,5 @@
 # GridPlus SDK
 
-**WARNING: This is beta software and may contain bugs. Please limit cryptocurrency-related use to small amounts.**
-
 The [GridPlus SDK](https://github.com/GridPlus/gridplus-sdk) allows any application to establish a connection and interact with a GridPlus Lattice device. 
 
 # Installation
@@ -59,33 +57,41 @@ With the client object, you can make a connection to any Lattice device which is
 
 ```
 const deviceId = 'MY_LATTICE';
-client.connect(deviceId, (err) => {
+client.connect(deviceId, (err, isPaired) => {
     ...
 });
 ```
 
-If you get a non-error response, it means you can talk to the device. 
+If you get a non-error response, it means you can talk to the device. Note that the response also tells you whether you are paired with the device.
 
-*NOTE: The `deviceId` is listed on your Lattice under `Settings->Device Info`*
+> The `deviceId` is listed on your Lattice under `Settings->Device Info`
 
 # Pairing with a Lattice
+
+> This function requires the user to interact with the Lattice. It therefore uses your client's timeout to sever the request if needed.
 
 When `connect` is called, your Lattice will draw a random, six digit secret on the screen. The SDK uses
 this to "pair" with the device:
 
 ```
-client.pair('SECRET', (err) => {
+client.pair('SECRET', (err, hasActiveWallet) => {
     ...
 });
 ```
 
-*NOTE: This function requires the user to interact with the Lattice. It therefore uses your client's timeout to sever the request if needed.*
+A non-error response indicates you may now make encrypted requests. 
+
+> If `hasActiveWallet = false`, it means there was an error fetching the current wallet on the device. This could mean the device has not been set up
+or that a SafeCard is inserted which has not been set up. It could also mean there was an error with the connection. If you try to get addresses or sign without
+an active wallet saved (it is saved automatically if `hasActiveWallet = true`), the SDK will automatically retry fetching the active wallet before making the
+original request.
 
 # Getting Addresses
 
-You may retrieve some number of addresses for supported cryptocurrencies. The Lattice uses [BIP44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)-compliant highly-deterministic (HD) wallets for generating addresses. You may request a set of contiguous addresses (e.g. indices 5 to 10 or 33 to 36). You will need to specify the path to the starting index (including the `currenty_type` index to capture the type of address; note that only ETH and BTC addresses are currently supported).
+> If the SDK is connected to the wrong wallet or if the device has no current active wallet, this request will take additional time to complete.
 
-> NOTE: For now, you may only request a maximum of 10 addresses at a time from the Lattice per request
+You may retrieve some number of addresses for supported cryptocurrencies. The Lattice uses [BIP44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)-compliant highly-deterministic (HD) wallets for generating addresses. You may request a set of contiguous addresses (e.g. indices 5 to 10 or 33 to 36) based on a currency (`ETH` or `BTC`). *For now, you may only request a maximum of 10 addresses at a time from the Lattice per request.*
+
 
 > NOTE: For BTC, the type of address returned will be based on the user's setting. For example, if the user's latter is configured to return segwit addresses, you will get addresses that start with `3`.
 
@@ -125,6 +131,9 @@ res = [
 ```
 
 # Requesting Signatures
+
+> This function requires the user to interact with the Lattice. It therefore uses your client's timeout to sever the request if needed.
+> If the SDK is connected to the wrong wallet or if the device has no current active wallet, this request will take additional time to complete.
 
 The Lattice device, at its core, is a tightly controlled, highly configurable, cryptographic signing machine. By default, each pairing (the persistent association between your app and a user's lattice) allows the app an ability to request signatures that the user must manually authorize.
 
