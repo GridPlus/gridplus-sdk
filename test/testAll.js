@@ -100,47 +100,43 @@ describe('Connect and Pair', () => {
         startPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0], 
         n: 5
       }
-      // Segwit addresses (default `version`)
+      // Bitcoin addresses
+      // NOTE: The format of address will be based on the user's Lattice settings
+      //       By default, this will be P2SH(P2WPKH), i.e. addresses that start with `3`
       let isError;
       let addrs = await getAddresses(client, addrData);
-      console.log('addrs', addrs)
-      /*
       expect(addrs.length).to.equal(5);
-      expect(addrs[0][0]).to.equal('3');
-
-      // Legacy addresses
-      addrData.version = 'LEGACY';
-      addrData.n = 4;
-      addrs = await getAddresses(client, addrData);
-      expect(addrs.length).to.equal(4);
-      expect(addrs[0][0]).to.equal('1');
+      expect(addrs[0][0]).to.be.oneOf(["1", "3"]);
 
       // Ethereum addresses
-      addrData.currency = 'ETH';
+      addrData.startPath[1] = HARDENED_OFFSET + 60; // ETH currency code
       addrs = await getAddresses(client, addrData);
-      expect(addrs.length).to.equal(4);
-      expect(addrs[0].slice(0, 2)).to.equal('0x');
+      // expect(addrs.length).to.equal(4);
+      // expect(addrs[0].slice(0, 2)).to.equal('0x');
+      addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
 
       // Failure cases
+      // Unsupported purpose (m/<purpose>/)
+      addrData.startPath[0] = 0; // Purpose 0 -- undefined
+      try {
+        addrs = await getAddresses(client, addrData);
+        expect(addrs).to.equal(null);
+      } catch (err) {
+        expect(err).to.not.equal(null);
+      }
+      addrData.startPath[0] = HARDENED_OFFSET+44; // Back to 44'
+
       // Unsupported currency
-      addrData.currency = 'BCH';
+      addrData.startPath[1] = HARDENED_OFFSET+5; // 5' currency - aka unknown
       try {
         addrs = await getAddresses(client, addrData);
         expect(addrs).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
       }
-      // Unsupported version byte
-      addrData.currency = 'BTC';
-      addrData.version = 'P2WKH';
-      try {
-        addrs = await getAddresses(client, addrData);
-        expect(addrs).to.equal(null);
-      } catch (err) {
-        expect(err).to.not.equal(null);
-      }
+      addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
+
       // Too many addresses (n>10)
-      addrData.version = 'P2SH';
       addrData.n = 11;
       try {
         addrs = await getAddresses(client, addrData);
@@ -149,23 +145,6 @@ describe('Connect and Pair', () => {
         expect(err).to.not.equal(null);
       }
 
-      // Testnet
-      addrData.version = 'TESTNET';
-      addrData.n = 2;
-      addrs = await getAddresses(client, addrData);
-      expect(addrs.length).to.equal(2);
-      let isTestnet = ['2', 'm', 'n'].indexOf(addrs[0][0]);
-      expect(isTestnet).to.be.above(-1);
-      
-      // Segwit Testnet
-      addrData.version = 'SEGWIT_TESTNET';
-      addrData.n = 2;
-      addrs = await getAddresses(client, addrData);
-      // console.log('Segwit Testnet -- First two addresses:\n', addrs);
-      expect(addrs.length).to.equal(2);
-      isTestnet = ['2', 'm', 'n'].indexOf(addrs[0][0]);
-      expect(isTestnet).to.be.above(-1);
-      */
     }
   });
 /*
