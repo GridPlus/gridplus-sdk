@@ -25,6 +25,7 @@ const {
   VERSION_BYTE,
   messageConstants,
   BASE_URL,
+  HARDENED_OFFSET,
 } = require('./constants');
 const Buffer = require('buffer/').Buffer;
 const EMPTY_WALLET_UID = Buffer.alloc(32);
@@ -134,7 +135,7 @@ class Client {
     const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
     return this._request(param, (err, res) => {
       if (err) return cb(err);
-      const parsedRes = this._handleGetAddresses(res);
+      const parsedRes = this._handleGetAddresses(res, startPath);
       if (parsedRes.err) return cb(parsedRes.err);
       return cb(null, parsedRes.data);
     })
@@ -213,7 +214,6 @@ class Client {
       const payload = Buffer.alloc(0);
       const param = this._buildEncRequest(encReqCodes.GET_WALLETS, payload);
       return this._request(param, (err, res) => {
-        console.log('Got active wallets: err? ', err)
         if (err) {
           this._resetActiveWallet();
           return cb('Error getting active wallet.');
@@ -383,7 +383,7 @@ class Client {
   }
 
   // GetAddresses will return an array of address strings
-  _handleGetAddresses(encRes) {
+  _handleGetAddresses(encRes, path) {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(encRes, decResLengths.getAddresses);
     if (decrypted.err !== null ) return decrypted;
@@ -398,9 +398,17 @@ class Client {
       // Return the UTF-8 representation
       const len = addrBytes.indexOf(0); // First 0 is the null terminator
       if (len > 0) {
-        addrs.push(addrBytes.slice(0, len).toString());
+        switch (path[1]) {
+          case HARDENED_OFFSET + 60: // Ethereum
+            addrs.push(`0x${addrBytes.slice(0, len).toString('hex')}`);
+            break;
+          default: // Bitcoin (and others)
+            addrs.push(addrBytes.slice(0, len).toString());
+            break;
+        }
       }
     }
+    console.log('addrs', addrs)
     return { data: addrs, err: null };
   }
 

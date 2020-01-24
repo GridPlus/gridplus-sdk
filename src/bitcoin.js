@@ -5,7 +5,7 @@ const Buffer = require('buffer/').Buffer;
 const constants = require('./constants')
 const DEFAULT_SEQUENCE = 0xffffffff;
 const DEFAULT_SIGHASH_BUFFER = Buffer.from('01', 'hex'); // SIGHASH_ALL = 0x01
-const HARDENED = 2147483648; // Hardened offset
+const HARDENED = require('./util').HARDENED_OFFSET;
 const DEFAULT_CHANGE = [44 + HARDENED, HARDENED, HARDENED, 1, 0];
 
 const OP = {

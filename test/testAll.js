@@ -4,7 +4,7 @@ const expect = require('chai').expect;
 const Sdk = require('../index.js');
 const crypto = require('crypto');
 const question = require('readline-sync').question;
-const HARDENED_OFFSET = 0x80000000;
+const HARDENED_OFFSET = constants.HARDENED_OFFSET;
 const Buffer = require('buffer/').Buffer;
 let client, rl, id;
 let caughtErr = false;
@@ -109,12 +109,14 @@ describe('Connect and Pair', () => {
       expect(addrs[0][0]).to.be.oneOf(["1", "3"]);
 
       // Ethereum addresses
-      addrData.startPath[1] = HARDENED_OFFSET + 60; // ETH currency code
-      addrs = await getAddresses(client, addrData);
-      // expect(addrs.length).to.equal(4);
-      // expect(addrs[0].slice(0, 2)).to.equal('0x');
-      addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
-
+      // addrData.startPath[1] = HARDENED_OFFSET + 60; // ETH currency code
+      // addrData.n = 1;
+      // addrs = await getAddresses(client, addrData);
+      // expect(addrs.length).to.equal(1);
+      // // expect(addrs[0].slice(0, 2)).to.equal('0x');
+      // addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
+      // addrData.n = 5;
+/*
       // Failure cases
       // Unsupported purpose (m/<purpose>/)
       addrData.startPath[0] = 0; // Purpose 0 -- undefined
@@ -144,7 +146,7 @@ describe('Connect and Pair', () => {
       } catch (err) {
         expect(err).to.not.equal(null);
       }
-
+*/
     }
   });
 /*
