@@ -10,15 +10,13 @@ let client, rl, id;
 let caughtErr = false;
 const EMPTY_WALLET_UID = Buffer.alloc(32);
 
-id = 'drRUHm'
-
 describe('Connect and Pair', () => {
 
   before(() => {
     client = new Sdk.Client({
       name: 'SDK Test',
       baseUrl: 'https://signing.staging-gridpl.us',
-      privKey: Buffer.from('3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca', 'hex'),
+      // privKey: Buffer.from('3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca', 'hex'),
       crypto,
       timeout: 120000,
     });
@@ -57,7 +55,7 @@ describe('Connect and Pair', () => {
       })
     })
   }
-/*
+
   it('Should connect to a Lattice', async () => {
     const _id = question('Please enter the ID of your test device: ');
     id = _id;
@@ -79,7 +77,7 @@ describe('Connect and Pair', () => {
       expect(client.activeWallet.uid.equals(EMPTY_WALLET_UID)).to.equal(false);
     }
   });
-*/
+
   it('Should try to connect again but recognize the pairing already exists', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
@@ -100,6 +98,7 @@ describe('Connect and Pair', () => {
         startPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0], 
         n: 5
       }
+
       // Bitcoin addresses
       // NOTE: The format of address will be based on the user's Lattice settings
       //       By default, this will be P2SH(P2WPKH), i.e. addresses that start with `3`
@@ -109,14 +108,14 @@ describe('Connect and Pair', () => {
       expect(addrs[0][0]).to.be.oneOf(["1", "3"]);
 
       // Ethereum addresses
-      // addrData.startPath[1] = HARDENED_OFFSET + 60; // ETH currency code
-      // addrData.n = 1;
-      // addrs = await getAddresses(client, addrData);
-      // expect(addrs.length).to.equal(1);
-      // // expect(addrs[0].slice(0, 2)).to.equal('0x');
-      // addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
-      // addrData.n = 5;
-/*
+      addrData.startPath[1] = HARDENED_OFFSET + 60; // ETH currency code
+      addrData.n = 1;
+      addrs = await getAddresses(client, addrData);
+      expect(addrs.length).to.equal(1);
+      // expect(addrs[0].slice(0, 2)).to.equal('0x');
+      addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
+      addrData.n = 5;
+
       // Failure cases
       // Unsupported purpose (m/<purpose>/)
       addrData.startPath[0] = 0; // Purpose 0 -- undefined
@@ -146,7 +145,7 @@ describe('Connect and Pair', () => {
       } catch (err) {
         expect(err).to.not.equal(null);
       }
-*/
+
     }
   });
 /*

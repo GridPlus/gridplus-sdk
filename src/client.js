@@ -408,7 +408,6 @@ class Client {
         }
       }
     }
-    console.log('addrs', addrs)
     return { data: addrs, err: null };
   }
 
