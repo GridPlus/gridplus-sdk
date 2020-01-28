@@ -5,6 +5,8 @@ const Buffer = require('buffer/').Buffer;
 const constants = require('./constants')
 const DEFAULT_SEQUENCE = 0xffffffff;
 const DEFAULT_SIGHASH_BUFFER = Buffer.from('01', 'hex'); // SIGHASH_ALL = 0x01
+const HARDENED = require('./util').HARDENED_OFFSET;
+const DEFAULT_CHANGE = [44 + HARDENED, HARDENED, HARDENED, 1, 0];
 
 const OP = {
   '0': 0x00,
@@ -48,7 +50,7 @@ exports.scriptTypes = scriptTypes
 //           a. txHash
 //           b. value
 //           c. index          -- the index of the output in the transaction
-//           d. recipientIndex -- the index of the address in our wallet
+//           d. signerPath -- the path of the address in our wallet that is signing this input
 // `recipient`: Receiving address, which must be converted to a pubkeyhash
 // `value`:     Number of satoshis to send the recipient
 // `fee`:       Number of satoshis to use for a transaction fee (should have been calculated)
@@ -57,12 +59,15 @@ exports.scriptTypes = scriptTypes
 // `isSegwit`: a boolean which determines how we serialize the data and parameterize txb
 exports.buildBitcoinTxRequest = function(data) {
   try {
-    const { prevOuts, recipient, value, changeIndex=0, fee, isSegwit, changeVersion='SEGWIT' } = data;
+    const { prevOuts, recipient, value, changePath=DEFAULT_CHANGE, fee, isSegwit, changeVersion='SEGWIT' } = data;
+    if (changePath.length != 5) throw new Error('Please provide a full change path.')
     // Serialize the request
     const payload = Buffer.alloc(37 + (51 * prevOuts.length));
     let off = 0;
     // Build the change data
-    payload.writeUInt32LE(changeIndex, off); off += 4;
+    for (let i = 0; i < changePath.length; i++) {
+      payload.writeUInt32LE(changePath[i], off); off += 4;
+    }
     const scriptType = isSegwit === true ? 
                         scriptTypes.P2SH_P2WPKH :  // Only support p2sh(p2wpkh) for segwit spends for now
                         scriptTypes.P2PKH; // No support for multisig p2sh in v1 (p2sh == segwit here)
@@ -79,7 +84,12 @@ exports.buildBitcoinTxRequest = function(data) {
     payload.writeUInt8(prevOuts.length, off); off++;
     let inputSum = 0;
     prevOuts.forEach((input) => {
-      payload.writeUInt32LE(input.recipientIndex, off); off += 4;
+      if (!input.signerPath || input.signerPath.length != 5) {
+        throw new Error('Full recipient path not specified ')
+      }
+      for (let i = 0; i < inputer.signerPath.length; i++) {
+        payload.writeUInt32LE(input.signerPath[i], off); off += 4;
+      }
       payload.writeUInt32LE(input.index, off); off += 4;
       writeUInt64LE(input.value, payload, off); off += 8;
       inputSum += input.value;

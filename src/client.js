@@ -25,6 +25,7 @@ const {
   VERSION_BYTE,
   messageConstants,
   BASE_URL,
+  HARDENED_OFFSET,
 } = require('./constants');
 const Buffer = require('buffer/').Buffer;
 const EMPTY_WALLET_UID = Buffer.alloc(32);
@@ -114,48 +115,29 @@ class Client {
   }
 
   getAddresses(opts, cb) {
-    const { currency, startIndex, n, version="SEGWIT" } = opts;
-    if (currency === undefined || startIndex == undefined || n == undefined) {
-      return cb('Please provide `currency`, `startIndex`, and `n` options');
-    } else if (currencyCodes[currency] === undefined) {
-      return cb('Unsupported currency');
-    }
-    // Bitcoin requires a version byte
-    if (currency === 'BTC' && bitcoin.addressVersion[version] === undefined) {
-      return cb('Unsupported Bitcoin version. Options are: LEGACY, SEGWIT, TESTNET, SEGWIT_TESTNET');
+    const { startPath, n } = opts;
+    if (startPath == undefined || n == undefined || startPath.length != 5) {
+      return cb('Please provide `startPath` and `n` options');
     }
 
-    // Bitcoin segwit addresses require a P2SH_P2WPKH script type -- the script type
-    // is otherwise ignored and is only needed for BTC
-    const bitcoinScriptType = (version === 'SEGWIT' || version === 'SEGWIT_TESTNET') ? 
-                              bitcoin.scriptTypes.P2SH_P2WPKH: 0;
+    const payload = Buffer.alloc(1 + 32 + startPath.length * 4);
+    let off = 0;
 
-    // Build the payload
-    const payload = Buffer.alloc(39);
-    payload.writeUInt8(currencyCodes[currency]);
-    payload.writeUInt32BE(startIndex, 1);
-    this.activeWallet.uid.copy(payload, 5);
-    payload.writeUInt8(n, 37);
-    payload.writeUInt8(bitcoinScriptType || 0, 38);
+    // WalletUID
+    this.activeWallet.uid.copy(payload, off); off += 32;
+    // Build the start path (5x u32 indices)
+    for (let i = 0; i < startPath.length; i++) {
+      payload.writeUInt32BE(startPath[i], off);
+      off += 4;
+    }
+    // Specify the number of subsequent addresses to request
+    payload.writeUInt8(n, off); off++;
     const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
-
-    // Make the request to get addresses from the device
-    return this._request(param, (err, res, responseCode) => {
-      if (responseCode == deviceResponses.ERR_WRONG_WALLET_UID) {
-        // If we catch a case where the wallet has changed, try getting the new active wallet
-        // and recursively make the original request.
-        this._getActiveWallet((err) => {
-          if (err) return cb(err)
-          else     return this.getAddresses(opts, cb);
-        })
-      } else if (err) {
-        // If there was another error caught, return it
-        return cb(err);
-      } else {
-        // Correct wallet and no errors -- handle the response
-        const parsedRes = this._handleGetAddresses(res, currency, n, bitcoin.addressVersion[version]);
-        return cb(parsedRes.err, parsedRes.data);
-      }
+    return this._request(param, (err, res) => {
+      if (err) return cb(err);
+      const parsedRes = this._handleGetAddresses(res, startPath);
+      if (parsedRes.err) return cb(parsedRes.err);
+      return cb(null, parsedRes.data);
     })
   }
 
@@ -400,40 +382,32 @@ class Client {
     return null;
   }
 
-  // GetAddresses will return an array of pubkey hashes
-  _handleGetAddresses(encRes, currency, numAddr, version) {
-    // Get the size of each expected address
-    if (addressSizes[currency] === undefined) return { err: 'Unsupported currency' };
-    const addrSize = addressSizes[currency];
-
+  // GetAddresses will return an array of address strings
+  _handleGetAddresses(encRes, path) {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(encRes, decResLengths.getAddresses);
     if (decrypted.err !== null ) return decrypted;
 
-    let off = 65; // Skip past pubkey prefix
-    const res = decrypted.data;
-    // After that, we can start parsing the addresses
+    const addrData = decrypted.data;
+    let off = 65; // Skip 65 byte pubkey prefix
+    // Look for addresses until we reach the end (a 4 byte checksum)
     let addrs = [];
-    // Get the addresses
-    for (let i = 0; i < numAddr; i++) {
-      // Get the address-like data (depends on currnecy) -- data is in little endian
-      // so we need to endian flip it
-      const d = res.slice(off, off + addrSize);
-      let addr;
-      switch (currency) {
-        case 'BTC':
-          addr = bitcoin.getBitcoinAddress(d, version);
-          if (addr === null) return { err: 'Unsupported version byte' };
-          break;
-        case 'ETH':
-          addr = `0x${d.toString('hex')}`;
-          break;
-        default:
-          return { err: 'Unsupported currency' };
+    while (off + 4 < decResLengths.getAddresses) {
+      // Addresses are 129 byte char buffers.
+      const addrBytes = addrData.slice(off, off+129); off += 129;
+      // Return the UTF-8 representation
+      const len = addrBytes.indexOf(0); // First 0 is the null terminator
+      if (len > 0) {
+        switch (path[1]) {
+          case HARDENED_OFFSET + 60: // Ethereum
+            addrs.push(`0x${addrBytes.slice(0, len).toString('hex')}`);
+            break;
+          default: // Bitcoin (and others)
+            addrs.push(addrBytes.slice(0, len).toString());
+            break;
+        }
       }
-      addrs.push(addr);
-      off += addrSize;
-    }      
+    }
     return { data: addrs, err: null };
   }
 

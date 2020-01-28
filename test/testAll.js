@@ -4,6 +4,7 @@ const expect = require('chai').expect;
 const Sdk = require('../index.js');
 const crypto = require('crypto');
 const question = require('readline-sync').question;
+const HARDENED_OFFSET = constants.HARDENED_OFFSET;
 const Buffer = require('buffer/').Buffer;
 let client, rl, id;
 let caughtErr = false;
@@ -88,49 +89,55 @@ describe('Connect and Pair', () => {
     }
   });
 
-/*
+
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
-      const addrData = { currency: 'BTC', startIndex: 0, n: 5 }
-      // Segwit addresses (default `version`)
+      const addrData = { 
+        currency: 'BTC', 
+        startPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0], 
+        n: 5
+      }
+
+      // Bitcoin addresses
+      // NOTE: The format of address will be based on the user's Lattice settings
+      //       By default, this will be P2SH(P2WPKH), i.e. addresses that start with `3`
       let isError;
       let addrs = await getAddresses(client, addrData);
       expect(addrs.length).to.equal(5);
-      expect(addrs[0][0]).to.equal('3');
-      // Legacy addresses
-      addrData.version = 'LEGACY';
-      addrData.n = 4;
-      addrs = await getAddresses(client, addrData);
-      expect(addrs.length).to.equal(4);
-      expect(addrs[0][0]).to.equal('1');
+      expect(addrs[0][0]).to.be.oneOf(["1", "3"]);
 
       // Ethereum addresses
-      addrData.currency = 'ETH';
+      addrData.startPath[1] = HARDENED_OFFSET + 60; // ETH currency code
+      addrData.n = 1;
       addrs = await getAddresses(client, addrData);
-      expect(addrs.length).to.equal(4);
-      expect(addrs[0].slice(0, 2)).to.equal('0x');
+      expect(addrs.length).to.equal(1);
+      // expect(addrs[0].slice(0, 2)).to.equal('0x');
+      addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
+      addrData.n = 5;
 
       // Failure cases
+      // Unsupported purpose (m/<purpose>/)
+      addrData.startPath[0] = 0; // Purpose 0 -- undefined
+      try {
+        addrs = await getAddresses(client, addrData);
+        expect(addrs).to.equal(null);
+      } catch (err) {
+        expect(err).to.not.equal(null);
+      }
+      addrData.startPath[0] = HARDENED_OFFSET+44; // Back to 44'
+
       // Unsupported currency
-      addrData.currency = 'BCH';
+      addrData.startPath[1] = HARDENED_OFFSET+5; // 5' currency - aka unknown
       try {
         addrs = await getAddresses(client, addrData);
         expect(addrs).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
       }
-      // Unsupported version byte
-      addrData.currency = 'BTC';
-      addrData.version = 'P2WKH';
-      try {
-        addrs = await getAddresses(client, addrData);
-        expect(addrs).to.equal(null);
-      } catch (err) {
-        expect(err).to.not.equal(null);
-      }
+      addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
+
       // Too many addresses (n>10)
-      addrData.version = 'P2SH';
       addrData.n = 11;
       try {
         addrs = await getAddresses(client, addrData);
@@ -139,27 +146,9 @@ describe('Connect and Pair', () => {
         expect(err).to.not.equal(null);
       }
 
-      // Testnet
-      addrData.version = 'TESTNET';
-      addrData.n = 2;
-      addrData.startIndex = 0;
-      addrs = await getAddresses(client, addrData);
-      expect(addrs.length).to.equal(2);
-      let isTestnet = ['2', 'm', 'n'].indexOf(addrs[0][0]);
-      expect(isTestnet).to.be.above(-1);
-      
-      // Segwit Testnet
-      addrData.version = 'SEGWIT_TESTNET';
-      addrData.n = 2;
-      addrs = await getAddresses(client, addrData);
-      // console.log('Segwit Testnet -- First two addresses:\n', addrs);
-      expect(addrs.length).to.equal(2);
-      isTestnet = ['2', 'm', 'n'].indexOf(addrs[0][0]);
-      expect(isTestnet).to.be.above(-1);
-      
     }
   });
-
+/*
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
@@ -177,7 +166,7 @@ describe('Connect and Pair', () => {
     let req = {
       currency: 'ETH',
       data: {
-        signerIndex: 0,
+        signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+60, HARDENED_OFFSET, 0, 0],
         ...txData,
         chainId: 'rinkeby', // Can also be an integer
       }
@@ -289,14 +278,14 @@ describe('Connect and Pair', () => {
           txHash: 'c0fb89034692788f4bccbec433a197d68a5eb61417b367ee1994b42be5d68ba7',
           value: 139784,
           index: 1,
-          recipientIndex: 0,
+          signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0],
         },
       ],
       recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
       value: 1000,
       fee: 1000,
       isSegwit: false,
-      changeIndex: 0,            // Default 0
+      changePath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 1, 0],
       changeVersion: 'TESTNET',  // Default 'LEGACY'
       network: 'TESTNET',        // Default 'MAINNET'
     };
@@ -318,20 +307,20 @@ describe('Connect and Pair', () => {
           txHash: '08911991c5659349fa507419a20fd398d66d59e823bca1b1b94f8f19e21be44c',
           value: 3469416,
           index: 1,
-          recipientIndex: 0,
+          signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0],
         },
         {
           txHash: '19e7aa056a82b790c478e619153c35195211b58923a8e74d3540f8ff1f25ecef',
           value: 3461572,
           index: 0,
-          recipientIndex: 1,
+          signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 1],
         }
       ],
       recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
       value: 1000,
       fee: 1000,
       isSegwit: true,
-      changeIndex: 0,            // Default 0
+      changePath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 1, 1],
       changeVersion: 'SEGWIT_TESTNET',  // Default 'LEGACY'
       network: 'TESTNET',        // Default 'MAINNET'
     };

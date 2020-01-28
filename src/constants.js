@@ -5,10 +5,10 @@ const AES_IV = [0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73
 // These are defined in the Lattice spec.
 // Every decrypted response should have a 65-byte pubkey prefixing it
 const decResLengths = {
-    finalizePair: 0,   // Only contains the pubkey
-    getAddresses: 200, // 20-byte address * 10 max slots
-    sign: 1090,        // 1 DER signature for ETH, 10 for BTC (not all are used for BTC)
-    getWallets: 142,   // 71 bytes per wallet record (response contains internal and external)   
+    finalizePair: 0,     // Only contains the pubkey
+    getAddresses: 1290,  // 10x 129 byte strings (128 bytes + null terminator)
+    sign: 1090,          // 1 DER signature for ETH, 10 for BTC (not all are used for BTC)
+    getWallets: 142,   // 71 bytes per wallet record (response contains internal and external)    
 }
 
 // Per Lattice spec, all encrypted messages must fit in a buffer of this size.
@@ -73,6 +73,7 @@ const signingSchema = {
 const ETH_DATA_MAX_SIZE = 100; // Maximum number of bytes that can go in the data field
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
 const VERSION_BYTE = 1;
+const HARDENED_OFFSET = 0x80000000; // Hardened offset
 
 const BASE_URL = 'https://signing.gridpl.us';
 
@@ -92,4 +93,5 @@ module.exports = {
     ETH_DATA_MAX_SIZE,
     REQUEST_TYPE_BYTE,
     VERSION_BYTE,
+    HARDENED_OFFSET,
 }
