@@ -38,12 +38,14 @@ describe('Connect and Pair', () => {
     })
   }
 
-  function getAddresses(client, opts) {
+  function getAddresses(client, opts, timeout=0) {
     return new Promise((resolve, reject) => {
-      client.getAddresses(opts, (err, res) => {
-        if (err) return reject(err);
-        return resolve(res);
-      })
+      setTimeout(() => {
+        client.getAddresses(opts, (err, res) => {
+          if (err) return reject(err);
+          return resolve(res);
+        })
+      }, timeout);
     })
   }
 
@@ -106,11 +108,11 @@ describe('Connect and Pair', () => {
       let addrs = await getAddresses(client, addrData);
       expect(addrs.length).to.equal(5);
       expect(addrs[0][0]).to.be.oneOf(["1", "3"]);
-
+      
       // Ethereum addresses
       addrData.startPath[1] = HARDENED_OFFSET + 60; // ETH currency code
       addrData.n = 1;
-      addrs = await getAddresses(client, addrData);
+      addrs = await getAddresses(client, addrData, 2000);
       expect(addrs.length).to.equal(1);
       // expect(addrs[0].slice(0, 2)).to.equal('0x');
       addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
@@ -120,7 +122,7 @@ describe('Connect and Pair', () => {
       // Unsupported purpose (m/<purpose>/)
       addrData.startPath[0] = 0; // Purpose 0 -- undefined
       try {
-        addrs = await getAddresses(client, addrData);
+        addrs = await getAddresses(client, addrData, 2000);
         expect(addrs).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -130,7 +132,7 @@ describe('Connect and Pair', () => {
       // Unsupported currency
       addrData.startPath[1] = HARDENED_OFFSET+5; // 5' currency - aka unknown
       try {
-        addrs = await getAddresses(client, addrData);
+        addrs = await getAddresses(client, addrData, 2000);
         expect(addrs).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -140,7 +142,7 @@ describe('Connect and Pair', () => {
       // Too many addresses (n>10)
       addrData.n = 11;
       try {
-        addrs = await getAddresses(client, addrData);
+        addrs = await getAddresses(client, addrData, 2000);
         expect(addrs).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
