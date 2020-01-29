@@ -435,25 +435,27 @@ class Client {
     const walletDescriptorLen = 71;
     // Skip 65byte pubkey prefix. WalletDescriptor contains 32byte id + 4byte flag + 35byte name
     let off = 65;
+
     // Internal first
     let hasActiveWallet = false;
     walletUID = res.slice(off, off+32);
-    if (!walletUID.equals(EMPTY_WALLET_UID)) {
-      this.activeWallets.internal.uid = walletUID;
-      this.activeWallets.internal.capabilities = res.readUInt32BE(off+32);
-      this.activeWallets.internal.name = res.slice(off+36, off+walletDescriptorLen);
+    this.activeWallets.internal.uid = walletUID;
+    this.activeWallets.internal.capabilities = res.readUInt32BE(off+32);
+    this.activeWallets.internal.name = res.slice(off+36, off+walletDescriptorLen);
+    if (!walletUID.equals(EMPTY_WALLET_UID))
       hasActiveWallet = true;
-    }
+
     // Offset the first item
     off += walletDescriptorLen;
+    
     // External
     walletUID = res.slice(off, off+32);
-    if (!walletUID.equals(EMPTY_WALLET_UID)) {
-      this.activeWallets.external.uid = walletUID;
-      this.activeWallets.external.capabilities = res.readUInt32BE(off+32);
-      this.activeWallets.external.name = res.slice(off+36, off+walletDescriptorLen);
+    this.activeWallets.external.uid = walletUID;
+    this.activeWallets.external.capabilities = res.readUInt32BE(off+32);
+    this.activeWallets.external.name = res.slice(off+36, off+walletDescriptorLen);
+    if (!walletUID.equals(EMPTY_WALLET_UID))
       hasActiveWallet = true;
-    }
+
     if (hasActiveWallet === true)
       return null;
     else
