@@ -53,10 +53,19 @@ class Client {
     this.isPaired = false;
 
     // Information about the current wallet. Should be null unless we know a wallet is present
-    this.activeWallet = {
-      uid: EMPTY_WALLET_UID,           // 32 byte id
-      name: null,                      // 20 char (max) string
-      capabilities: null,              // 4 byte flag
+    this.activeWallets = {
+      internal: {
+        uid: EMPTY_WALLET_UID,           // 32 byte id
+        name: null,                      // 20 char (max) string
+        capabilities: null,              // 4 byte flag
+        external: false,
+      },
+      external: {
+        uid: EMPTY_WALLET_UID,           // 32 byte id
+        name: null,                      // 20 char (max) string
+        capabilities: null,              // 4 byte flag
+        external: true,
+      }
     }
   }
   
@@ -124,7 +133,9 @@ class Client {
     let off = 0;
 
     // WalletUID
-    this.activeWallet.uid.copy(payload, off); off += 32;
+    const wallet = this.getActiveWallet();
+    if (wallet === null) return cb('No active wallet.');
+    wallet.uid.copy(payload, off); off += 32;
     // Build the start path (5x u32 indices)
     for (let i = 0; i < startPath.length; i++) {
       payload.writeUInt32BE(startPath[i], off);
@@ -215,7 +226,7 @@ class Client {
       const param = this._buildEncRequest(encReqCodes.GET_WALLETS, payload);
       return this._request(param, (err, res) => {
         if (err) {
-          this._resetActiveWallet();
+          this._resetActiveWallets();
           return cb('Error getting active wallet.');
         }
         return cb(this._handleGetWallets(res));
@@ -314,7 +325,7 @@ class Client {
       else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
       const parsed = parseLattice1Response(res.body.message);
       // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old ative walletUID
-      if (parsed.responseCode === deviceResponses.ERR_WRONG_WALLET_UID) this._resetActiveWallet();
+      if (parsed.responseCode === deviceResponses.ERR_WRONG_WALLET_UID) this._resetActiveWallets();
       // If there was an error in the response, return it
       if (parsed.err) return cb(parsed.err);
       return cb(null, parsed.data, parsed.responseCode); 
@@ -422,17 +433,31 @@ class Client {
     // save and use the interal wallet.
     // If both wallets are empty, it means the device still needs to be set up.
     const walletDescriptorLen = 71;
-    for (let i = 1; i > -1; i--) { // loop through internal and external wallet data
-      const off = 65 + i * walletDescriptorLen; // Skip 65byte pubkey prefix. WalletDescriptor contains 32byte id + 4byte flag + 35byte name
-      const walletUID = res.slice(off, off+32);
-      if (!walletUID.equals(EMPTY_WALLET_UID)) {
-        this.activeWallet.uid = walletUID;
-        this.activeWallet.capabilities = res.readUInt32BE(off+32);
-        this.activeWallet.name = res.slice(off+36, off+walletDescriptorLen);
-        return null;
-      }
+    // Skip 65byte pubkey prefix. WalletDescriptor contains 32byte id + 4byte flag + 35byte name
+    let off = 65;
+    // Internal first
+    let hasActiveWallet = false;
+    walletUID = res.slice(off, off+32);
+    if (!walletUID.equals(EMPTY_WALLET_UID)) {
+      this.activeWallets.internal.uid = walletUID;
+      this.activeWallets.internal.capabilities = res.readUInt32BE(off+32);
+      this.activeWallets.internal.name = res.slice(off+36, off+walletDescriptorLen);
+      hasActiveWallet = true;
     }
-    return 'No active wallet.';
+    // Offset the first item
+    off += walletDescriptorLen;
+    // External
+    walletUID = res.slice(off, off+32);
+    if (!walletUID.equals(EMPTY_WALLET_UID)) {
+      this.activeWallets.external.uid = walletUID;
+      this.activeWallets.external.capabilities = res.readUInt32BE(off+32);
+      this.activeWallets.external.name = res.slice(off+36, off+walletDescriptorLen);
+      hasActiveWallet = true;
+    }
+    if (hasActiveWallet === true)
+      return null;
+    else
+      return 'No active wallet.';
   }
 
   _handleSign(encRes, currencyType, tx=null) {
@@ -538,15 +563,28 @@ class Client {
     return returnData;
   }
 
-  _resetActiveWallet() {
-    this.activeWallet.uid = EMPTY_WALLET_UID;
-    this.activeWallet.name = null;
-    this.activeWallet.capabilities = null;
+  _resetActiveWallets() {
+    this.activeWallets.internal.uid = EMPTY_WALLET_UID;
+    this.activeWallets.internal.name = null;
+    this.activeWallets.internal.capabilities = null;
+    this.activeWallets.external.uid = EMPTY_WALLET_UID;
+    this.activeWallets.external.name = null;
+    this.activeWallets.external.capabilities = null;
     return;
   }
 
+  getActiveWallet() {
+    if (!EMPTY_WALLET_UID.equals(this.activeWallets.external.uid)) {
+      return this.activeWallets.external;
+    } else if (!EMPTY_WALLET_UID.equals(this.activeWallets.internal.uid)) {
+      return this.activeWallets.internal;
+    } else {
+      return null;
+    }
+  }
+
   hasActiveWallet() {
-    return !EMPTY_WALLET_UID.equals(this.activeWallet.uid);
+    return this.getActiveWallet() !== null;
   }
   
   // Get 64 bytes representing the public key
