@@ -239,3 +239,31 @@ The returned `signedTx` object has the following properties:
 | ETH / BTC | `tx`              | string  | Ready-to-broadcast, serialized transaction + signature payload |
 | ETH / BTC | `txHash`          | string  | Hash of the transaction for lookup on the relevant block explorer |
 | BTC       | `changeRecipient` | string  | Lattice wallet address that recieved the BTC change |
+
+
+# Getting Active Wallets
+
+The Lattice1 has two wallet "slots": an internal wallet that is always the same for a given device and an external slot for SafeCard wallets. When a SafeCard is
+inserted or removed, the external slot is updated. If a wallet is present in a given slot, the device will allow paired requesters to get the "wallet UID", against
+which addresses or signatures may be requested. This UID is a permanent identifier for a given wallet (i.e. every SafeCard, once setup, will have a permanent UID
+that maps directly to a wallet seed and, therefore, to a set of addresses).
+
+Although these requests are abstracted from the user of this SDK, you may look at the active wallets currently known by the SDK. This may be useful for determining
+if there is a SafeCard inserted.
+
+```
+const wallet = client.getActiveWallet();
+```
+
+This will return an object containing:
+
+```
+uid           // 32 byte buffer id
+name          // 20 char (max) string
+capabilities  // 4 byte flag
+external      // boolean
+```
+
+Where `uid` is a 32-byte buffer containing the wallet UID discussed above and `external` is `true` if the active wallet is a SafeCard.
+**NOTE: If a SafeCard is inserted, this will be the data returned from `getActiveWallet()`. When it is removed, you will get the internal wallet data. 
+Currently, `name` and `capabilities` are not used.

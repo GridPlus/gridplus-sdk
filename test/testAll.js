@@ -65,7 +65,7 @@ describe('Connect and Pair', () => {
     caughtErr = connectErr !== null;
     expect(connectErr).to.equal(null);
     expect(client.isPaired).to.equal(false);
-    expect(client.activeWallet.uid.equals(EMPTY_WALLET_UID)).to.equal(true);
+    expect(client.hasActiveWallet()).to.equal(false);
   });
 
 
@@ -76,7 +76,7 @@ describe('Connect and Pair', () => {
       const pairErr = await pair(client, secret);
       caughtErr = pairErr !== null;
       expect(pairErr).to.equal(null);
-      expect(client.activeWallet.uid.equals(EMPTY_WALLET_UID)).to.equal(false);
+      expect(client.hasActiveWallet()).to.equal(true);
     }
   });
 
@@ -87,7 +87,7 @@ describe('Connect and Pair', () => {
       caughtErr = connectErr !== null;
       expect(connectErr).to.equal(null);
       expect(client.isPaired).to.equal(true);
-      expect(client.activeWallet.uid.equals(EMPTY_WALLET_UID)).to.equal(false);
+      expect(client.hasActiveWallet()).to.equal(true);
     }
   });
 
@@ -114,9 +114,17 @@ describe('Connect and Pair', () => {
       addrData.n = 1;
       addrs = await getAddresses(client, addrData, 2000);
       expect(addrs.length).to.equal(1);
-      // expect(addrs[0].slice(0, 2)).to.equal('0x');
+      expect(addrs[0].slice(0, 2)).to.equal('0x');
       addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
       addrData.n = 5;
+
+      // Bitcoin testnet
+      // addrData.startPath[1] = HARDENED_OFFSET + 1; // BTC_TEST
+      // addrs = await getAddresses(client, addrData, 2000);
+      // console.log('testnet', addrs)
+      // expect(addrs.length).to.equal(5);
+      // expect(addrs[0][0]).to.be.oneOf(["n", "m", "2"]);
+      // addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
 
       // Failure cases
       // Unsupported purpose (m/<purpose>/)
