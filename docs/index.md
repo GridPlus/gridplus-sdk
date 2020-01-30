@@ -267,3 +267,17 @@ external      // boolean
 Where `uid` is a 32-byte buffer containing the wallet UID discussed above and `external` is `true` if the active wallet is a SafeCard.
 **NOTE: If a SafeCard is inserted, this will be the data returned from `getActiveWallet()`. When it is removed, you will get the internal wallet data. 
 Currently, `name` and `capabilities` are not used.
+
+## Detecting Card Insertion/Removal
+
+When a card is inserted or removed, this will affect the active wallet of the device. If you want to stay up to date on the latest wallet state, you will
+need to *refresh* the active wallet. You can do this by calling:
+
+```
+client.refreshWallets((err, activeWallet) => {
+
+})
+```
+
+If there is no error, this will return the same object as `client.getActiveWallet` and you can be assured it is the current active wallet (again, this is
+the SafeCard wallet if a card that has been set up is inserted). Note that `refreshWallets()` will take a few seconds like the other encrypted requests.

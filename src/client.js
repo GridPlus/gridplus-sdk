@@ -123,6 +123,7 @@ class Client {
     })  
   }
 
+
   getAddresses(opts, cb) {
     const { startPath, n } = opts;
     if (startPath == undefined || n == undefined || startPath.length != 5) {
@@ -206,6 +207,15 @@ class Client {
     })
   }
 
+  // Get the current set of active wallets from the device and update state.
+  refreshWallets(cb) {
+    this._getActiveWallet((err) => {
+      if (err) return cb(err);
+      return cb(null, this.getActiveWallet());
+    }, true)
+  }
+
+
   //=======================================================================
   // INTERNAL FUNCTIONS
   // These handle the logic around building requests and consuming
@@ -216,8 +226,8 @@ class Client {
   // Get the active wallet in the device. If we already have one recorded,
   // we don't need to do anything
   // returns cb(err) -- err is a string
-  _getActiveWallet(cb) {
-    if (this.hasActiveWallet() === true || this.isPaired !== true) {
+  _getActiveWallet(cb, forceRefresh=false) {
+    if (forceRefresh !== true && (this.hasActiveWallet() === true || this.isPaired !== true)) {
       // If the active wallet already exists, or if we are not paired, skip the request
       return cb(null);
     } else {

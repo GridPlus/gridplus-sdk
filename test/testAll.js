@@ -58,6 +58,15 @@ describe('Connect and Pair', () => {
     })
   }
 
+  function refreshWallets(client) {
+    return new Promise((resolve, reject) => {
+      client.refreshWallets((err, activeWallet) => {
+        if (err) return reject(err);
+        return resolve(activeWallet);
+      })
+    })
+  }
+
   it('Should connect to a Lattice', async () => {
     const _id = question('Please enter the ID of your test device: ');
     id = _id;
@@ -90,6 +99,15 @@ describe('Connect and Pair', () => {
       expect(client.hasActiveWallet()).to.equal(true);
     }
   });
+
+  it('Should refresh the wallets', async () => {
+    expect(caughtErr).to.equal(false);
+    if (caughtErr == false) {
+      const activeWallet = await refreshWallets(client);
+      expect(activeWallet).to.not.equal(null);
+      expect(activeWallet).to.not.equal(undefined);
+    }
+  })
 
 
   it('Should get addresses', async () => {
