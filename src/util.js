@@ -1,6 +1,6 @@
 // Static utility functions
-const bitcoin = require('./bitcoin');
-const ethereum = require('./ethereum');
+const { buildBitcoinTxRequest } = require('./bitcoin');
+const  {buildEthereumTxRequest } = require('./ethereum');
 const Buffer = require('buffer/').Buffer
 const aes = require('aes-js');
 const crc32 = require('crc-32');
@@ -85,8 +85,8 @@ function toPaddedDER(sig) {
 // TRANSACTION UTILS
 //--------------------------------------------------
 const txBuildingResolver = {
-  'BTC': bitcoin.buildBitcoinTxRequest,
-  'ETH': ethereum.buildEthereumTxRequest,
+  'BTC': buildBitcoinTxRequest,
+  'ETH': buildEthereumTxRequest,
 }
 
 //--------------------------------------------------

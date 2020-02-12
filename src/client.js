@@ -170,22 +170,33 @@ class Client {
     const tx = txBuildingResolver[currency](data);
     if (tx.err !== undefined) return cb({ err: tx.err });
     // All transaction requests must be put into the same sized buffer
-    // so that checksums may be validated. The full size is 530 bytes,
+    // so that checksums may be validated. The full size is 1276 bytes,
     // but that includes a 1-byte prefix (`SIGN_TRANSACTION`), 2 bytes
     // indicating the schema type, and 4 bytes for a checksum.
-    // That leaves 514 bytes for the transaction request. It will be
-    // deserialized according to the schema type and extra zeros will be
-    // discarded.
-    const MAX_TX_REQ_DATA_SIZE = 557;
+    // Therefore, the payload itself has 1276 - 7 = 1269 bytes of space.
+    const MAX_TX_REQ_DATA_SIZE = 1269;
     if (tx.payload.length > MAX_TX_REQ_DATA_SIZE) {
       return cb('Transaction is too large');
     }
 
     // Build the payload
     const payload = Buffer.alloc(2 + MAX_TX_REQ_DATA_SIZE);
-    payload.writeUInt16BE(tx.schema, 0);
-    tx.payload.copy(payload, 2);
+    let off = 0;
+    // Copy tx request schema (e.g. ETH or BTC transfer)
+    payload.writeUInt16BE(tx.schema, off); off += 2;
+// console.log('tx.schema', tx.schema);
 
+    // Copy the wallet UID
+    const wallet = this.getActiveWallet();
+    if (wallet === null) return cb('No active wallet.');
+    wallet.uid.copy(payload, off); off += wallet.uid.length;
+// console.log('wallet.uid', wallet.uid.toString('hex'))
+console.log('copying payload:', tx.payload.toString('hex'))
+    // Build data based on the type of request
+    // Copy the payload of the tx request
+// console.log(0, payload.toString('hex'))
+    tx.payload.copy(payload, off);
+// console.log(1, payload.toString('hex'))
     // Construct the encrypted request and send it
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
     return this._request(param, (err, res, responseCode) => {
@@ -273,7 +284,6 @@ class Client {
     const payloadPreCs = Buffer.concat([Buffer.from([enc_request_code]), payload]);
     const cs = checksum(payloadPreCs);
     const payloadBuf = Buffer.alloc(payloadPreCs.length + 4);
-
     // Lattice validates checksums in little endian
     payloadPreCs.copy(payloadBuf, 0);
     payloadBuf.writeUInt32LE(cs, payloadPreCs.length);

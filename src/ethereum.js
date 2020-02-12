@@ -8,11 +8,93 @@ const secp256k1 = require('secp256k1');
 
 exports.buildEthereumTxRequest = function(data) {
   try {
-    let { signerPath, chainId=1 } = data;
+    let { chainId=1 } = data;
+    const { signerPath } = data;
     if (typeof chainId !== 'number') chainId = chainIds[chainId];
     if (!chainId) throw new Error('Unsupported chain name');
-    else if (!signerPath || signerPath.length != 5) throw new Error('Please provider full signer path (`signerPath`)')
+    else if (!signerPath || signerPath.length !== 5) throw new Error('Please provider full signer path (`signerPath`)')
     const useEIP155 = eip155[chainId];
+
+    //--------------
+    // 1. BUILD THE LATTICE REQUEST PAYLOAD
+    //--------------
+
+
+    // 4-byte pathDepth header
+    // 5x 4-byte path indices = 20
+    // 1 byte bool (EIP155)
+    // 1 byte chainID
+    // 2 byte nonce (+4byte prefix)
+    // 8 byte gasPrice (+4byte prefix)
+    // 4 byte gasLimit (+4byte prefix)
+    // 20 byte to address (+4byte prefix)
+    // 32 byte value (+4byte prefix)
+    // 1024 data bytes (+4byte prefix)
+    const txReqPayload = Buffer.alloc(1140);
+    let off = 0;
+
+    // 1. EIP155 switch and chainID
+    //------------------
+    txReqPayload.writeUInt8(Number(useEIP155), off); off++;
+
+    // txReqPayload.writeUInt8(chainId, off); off++;
+    // 2. BIP44 Path
+    //------------------
+    // First write the number of indices in this path (will probably always be 5, but
+    // we want to keep this extensible)
+    txReqPayload.writeUInt32LE(signerPath.length, off); off += 4;
+
+    for (let i = 0; i < signerPath.length; i++) {
+      txReqPayload.writeUInt32LE(signerPath[i], off); off += 4;
+    }
+
+    // 3. ETH TX request data
+    //------------------
+
+    // Nonce
+  console.log(0, txReqPayload.slice(0, off).toString('hex'));
+    txReqPayload.writeUInt32LE(4, off); off += 4;
+    txReqPayload.writeUInt32LE(data.nonce, off); off += 2;
+  console.log(1, txReqPayload.slice(0, off).toString('hex'));
+
+    // GasPrice
+    txReqPayload.writeUInt32LE(8, off); off += 4;
+    writeUInt64LE(data.gasPrice, txReqPayload, off); off += 8;
+  console.log(2, txReqPayload.slice(0, off).toString('hex'));
+
+    // Gas
+    txReqPayload.writeUInt32LE(4, off); off += 4;
+    txReqPayload.writeUInt32LE(data.gasLimit, off); off += 4;
+
+    // To
+    txReqPayload.writeUInt32LE(20, off); off += 4;
+    ensureHexBuffer(data.to).copy(txReqPayload, off); off += 20;
+
+    // Value
+    txReqPayload.writeUInt32LE(32, off); off += 4;
+    const valueBuffer = Buffer.alloc(32);
+    // Convert `value` to a buffer and reverse it to LE
+    // Copy into index=0 of valueBuf
+    ensureHexBuffer(data.value).reverse().copy(valueBuffer); 
+    valueBuffer.copy(txReqPayload, off); off += 32;
+    
+    // Data: copy buffer in BE
+    const dataBuffer = ensureHexBuffer(data.data);
+    // Ensure data field isn't too long
+    if (dataBuffer.data && dataBuffer.length > constants.ETH_DATA_MAX_SIZE) {
+      return { err: `Data field too large (must be <=${constants.ETH_DATA_MAX_SIZE} bytes)` }
+    }
+    txReqPayload.writeUInt32LE(dataBuffer.length, off); off += 4;
+    dataBuffer.copy(txReqPayload, off);
+
+
+    // chain id -- temporary, this should be the second argument
+    txReqPayload.writeUInt8(chainId, off); off++;
+
+    //--------------
+    // 2. BUILD THE RAW TX FOR FUTURE RLP ENCODING
+    //--------------
+
     // Ensure all fields are 0x-prefixed hex strings
     let rawTx = []
     // Build the transaction buffer array
@@ -28,21 +110,11 @@ exports.buildEthereumTxRequest = function(data) {
       rawTx.push(ensureHexBuffer(null));    // r
       rawTx.push(ensureHexBuffer(null));    // s
     }
-    // Ensure data field isn't too long
-    if (data.data && ensureHexBuffer(data.data).length > constants.ETH_DATA_MAX_SIZE) {
-      return { err: `Data field too large (must be <=${constants.ETH_DATA_MAX_SIZE} bytes)` }
-    }
-    // RLP-encode the transaction request
-    const encoded = rlp.encode(rawTx);
-    // Build the payload to send to the Lattice
-    const payload = Buffer.alloc(encoded.length + 4 * signerPath.length);
-    for (let i = 0; i < signerPath.length; i++) {
-      payload.writeUInt32BE(signerPath[i], 4 * i);
-    }
-    encoded.copy(payload, 4 * signerPath.length);
-    return { 
+
+
+    return {
       rawTx,
-      payload,
+      payload: txReqPayload,
       schema: constants.signingSchema.ETH_TRANSFER,  // We will use eth transfer for all ETH txs for v1 
       chainId,
       useEIP155
@@ -149,6 +221,16 @@ const eip155 = {
   4:false,
   42: true,
   5: true
+}
+
+function writeUInt64LE(n, buf, off) {
+  if (typeof n == 'number') n = n.toString(16);
+  const preBuf = Buffer.alloc(8);
+  const nStr = n.length % 2 == 0 ? n.toString(16) : `0${n.toString(16)}`;
+  const nBuf = Buffer.from(nStr, 'hex');
+  nBuf.reverse().copy(preBuf, 0);
+  preBuf.copy(buf, off);
+  return preBuf;
 }
 
 

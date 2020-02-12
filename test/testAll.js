@@ -16,7 +16,7 @@ describe('Connect and Pair', () => {
     client = new Sdk.Client({
       name: 'SDK Test',
       baseUrl: 'https://signing.staging-gridpl.us',
-      // privKey: Buffer.from('3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca', 'hex'),
+      privKey: Buffer.from('3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca', 'hex'),
       crypto,
       timeout: 120000,
     });
@@ -66,7 +66,7 @@ describe('Connect and Pair', () => {
       })
     })
   }
-
+/*
   it('Should connect to a Lattice', async () => {
     const _id = question('Please enter the ID of your test device: ');
     id = _id;
@@ -88,8 +88,9 @@ describe('Connect and Pair', () => {
       expect(client.hasActiveWallet()).to.equal(true);
     }
   });
-
+*/
   it('Should try to connect again but recognize the pairing already exists', async () => {
+    id = 'drRUHm'
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
       const connectErr = await connect(client, id);
@@ -109,14 +110,14 @@ describe('Connect and Pair', () => {
     }
   })
 
-
+/*
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr == false) {
       const addrData = { 
         currency: 'BTC', 
         startPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0], 
-        n: 5
+        n: 1
       }
 
       // Bitcoin addresses
@@ -124,23 +125,22 @@ describe('Connect and Pair', () => {
       //       By default, this will be P2SH(P2WPKH), i.e. addresses that start with `3`
       let isError;
       let addrs = await getAddresses(client, addrData);
-      expect(addrs.length).to.equal(5);
+      expect(addrs.length).to.equal(1);
       expect(addrs[0][0]).to.be.oneOf(["1", "3"]);
       
       // Ethereum addresses
       addrData.startPath[1] = HARDENED_OFFSET + 60; // ETH currency code
       addrData.n = 1;
-      addrs = await getAddresses(client, addrData, 2000);
+      addrs = await getAddresses(client, addrData, 4000);
       expect(addrs.length).to.equal(1);
       expect(addrs[0].slice(0, 2)).to.equal('0x');
       addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
-      addrData.n = 5;
 
       // Bitcoin testnet
       // addrData.startPath[1] = HARDENED_OFFSET + 1; // BTC_TEST
-      // addrs = await getAddresses(client, addrData, 2000);
+      // addrs = await getAddresses(client, addrData, 4000);
       // console.log('testnet', addrs)
-      // expect(addrs.length).to.equal(5);
+      // expect(addrs.length).to.equal(1);
       // expect(addrs[0][0]).to.be.oneOf(["n", "m", "2"]);
       // addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
 
@@ -148,7 +148,7 @@ describe('Connect and Pair', () => {
       // Unsupported purpose (m/<purpose>/)
       addrData.startPath[0] = 0; // Purpose 0 -- undefined
       try {
-        addrs = await getAddresses(client, addrData, 2000);
+        addrs = await getAddresses(client, addrData, 4000);
         expect(addrs).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -158,7 +158,7 @@ describe('Connect and Pair', () => {
       // Unsupported currency
       addrData.startPath[1] = HARDENED_OFFSET+5; // 5' currency - aka unknown
       try {
-        addrs = await getAddresses(client, addrData, 2000);
+        addrs = await getAddresses(client, addrData, 4000);
         expect(addrs).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -176,7 +176,7 @@ describe('Connect and Pair', () => {
 
     }
   });
-/*
+*/
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
@@ -185,7 +185,7 @@ describe('Connect and Pair', () => {
     
     let txData = {
       nonce: 9,
-      gasPrice: 1200000000,
+      gasPrice: 1200000001,
       gasLimit: 122000,
       to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
       value: 6,
@@ -203,8 +203,8 @@ describe('Connect and Pair', () => {
     // Sign a legit tx 
     let tx = await sign(client, req);
     expect(tx.tx).to.not.equal(null);
-    // console.log(tx)
-
+    console.log(tx)
+/*
     // Invalid chainId
     req.data.chainId = 'notachain';
     try {
@@ -296,9 +296,9 @@ describe('Connect and Pair', () => {
     req.data.data = crypto.randomBytes(constants.ETH_DATA_MAX_SIZE).toString('hex');
     tx = await sign(client, req);
     expect(tx.tx).to.not.equal(null);
-
+*/
   });
-
+/*
   it('Should sign legacy Bitcoin inputs', async () => {  
     let txData = {
       prevOuts: [
