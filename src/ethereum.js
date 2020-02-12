@@ -53,8 +53,8 @@ exports.buildEthereumTxRequest = function(data) {
 
     // Nonce
   console.log(0, txReqPayload.slice(0, off).toString('hex'));
-    txReqPayload.writeUInt32LE(4, off); off += 4;
-    txReqPayload.writeUInt32LE(data.nonce, off); off += 2;
+    txReqPayload.writeUInt32LE(2, off); off += 4;
+    txReqPayload.writeUInt16LE(data.nonce, off); off += 4;
   console.log(1, txReqPayload.slice(0, off).toString('hex'));
 
     // GasPrice
