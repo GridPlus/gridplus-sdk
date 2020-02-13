@@ -170,11 +170,11 @@ class Client {
     const tx = txBuildingResolver[currency](data);
     if (tx.err !== undefined) return cb({ err: tx.err });
     // All transaction requests must be put into the same sized buffer
-    // so that checksums may be validated. The full size is 1276 bytes,
+    // so that checksums may be validated. The full size is 1266 bytes,
     // but that includes a 1-byte prefix (`SIGN_TRANSACTION`), 2 bytes
     // indicating the schema type, and 4 bytes for a checksum.
-    // Therefore, the payload itself has 1276 - 7 = 1269 bytes of space.
-    const MAX_TX_REQ_DATA_SIZE = 1269;
+    // Therefore, the payload itself has 1273 - 7 = 1266 bytes of space.
+    const MAX_TX_REQ_DATA_SIZE = 1266;
     if (tx.payload.length > MAX_TX_REQ_DATA_SIZE) {
       return cb('Transaction is too large');
     }
@@ -191,7 +191,6 @@ class Client {
     if (wallet === null) return cb('No active wallet.');
     wallet.uid.copy(payload, off); off += wallet.uid.length;
 // console.log('wallet.uid', wallet.uid.toString('hex'))
-console.log('copying payload:', tx.payload.toString('hex'))
     // Build data based on the type of request
     // Copy the payload of the tx request
 // console.log(0, payload.toString('hex'))
@@ -287,7 +286,7 @@ console.log('copying payload:', tx.payload.toString('hex'))
     // Lattice validates checksums in little endian
     payloadPreCs.copy(payloadBuf, 0);
     payloadBuf.writeUInt32LE(cs, payloadPreCs.length);
-
+    console.log('sending:', payloadBuf.toString('hex'))
     // Encrypt this payload
     const secret = this._getSharedSecret();
     const newEncPayload = aes256_encrypt(payloadBuf, secret);

@@ -52,15 +52,12 @@ exports.buildEthereumTxRequest = function(data) {
     //------------------
 
     // Nonce
-  console.log(0, txReqPayload.slice(0, off).toString('hex'));
     txReqPayload.writeUInt32LE(4, off); off += 4;
-    txReqPayload.writeUInt32LE(data.nonce, off); off += 2;
-  console.log(1, txReqPayload.slice(0, off).toString('hex'));
+    txReqPayload.writeUInt32LE(data.nonce, off); off += 4;
 
     // GasPrice
     txReqPayload.writeUInt32LE(8, off); off += 4;
     writeUInt64LE(data.gasPrice, txReqPayload, off); off += 8;
-  console.log(2, txReqPayload.slice(0, off).toString('hex'));
 
     // Gas
     txReqPayload.writeUInt32LE(4, off); off += 4;
@@ -89,7 +86,7 @@ exports.buildEthereumTxRequest = function(data) {
 
 
     // chain id -- temporary, this should be the second argument
-    txReqPayload.writeUInt8(chainId, off); off++;
+    // txReqPayload.writeUInt8(chainId, off); off++;
 
     //--------------
     // 2. BUILD THE RAW TX FOR FUTURE RLP ENCODING
