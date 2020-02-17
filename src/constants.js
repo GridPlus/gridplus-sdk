@@ -54,7 +54,8 @@ const responseCodes = {
     0x85: 'Pairing Failed',
     0x86: 'Pairing is Currently Disabled',
     0x87: 'Automated Signing is Currently Disabled',
-    0x88: 'Device Error', 
+    0x88: 'Device Error',
+    0x89: 'Timeout',
     0x90: 'Incorrect Wallet UID Provided',
 }
  
