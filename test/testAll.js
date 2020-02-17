@@ -110,16 +110,16 @@ describe('Connect and Pair', () => {
     }
   })
 
-/*
+
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
-    if (caughtErr == false) {
+    if (caughtErr === false) {
       const addrData = { 
         currency: 'BTC', 
         startPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0], 
         n: 1
       }
-
+/*
       // Bitcoin addresses
       // NOTE: The format of address will be based on the user's Lattice settings
       //       By default, this will be P2SH(P2WPKH), i.e. addresses that start with `3`
@@ -127,15 +127,20 @@ describe('Connect and Pair', () => {
       let addrs = await getAddresses(client, addrData);
       expect(addrs.length).to.equal(1);
       expect(addrs[0][0]).to.be.oneOf(["1", "3"]);
-      
+*/
+
+/*
       // Ethereum addresses
       addrData.startPath[1] = HARDENED_OFFSET + 60; // ETH currency code
       addrData.n = 1;
       addrs = await getAddresses(client, addrData, 4000);
+      console.log('addrs', addrs)
       expect(addrs.length).to.equal(1);
       expect(addrs[0].slice(0, 2)).to.equal('0x');
       addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
+*/
 
+/*
       // Bitcoin testnet
       // addrData.startPath[1] = HARDENED_OFFSET + 1; // BTC_TEST
       // addrs = await getAddresses(client, addrData, 4000);
@@ -173,10 +178,11 @@ describe('Connect and Pair', () => {
       } catch (err) {
         expect(err).to.not.equal(null);
       }
+  */
 
     }
   });
-*/
+
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
@@ -200,11 +206,15 @@ describe('Connect and Pair', () => {
       }
     }
 
-    // Sign a legit tx 
+    // Sign a legit tx (no EIP155 because of rinkeby)
     let tx = await sign(client, req);
     expect(tx.tx).to.not.equal(null);
-    console.log(tx)
-/*
+
+    // Sign an EIP155 transaction
+    req.data.chainId = 'mainnet';
+    tx = await sign(client, req);
+    expect(tx.tx).to.not.equal(null);
+
     // Invalid chainId
     req.data.chainId = 'notachain';
     try {
@@ -214,7 +224,7 @@ describe('Connect and Pair', () => {
       expect(err).to.not.equal(null);
     }
     req.data.chainId = 'rinkeby';
-
+/*
     // Nonce too large (>u16)
     req.data.nonce = 0xffff + 1;
         try {

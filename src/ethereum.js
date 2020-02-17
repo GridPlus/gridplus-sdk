@@ -16,21 +16,54 @@ exports.buildEthereumTxRequest = function(data) {
     const useEIP155 = eip155[chainId];
 
     //--------------
-    // 1. BUILD THE LATTICE REQUEST PAYLOAD
+    // 1. BUILD THE RAW TX FOR FUTURE RLP ENCODING
     //--------------
 
+    // Ensure all fields are 0x-prefixed hex strings
+    let rawTx = []
+    // Build the transaction buffer array
+    const nonceBytes = ensureHexBuffer(data.nonce);
+    const gasPriceBytes = ensureHexBuffer(data.gasPrice);
+    const gasLimitBytes = ensureHexBuffer(data.gasLimit);
+    const toBytes = ensureHexBuffer(data.to);
+    const valueBytes = ensureHexBuffer(data.value);
+    const dataBytes = ensureHexBuffer(data.data);
 
+    rawTx.push(nonceBytes);
+    rawTx.push(gasPriceBytes);
+    rawTx.push(gasLimitBytes);
+    rawTx.push(toBytes);
+    rawTx.push(valueBytes);
+    rawTx.push(dataBytes);
+    // Add empty v,r,s values
+    if (useEIP155 === true) {
+      rawTx.push(ensureHexBuffer(chainId)); // v
+      rawTx.push(ensureHexBuffer(null));    // r
+      rawTx.push(ensureHexBuffer(null));    // s
+    }
+
+    //--------------
+    // 2. BUILD THE LATTICE REQUEST PAYLOAD
+    //--------------
+
+    // Here we take the data from the raw transaction and serialize it into a buffer that
+    // can be consumed by the Lattice firmware. Note that each field has a 4-byte prefix
+    // field indicating how many non-zero bytes are being used in the field. If we use fewer
+    // than the max number of bytes for a given field, we still need to offset by the field
+    // width so that the data may be unpacked into a struct on the Lattice side.
+    //
+    // Fields:
     // 4-byte pathDepth header
     // 5x 4-byte path indices = 20
     // 1 byte bool (EIP155)
-    // 1 byte chainID
-    // 2 byte nonce (+4byte prefix)
+    // 4 byte nonce (+4byte prefix)
     // 8 byte gasPrice (+4byte prefix)
     // 4 byte gasLimit (+4byte prefix)
     // 20 byte to address (+4byte prefix)
     // 32 byte value (+4byte prefix)
     // 1024 data bytes (+4byte prefix)
-    const txReqPayload = Buffer.alloc(1140);
+    // 1 byte chainID (a.k.a. `v`) (+4byte prefix)
+    const txReqPayload = Buffer.alloc(1146);
     let off = 0;
 
     // 1. EIP155 switch and chainID
@@ -52,69 +85,44 @@ exports.buildEthereumTxRequest = function(data) {
     //------------------
 
     // Nonce
-    txReqPayload.writeUInt32LE(4, off); off += 4;
+    txReqPayload.writeUInt32LE(nonceBytes.length, off); off += 4;
     txReqPayload.writeUInt32LE(data.nonce, off); off += 4;
 
     // GasPrice
-    txReqPayload.writeUInt32LE(8, off); off += 4;
+    txReqPayload.writeUInt32LE(gasPriceBytes.length, off); off += 4;
     writeUInt64LE(data.gasPrice, txReqPayload, off); off += 8;
 
     // Gas
-    txReqPayload.writeUInt32LE(4, off); off += 4;
+    txReqPayload.writeUInt32LE(gasLimitBytes.length, off); off += 4;
     txReqPayload.writeUInt32LE(data.gasLimit, off); off += 4;
 
     // To
-    txReqPayload.writeUInt32LE(20, off); off += 4;
-    ensureHexBuffer(data.to).copy(txReqPayload, off); off += 20;
+    txReqPayload.writeUInt32LE(toBytes.length, off); off += 4;
+    toBytes.copy(txReqPayload, off); off += 20;
 
     // Value
-    txReqPayload.writeUInt32LE(32, off); off += 4;
-    const valueBuffer = Buffer.alloc(32);
-    // Convert `value` to a buffer and reverse it to LE
-    // Copy into index=0 of valueBuf
-    ensureHexBuffer(data.value).reverse().copy(valueBuffer); 
-    valueBuffer.copy(txReqPayload, off); off += 32;
+    txReqPayload.writeUInt32LE(valueBytes.length, off); off += 4;
+    // Reverse bytes to be interpreted as a LE u256 in firmware
+    valueBytes.reverse().copy(txReqPayload, off); off += 32;
     
-    // Data: copy buffer in BE
-    const dataBuffer = ensureHexBuffer(data.data);
     // Ensure data field isn't too long
-    if (dataBuffer.data && dataBuffer.length > constants.ETH_DATA_MAX_SIZE) {
+    if (dataBytes.data && dataBytes.length > constants.ETH_DATA_MAX_SIZE) {
       return { err: `Data field too large (must be <=${constants.ETH_DATA_MAX_SIZE} bytes)` }
     }
-    txReqPayload.writeUInt32LE(dataBuffer.length, off); off += 4;
-    dataBuffer.copy(txReqPayload, off);
-
-
-    // chain id -- temporary, this should be the second argument
-    // txReqPayload.writeUInt8(chainId, off); off++;
-
-    //--------------
-    // 2. BUILD THE RAW TX FOR FUTURE RLP ENCODING
-    //--------------
-
-    // Ensure all fields are 0x-prefixed hex strings
-    let rawTx = []
-    // Build the transaction buffer array
-    rawTx.push(ensureHexBuffer(data.nonce));
-    rawTx.push(ensureHexBuffer(data.gasPrice));
-    rawTx.push(ensureHexBuffer(data.gasLimit));
-    rawTx.push(ensureHexBuffer(data.to));
-    rawTx.push(ensureHexBuffer(data.value));
-    rawTx.push(ensureHexBuffer(data.data));
-    // Add empty v,r,s values
+    txReqPayload.writeUInt32LE(dataBytes.length, off); off += 4;
+    dataBytes.copy(txReqPayload, off); off += 1024;
     if (useEIP155 === true) {
-      rawTx.push(ensureHexBuffer(chainId)); // v
-      rawTx.push(ensureHexBuffer(null));    // r
-      rawTx.push(ensureHexBuffer(null));    // s
+      txReqPayload.writeUInt32LE(1, off); off += 4;
+      txReqPayload.writeUInt8(chainId, off); off ++;
     }
-
 
     return {
       rawTx,
       payload: txReqPayload,
       schema: constants.signingSchema.ETH_TRANSFER,  // We will use eth transfer for all ETH txs for v1 
       chainId,
-      useEIP155
+      useEIP155,
+      signerPath,
     };
   } catch (err) {
     return { err };
@@ -124,11 +132,9 @@ exports.buildEthereumTxRequest = function(data) {
 // Given a 64-byte signature [r,s] we need to figure out the v value
 // and attah the full signature to the end of the transaction payload
 exports.buildEthRawTx = function(tx, sig, address, useEIP155=true) {
-  // Get the new signature (with valid recovery param `v`) given the
-  // RLP-encoded transaction payload
-  // NOTE: The first 20 bytes of the payload were for the `signerPath`, which
-  //      was part of the Lattice request. We discard that here.
-  const newSig = addRecoveryParam(tx.payload.slice(20), sig, address, tx.chainId, useEIP155);
+  // RLP-encode the data we sent to the lattice
+  const rlpEncoded = rlp.encode(tx.rawTx);
+  const newSig = addRecoveryParam(rlpEncoded, sig, address, tx.chainId, useEIP155);
   // Use the signature to generate a new raw transaction payload
   const newRawTx = tx.rawTx.slice(0, 6);
   newRawTx.push(Buffer.from((newSig.v).toString(16), 'hex'));
