@@ -1,11 +1,11 @@
 // Static utility functions
-const bitcoin = require('./bitcoin');
-const ethereum = require('./ethereum');
+const { buildBitcoinTxRequest } = require('./bitcoin');
+const { buildEthereumTxRequest } = require('./ethereum');
 const Buffer = require('buffer/').Buffer
 const aes = require('aes-js');
 const crc32 = require('crc-32');
 const elliptic = require('elliptic');
-const { AES_IV, responseCodes, OPs, VERSION_BYTE } = require('./constants');
+const { AES_IV, responseCodes, VERSION_BYTE } = require('./constants');
 const EC = elliptic.ec;
 const ec = new EC('p256');
 
@@ -32,7 +32,7 @@ function parseLattice1Response(r) {
   // Get the type of response
   // Should always be 0x00
   const msgType = b.readUInt8(off); off++;
-  if (msgType != 0x00) {
+  if (msgType !== 0x00) {
     parsed.err = 'Incorrect response from Lattice1';
     return parsed;
   }
@@ -85,8 +85,8 @@ function toPaddedDER(sig) {
 // TRANSACTION UTILS
 //--------------------------------------------------
 const txBuildingResolver = {
-  'BTC': bitcoin.buildBitcoinTxRequest,
-  'ETH': ethereum.buildEthereumTxRequest,
+  'BTC': buildBitcoinTxRequest,
+  'ETH': buildEthereumTxRequest,
 }
 
 //--------------------------------------------------
@@ -107,12 +107,12 @@ function aes256_decrypt(data, key) {
 
 // Decode a DER signature. Returns signature object {r, s } or null if there is an error
 function parseDER(sigBuf) {
-  if (sigBuf[0] != 0x30 || sigBuf[2] != 0x02) return null;
+  if (sigBuf[0] !== 0x30 || sigBuf[2] !== 0x02) return null;
   let off = 3;
-  let sig = { r: null, s: null }
+  const sig = { r: null, s: null }
   const rLen = sigBuf[off]; off++;
   sig.r = sigBuf.slice(off, off + rLen); off += rLen
-  if (sigBuf[off] != 0x02) return null;
+  if (sigBuf[off] !== 0x02) return null;
   off++;
   const sLen = sigBuf[off]; off++;
   sig.s = sigBuf.slice(off, off + sLen);

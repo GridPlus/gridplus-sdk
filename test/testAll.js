@@ -112,7 +112,7 @@ describe('Connect and Pair', () => {
 
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
-    if (caughtErr == false) {
+    if (caughtErr === false) {
       const addrData = { 
         currency: 'BTC', 
         startPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0], 
@@ -176,14 +176,14 @@ describe('Connect and Pair', () => {
 
     }
   });
-/*
+
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
     const GAS_LIMIT_MIN = 22000;
     const GAS_LIMIT_MAX = 10000000;
     
-    let txData = {
+    const txData = {
       nonce: 9,
       gasPrice: 1200000000,
       gasLimit: 122000,
@@ -191,7 +191,7 @@ describe('Connect and Pair', () => {
       value: 6,
       data: null
     };
-    let req = {
+    const req = {
       currency: 'ETH',
       data: {
         signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+60, HARDENED_OFFSET, 0, 0],
@@ -200,10 +200,16 @@ describe('Connect and Pair', () => {
       }
     }
 
-    // Sign a legit tx 
+    // Sign a tx that does not use EIP155 (no EIP155 on rinkeby for some reason)
     let tx = await sign(client, req);
     expect(tx.tx).to.not.equal(null);
-    // console.log(tx)
+
+    // Sign a tx with EIP155
+    req.data.chainId = 'mainnet';
+    tx = await sign(client, req);
+    expect(tx.tx).to.not.equal(null);
+    req.data.chainId = 'rinkeby';
+
 
     // Invalid chainId
     req.data.chainId = 'notachain';
@@ -214,7 +220,7 @@ describe('Connect and Pair', () => {
       expect(err).to.not.equal(null);
     }
     req.data.chainId = 'rinkeby';
-
+/*
     // Nonce too large (>u16)
     req.data.nonce = 0xffff + 1;
         try {
@@ -296,9 +302,9 @@ describe('Connect and Pair', () => {
     req.data.data = crypto.randomBytes(constants.ETH_DATA_MAX_SIZE).toString('hex');
     tx = await sign(client, req);
     expect(tx.tx).to.not.equal(null);
-
+*/
   });
-
+/*
   it('Should sign legacy Bitcoin inputs', async () => {  
     let txData = {
       prevOuts: [

@@ -170,21 +170,28 @@ class Client {
     const tx = txBuildingResolver[currency](data);
     if (tx.err !== undefined) return cb({ err: tx.err });
     // All transaction requests must be put into the same sized buffer
-    // so that checksums may be validated. The full size is 530 bytes,
+    // so that checksums may be validated. The full size is 1266 bytes,
     // but that includes a 1-byte prefix (`SIGN_TRANSACTION`), 2 bytes
     // indicating the schema type, and 4 bytes for a checksum.
-    // That leaves 514 bytes for the transaction request. It will be
-    // deserialized according to the schema type and extra zeros will be
-    // discarded.
-    const MAX_TX_REQ_DATA_SIZE = 557;
+    // Therefore, the payload itself has 1273 - 7 = 1266 bytes of space.
+    const MAX_TX_REQ_DATA_SIZE = 1266;
     if (tx.payload.length > MAX_TX_REQ_DATA_SIZE) {
       return cb('Transaction is too large');
     }
 
     // Build the payload
     const payload = Buffer.alloc(2 + MAX_TX_REQ_DATA_SIZE);
-    payload.writeUInt16BE(tx.schema, 0);
-    tx.payload.copy(payload, 2);
+    let off = 0;
+    // Copy tx request schema (e.g. ETH or BTC transfer)
+    payload.writeUInt16BE(tx.schema, off); off += 2;
+
+    // Copy the wallet UID
+    const wallet = this.getActiveWallet();
+    if (wallet === null) return cb('No active wallet.');
+    wallet.uid.copy(payload, off); off += wallet.uid.length;
+    // Build data based on the type of request
+    // Copy the payload of the tx request
+    tx.payload.copy(payload, off);
 
     // Construct the encrypted request and send it
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
@@ -491,85 +498,82 @@ class Client {
     const returnData = { err: null, data: null };
     const DERLength = 74; // max size of a DER signature -- all Lattice sigs are this long
     
-    switch (currencyType) {
-      case 'BTC':
-        const compressedPubLength = 33;  // Size of compressed public key
-        let pubkeys = [];
-        let sigs = [];
-        // Parse the signature for each output -- they are returned
-        // in the serialized payload in form [pubkey, sig]
-        // There is one signature per output
-        while (off < res.length) {
-          // Exit out if we have seen all the returned sigs and pubkeys
-          if (res[off] != 0x02 && res[off] != 0x03) break;
-          // Otherwise grab another set
-          pubkeys.push(res.slice(off, off + compressedPubLength)); off += compressedPubLength;
-          sigs.push(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;
-        }
+    if (currencyType === 'BTC') {
+      const compressedPubLength = 33;  // Size of compressed public key
+      const pubkeys = [];
+      const sigs = [];
+      // Parse the signature for each output -- they are returned
+      // in the serialized payload in form [pubkey, sig]
+      // There is one signature per output
+      while (off < res.length) {
+        // Exit out if we have seen all the returned sigs and pubkeys
+        if (res[off] !== 0x02 && res[off] !== 0x03) break;
+        // Otherwise grab another set
+        pubkeys.push(res.slice(off, off + compressedPubLength)); off += compressedPubLength;
+        sigs.push(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;
+      }
 
-        // Build the transaction data to be serialized
-        let preSerializedData = {
-          inputs: [],
-          outputs: [],
-          isSegwitSpend: tx.origData.isSegwit,
-          network: tx.origData.network,
-          crypto: this.crypto,
-        };
+      // Build the transaction data to be serialized
+      const preSerializedData = {
+        inputs: [],
+        outputs: [],
+        isSegwitSpend: tx.origData.isSegwit,
+        network: tx.origData.network,
+        crypto: this.crypto,
+      };
 
-        // First output comes from request dta
-        preSerializedData.outputs.push({
-          value: tx.origData.value,
-          recipient: tx.origData.recipient,
+      // First output comes from request dta
+      preSerializedData.outputs.push({
+        value: tx.origData.value,
+        recipient: tx.origData.recipient,
+      });
+      // Second output comes from change data
+      preSerializedData.outputs.push({
+        value: tx.changeData.value,
+        recipient: changeRecipient,
+      });
+      
+      // Add the inputs
+      for (let i = 0; i < sigs.length; i++) {
+        preSerializedData.inputs.push({
+          hash: tx.origData.prevOuts[i].txHash,
+          index: tx.origData.prevOuts[i].index,
+          sig: sigs[i],
+          pubkey: pubkeys[i],
         });
-        // Second output comes from change data
-        preSerializedData.outputs.push({
-          value: tx.changeData.value,
-          recipient: changeRecipient,
-        });
-        
-        // Add the inputs
-        for (let i = 0; i < sigs.length; i++) {
-          preSerializedData.inputs.push({
-            hash: tx.origData.prevOuts[i].txHash,
-            index: tx.origData.prevOuts[i].index,
-            sig: sigs[i],
-            pubkey: pubkeys[i],
-          });
-        }
+      }
 
-        // Finally, serialize the transaction
-        const serializedTx = bitcoin.serializeTx(preSerializedData);
+      // Finally, serialize the transaction
+      const serializedTx = bitcoin.serializeTx(preSerializedData);
 
-        // Generate the transaction hash so the user can look this transaction up later
-        let preImageTxHash = serializedTx;
-        if (preSerializedData.isSegwitSpend === true) {
-          // Segwit transactions need to be re-serialized using legacy serialization
-          // before the transaction hash is calculated. This allows legacy clients
-          // to validate the transactions.
-          preSerializedData.isSegwitSpend = false;
-          preImageTxHash = bitcoin.serializeTx(preSerializedData);
-        }  
-        let txHash = this.crypto.createHash('sha256').update(Buffer.from(preImageTxHash, 'hex')).digest();
-        txHash = this.crypto.createHash('sha256').update(txHash).digest().reverse().toString('hex');
-        
-        // Add extra data for debugging/lookup purposes
-        returnData.data = {
-          tx: serializedTx,
-          txHash,
-          changeRecipient,
-        }
-        break;
-      case 'ETH':
-        const sig = parseDER(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;
-        // Ethereum returns an address as well
-        const ethAddr = res.slice(off, off + 20);
-        // Determine the `v` param and add it to the sig before returning
-        const rawTx = ethereum.buildEthRawTx(tx, sig, ethAddr, tx.useEIP155);
-        returnData.data = {
-          tx: `0x${rawTx}`,
-          txHash: `0x${ethereum.hashTransaction(rawTx)}`,
-        };
-        break;
+      // Generate the transaction hash so the user can look this transaction up later
+      let preImageTxHash = serializedTx;
+      if (preSerializedData.isSegwitSpend === true) {
+        // Segwit transactions need to be re-serialized using legacy serialization
+        // before the transaction hash is calculated. This allows legacy clients
+        // to validate the transactions.
+        preSerializedData.isSegwitSpend = false;
+        preImageTxHash = bitcoin.serializeTx(preSerializedData);
+      }  
+      let txHash = this.crypto.createHash('sha256').update(Buffer.from(preImageTxHash, 'hex')).digest();
+      txHash = this.crypto.createHash('sha256').update(txHash).digest().reverse().toString('hex');
+      
+      // Add extra data for debugging/lookup purposes
+      returnData.data = {
+        tx: serializedTx,
+        txHash,
+        changeRecipient,
+      }
+    } else if (currencyType === 'ETH') {
+      const sig = parseDER(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;
+      // Ethereum returns an address as well
+      const ethAddr = res.slice(off, off + 20);
+      // Determine the `v` param and add it to the sig before returning
+      const rawTx = ethereum.buildEthRawTx(tx, sig, ethAddr, tx.useEIP155);
+      returnData.data = {
+        tx: `0x${rawTx}`,
+        txHash: `0x${ethereum.hashTransaction(rawTx)}`,
+      };
     }
 
     return returnData;
