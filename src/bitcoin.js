@@ -60,11 +60,12 @@ exports.scriptTypes = scriptTypes
 exports.buildBitcoinTxRequest = function(data) {
   try {
     const { prevOuts, recipient, value, changePath=DEFAULT_CHANGE, fee, isSegwit, changeVersion='SEGWIT' } = data;
-    if (changePath.length != 5) throw new Error('Please provide a full change path.')
+    if (changePath.length !== 5) throw new Error('Please provide a full change path.')
     // Serialize the request
-    const payload = Buffer.alloc(37 + (51 * prevOuts.length));
+    const payload = Buffer.alloc(59 + (69 * prevOuts.length));
     let off = 0;
     // Build the change data
+    payload.writeUInt32LE(changePath.length, off); off += 4;
     for (let i = 0; i < changePath.length; i++) {
       payload.writeUInt32LE(changePath[i], off); off += 4;
     }
@@ -87,14 +88,14 @@ exports.buildBitcoinTxRequest = function(data) {
       if (!input.signerPath || input.signerPath.length != 5) {
         throw new Error('Full recipient path not specified ')
       }
-      for (let i = 0; i < inputer.signerPath.length; i++) {
+      payload.writeUInt32LE(input.signerPath.length, off); off += 4;
+      for (let i = 0; i < input.signerPath.length; i++) {
         payload.writeUInt32LE(input.signerPath[i], off); off += 4;
       }
       payload.writeUInt32LE(input.index, off); off += 4;
       writeUInt64LE(input.value, payload, off); off += 8;
       inputSum += input.value;
       payload.writeUInt8(scriptType, off); off++;
-
       if (!Buffer.isBuffer(input.txHash)) input.txHash = Buffer.from(input.txHash, 'hex');
       input.txHash.copy(payload, off); off += input.txHash.length;
     })

@@ -7,7 +7,7 @@ const AES_IV = [0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73
 const decResLengths = {
     finalizePair: 0,     // Only contains the pubkey
     getAddresses: 1290,  // 10x 129 byte strings (128 bytes + null terminator)
-    sign: 1090,          // 1 DER signature for ETH, 10 for BTC (not all are used for BTC)
+    sign: 1070,          // 1 DER signature for ETH, 10 for BTC (not all are used for BTC)
     getWallets: 142,   // 71 bytes per wallet record (response contains internal and external)    
 }
 

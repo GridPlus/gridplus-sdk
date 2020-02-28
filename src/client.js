@@ -192,7 +192,6 @@ class Client {
     // Build data based on the type of request
     // Copy the payload of the tx request
     tx.payload.copy(payload, off);
-
     // Construct the encrypted request and send it
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
     return this._request(param, (err, res, responseCode) => {
@@ -486,7 +485,7 @@ class Client {
 
     let off = 65; // Skip past pubkey prefix
     const res = decrypted.data;
-    
+
     // Get the change data if we are making a BTC transaction
     let changeRecipient;
     if (currencyType === 'BTC') {
