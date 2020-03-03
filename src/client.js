@@ -506,12 +506,13 @@ class Client {
       // There is one signature per output
       while (off < res.length) {
         // Exit out if we have seen all the returned sigs and pubkeys
-        if (res[off] !== 0x02 && res[off] !== 0x03) break;
+        if (res[off] !== 0x30) break;
         // Otherwise grab another set
-        pubkeys.push(res.slice(off, off + compressedPubLength)); off += compressedPubLength;
+        // Note that all DER sigs returned fill the maximum 74 byte buffer, but also
+        // contain a length at off+1, which we use to parse the non-zero data.
         sigs.push(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;
+        pubkeys.push(res.slice(off, off + compressedPubLength)); off += compressedPubLength;
       }
-
       // Build the transaction data to be serialized
       const preSerializedData = {
         inputs: [],
