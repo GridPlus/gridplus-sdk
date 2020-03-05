@@ -19,7 +19,7 @@ const OP = {
 
 const txVersion = {
   MAINNET: 0x01,
-  TESTNET: 0x02,
+  TESTNET: 0x01,
 }
 
 const addressVersion = {
@@ -64,15 +64,17 @@ exports.buildBitcoinTxRequest = function(data) {
     // Serialize the request
     const payload = Buffer.alloc(59 + (69 * prevOuts.length));
     let off = 0;
+    // Change version byte (a.k.a. address format byte)
+    if (addressVersion[changeVersion] === undefined)
+      throw new Error('Invalid change version specified.');
+    payload.writeUInt8(addressVersion[changeVersion]); off++;
+
     // Build the change data
     payload.writeUInt32LE(changePath.length, off); off += 4;
     for (let i = 0; i < changePath.length; i++) {
       payload.writeUInt32LE(changePath[i], off); off += 4;
-    }
-    const scriptType = isSegwit === true ? 
-                        scriptTypes.P2SH_P2WPKH :  // Only support p2sh(p2wpkh) for segwit spends for now
-                        scriptTypes.P2PKH; // No support for multisig p2sh in v1 (p2sh == segwit here)
-    payload.writeUInt8(scriptType, off); off++; // change script type
+    }    
+
     // Fee is a param
     payload.writeUInt32LE(fee, off); off += 4;
     const recipientVersionByte = bs58.decode(recipient)[0];
@@ -81,9 +83,13 @@ exports.buildBitcoinTxRequest = function(data) {
     payload.writeUInt8(recipientVersionByte, off); off++;
     recipientPubkeyhash.copy(payload, off); off += recipientPubkeyhash.length;
     writeUInt64LE(value, payload, off); off += 8;
+
     // Build the inputs from the previous outputs
     payload.writeUInt8(prevOuts.length, off); off++;
     let inputSum = 0;
+    const scriptType = isSegwit === true ? 
+                        scriptTypes.P2SH_P2WPKH :  // Only support p2sh(p2wpkh) for segwit spends for now
+                        scriptTypes.P2PKH; // No support for multisig p2sh in v1 (p2sh == segwit here)
     prevOuts.forEach((input) => {
       if (!input.signerPath || input.signerPath.length != 5) {
         throw new Error('Full recipient path not specified ')

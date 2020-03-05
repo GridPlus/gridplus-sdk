@@ -153,11 +153,11 @@ describe('Connect and Pair', () => {
       let addrs = await getAddresses(client, addrData);
       expect(addrs.length).to.equal(5);
       expect(addrs[0][0]).to.be.oneOf(["1", "3"]);
-
       // Bitcoin testnet
       addrData.startPath[1] = HARDENED_OFFSET + 1; // BTC_TEST
       addrData.n = 1;
       addrs = await getAddresses(client, addrData, 2000);
+console.log(addrs)
       expect(addrs.length).to.equal(1);
       expect(addrs[0][0]).to.be.oneOf(["n", "m", "2"]);
       addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
@@ -202,7 +202,7 @@ describe('Connect and Pair', () => {
     }
   });
 
-
+/*
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
@@ -210,11 +210,11 @@ describe('Connect and Pair', () => {
     const GAS_LIMIT_MAX = 10000000;
     
     const txData = {
-      nonce: 9,
+      nonce: 0,
       gasPrice: 1200000000,
-      gasLimit: 122000,
+      gasLimit: 50000,
       to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-      value: 6,
+      value: 100,
       data: null
     };
     const req = {
@@ -234,7 +234,6 @@ describe('Connect and Pair', () => {
     tx = await sign(client, req);
     expect(tx.tx).to.not.equal(null);
     req.data.chainId = 'rinkeby';
-
 
     // Invalid chainId
     req.data.chainId = 'notachain';
@@ -330,22 +329,23 @@ describe('Connect and Pair', () => {
     // expect(tx.tx).to.not.equal(null);
 
   });
+*/
 
   it('Should sign legacy Bitcoin inputs', async () => {  
     let txData = {
       prevOuts: [
         { 
-          txHash: 'c0fb89034692788f4bccbec433a197d68a5eb61417b367ee1994b42be5d68ba7',
-          value: 139784,
-          index: 1,
-          signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0],
+          txHash: 'dc8afce77adcac1f9e2ea529a39e3566a9c61c0709dc1189ebcdb4ad120f4583',
+          value: 10000,
+          index: 0,
+          signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+1, HARDENED_OFFSET, 0, 0],
         },
       ],
       recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
       value: 1000,
       fee: 1000,
       isSegwit: false,
-      changePath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 1, 0],
+      changePath: [HARDENED_OFFSET+44, HARDENED_OFFSET+1, HARDENED_OFFSET, 1, 0],
       changeVersion: 'TESTNET',  // Default 'LEGACY'
       network: 'TESTNET',        // Default 'MAINNET'
     };
@@ -356,10 +356,11 @@ describe('Connect and Pair', () => {
     
     // Sign a legit tx
     let sigResp = await sign(client, req);
+console.log(sigResp)
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
-
+/*
   it('Should sign segwit Bitcoin inputs', async () => {  
     let txData = {
       prevOuts: [
@@ -394,5 +395,5 @@ describe('Connect and Pair', () => {
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
-
+*/
 });
