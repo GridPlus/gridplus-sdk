@@ -136,7 +136,6 @@ describe('Connect and Pair', () => {
     }
   })
 
-
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr === false) {
@@ -157,7 +156,7 @@ describe('Connect and Pair', () => {
       addrData.startPath[1] = HARDENED_OFFSET + 1; // BTC_TEST
       addrData.n = 1;
       addrs = await getAddresses(client, addrData, 2000);
-console.log(addrs)
+
       expect(addrs.length).to.equal(1);
       expect(addrs[0][0]).to.be.oneOf(["n", "m", "2"]);
       addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
@@ -200,9 +199,9 @@ console.log(addrs)
         expect(err).to.not.equal(null);
       }
     }
+
   });
 
-/*
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
@@ -329,15 +328,14 @@ console.log(addrs)
     // expect(tx.tx).to.not.equal(null);
 
   });
-*/
 
   it('Should sign legacy Bitcoin inputs', async () => {  
     let txData = {
       prevOuts: [
         { 
-          txHash: 'dc8afce77adcac1f9e2ea529a39e3566a9c61c0709dc1189ebcdb4ad120f4583',
+          txHash: '6e78493091f80d89a92ae3152df7fbfbdc44df09cf01a9b76c5113c02eaf2e0f',
           value: 10000,
-          index: 0,
+          index: 1,
           signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+1, HARDENED_OFFSET, 0, 0],
         },
       ],
@@ -356,32 +354,25 @@ console.log(addrs)
     
     // Sign a legit tx
     let sigResp = await sign(client, req);
-console.log(sigResp)
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
-/*
+
   it('Should sign segwit Bitcoin inputs', async () => {  
     let txData = {
       prevOuts: [
         { 
-          txHash: '08911991c5659349fa507419a20fd398d66d59e823bca1b1b94f8f19e21be44c',
-          value: 3469416,
+          txHash: 'ab8288ef207f11186af98db115aa7120aa36ceb783e8792fb7b2f39c88109a99',
+          value: 10000,
           index: 1,
-          signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0],
+          signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+1, HARDENED_OFFSET, 0, 0],
         },
-        {
-          txHash: '19e7aa056a82b790c478e619153c35195211b58923a8e74d3540f8ff1f25ecef',
-          value: 3461572,
-          index: 0,
-          signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 1],
-        }
       ],
       recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
       value: 1000,
       fee: 1000,
       isSegwit: true,
-      changePath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 1, 1],
+      changePath: [HARDENED_OFFSET+44, HARDENED_OFFSET+1, HARDENED_OFFSET, 1, 0],
       changeVersion: 'SEGWIT_TESTNET',  // Default 'LEGACY'
       network: 'TESTNET',        // Default 'MAINNET'
     };
@@ -395,5 +386,6 @@ console.log(sigResp)
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
-*/
+
+
 });

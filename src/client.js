@@ -551,7 +551,6 @@ class Client {
 
       // Finally, serialize the transaction
       const serializedTx = bitcoin.serializeTx(preSerializedData);
-
       // Generate the transaction hash so the user can look this transaction up later
       let preImageTxHash = serializedTx;
       if (preSerializedData.isSegwitSpend === true) {

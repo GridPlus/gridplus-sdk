@@ -17,11 +17,6 @@ const OP = {
   CHECKSIG: 0xac,
 }
 
-const txVersion = {
-  MAINNET: 0x01,
-  TESTNET: 0x01,
-}
-
 const addressVersion = {
   'LEGACY': 0x00,
   'SEGWIT': 0x05,
@@ -129,12 +124,11 @@ exports.buildBitcoinTxRequest = function(data) {
 // -- network = Name of network, used to determine transaction version
 // -- lockTime = Will probably always be 0
 exports.serializeTx = function(data) {
-  const { inputs, outputs, isSegwitSpend, network, lockTime=0, crypto } = data;
+  const { inputs, outputs, isSegwitSpend, lockTime=0, crypto } = data;
   let payload = Buffer.alloc(4);
   let off = 0;
-
-  // Determine the transaction version
-  const version = txVersion[network] || 1;
+  // Always use version 2
+  const version = 2;
   payload.writeUInt32LE(version, off); off += 4;
   if (isSegwitSpend === true) {
     payload = concat(payload, Buffer.from('00', 'hex')); // marker = 0x00
