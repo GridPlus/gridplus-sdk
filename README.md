@@ -18,3 +18,17 @@ If you have a Lattice1 device that is connected to the internet, you can run the
 ```
 npm test
 ```
+
+If you would like to run tests multiple times, you will need to re-pair with a fresh, random key pair using the above command.
+If you instead wish to quickly test non-pairing items, consider the following setup:
+
+```
+// Pair with a hardcoded, re-usable test key. You only need to do this ONCE!
+env REUSE_KEY=1 npm test
+
+// All subsequent tests will use the re-usable key if you specify your device ID
+// as an env variable
+env DEVICE_ID='my_device_id>' npm test
+```
+
+> Note: By default, your Lattice will utilize its on-board wallet. If you wish to test against a SafeCard, you will need to insert it and PIN it (i.e. the card needs to be set up). If you reboot your unit, you will need to remove the card and re-insert (and re-authenticate) before testing against it.

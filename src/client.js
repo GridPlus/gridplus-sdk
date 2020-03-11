@@ -192,7 +192,6 @@ class Client {
     // Build data based on the type of request
     // Copy the payload of the tx request
     tx.payload.copy(payload, off);
-
     // Construct the encrypted request and send it
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
     return this._request(param, (err, res, responseCode) => {
@@ -486,7 +485,7 @@ class Client {
 
     let off = 65; // Skip past pubkey prefix
     const res = decrypted.data;
-    
+
     // Get the change data if we are making a BTC transaction
     let changeRecipient;
     if (currencyType === 'BTC') {
@@ -497,6 +496,7 @@ class Client {
     // Start building return data
     const returnData = { err: null, data: null };
     const DERLength = 74; // max size of a DER signature -- all Lattice sigs are this long
+    const SIGS_OFFSET = 10 * DERLength; // 10 signature slots precede 10 pubkey slots
     
     if (currencyType === 'BTC') {
       const compressedPubLength = 33;  // Size of compressed public key
@@ -507,12 +507,18 @@ class Client {
       // There is one signature per output
       while (off < res.length) {
         // Exit out if we have seen all the returned sigs and pubkeys
-        if (res[off] !== 0x02 && res[off] !== 0x03) break;
+        if (res[off] !== 0x30) break;
         // Otherwise grab another set
-        pubkeys.push(res.slice(off, off + compressedPubLength)); off += compressedPubLength;
-        sigs.push(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;
+        // Note that all DER sigs returned fill the maximum 74 byte buffer, but also
+        // contain a length at off+1, which we use to parse the non-zero data.
+        // First get the signature from its slot
+        sigs.push(res.slice(off, (off + 2 + res[off + 1])));
+        // Next, shift by the full set of signatures to hit the respective pubkey
+        // NOTE: The data returned is: [<sig0>, <sig1>, ... <sig9>][<pubkey0>, <pubkey1>, ... <pubkey9>]
+        pubkeys.push(res.slice(off + SIGS_OFFSET, off + SIGS_OFFSET + compressedPubLength));
+        // Update offset to hit the next signature slot
+        off += DERLength;
       }
-
       // Build the transaction data to be serialized
       const preSerializedData = {
         inputs: [],
@@ -545,7 +551,6 @@ class Client {
 
       // Finally, serialize the transaction
       const serializedTx = bitcoin.serializeTx(preSerializedData);
-
       // Generate the transaction hash so the user can look this transaction up later
       let preImageTxHash = serializedTx;
       if (preSerializedData.isSegwitSpend === true) {
