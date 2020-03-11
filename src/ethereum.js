@@ -69,54 +69,34 @@ exports.buildEthereumTxRequest = function(data) {
     // 1. EIP155 switch and chainID
     //------------------
     txReqPayload.writeUInt8(Number(useEIP155), off); off++;
+    txReqPayload.writeUInt8(Number(chainId), off); off++;
 
-    // txReqPayload.writeUInt8(chainId, off); off++;
     // 2. BIP44 Path
     //------------------
     // First write the number of indices in this path (will probably always be 5, but
     // we want to keep this extensible)
     txReqPayload.writeUInt32LE(signerPath.length, off); off += 4;
-
     for (let i = 0; i < signerPath.length; i++) {
       txReqPayload.writeUInt32LE(signerPath[i], off); off += 4;
     }
 
     // 3. ETH TX request data
     //------------------
-
-    // Nonce
-    txReqPayload.writeUInt32LE(nonceBytes.length, off); off += 4;
-    txReqPayload.writeUInt32LE(data.nonce, off); off += 4;
-
-    // GasPrice
-    txReqPayload.writeUInt32LE(gasPriceBytes.length, off); off += 4;
-    writeUInt64LE(data.gasPrice, txReqPayload, off); off += 8;
-
-    // Gas
-    txReqPayload.writeUInt32LE(gasLimitBytes.length, off); off += 4;
-    txReqPayload.writeUInt32LE(data.gasLimit, off); off += 4;
-
-    // To
-    txReqPayload.writeUInt32LE(toBytes.length, off); off += 4;
+    txReqPayload.writeUInt32BE(data.nonce, off); off += 4;
+    writeUInt64BE(data.gasPrice, txReqPayload, off); off += 8;
+    txReqPayload.writeUInt32BE(data.gasLimit, off); off += 4;
     toBytes.copy(txReqPayload, off); off += 20;
-
-    // Value
-    txReqPayload.writeUInt32LE(valueBytes.length, off); off += 4;
-    // Reverse bytes to be interpreted as a LE u256 in firmware
-    valueBytes.reverse().copy(txReqPayload, off); off += 32;
-
+    // Place the value (a BE number) in an offset such that it
+    // can be interpreted as a number
+    const valueOff = off + 32 - valueBytes.length;
+    valueBytes.copy(txReqPayload, valueOff); off += 32;
     // Ensure data field isn't too long
     if (dataBytes && dataBytes.length > constants.ETH_DATA_MAX_SIZE) {
       return { err: `Data field too large (must be <=${constants.ETH_DATA_MAX_SIZE} bytes)` }
     }
     // Data
-    txReqPayload.writeUInt32LE(dataBytes.length, off); off += 4;
+    txReqPayload.writeUInt32BE(dataBytes.length, off); off += 4;
     dataBytes.copy(txReqPayload, off); off += 1024;
-    if (useEIP155 === true) {
-      txReqPayload.writeUInt32LE(1, off); off += 4;
-      txReqPayload.writeUInt8(chainId, off); off ++;
-    }
-
     return { 
       rawTx,
       payload: txReqPayload,
@@ -210,12 +190,12 @@ function updateRecoveryParam(v, chainId) {
   return v + (chainId * 2) + 8;
 }
 
-function writeUInt64LE(n, buf, off) {
+function writeUInt64BE(n, buf, off) {
   if (typeof n === 'number') n = n.toString(16);
   const preBuf = Buffer.alloc(8);
-  const nStr = n.length % 2 == 0 ? n.toString(16) : `0${n.toString(16)}`;
+  const nStr = n.length % 2 === 0 ? n.toString(16) : `0${n.toString(16)}`;
   const nBuf = Buffer.from(nStr, 'hex');
-  nBuf.reverse().copy(preBuf, 0);
+  nBuf.copy(preBuf, preBuf.length - nBuf.length);
   preBuf.copy(buf, off);
   return preBuf;
 }
