@@ -173,8 +173,9 @@ class Client {
     // so that checksums may be validated. The full size is 1266 bytes,
     // but that includes a 1-byte prefix (`SIGN_TRANSACTION`), 2 bytes
     // indicating the schema type, and 4 bytes for a checksum.
-    // Therefore, the payload itself has 1273 - 7 = 1266 bytes of space.
-    const MAX_TX_REQ_DATA_SIZE = 1266;
+    // Therefore, the payload itself has 1224 - 7 = 1217 bytes of space.
+    const MAX_TX_REQ_DATA_SIZE = 1152;
+
     if (tx.payload.length > MAX_TX_REQ_DATA_SIZE) {
       return cb('Transaction is too large');
     }
