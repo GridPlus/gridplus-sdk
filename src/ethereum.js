@@ -95,8 +95,9 @@ exports.buildEthereumTxRequest = function(data) {
       return { err: `Data field too large (must be <=${constants.ETH_DATA_MAX_SIZE} bytes)` }
     }
     // Data
-    txReqPayload.writeUInt32BE(dataBytes.length, off); off += 4;
+    txReqPayload.writeUInt16BE(dataBytes.length, off); off += 2;
     dataBytes.copy(txReqPayload, off); off += 1024;
+
     return { 
       rawTx,
       payload: txReqPayload,
@@ -166,8 +167,8 @@ exports.hashTransaction = function(serializedTx) {
 function ensureHexBuffer(x) {
   if (x === null || x === 0) return Buffer.alloc(0);
   else if (Buffer.isBuffer(x)) x = x.toString('hex');
-  if (typeof x == 'number') x = `${x.toString(16)}`;
-  else if (typeof x == 'string' && x.slice(0, 2) === '0x') x = x.slice(2);
+  if (typeof x === 'number') x = `${x.toString(16)}`;
+  else if (typeof x === 'string' && x.slice(0, 2) === '0x') x = x.slice(2);
   if (x.length % 2 > 0) x = `0${x}`;
   return Buffer.from(x, 'hex');
 }
