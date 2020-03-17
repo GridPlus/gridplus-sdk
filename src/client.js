@@ -483,26 +483,29 @@ class Client {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(encRes, decResLengths.sign);
     if (decrypted.err !== null ) return { err: decrypted.err };
-
-    let off = 65; // Skip past pubkey prefix
+    const PUBKEY_PREFIX_LEN = 65;
+    const PKH_PREFIX_LEN = 20;
+    let off = PUBKEY_PREFIX_LEN; // Skip past pubkey prefix
     const res = decrypted.data;
 
     // Get the change data if we are making a BTC transaction
     let changeRecipient;
     if (currencyType === 'BTC') {
       const changeVersion = bitcoin.addressVersion[tx.changeData.changeVersion];
-      const changePubkeyhash = res.slice(off, off + 20); off += 20;
+      const changePubkeyhash = res.slice(off, off + PKH_PREFIX_LEN); off += PKH_PREFIX_LEN;
       changeRecipient = bitcoin.getBitcoinAddress(changePubkeyhash, changeVersion);
     }
     // Start building return data
     const returnData = { err: null, data: null };
     const DERLength = 74; // max size of a DER signature -- all Lattice sigs are this long
     const SIGS_OFFSET = 10 * DERLength; // 10 signature slots precede 10 pubkey slots
+    const PUBKEYS_OFFSET = PUBKEY_PREFIX_LEN + PKH_PREFIX_LEN + SIGS_OFFSET;
     
     if (currencyType === 'BTC') {
       const compressedPubLength = 33;  // Size of compressed public key
       const pubkeys = [];
       const sigs = [];
+      let n = 0;
       // Parse the signature for each output -- they are returned
       // in the serialized payload in form [pubkey, sig]
       // There is one signature per output
@@ -513,12 +516,17 @@ class Client {
         // Note that all DER sigs returned fill the maximum 74 byte buffer, but also
         // contain a length at off+1, which we use to parse the non-zero data.
         // First get the signature from its slot
-        sigs.push(res.slice(off, (off + 2 + res[off + 1])));
+        const sigStart = off;
+        const sigEnd = off + 2 + res[off + 1];
+        sigs.push(res.slice(sigStart, sigEnd));
         // Next, shift by the full set of signatures to hit the respective pubkey
         // NOTE: The data returned is: [<sig0>, <sig1>, ... <sig9>][<pubkey0>, <pubkey1>, ... <pubkey9>]
-        pubkeys.push(res.slice(off + SIGS_OFFSET, off + SIGS_OFFSET + compressedPubLength));
+        const pubStart = (n * compressedPubLength) + PUBKEYS_OFFSET;
+        const pubEnd = ((n+1) * compressedPubLength) + PUBKEYS_OFFSET;
+        pubkeys.push(res.slice(pubStart, pubEnd));
         // Update offset to hit the next signature slot
         off += DERLength;
+        n += 1;
       }
       // Build the transaction data to be serialized
       const preSerializedData = {
