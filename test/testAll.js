@@ -6,9 +6,8 @@ const crypto = require('crypto');
 const question = require('readline-sync').question;
 const HARDENED_OFFSET = constants.HARDENED_OFFSET;
 const Buffer = require('buffer/').Buffer;
-let client, rl, id;
+let client, id;
 let caughtErr = false;
-const EMPTY_WALLET_UID = Buffer.alloc(32);
 
 describe('Connect and Pair', () => {
 
@@ -77,15 +76,6 @@ describe('Connect and Pair', () => {
     })
   }
 
-  function refreshWallets(client) {
-    return new Promise((resolve, reject) => {
-      client.refreshWallets((err, activeWallet) => {
-        if (err) return reject(err);
-        return resolve(activeWallet);
-      })
-    })
-  }
-
   //-------------------------------------------
   // TESTS
   //-------------------------------------------
@@ -106,7 +96,7 @@ describe('Connect and Pair', () => {
   it('Should attempt to pair with pairing secret', async () => {
     if (!process.env.DEVICE_ID) {
       expect(caughtErr).to.equal(false);
-      if (caughtErr == false) {
+      if (caughtErr === false) {
         const secret = question('Please enter the pairing secret: ');
         const pairErr = await pair(client, secret);
         caughtErr = pairErr !== null;
@@ -127,15 +117,6 @@ describe('Connect and Pair', () => {
     }
   });
 
-  it('Should refresh the wallets', async () => {
-    expect(caughtErr).to.equal(false);
-    if (caughtErr == false) {
-      const activeWallet = await refreshWallets(client);
-      expect(activeWallet).to.not.equal(null);
-      expect(activeWallet).to.not.equal(undefined);
-    }
-  })
-
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr === false) {
@@ -152,15 +133,15 @@ describe('Connect and Pair', () => {
       let addrs = await getAddresses(client, addrData);
       expect(addrs.length).to.equal(5);
       expect(addrs[0][0]).to.be.oneOf(["1", "3"]);
+
       // Bitcoin testnet
       addrData.startPath[1] = HARDENED_OFFSET + 1; // BTC_TEST
       addrData.n = 1;
       addrs = await getAddresses(client, addrData, 2000);
-
       expect(addrs.length).to.equal(1);
       expect(addrs[0][0]).to.be.oneOf(["n", "m", "2"]);
       addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
-      
+
       // Ethereum addresses
       addrData.startPath[1] = HARDENED_OFFSET + 60; // ETH currency code
       addrData.n = 1;
@@ -285,7 +266,7 @@ describe('Connect and Pair', () => {
     }
     // Reset to valid param
     req.data.gasLimit = 1200000000;
-    
+  
     // `to` wrong size
     req.data.to = '0xe242e54155b1abc71fc118065270cecaaf8b77'
         try {
@@ -316,16 +297,6 @@ describe('Connect and Pair', () => {
     } catch (err) {
       expect(err).to.not.equal(null);
     }
-
-    // Reset all values at max
-    // TODO: these may not be up to date values
-    // req.data.nonce = 0xfffe;
-    // req.data.gasLimit = GAS_LIMIT_MAX;
-    // req.data.gasPrice = GAS_PRICE_MAX;
-    // req.data.value = 123456000000000000000000;
-    // req.data.data = crypto.randomBytes(constants.ETH_DATA_MAX_SIZE).toString('hex');
-    // tx = await sign(client, req);
-    // expect(tx.tx).to.not.equal(null);
 
   });
 
