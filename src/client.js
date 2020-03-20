@@ -14,12 +14,10 @@ const {
 } = require('./util');
 const {
   ENC_MSG_LEN,
-  addressSizes,
   currencyCodes,
   decResLengths,
   deviceCodes,
   encReqCodes,
-  responseCodes,
   deviceResponses,
   REQUEST_TYPE_BYTE,
   VERSION_BYTE,
@@ -85,7 +83,7 @@ class Client {
       // Check for an active wallet. This will get bypassed if we are not paired.
       this._getActiveWallet((err) => {
         return cb(err, this.isPaired);
-      });
+      }, true);
     });
   }
 
@@ -102,7 +100,7 @@ class Client {
     const hash = this.crypto.createHash('sha256').update(preImage).digest();
     const sig = this.key.sign(hash); // returns an array, not a buffer
     const derSig = toPaddedDER(sig);
-    let payload = Buffer.concat([nameBuf, derSig]);
+    const payload = Buffer.concat([nameBuf, derSig]);
 
     // Build the request
     const param = this._buildEncRequest(encReqCodes.FINALIZE_PAIRING, payload);
@@ -126,7 +124,7 @@ class Client {
 
   getAddresses(opts, cb) {
     const { startPath, n } = opts;
-    if (startPath == undefined || n == undefined || startPath.length != 5) {
+    if (startPath === undefined || n === undefined || startPath.length !== 5) {
       return cb('Please provide `startPath` and `n` options');
     }
 
@@ -159,7 +157,7 @@ class Client {
     // [TODO] Return serialized transations + signatures (if necessary)
     //        (the response should be all the user needs to broadcast the tx)
     const { currency, data } = opts;
-    if (currency == undefined || data == undefined) {
+    if (currency === undefined || data === undefined) {
       return cb('Please provide `currency` and `data` options');
     } else if (currencyCodes[currency] === undefined) {
       return cb('Unsupported currency');
