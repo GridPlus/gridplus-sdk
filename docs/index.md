@@ -270,14 +270,12 @@ Currently, `name` and `capabilities` are not used.
 
 ## Detecting Card Insertion/Removal
 
-When a card is inserted or removed, this will affect the active wallet of the device. If you want to stay up to date on the latest wallet state, you will
-need to *refresh* the active wallet. You can do this by calling:
+When a card is inserted or removed, this will affect the active wallet of the device. If you want to stay up to date on the latest wallet state, you will need to *refresh* the active wallet. You can do this by "re-connecting":
 
 ```
-client.refreshWallets((err, activeWallet) => {
-
+client.connect((err) => {
+    activeWallet = client.getActiveWallet();
 })
 ```
 
-If there is no error, this will return the same object as `client.getActiveWallet` and you can be assured it is the current active wallet (again, this is
-the SafeCard wallet if a card that has been set up is inserted). Note that `refreshWallets()` will take a few seconds like the other encrypted requests.
+Note that you may only call `connect` with one argument once a `deviceID` has been saved, i.e. after you've called `connect` once with the device ID as the first argument.

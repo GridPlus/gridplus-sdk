@@ -75,15 +75,29 @@ class Client {
   // The response should include an ephemeral public key, which is used to
   // pair with the device in a later request
   connect(deviceId, cb) {
-    this.deviceId = deviceId;
+    // User may "re-connect" if a device ID has previously been stored
+    if (typeof deviceId === 'function') {
+      if (!this.deviceId) 
+        return cb('No device ID has been stored. Please connect with your device ID first.')
+      cb = deviceId;
+    } else {
+      // If the user passes in a device ID, connect to that device and save
+      // the new ID for future use.
+      this.deviceId = deviceId;
+    }
     const param = this._buildRequest(deviceCodes.CONNECT, this.pubKeyBytes());
     this._request(param, (err, res) => {
       if (err) return cb(err);
       this.isPaired = this._handleConnect(res);
       // Check for an active wallet. This will get bypassed if we are not paired.
-      this._getActiveWallet((err) => {
-        return cb(err, this.isPaired);
-      }, true);
+      if (this.isPaired) {
+        this._getActiveWallet((err) => {
+          return cb(err, this.isPaired);
+        }, true);
+      } else {
+        return cb(null);
+      }
+      
     });
   }
 
@@ -211,15 +225,6 @@ class Client {
       }
     })
   }
-
-  // Get the current set of active wallets from the device and update state.
-  refreshWallets(cb) {
-    this._getActiveWallet((err) => {
-      if (err) return cb(err);
-      return cb(null, this.getActiveWallet());
-    }, true)
-  }
-
 
   //=======================================================================
   // INTERNAL FUNCTIONS
