@@ -124,14 +124,10 @@ class Client {
       const errStr = this._handlePair(res);
       if (errStr) return cb(errStr);
       // Try to get the active wallet once pairing is successful
-      this._getActiveWallet(() => {
-        // Bypass the error if there is no active wallet. Instead, capture whether
-        // there is an active wallet in the response. We do not want to indicate
-        // that pairing has failed when we don't have a wallet. This error will
-        // be encountered later when getting addresses or making a signature, as
-        // they are typically downstream in most workflows.
+      this._getActiveWallet((err) => {
+        if (err) return cb(err);
         return cb(null, this.hasActiveWallet());
-      });
+      }, true);
     })  
   }
 
