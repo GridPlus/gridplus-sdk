@@ -28,7 +28,7 @@ env REUSE_KEY=1 npm test
 
 // All subsequent tests will use the re-usable key if you specify your device ID
 // as an env variable
-env DEVICE_ID='my_device_id>' npm test
+env DEVICE_ID='my_device_id' npm test
 ```
 
 > Note: By default, your Lattice will utilize its on-board wallet. If you wish to test against a SafeCard, you will need to insert it and PIN it (i.e. the card needs to be set up). If you reboot your unit, you will need to remove the card and re-insert (and re-authenticate) before testing against it.

@@ -243,7 +243,7 @@ class Client {
       return this._request(param, (err, res) => {
         if (err) {
           this._resetActiveWallets();
-          return cb('Error getting active wallet.');
+          return cb(err);
         }
         return cb(this._handleGetWallets(res));
       })
@@ -442,7 +442,7 @@ class Client {
     const decrypted = this._handleEncResponse(encRes, decResLengths.getWallets);
     if (decrypted.err !== null) return decrypted;
     const res = decrypted.data;
-    let walletUID, isPresent, name;
+    let walletUID;
     // Read the external wallet data first. If it is non-null, the external wallet will
     // be the active wallet of the device and we should save it.
     // If the external wallet is blank, it means there is no card present and we should 
@@ -471,7 +471,6 @@ class Client {
     this.activeWallets.external.name = res.slice(off+36, off+walletDescriptorLen);
     if (!walletUID.equals(EMPTY_WALLET_UID))
       hasActiveWallet = true;
-
     if (hasActiveWallet === true)
       return null;
     else
