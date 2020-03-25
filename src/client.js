@@ -346,7 +346,13 @@ class Client {
       if (parsed.err) return cb(parsed.err);
       return cb(null, parsed.data, parsed.responseCode); 
     })
-    .catch(err => { return cb(err)});
+    .catch((err) => {
+      const isTimeout = err.code === 'ECONNABORTED' && err.errno === 'ETIME';
+      if (isTimeout)
+        return cb('Timeout waiting for device. Please ensure it is connected to the internet and try again in a minute.')
+      else
+        return cb('Failed to make request to device.');
+    });
   }
 
   // ----- Device response handlers -----
