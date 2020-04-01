@@ -254,7 +254,13 @@ class Client {
   // and the ephemeral public key
   // @returns Buffer
   _getSharedSecret() {
-    return Buffer.from(this.key.derive(this.ephemeralPub.getPublic()).toArray());
+    const secret = Buffer.from(this.key.derive(this.ephemeralPub.getPublic()).toArray());
+    // Once every ~256 attempts, we will get a key that starts with a `00` byte, which
+    // `elliptic` drops. This leads to problems initializing AES
+    if (secret.length === 31)
+      return Buffer.concat([Buffer.alloc(1), secret])
+    else
+      return secret;
   }
 
   // Get the ephemeral id, which is the first 4 bytes of the shared secret
