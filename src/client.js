@@ -256,7 +256,7 @@ class Client {
   _getSharedSecret() {
     // Once every ~256 attempts, we will get a key that starts with a `00` byte, which
     // can lead to problems initializing AES if we don't force a 32 byte BE buffer.
-    Buffer.from(this.key.derive(this.ephemeralPub.getPublic()).toArray('be', 32));
+    return Buffer.from(this.key.derive(this.ephemeralPub.getPublic()).toArray('be', 32));
   }
 
   // Get the ephemeral id, which is the first 4 bytes of the shared secret
