@@ -155,7 +155,7 @@ class Client {
     const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
     return this._request(param, (err, res) => {
       if (err) return cb(err);
-      const parsedRes = this._handleGetAddresses(res, startPath);
+      const parsedRes = this._handleGetAddresses(res);
       if (parsedRes.err) return cb(parsedRes.err);
       return cb(null, parsedRes.data);
     })
@@ -418,7 +418,7 @@ class Client {
   }
 
   // GetAddresses will return an array of address strings
-  _handleGetAddresses(encRes, path) {
+  _handleGetAddresses(encRes) {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(encRes, decResLengths.getAddresses);
     if (decrypted.err !== null ) return decrypted;
@@ -426,22 +426,14 @@ class Client {
     const addrData = decrypted.data;
     let off = 65; // Skip 65 byte pubkey prefix
     // Look for addresses until we reach the end (a 4 byte checksum)
-    let addrs = [];
+    const addrs = [];
     while (off + 4 < decResLengths.getAddresses) {
       // Addresses are 129 byte char buffers.
       const addrBytes = addrData.slice(off, off+129); off += 129;
       // Return the UTF-8 representation
       const len = addrBytes.indexOf(0); // First 0 is the null terminator
-      if (len > 0) {
-        switch (path[1]) {
-          case HARDENED_OFFSET + 60: // Ethereum
-            addrs.push(`0x${addrBytes.slice(0, len).toString('hex')}`);
-            break;
-          default: // Bitcoin (and others)
-            addrs.push(addrBytes.slice(0, len).toString());
-            break;
-        }
-      }
+      if (len > 0)
+        addrs.push(addrBytes.slice(0, len).toString());
     }
     return { data: addrs, err: null };
   }
