@@ -238,6 +238,7 @@ The returned `signedTx` object has the following properties:
 |:----------|:------------------|:--------|:---------------|
 | ETH / BTC | `tx`              | string  | Ready-to-broadcast, serialized transaction + signature payload |
 | ETH / BTC | `txHash`          | string  | Hash of the transaction for lookup on the relevant block explorer |
+| ETH       | `sig`             | object  | Contains `v` (int), `r` (string), and `s` (string) signature params |
 | BTC       | `changeRecipient` | string  | Lattice wallet address that recieved the BTC change |
 
 
