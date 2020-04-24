@@ -107,7 +107,7 @@ exports.buildEthereumTxRequest = function(data) {
       signerPath,
     };
   } catch (err) {
-    return { err };
+    return { err: err.message };
   }
 }
 

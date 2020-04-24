@@ -585,6 +585,11 @@ class Client {
       returnData.data = {
         tx: `0x${rawTx}`,
         txHash: `0x${ethereum.hashTransaction(rawTx)}`,
+         sig: {
+          v: sig.v,
+          r: sig.r.toString('hex'),
+          s: sig.s.toString('hex'),
+        },
       };
     }
 
