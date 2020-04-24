@@ -108,7 +108,7 @@ describe('Connect and Pair', () => {
 
   it('Should try to connect again but recognize the pairing already exists', async () => {
     expect(caughtErr).to.equal(false);
-    if (caughtErr == false) {
+    if (caughtErr === false) {
       const connectErr = await connect(client, id);
       caughtErr = connectErr !== null;
       expect(connectErr).to.equal(null);
@@ -129,17 +129,16 @@ describe('Connect and Pair', () => {
       // Bitcoin addresses
       // NOTE: The format of address will be based on the user's Lattice settings
       //       By default, this will be P2SH(P2WPKH), i.e. addresses that start with `3`
-      let isError;
       let addrs = await getAddresses(client, addrData);
       expect(addrs.length).to.equal(5);
-      expect(addrs[0][0]).to.be.oneOf(["1", "3"]);
+      expect(addrs[0][0]).to.be.oneOf(['1', '3']);
 
       // Bitcoin testnet
       addrData.startPath[1] = HARDENED_OFFSET + 1; // BTC_TEST
       addrData.n = 1;
       addrs = await getAddresses(client, addrData, 2000);
       expect(addrs.length).to.equal(1);
-      expect(addrs[0][0]).to.be.oneOf(["n", "m", "2"]);
+      expect(addrs[0][0]).to.be.oneOf(['n', 'm', '2']);
       addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
 
       // Ethereum addresses
@@ -301,7 +300,7 @@ describe('Connect and Pair', () => {
   });
 
   it('Should sign legacy Bitcoin inputs', async () => {  
-    let txData = {
+    const txData = {
       prevOuts: [
         { 
           txHash: '6e78493091f80d89a92ae3152df7fbfbdc44df09cf01a9b76c5113c02eaf2e0f',
@@ -318,19 +317,19 @@ describe('Connect and Pair', () => {
       changeVersion: 'TESTNET',  // Default 'LEGACY'
       network: 'TESTNET',        // Default 'MAINNET'
     };
-    let req = {
+    const req = {
       currency: 'BTC',
       data: txData,
     };
     
     // Sign a legit tx
-    let sigResp = await sign(client, req);
+    const sigResp = await sign(client, req);
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
 
   it('Should sign segwit Bitcoin inputs', async () => {  
-    let txData = {
+    const txData = {
       prevOuts: [
         { 
           txHash: 'ab8288ef207f11186af98db115aa7120aa36ceb783e8792fb7b2f39c88109a99',
@@ -347,13 +346,13 @@ describe('Connect and Pair', () => {
       changeVersion: 'SEGWIT_TESTNET',  // Default 'LEGACY'
       network: 'TESTNET',        // Default 'MAINNET'
     };
-    let req = {
+    const req = {
       currency: 'BTC',
       data: txData,
     };
     
     // Sign a legit tx
-    let sigResp = await sign(client, req);
+    const sigResp = await sign(client, req);
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
