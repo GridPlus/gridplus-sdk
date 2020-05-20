@@ -185,7 +185,7 @@ describe('Connect and Pair', () => {
 
     // GasLimit too high (>u32)
     req.data.gasLimit = GAS_LIMIT_MAX + 1;
-        try {
+    try {
       tx = await(helpers.sign(client, req));
       expect(tx.tx).to.equal(null);
     } catch (err) {

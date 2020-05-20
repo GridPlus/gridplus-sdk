@@ -32,3 +32,11 @@ env DEVICE_ID='my_device_id' npm test
 ```
 
 > Note: By default, your Lattice will utilize its on-board wallet. If you wish to test against a SafeCard, you will need to insert it and PIN it (i.e. the card needs to be set up). If you reboot your unit, you will need to remove the card and re-insert (and re-authenticate) before testing against it.
+
+### Range Tests
+
+Once you have paired with a device in a re-usable way (i.e. using the commands above ^), you can run a more robust test suite around transactions:
+
+```
+env DEVICE_ID='my_device_id' npm run test-eth
+```
