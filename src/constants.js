@@ -72,7 +72,7 @@ const signingSchema = {
     ERC20_TRANSFER: 2
 }
 
-const ETH_DATA_MAX_SIZE = 100; // Maximum number of bytes that can go in the data field
+const ETH_DATA_MAX_SIZE = 1000; // Maximum number of bytes that can go in the data field
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
 const VERSION_BYTE = 1;
 const HARDENED_OFFSET = 0x80000000; // Hardened offset

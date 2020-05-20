@@ -9,7 +9,7 @@
     "precommit": "npm run lint:fix && npm run test",
     "prepublish": "",
     "postinstall": "",
-    "test": "mocha --timeout 120000 -R spec test/ --recursive --exit"
+    "test": "mocha --timeout 120000 -R spec test/testAll.js --recursive --exit"
   },
   "main": "./index.js",
   "repository": {

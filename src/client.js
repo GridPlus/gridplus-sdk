@@ -23,7 +23,6 @@ const {
   VERSION_BYTE,
   messageConstants,
   BASE_URL,
-  HARDENED_OFFSET,
 } = require('./constants');
 const Buffer = require('buffer/').Buffer;
 const EMPTY_WALLET_UID = Buffer.alloc(32);
@@ -451,7 +450,6 @@ class Client {
     const walletDescriptorLen = 71;
     // Skip 65byte pubkey prefix. WalletDescriptor contains 32byte id + 4byte flag + 35byte name
     let off = 65;
-
     // Internal first
     let hasActiveWallet = false;
     walletUID = res.slice(off, off+32);
