@@ -17,6 +17,7 @@
 require('it-each')({ testPerIteration: true });
 const expect = require('chai').expect;
 const helpers = require('./testUtil/helpers');
+const crypto = require('crypto');
 let client;
 
 // Bitcoin specific functionality/setup
@@ -34,71 +35,18 @@ if (process.env.PASSWORD)
 const seed = bip39.mnemonicToSeedSync(MNEMONIC, PASSWORD)
 const wallet = bip32.fromSeed(seed)
 
-const inputs = [
-  {
-    hash: '5be4d21e26d8adb9919a4cf77db04cb9d79138955d7ab4940b835e384f4fb663',
-    value: 42118245,
-    signerIdx: 0,
-    idx: 5,
-  },
-  {
-    hash: '4aabfd94c1803057faf4610d4f5a38913887e2ede22a3ff3ed7e23d141373b5a',
-    value: 78649247,
-    signerIdx: 1,
-    idx: 5,
-  },
-  {
-    hash: '40c579f94927faf2cf40d3093ed55752e8514f13a401df25ad8e3aefeba51668',
-    value: 69162416,
-    signerIdx: 2,
-    idx: 5,
-  },
-  {
-    hash: 'd6811ae63af8a314143d70c55f5660e0ae19f01b15580f642871699d58a37739',
-    value: 71286356,
-    signerIdx: 3,
-    idx: 5,
-  },
-  {
-    hash: '4d1226ad184396d401e9ccb6925c3f5b43f1d0ce647065c267a11ef8b03d4395',
-    value: 54482146,
-    signerIdx: 4,
-    idx: 5,
-  },
-  {
-    hash: '2a5c2070a511646eec772b9b366fd9510864e5b849d01b19e1b31afe6ab9d96a',
-    value: 3474291,
-    signerIdx: 5,
-    idx: 5,
-  },
-  {
-    hash: '6d4c560fb43a752edc0b9a34afe4e093994e63c3a43d7b1c03e40164710bdfd6',
-    value: 19088329,
-    signerIdx: 6,
-    idx: 5,
-  },
-  {
-    hash: 'fb8d9b4f57d5304579f65b3b33e0e3ae9206358f384336f9e0b7e5611fc6353b',
-    value: 69440062,
-    signerIdx: 7,
-    idx: 5,
-  },
-  {
-    hash: '5849b0e66d59cc21c6e2b091ea35706741416962f994d9b7f6f64f13572ddcc9',
-    value: 74499838,
-    signerIdx: 11, // this value doesn't really matter, but it should be <19 to avoid wallet caching issues on the Lattice
-    idx: 5,
-  },
-  {
-    hash: '3391104648b65bb140764ea557cf0f3fab8b2c43e011e0a59ca4e26fc0cb583e',
-    value: 99114960,
-    signerIdx: 12,
-    idx: 5,
-  }
-];
+// Build the inputs. By default we will build 10. Note that there are `n` tests for
+// *each category*, where `n` is the number of inputs.
+const inputs = [];
 const numInputs = [];
-for (let i = 1; i < 3; i++) {
-  numInputs.push({ label: `${i}`, number: i })
+const count = process.env.N ? process.env.N : 10;
+for (let i = 0; i < count; i++) {
+  const hash = crypto.randomBytes(32).toString('hex');
+  const value = Math.floor(Math.random() * 1000000 * 10**8); // Random value up to 1M BTC ;)
+  const signerIdx = Math.floor(Math.random() * 19); // Random signer (keep it inside initial cache of 20)
+  const idx = Math.floor(Math.random() * 25); // Random previous output index (keep it small)
+  inputs.push({hash, value, signerIdx, idx });
+  numInputs.push({ label: `${i+1}`, number: i+1 });
 }
 
 async function testSign(req, signingKeys, sigHashes) {
@@ -133,17 +81,11 @@ describe('legacy, testnet, change', function(){
 
     it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
       const inputsSlice = inputs.slice(0, n.number);
-      const recipient = 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT'
-      const sumInputs = helpers.getSumInputs(inputsSlice);
-
-      const fee = Math.floor(Math.random() * 50000)
-      const value = Math.floor(Math.random() * sumInputs) - fee;
-      const sigHashes = helpers.get_legacy_sighashes(wallet, recipient, value, fee, inputsSlice, true);
-      const signingKeys = helpers.get_signing_keys(wallet, inputsSlice, true);
-      const txReq = helpers.tx_request_builder(inputsSlice, recipient, value, fee, false, true);
-
+      const isTestnet = true;
+      const isSegwit = false;
+      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, wallet, inputsSlice);
       try {
-        await testSign(txReq, signingKeys, sigHashes);
+        await testSign(p.txReq, p.signingKeys, p.sigHashes);
         next();
       } catch (err) {
         next(err);
@@ -156,17 +98,11 @@ describe('legacy, mainnet, change', function(){
 
     it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
       const inputsSlice = inputs.slice(0, n.number);
-      const recipient = '1KFHE7w8BhaENAswwryaoccDb6qcT6DbYY'
-      const sumInputs = helpers.getSumInputs(inputsSlice);
-
-      const fee = Math.floor(Math.random() * 50000)
-      const value = Math.floor(Math.random() * sumInputs) - fee;
-      const sigHashes = helpers.get_legacy_sighashes(wallet, recipient, value, fee, inputsSlice, false);
-      const signingKeys = helpers.get_signing_keys(wallet, inputsSlice, false);
-      const txReq = helpers.tx_request_builder(inputsSlice, recipient, value, fee, false, false);
-
+      const isTestnet = false;
+      const isSegwit = false;
+      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, wallet, inputsSlice);
       try {
-        await testSign(txReq, signingKeys, sigHashes);
+        await testSign(p.txReq, p.signingKeys, p.sigHashes);
         next();
       } catch (err) {
         next(err);
@@ -175,4 +111,37 @@ describe('legacy, mainnet, change', function(){
 
 });
 
+describe('segwit, testnet, change', function(){
+
+    it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
+      const inputsSlice = inputs.slice(0, n.number);
+      const isTestnet = true;
+      const isSegwit = true;
+      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, wallet, inputsSlice);
+      try {
+        await testSign(p.txReq, p.signingKeys, p.sigHashes);
+        next();
+      } catch (err) {
+        next(err);
+      }
+    });
+
+});
+
+describe('segwit, mainnet, change', function(){
+
+    it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
+      const inputsSlice = inputs.slice(0, n.number);
+      const isTestnet = false;
+      const isSegwit = true;
+      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, wallet, inputsSlice);
+      try {
+        await testSign(p.txReq, p.signingKeys, p.sigHashes);
+        next();
+      } catch (err) {
+        next(err);
+      }
+    });
+
+});
 
