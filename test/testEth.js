@@ -58,8 +58,6 @@ describe('Test ETH Transactions', () => {
 
   before(() => {
     client = helpers.setupTestClient(process.env);
-    if (process.env.DEVICE_ID)
-      id = process.env.DEVICE_ID;
   });
 
   it('Should connect to a Lattice and make sure it is already paired.', async () => {

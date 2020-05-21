@@ -203,7 +203,7 @@ class Client {
     // Construct the encrypted request and send it
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
     return this._request(param, (err, res, responseCode) => {
-      if (responseCode == deviceResponses.ERR_WRONG_WALLET_UID) {
+      if (responseCode === deviceResponses.ERR_WRONG_WALLET_UID) {
         // If we catch a case where the wallet has changed, try getting the new active wallet
         // and recursively make the original request.
         this._getActiveWallet((err) => {
@@ -573,6 +573,7 @@ class Client {
         tx: serializedTx,
         txHash,
         changeRecipient,
+        sigs,
       }
     } else if (currencyType === 'ETH') {
       const sig = parseDER(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;
