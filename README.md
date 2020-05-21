@@ -54,7 +54,7 @@ Bitcoin tests cover legacy and segwit spends on both mainnet and testnet. They a
 1. Build a wallet using a mnemonic. There is a default mnemonic matching other GridPlus tests, but you can pass your own in with the `env` param `MNEMONIC`. This mnemonic **must** match the wallet on your Lattice or none of these tests will work.
 2. Build a bunch of randomized inputs. The number defaults to 10, but you can define a number with the `env` param `N`.
 3. Use `bitcoinjs-lib` to generate a series of sighashes corresponding to the inputs. These first need to be signed with the respective keys, which can be derived using the wallet from step 1.
-4. Build the Lattice request with the same inputs. You will get `N` signatures back from the Lattice (in addition to a fully broadcastable transaction payload, which we do not use in these tests).
+4. Build the Lattice request with the same inputs. You will get `N` signatures back from the Lattice (in addition to a fully broadcastable transaction payload, which we do not use in these tests). Note that `N` must be <11, as the Lattice will only sign up to 10 inputs together.
 5. With the `bitcoinjs-lib` sighashes, the derived keys from the wallet, and now signatures from the Lattice, we validate the signatures against the sighashes. If the validation passes, it means we built the correct sighash in the Lattice and signed it with the correct derived key.
 
 Run the tests with:
