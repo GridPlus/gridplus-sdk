@@ -253,11 +253,12 @@ function _generate_btc_address(isTestnet, isSegwit) {
   return obj.address;
 }
 
-function setup_btc_sig_test(isTestnet, isSegwit, wallet, inputs) {
+function setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputs) {
     const recipient = _generate_btc_address(isTestnet, isSegwit);
     const sumInputs = _getSumInputs(inputs);
     const fee = Math.floor(Math.random() * 50000)
-    const value = Math.floor(Math.random() * sumInputs) - fee;
+    const _value = useChange === true ? Math.floor(Math.random() * sumInputs) : sumInputs;
+    const value = _value - fee;
     const sigHashes = _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestnet, isSegwit);
     const signingKeys = _get_signing_keys(wallet, inputs, isTestnet);
     const txReq = _tx_request_builder(inputs, recipient, value, fee, isSegwit, isTestnet);

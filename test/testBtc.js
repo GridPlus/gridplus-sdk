@@ -83,7 +83,8 @@ describe('legacy, testnet, change', function(){
       const inputsSlice = inputs.slice(0, n.number);
       const isTestnet = true;
       const isSegwit = false;
-      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, wallet, inputsSlice);
+      const useChange = true;
+      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice);
       try {
         await testSign(p.txReq, p.signingKeys, p.sigHashes);
         next();
@@ -100,7 +101,8 @@ describe('legacy, mainnet, change', function(){
       const inputsSlice = inputs.slice(0, n.number);
       const isTestnet = false;
       const isSegwit = false;
-      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, wallet, inputsSlice);
+      const useChange = true;
+      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice);
       try {
         await testSign(p.txReq, p.signingKeys, p.sigHashes);
         next();
@@ -117,7 +119,8 @@ describe('segwit, testnet, change', function(){
       const inputsSlice = inputs.slice(0, n.number);
       const isTestnet = true;
       const isSegwit = true;
-      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, wallet, inputsSlice);
+      const useChange = true;
+      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice);
       try {
         await testSign(p.txReq, p.signingKeys, p.sigHashes);
         next();
@@ -134,7 +137,44 @@ describe('segwit, mainnet, change', function(){
       const inputsSlice = inputs.slice(0, n.number);
       const isTestnet = false;
       const isSegwit = true;
-      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, wallet, inputsSlice);
+      const useChange = true;
+      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice);
+      try {
+        await testSign(p.txReq, p.signingKeys, p.sigHashes);
+        next();
+      } catch (err) {
+        next(err);
+      }
+    });
+
+});
+
+describe('segwit, mainnet, no change', function(){
+
+    it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
+      const inputsSlice = inputs.slice(0, n.number);
+      const isTestnet = false;
+      const isSegwit = true;
+      const useChange = false;
+      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice, useChange);
+      try {
+        await testSign(p.txReq, p.signingKeys, p.sigHashes);
+        next();
+      } catch (err) {
+        next(err);
+      }
+    });
+
+});
+
+describe('legacy, mainnet, no change', function(){
+
+    it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
+      const inputsSlice = inputs.slice(0, n.number);
+      const isTestnet = false;
+      const isSegwit = false;
+      const useChange = false;
+      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice, useChange);
       try {
         await testSign(p.txReq, p.signingKeys, p.sigHashes);
         next();
