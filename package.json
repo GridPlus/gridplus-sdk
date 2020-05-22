@@ -9,7 +9,9 @@
     "precommit": "npm run lint:fix && npm run test",
     "prepublish": "",
     "postinstall": "",
-    "test": "mocha --timeout 120000 -R spec test/ --recursive --exit"
+    "test": "mocha --timeout 120000 -R spec test/testAll.js --recursive --exit",
+    "test-eth": "mocha --timeout 180000 -R spec test/testEth.js --recursive --exit",
+    "test-btc": "mocha --timeout 180000 -R spec test/testBtc.js --recursive --exit"
   },
   "main": "./index.js",
   "repository": {
@@ -20,7 +22,7 @@
     "aes-js": "^3.1.1",
     "bs58": "^4.0.1",
     "bs58check": "^2.1.2",
-    "buffer": "^5.1.0",
+    "buffer": "^5.6.0",
     "crc-32": "^1.2.0",
     "elliptic": "^6.4.0",
     "js-sha3": "^0.8.0",
@@ -29,13 +31,17 @@
     "superagent": "^3.8.3"
   },
   "devDependencies": {
+    "bip32": "^1.0.4",
+    "bip39": "^3.0.2",
+    "bitcoinjs-lib": "4.0.3",
     "chai": "^4.2.0",
     "eslint": "^5.9.0",
     "eslint-config-standard": "^12.0.0",
-    "eslint-plugin-import": "^2.7.0",
+    "eslint-plugin-import": "^2.20.2",
     "eslint-plugin-node": "^8.0.0",
     "eslint-plugin-promise": "^4.0.1",
     "eslint-plugin-standard": "^4.0.0",
+    "it-each": "^0.4.0",
     "mocha": "^5.2.0",
     "readline-sync": "^1.4.9"
   },
