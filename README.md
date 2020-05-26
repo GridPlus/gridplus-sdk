@@ -39,13 +39,18 @@ Once you have paired with a device in a re-usable way (i.e. using the commands a
 
 **ETH**
 
-Ethereum tests are really just boundary checks on transaction params and are not randomized. You can run the suite with:
+Ethereum tests include both boundary checks on transaction params and randomized test vectors (20 by default). You can run the suite with:
 
 ```
 env DEVICE_ID='my_device_id' npm run test-eth
 ```
 
-> TODO: Add more tests with randomized params and EIP155 status
+If you wish to do more or fewer than 20 random transaction tests, you can specify the `N` param:
+
+```
+env DEVICE_ID='my_device_id' N=25 npm run test-eth
+```
+
 
 **BTC**
 
