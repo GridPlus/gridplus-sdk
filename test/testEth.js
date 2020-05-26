@@ -14,11 +14,20 @@
 //
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)
+require('it-each')({ testPerIteration: true });
+const crypto = require('crypto');
 const constants = require('./../src/constants')
 const expect = require('chai').expect;
 const helpers = require('./testUtil/helpers');
 const HARDENED_OFFSET = constants.HARDENED_OFFSET;
 let client;
+let numRandom = 20; // Number of random tests to conduct
+const randomTxData = [];
+const randomTxDataLabels = [];
+const ETH_GAS_LIMIT_MIN = 22000;        // Ether transfer (smallest op) is 22k gas
+const ETH_GAS_LIMIT_MAX = 10000000;     // 10M is bigger than the block size
+const ETH_GAS_PRICE_MAX = 500000000000; // 500,000,000,000 = 500 GWei - no one should need more
+const ETH_GAS_PRICE_MIN = 1000000;      // 1,000,000 = 0.001 GWei - minimum
 
 const defaultTxData = {
   nonce: 0,
@@ -29,13 +38,30 @@ const defaultTxData = {
   data: null
 };
 
-function buildReq(txData) {
+function buildRandomTxData() {
+  // Constants from firmware
+  for (let i = 0; i < numRandom; i++) {
+    const tx = {
+      nonce: Math.floor(Math.random() * 16000),
+      gasPrice: ETH_GAS_PRICE_MIN + Math.floor(Math.random() * (ETH_GAS_PRICE_MAX - ETH_GAS_PRICE_MIN)),
+      gasLimit: ETH_GAS_LIMIT_MIN + Math.floor(Math.random() * (ETH_GAS_LIMIT_MAX - ETH_GAS_LIMIT_MIN)),
+      value: Math.floor(Math.random() * 10**Math.floor(Math.random()*30)),
+      to: `0x${crypto.randomBytes(20).toString('hex')}`,
+      data: `0x${crypto.randomBytes(Math.floor(Math.random() * 100)).toString('hex')}`,
+      // data: null
+    }
+    randomTxData.push(tx);
+    randomTxDataLabels.push({ label: `${i+1}/${numRandom}`, number: i })
+  }
+}
+
+function buildReq(txData, network='mainnet') {
   return {
     currency: 'ETH',
     data: {
       signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+60, HARDENED_OFFSET, 0, 0],
       ...txData,
-      chainId: 'rinkeby'
+      chainId: network
     }
   }
 }
@@ -54,9 +80,16 @@ async function testFail(req) {
   }
 }
 
-describe('Test ETH Transactions', () => {
+
+// Build the random tx vectors
+if (process.env.N)
+  numRandom = parseInt(process.env.N);
+buildRandomTxData();
+
+describe('Test ETH Tx Params', () => {
 
   before(() => {
+    // Setup SDK client
     client = helpers.setupTestClient(process.env);
   });
 
@@ -112,17 +145,17 @@ describe('Test ETH Transactions', () => {
     const txData = JSON.parse(JSON.stringify(defaultTxData));
     
     // Expected passes
-    txData.gasPrice = 1000000;
+    txData.gasPrice = ETH_GAS_PRICE_MIN;
     await testPass(buildReq(txData))
-    txData.gasPrice = 100000000000;
+    txData.gasPrice = ETH_GAS_PRICE_MAX;
     await testPass(buildReq(txData))
 
     // Expected failures
     txData.gasPrice = 0;
     await testFail(buildReq(txData))
-    txData.gasPrice = 999999;
+    txData.gasPrice = ETH_GAS_PRICE_MIN - 1;
     await testFail(buildReq(txData))
-    txData.gasPrice = 100000000001;
+    txData.gasPrice = ETH_GAS_PRICE_MAX + 1;
     await testFail(buildReq(txData))
   });
 
@@ -130,17 +163,17 @@ describe('Test ETH Transactions', () => {
     const txData = JSON.parse(JSON.stringify(defaultTxData));
     
     // Expected passes
-    txData.gasLimit = 22000;
+    txData.gasLimit = ETH_GAS_LIMIT_MIN;
     await testPass(buildReq(txData))
-    txData.gasLimit = 50000000;
+    txData.gasLimit = ETH_GAS_LIMIT_MAX;
     await testPass(buildReq(txData))
 
     // Expected failures
     txData.gasLimit = 0;
     await testFail(buildReq(txData))
-    txData.gasLimit = 21999;
+    txData.gasLimit = ETH_GAS_LIMIT_MIN - 1;
     await testFail(buildReq(txData))
-    txData.gasLimit = 50000001;
+    txData.gasLimit = ETH_GAS_LIMIT_MAX + 1;
     await testFail(buildReq(txData))
   });
 
@@ -175,4 +208,28 @@ describe('Test ETH Transactions', () => {
     txData.nonce = 4294967296;
     await testFail(buildReq(txData))
   });
+
+  it('Should test EIP155', async () => {
+    const txData = JSON.parse(JSON.stringify(defaultTxData));
+    await testPass(buildReq(txData, 'rinkeby')) // Does NOT use EIP155
+    await testPass(buildReq(txData, 'mainnet')) // Uses EIP155
+  });
+
 });
+
+describe('Test random transaction data', function() {
+  it.each(randomTxDataLabels, 'Random transaction %s', ['label'], async function(n, next) {
+    const txData = randomTxData[n.number];
+    const r = Math.round(Math.random())
+    // const network = r === 1 ? 'rinkeby' : 'mainnet';
+    const network = 'mainnet'
+    try {
+      await testPass(buildReq(txData, network))
+      next();
+    } catch (err) {
+      console.log(txData, network)
+      next(err);
+    }
+
+  })
+})

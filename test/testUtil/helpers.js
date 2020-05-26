@@ -270,6 +270,7 @@ function setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputs) {
 }
 
 
+
 exports.setupTestClient = setupTestClient;
 exports.connect = connect;
 exports.pair = pair;
