@@ -16,6 +16,7 @@
 //        root CMakeLists.txt file (for dev units)
 require('it-each')({ testPerIteration: true });
 const crypto = require('crypto');
+const EthTx = require('ethereumjs-tx').Transaction;
 const constants = require('./../src/constants')
 const expect = require('chai').expect;
 const helpers = require('./testUtil/helpers');
@@ -48,7 +49,6 @@ function buildRandomTxData() {
       value: Math.floor(Math.random() * 10**Math.floor(Math.random()*30)),
       to: `0x${crypto.randomBytes(20).toString('hex')}`,
       data: `0x${crypto.randomBytes(Math.floor(Math.random() * 100)).toString('hex')}`,
-      // data: null
     }
     randomTxData.push(tx);
     randomTxDataLabels.push({ label: `${i+1}/${numRandom}`, number: i })
@@ -68,7 +68,19 @@ function buildReq(txData, network='mainnet') {
 
 async function testPass(req) {
   const tx = await helpers.sign(client, req);
+  // Make sure there is transaction data returned
+  // (this is ready for broadcast)
   expect(tx.tx).to.not.equal(null);
+  const txData = {
+    ...req.data,
+    v: tx.sig.v,
+    r: `0x${tx.sig.r}`,
+    s: `0x${tx.sig.s}`,
+  }
+  // Check the transaction data against a reference implementation
+  // (ethereumjs-tx)
+  const expectedTx = new EthTx(txData, { chain: req.data.chainId }).serialize()
+  expect(tx.tx).to.equal(`0x${expectedTx.toString('hex')}`)
 }
 
 async function testFail(req) {
@@ -208,7 +220,6 @@ describe('Test ETH Tx Params', () => {
     txData.nonce = 4294967296;
     await testFail(buildReq(txData))
   });
-
   it('Should test EIP155', async () => {
     const txData = JSON.parse(JSON.stringify(defaultTxData));
     await testPass(buildReq(txData, 'rinkeby')) // Does NOT use EIP155
@@ -221,8 +232,7 @@ describe('Test random transaction data', function() {
   it.each(randomTxDataLabels, 'Random transaction %s', ['label'], async function(n, next) {
     const txData = randomTxData[n.number];
     const r = Math.round(Math.random())
-    // const network = r === 1 ? 'rinkeby' : 'mainnet';
-    const network = 'mainnet'
+    const network = r === 1 ? 'rinkeby' : 'mainnet';
     try {
       await testPass(buildReq(txData, network))
       next();
