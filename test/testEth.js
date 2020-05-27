@@ -71,14 +71,18 @@ async function testPass(req) {
   // Make sure there is transaction data returned
   // (this is ready for broadcast)
   expect(tx.tx).to.not.equal(null);
+    
+  // Check the transaction data against a reference implementation
+  // (ethereumjs-tx)
   const txData = {
     ...req.data,
     v: tx.sig.v,
     r: `0x${tx.sig.r}`,
     s: `0x${tx.sig.s}`,
   }
-  // Check the transaction data against a reference implementation
-  // (ethereumjs-tx)
+  // There is one test where we submit an address without the prefix
+  if (txData.to.slice(0, 2) !== '0x')
+    txData.to = `0x${txData.to}`
   const expectedTx = new EthTx(txData, { chain: req.data.chainId }).serialize()
   expect(tx.tx).to.equal(`0x${expectedTx.toString('hex')}`)
 }
