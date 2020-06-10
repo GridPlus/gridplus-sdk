@@ -1,6 +1,6 @@
 {
   "name": "gridplus-sdk",
-  "version": "0.4.8-dev",
+  "version": "0.4.10-dev",
   "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
     "commit": "git-cz",
@@ -27,10 +27,11 @@
     "elliptic": "^6.4.0",
     "js-sha3": "^0.8.0",
     "rlp-browser": "^1.0.1",
-    "secp256k1": "^3.7.1",
+    "secp256k1": "3.7.1",
     "superagent": "^3.8.3"
   },
   "devDependencies": {
+    "acorn": ">=6.4.1",
     "bip32": "^1.0.4",
     "bip39": "^3.0.2",
     "bitcoinjs-lib": "4.0.3",
@@ -43,6 +44,7 @@
     "eslint-plugin-standard": "^4.0.0",
     "ethereumjs-tx": "^2.1.2",
     "it-each": "^0.4.0",
+    "minimist": ">=0.2.1",
     "mocha": "^5.2.0",
     "readline-sync": "^1.4.9"
   },

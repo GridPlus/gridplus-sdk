@@ -73,20 +73,20 @@ describe('Connect and Pair', () => {
       expect(addrs.length).to.equal(5);
       expect(addrs[0][0]).to.be.oneOf(['1', '3']);
 
-      // Bitcoin testnet
-      addrData.startPath[1] = HARDENED_OFFSET + 1; // BTC_TEST
-      addrData.n = 1;
-      addrs = await helpers.getAddresses(client, addrData, 2000);
-      expect(addrs.length).to.equal(1);
-      expect(addrs[0][0]).to.be.oneOf(['n', 'm', '2']);
-      addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
-
       // Ethereum addresses
       addrData.startPath[1] = HARDENED_OFFSET + 60; // ETH currency code
       addrData.n = 1;
       addrs = await helpers.getAddresses(client, addrData, 2000);
       expect(addrs.length).to.equal(1);
       expect(addrs[0].slice(0, 2)).to.equal('0x');
+      addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
+
+      // Bitcoin testnet
+      addrData.startPath[1] = HARDENED_OFFSET + 1; // BTC_TEST
+      addrData.n = 1;
+      addrs = await helpers.getAddresses(client, addrData, 2000);
+      expect(addrs.length).to.equal(1);
+      expect(addrs[0][0]).to.be.oneOf(['n', 'm', '2']);
       addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
 
       // Failure cases
