@@ -45,26 +45,37 @@ const addressSizes = {
 }
   
 const responseCodes = {
-    'SUCCESS': 0x00,
-    0x80: 'Invalid Request',
-    0x81: 'Unsupported Version',
-    0x82: 'Device Busy',
-    0x83: 'Timeout Waiting for User',
-    0x84: 'Request Declined by User',
-    0x85: 'Pairing Failed',
-    0x86: 'Pairing is Currently Disabled',
-    0x87: 'Automated Signing is Currently Disabled',
-    0x88: 'Device Error',
-    0x89: 'Timeout',
-    0x8a: 'Incorrect Wallet UID Provided',
-    0x8b: 'Device Locked',
+    RESP_SUCCESS: 0x00,
+    RESP_ERR_INVALID_MSG: 0x80,
+    RESP_ERR_UNSUPPORTED_VER: 0x81,
+    RESP_ERR_DEV_BUSY: 0x82,
+    RESP_ERR_USER_TIMEOUT: 0x83,
+    RESP_ERR_USER_DECLINED: 0x84,
+    RESP_ERR_PAIR_FAIL: 0x85,
+    RESP_ERR_PAIR_DISABLED: 0x86,
+    RESP_ERR_PERMISSION_DISABLED: 0x87,
+    RESP_ERR_INTERNAL: 0x88,
+    RESP_ERR_GCE_TIMEOUT: 0x89,
+    RESP_ERR_WALLET_NOT_PRESENT: 0x8a,
+    RESP_ERR_DEV_LOCKED: 0x8b,
+}
+
+const responseMsgs = {
+    [responseCodes.RESP_SUCCESS]: 0x00,
+    [responseCodes.RESP_ERR_INVALID_MSG]: 'Invalid Request',
+    [responseCodes.RESP_ERR_UNSUPPORTED_VER]: 'Unsupported Version',
+    [responseCodes.RESP_ERR_DEV_BUSY]: 'Device Busy',
+    [responseCodes.RESP_ERR_USER_TIMEOUT]: 'Timeout Waiting for User',
+    [responseCodes.RESP_ERR_USER_DECLINED]: 'Request Declined by User',
+    [responseCodes.RESP_ERR_PAIR_FAIL]: 'Pairing Failed',
+    [responseCodes.RESP_ERR_PAIR_DISABLED]: 'Pairing is Currently Disabled',
+    [responseCodes.RESP_ERR_PERMISSION_DISABLED]: 'Automated Signing is Currently Disabled',
+    [responseCodes.RESP_ERR_INTERNAL]: 'Device Error',
+    [responseCodes.RESP_ERR_GCE_TIMEOUT]: 'Timeout',
+    [responseCodes.RESP_ERR_WALLET_NOT_PRESENT]: 'Incorrect Wallet UID Provided',
+    [responseCodes.RESP_ERR_DEV_LOCKED]: 'Device Locked',
 }
  
-const deviceResponses = {
-    START_CODE_IDX: 1, // Beginning of 4-byte status code in Lattice response
-    START_DATA_IDX: 5, // Beginning of data field for Lattice responses
-    ERR_WRONG_WALLET_UID: 0x90,
-}
 
 const signingSchema = {
     BTC_TRANSFER: 0,
@@ -90,7 +101,7 @@ module.exports = {
     encReqCodes,
     messageConstants,
     responseCodes,
-    deviceResponses,
+    responseMsgs,
     signingSchema,
     ETH_DATA_MAX_SIZE,
     REQUEST_TYPE_BYTE,

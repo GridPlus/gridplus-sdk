@@ -18,7 +18,7 @@ const {
   decResLengths,
   deviceCodes,
   encReqCodes,
-  deviceResponses,
+  responseCodes,
   REQUEST_TYPE_BYTE,
   VERSION_BYTE,
   messageConstants,
@@ -203,7 +203,7 @@ class Client {
     // Construct the encrypted request and send it
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
     return this._request(param, (err, res, responseCode) => {
-      if (responseCode === deviceResponses.ERR_WRONG_WALLET_UID) {
+      if (responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) {
         // If we catch a case where the wallet has changed, try getting the new active wallet
         // and recursively make the original request.
         this._getActiveWallet((err) => {
@@ -332,7 +332,7 @@ class Client {
     return req;
   }
 
-  _request(data, cb) {
+  _request(data, cb, retryCount=2) {
     if (!this.deviceId) return cb('Serial is not set. Please set it and try again.');
     const url = `${this.baseUrl}/${this.deviceId}`;
     superagent.post(url).timeout(this.timeout)
@@ -341,10 +341,15 @@ class Client {
       if (!res || !res.body) return cb(`Invalid response: ${res}`)
       else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
       const parsed = parseLattice1Response(res.body.message);
+      // If the device is busy, retry if we can
+      if (parsed.responseCode === responseCodes.RESP_ERR_DEV_BUSY && retryCount > 0)
+        this._request(data, cb, retryCount-1);
       // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old ative walletUID
-      if (parsed.responseCode === deviceResponses.ERR_WRONG_WALLET_UID) this._resetActiveWallets();
+      if (parsed.responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) 
+        this._resetActiveWallets();
       // If there was an error in the response, return it
-      if (parsed.err) return cb(parsed.err);
+      if (parsed.err) 
+        return cb(parsed.err);
       return cb(null, parsed.data, parsed.responseCode); 
     })
     .catch((err) => {

@@ -5,7 +5,7 @@ const Buffer = require('buffer/').Buffer
 const aes = require('aes-js');
 const crc32 = require('crc-32');
 const elliptic = require('elliptic');
-const { AES_IV, responseCodes, VERSION_BYTE } = require('./constants');
+const { AES_IV, responseCodes, responseMsgs, VERSION_BYTE } = require('./constants');
 const EC = elliptic.ec;
 const ec = new EC('p256');
 
@@ -38,14 +38,14 @@ function parseLattice1Response(r) {
   }
 
   // Get the payload
-  const id = b.readUInt32BE(off); off+=4;
+  b.readUInt32BE(off); off+=4; // First 4 bytes is the id, but we don't need that anymore
   const len = b.readUInt16BE(off); off+=2;
   const payload = b.slice(off, off+len); off+=len;
 
   // Get response code
   const responseCode = payload.readUInt8(0);
-  if (responseCode !== responseCodes.SUCCESS) {
-    parsed.err = `Error from device: ${responseCodes[responseCode] ? responseCodes[responseCode] : 'Unknown Error'}`;
+  if (responseCode !== responseCodes.RESP_SUCCESS) {
+    parsed.err = `Error from device: ${responseMsgs[responseCode] ? responseMsgs[responseCode] : 'Unknown Error'}`;
     parsed.responseCode = responseCode;
     return parsed;
   } else {
