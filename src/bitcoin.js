@@ -86,7 +86,7 @@ exports.buildBitcoinTxRequest = function(data) {
                         scriptTypes.P2SH_P2WPKH :  // Only support p2sh(p2wpkh) for segwit spends for now
                         scriptTypes.P2PKH; // No support for multisig p2sh in v1 (p2sh == segwit here)
     prevOuts.forEach((input) => {
-      if (!input.signerPath || input.signerPath.length != 5) {
+      if (!input.signerPath || input.signerPath.length !== 5) {
         throw new Error('Full recipient path not specified ')
       }
       payload.writeUInt32LE(input.signerPath.length, off); off += 4;
@@ -172,8 +172,8 @@ exports.serializeTx = function(data) {
   })
   // Add witness data if needed
   if (isSegwitSpend === true) {
-    let sigs = [];
-    let pubkeys = [];
+    const sigs = [];
+    const pubkeys = [];
     for (let i = 0; i < inputs.length; i++) {
       sigs.push(inputs[i].sig);
       pubkeys.push(inputs[i].pubkey);
@@ -244,7 +244,7 @@ function buildLockingScript(address) {
 }
 
 function buildP2pkhLockingScript(pubkeyhash) {
-  let out = Buffer.alloc(5 + pubkeyhash.length);
+  const out = Buffer.alloc(5 + pubkeyhash.length);
   let off = 0;
   out.writeUInt8(OP.DUP, off); off++;
   out.writeUInt8(OP.HASH160, off); off++;
@@ -256,7 +256,7 @@ function buildP2pkhLockingScript(pubkeyhash) {
 }
 
 function buildP2shLockingScript(pubkeyhash) {
-  let out = Buffer.alloc(3 + pubkeyhash.length);
+  const out = Buffer.alloc(3 + pubkeyhash.length);
   let off = 0;
   out.writeUInt8(OP.HASH160, off); off++;
   out.writeUInt8(pubkeyhash.length, off); off++;
@@ -272,13 +272,13 @@ function concat(base, addition) {
 }
 
 function getU64LE(x) {
-  let buffer = Buffer.alloc(8);
+  const buffer = Buffer.alloc(8);
   writeUInt64LE(x, buffer, 0);
   return buffer;
 }
 
 function getU32LE(x) {
-  let buffer = Buffer.alloc(4);
+  const buffer = Buffer.alloc(4);
   buffer.writeUInt32LE(x);
   return buffer;
 }
@@ -306,9 +306,9 @@ function getVarInt (x) {
 }
 
 function writeUInt64LE(n, buf, off) {
-  if (typeof n == 'number') n = n.toString(16);
+  if (typeof n === 'number') n = n.toString(16);
   const preBuf = Buffer.alloc(8);
-  const nStr = n.length % 2 == 0 ? n.toString(16) : `0${n.toString(16)}`;
+  const nStr = n.length % 2 === 0 ? n.toString(16) : `0${n.toString(16)}`;
   const nBuf = Buffer.from(nStr, 'hex');
   nBuf.reverse().copy(preBuf, 0);
   preBuf.copy(buf, off);

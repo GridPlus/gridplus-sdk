@@ -95,7 +95,7 @@ const txBuildingResolver = {
 function aes256_encrypt(data, key) {
   const iv = Buffer.from(AES_IV);
   const aesCbc = new aes.ModeOfOperation.cbc(key, iv);
-  const paddedData = (data.length) % 16 == 0 ? data : aes.padding.pkcs7.pad(data);
+  const paddedData = (data.length) % 16 === 0 ? data : aes.padding.pkcs7.pad(data);
   return Buffer.from(aesCbc.encrypt(paddedData));
 }
 
