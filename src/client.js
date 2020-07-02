@@ -18,7 +18,7 @@ const {
   decResLengths,
   deviceCodes,
   encReqCodes,
-  deviceResponses,
+  responseCodes,
   REQUEST_TYPE_BYTE,
   VERSION_BYTE,
   messageConstants,
@@ -203,7 +203,7 @@ class Client {
     // Construct the encrypted request and send it
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
     return this._request(param, (err, res, responseCode) => {
-      if (responseCode === deviceResponses.ERR_WRONG_WALLET_UID) {
+      if (responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) {
         // If we catch a case where the wallet has changed, try getting the new active wallet
         // and recursively make the original request.
         this._getActiveWallet((err) => {
@@ -263,7 +263,7 @@ class Client {
   // the device.
   // @returns Buffer
   _getEphemId() {
-    if (this.ephemeralPub == null) return null;
+    if (this.ephemeralPub === null) return null;
     // EphemId is the first 4 bytes of the hash of the shared secret
     const secret = this._getSharedSecret();
     const hash = this.crypto.createHash('sha256').update(secret).digest();
@@ -274,7 +274,6 @@ class Client {
     // Get the ephemeral id - all encrypted requests require there to be an
     // epehemeral public key in order to send
     const ephemId = parseInt(this._getEphemId().toString('hex'), 16)
-    let i = 0;
     
     // Build the payload and checksum
     const payloadPreCs = Buffer.concat([Buffer.from([enc_request_code]), payload]);
@@ -294,7 +293,7 @@ class Client {
     // along with the encrypted data
     const newPayload = Buffer.alloc(ENC_MSG_LEN + 4);
     // First 4 bytes are the ephemeral id (in little endian)
-    i = newPayload.writeUInt32LE(ephemId, i);
+    newPayload.writeUInt32LE(ephemId, 0);
     // Next N bytes
     newEncPayload.copy(newPayload, 4);
     return this._buildRequest(deviceCodes.ENCRYPTED_REQUEST, newPayload);
@@ -310,7 +309,7 @@ class Client {
     // Length of payload;
     // we add 1 to the payload length to account for the request_code byte
     let L = payload && Buffer.isBuffer(payload) ? payload.length + 1 : 1;
-    if (request_code == deviceCodes.ENCRYPTED_REQUEST) {
+    if (request_code === deviceCodes.ENCRYPTED_REQUEST) {
       L = 1 + payload.length;
     }
     let i = 0;
@@ -332,7 +331,7 @@ class Client {
     return req;
   }
 
-  _request(data, cb) {
+  _request(data, cb, retryCount=2) {
     if (!this.deviceId) return cb('Serial is not set. Please set it and try again.');
     const url = `${this.baseUrl}/${this.deviceId}`;
     superagent.post(url).timeout(this.timeout)
@@ -341,10 +340,15 @@ class Client {
       if (!res || !res.body) return cb(`Invalid response: ${res}`)
       else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
       const parsed = parseLattice1Response(res.body.message);
+      // If the device is busy, retry if we can
+      if (parsed.responseCode === responseCodes.RESP_ERR_DEV_BUSY && retryCount > 0)
+        this._request(data, cb, retryCount-1);
       // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old ative walletUID
-      if (parsed.responseCode === deviceResponses.ERR_WRONG_WALLET_UID) this._resetActiveWallets();
+      if (parsed.responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) 
+        this._resetActiveWallets();
       // If there was an error in the response, return it
-      if (parsed.err) return cb(parsed.err);
+      if (parsed.err) 
+        return cb(parsed.err);
       return cb(null, parsed.data, parsed.responseCode); 
     })
     .catch((err) => {
