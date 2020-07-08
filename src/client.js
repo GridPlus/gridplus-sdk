@@ -342,7 +342,7 @@ class Client {
       const parsed = parseLattice1Response(res.body.message);
       // If the device is busy, retry if we can
       if (parsed.responseCode === responseCodes.RESP_ERR_DEV_BUSY && retryCount > 0)
-        this._request(data, cb, retryCount-1);
+        return this._request(data, cb, retryCount-1);
       // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old ative walletUID
       if (parsed.responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) 
         this._resetActiveWallets();
