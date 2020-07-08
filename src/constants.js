@@ -58,6 +58,7 @@ const responseCodes = {
     RESP_ERR_GCE_TIMEOUT: 0x89,
     RESP_ERR_WALLET_NOT_PRESENT: 0x8a,
     RESP_ERR_DEV_LOCKED: 0x8b,
+    RESP_ERR_DISABLED: 0x8c
 }
 
 const responseMsgs = {
@@ -74,6 +75,7 @@ const responseMsgs = {
     [responseCodes.RESP_ERR_GCE_TIMEOUT]: 'Timeout',
     [responseCodes.RESP_ERR_WALLET_NOT_PRESENT]: 'Incorrect Wallet UID Provided',
     [responseCodes.RESP_ERR_DEV_LOCKED]: 'Device Locked',
+    [responseCodes.RESP_ERR_DISABLED]: 'Disabled',
 }
  
 
