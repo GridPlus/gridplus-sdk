@@ -3,18 +3,24 @@ const AES_IV = [0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73
 
 // Decrypted response lengths will be fixed for any given message type.
 // These are defined in the Lattice spec.
-// Every decrypted response should have a 65-byte pubkey prefixing it
+// Every decrypted response should have a 65-byte pubkey prefixing it (and a 4-byte request ID)
 const decResLengths = {
     finalizePair: 0,     // Only contains the pubkey
     getAddresses: 1290,  // 10x 129 byte strings (128 bytes + null terminator)
     sign: 1090,          // 1 DER signature for ETH, 10 for BTC + change pubkeyhash
-    getWallets: 142,   // 71 bytes per wallet record (response contains internal and external)    
+    getWallets: 142,     // 71 bytes per wallet record (response contains internal and external)
+    test: 1658           // Max size of test response payload
 }
 
 // Per Lattice spec, all encrypted messages must fit in a buffer of this size.
 // The length comes from the largest request/response data type size minus payload metadata
 // Note that this does not include the 5 bytes containing (1 msg_id) and (4 checksum)
-const ENC_MSG_LEN = 1360;
+const ENC_MSG_PREFIX_LEN = 70; // 65-byte pubkey + 4-byte reqID + 1-byte msg_id
+let ENC_MSG_LEN = 0;
+Object.keys(decResLengths).forEach((k) => {
+    if (decResLengths[k] + ENC_MSG_PREFIX_LEN > ENC_MSG_LEN)
+        ENC_MSG_LEN = decResLengths[k] + ENC_MSG_PREFIX_LEN;
+})
   
 const deviceCodes = {
     'CONNECT': 1,
@@ -27,6 +33,7 @@ const encReqCodes = {
     'ADD_PERMISSION': 0x02,
     'SIGN_TRANSACTION': 0x03,
     'GET_WALLETS': 0x04,
+    'TEST': 0x05,
 }
 
 const messageConstants = {

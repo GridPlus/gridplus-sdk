@@ -130,6 +130,24 @@ class Client {
     })  
   }
 
+  test(data, cb) {
+    if (!data.testID || !data.payload)
+      return cb('First argument must contain `testID` and `payload` fields.');
+    if (typeof data.testID !== 'number' || Buffer.isBuffer(data.payload) === false)
+      return cb('`testID` must be number and `payload` must be buffer');
+    const payload = Buffer.alloc(data.payload.length + 4);
+    payload.writeUInt32LE(data.testID, 0);
+    payload.writeUInt16LE(data.payload.length, 4);
+    data.payload.copy(payload, 6);
+    const param = this._buildEncRequest(encReqCodes.TEST, payload);
+    this._request(param, (err, res) => {
+      if (err) return cb(err);
+      const decrypted = this._handleEncResponse(res, decResLengths.test);
+      if (decrypted.err !== null ) 
+        return cb(decrypted.err);
+      return cb(null, decrypted.data);
+    })
+  }
 
   getAddresses(opts, cb) {
     const { startPath, n } = opts;
