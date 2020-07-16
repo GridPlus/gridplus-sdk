@@ -103,6 +103,11 @@ if (process.env.N)
 buildRandomTxData();
 
 describe('Test ETH Tx Params', () => {
+  beforeEach(() => {
+    setTimeout(() => {
+
+    }, 5000);
+  })
 
   before(() => {
     // Setup SDK client

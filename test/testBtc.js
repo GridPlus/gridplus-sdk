@@ -10,7 +10,7 @@
 //
 //    env DEVICE_ID='<your_device_id>' npm test
 //
-// After you do the above, you can run this test with `npm run test-eth`
+// After you do the above, you can run this test with `env DEVICE_ID='<your_device_id>' npm run test-btc`
 //
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)

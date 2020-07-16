@@ -1,25 +1,44 @@
 // Consistent with Lattice's IV
 const AES_IV = [0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64]
 
+const ADDR_STR_LEN = 129; // 128-char strings (null terminated)
+
 // Decrypted response lengths will be fixed for any given message type.
 // These are defined in the Lattice spec.
 // Every decrypted response should have a 65-byte pubkey prefixing it (and a 4-byte request ID)
+// These are NOT counted in `decResLengths`, meaning these values are 69-bytes smaller than the
+// corresponding structs in firmware.
 const decResLengths = {
-    finalizePair: 0,     // Only contains the pubkey
-    getAddresses: 1290,  // 10x 129 byte strings (128 bytes + null terminator)
-    sign: 1090,          // 1 DER signature for ETH, 10 for BTC + change pubkeyhash
-    getWallets: 142,     // 71 bytes per wallet record (response contains internal and external)
-    test: 1658           // Max size of test response payload
+    finalizePair: 0,                    // Only contains the pubkey
+    getAddresses: 10 * ADDR_STR_LEN,    // 10x 129 byte strings (128 bytes + null terminator)
+    sign: 1090,                         // 1 DER signature for ETH, 10 for BTC + change pubkeyhash
+    getWallets: 142,                    // 71 bytes per wallet record (response contains internal and external)
+    test: 1646                          // Max size of test response payload
 }
 
+// Every corresponding decrypted response struct in firmware has a pubkey
+// and checksum added. These are not included in `decResLengths`
+const DES_RES_EXTRADATA_LEN = 69; 
+
+// Encrypted responses also have metadata
+// Prefix:
+// * protocol version (1 byte)
+// * response type, reserved (1 byte) -- not used
+// * response id (4 bytes) -- not used
+// * payload length (2 bytes)
+// * response code (1 byte)
+// Suffix:
+// * checksum (4 bytes) -- NOT the same checksum as inside the decrypted msg
+const ENC_MSG_METADATA_LEN = 13;
+
+const ENC_MSG_EXTRA_LEN = DES_RES_EXTRADATA_LEN + ENC_MSG_METADATA_LEN;
 // Per Lattice spec, all encrypted messages must fit in a buffer of this size.
-// The length comes from the largest request/response data type size minus payload metadata
-// Note that this does not include the 5 bytes containing (1 msg_id) and (4 checksum)
-const ENC_MSG_PREFIX_LEN = 70; // 65-byte pubkey + 4-byte reqID + 1-byte msg_id
+// The length comes from the largest request/response data type size
+// We also add the prefix length
 let ENC_MSG_LEN = 0;
 Object.keys(decResLengths).forEach((k) => {
-    if (decResLengths[k] + ENC_MSG_PREFIX_LEN > ENC_MSG_LEN)
-        ENC_MSG_LEN = decResLengths[k] + ENC_MSG_PREFIX_LEN;
+    if (decResLengths[k] + ENC_MSG_EXTRA_LEN > ENC_MSG_LEN)
+        ENC_MSG_LEN = decResLengths[k] + ENC_MSG_EXTRA_LEN;
 })
   
 const deviceCodes = {
@@ -100,6 +119,7 @@ const HARDENED_OFFSET = 0x80000000; // Hardened offset
 const BASE_URL = 'https://signing.gridpl.us';
 
 module.exports = {
+    ADDR_STR_LEN,
     AES_IV,
     BASE_URL,
     ENC_MSG_LEN,
