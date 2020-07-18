@@ -73,3 +73,17 @@ If you want to specify the above params:
 ```
 env DEVICE_ID='my_device_id' N=5 MNEMONIC='negative spare peasant raw feature camera glide notice fee gown heavy depart' npm run test-btc
 ```
+
+### Test Harness
+
+We can test debug firmware builds using the `client.test` function in the SDK. This utilizes the firmware's test harness with an encrypted route. You can run these tests with the same `env DEVICE_ID='my_device_id` flag as some of the other tests.
+
+> NOTE: Since these are encrypted routes, you need to be paired with your Lattice before you can run them (using `env REUSE_KEY=1 npm test` as before -- you still only need to do this once).
+
+**Wallet Jobs**
+
+Lattice firmware uses "wallet jobs" to interact with the SafeCard/Lattice wallet directly. The SDK does not have access to these methods in production builds, but for debug builds the test harness can be used to interact with them.
+
+```
+env DEVICE_ID='my_device_id' npm run test-wallet-jobs
+```

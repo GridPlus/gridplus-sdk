@@ -1,7 +1,11 @@
 const crypto = require('crypto');
 const Sdk = require('../../index.js');
 const bitcoin = require('bitcoinjs-lib');
+const constants = require('../../src/constants');
 const SIGHASH_ALL = 0x01;
+const HARDENED_OFFSET = 0x80000000;
+const EC = require('elliptic').ec;
+const ec = new EC('secp256k1');
 
 function setupTestClient(env) {
   const setup = {
@@ -57,6 +61,15 @@ function getAddresses(client, opts, timeout=0) {
 function sign(client, opts) {
   return new Promise((resolve, reject) => {
     client.sign(opts, (err, res) => {
+      if (err) return reject(err);
+      return resolve(res);
+    })
+  })
+}
+
+function test(client, opts) {
+  return new Promise((resolve, reject) => {
+    client.test(opts, (err, res) => {
       if (err) return reject(err);
       return resolve(res);
     })
@@ -155,7 +168,6 @@ function _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestn
 
 
 function _tx_request_builder(inputs, recipient, value, fee, segwit, isTestnet) {
-  const HARDENED_OFFSET = 0x80000000;
   let currencyIdx, changeVersion, networkStr;
   if (isTestnet && segwit === true) {
     networkStr = 'TESTNET';
@@ -269,12 +281,253 @@ function setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputs) {
     }
 }
 
-
-
+exports.harden = (x) => { return x + HARDENED_OFFSET; }
 exports.setupTestClient = setupTestClient;
 exports.connect = connect;
 exports.pair = pair;
 exports.getAddresses = getAddresses;
 exports.sign = sign;
+exports.test = test;
 exports.stripDER = stripDER;
 exports.setup_btc_sig_test = setup_btc_sig_test;
+
+
+//============================================================
+// Wallet Job integration test helpers
+// We test "wallet jobs" using a test harness for debug builds
+//=============================================================
+
+//---------------------------------------------------
+// Relevant test harness constants
+//---------------------------------------------------
+exports.jobTypes = {
+  WALLET_JOB_GET_ADDRESSES: 1,
+  WALLET_JOB_SIGN_TX: 2,
+  WALLET_JOB_LOAD_SEED: 3,
+  WALLET_JOB_EXPORT_SEED: 4,
+  WALLET_JOB_DELETE_SEED: 5,
+}
+exports.gpErrors = {
+  GP_SUCCESS: 0x00,
+  GP_EINVAL: 0xea, // -22
+  GP_ENODATA: 0xc3, // -61
+  GP_EOVERFLOW: 0xac, // -84
+  GP_EALREADY: 0x8e, // -114
+  GP_ENODEV: 0xed, // -19
+  GP_EAGAIN: 0xf5, // -11
+}
+
+//---------------------------------------------------
+// General helpers
+//---------------------------------------------------
+exports.parseWalletJobResp = function(res) {
+  const jobRes = {
+    resultStatus: null,
+    result: null,
+  };
+  jobRes.resultStatus = res.readUInt32LE(0);
+  const dataLen = res.readUInt16LE(4);
+  jobRes.result = res.slice(6, 6+dataLen);
+  return jobRes;  
+}
+
+exports.serializeJobData = function(job, walletUID, data) {
+  let serData;
+  switch (job) {
+    case exports.jobTypes.WALLET_JOB_GET_ADDRESSES:
+      serData = exports.serializeGetAddressesJobData(data);
+      break;
+    case exports.jobTypes.WALLET_JOB_SIGN_TX:
+      serData = exports.serializeSignTxJobData(data);
+      break;
+    case exports.jobTypes.WALLET_JOB_EXPORT_SEED:
+      serData = exports.serializeExportSeedJobData(data);
+      break;
+    case exports.jobTypes.WALLET_JOB_DELETE_SEED:
+      serData = exports.serializeDeleteSeedJobData(data);
+      break;
+    case exports.jobTypes.WALLET_JOB_LOAD_SEED:
+      serData = exports.serializeLoadSeedJobData(data);
+      break;
+    default:
+      throw new Error('Unsupported job type');
+  }
+  if ((false === Buffer.isBuffer(serData)) ||
+      (false === Buffer.isBuffer(walletUID)) ||
+      (32 !== walletUID.length))
+    throw new Error('Invalid params');
+
+  const req = Buffer.alloc(serData.length + 40);
+  let off = 0;
+  walletUID.copy(req, off); off+=walletUID.length;
+  req.writeUInt32LE(0, off); off+=4; // 0 for callback -- it isn't used
+  req.writeUInt32LE(job, off); off+=4;
+  serData.copy(req, off);
+  return req;
+}
+
+// First byte of the result data is the error code
+exports.jobResErrCode = function(res) {
+  return res.result.readUInt32LE(0);
+}
+
+// Have to do this weird copy because `Buffer`s from the client are not real buffers
+// which is a vestige of requiring support on react native
+exports.copyBuffer = (x) => { return Buffer.from(x.toString('hex'), 'hex') }
+
+exports.getPubStr = (key) => {
+    const _pub = key.getPublic();
+    const pub = Buffer.alloc(65);
+    pub.writeUInt8(0x04, 0);
+    _pub.getX().toBuffer().copy(pub, 1);
+    _pub.getY().toBuffer().copy(pub, 33);
+    return pub.toString('hex');
+}
+
+// Convert a set of indices to a human readable bip32 path
+exports.stringifyPath = (x) => {
+  const convert = (x) => { return x >= HARDENED_OFFSET ? `${x - HARDENED_OFFSET}'` : `${x}`;}
+  let d = x.pathDepth;
+  let s = 'm';
+  if (d <= 0) return s;
+  s += `/${convert(x.purpose)}`; d--;
+  if (d <= 0) return s;
+  s += `/${convert(x.coin)}`; d--;
+  if (d <= 0) return s;
+  s += `/${convert(x.account)}`; d--;
+  if (d <= 0) return s;
+  s += `/${convert(x.change)}`; d--;
+  if (d <= 0) return s;
+  s += `/${convert(x.addr)}`; d--;
+  return s;
+}
+
+//---------------------------------------------------
+// Get Addresses helpers
+//---------------------------------------------------
+exports.serializeGetAddressesJobData = function(data) {
+  const req = Buffer.alloc(32);
+  let off = 0;
+  req.writeUInt32LE(data.parent.pathDepth, off); off+=4;
+  req.writeUInt32LE(data.parent.purpose, off); off+=4;
+  req.writeUInt32LE(data.parent.coin, off); off+=4;
+  req.writeUInt32LE(data.parent.account, off); off+=4;
+  req.writeUInt32LE(data.parent.change, off); off+=4;
+  req.writeUInt32LE(data.parent.addr, off); off+=4;
+  req.writeUInt32LE(data.first, off); off+=4;
+  req.writeUInt32LE(data.count, off);
+  return req;
+}
+
+exports.deserializeGetAddressesJobResult = function(res) {
+  let off = 4; // Skip past status code
+  const getAddrResult = {
+    count: null,
+    addresses: [],
+  };
+  getAddrResult.count = res.readUInt32LE(off); off+=4;
+  for (let i = 0; i < getAddrResult.count; i++) {
+    const _addr = res.slice(off, off + constants.ADDR_STR_LEN); off+= constants.ADDR_STR_LEN;
+    for (let j = 0; j < _addr.length; j++)
+      if (_addr[j] === 0x00) {
+        getAddrResult.addresses.push(_addr.slice(0, j).toString('utf8'));
+        break;
+      }
+  }
+  return getAddrResult;
+}
+
+//---------------------------------------------------
+// Sign Transaction helpers
+//---------------------------------------------------
+exports.serializeSignTxJobData = function(data) {
+  const n = data.sigReq.length;
+  const req = Buffer.alloc(4 + 56 * n);
+  let off = 0;
+  req.writeUInt32LE(data.numRequests); off+=4;
+  for (let i = 0; i < n; i++) {
+    const r = data.sigReq[i];
+    r.data.copy(req, off); off+=r.data.length;
+    req.writeUInt32LE(r.signerPath.pathDepth, off); off+=4;
+    req.writeUInt32LE(r.signerPath.purpose, off); off+=4;
+    req.writeUInt32LE(r.signerPath.coin, off); off+=4;
+    req.writeUInt32LE(r.signerPath.account, off); off+=4;
+    req.writeUInt32LE(r.signerPath.change, off); off+=4;
+    req.writeUInt32LE(r.signerPath.addr, off); off+=4;
+  }
+  return req;
+}
+
+exports.deserializeSignTxJobResult = function(res) {
+  let off = 4; // Skip past status code
+  const getTxResult = {
+    numOutputs: null,
+    outputs: [],
+  };
+  getTxResult.numOutputs = res.readUInt32LE(off); off+=4;
+  const PK_LEN = 65; // uncompressed pubkey
+  const SIG_LEN = 74; // DER sig
+  const outputSz = (6*4) + PK_LEN + SIG_LEN;
+  let _off = 0;
+  for (let i = 0; i < getTxResult.numOutputs; i++) {
+    const o = {
+      signerPath: {
+        pathDepth: null,
+        purpose: null,
+        coin: null,
+        account: null,
+        change: null,
+        addr: null,
+      },
+      pubkey: null,
+      sig: null,
+    }
+    const _o = res.slice(off, off + outputSz); off += outputSz;
+    _off = 0;
+    o.signerPath.pathDepth = _o.readUInt32LE(_off); _off += 4;
+    o.signerPath.purpose = _o.readUInt32LE(_off); _off += 4;
+    o.signerPath.coin = _o.readUInt32LE(_off); _off += 4;
+    o.signerPath.account = _o.readUInt32LE(_off); _off += 4;
+    o.signerPath.change = _o.readUInt32LE(_off); _off += 4;
+    o.signerPath.addr = _o.readUInt32LE(_off); _off += 4;
+    o.pubkey = ec.keyFromPublic(_o.slice(_off, _off+65).toString('hex'), 'hex'); _off += PK_LEN;
+    // We get back a DER signature in 74 bytes, but not all the bytes are necessarily
+    // used. The second byte contains the DER sig length, so we need to use that.
+    const derLen = _o[_off+1];
+    o.sig = Buffer.from(_o.slice(_off, _off+2+derLen).toString('hex'), 'hex');
+    getTxResult.outputs.push(o);
+  }
+
+  return getTxResult;
+}
+
+//---------------------------------------------------
+// Export Seed helpers
+//---------------------------------------------------
+exports.serializeExportSeedJobData = function() {
+  return Buffer.alloc(0);
+};
+
+exports.deserializeExportSeedJobResult = function(res) {
+  // Skip past 4-byte status code
+  // Next 32 bytes are the seed
+  return { seed: res.slice(4, 68) };
+}
+
+//---------------------------------------------------
+// Delete Seed helpers
+//---------------------------------------------------
+exports.serializeDeleteSeedJobData = function() {
+  return Buffer.alloc(0);
+};
+
+//---------------------------------------------------
+// Load Seed helpers
+//---------------------------------------------------
+exports.serializeLoadSeedJobData = function(data) {
+  const req = Buffer.alloc(66);
+  req.writeUInt8(data.iface, 0);
+  data.seed.copy(req, 1);
+  req.writeUInt8(data.exportability, 65);
+  return req;
+};

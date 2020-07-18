@@ -13,6 +13,7 @@ const {
   toPaddedDER,
 } = require('./util');
 const {
+  ADDR_STR_LEN,
   ENC_MSG_LEN,
   currencyCodes,
   decResLengths,
@@ -130,6 +131,23 @@ class Client {
     })  
   }
 
+  test(data, cb) {
+    if (!data.payload)
+      return cb('First argument must contain `testID` and `payload` fields.');
+    const TEST_DATA_SZ = 500;
+    const payload = Buffer.alloc(TEST_DATA_SZ + 6);
+    payload.writeUInt32BE(data.testID, 0);
+    payload.writeUInt16BE(data.payload.length, 4);
+    data.payload.copy(payload, 6);
+    const param = this._buildEncRequest(encReqCodes.TEST, payload);
+    this._request(param, (err, res) => {
+      if (err) return cb(err);
+      const decrypted = this._handleEncResponse(res, decResLengths.test);
+      if (decrypted.err !== null ) 
+        return cb(decrypted.err);
+      return cb(null, decrypted.data.slice(65)); // remove ephem pub
+    })
+  }
 
   getAddresses(opts, cb) {
     const { startPath, n } = opts;
@@ -283,7 +301,6 @@ class Client {
     // Lattice validates checksums in little endian
     payloadPreCs.copy(payloadBuf, 0);
     payloadBuf.writeUInt32LE(cs, payloadPreCs.length);
-
     // Encrypt this payload
     const secret = this._getSharedSecret();
     const newEncPayload = aes256_encrypt(payloadBuf, secret);
@@ -431,8 +448,7 @@ class Client {
     // Look for addresses until we reach the end (a 4 byte checksum)
     const addrs = [];
     while (off + 4 < decResLengths.getAddresses) {
-      // Addresses are 129 byte char buffers.
-      const addrBytes = addrData.slice(off, off+129); off += 129;
+      const addrBytes = addrData.slice(off, off+ADDR_STR_LEN); off += ADDR_STR_LEN;
       // Return the UTF-8 representation
       const len = addrBytes.indexOf(0); // First 0 is the null terminator
       if (len > 0)
