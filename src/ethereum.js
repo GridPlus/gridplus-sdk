@@ -111,6 +111,16 @@ exports.buildEthereumTxRequest = function(data) {
   }
 }
 
+// From ethereumjs-util
+function stripZeros(a) {
+  let first = a[0]
+  while (a.length > 0 && first.toString() === '0') {
+    a = a.slice(1)
+    first = a[0]
+  }
+  return a
+}
+
 // Given a 64-byte signature [r,s] we need to figure out the v value
 // and attah the full signature to the end of the transaction payload
 exports.buildEthRawTx = function(tx, sig, address, useEIP155=true) {
@@ -120,8 +130,10 @@ exports.buildEthRawTx = function(tx, sig, address, useEIP155=true) {
   // Use the signature to generate a new raw transaction payload
   const newRawTx = tx.rawTx.slice(0, 6);
   newRawTx.push(Buffer.from((newSig.v).toString(16), 'hex'));
-  newRawTx.push(newSig.r);
-  newRawTx.push(newSig.s);
+  // Per `ethereumjs-tx`, RLP encoding should include signature components w/ stripped zeros
+  // See: https://github.com/ethereumjs/ethereumjs-tx/blob/master/src/transaction.ts#L187
+  newRawTx.push(stripZeros(newSig.r));
+  newRawTx.push(stripZeros(newSig.s));
   return rlp.encode(newRawTx).toString('hex');
 }
 
