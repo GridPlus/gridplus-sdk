@@ -14,7 +14,8 @@
 //
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)
-const bip32 = require('bip32')
+const bip32 = require('bip32');
+const bitcoin = require('bitcoinjs-lib');
 const crypto = require('crypto');
 const expect = require('chai').expect;
 const ethutil = require('ethereumjs-util');
@@ -97,23 +98,8 @@ describe('getAddresses', () => {
   });
 
   it('Should get GP_SUCCESS for active wallet', async () => {
-    // Make sure we have cached the first ETH address (for later tests)
-    jobData.parent.coin = helpers.harden(60);
     jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
-    const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
-    const res = helpers.deserializeGetAddressesJobResult(_res.result);
-    // Confirm there is only one address
-    expect(res.count).to.equal(jobData.count);
-    // Confirm it is an Ethereum address
-    expect(res.addresses[0].slice(0, 2)).to.equal('0x');
-    expect(res.addresses[0].length).to.equal(42);
-    // Confirm we can derive the same address from the previously exported seed
-    const wallet = bip32.fromSeed(activeWalletSeed);
-    jobData.parent.pathDepth = 5;
-    jobData.parent.addr = 0;
-    const priv = wallet.derivePath(helpers.stringifyPath(jobData.parent)).privateKey;
-    const addr = `0x${ethutil.privateToAddress(priv).toString('hex')}`;
-    expect(addr).to.equal(res.addresses[0]);
+    await runTestCase(helpers.gpErrors.GP_SUCCESS);
   })
 
   it('Should get GP_EINVAL when `pathDepth` is not 4', async () => {
@@ -152,6 +138,72 @@ describe('getAddresses', () => {
     jobData.count = 11;
     jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EOVERFLOW);
+  })
+
+  it('Should validate first ETH', async () => {
+    // Make sure we have cached the first ETH address (for later tests)
+    jobData.parent.coin = helpers.harden(60);
+    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    const res = helpers.deserializeGetAddressesJobResult(_res.result);
+    // Confirm there is only one address
+    expect(res.count).to.equal(jobData.count);
+    // Confirm it is an Ethereum address
+    expect(res.addresses[0].slice(0, 2)).to.equal('0x');
+    expect(res.addresses[0].length).to.equal(42);
+    // Confirm we can derive the same address from the previously exported seed
+    const wallet = bip32.fromSeed(activeWalletSeed);
+    jobData.parent.pathDepth = 5;
+    jobData.parent.addr = 0;
+    const priv = wallet.derivePath(helpers.stringifyPath(jobData.parent)).privateKey;
+    const addr = `0x${ethutil.privateToAddress(priv).toString('hex')}`;
+    expect(addr).to.equal(res.addresses[0]);
+  })
+
+  it('Should validate BTC addresses', async () => {
+    // Request the first 5 BTC addresses. At least 20 should be cached on the device.
+    jobData.count = 5;
+    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    const res = helpers.deserializeGetAddressesJobResult(_res.result);
+    expect(res.count).to.equal(jobData.count);
+
+    // Confirm we can derive the same address from the previously exported seed
+    const wallet = bip32.fromSeed(activeWalletSeed);
+    const path = jobData.parent;
+    path.pathDepth = 5;
+    for (let i = jobData.first; i < jobData.first + jobData.count; i++) {
+      jobData.parent.addr = i;
+      const pubkey = wallet.derivePath(helpers.stringifyPath(jobData.parent)).publicKey;
+      // The format of the address depends on the device setting. We will check both types.
+      // NOTE: At time of writing, we do not support native bech32 segwit addresses
+      const p2sh_p2wpkh = bitcoin.payments.p2sh({redeem: bitcoin.payments.p2wpkh({ pubkey })}).address;
+      const p2pkh = bitcoin.payments.p2pkh({ pubkey }).address;
+      expect([p2sh_p2wpkh, p2pkh]).to.include.members([res.addresses[i-jobData.first]]);
+    }
+  })
+
+  it('Should validate first BTC_CHANGE address', async () => {
+    jobData.parent.coin = helpers.harden(1);
+    const network = bitcoin.networks.testnet;
+    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    const res = helpers.deserializeGetAddressesJobResult(_res.result);
+    expect(res.count).to.equal(jobData.count);
+
+    // Confirm we can derive the same address from the previously exported seed
+    const wallet = bip32.fromSeed(activeWalletSeed);
+    const path = jobData.parent;
+    path.pathDepth = 5;
+    for (let i = jobData.first; i < jobData.first + jobData.count; i++) {
+      jobData.parent.addr = i;
+      const pubkey = wallet.derivePath(helpers.stringifyPath(jobData.parent)).publicKey;
+      // The format of the address depends on the device setting. We will check both types.
+      // NOTE: At time of writing, we do not support native bech32 segwit addresses
+      const p2sh_p2wpkh = bitcoin.payments.p2sh({redeem: bitcoin.payments.p2wpkh({ pubkey, network })}).address;
+      const p2pkh = bitcoin.payments.p2pkh({ pubkey, network }).address;
+      expect([p2sh_p2wpkh, p2pkh]).to.include.members([res.addresses[i-jobData.first]]);
+    }
   })
 
 })

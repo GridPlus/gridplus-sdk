@@ -75,7 +75,7 @@ async function testPass(req) {
   if (txIsNull === true)
     foundError = true;
   expect(txIsNull).to.equal(false);
-    
+
   // Check the transaction data against a reference implementation
   // (ethereumjs-tx)
   const txData = {
