@@ -1,6 +1,9 @@
-const crypto = require('crypto');
-const Sdk = require('../../index.js');
+const bip32 = require('bip32');
 const bitcoin = require('bitcoinjs-lib');
+const crypto = require('crypto');
+const expect = require('chai').expect;
+const ethutil = require('ethereumjs-util');
+const Sdk = require('../../index.js');
 const constants = require('../../src/constants');
 const SIGHASH_ALL = 0x01;
 const HARDENED_OFFSET = 0x80000000;
@@ -435,6 +438,37 @@ exports.deserializeGetAddressesJobResult = function(res) {
       }
   }
   return getAddrResult;
+}
+
+exports.validateBTCAddresses = function(resp, jobData, seed, useTestnet) {
+  expect(resp.count).to.equal(jobData.count);
+  const wallet = bip32.fromSeed(seed);
+  const path = jobData.parent;
+  path.pathDepth = 5;
+  const network = useTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.mainnet;
+  for (let i = jobData.first; i < jobData.first + jobData.count; i++) {
+    jobData.parent.addr = i;
+    const pubkey = wallet.derivePath(exports.stringifyPath(jobData.parent)).publicKey;
+    // The format of the address depends on the device setting. We will check both types.
+    // NOTE: At time of writing, we do not support native bech32 segwit addresses
+    const p2sh_p2wpkh = bitcoin.payments.p2sh({redeem: bitcoin.payments.p2wpkh({ pubkey, network })}).address;
+    const p2pkh = bitcoin.payments.p2pkh({ pubkey, network }).address;
+    expect([p2sh_p2wpkh, p2pkh]).to.include.members([resp.addresses[i-jobData.first]]);
+  }
+}
+
+exports.validateETHAddress = function(resp, jobData, seed) {
+  expect(resp.count).to.equal(jobData.count);
+  // Confirm it is an Ethereum address
+  expect(resp.addresses[0].slice(0, 2)).to.equal('0x');
+  expect(resp.addresses[0].length).to.equal(42);
+  // Confirm we can derive the same address from the previously exported seed
+  const wallet = bip32.fromSeed(seed);
+  jobData.parent.pathDepth = 5;
+  jobData.parent.addr = 0;
+  const priv = wallet.derivePath(exports.stringifyPath(jobData.parent)).privateKey;
+  const addr = `0x${ethutil.privateToAddress(priv).toString('hex')}`;
+  expect(addr).to.equal(resp.addresses[0]);
 }
 
 //---------------------------------------------------

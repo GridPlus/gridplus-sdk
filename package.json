@@ -11,7 +11,7 @@
     "postinstall": "",
     "test": "mocha --timeout 120000 -R spec test/testAll.js --recursive --exit",
     "test-eth": "mocha --timeout 180000 -R spec test/testEth.js --recursive --exit",
-    "test-wallet-jobs": "mocha --timeout 180000 -R spec test/testWalletJobs.js --recursive --exit"
+    "test-wallet-jobs": "mocha --timeout 300000 -R spec test/testWalletJobs.js --recursive --exit"
   },
   "main": "./index.js",
   "repository": {
