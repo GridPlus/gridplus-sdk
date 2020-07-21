@@ -1,6 +1,6 @@
 {
   "name": "gridplus-sdk",
-  "version": "0.4.17-dev",
+  "version": "0.4.18-dev",
   "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
     "commit": "git-cz",
@@ -11,7 +11,7 @@
     "postinstall": "",
     "test": "mocha --timeout 120000 -R spec test/testAll.js --recursive --exit",
     "test-eth": "mocha --timeout 180000 -R spec test/testEth.js --recursive --exit",
-    "test-wallet-jobs": "mocha --timeout 180000 -R spec test/testWalletJobs.js --recursive --exit"
+    "test-wallet-jobs": "mocha --timeout 300000 -R spec test/testWalletJobs.js --recursive --exit"
   },
   "main": "./index.js",
   "repository": {
