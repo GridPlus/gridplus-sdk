@@ -348,7 +348,7 @@ class Client {
     return req;
   }
 
-  _request(data, cb, retryCount=2) {
+  _request(data, cb, retryCount=1) {
     if (!this.deviceId) return cb('Serial is not set. Please set it and try again.');
     const url = `${this.baseUrl}/${this.deviceId}`;
     superagent.post(url).timeout(this.timeout)
@@ -358,7 +358,9 @@ class Client {
       else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
       const parsed = parseLattice1Response(res.body.message);
       // If the device is busy, retry if we can
-      if (parsed.responseCode === responseCodes.RESP_ERR_DEV_BUSY && retryCount > 0)
+      if (( parsed.responseCode === responseCodes.RESP_ERR_DEV_BUSY ||
+            parsed.responseCode === responseCodes.RESP_ERR_GCE_TIMEOUT ) 
+            && (retryCount > 0))
         return this._request(data, cb, retryCount-1);
       // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old ative walletUID
       if (parsed.responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) 
