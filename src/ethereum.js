@@ -15,6 +15,10 @@ exports.buildEthereumTxRequest = function(data) {
     else if (!signerPath || signerPath.length !== 5) throw new Error('Please provider full signer path (`signerPath`)')
     const useEIP155 = eip155[chainId];
 
+    // Hack for metamask, which sends value=null for 0 ETH transactions
+    if (!data.value)
+      data.value = 0;
+      
     //--------------
     // 1. BUILD THE RAW TX FOR FUTURE RLP ENCODING
     //--------------
