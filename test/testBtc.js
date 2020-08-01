@@ -34,6 +34,7 @@ if (process.env.PASSWORD)
   PASSWORD = process.env.PASSWORD;
 const seed = bip39.mnemonicToSeedSync(MNEMONIC, PASSWORD)
 const wallet = bip32.fromSeed(seed)
+const validationErrMsg = `Make sure you are using a Lattice/SafeCard wallet whose mnemonic is: ${MNEMONIC} (or specify your own with env MNEMONIC="my mnemonic")`;
 
 // Build the inputs. By default we will build 10. Note that there are `n` tests for
 // *each category*, where `n` is the number of inputs.
@@ -55,7 +56,7 @@ async function testSign(req, signingKeys, sigHashes) {
   expect(tx.sigs.length).to.equal(sigHashes.length);
   for (let i = 0; i < tx.sigs.length; i++) {
     const sig = helpers.stripDER(tx.sigs[i]);
-    expect(signingKeys[i].verify(sigHashes[i], sig)).to.equal(true);
+    expect(signingKeys[i].verify(sigHashes[i], sig)).to.equal(true, validationErrMsg);
   }
 }
 
@@ -184,4 +185,3 @@ describe('legacy, mainnet, no change', function(){
     });
 
 });
-
