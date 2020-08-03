@@ -18,23 +18,15 @@ require('it-each')({ testPerIteration: true });
 const expect = require('chai').expect;
 const helpers = require('./testUtil/helpers');
 const crypto = require('crypto');
-let client;
+let client, activeWalletUID, wallet = null;
+
+const PURPOSE = helpers.BTC_PURPOSE_P2SH_P2WPKH;
 
 // Bitcoin specific functionality/setup
 // !!!! IMPORTANT NOTE: YOU MUST RUN THESE TESTS AGAINST A LATTICE WHOSE SEED WAS RECOVERED USING
 //                      THE MNEMONIC SPECIFIED BELOW!!!!
 // Set up the wallet:
-const bip39 = require('bip39')
 const bip32 = require('bip32')
-let MNEMONIC = 'negative spare peasant raw feature camera glide notice fee gown heavy depart'
-let PASSWORD = ''
-if (process.env.MNEMONIC)
-  MNEMONIC = process.env.MNEMONIC;
-if (process.env.PASSWORD)
-  PASSWORD = process.env.PASSWORD;
-const seed = bip39.mnemonicToSeedSync(MNEMONIC, PASSWORD)
-const wallet = bip32.fromSeed(seed)
-const validationErrMsg = `Make sure you are using a Lattice/SafeCard wallet whose mnemonic is: ${MNEMONIC} (or specify your own with env MNEMONIC="my mnemonic")`;
 
 // Build the inputs. By default we will build 10. Note that there are `n` tests for
 // *each category*, where `n` is the number of inputs.
@@ -56,72 +48,91 @@ async function testSign(req, signingKeys, sigHashes) {
   expect(tx.sigs.length).to.equal(sigHashes.length);
   for (let i = 0; i < tx.sigs.length; i++) {
     const sig = helpers.stripDER(tx.sigs[i]);
-    expect(signingKeys[i].verify(sigHashes[i], sig)).to.equal(true, validationErrMsg);
+    expect(signingKeys[i].verify(sigHashes[i], sig)).to.equal(true, 'Signature validation failed');
   }
 }
 
-describe('Test BTC Transactions', () => {
+describe('Fetch wallet seed', () => {
 
   before(() => {
     client = helpers.setupTestClient(process.env);
   });
 
   it('Should connect to a Lattice and make sure it is already paired.', async () => {
-    // Again, we assume that if an `id` has already been set, we are paired
-    // with the hardcoded privkey above.
     expect(process.env.DEVICE_ID).to.not.equal(null);
-    const connectErr = await helpers.connect(client, process.env.DEVICE_ID);
-    expect(connectErr).to.equal(null);
+    await helpers.connect(client, process.env.DEVICE_ID);
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
+    activeWalletUID = helpers.copyBuffer(client.getActiveWallet().uid)
   });
 
 })
 
-describe('legacy, testnet, change', function(){
+describe('exportSeed', () => {
+  it('Should get GP_SUCCESS for a known, connected wallet', async () => {
+    expect(activeWalletUID).to.not.equal(null, 'No wallet found')
+    const jobType = helpers.jobTypes.WALLET_JOB_EXPORT_SEED;
+    const jobData = {};
+    const jobReq = {
+      testID: 0, // wallet_job test ID
+      payload: helpers.serializeJobData(jobType, activeWalletUID, jobData),
+    }
 
-    it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
-      const inputsSlice = inputs.slice(0, n.number);
-      const isTestnet = true;
-      const isSegwit = false;
-      const useChange = true;
-      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice);
-      try {
-        await testSign(p.txReq, p.signingKeys, p.sigHashes);
-        next();
-      } catch (err) {
-        next(err);
-      }
-    });
+    const res = await helpers.test(client, jobReq);
+    const _res = helpers.parseWalletJobResp(res);
+    expect(_res.resultStatus).to.equal(0);
+    const data = helpers.deserializeExportSeedJobResult(_res.result);
+    const activeWalletSeed = helpers.copyBuffer(data.seed);
+    wallet = bip32.fromSeed(activeWalletSeed)
+  })
+})
+// describe('legacy, testnet, change', function(){
 
-});
+//     it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
+//       expect(wallet).to.not.equal(null, 'Wallet not available')
+//       const inputsSlice = inputs.slice(0, n.number);
+//       const isTestnet = true;
+//       const isSegwit = false;
+//       const useChange = true;
+//       const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice, PURPOSE);
+//       try {
+//         await testSign(p.txReq, p.signingKeys, p.sigHashes);
+//         next();
+//       } catch (err) {
+//         next(err);
+//       }
+//     });
 
-describe('legacy, mainnet, change', function(){
+// });
 
-    it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
-      const inputsSlice = inputs.slice(0, n.number);
-      const isTestnet = false;
-      const isSegwit = false;
-      const useChange = true;
-      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice);
-      try {
-        await testSign(p.txReq, p.signingKeys, p.sigHashes);
-        next();
-      } catch (err) {
-        next(err);
-      }
-    });
+// describe('legacy, mainnet, change', function(){
 
-});
+//     it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
+//       expect(wallet).to.not.equal(null, 'Wallet not available')
+//       const inputsSlice = inputs.slice(0, n.number);
+//       const isTestnet = false;
+//       const isSegwit = false;
+//       const useChange = true;
+//       const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice, PURPOSE);
+//       try {
+//         await testSign(p.txReq, p.signingKeys, p.sigHashes);
+//         next();
+//       } catch (err) {
+//         next(err);
+//       }
+//     });
+
+// });
 
 describe('segwit, testnet, change', function(){
 
     it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
+      expect(wallet).to.not.equal(null, 'Wallet not available')
       const inputsSlice = inputs.slice(0, n.number);
       const isTestnet = true;
       const isSegwit = true;
       const useChange = true;
-      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice);
+      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice, PURPOSE);
       try {
         await testSign(p.txReq, p.signingKeys, p.sigHashes);
         next();
@@ -135,11 +146,12 @@ describe('segwit, testnet, change', function(){
 describe('segwit, mainnet, change', function(){
 
     it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
+      expect(wallet).to.not.equal(null, 'Wallet not available')
       const inputsSlice = inputs.slice(0, n.number);
       const isTestnet = false;
       const isSegwit = true;
       const useChange = true;
-      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice);
+      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice, PURPOSE);
       try {
         await testSign(p.txReq, p.signingKeys, p.sigHashes);
         next();
@@ -153,11 +165,12 @@ describe('segwit, mainnet, change', function(){
 describe('segwit, mainnet, no change', function(){
 
     it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
+      expect(wallet).to.not.equal(null, 'Wallet not available')
       const inputsSlice = inputs.slice(0, n.number);
       const isTestnet = false;
       const isSegwit = true;
       const useChange = false;
-      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice, useChange);
+      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice, PURPOSE);
       try {
         await testSign(p.txReq, p.signingKeys, p.sigHashes);
         next();
@@ -168,20 +181,21 @@ describe('segwit, mainnet, no change', function(){
 
 });
 
-describe('legacy, mainnet, no change', function(){
+// describe('legacy, mainnet, no change', function(){
 
-    it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
-      const inputsSlice = inputs.slice(0, n.number);
-      const isTestnet = false;
-      const isSegwit = false;
-      const useChange = false;
-      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice, useChange);
-      try {
-        await testSign(p.txReq, p.signingKeys, p.sigHashes);
-        next();
-      } catch (err) {
-        next(err);
-      }
-    });
+//     it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
+//       expect(wallet).to.not.equal(null, 'Wallet not available')
+//       const inputsSlice = inputs.slice(0, n.number);
+//       const isTestnet = false;
+//       const isSegwit = false;
+//       const useChange = false;
+//       const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice, PURPOSE);
+//       try {
+//         await testSign(p.txReq, p.signingKeys, p.sigHashes);
+//         next();
+//       } catch (err) {
+//         next(err);
+//       }
+//     });
 
-});
+// });

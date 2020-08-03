@@ -62,34 +62,35 @@ describe('Connect and Pair', () => {
     if (caughtErr === false) {
       const addrData = { 
         currency: 'BTC', 
-        startPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0], 
+        startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_COIN, HARDENED_OFFSET, 0, 0], 
         n: 5
       }
-
       // Bitcoin addresses
       // NOTE: The format of address will be based on the user's Lattice settings
       //       By default, this will be P2SH(P2WPKH), i.e. addresses that start with `3`
-      let addrs = await helpers.getAddresses(client, addrData);
+      let addrs;
+      addrs = await helpers.getAddresses(client, addrData);
       expect(addrs.length).to.equal(5);
-      expect(addrs[0][0]).to.be.oneOf(['1', '3']);
+      expect(addrs[0][0]).to.equal('3');
 
       // Ethereum addresses
-      addrData.startPath[1] = HARDENED_OFFSET + 60; // ETH currency code
+      addrData.startPath[0] = helpers.BTC_LEGACY_PURPOSE;
+      addrData.startPath[1] = helpers.ETH_COIN;
       addrData.n = 1;
       addrs = await helpers.getAddresses(client, addrData, 2000);
       expect(addrs.length).to.equal(1);
       expect(addrs[0].slice(0, 2)).to.equal('0x');
-      addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
 
       // Bitcoin testnet
-      addrData.startPath[1] = HARDENED_OFFSET + 1; // BTC_TEST
+      addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
+      addrData.startPath[1] = helpers.BTC_TESTNET_COIN;
       addrData.n = 1;
       addrs = await helpers.getAddresses(client, addrData, 2000);
       expect(addrs.length).to.equal(1);
       expect(addrs[0][0]).to.be.oneOf(['n', 'm', '2']);
-      addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
-
-      // Failure cases
+      addrData.startPath[1] = helpers.BTC_COIN;
+      
+      // --- EXPECTED FAILURES ---
       // Unsupported purpose (m/<purpose>/)
       addrData.startPath[0] = 0; // Purpose 0 -- undefined
       try {
@@ -98,7 +99,7 @@ describe('Connect and Pair', () => {
       } catch (err) {
         expect(err).to.not.equal(null);
       }
-      addrData.startPath[0] = HARDENED_OFFSET+44; // Back to 44'
+      addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
 
       // Unsupported currency
       addrData.startPath[1] = HARDENED_OFFSET+5; // 5' currency - aka unknown
@@ -108,8 +109,7 @@ describe('Connect and Pair', () => {
       } catch (err) {
         expect(err).to.not.equal(null);
       }
-      addrData.startPath[1] = HARDENED_OFFSET; // Back to BTC
-
+      addrData.startPath[1] = helpers.BTC_COIN;
       // Too many addresses (n>10)
       addrData.n = 11;
       try {
@@ -138,7 +138,7 @@ describe('Connect and Pair', () => {
     const req = {
       currency: 'ETH',
       data: {
-        signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+60, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         ...txData,
         chainId: 'rinkeby', // Can also be an integer
       }
@@ -245,14 +245,14 @@ describe('Connect and Pair', () => {
           txHash: '6e78493091f80d89a92ae3152df7fbfbdc44df09cf01a9b76c5113c02eaf2e0f',
           value: 10000,
           index: 1,
-          signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+1, HARDENED_OFFSET, 0, 0],
+          signerPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_TESTNET_COIN, HARDENED_OFFSET, 0, 0],
         },
       ],
       recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
       value: 1000,
       fee: 1000,
       isSegwit: false,
-      changePath: [HARDENED_OFFSET+44, HARDENED_OFFSET+1, HARDENED_OFFSET, 1, 0],
+      changePath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
       changeVersion: 'TESTNET',  // Default 'LEGACY'
       network: 'TESTNET',        // Default 'MAINNET'
     };
@@ -274,14 +274,14 @@ describe('Connect and Pair', () => {
           txHash: 'ab8288ef207f11186af98db115aa7120aa36ceb783e8792fb7b2f39c88109a99',
           value: 10000,
           index: 1,
-          signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+1, HARDENED_OFFSET, 0, 0],
+          signerPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_TESTNET_COIN, HARDENED_OFFSET, 0, 0],
         },
       ],
       recipient: '2NGZrVvZG92qGYqzTLjCAewvPZ7JE8S8VxE',
       value: 1000,
       fee: 1000,
       isSegwit: true,
-      changePath: [HARDENED_OFFSET+44, HARDENED_OFFSET+1, HARDENED_OFFSET, 1, 0],
+      changePath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
       changeVersion: 'SEGWIT_TESTNET',  // Default 'LEGACY'
       network: 'TESTNET',        // Default 'MAINNET'
     };

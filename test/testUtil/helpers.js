@@ -10,6 +10,15 @@ const HARDENED_OFFSET = 0x80000000;
 const EC = require('elliptic').ec;
 const ec = new EC('secp256k1');
 
+// NOTE: We use the HARDEN(49) purpose for p2sh(p2wpkh) address derivations.
+//       For p2pkh-derived addresses, we use the legacy 44' purpose
+//       For p2wpkh-derived addresse (not yet supported) we will use 84'
+exports.BTC_PURPOSE_P2SH_P2WPKH = HARDENED_OFFSET+49;
+exports.BTC_LEGACY_PURPOSE = HARDENED_OFFSET+44;
+exports.BTC_COIN = HARDENED_OFFSET;
+exports.BTC_TESTNET_COIN = HARDENED_OFFSET+1;
+exports.ETH_COIN = HARDENED_OFFSET+60;
+
 function setupTestClient(env) {
   const setup = {
       name: 'SDK Test',
@@ -79,6 +88,14 @@ function test(client, opts) {
   })
 }
 
+const unharden = (x) => { 
+  return x >= HARDENED_OFFSET ? x - HARDENED_OFFSET : x; 
+}
+
+const buildPath = (purpose, currencyIdx, signerIdx, change=0) => {
+  return `m/${unharden(purpose)}'/${unharden(currencyIdx)}'/0'/${change}/${signerIdx}`
+}
+
 function _getSumInputs(inputs) {
   let sum = 0;
   inputs.forEach((input) => {
@@ -87,7 +104,7 @@ function _getSumInputs(inputs) {
   return sum;
 }
 
-function _get_btc_addr(pubKey, isSegwit, network) {
+function _get_btc_change_addr(pubKey, isSegwit, network) {
   let obj = null;
   if (true === isSegwit) {
      const p2wpkh = bitcoin.payments.p2wpkh({ 
@@ -107,16 +124,17 @@ function _get_btc_addr(pubKey, isSegwit, network) {
   return obj.address;
 }
 
-function _start_tx_builder(wallet, recipient, value, fee, inputs, network, isSegwit) {
+function _start_tx_builder(wallet, recipient, value, fee, inputs, network, isSegwit, purpose) {
   const txb = new bitcoin.TransactionBuilder(network)
   const inputSum = _getSumInputs(inputs);
   txb.addOutput(recipient, value);
   const changeValue = inputSum - value - fee;
   if (changeValue > 0) {
     const networkIdx = network === bitcoin.networks.testnet ? 1 : 0;
-    const btc_0_change = wallet.derivePath(`m/44'/${networkIdx}'/0'/1/0`);
+    const path = buildPath(purpose, exports.harden(networkIdx), 0, 1)
+    const btc_0_change = wallet.derivePath(path);
     const btc_0_change_pub = bitcoin.ECPair.fromPublicKey(btc_0_change.publicKey).publicKey;
-    const changeAddr = _get_btc_addr(btc_0_change_pub, isSegwit, network)
+    const changeAddr = _get_btc_change_addr(btc_0_change_pub, isSegwit, network)
     txb.addOutput(changeAddr, changeValue)
   } else if (changeValue < 0) {
     throw new Error('Value + fee > sumInputs!')
@@ -139,7 +157,7 @@ function _build_sighashes(txb, isSegwit) {
   return hashes;
 }
 
-function _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestnet, isSegwit) {
+function _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestnet, isSegwit, purpose) {
   let network, networkIdx;
   if (isTestnet === true) {
     network = bitcoin.networks.testnet;
@@ -148,9 +166,10 @@ function _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestn
     network = bitcoin.networks.mainnet;
     networkIdx = 0;
   }
-  const txb = _start_tx_builder(wallet, recipient, value, fee, inputs, network, isSegwit)
+  const txb = _start_tx_builder(wallet, recipient, value, fee, inputs, network, isSegwit, purpose)
   inputs.forEach((input, i) => {
-    const _signer = wallet.derivePath(`m/44'/${networkIdx}'/0'/0/${input.signerIdx}`)
+    const path = buildPath(purpose, exports.harden(networkIdx), input.signerIdx);
+    const _signer = wallet.derivePath(path)
     const signer = bitcoin.ECPair.fromPrivateKey(_signer.privateKey, { network })
     if (true === isSegwit) {
       const p2wpkh = bitcoin.payments.p2wpkh({ 
@@ -169,25 +188,24 @@ function _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestn
   return _build_sighashes(txb, isSegwit);
 }
 
-
-function _tx_request_builder(inputs, recipient, value, fee, segwit, isTestnet) {
+function _btc_tx_request_builder(inputs, recipient, value, fee, segwit, isTestnet, purpose) {
   let currencyIdx, changeVersion, networkStr;
   if (isTestnet && segwit === true) {
     networkStr = 'TESTNET';
     changeVersion = 'SEGWIT_TESTNET';
-    currencyIdx = HARDENED_OFFSET+1;
+    currencyIdx = exports.BTC_TESTNET_COIN;
   } else if (isTestnet && segwit === false) {
     networkStr = 'TESTNET';
     changeVersion = 'TESTNET';
-    currencyIdx = HARDENED_OFFSET+1;
+    currencyIdx = exports.BTC_TESTNET_COIN;
   } else if (!isTestnet && segwit === true) {
     networkStr = 'MAINNET';
     changeVersion = 'SEGWIT';
-    currencyIdx = HARDENED_OFFSET;
+    currencyIdx = exports.BTC_COIN;
   } else if (!isTestnet && segwit === false) {
     networkStr = 'MAINNET';
     changeVersion = 'LEGACY';
-    currencyIdx = HARDENED_OFFSET;
+    currencyIdx = exports.BTC_COIN;
   } else {
     throw new Error('Invalid network and segwit params provided');
   }
@@ -198,7 +216,7 @@ function _tx_request_builder(inputs, recipient, value, fee, segwit, isTestnet) {
     value,
     fee,
     isSegwit: segwit,
-    changePath: [HARDENED_OFFSET+44, currencyIdx, HARDENED_OFFSET, 1, 0],
+    changePath: [purpose, currencyIdx, HARDENED_OFFSET, 1, 0],
     changeVersion,
     network: networkStr,
   };
@@ -207,7 +225,7 @@ function _tx_request_builder(inputs, recipient, value, fee, segwit, isTestnet) {
       txHash: input.hash,
       value: input.value,
       index: input.idx,
-      signerPath: [HARDENED_OFFSET+44, currencyIdx, HARDENED_OFFSET, 0, input.signerIdx]
+      signerPath: [purpose, currencyIdx, HARDENED_OFFSET, 0, input.signerIdx]
     })
   })
   return {
@@ -244,11 +262,12 @@ function stripDER(derSig) {
   return Buffer.concat([sig.r, sig.s])
 }
 
-function _get_signing_keys(wallet, inputs, isTestnet) {
+function _get_signing_keys(wallet, inputs, isTestnet, purpose) {
   const currencyIdx = isTestnet === true ? 1 : 0;
   const keys = [];
   inputs.forEach((input) => {
-    keys.push(wallet.derivePath(`m/44'/${currencyIdx}'/0'/0/${input.signerIdx}`))
+    const path = buildPath(purpose, currencyIdx, input.signerIdx)
+    keys.push(wallet.derivePath(path))
   })
   return keys;
 }
@@ -268,15 +287,15 @@ function _generate_btc_address(isTestnet, isSegwit) {
   return obj.address;
 }
 
-function setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputs) {
+function setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputs, purpose) {
     const recipient = _generate_btc_address(isTestnet, isSegwit);
     const sumInputs = _getSumInputs(inputs);
     const fee = Math.floor(Math.random() * 50000)
     const _value = useChange === true ? Math.floor(Math.random() * sumInputs) : sumInputs;
     const value = _value - fee;
-    const sigHashes = _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestnet, isSegwit);
-    const signingKeys = _get_signing_keys(wallet, inputs, isTestnet);
-    const txReq = _tx_request_builder(inputs, recipient, value, fee, isSegwit, isTestnet);
+    const sigHashes = _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestnet, isSegwit, purpose);
+    const signingKeys = _get_signing_keys(wallet, inputs, isTestnet, purpose);
+    const txReq = _btc_tx_request_builder(inputs, recipient, value, fee, isSegwit, isTestnet, purpose);
     return {
       sigHashes,
       signingKeys,
