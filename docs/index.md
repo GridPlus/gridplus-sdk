@@ -98,17 +98,18 @@ You may retrieve some number of addresses for supported cryptocurrencies. The La
 An example request looks like:
 
 ```
-// Hardened offset is , referenced in the BIP44 spec here: https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#purpose
 const HARDENED_OFFSET = 0x80000000;
 const req = {
-    // -- m/44'/0'/0'/0/0, i.e. first BTC address
-    startPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0],
+    // -- m/49'/0'/0'/0/0, i.e. first BTC address
+    startPath: [HARDENED_OFFSET+49, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0],
     n: 4
 };
 client.addresses(req, (err, res) => {
     ...
 })
 ```
+
+> NOTE: For v1, the Lattice1 only supports `p2sh-p2wpkh` BTC addresses, which require a `49'` purpose, per [BIP49](https://en.bitcoin.it/wiki/BIP_0049). Ethereum addresses use the legacy `44'` purpose. 
 
 **Options:**
 
@@ -181,20 +182,20 @@ let txData = {
             txHash: '08911991c5659349fa507419a20fd398d66d59e823bca1b1b94f8f19e21be44c',
             value: 3469416,
             index: 1,
-            signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 1, 0],
+            signerPath: [HARDENED_OFFSET+49, HARDENED_OFFSET, HARDENED_OFFSET, 1, 0],
         },
         {
             txHash: '19e7aa056a82b790c478e619153c35195211b58923a8e74d3540f8ff1f25ecef',
             value: 3461572,
             index: 0,
-            signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 0, 5],
+            signerPath: [HARDENED_OFFSET+49, HARDENED_OFFSET, HARDENED_OFFSET, 0, 5],
         }
     ],
     recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
     value: 1000,
     fee: 1000,
     isSegwit: true,
-    changePath: [HARDENED_OFFSET+44, HARDENED_OFFSET, HARDENED_OFFSET, 1, 1],
+    changePath: [HARDENED_OFFSET+49, HARDENED_OFFSET, HARDENED_OFFSET, 1, 1],
     changeVersion: 'SEGWIT_TESTNET',
     network: 'TESTNET',
 };
