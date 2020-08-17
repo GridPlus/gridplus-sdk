@@ -59,7 +59,7 @@ function buildReq(txData, network='mainnet') {
   return {
     currency: 'ETH',
     data: {
-      signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+60, HARDENED_OFFSET, 0, 0],
+      signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
       ...txData,
       chainId: network
     }

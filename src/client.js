@@ -29,7 +29,7 @@ const Buffer = require('buffer/').Buffer;
 const EMPTY_WALLET_UID = Buffer.alloc(32);
 
 class Client {
-  constructor({ baseUrl, crypto, name, privKey, timeout } = {}) {
+  constructor({ baseUrl, crypto, name, privKey, timeout, retryCount } = {}) {
     // Definitions
     // if (!baseUrl) throw new Error('baseUrl is required');
     if (name && name.length > 24) throw new Error('name must be less than 24 characters');
@@ -49,6 +49,7 @@ class Client {
     this.timeout = timeout || 60000;
     this.deviceId = null;
     this.isPaired = false;
+    this.retryCount = retryCount || 3;
 
     // Information about the current wallet. Should be null unless we know a wallet is present
     this.activeWallets = {
@@ -348,7 +349,7 @@ class Client {
     return req;
   }
 
-  _request(data, cb, retryCount=1) {
+  _request(data, cb, retryCount=this.retryCount) {
     if (!this.deviceId) return cb('Serial is not set. Please set it and try again.');
     const url = `${this.baseUrl}/${this.deviceId}`;
     superagent.post(url).timeout(this.timeout)
@@ -360,8 +361,9 @@ class Client {
       // If the device is busy, retry if we can
       if (( parsed.responseCode === responseCodes.RESP_ERR_DEV_BUSY ||
             parsed.responseCode === responseCodes.RESP_ERR_GCE_TIMEOUT ) 
-            && (retryCount > 0))
-        return this._request(data, cb, retryCount-1);
+            && (retryCount > 0)) {
+        return setTimeout(() => { this._request(data, cb, retryCount-1) }, 3000);
+      }
       // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old ative walletUID
       if (parsed.responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) 
         this._resetActiveWallets();
