@@ -462,12 +462,12 @@ exports.deserializeGetAddressesJobResult = function(res) {
 exports.validateBTCAddresses = function(resp, jobData, seed, useTestnet) {
   expect(resp.count).to.equal(jobData.count);
   const wallet = bip32.fromSeed(seed);
-  const path = jobData.parent;
+  const path = JSON.parse(JSON.stringify(jobData.parent));
   path.pathDepth = 5;
   const network = useTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.mainnet;
   for (let i = jobData.first; i < jobData.first + jobData.count; i++) {
-    jobData.parent.addr = i;
-    const pubkey = wallet.derivePath(exports.stringifyPath(jobData.parent)).publicKey;
+    path.addr = i;
+    const pubkey = wallet.derivePath(exports.stringifyPath(path)).publicKey;
     // The format of the address depends on the device setting. We will check both types.
     // NOTE: At time of writing, we do not support native bech32 segwit addresses
     const p2sh_p2wpkh = bitcoin.payments.p2sh({redeem: bitcoin.payments.p2wpkh({ pubkey, network })}).address;
@@ -483,9 +483,10 @@ exports.validateETHAddress = function(resp, jobData, seed) {
   expect(resp.addresses[0].length).to.equal(42);
   // Confirm we can derive the same address from the previously exported seed
   const wallet = bip32.fromSeed(seed);
-  jobData.parent.pathDepth = 5;
-  jobData.parent.addr = 0;
-  const priv = wallet.derivePath(exports.stringifyPath(jobData.parent)).privateKey;
+  const path = JSON.parse(JSON.stringify(jobData.parent));
+  path.pathDepth = 5;
+  path.addr = 0;
+  const priv = wallet.derivePath(exports.stringifyPath(path)).privateKey;
   const addr = `0x${ethutil.privateToAddress(priv).toString('hex')}`;
   expect(addr).to.equal(resp.addresses[0]);
 }
