@@ -562,11 +562,13 @@ class Client {
         value: tx.origData.value,
         recipient: tx.origData.recipient,
       });
-      // Second output comes from change data
-      preSerializedData.outputs.push({
-        value: tx.changeData.value,
-        recipient: changeRecipient,
-      });
+      if (tx.changeData.value > 0) {
+        // Second output comes from change data
+        preSerializedData.outputs.push({
+          value: tx.changeData.value,
+          recipient: changeRecipient,
+        });
+      }
       
       // Add the inputs
       for (let i = 0; i < sigs.length; i++) {
