@@ -26,7 +26,7 @@ function setupTestClient(env) {
       crypto,
       timeout: 120000,
     };
-    const REUSABLE_KEY = '3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca;'
+    const REUSABLE_KEY = '3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca'
     // If the user passes a deviceID in the env, we assume they have previously
     // connected to the Lattice.
     if (env.DEVICE_ID) {
