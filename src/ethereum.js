@@ -145,14 +145,14 @@ exports.buildEthRawTx = function(tx, sig, address, useEIP155=true) {
 function addRecoveryParam(payload, sig, address, chainId, useEIP155) {
   try {
     // Rebuild the keccak256 hash here so we can `ecrecover`
-    const hash = Buffer.from(keccak256(payload), 'hex');
+    const hash = new Uint8Array(Buffer.from(keccak256(payload), 'hex'));
     sig.v = 27;
     // Fix signature componenet lengths to 32 bytes each
     const r = fixLen(sig.r, 32); sig.r = r;
     const s = fixLen(sig.s, 32); sig.s = s;
     // Calculate the recovery param
-    const rs = Buffer.concat([r, s]);
-    let pubkey = secp256k1.recover(hash, rs, sig.v - 27, false).slice(1);
+    const rs = new Uint8Array(Buffer.concat([r, s]));
+    let pubkey = secp256k1.ecdsaRecover(rs, sig.v - 27, hash, false).slice(1)
     // If the first `v` value is a match, return the sig!
     if (pubToAddrStr(pubkey) === address.toString('hex')) {
       if (useEIP155 === true) sig.v  = updateRecoveryParam(sig.v, chainId);
@@ -160,7 +160,7 @@ function addRecoveryParam(payload, sig, address, chainId, useEIP155) {
     }
     // Otherwise, try the other `v` value
     sig.v = 28;
-    pubkey = secp256k1.recover(hash, rs, sig.v - 27, false).slice(1);
+    pubkey = secp256k1.ecdsaRecover(rs, sig.v - 27, hash, false).slice(1)
     if (pubToAddrStr(pubkey) === address.toString('hex')) {
       if (useEIP155 === true) sig.v  = updateRecoveryParam(sig.v, chainId);
       return sig;
