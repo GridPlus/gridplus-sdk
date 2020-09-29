@@ -6,6 +6,68 @@ const keccak256 = require('js-sha3').keccak256;
 const rlp = require('rlp-browser');
 const secp256k1 = require('secp256k1');
 
+exports.buildEthereumMsgRequest = function(input) {
+  if (!input.payload || !input.protocol || !input.signerPath)
+    throw new Error('You must provide `payload`, `signerPath`, and `protocol` arguments in the messsage request');
+  const req = {
+    schema: constants.signingSchema.ETH_MSG,
+    payload: null,
+    input, // Save the input for later
+    msg: null, // Save the buffered message for later
+  }
+  if (input.protocol === 'signPersonal') {
+    const L = ((input.signerPath.length + 1) * 4) + constants.ETH_MSG_MAX_SIZE + 4;
+    let off = 0;
+    req.payload = Buffer.alloc(L);
+    req.payload.writeUInt8(constants.ethMsgProtocol.SIGN_PERSONAL, 0); off += 1;
+    req.payload.writeUInt32LE(input.signerPath.length, off); off += 4;
+    for (let i = 0; i < input.signerPath.length; i++) {
+      req.payload.writeUInt32LE(input.signerPath[i], off); off += 4;
+    }
+    // Write the payload buffer. The payload can come in either as a buffer or as a string
+    let payload = input.payload;
+    // Determine if this is a hex string
+    let displayHex = false;
+    if (typeof input.payload === 'string') {
+      if (input.payload.slice(0, 2) === '0x') {
+        payload = ensureHexBuffer(input.payload)
+        displayHex = false === isASCII(payload.toString());
+      } else {
+        payload = Buffer.from(input.payload)
+      }
+    } else if (typeof input.displayHex === 'boolean') {
+      // If this is a buffer and the user has specified whether or not this
+      // is a hex buffer with the optional argument, write that
+      displayHex = input.displayHex
+    }
+    // Make sure we didn't run past the max size
+    if (payload.length > constants.ETH_MSG_MAX_SIZE)
+      throw new Error(`Your payload is ${payload.length} bytes, but can only be a maximum of ${constants.ETH_MSG_MAX_SIZE}`);
+    // Write the payload and metadata into our buffer
+    req.msg = payload;
+    req.payload.writeUInt8(displayHex, off); off += 1;
+    req.payload.writeUInt16LE(payload.length, off); off += 2;
+    payload.copy(req.payload, off);
+    return req;
+  } else {
+    throw new Error('Unsupported protocol');
+  }
+}
+
+exports.validateEthereumMsgResponse = function(res, req) {
+  const { signer, sig } = res;
+  const { input, msg } = req;
+  if (input.protocol === 'signPersonal') {
+    const prefix = Buffer.from(
+      `\u0019Ethereum Signed Message:\n${msg.length.toString()}`,
+      'utf-8',
+    );
+    return addRecoveryParam(Buffer.concat([prefix, msg]), sig, signer)
+  } else {
+    throw new Error('Unsupported protocol');
+  }
+}
+
 exports.buildEthereumTxRequest = function(data) {
   try {
     let { chainId=1 } = data;
@@ -215,6 +277,10 @@ function writeUInt64BE(n, buf, off) {
   nBuf.copy(preBuf, preBuf.length - nBuf.length);
   preBuf.copy(buf, off);
   return preBuf;
+}
+
+function isASCII(str) {
+    return (/^[\x00-\x7F]*$/).test(str)
 }
 
 const chainIds = {

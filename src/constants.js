@@ -60,11 +60,6 @@ const messageConstants = {
     'PAIRED': 0x01,
 }
 
-const currencyCodes = {
-    'BTC': 0,
-    'ETH': 1,
-}
-
 const addressSizes = {
     'BTC': 20,  // 20 byte pubkeyhash
     'ETH': 20,  // 20 byte address not including 0x prefix
@@ -108,10 +103,16 @@ const responseMsgs = {
 const signingSchema = {
     BTC_TRANSFER: 0,
     ETH_TRANSFER: 1,
-    ERC20_TRANSFER: 2
+    ERC20_TRANSFER: 2,
+    ETH_MSG: 3,
+}
+
+const ethMsgProtocol = {
+    SIGN_PERSONAL: 0,
 }
 
 const ETH_DATA_MAX_SIZE = 1024; // Maximum number of bytes that can go in the data field
+const ETH_MSG_MAX_SIZE = 1024; // Maximum number of bytes that can be used in a message signing request
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
 const VERSION_BYTE = 1;
 const HARDENED_OFFSET = 0x80000000; // Hardened offset
@@ -124,15 +125,16 @@ module.exports = {
     BASE_URL,
     ENC_MSG_LEN,
     addressSizes,
-    currencyCodes,
     decResLengths,
     deviceCodes,
     encReqCodes,
+    ethMsgProtocol,
     messageConstants,
     responseCodes,
     responseMsgs,
     signingSchema,
     ETH_DATA_MAX_SIZE,
+    ETH_MSG_MAX_SIZE,
     REQUEST_TYPE_BYTE,
     VERSION_BYTE,
     HARDENED_OFFSET,
