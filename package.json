@@ -49,6 +49,7 @@
     "it-each": "^0.4.0",
     "minimist": ">=0.2.1",
     "mocha": "^5.2.0",
+    "random-words": "^1.1.1",
     "readline-sync": "^1.4.9"
   },
   "files": [

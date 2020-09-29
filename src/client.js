@@ -2,7 +2,7 @@ const superagent = require('superagent');
 const bitcoin = require('./bitcoin');
 const ethereum = require('./ethereum');
 const {
-  txBuildingResolver,
+  signReqResolver,
   aes256_decrypt,
   aes256_encrypt,
   parseDER,
@@ -15,7 +15,6 @@ const {
 const {
   ADDR_STR_LEN,
   ENC_MSG_LEN,
-  currencyCodes,
   decResLengths,
   deviceCodes,
   encReqCodes,
@@ -180,45 +179,39 @@ class Client {
   }
 
   sign(opts, cb) {
-    // [TODO] Build transaction serialization util for Bitcoin
-    //        (note that version=2 and lockTime=0)
-    // [TODO] Return serialized transations + signatures (if necessary)
-    //        (the response should be all the user needs to broadcast the tx)
     const { currency, data } = opts;
     if (currency === undefined || data === undefined) {
       return cb('Please provide `currency` and `data` options');
-    } else if (currencyCodes[currency] === undefined) {
+    } else if (signReqResolver[currency] === undefined) {
       return cb('Unsupported currency');
     }
 
-    // Build the transaction payload to send to the device. If we catch
+    // Build the signing request payload to send to the device. If we catch
     // bad params, return an error instead
-    const tx = txBuildingResolver[currency](data);
-    if (tx.err !== undefined) return cb({ err: tx.err });
+    const req = signReqResolver[currency](data);
+    if (req.err !== undefined) return cb({ err: req.err });
     // All transaction requests must be put into the same sized buffer
     // so that checksums may be validated. The full size is 1266 bytes,
     // but that includes a 1-byte prefix (`SIGN_TRANSACTION`), 2 bytes
     // indicating the schema type, and 4 bytes for a checksum.
     // Therefore, the payload itself has 1224 - 7 = 1217 bytes of space.
-    const MAX_TX_REQ_DATA_SIZE = 1152;
-
-    if (tx.payload.length > MAX_TX_REQ_DATA_SIZE) {
+    const MAX_SIGN_REQ_DATA_SIZE = 1152;
+    if (req.payload.length > MAX_SIGN_REQ_DATA_SIZE)
       return cb('Transaction is too large');
-    }
 
     // Build the payload
-    const payload = Buffer.alloc(2 + MAX_TX_REQ_DATA_SIZE);
+    const payload = Buffer.alloc(2 + MAX_SIGN_REQ_DATA_SIZE);
     let off = 0;
-    // Copy tx request schema (e.g. ETH or BTC transfer)
-    payload.writeUInt16BE(tx.schema, off); off += 2;
+    // Copy request schema (e.g. ETH or BTC transfer)
+    payload.writeUInt16BE(req.schema, off); off += 2;
 
     // Copy the wallet UID
     const wallet = this.getActiveWallet();
     if (wallet === null) return cb('No active wallet.');
     wallet.uid.copy(payload, off); off += wallet.uid.length;
     // Build data based on the type of request
-    // Copy the payload of the tx request
-    tx.payload.copy(payload, off);
+    // Copy the payload of the request
+    req.payload.copy(payload, off);
     // Construct the encrypted request and send it
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
     return this._request(param, (err, res, responseCode) => {
@@ -234,7 +227,7 @@ class Client {
         if (err) return cb(err);
       } else {
         // Correct wallet and no errors -- handle the response
-        const parsedRes = this._handleSign(res, currency, tx);
+        const parsedRes = this._handleSign(res, currency, req);
         return cb(parsedRes.err, parsedRes.data);
       }
     })
@@ -499,7 +492,7 @@ class Client {
       return 'No active wallet.';
   }
 
-  _handleSign(encRes, currencyType, tx=null) {
+  _handleSign(encRes, currencyType, req=null) {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(encRes, decResLengths.sign);
     if (decrypted.err !== null ) return { err: decrypted.err };
@@ -511,7 +504,7 @@ class Client {
     // Get the change data if we are making a BTC transaction
     let changeRecipient;
     if (currencyType === 'BTC') {
-      const changeVersion = bitcoin.addressVersion[tx.changeData.changeVersion];
+      const changeVersion = bitcoin.addressVersion[req.changeData.changeVersion];
       const changePubkeyhash = res.slice(off, off + PKH_PREFIX_LEN); off += PKH_PREFIX_LEN;
       changeRecipient = bitcoin.getBitcoinAddress(changePubkeyhash, changeVersion);
     }
@@ -552,20 +545,20 @@ class Client {
       const preSerializedData = {
         inputs: [],
         outputs: [],
-        isSegwitSpend: tx.origData.isSegwit,
-        network: tx.origData.network,
+        isSegwitSpend: req.origData.isSegwit,
+        network: req.origData.network,
         crypto: this.crypto,
       };
 
       // First output comes from request dta
       preSerializedData.outputs.push({
-        value: tx.origData.value,
-        recipient: tx.origData.recipient,
+        value: req.origData.value,
+        recipient: req.origData.recipient,
       });
-      if (tx.changeData.value > 0) {
+      if (req.changeData.value > 0) {
         // Second output comes from change data
         preSerializedData.outputs.push({
-          value: tx.changeData.value,
+          value: req.changeData.value,
           recipient: changeRecipient,
         });
       }
@@ -573,8 +566,8 @@ class Client {
       // Add the inputs
       for (let i = 0; i < sigs.length; i++) {
         preSerializedData.inputs.push({
-          hash: tx.origData.prevOuts[i].txHash,
-          index: tx.origData.prevOuts[i].index,
+          hash: req.origData.prevOuts[i].txHash,
+          index: req.origData.prevOuts[i].index,
           sig: sigs[i],
           pubkey: pubkeys[i],
         });
@@ -603,19 +596,31 @@ class Client {
       }
     } else if (currencyType === 'ETH') {
       const sig = parseDER(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;
-      // Ethereum returns an address as well
       const ethAddr = res.slice(off, off + 20);
       // Determine the `v` param and add it to the sig before returning
-      const rawTx = ethereum.buildEthRawTx(tx, sig, ethAddr, tx.useEIP155);
+      const rawTx = ethereum.buildEthRawTx(req, sig, ethAddr, req.useEIP155);
       returnData.data = {
         tx: `0x${rawTx}`,
         txHash: `0x${ethereum.hashTransaction(rawTx)}`,
-         sig: {
+        sig: {
           v: sig.v,
           r: sig.r.toString('hex'),
           s: sig.s.toString('hex'),
         },
+        signer: ethAddr,
       };
+    } else if (currencyType === 'ETH_MSG') {
+      const sig = parseDER(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;
+      const signer = res.slice(off, off + 20);
+      const validatedSig = ethereum.validateEthereumMsgResponse({ signer, sig }, req);
+      returnData.data = {
+        sig: {
+          v: validatedSig.v,
+          r: validatedSig.r.toString('hex'),
+          s: validatedSig.s.toString('hex'),
+        },
+        signer,
+      }
     }
 
     return returnData;
