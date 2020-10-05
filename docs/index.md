@@ -131,6 +131,13 @@ res = [
 ]
 ```
 
+## Restrictions on Lattice addresses
+
+Although the request is generalized, the Lattice will only serve certain addresses. The following are restrictions for the existing version of Lattice firmware:
+
+* `ETH`: The Lattice only returns the 0-th index address (`m/44'/60'/0'/0/0`) of the current wallet (either on-board Lattice or external SafeCard). This means `n` must be equal to `1` and the only acceptable path is that of the 0-th index address.
+* `BTC`: Currently we only support `p2sh-p2wpkh` BTC addresses which use [BIP49](https://en.bitcoin.it/wiki/BIP_0049): `m/49'/0'/0'/0/x`. If testnet is enabled (`testnet3`), we also allow `m/49'/1'/0'/0/x`. Here, `x` may be any address that has been "cached" by the Lattice. We cache addresses relative to the requested address based on the [gap limit](https://blog.blockonomics.co/bitcoin-what-is-this-gap-limit-4f098e52d7e1?gi=616654046ec4). For the regular wallet, the gap limit is 20. In addition to these addresses, the user may request change addresses (`m/49'/0'/0/1/x` and `m/49'/1'/0'/1/x`). The gap limit for change addresses is 1. Because the Lattice itself is stateless, it creates new addresses whenever previous addresses are requested. For example, if regular addresses 0-19 have been cached (i.e. on an initial cache) and the user requests addresses 9-19, the wallet would then cache 20-29 and the user could then request any of those addresses (which would, in turn, lead to more becoming available). The same logic applies for change addresses, but only the subsequent one would get cached. Note that if you request addresses outside of the gap limit, you will get an error and no new addresses will be cached.
+
 # Requesting Signatures
 
 > This function requires the user to interact with the Lattice. It therefore uses your client's timeout to sever the request if needed.
@@ -138,12 +145,16 @@ res = [
 
 The Lattice device, at its core, is a tightly controlled, highly configurable, cryptographic signing machine. By default, each pairing (the persistent association between your app and a user's lattice) allows the app an ability to request signatures that the user must manually authorize.
 
-## Building a Transaction (ETH)
+## Request Types
+
+The following types of requests are currently supported by the Lattice. These correspond to the `currency` param in the `sign` options (`signOpts` below)
+
+## `ETH` (Ethereum transaction)
 
 Ethereum transactions consist of six fields. An example payload looks as follows:
 
 ```
-const txData = {
+const data = {
     nonce: 1,
     gasLimit: 25000,
     gasPrice: 1000000000,
@@ -153,6 +164,10 @@ const txData = {
     // -- m/44'/60'/0'/0/0
     signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+60, HARDENED_OFFSET, 0, 0],
     chainId: 'rinkeby',
+}
+const signOpts = {
+    currency: 'ETH',
+    data: data,
 }
 ```
 
@@ -171,12 +186,38 @@ const txData = {
 |:---------|:---------|:----------------------------------|
 | `chainId`| `mainnet` | `mainnet`, `ropsten`, `rinkeby`, `kovan`, `goerli` |
 
-## Building a Transaction (BTC)
+## `ETH_MSG` (Ethereum message)
+
+In addition to transactions, we support signing ETH messages, e.g.:
+
+```
+const data = {
+    protocol: 'signPersonal',
+    payload: '0xdeadbeef',
+    signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+60, HARDENED_OFFSET, 0, 0],
+}
+const signOpts = {
+    currency: 'ETH_MSG',
+    data: data,
+}
+```
+
+| Param      | Type      | Restrictions       |        
+|:-----------|:----------|:-------------------|
+| `protocol`  | string    | Must be one of supported protocols specified below |
+| `payload`   | Buffer or string  | *Must be hex string or buffer type*. Raw, serialized data to be signed. Please do **not** include protocol headers in this data. |
+| `signerPath`| Array | Address path from which to sign this transaction. NOTE: Ethereum wallets typically use the path specified in the example above for all transactions. |
+
+#### Supported ETH_MSG protocols
+
+* `signPersonal`: ETH personalSign ([EIP191](https://github.com/ethereum/EIPs/issues/191))
+
+## `BTC` (Bitcoin transaction)
 
 Bitcoin transactions are constructed by referencing a set of inputs to spend and a recipient + output value. You should also specify a change address path (defaults to `m/44'/0'/0'/1/0`):
 
 ```
-let txData = {
+const data = {
     prevOuts: [
         { 
             txHash: '08911991c5659349fa507419a20fd398d66d59e823bca1b1b94f8f19e21be44c',
@@ -198,7 +239,11 @@ let txData = {
     changePath: [HARDENED_OFFSET+49, HARDENED_OFFSET, HARDENED_OFFSET, 1, 1],
     changeVersion: 'SEGWIT_TESTNET',
     network: 'TESTNET',
-};
+}
+const signOpts = {
+    currency: 'BTC',
+    data: data,
+}
 ```
 
 | Param                     | Type      |Restrictions                  |   Description              |
@@ -223,10 +268,10 @@ let txData = {
 
 ## Requesting the Signature
 
-With the transaction params set, we can request the signature using the method outlined below. Upon receipt of the request, the Lattice will display the contents of your transaction data and wait for the user to authorize.
+Once you build the data needed, you can request a signature using the following pattern:
 
 ```
-client.sign(opts, (err, signedTx) => {
+client.sign(signOpts, (err, signedTx) => {
     
 })
 ```
