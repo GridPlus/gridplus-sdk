@@ -15,6 +15,7 @@
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)
 require('it-each')({ testPerIteration: true });
+const BN = require('bignumber.js');
 const randomWords = require('random-words');
 const crypto = require('crypto');
 const EthTx = require('ethereumjs-tx').Transaction;
@@ -92,7 +93,7 @@ function buildMsgReq(payload, protocol) {
 
 let foundError = false;
 
-async function testTxPass(req) {
+async function testTxPass(req, chain=null) {
   const tx = await helpers.sign(client, req);
   // Make sure there is transaction data returned
   // (this is ready for broadcast)
@@ -100,23 +101,24 @@ async function testTxPass(req) {
   if (txIsNull === true)
     foundError = true;
   expect(txIsNull).to.equal(false);
-
   // Check the transaction data against a reference implementation
   // (ethereumjs-tx)
   const txData = {
     ...req.data,
-    v: tx.sig.v,
+    v: `0x${tx.sig.v.toString('hex')}`,
     r: `0x${tx.sig.r}`,
     s: `0x${tx.sig.s}`,
   }
   // There is one test where we submit an address without the prefix
   if (txData.to.slice(0, 2) !== '0x')
     txData.to = `0x${txData.to}`
-  const expectedTx = new EthTx(txData, { chain: req.data.chainId }).serialize()
+  if (chain === null)
+    chain = req.data.chainId;
+  const expectedTx = new EthTx(txData, { chain }).serialize()
   const expectedTxStr = `0x${expectedTx.toString('hex')}`;
   if (tx.tx !== expectedTxStr) {
     foundError = true;
-    console.log('Invalid tx resp!', JSON.stringify(txData))
+    console.error('Invalid tx resp!', JSON.stringify(txData))
   }
   expect(tx.tx).to.equal(expectedTxStr);
 }
@@ -173,6 +175,71 @@ if (!process.env.skip) {
     beforeEach(() => {
       expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
       setTimeout(() => {}, 5000);
+    })
+
+    it('Should test range of chainId sizes', async () => {
+      const txData = JSON.parse(JSON.stringify(defaultTxData))
+
+      // Custom chains need to be fully defined for EthereumJS's Common module
+      // Here we just define a dummy chain. It isn't used for anything, but is required
+      // for us to verify the output transaction payload against EthereumJS-TX (reference impl)
+      const chain = {
+        'name': 'myFakeChain',
+        'chainId': 0,
+        'networkId': 0,
+        'genesis': {},
+        'hardforks': [],
+        'bootstrapNodes': [],
+      };
+
+      // Test boundaries for chainId sizes. We allow chainIds up to MAX_UINT64, but
+      // the mechanism to test is different for chainIds >254.
+      // NOTE: All unknown chainIds lead to using EIP155 (which includes all of these)
+      function getChainId(pow, add) {
+        return `0x${new BN(2).pow(pow).plus(add).toString(16)}`
+      }
+      
+      // This one can fit in the normal chainID u8
+      chain.chainId = chain.networkId = getChainId(8, -2); // 254
+      await testTxPass(buildTxReq(txData, chain.chainId), chain)
+
+      // These will need to go in the `data` buffer field
+      chain.chainId = chain.networkId = getChainId(8, -1); // 255
+      await testTxPass(buildTxReq(txData, chain.chainId), chain);
+      chain.chainId = chain.networkId = getChainId(8, 0); // 256
+      await testTxPass(buildTxReq(txData, chain.chainId), chain);
+      chain.chainId = chain.networkId = getChainId(16, -2);
+      await testTxPass(buildTxReq(txData, chain.chainId), chain);
+      chain.chainId = chain.networkId = getChainId(16, -1);
+      await testTxPass(buildTxReq(txData, chain.chainId), chain);
+      chain.chainId = chain.networkId = getChainId(16, 0);
+      await testTxPass(buildTxReq(txData, chain.chainId), chain);
+      chain.chainId = chain.networkId = getChainId(32, -2);
+      await testTxPass(buildTxReq(txData, chain.chainId), chain);
+      chain.chainId = chain.networkId = getChainId(32, -1);
+      await testTxPass(buildTxReq(txData, chain.chainId), chain);
+      chain.chainId = chain.networkId = getChainId(32, 0);
+      await testTxPass(buildTxReq(txData, chain.chainId), chain);
+
+      // Annoyingly, our reference implementation that is used to validate the full
+      // response payload can only build bignums of max size 2**51, so that is as
+      // far as we can validate the full payload here. This of course uses the full
+      // 8 byte chainID buffer, so we can test that size here.
+      chain.chainId = chain.networkId = getChainId(51, 0);
+      await testTxPass(buildTxReq(txData, chain.chainId), chain);
+
+      // Although we can't check the payload itself, we can still validate that chainIDs
+      // >UINT64_MAX will fail internal checks.
+      let res;
+      chain.chainId = chain.networkId = getChainId(64, -1); // UINT64_MAX should pass
+      res = await helpers.sign(client, buildTxReq(txData, chain.chainId));
+      expect(res.tx).to.not.equal(null);
+      chain.chainId = chain.networkId = getChainId(64, 0); // UINT64_MAX+1 should fail
+      try {
+        res = await helpers.sign(client, buildTxReq(txData, chain.chainId));
+      } catch (err) {
+        expect(typeof err.err).to.equal('string');
+      }
     })
 
     it('Should test range of `value`', async () => {

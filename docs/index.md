@@ -180,11 +180,13 @@ const signOpts = {
 | `value`    | number    | None               |
 | `data`     | string    | Must be <557 bytes |
 | `signerPath`| Array | Address path from which to sign this transaction. NOTE: Ethereum wallets typically use the path specified in the example above for all transactions. |
-| `chainId`  | string/number    | Name of the chain to use, options provided below. If a number is passed, it will use that. |
+| `chainId`  | string/number    | Can be hex string, number, or name. See name options below |
 
 | Param    | Default  | Options                           |
 |:---------|:---------|:----------------------------------|
 | `chainId`| `mainnet` | `mainnet`, `ropsten`, `rinkeby`, `kovan`, `goerli` |
+
+> NOTE: In addition to the "named" networks above, we allow the user to specify the chainID as a nubmer or a hex string. For very large chainIDs we highly recommend using a hex string to take advantage of bignum math.
 
 ## `ETH_MSG` (Ethereum message)
 
