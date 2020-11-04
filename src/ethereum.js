@@ -380,7 +380,7 @@ function isValidChainIdHexNumStr(s) {
 function useChainIdBuffer(id) {
   const buf = getChainIdBuf(id);
   if (buf.length === 1)
-    return buf.readUInt8() === 255;
+    return buf.readUInt8(0) === 255;
   return true;
 }
 
