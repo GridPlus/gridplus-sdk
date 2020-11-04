@@ -201,7 +201,7 @@ if (!process.env.skip) {
       function getChainId(pow, add) {
         return `0x${new BN(2).pow(pow).plus(add).toString(16)}`
       }
-    
+
       // This one can fit in the normal chainID u8
       chain.chainId = chain.networkId = getChainId(8, -2); // 254
       await testTxPass(buildTxReq(txData, chain.chainId), chain)
@@ -243,6 +243,11 @@ if (!process.env.skip) {
       } catch (err) {
         expect(typeof err.err).to.equal('string');
       }
+
+      // Test out a numerical chainId as well
+      const numChainId = 10000
+      chain.chainId = chain.networkId = `0x${numChainId.toString(16)}`; // 0x2710
+      await testTxPass(buildTxReq(txData, numChainId), chain);
     })
 
     it('Should test range of `value`', async () => {
@@ -375,11 +380,14 @@ if (!process.env.skip) {
         'genesis': {},
         'hardforks': [],
         'bootstrapNodes': [],
-      };
-      chain.chainId = chain.networkId = 1000;
+      };      
       txData.eip155 = false;
-      const res = await testTxPass(buildTxReq(txData, chain.chainId), chain);
-      expect(res.sig.v.toString()).to.equal(Buffer.alloc(0).toString())
+      const numChainId = 10000;
+      chain.chainId = chain.networkId = `0x${numChainId.toString(16)}`; // 0x2710
+      await testTxPass(buildTxReq(txData, numChainId), chain);
+      const res = await testTxPass(buildTxReq(txData, numChainId), chain);
+      // For non-EIP155 transactions, we expect `v` to be 27 or 28
+      expect(res.sig.v.toString('hex')).to.oneOf([(27).toString(16), (28).toString(16)])
     });
 
   });
