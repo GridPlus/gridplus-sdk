@@ -72,11 +72,11 @@ exports.validateEthereumMsgResponse = function(res, req) {
 exports.buildEthereumTxRequest = function(data) {
   try {
     let { chainId=1 } = data;
-    const { signerPath } = data;
+    const { signerPath, eip155=null } = data;
     // Sanity checks:
     // There are a handful of named chains we allow the user to reference (`chainIds`)
     // Custom chainIDs should be either numerical or hex strings
-    if (typeof chainId !== 'number' && isValidNumberString(chainId) === false) 
+    if (typeof chainId !== 'number' && isValidChainIdHexStr(chainId) === false) 
       chainId = chainIds[chainId];
     // If this was not a custom chainID and we cannot find the name of it, exit
     if (!chainId) 
@@ -85,9 +85,13 @@ exports.buildEthereumTxRequest = function(data) {
     if (!signerPath || signerPath.length !== 5) 
       throw new Error('Please provider full signer path (`signerPath`)')
 
-    // Determine if we should use EIP155 given the chainID. Unless explicitly told
-    // not to, we will use EIP155.
-    const useEIP155 = shouldUseEip155(chainId);
+    // Determine if we should use EIP155 given the chainID.
+    // If we are explicitly told to use eip155, we will use it. Otherwise,
+    // we will look up if the specified chainId is associated with a chain
+    // that does not use EIP155 by default. Note that most do use EIP155.
+    let useEIP155 = chainUsesEIP155(chainId);
+    if (eip155 !== null && typeof eip155 === 'boolean')
+      useEIP155 = eip155;
 
     // Hack for metamask, which sends value=null for 0 ETH transactions
     if (!data.value)
@@ -363,7 +367,7 @@ function getChainIdBuf(chainId) {
   return buf;
 }
 
-function shouldUseEip155(chainID) {
+function chainUsesEIP155(chainID) {
   switch (chainID) {
     case 3: // ropsten
     case 4: // rinkeby
@@ -376,8 +380,8 @@ function shouldUseEip155(chainID) {
   }
 }
 
-function isValidNumberString(s) {
-  return (new BN(s, 16).isNaN() === false) || (new BN(s).isNaN() === false)
+function isValidChainIdHexStr(s) {
+  return new BN(s, 16).isNaN() === false;
 }
 
 function useChainIdBuffer(id) {

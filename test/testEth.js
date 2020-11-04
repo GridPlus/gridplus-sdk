@@ -121,6 +121,7 @@ async function testTxPass(req, chain=null) {
     console.error('Invalid tx resp!', JSON.stringify(txData))
   }
   expect(tx.tx).to.equal(expectedTxStr);
+  return tx
 }
 
 async function testTxFail(req) {
@@ -177,8 +178,10 @@ if (!process.env.skip) {
       setTimeout(() => {}, 5000);
     })
 
-    it('Should test range of chainId sizes', async () => {
-      const txData = JSON.parse(JSON.stringify(defaultTxData))
+    it('Should test range of chainId sizes and EIP155 tag', async () => {
+      const txData = JSON.parse(JSON.stringify(defaultTxData));
+      // Add some random data for good measure, since this will interact with the data buffer
+      txData.data = `0x${crypto.randomBytes(Math.floor(Math.random() * 100)).toString('hex')}`;
 
       // Custom chains need to be fully defined for EthereumJS's Common module
       // Here we just define a dummy chain. It isn't used for anything, but is required
@@ -198,7 +201,7 @@ if (!process.env.skip) {
       function getChainId(pow, add) {
         return `0x${new BN(2).pow(pow).plus(add).toString(16)}`
       }
-      
+    
       // This one can fit in the normal chainID u8
       chain.chainId = chain.networkId = getChainId(8, -2); // 254
       await testTxPass(buildTxReq(txData, chain.chainId), chain)
@@ -357,10 +360,26 @@ if (!process.env.skip) {
       txData.nonce = 4294967296;
       await testTxFail(buildTxReq(txData))
     });
+
     it('Should test EIP155', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
       await testTxPass(buildTxReq(txData, 'rinkeby')) // Does NOT use EIP155
       await testTxPass(buildTxReq(txData, 'mainnet')) // Uses EIP155
+
+      // Finally, make sure the `eip155` tag works. We will set it to false and
+      // expect a result that does not include EIP155 in the payload.
+      const chain = {
+        'name': 'myFakeChain',
+        'chainId': 0,
+        'networkId': 0,
+        'genesis': {},
+        'hardforks': [],
+        'bootstrapNodes': [],
+      };
+      chain.chainId = chain.networkId = 1000;
+      txData.eip155 = false;
+      const res = await testTxPass(buildTxReq(txData, chain.chainId), chain);
+      expect(res.sig.v.toString()).to.equal(Buffer.alloc(0).toString())
     });
 
   });
