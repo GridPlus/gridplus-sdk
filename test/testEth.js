@@ -248,6 +248,14 @@ if (!process.env.skip) {
       const numChainId = 10000
       chain.chainId = chain.networkId = `0x${numChainId.toString(16)}`; // 0x2710
       await testTxPass(buildTxReq(txData, numChainId), chain);
+
+      // Test boundary of new dataSz
+      chain.chainId = chain.networkId = getChainId(51, 0); // UINT64_MAX should pass
+      const maxDataSz = constants.ETH_DATA_MAX_SIZE - 9; // Subtract 8 bytes for chainID and 1 byte for chainIdSz
+      txData.data = `0x${crypto.randomBytes(Math.floor(Math.random() * maxDataSz)).toString('hex')}`;
+      await testTxPass(buildTxReq(txData, chain.chainId), chain);
+      txData.data = `0x${crypto.randomBytes(Math.floor(Math.random() * maxDataSz+1)).toString('hex')}`;
+      await testTxFail(buildTxReq(txData, chain.chainId), chain);
     })
 
     it('Should test range of `value`', async () => {
