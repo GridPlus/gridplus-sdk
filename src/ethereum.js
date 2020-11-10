@@ -1,5 +1,6 @@
 // Utils for Ethereum transactions. This is effecitvely a shim of ethereumjs-util, which
 // does not have browser (or, by proxy, React-Native) support.
+const BN = require('bignumber.js');
 const Buffer = require('buffer/').Buffer
 const constants = require('./constants');
 const keccak256 = require('js-sha3').keccak256;
@@ -71,11 +72,26 @@ exports.validateEthereumMsgResponse = function(res, req) {
 exports.buildEthereumTxRequest = function(data) {
   try {
     let { chainId=1 } = data;
-    const { signerPath } = data;
-    if (typeof chainId !== 'number') chainId = chainIds[chainId];
-    if (!chainId) throw new Error('Unsupported chain name');
-    else if (!signerPath || signerPath.length !== 5) throw new Error('Please provider full signer path (`signerPath`)')
-    const useEIP155 = eip155[chainId];
+    const { signerPath, eip155=null } = data;
+    // Sanity checks:
+    // There are a handful of named chains we allow the user to reference (`chainIds`)
+    // Custom chainIDs should be either numerical or hex strings
+    if (typeof chainId !== 'number' && isValidChainIdHexNumStr(chainId) === false) 
+      chainId = chainIds[chainId];
+    // If this was not a custom chainID and we cannot find the name of it, exit
+    if (!chainId) 
+      throw new Error('Unsupported chain ID or name');
+    // Sanity check on signePath
+    if (!signerPath || signerPath.length !== 5) 
+      throw new Error('Please provider full signer path (`signerPath`)')
+
+    // Determine if we should use EIP155 given the chainID.
+    // If we are explicitly told to use eip155, we will use it. Otherwise,
+    // we will look up if the specified chainId is associated with a chain
+    // that does not use EIP155 by default. Note that most do use EIP155.
+    let useEIP155 = chainUsesEIP155(chainId);
+    if (eip155 !== null && typeof eip155 === 'boolean')
+      useEIP155 = eip155;
 
     // Hack for metamask, which sends value=null for 0 ETH transactions
     if (!data.value)
@@ -111,31 +127,30 @@ exports.buildEthereumTxRequest = function(data) {
     //--------------
     // 2. BUILD THE LATTICE REQUEST PAYLOAD
     //--------------
-
-    // Here we take the data from the raw transaction and serialize it into a buffer that
-    // can be consumed by the Lattice firmware. Note that each field has a 4-byte prefix
-    // field indicating how many non-zero bytes are being used in the field. If we use fewer
-    // than the max number of bytes for a given field, we still need to offset by the field
-    // width so that the data may be unpacked into a struct on the Lattice side.
-    //
-    // Fields:
-    // 4-byte pathDepth header
-    // 5x 4-byte path indices = 20
-    // 1 byte bool (EIP155)
-    // 4 byte nonce (+4byte prefix)
-    // 8 byte gasPrice (+4byte prefix)
-    // 4 byte gasLimit (+4byte prefix)
-    // 20 byte to address (+4byte prefix)
-    // 32 byte value (+4byte prefix)
-    // 1024 data bytes (+4byte prefix)
-    // 1 byte chainID (a.k.a. `v`) (+4byte prefix)
     const txReqPayload = Buffer.alloc(1146);
     let off = 0;
-
     // 1. EIP155 switch and chainID
     //------------------
     txReqPayload.writeUInt8(Number(useEIP155), off); off++;
-    txReqPayload.writeUInt8(Number(chainId), off); off++;
+    // NOTE: Originally we designed for a 1-byte chainID, but modern rollup chains use much larger
+    // chainID values. To account for these, we will put the chainID into the `data` buffer if it
+    // is >=255. Values up to UINT64_MAX will be allowed.
+    let chainIdBuf; 
+    let chainIdBufSz = 0;
+    if (useChainIdBuffer(chainId) === true) {
+      chainIdBuf = getChainIdBuf(chainId);
+      chainIdBufSz = chainIdBuf.length;
+      if (chainIdBufSz > constants.MAX_CHAIN_ID_BYTES)
+        throw new Error('ChainID provided is too large.');
+      // Signal to Lattice firmware that it needs to read the chainId from the tx.data buffer
+      txReqPayload.writeUInt8(constants.HANDLE_LARGER_CHAIN_ID, off); off++;
+    } else {
+      // For chainIDs <255, write it to the chainId u8 slot in the main tx buffer
+      chainIdBuf = ensureHexBuffer(chainId);
+      if (chainIdBuf.length !== 1)
+        throw new Error('Error parsing chainID');
+      chainIdBuf.copy(txReqPayload, off); off += chainIdBuf.length;
+    }
 
     // 2. BIP44 Path
     //------------------
@@ -160,9 +175,17 @@ exports.buildEthereumTxRequest = function(data) {
     if (dataBytes && dataBytes.length > constants.ETH_DATA_MAX_SIZE) {
       return { err: `Data field too large (must be <=${constants.ETH_DATA_MAX_SIZE} bytes)` }
     }
-    // Data
+    // Write the data size (does *NOT* include the chainId buffer, if that exists)
     txReqPayload.writeUInt16BE(dataBytes.length, off); off += 2;
-    dataBytes.copy(txReqPayload, off); off += 1024;
+    if (dataBytes.length + chainIdBufSz > constants.ETH_DATA_MAX_SIZE)
+      throw new Error('Payload too large.');
+    // Copy in the chainId buffer if needed
+    if (chainIdBufSz > 0) {
+      txReqPayload.writeUInt8(chainIdBufSz, off); off++;
+      chainIdBuf.copy(txReqPayload, off); off += chainIdBufSz;
+    }
+    // Copy the data itself
+    dataBytes.copy(txReqPayload, off); off += constants.ETH_DATA_MAX_SIZE;
 
     return { 
       rawTx,
@@ -195,7 +218,7 @@ exports.buildEthRawTx = function(tx, sig, address, useEIP155=true) {
   const newSig = addRecoveryParam(rlpEncoded, sig, address, tx.chainId, useEIP155);
   // Use the signature to generate a new raw transaction payload
   const newRawTx = tx.rawTx.slice(0, 6);
-  newRawTx.push(Buffer.from((newSig.v).toString(16), 'hex'));
+  newRawTx.push(newSig.v);
   // Per `ethereumjs-tx`, RLP encoding should include signature components w/ stripped zeros
   // See: https://github.com/ethereumjs/ethereumjs-tx/blob/master/src/transaction.ts#L187
   newRawTx.push(stripZeros(newSig.r));
@@ -208,23 +231,23 @@ function addRecoveryParam(payload, sig, address, chainId, useEIP155) {
   try {
     // Rebuild the keccak256 hash here so we can `ecrecover`
     const hash = new Uint8Array(Buffer.from(keccak256(payload), 'hex'));
-    sig.v = 27;
+    let v = 0;
     // Fix signature componenet lengths to 32 bytes each
     const r = fixLen(sig.r, 32); sig.r = r;
     const s = fixLen(sig.s, 32); sig.s = s;
     // Calculate the recovery param
     const rs = new Uint8Array(Buffer.concat([r, s]));
-    let pubkey = secp256k1.ecdsaRecover(rs, sig.v - 27, hash, false).slice(1)
+    let pubkey = secp256k1.ecdsaRecover(rs, v, hash, false).slice(1)
     // If the first `v` value is a match, return the sig!
     if (pubToAddrStr(pubkey) === address.toString('hex')) {
-      if (useEIP155 === true) sig.v  = updateRecoveryParam(sig.v, chainId);
+      sig.v  = getRecoveryParam(v, useEIP155, chainId);
       return sig;
     }
     // Otherwise, try the other `v` value
-    sig.v = 28;
-    pubkey = secp256k1.ecdsaRecover(rs, sig.v - 27, hash, false).slice(1)
+    v = 1;
+    pubkey = secp256k1.ecdsaRecover(rs, v, hash, false).slice(1)
     if (pubToAddrStr(pubkey) === address.toString('hex')) {
-      if (useEIP155 === true) sig.v  = updateRecoveryParam(sig.v, chainId);
+      sig.v  = getRecoveryParam(v, useEIP155, chainId);
       return sig;
     } else {
       // If neither is a match, we should return an error
@@ -265,8 +288,20 @@ function fixLen(msg, length) {
   return msg.slice(-length)
 }
 
-function updateRecoveryParam(v, chainId) {
-  return v + (chainId * 2) + 8;
+// Convert a 0/1 `v` into a recovery param:
+// * For non-EIP155 transactions, return `27 + v`
+// * For EIP155 transactions, return `(CHAIN_ID*2) + 35 + v`
+function getRecoveryParam(v, useEIP155, chainId) {
+  // If we are not using EIP155, convert v directly to a buffer and return it
+  if (false === useEIP155)
+    return Buffer.from(new BN(v).plus(27).toString(16), 'hex');
+  // We will use EIP155 in most cases. Convert v to a bignum and operate on it.
+  // Note that the protocol calls for v = (CHAIN_ID*2) + 35/36, where 35 or 36
+  // is decided on based on the ecrecover result. `v` is passed in as either 0 or 1
+  // so we add 35 to that.
+  const chainIdBuf = getChainIdBuf(chainId);
+  const chainIdBN = new BN(chainIdBuf.toString('hex'), 16);
+  return ensureHexBuffer(chainIdBN.times(2).plus(35).plus(v).toString(16));
 }
 
 function writeUInt64BE(n, buf, off) {
@@ -291,13 +326,62 @@ const chainIds = {
   goerli: 5
 }
 
-const eip155 = {
-  1: true,
-  3: false,
-  4:false,
-  42: true,
-  5: true
+// Get a buffer containing the chainId value.
+// Returns a 1, 2, 4, or 8 byte buffer with the chainId encoded in big endian
+function getChainIdBuf(chainId) {
+  let b;
+  // If our chainID is a hex string, we can convert it to a hex
+  // buffer directly
+  if (true === isValidChainIdHexNumStr(chainId))
+    b = ensureHexBuffer(chainId);
+  // If our chainID is a base-10 number, parse with bignumber.js and convert to hex buffer
+  else
+    b = ensureHexBuffer(new BN(chainId).toString(16));
+  // Make sure the buffer is an allowed size
+  if (b.length > 8)
+    throw new Error('ChainID provided is too large.');
+  // If this matches a u16, u32, or u64 size, return it now
+  if (b.length <= 2 || b.length === 4 || b.length === 8)
+    return b;
+  // For other size buffers, we need to pack into u32 or u64 before returning;
+  let buf;
+  if (b.length === 3) {
+    buf = Buffer.alloc(4);
+    buf.writeUInt32BE(chainId);
+  } else if (b.length <= 8) {
+    buf = Buffer.alloc(8);
+    b.copy(buf, 8 - b.length)
+  }
+  return buf;
 }
 
+// Determine if the chain uses EIP155 by default, based on the chainID
+function chainUsesEIP155(chainID) {
+  switch (chainID) {
+    case 3: // ropsten
+    case 4: // rinkeby
+      return false;
+    case 1: // mainnet
+    case 42: // kovan
+    case 5: // goerli
+    default: // all others should use eip155
+      return true;
+  }
+}
+
+// Determine if a valid number was passed in as a hex string
+function isValidChainIdHexNumStr(s) {
+  return new BN(s, 16).isNaN() === false;
+}
+
+// If this is a nubmer that fits in one byte, we don't need to add it
+// to the `data` buffer of the main transaction. 
+// Note the one edge case: we still need to use the `data` field for chainID=255.
+function useChainIdBuffer(id) {
+  const buf = getChainIdBuf(id);
+  if (buf.length === 1)
+    return buf.readUInt8(0) === 255;
+  return true;
+}
 
 exports.chainIds = chainIds;

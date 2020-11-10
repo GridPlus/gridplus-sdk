@@ -164,6 +164,7 @@ const data = {
     // -- m/44'/60'/0'/0/0
     signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+60, HARDENED_OFFSET, 0, 0],
     chainId: 'rinkeby',
+    useEIP155: false,
 }
 const signOpts = {
     currency: 'ETH',
@@ -180,11 +181,51 @@ const signOpts = {
 | `value`    | number    | None               |
 | `data`     | string    | Must be <557 bytes |
 | `signerPath`| Array | Address path from which to sign this transaction. NOTE: Ethereum wallets typically use the path specified in the example above for all transactions. |
-| `chainId`  | string/number    | Name of the chain to use, options provided below. If a number is passed, it will use that. |
+| `chainId`  | string/number    | Can be hex string, number, or name. See name options below. Default=`mainnet` |
+| `eip155` | bool    | Optional. Set the value you want to override the default EIP155 usage of the given chain (see below) |
 
-| Param    | Default  | Options                           |
-|:---------|:---------|:----------------------------------|
-| `chainId`| `mainnet` | `mainnet`, `ropsten`, `rinkeby`, `kovan`, `goerli` |
+#### Chain ID
+
+The `chainId` param is used to provide replay protectin for most Ethereum-based chains. We allow several ways to specify this:
+
+1. A "named" chain, with options being: `mainnet`, `ropsten`, `rinkeby`, `kovan`, `goerli`
+2. An integer (only recommended for small numbers -- see below section)
+3. A hex string (e.g. `0x1234`)
+
+**Note about using large integers for `chainId`**
+
+Generally, we recommend *not* using a javascript integer if you have a large `chainId` , as it may not be correctly represented by a number in javascript. Consider the following dummy code in `node.js`:
+
+```
+> new bn(2).pow(64).toString(16)
+'10000000000000000'
+> (2**64).toString(16)
+'10000000000000000'
+> (2**64-2).toString(16)
+'10000000000000000'
+> new bn(2**64).toString(16)
+'10000000000000180'
+> 2**64
+18446744073709552000
+> new bn(18446744073709552000-2).toString(16)
+'10000000000000180'
+```
+
+As you can see, all sorts of problems arise from large javascript integers. Don't use them!
+
+**"Named" `chainId`s**
+
+We support a hand full of human-readable strings for specifying a network. These include the Ethereum mainnet and current widely used testnets. It is important to note that **some networks use EIP155 by default and others don't**. You can, of course, specify whether you want to use EIP155 or not explicitly using the `eip155` param. Please see the following table for EIP155 defaults:
+
+| Network   | Number   |Uses EIP155 by default  |
+|:----------|:---------|:------------|
+| `mainnet` | 1        | Yes         |
+| `ropsten` | 3        | No          |
+| `rinkeby` | 4        | No          |
+| `kovan`   | 42       | Yes         |
+| `goerli`  | 5        | Yes         |
+| Others    | n/a      | Yes         |
+
 
 ## `ETH_MSG` (Ethereum message)
 
