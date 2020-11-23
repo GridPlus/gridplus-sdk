@@ -177,7 +177,7 @@ const signOpts = {
 | `gasLimit` | number    | Must be >=22000    |
 | `gasPrice` | number    | Must be >0         |
 | `to`       | string    | Must be 20 bytes (excluding optional `0x` prefix) |
-| `value`    | number    | None               |
+| `value`    | number or hex string    | None               |
 | `data`     | string    | Must be <557 bytes |
 | `signerPath`| Array | Address path from which to sign this transaction. NOTE: Ethereum wallets typically use the path specified in the example above for all transactions. |
 | `chainId`  | string/number    | Name of the chain to use, options provided below. If a number is passed, it will use that. |
