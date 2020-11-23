@@ -32,7 +32,7 @@ exports.buildEthereumMsgRequest = function(input) {
     if (typeof input.payload === 'string') {
       if (input.payload.slice(0, 2) === '0x') {
         payload = ensureHexBuffer(input.payload)
-        displayHex = false === isASCII(payload.toString());
+        displayHex = true === isHexStr(input.payload.slice(2));
       } else {
         payload = Buffer.from(input.payload)
       }
@@ -314,8 +314,8 @@ function writeUInt64BE(n, buf, off) {
   return preBuf;
 }
 
-function isASCII(str) {
-    return (/^[\x00-\x7F]*$/).test(str)
+function isHexStr(str) {
+  return (/^[0-9a-fA-F]+$/).test(str)
 }
 
 const chainIds = {
