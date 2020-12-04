@@ -260,20 +260,18 @@ if (!process.env.skip) {
 
     it('Should test range of `value`', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData))
-      
-      // Expected passes
-      txData.value = 100;
-      await testTxPass(buildTxReq(txData))  
-      txData.value = 10**18;
+      txData.value = 1;
+      await testTxPass(buildTxReq(txData))
+      txData.value = 1234;
+      await testTxPass(buildTxReq(txData))
+      txData.value = 10**14;
       await testTxPass(buildTxReq(txData))
       txData.value = 10**64;
       await testTxPass(buildTxReq(txData))
       txData.value = 10**77;
       await testTxPass(buildTxReq(txData))
-      
-      // Expected failures
-      txData.value = 10**78;
-      await testTxFail(buildTxReq(txData))
+      txData.value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+      await testTxPass(buildTxReq(txData))
     });
 
     it('Should test the range of `data`', async () => {
