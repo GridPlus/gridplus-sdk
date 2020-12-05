@@ -418,7 +418,7 @@ describe('Test random transaction data', function() {
   })
 })
 
-describe('Test random ETH messages', function() {
+describe('Test ETH personalSign', function() {
   beforeEach(() => {
     expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
   })
@@ -432,6 +432,14 @@ describe('Test random ETH messages', function() {
     } catch (err) {
       setTimeout(() => { next(err) }, 2500);
     }
+  })
+
+  it('Should throw error when message contains non-ASCII characters', async () => {
+    const protocol = 'signPersonal';
+    const msg = '⚠️';
+    const msg2 = 'ASCII plus ⚠️';
+    await testMsg(buildMsgReq(msg, protocol), false);
+    await testMsg(buildMsgReq(msg2, protocol), false);
   })
 
   it('Msg: sign_personal boundary conditions', async () => {

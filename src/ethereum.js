@@ -34,6 +34,8 @@ exports.buildEthereumMsgRequest = function(input) {
         payload = ensureHexBuffer(input.payload)
         displayHex = true === isHexStr(input.payload.slice(2));
       } else {
+        if (false === latticeCanDisplayStr(input.payload))
+          throw new Error('Currently, the Lattice can only display ASCII strings.');
         payload = Buffer.from(input.payload)
       }
     } else if (typeof input.displayHex === 'boolean') {
@@ -316,6 +318,16 @@ function writeUInt64BE(n, buf, off) {
 
 function isHexStr(str) {
   return (/^[0-9a-fA-F]+$/).test(str)
+}
+
+// Determine if the Lattice can display a string we give it. Currently, the Lattice can only
+// display ASCII strings, so we will reject other UTF8 codes.
+// In the future we may add a mechanism to display certain UTF8 codes such as popular emojis.
+function latticeCanDisplayStr(str) {
+  for (let i = 0; i < str.length; i++)
+    if (str.charCodeAt(i) < 0x0020 || str.charCodeAt(i) > 0x007f)
+      return false;
+  return true;
 }
 
 const chainIds = {
