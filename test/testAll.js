@@ -57,6 +57,7 @@ describe('Connect and Pair', () => {
     }
   });
 
+/*
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr === false) {
@@ -294,5 +295,53 @@ describe('Connect and Pair', () => {
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
+*/
 
+  it('Should test permission limits', async () => {
+    // Add a 5-minute permission allowing 5 wei to be spent
+    const opts = {
+      currency: 'ETH',
+      timeWindow: 300,
+      limit: 5,
+      asset: null,
+    };
+    await helpers.addPermission(client, opts);
+    // Spend 2 wei
+    const txData = {
+      nonce: 0,
+      gasPrice: 1200000000,
+      gasLimit: 50000,
+      to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+      value: 2,
+      data: null
+    };
+    const req = {
+      currency: 'ETH',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        ...txData,
+        chainId: 'rinkeby', // Can also be an integer
+      }
+    };
+    // Test the spending limit. The first two requests should auto-sign.
+    // Spend once -> 3 wei left
+    let signResp = await helpers.sign(client, req);
+    expect(signResp.tx).to.not.equal(null);
+    // Spend again -> 1 wei left
+    signResp = await helpers.sign(client, req);
+    expect(signResp.tx).to.not.equal(null);
+    // Spend again. This time it should fail to load the permission
+    question('Please REJECT the following transaction request. Press enter to continue.')
+    try {
+      signResp = await helpers.sign(client, req);
+      expect(signResp.tx).to.equal(null);
+    } catch (err) {
+      expect(err).to.not.equal(null);
+    }
+    // Spend 1 wei this time. This should be allowed by the permission.
+    req.data.value = 1;
+    signResp = await helpers.sign(client, req);
+    expect(signResp.tx).to.not.equal(null);
+
+  })
 });
