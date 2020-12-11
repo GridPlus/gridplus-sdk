@@ -13,6 +13,7 @@ const decResLengths = {
     getAddresses: 10 * ADDR_STR_LEN,    // 10x 129 byte strings (128 bytes + null terminator)
     sign: 1090,                         // 1 DER signature for ETH, 10 for BTC + change pubkeyhash
     getWallets: 142,                    // 71 bytes per wallet record (response contains internal and external)
+    addAbiDefs: 8,
     test: 1646                          // Max size of test response payload
 }
 
@@ -52,7 +53,8 @@ const encReqCodes = {
     'ADD_PERMISSION': 0x02,
     'SIGN_TRANSACTION': 0x03,
     'GET_WALLETS': 0x04,
-    'TEST': 0x05,
+    'ADD_ABI_DEFS': 0x05,
+    'TEST': 0x06,
 }
 
 const messageConstants = {

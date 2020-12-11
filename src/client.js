@@ -1,6 +1,7 @@
 const superagent = require('superagent');
 const bitcoin = require('./bitcoin');
 const ethereum = require('./ethereum');
+const { buildAddAbiPayload, parseAbiData, MAX_ABI_DEFS } = require('./ethereumAbi');
 const {
   signReqResolver,
   aes256_decrypt,
@@ -230,6 +231,49 @@ class Client {
         const parsedRes = this._handleSign(res, currency, req);
         return cb(parsedRes.err, parsedRes.data);
       }
+    })
+  }
+
+  addAbiDefs(data, cb, nextCode=null, defs=[]) {
+    if (defs.length === 0) {
+      try {
+        defs = parseAbiData(data);
+      } catch (err) {
+        return cb(err.toString())
+      }
+    }
+    const defsToAdd = defs.slice(0, MAX_ABI_DEFS);
+    defs = defs.slice(MAX_ABI_DEFS);
+    let abiPayload;
+    try {
+      abiPayload = buildAddAbiPayload(defsToAdd);
+    } catch (err) {
+      return cb(err);
+    }
+    const payload = Buffer.alloc(abiPayload.length + 10);
+    // Let the firmware know how many defs are remaining *after this one*.
+    // If this is a positive number, firmware will send us a temporary code
+    // to bypass user authorization if the user has configured easy ABI loading.
+    payload.writeUInt16LE(defs.length);
+    // If this is a follow-up request, we don't need to ask for user authorization
+    // if we use the correct temporary u64
+    if (nextCode !== null)
+      nextCode.copy(payload, 2);
+    abiPayload.copy(payload, 10);
+    const param = this._buildEncRequest(encReqCodes.ADD_ABI_DEFS, payload);
+    return this._request(param, (err, res, responseCode) => {
+      if (responseCode && responseCode !== responseCodes.RESP_SUCCESS)
+        return cb('Error making request.');
+      else if (err)
+        return cb(err);
+      const decrypted = this._handleEncResponse(res, decResLengths.addAbiDefs);
+      // Grab the 8 byte code to fast track our next request, if needed
+      nextCode = decrypted.data.slice(65, 73); 
+      // No defs left? Return success
+      if (defs.length === 0)
+        return cb(null);
+      // Add the next set
+      this.addAbiDefs(defs, cb, nextCode, defs);
     })
   }
 
