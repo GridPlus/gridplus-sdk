@@ -235,15 +235,15 @@ class Client {
   }
 
   addPermission(opts, cb) {
-    const { currency, timeWindow, limit, asset } = opts;
-    if (!currency || !timeWindow || !limit)
-      return cb('currency, timeWindow, and limit are all required options.');
+    const { currency, timeWindow, limit, decimals, asset } = opts;
+    if (!currency || !timeWindow || !limit || !decimals)
+      return cb('currency, timeWindow, decimals, and limit are all required options.');
     // Build the name of the permission
     let name = currency;
     if (asset)
       name += `_${asset}`;
     // Start building the payload
-    const payload = Buffer.alloc(292);
+    const payload = Buffer.alloc(293);
     // Copy the name
     if (Buffer.from(name).length > 255)
       return cb('Asset name too long.');
@@ -255,6 +255,7 @@ class Client {
     limitBuf.copy(payload, 256 + (32 - limitBuf.length));
     // Copy the time window (seconds)
     payload.writeUInt32LE(timeWindow, 288);
+    payload.writeUInt8(decimals, 292);
     // Encrypt the request and send it to the Lattice.
     const param = this._buildEncRequest(encReqCodes.ADD_PERMISSION_V1, payload);
     return this._request(param, (err, res, responseCode) => {

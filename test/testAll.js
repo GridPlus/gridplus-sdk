@@ -303,6 +303,7 @@ describe('Connect and Pair', () => {
       currency: 'ETH',
       timeWindow: 300,
       limit: 5,
+      decimals: 18,
       asset: null,
     };
     await helpers.addPermission(client, opts);
