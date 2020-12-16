@@ -1,7 +1,7 @@
 const superagent = require('superagent');
 const bitcoin = require('./bitcoin');
 const ethereum = require('./ethereum');
-const { buildAddAbiPayload, parseAbiData, MAX_ABI_DEFS } = require('./ethereumAbi');
+const { buildAddAbiPayload, abiParsers, MAX_ABI_DEFS } = require('./ethereumAbi');
 const {
   signReqResolver,
   aes256_decrypt,
@@ -234,14 +234,7 @@ class Client {
     })
   }
 
-  addAbiDefs(data, cb, nextCode=null, defs=[]) {
-    if (defs.length === 0) {
-      try {
-        defs = parseAbiData(data);
-      } catch (err) {
-        return cb(err.toString())
-      }
-    }
+  addAbiDefs(defs, cb, nextCode=null) {
     const defsToAdd = defs.slice(0, MAX_ABI_DEFS);
     defs = defs.slice(MAX_ABI_DEFS);
     let abiPayload;
@@ -710,6 +703,16 @@ class Client {
     }
   }
 
+  // TODO: Find a better way to export this.
+  parseAbi(source, data) {
+    switch (source) {
+      case 'etherscan':
+        return abiParsers[source](data);
+      default:
+        return { err: `No ${source} parser available.` };
+
+    }
+  }
 }
 
 module.exports = Client;

@@ -88,6 +88,15 @@ function test(client, opts) {
   })
 }
 
+function addAbi(client, opts) {
+  return new Promise((resolve, reject) => {
+    client.addAbiDefs(opts, (err) => {
+      if (err) return reject(err);
+      return resolve();
+    })
+  })
+}
+
 const unharden = (x) => { 
   return x >= HARDENED_OFFSET ? x - HARDENED_OFFSET : x; 
 }
@@ -310,6 +319,7 @@ exports.pair = pair;
 exports.getAddresses = getAddresses;
 exports.sign = sign;
 exports.test = test;
+exports.addAbi = addAbi;
 exports.stripDER = stripDER;
 exports.setup_btc_sig_test = setup_btc_sig_test;
 
@@ -553,6 +563,15 @@ exports.deserializeSignTxJobResult = function(res) {
   }
 
   return getTxResult;
+}
+
+exports.ensureHexBuffer = function(x) {
+  if (x === null || x === 0) return Buffer.alloc(0);
+  else if (Buffer.isBuffer(x)) x = x.toString('hex');
+  if (typeof x === 'number') x = `${x.toString(16)}`;
+  else if (typeof x === 'string' && x.slice(0, 2) === '0x') x = x.slice(2);
+  if (x.length % 2 > 0) x = `0${x}`;
+  return Buffer.from(x, 'hex');
 }
 
 //---------------------------------------------------

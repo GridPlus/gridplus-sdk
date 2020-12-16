@@ -1,10 +1,8 @@
 // Basic tests for atomic SDK functionality
-const superagent = require('superagent');
 const constants = require('./../src/constants')
 const expect = require('chai').expect;
 const question = require('readline-sync').question;
 const helpers = require('./testUtil/helpers');
-const sushiAbi = require('./testUtil/sushiAbi.json');
 const HARDENED_OFFSET = constants.HARDENED_OFFSET;
 let client, id;
 let caughtErr = false;
@@ -58,7 +56,7 @@ describe('Connect and Pair', () => {
       expect(client.hasActiveWallet()).to.equal(true);
     }
   });
-/*
+
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr === false) {
@@ -296,24 +294,5 @@ describe('Connect and Pair', () => {
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
-*/
-  it('Should add valid ABI schema', (done) => {
-    const address = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'; // Sushiswap contract
-    const url = `https://api.etherscan.io/api?module=contract&action=getabi&address=${address}&apikey=${apiKey}`;
-    superagent.get(url)
-    .end((err, res) => {
-      expect(err).to.equal(null);
-      const defs = JSON.parse(JSON.parse(res.text).result);
-      // const defs = sushiAbi.slice(6);
-      // console.log('adding ', defs.length)
-      client.addAbiDefs(defs, (err) => {
-        if (err)
-          throw new Error(err);
-        client.sign()
-
-        done()
-      })
-    })
-  })
 
 });

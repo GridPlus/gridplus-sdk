@@ -1,5 +1,6 @@
 const Buffer = require('buffer/').Buffer
 const keccak256 = require('js-sha3').keccak256;
+const { ETH_ABI_LATTICE_FW_TYPE_MAP } = require('./constants');
 const NAME_MAX_SZ = 100;
 const HEADER_SZ = 5 + NAME_MAX_SZ; // 4 byte sig + name + 1 byte param count
 const PARAM_SZ = 26; // 20 byte name + 6 byte def
@@ -7,33 +8,18 @@ const MAX_PARAMS = 18;
 const MAX_ABI_DEFS = 2;
 exports.MAX_ABI_DEFS = MAX_ABI_DEFS;
 
-// Parse the ABI data as it would come from etherscan
-exports.parseAbiData = function(data) {
-  const defs = [];
-  data.forEach((d) => {
-    if (d.name && d.inputs && d.type === 'function') {
-      const sig = getFuncSig(d);
-      const params = parseAbiInputs(d.inputs);
-      defs.push({
-        name: d.name,
-        sig,
-        params,
-      })
-    }
-  })
-  return defs;
-}
-
 // Build a request to add ABI data
 exports.buildAddAbiPayload = function(defs) {
   if (!defs || !Array.isArray(defs))
     throw new Error('Missing definitions.');
   if (defs.length > exports.MAX_ABI_DEFS)
-    throw new Error('You may only add 3 ABI definitions per request.');
+    throw new Error(`You may only add ${MAX_ABI_DEFS} ABI definitions per request.`);
   const b = Buffer.alloc(1 + (MAX_ABI_DEFS * (HEADER_SZ + (PARAM_SZ * MAX_PARAMS))));
   let off = 0;
   b.writeUInt8(defs.length, off); off++;
   defs.forEach((def) => {
+    if (!def.sig || !def.name || !def.params)
+      throw new Error('name, sig, and params must be present for every ABI definition.')
     // Header data
     const sig = Buffer.from(def.sig, 'hex');
     if (sig.length !== 4)
@@ -53,6 +39,8 @@ exports.buildAddAbiPayload = function(defs) {
     if (numParams > 0) {
       // First copy param names (first 20 bytes)
       def.params.forEach((param) => {
+        if (!param.name || !param.latticeTypeIdx || param.isArray === undefined || param.arraySz === undefined)
+          throw new Error('name, latticeTypeIdx, isArray, and arraySz must be defined for all ABI params.');
         Buffer.from(param.name).slice(0, 20).copy(b, off); off += 20;
       })
       // Bump offset to account for blank param slots
@@ -73,8 +61,33 @@ exports.buildAddAbiPayload = function(defs) {
   return b;
 }
 
-// HELPERS
+//--------------------------------------
+// PARSERS
+//--------------------------------------
+function parseEtherscanAbiDefs(res) {
+  const _defs = JSON.parse(JSON.parse(res.text).result)
+  const defs = [];
+  _defs.forEach((d) => {
+    if (d.name && d.inputs && d.type === 'function') {
+      const sig = getFuncSig(d);
+      const params = parseEtherscanAbiInputs(d.inputs);
+      defs.push({
+        name: d.name,
+        sig,
+        params,
+      })
+    }
+  })
+  return defs;
+}
 
+exports.abiParsers = {
+  etherscan: parseEtherscanAbiDefs,
+}
+
+//--------------------------------------
+// HELPERS
+//--------------------------------------
 // Get the 4-byte function identifier based on the canonical name
 function getFuncSig(f) {
   // Canonical name is:
@@ -90,7 +103,7 @@ function getFuncSig(f) {
 }
 
 // Parse the ABI param data into structs Lattice firmware will recognize.
-function parseAbiInputs(inputs) {
+function parseEtherscanAbiInputs(inputs) {
   const data = [];
   inputs.forEach((input) => {
     const typeName = input.type;
@@ -123,59 +136,5 @@ function parseAbiInputs(inputs) {
 
 // Enum values from inside Lattice firmware
 function getTypeIdxLatticeFw(type) {
-  const map = {
-    'address': 1,
-    'bool': 2,
-    'uint8': 3,
-    'uint16': 4,
-    'uint24': 5,
-    'uint32': 6,
-    'uint64': 7,
-    'uint128': 8,
-    'uint256': 9,
-    'int8': 10,
-    'int16': 11,
-    'int24': 12,
-    'int32': 13,
-    'int64': 14,
-    'int128': 15,
-    'int256': 16,
-    'uint': 17,
-    'int': 18,
-    'bytes1': 19,
-    'bytes2': 20,
-    'bytes3': 21,
-    'bytes4': 22,
-    'bytes5': 23,
-    'bytes6': 24,
-    'bytes7': 25,
-    'bytes8': 26,
-    'bytes9': 27,
-    'bytes10': 28,
-    'bytes11': 29,
-    'bytes12': 30,
-    'bytes13': 31,
-    'bytes14': 32,
-    'bytes15': 33,
-    'bytes16': 34,
-    'bytes17': 35,
-    'bytes18': 36,
-    'bytes19': 37,
-    'bytes20': 38,
-    'bytes21': 39,
-    'bytes22': 40,
-    'bytes23': 41,
-    'bytes24': 42,
-    'bytes25': 43,
-    'bytes26': 44,
-    'bytes27': 45,
-    'bytes28': 46,
-    'bytes29': 47,
-    'bytes30': 48,
-    'bytes31': 49,
-    'bytes32': 50,
-    'bytes': 51,
-    'string': 52,
-  };
-  return map[type];
+  return ETH_ABI_LATTICE_FW_TYPE_MAP[type];
 }
