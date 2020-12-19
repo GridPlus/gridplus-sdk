@@ -74,6 +74,14 @@ If you want to specify the above params:
 env DEVICE_ID='my_device_id' N=5 MNEMONIC='negative spare peasant raw feature camera glide notice fee gown heavy depart' npm run test-btc
 ```
 
+### Ethereum ABI Tests
+
+You may test functionality around loading Ethereum ABI definitions and displaying calldata in a markdwon screen with the following script:
+
+```
+env DEVICE_ID='my_device_id' N=<numRandomTests> npm run test-eth-abi
+```
+
 ### Test Harness
 
 We can test debug firmware builds using the `client.test` function in the SDK. This utilizes the firmware's test harness with an encrypted route. You can run these tests with the same `env DEVICE_ID='my_device_id` flag as some of the other tests.

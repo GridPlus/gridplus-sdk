@@ -28,6 +28,26 @@ const abiDefs = [];
 const indices = [];
 for (let i = 0; i < numIter; i++)
   indices.push({ i });
+for (let i = 0; i < boundaryAbiDefs.length; i++)
+  boundaryIndices.push({ i });
+
+// Transaction params
+const txData = {
+  nonce: 0,
+  gasPrice: 1200000000,
+  gasLimit: 50000,
+  to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+  value: 0,
+  data: null
+};
+const req = {
+  currency: 'ETH',
+  data: {
+    signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0],
+    ...txData,
+    chainId: 'rinkeby', // Can also be an integer
+  }
+}
 
 //---------------------------------------
 // INTERNAL HELPERS
@@ -331,6 +351,80 @@ describe('Setup client', () => {
   });
 })
 
+describe('Preloaded ABI definitions', () => {
+  it('Should test preloaded ERC20 ABI defintions', async () => {
+    const erc20PreloadedDefs = [
+      {
+        name: 'approve',
+        sig: null,
+        params: [ 
+          { name: 'spender', type: 'address', isArray: false, arraySz: 0, latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP['address']},
+          { name: 'value', type: 'uint256', isArray: false, arraySz: 0, latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP['uint256']},
+        ],
+        _vals: [
+          '0x2a4e921a7da4d381d84c51fe466ff7288bf2ce41',
+          10000,
+        ]
+      },
+      {
+        name: 'transferFrom',
+        sig: null,
+        params: [ 
+          { name: 'from', type: 'address', isArray: false, arraySz: 0, latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP['address']},
+          { name: 'to', type: 'address', isArray: false, arraySz: 0, latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP['address']},
+          { name: 'value', type: 'uint256', isArray: false, arraySz: 0, latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP['uint256']},
+        ],
+        _vals: [
+          '0x57974eb88e50cc61049b44e43e90d3bc40fa61c0',
+          '0x39b657f4d86119e11de818e477a31c13feeb618c',
+          9999,
+        ]
+      },
+      {
+        name: 'transfer',
+        sig: null,
+        params: [ 
+          { name: 'to', type: 'address', isArray: false, arraySz: 0, latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP['address']},
+          { name: 'value', type: 'uint256', isArray: false, arraySz: 0, latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP['uint256']},
+        ],
+        _vals: [
+          '0x39b657f4d86119e11de818e477a31c13feeb618c',
+          1234,
+        ]
+      }
+    ];
+    erc20PreloadedDefs.forEach((def) => {
+      def._typeNames = getTypeNames(def.params);
+      def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+    })
+
+    try {
+      const approveDef = erc20PreloadedDefs[0]; 
+      req.data.data = helpers.ensureHexBuffer(buildEthData(approveDef));
+      await helpers.sign(client, req);
+    } catch (err) {
+      caughtErr = 'Failed to markdown ERC20 approval def.';
+      expect(err).to.equal(null);
+    }
+    try {
+      const transfer = erc20PreloadedDefs[1]; 
+      req.data.data = helpers.ensureHexBuffer(buildEthData(transfer));
+      await helpers.sign(client, req);
+    } catch (err) {
+      caughtErr = 'Failed to markdown ERC20 transfer def.';
+      expect(err).to.equal(null);
+    }
+    try {
+      const transferFrom = erc20PreloadedDefs[2]; 
+      req.data.data = helpers.ensureHexBuffer(buildEthData(transferFrom));
+      await helpers.sign(client, req);
+    } catch (err) {
+      caughtErr = 'Failed to markdown ERC20 transferFrom def.';
+      expect(err).to.equal(null);
+    }
+  })
+})
+
 describe('Add ABI definitions', () => {
   beforeEach(() => {
     expect(caughtErr).to.equal(null, 'Error found in prior test. Aborting.');
@@ -359,23 +453,6 @@ describe('Add ABI definitions', () => {
 })
 
 describe('Test ABI Markdown', () => {
-  const txData = {
-    nonce: 0,
-    gasPrice: 1200000000,
-    gasLimit: 50000,
-    to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-    value: 0,
-    data: null
-  };
-  const req = {
-    currency: 'ETH',
-    data: {
-      signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0],
-      ...txData,
-      chainId: 'rinkeby', // Can also be an integer
-    }
-  }
-
   beforeEach(() => {
     expect(caughtErr).to.equal(null, 'Error found in prior test. Aborting.');
     req.data.data = null;
