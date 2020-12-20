@@ -202,45 +202,6 @@ exports.buildEthereumTxRequest = function(data) {
   }
 }
 
-exports.addAbiDefs = function(defs) {
-  if (defs.length > 4)
-    return { err: 'You may only include four ABI definitions per request.' };
-  const b = Buffer.alloc(1061);
-  let off = 0;
-  b.writeUInt8(defs.length, off); off++;
-  // Copy the definition header data
-  defs.forEach((def) => {
-    if (def.params.length > 10)
-      return { err: 'You may only include 10 parameters per ABI function.' }
-    // Copy the 4 byte function signature
-    const sig = ensureHexBuffer(def.sig);
-    if (sig.length !== 4)
-      return { err: 'Function signatures must be 4 bytes long.' };
-    sig.copy(b, off); off += sig.length;
-    // Copy the name. The character buffer is 50 bytes, including the null terminator.
-    // If we can't fit the name that's fine -- just copy the first 49 bytes.
-    const name = Buffer.alloc(50);
-    Buffer.from(def.name).slice(0, name.length-1).copy(b, off); off += name.length;
-  })
-  // Copy the param names next
-  defs.forEach((def) => {
-    def.params.forEach((param) => {
-      const paramName = Buffer.alloc(20);
-      Buffer.from(param.name).slice(0, paramName.length-1).copy(b, off); 
-      off += paramName.length;
-    })
-  })
-  // Now copy the param data
-  defs.forEach((def) => {
-    def.params.forEach((param) => {
-      b.writeUInt8(param.latticeTypeIdx, off); off++;
-      b.writeUInt8(param.isArray, off); off++;
-      b.writeUInt32LE(param.arraySz, off); off += 4;
-    })
-  })
-  return b;
-}
-
 // From ethereumjs-util
 function stripZeros(a) {
   let first = a[0]

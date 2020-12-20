@@ -64,8 +64,7 @@ exports.buildAddAbiPayload = function(defs) {
 //--------------------------------------
 // PARSERS
 //--------------------------------------
-function parseEtherscanAbiDefs(res) {
-  const _defs = JSON.parse(JSON.parse(res.text).result)
+function parseEtherscanAbiDefs(_defs) { // `_defs` are `result` of the parsed response
   const defs = [];
   _defs.forEach((d) => {
     if (d.name && d.inputs && d.type === 'function') {
