@@ -111,18 +111,45 @@ function randString() {
   return generateName(randInt(100)); // Up to a 100 character string
 }
 
+function getRandType() {
+  const i = randInt(7);
+  const uintArr = ['uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256', 'uint'];
+  switch (i) {
+    case 0:
+      return 'address';
+    case 1:
+      return 'bool';
+    case 2: // uint types
+      return uintArr[randInt(uintArr.length)];
+    case 3: // fixed bytes types (bytes1-31)
+      return `bytes${1+ randInt(31)}`
+    case 4: // bytes32 (this one is common so we want to give it moreweight)
+      return 'bytes32';
+    case 5:
+      return 'bytes';
+    case 6:
+      return 'string';
+  }
+}
+
 function genRandParam() {
-  const types = Object.keys(constants.ETH_ABI_LATTICE_FW_TYPE_MAP);
-  const i = randInt(types.length);
+  const type = getRandType();
   const d = {
-    name: generateName(19),
-    type: types[i],
+    name: null,
+    type,
     isArray: randBool(),
     arraySz: 0,
-    latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP[types[i]],
+    latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP[type],
   }
   if (d.isArray && randBool())
     d.arraySz = randInt(10);
+  d.name = d.type;
+  if (d.isArray) {
+    d.name += '[';
+    if (d.arraySz > 0)
+      d.name += d.arraySz;
+    d.name += ']';
+  }
   return d;
 }
 
