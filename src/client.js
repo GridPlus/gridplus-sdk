@@ -254,7 +254,7 @@ class Client {
       return cb('Limit too large.');
     limitBuf.copy(payload, 256 + (32 - limitBuf.length));
     // Copy the time window (seconds)
-    payload.writeUInt32LE(timeWindow, 288);
+    payload.writeUInt32BE(timeWindow, 288);
     payload.writeUInt8(decimals, 292);
     // Encrypt the request and send it to the Lattice.
     const param = this._buildEncRequest(encReqCodes.ADD_PERMISSION_V1, payload);

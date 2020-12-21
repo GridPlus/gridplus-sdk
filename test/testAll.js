@@ -57,7 +57,6 @@ describe('Connect and Pair', () => {
     }
   });
 
-/*
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr === false) {
@@ -295,7 +294,6 @@ describe('Connect and Pair', () => {
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
-*/
 
   it('Should test permission limits', async () => {
     // Add a 5-minute permission allowing 5 wei to be spent
@@ -337,7 +335,7 @@ describe('Connect and Pair', () => {
       signResp = await helpers.sign(client, req);
       expect(signResp.tx).to.equal(null);
     } catch (err) {
-      expect(err).to.not.equal(null);
+      expect(err).to.equal('Error from device: Request Declined by User');
     }
     // Spend 1 wei this time. This should be allowed by the permission.
     req.data.value = 1;

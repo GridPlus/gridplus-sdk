@@ -21,26 +21,26 @@ exports.ETH_COIN = HARDENED_OFFSET+60;
 
 function setupTestClient(env) {
   const setup = {
-      name: env.name || 'SDK Test',
-      baseUrl: 'https://signing.staging-gridpl.us',
-      crypto,
-      timeout: 120000,
-    };
-    const REUSABLE_KEY = '3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca'
-    // If the user passes a deviceID in the env, we assume they have previously
-    // connected to the Lattice.
-    if (env.DEVICE_ID) {
-      setup.privKey = Buffer.from(REUSABLE_KEY, 'hex');
-    }
-    // Separate check -- if we are connecting for the first time but want to be able
-    // to reconnect quickly with the same device ID as an env var, we need to pair
-    // with a reusable key
-    if (parseInt(env.REUSE_KEY) === 1) {
-      setup.privKey = Buffer.from(REUSABLE_KEY, 'hex');
-    }
-    // Initialize a global SDK client
-    const client = new Sdk.Client(setup);
-    return client;
+    name: env.name || 'SDK Test',
+    baseUrl: 'https://signing.staging-gridpl.us',
+    crypto,
+    timeout: 120000,
+  };
+  const REUSABLE_KEY = '3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca'
+  // If the user passes a deviceID in the env, we assume they have previously
+  // connected to the Lattice.
+  if (env.DEVICE_ID) {
+    setup.privKey = Buffer.from(REUSABLE_KEY, 'hex');
+  }
+  // Separate check -- if we are connecting for the first time but want to be able
+  // to reconnect quickly with the same device ID as an env var, we need to pair
+  // with a reusable key
+  if (parseInt(env.REUSE_KEY) === 1) {
+    setup.privKey = Buffer.from(REUSABLE_KEY, 'hex');
+  }
+  // Initialize a global SDK client
+  const client = new Sdk.Client(setup);
+  return client;
 }
 
 function connect(client, id) {
