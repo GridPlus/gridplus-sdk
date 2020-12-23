@@ -79,9 +79,9 @@ function sign(client, opts) {
   })
 }
 
-function addPermission(client, opts) {
+function addPermissionV0(client, opts) {
   return new Promise((resolve, reject) => {
-    client.addPermission(opts, (err, res) => {
+    client.addPermissionV0(opts, (err, res) => {
       if (err) return reject(err);
       return resolve(res);
     })
@@ -318,7 +318,7 @@ exports.connect = connect;
 exports.pair = pair;
 exports.getAddresses = getAddresses;
 exports.sign = sign;
-exports.addPermission = addPermission;
+exports.addPermissionV0 = addPermissionV0;
 exports.test = test;
 exports.stripDER = stripDER;
 exports.setup_btc_sig_test = setup_btc_sig_test;

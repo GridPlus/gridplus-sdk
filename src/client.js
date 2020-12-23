@@ -234,7 +234,7 @@ class Client {
     })
   }
 
-  addPermission(opts, cb) {
+  addPermissionV0(opts, cb) {
     const { currency, timeWindow, limit, decimals, asset } = opts;
     if (!currency || !timeWindow || !limit || !decimals)
       return cb('currency, timeWindow, decimals, and limit are all required options.');
@@ -264,7 +264,7 @@ class Client {
         // and recursively make the original request.
         this._getActiveWallet((err) => {
           if (err) return cb(err)
-          else     return this.addPermission(opts, cb);
+          else     return this.addPermissionV0(opts, cb);
         })
       } else if (err) {
         // If there was another error caught, return it

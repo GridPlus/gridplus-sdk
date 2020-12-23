@@ -56,7 +56,7 @@ describe('Connect and Pair', () => {
       expect(client.hasActiveWallet()).to.equal(true);
     }
   });
-
+/*
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr === false) {
@@ -120,7 +120,7 @@ describe('Connect and Pair', () => {
       }
     }
   });
-
+*/
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
@@ -304,7 +304,7 @@ describe('Connect and Pair', () => {
       decimals: 18,
       asset: null,
     };
-    await helpers.addPermission(client, opts);
+    await helpers.addPermissionV0(client, opts);
     // Spend 2 wei
     const txData = {
       nonce: 0,
