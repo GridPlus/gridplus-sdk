@@ -53,8 +53,8 @@ const encReqCodes = {
     'ADD_PERMISSION': 0x02,
     'SIGN_TRANSACTION': 0x03,
     'GET_WALLETS': 0x04,
-    'ADD_ABI_DEFS': 0x05,
-    'TEST': 0x06,
+    'ADD_ABI_DEFS': 0x06,
+    'TEST': 0x07,
 }
 
 const messageConstants = {
