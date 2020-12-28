@@ -52,7 +52,7 @@ const encReqCodes = {
     'ADD_PERMISSION': 0x02,
     'SIGN_TRANSACTION': 0x03,
     'GET_WALLETS': 0x04,
-    'ADD_PERMISSION_V1': 0x05,
+    'ADD_PERMISSION_V0': 0x05,
     'TEST': 0x06,
 }
 

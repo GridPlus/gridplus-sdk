@@ -236,8 +236,11 @@ class Client {
 
   addPermissionV0(opts, cb) {
     const { currency, timeWindow, limit, decimals, asset } = opts;
-    if (!currency || !timeWindow || !limit || !decimals)
+    if (!currency || timeWindow === undefined || limit === undefined || decimals === undefined ||
+        timeWindow === null || limit === null || decimals === null)
       return cb('currency, timeWindow, decimals, and limit are all required options.');
+    else if (timeWindow === 0 || limit === 0)
+      return cb('Time window and spending limit must be positive.');
     // Build the name of the permission
     let name = currency;
     if (asset)
@@ -257,7 +260,7 @@ class Client {
     payload.writeUInt32BE(timeWindow, 288);
     payload.writeUInt8(decimals, 292);
     // Encrypt the request and send it to the Lattice.
-    const param = this._buildEncRequest(encReqCodes.ADD_PERMISSION_V1, payload);
+    const param = this._buildEncRequest(encReqCodes.ADD_PERMISSION_V0, payload);
     return this._request(param, (err, res, responseCode) => {
       if (responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) {
         // If we catch a case where the wallet has changed, try getting the new active wallet

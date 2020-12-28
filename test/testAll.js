@@ -56,7 +56,7 @@ describe('Connect and Pair', () => {
       expect(client.hasActiveWallet()).to.equal(true);
     }
   });
-/*
+
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr === false) {
@@ -120,7 +120,7 @@ describe('Connect and Pair', () => {
       }
     }
   });
-*/
+
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const GAS_PRICE_MAX = 100000000000;
@@ -296,15 +296,37 @@ describe('Connect and Pair', () => {
   });
 
   it('Should test permission limits', async () => {
-    // Add a 5-minute permission allowing 5 wei to be spent
+    // Fail to add permissions where limit or window is 0
     const opts = {
       currency: 'ETH',
-      timeWindow: 300,
+      timeWindow: 0,
       limit: 5,
       decimals: 18,
       asset: null,
     };
+    try {
+      await helpers.addPermissionV0(client, opts);
+    } catch (err) {
+      expect(err).to.equal('Time window and spending limit must be positive.');
+    }
+    try {
+      opts.timeWindow = 300;
+      opts.limit = 0;
+      await helpers.addPermissionV0(client, opts);
+    } catch (err) {
+      expect(err).to.equal('Time window and spending limit must be positive.');
+    }
+    // Add a 5-minute permission allowing 5 wei to be spent
+    opts.timeWindow = 300;
+    opts.limit = 5;
     await helpers.addPermissionV0(client, opts);
+    // Fail to add the same permission again
+    try {
+      await helpers.addPermissionV0(client, opts);
+    } catch (err) {
+      const expectedCode = constants.responseCodes.RESP_ERR_ALREADY;
+      expect(err.indexOf(constants.responseMsgs[expectedCode])).to.be.greaterThan(-1);
+    }
     // Spend 2 wei
     const txData = {
       nonce: 0,
@@ -335,7 +357,8 @@ describe('Connect and Pair', () => {
       signResp = await helpers.sign(client, req);
       expect(signResp.tx).to.equal(null);
     } catch (err) {
-      expect(err).to.equal('Error from device: Request Declined by User');
+      const expectedCode = constants.responseCodes.RESP_ERR_USER_DECLINED;
+      expect(err.indexOf(constants.responseMsgs[expectedCode])).to.be.greaterThan(-1);
     }
     // Spend 1 wei this time. This should be allowed by the permission.
     req.data.value = 1;
