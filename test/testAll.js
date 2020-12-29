@@ -295,4 +295,75 @@ describe('Connect and Pair', () => {
     expect(sigResp.txHash).to.not.equal(null);
   });
 
+  it('Should test permission limits', async () => {
+    // Fail to add permissions where limit or window is 0
+    const opts = {
+      currency: 'ETH',
+      timeWindow: 0,
+      limit: 5,
+      decimals: 18,
+      asset: null,
+    };
+    try {
+      await helpers.addPermissionV0(client, opts);
+    } catch (err) {
+      expect(err).to.equal('Time window and spending limit must be positive.');
+    }
+    try {
+      opts.timeWindow = 300;
+      opts.limit = 0;
+      await helpers.addPermissionV0(client, opts);
+    } catch (err) {
+      expect(err).to.equal('Time window and spending limit must be positive.');
+    }
+    // Add a 5-minute permission allowing 5 wei to be spent
+    opts.timeWindow = 300;
+    opts.limit = 5;
+    await helpers.addPermissionV0(client, opts);
+    // Fail to add the same permission again
+    try {
+      await helpers.addPermissionV0(client, opts);
+    } catch (err) {
+      const expectedCode = constants.responseCodes.RESP_ERR_ALREADY;
+      expect(err.indexOf(constants.responseMsgs[expectedCode])).to.be.greaterThan(-1);
+    }
+    // Spend 2 wei
+    const txData = {
+      nonce: 0,
+      gasPrice: 1200000000,
+      gasLimit: 50000,
+      to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+      value: 2,
+      data: null
+    };
+    const req = {
+      currency: 'ETH',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        ...txData,
+        chainId: 'rinkeby', // Can also be an integer
+      }
+    };
+    // Test the spending limit. The first two requests should auto-sign.
+    // Spend once -> 3 wei left
+    let signResp = await helpers.sign(client, req);
+    expect(signResp.tx).to.not.equal(null);
+    // Spend again -> 1 wei left
+    signResp = await helpers.sign(client, req);
+    expect(signResp.tx).to.not.equal(null);
+    // Spend again. This time it should fail to load the permission
+    question('Please REJECT the following transaction request. Press enter to continue.')
+    try {
+      signResp = await helpers.sign(client, req);
+      expect(signResp.tx).to.equal(null);
+    } catch (err) {
+      const expectedCode = constants.responseCodes.RESP_ERR_USER_DECLINED;
+      expect(err.indexOf(constants.responseMsgs[expectedCode])).to.be.greaterThan(-1);
+    }
+    // Spend 1 wei this time. This should be allowed by the permission.
+    req.data.value = 1;
+    signResp = await helpers.sign(client, req);
+    expect(signResp.tx).to.not.equal(null);
+
+  })
 });
