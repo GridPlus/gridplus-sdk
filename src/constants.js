@@ -52,7 +52,8 @@ const encReqCodes = {
     'ADD_PERMISSION': 0x02,
     'SIGN_TRANSACTION': 0x03,
     'GET_WALLETS': 0x04,
-    'TEST': 0x05,
+    'ADD_PERMISSION_V0': 0x05,
+    'TEST': 0x06,
 }
 
 const messageConstants = {
@@ -79,7 +80,8 @@ const responseCodes = {
     RESP_ERR_GCE_TIMEOUT: 0x89,
     RESP_ERR_WALLET_NOT_PRESENT: 0x8a,
     RESP_ERR_DEV_LOCKED: 0x8b,
-    RESP_ERR_DISABLED: 0x8c
+    RESP_ERR_DISABLED: 0x8c,
+    RESP_ERR_ALREADY: 0x8d,
 }
 
 const responseMsgs = {
@@ -97,6 +99,7 @@ const responseMsgs = {
     [responseCodes.RESP_ERR_WALLET_NOT_PRESENT]: 'Incorrect Wallet UID Provided',
     [responseCodes.RESP_ERR_DEV_LOCKED]: 'Device Locked',
     [responseCodes.RESP_ERR_DISABLED]: 'Disabled',
+    [responseCodes.RESP_ERR_ALREADY]: 'Record already exists. You must first remove it on your device.'
 }
  
 

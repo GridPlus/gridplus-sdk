@@ -7,6 +7,7 @@ const {
   aes256_encrypt,
   parseDER,
   checksum,
+  ensureHexBuffer,
   getP256KeyPair,
   getP256KeyPairFromPub,
   parseLattice1Response,
@@ -229,6 +230,54 @@ class Client {
         // Correct wallet and no errors -- handle the response
         const parsedRes = this._handleSign(res, currency, req);
         return cb(parsedRes.err, parsedRes.data);
+      }
+    })
+  }
+
+  addPermissionV0(opts, cb) {
+    const { currency, timeWindow, limit, decimals, asset } = opts;
+    if (!currency || timeWindow === undefined || limit === undefined || decimals === undefined ||
+        timeWindow === null || limit === null || decimals === null)
+      return cb('currency, timeWindow, decimals, and limit are all required options.');
+    else if (timeWindow === 0 || limit === 0)
+      return cb('Time window and spending limit must be positive.');
+    // Build the name of the permission
+    let name = currency;
+    if (asset)
+      name += `_${asset}`;
+    // Start building the payload
+    const payload = Buffer.alloc(293);
+    // Copy the name
+    if (Buffer.from(name).length > 255)
+      return cb('Asset name too long.');
+    Buffer.from(name).copy(payload, 0);
+    // Convert the limit to a 32 byte hex buffer and copy it in
+    const limitBuf = ensureHexBuffer(limit)
+    if (limitBuf.length > 32)
+      return cb('Limit too large.');
+    limitBuf.copy(payload, 256 + (32 - limitBuf.length));
+    // Copy the time window (seconds)
+    payload.writeUInt32BE(timeWindow, 288);
+    payload.writeUInt8(decimals, 292);
+    // Encrypt the request and send it to the Lattice.
+    const param = this._buildEncRequest(encReqCodes.ADD_PERMISSION_V0, payload);
+    return this._request(param, (err, res, responseCode) => {
+      if (responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) {
+        // If we catch a case where the wallet has changed, try getting the new active wallet
+        // and recursively make the original request.
+        this._getActiveWallet((err) => {
+          if (err) return cb(err)
+          else     return this.addPermissionV0(opts, cb);
+        })
+      } else if (err) {
+        // If there was another error caught, return it
+        if (err) return cb(err);
+      } else {
+        // Correct wallet and no errors -- handle the response
+        const d = this._handleEncResponse(res, decResLengths.finalizePair);
+        if (d.err)
+          return cb(d.err);
+        return cb(null);
       }
     })
   }

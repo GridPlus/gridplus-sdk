@@ -266,16 +266,6 @@ exports.hashTransaction = function(serializedTx) {
   return keccak256(Buffer.from(serializedTx, 'hex')); 
 }
 
-// Ensure a param is represented by a buffer
-function ensureHexBuffer(x) {
-  if (x === null || x === 0) return Buffer.alloc(0);
-  else if (Buffer.isBuffer(x)) x = x.toString('hex');
-  if (typeof x === 'number') x = `${x.toString(16)}`;
-  else if (typeof x === 'string' && x.slice(0, 2) === '0x') x = x.slice(2);
-  if (x.length % 2 > 0) x = `0${x}`;
-  return Buffer.from(x, 'hex');
-}
-
 // Returns address string given public key buffer
 function pubToAddrStr(pub) {
   return keccak256(pub).slice(-40);
@@ -397,3 +387,15 @@ function useChainIdBuffer(id) {
 }
 
 exports.chainIds = chainIds;
+
+// Ensure a param is represented by a buffer
+// TODO: Remove circular dependency in util.js so that we can put this function there
+function ensureHexBuffer(x) {
+  if (x === null || x === 0) return Buffer.alloc(0);
+  else if (Buffer.isBuffer(x)) x = x.toString('hex');
+  if (typeof x === 'number') x = `${x.toString(16)}`;
+  else if (typeof x === 'string' && x.slice(0, 2) === '0x') x = x.slice(2);
+  if (x.length % 2 > 0) x = `0${x}`;
+  return Buffer.from(x, 'hex');
+}
+exports.ensureHexBuffer = ensureHexBuffer;

@@ -1,6 +1,6 @@
 // Static utility functions
 const { buildBitcoinTxRequest } = require('./bitcoin');
-const { buildEthereumTxRequest, buildEthereumMsgRequest } = require('./ethereum');
+const { buildEthereumTxRequest, buildEthereumMsgRequest, ensureHexBuffer } = require('./ethereum');
 const Buffer = require('buffer/').Buffer
 const aes = require('aes-js');
 const crc32 = require('crc-32');
@@ -130,6 +130,7 @@ function getP256KeyPairFromPub(pub) {
 
 
 module.exports = {
+  ensureHexBuffer,
   signReqResolver,
   aes256_decrypt,
   aes256_encrypt,
