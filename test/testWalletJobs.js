@@ -492,6 +492,32 @@ describe('Wallet sync tests (starting with newly synced wallet)', () => {
     helpers.validateBTCAddresses(res, jobData, activeWalletSeed); 
   })
 
+  it('Should fetch BTC addresses outside the cache with the proper flag set', async () => {
+    const req = { 
+      currency: 'BTC', 
+      startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_COIN, 123, 87290, 28802208], 
+      n: 3,
+      skipCache: true,
+    }
+    const addrs = await helpers.getAddresses(client, req, 2000);
+    const resp = {
+      count: addrs.length,
+      addresses: addrs,
+    }
+    const jobData = {
+      parent: {
+        pathDepth: 4,
+        purpose: req.startPath[0],
+        coin: req.startPath[1],
+        account: req.startPath[2],
+        change: req.startPath[3],
+      },
+      count: req.n,
+      first: req.startPath[4],
+    }
+    helpers.validateBTCAddresses(resp, jobData, Buffer.allocUnsafe(32));
+  })
+
   it('Should wait while the wallet syncs new addresses (BTC->39)', (done) => {
     waitForSync(20, done);
   })

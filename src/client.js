@@ -1,3 +1,4 @@
+const bitwise = require('bitwise');
 const superagent = require('superagent');
 const bitcoin = require('./bitcoin');
 const ethereum = require('./ethereum');
@@ -152,9 +153,13 @@ class Client {
   }
 
   getAddresses(opts, cb) {
-    const { startPath, n } = opts;
+    const SKIP_CACHE_FLAG = 1;
+    const MAX_ADDR = 10;
+    const { startPath, n, skipCache=false } = opts;
     if (startPath === undefined || n === undefined || startPath.length !== 5) {
       return cb('Please provide `startPath` and `n` options');
+    } else if (n > MAX_ADDR) {
+      return cb(`You may only request ${MAX_ADDR} addresses at once.`);
     }
 
     const payload = Buffer.alloc(1 + 32 + startPath.length * 4);
@@ -169,8 +174,13 @@ class Client {
       payload.writeUInt32BE(startPath[i], off);
       off += 4;
     }
-    // Specify the number of subsequent addresses to request
-    payload.writeUInt8(n, off); off++;
+    // Specify the number of subsequent addresses to request.
+    // We also allow the user to skip the cache and request any address related to the asset
+    // in the wallet.
+    const flag = skipCache === true ? bitwise.nibble.read(SKIP_CACHE_FLAG) : bitwise.nibble.read(0);
+    const count = bitwise.nibble.read(n);
+    const val = bitwise.byte.write(flag.concat(count));
+    payload.writeUInt8(val, off); off++;
     const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
     return this._request(param, (err, res) => {
       if (err) return cb(err);
