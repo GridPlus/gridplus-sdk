@@ -13,6 +13,7 @@ const decResLengths = {
     getAddresses: 10 * ADDR_STR_LEN,    // 10x 129 byte strings (128 bytes + null terminator)
     sign: 1090,                         // 1 DER signature for ETH, 10 for BTC + change pubkeyhash
     getWallets: 142,                    // 71 bytes per wallet record (response contains internal and external)
+    addAbiDefs: 8,
     test: 1646                          // Max size of test response payload
 }
 
@@ -53,7 +54,8 @@ const encReqCodes = {
     'SIGN_TRANSACTION': 0x03,
     'GET_WALLETS': 0x04,
     'ADD_PERMISSION_V0': 0x05,
-    'TEST': 0x06,
+    'ADD_ABI_DEFS': 0x06,
+    'TEST': 0x07,
 }
 
 const messageConstants = {
@@ -124,6 +126,59 @@ const MAX_CHAIN_ID_BYTES = 8; // Max number of bytes to contain larger chainID i
 
 const BASE_URL = 'https://signing.gridpl.us';
 
+const ETH_ABI_LATTICE_FW_TYPE_MAP = {
+    'address': 1,
+    'bool': 2,
+    'uint8': 3,
+    'uint16': 4,
+    'uint32': 5,
+    'uint64': 6,
+    'uint128': 7,
+    'uint256': 8,
+    // 'int8': 9,      // We do not support signed integer types in v1 because we can't display them
+    // 'int16': 10,
+    // 'int24': 11,
+    // 'int64': 12,
+    // 'int128': 13,
+    // 'int256': 14,
+    'uint': 15,
+    // 'int': 16,
+    'bytes1': 17,
+    'bytes2': 18,
+    'bytes3': 19,
+    'bytes4': 20,
+    'bytes5': 21,
+    'bytes6': 22,
+    'bytes7': 23,
+    'bytes8': 24,
+    'bytes9': 25,
+    'bytes10': 26,
+    'bytes11': 27,
+    'bytes12': 28,
+    'bytes13': 29,
+    'bytes14': 30,
+    'bytes15': 31,
+    'bytes16': 32,
+    'bytes17': 33,
+    'bytes18': 34,
+    'bytes19': 35,
+    'bytes20': 36,
+    'bytes21': 37,
+    'bytes22': 38,
+    'bytes23': 39,
+    'bytes24': 40,
+    'bytes25': 41,
+    'bytes26': 42,
+    'bytes27': 43,
+    'bytes28': 44,
+    'bytes29': 45,
+    'bytes30': 46,
+    'bytes31': 47,
+    'bytes32': 48,
+    'bytes': 49,
+    'string': 50,
+};
+
 module.exports = {
     ADDR_STR_LEN,
     AES_IV,
@@ -145,4 +200,5 @@ module.exports = {
     HARDENED_OFFSET,
     HANDLE_LARGER_CHAIN_ID,
     MAX_CHAIN_ID_BYTES,
+    ETH_ABI_LATTICE_FW_TYPE_MAP,
 }
