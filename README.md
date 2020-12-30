@@ -82,6 +82,8 @@ You may test functionality around loading Ethereum ABI definitions and displayin
 env DEVICE_ID='my_device_id' N=<numRandomTests> npm run test-eth-abi
 ```
 
+> Note that this test uses a random seed to generate data. You may include a `SEED=<mySeed>` if you want to use your own.
+
 ### Test Harness
 
 We can test debug firmware builds using the `client.test` function in the SDK. This utilizes the firmware's test harness with an encrypted route. You can run these tests with the same `env DEVICE_ID='my_device_id` flag as some of the other tests.

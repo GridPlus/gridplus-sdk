@@ -8,9 +8,10 @@ const ethAbi = require('ethereumjs-abi');
 const expect = require('chai').expect;
 const helpers = require('./testUtil/helpers');
 const question = require('readline-sync').question;
+const seedrandom = require('seedrandom');
 const numIter = process.env.N || 20;
-let seed = 1; // random seed
 
+const prng = new seedrandom(process.env.SEED || 'myrandomseed');
 //---------------------------------------
 // STATE DATA
 //---------------------------------------
@@ -58,7 +59,7 @@ function generateName(numChars) {
 }
 
 function randInt(n) {
-  return Math.floor(Math.abs(Math.sin(seed++)) * n);
+  return Math.floor(n * prng.quick());
 }
 
 function isNumType(type) {
@@ -193,14 +194,16 @@ function createDef() {
     params: [],
     _vals: [],
   }
-  for (let i = 0; i < randInt(10); i++) {
+  const sz = randInt(10)
+  for (let i = 0; i < sz; i++) {
     const param = genRandParam();
     def.params.push(param)
     if (param.isArray) {
       const val = [];
       const sz = param.arraySz === 0 ? Math.max(1, randInt(10)) : param.arraySz;
-      for (let j = 0; j < sz; j++)
+      for (let j = 0; j < sz; j++) {
         val.push(genRandVal(param.type))
+      }
       def._vals.push(val);
     } else {
       def._vals.push(genRandVal(param.type));
@@ -486,7 +489,7 @@ describe('Test ABI Markdown', () => {
   })
 
   it('Should inform the user what to do', async () => {
-    question('Please APPROVE all ABI-decoded payloads and REJECT all unformatted ones. Press enter.')
+    question('Please APPROVE all ABI-decoded payloads and REJECT all unformatted ones. Make sure the type matches the function name! Press enter.')
     expect(true).to.equal(true);
   })
 
@@ -529,6 +532,8 @@ describe('Test ABI Markdown', () => {
   })
 
   it.each(indices, 'Test ABI markdown of payload #%s', ['i'], async (n, next) => {
+    if (n.i < 7)
+      return setTimeout(() => {next()}, 1000);
     const def = abiDefs[n.i];
     req.data.data = buildEthData(def)
     try {
