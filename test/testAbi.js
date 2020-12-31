@@ -213,7 +213,8 @@ function createDef() {
   def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
   const data = helpers.ensureHexBuffer(buildEthData(def));
   // Make sure the transaction will fit in the firmware buffer size
-  if (data.length > constants.ETH_DATA_MAX_SIZE)
+  const fwConstants = constants.getFwVersionConst(client.fwVersion)
+  if (data.length > fwConstants.ethMaxDataSz)
     return createDef();
   
   return def;

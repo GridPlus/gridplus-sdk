@@ -17,7 +17,7 @@ exports.buildEthereumMsgRequest = function(input) {
     msg: null, // Save the buffered message for later
   }
   if (input.protocol === 'signPersonal') {
-    const L = ((input.signerPath.length + 1) * 4) + constants.ETH_MSG_MAX_SIZE + 4;
+    const L = ((input.signerPath.length + 1) * 4) + input.ethMaxMsgSz + 4;
     let off = 0;
     req.payload = Buffer.alloc(L);
     req.payload.writeUInt8(constants.ethMsgProtocol.SIGN_PERSONAL, 0); off += 1;
@@ -43,13 +43,13 @@ exports.buildEthereumMsgRequest = function(input) {
       // is a hex buffer with the optional argument, write that
       displayHex = input.displayHex
     }
-    // Make sure we didn't run past the max size
-    if (payload.length > constants.ETH_MSG_MAX_SIZE)
-      throw new Error(`Your payload is ${payload.length} bytes, but can only be a maximum of ${constants.ETH_MSG_MAX_SIZE}`);
     // Write the payload and metadata into our buffer
     req.msg = payload;
     req.payload.writeUInt8(displayHex, off); off += 1;
     req.payload.writeUInt16LE(payload.length, off); off += 2;
+    // Make sure we didn't run past the max size
+    if (payload.length > input.ethMaxMsgSz)
+      throw new Error(`Your message is ${payload.length} bytes, but can only be a maximum of ${input.ethMaxMsgSz}`);
     payload.copy(req.payload, off);
     return req;
   } else {
@@ -74,7 +74,7 @@ exports.validateEthereumMsgResponse = function(res, req) {
 exports.buildEthereumTxRequest = function(data) {
   try {
     let { chainId=1 } = data;
-    const { signerPath, eip155=null } = data;
+    const { signerPath, eip155=null, ethMaxDataSz } = data;
     // Sanity checks:
     // There are a handful of named chains we allow the user to reference (`chainIds`)
     // Custom chainIDs should be either numerical or hex strings
@@ -129,7 +129,8 @@ exports.buildEthereumTxRequest = function(data) {
     //--------------
     // 2. BUILD THE LATTICE REQUEST PAYLOAD
     //--------------
-    const txReqPayload = Buffer.alloc(1146);
+    const ETH_TX_NON_DATA_SZ = 122; // Accounts for metadata and non-data params
+    const txReqPayload = Buffer.alloc(ethMaxDataSz + ETH_TX_NON_DATA_SZ);
     let off = 0;
     // 1. EIP155 switch and chainID
     //------------------
@@ -174,12 +175,12 @@ exports.buildEthereumTxRequest = function(data) {
     const valueOff = off + 32 - valueBytes.length;
     valueBytes.copy(txReqPayload, valueOff); off += 32;
     // Ensure data field isn't too long
-    if (dataBytes && dataBytes.length > constants.ETH_DATA_MAX_SIZE) {
-      return { err: `Data field too large (must be <=${constants.ETH_DATA_MAX_SIZE} bytes)` }
+    if (dataBytes && dataBytes.length > ethMaxDataSz) {
+      return { err: `Data field too large (must be <=${ethMaxDataSz} bytes)` }
     }
     // Write the data size (does *NOT* include the chainId buffer, if that exists)
     txReqPayload.writeUInt16BE(dataBytes.length, off); off += 2;
-    if (dataBytes.length + chainIdBufSz > constants.ETH_DATA_MAX_SIZE)
+    if (dataBytes.length + chainIdBufSz > ethMaxDataSz)
       throw new Error('Payload too large.');
     // Copy in the chainId buffer if needed
     if (chainIdBufSz > 0) {
@@ -187,8 +188,7 @@ exports.buildEthereumTxRequest = function(data) {
       chainIdBuf.copy(txReqPayload, off); off += chainIdBufSz;
     }
     // Copy the data itself
-    dataBytes.copy(txReqPayload, off); off += constants.ETH_DATA_MAX_SIZE;
-
+    dataBytes.copy(txReqPayload, off); off += ethMaxDataSz;
     return { 
       rawTx,
       payload: txReqPayload,

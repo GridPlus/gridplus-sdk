@@ -116,8 +116,6 @@ const ethMsgProtocol = {
     SIGN_PERSONAL: 0,
 }
 
-const ETH_DATA_MAX_SIZE = 1024; // Maximum number of bytes that can go in the data field
-const ETH_MSG_MAX_SIZE = 1024; // Maximum number of bytes that can be used in a message signing request
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
 const VERSION_BYTE = 1;
 const HARDENED_OFFSET = 0x80000000; // Hardened offset
@@ -179,7 +177,25 @@ const ETH_ABI_LATTICE_FW_TYPE_MAP = {
     'string': 50,
 };
 
+function getFwVersionConst(v) {
+    const c = {
+        reqMaxDataSz: 1152,
+    };
+    if (v.length === 0 || (v[1] < 10 && v[2] === 0)) {
+        c.ethMaxDataSz = c.reqMaxDataSz - 128;
+        c.ethMaxMsgSz = c.ethMaxDataSz;
+        c.ethMaxGasPrice = 500000000000; // 500 gwei
+    } else if (v[1] >= 10 && v[2] >= 0) {
+        c.reqMaxDataSz = 1678;
+        c.ethMaxDataSz = c.reqMaxDataSz - 128;
+        c.ethMaxMsgSz = c.ethMaxDataSz;
+        c.ethMaxGasPrice = 1000000000000; // 1000 gwei
+    }
+    return c;
+}
+
 module.exports = {
+    getFwVersionConst,
     ADDR_STR_LEN,
     AES_IV,
     BASE_URL,
@@ -193,8 +209,6 @@ module.exports = {
     responseCodes,
     responseMsgs,
     signingSchema,
-    ETH_DATA_MAX_SIZE,
-    ETH_MSG_MAX_SIZE,
     REQUEST_TYPE_BYTE,
     VERSION_BYTE,
     HARDENED_OFFSET,
