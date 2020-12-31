@@ -94,9 +94,7 @@ describe('Connect and Pair', () => {
       addrData.startPath[4] = 1000000;
       addrData.n = 3;
       addrData.skipCache = true;
-      console.log('requesting', addrData)
       addrs = await helpers.getAddresses(client, addrData, 2000);
-      console.log('addrs?', addrs)
       expect(addrs.length).to.equal(addrData.n);
       
       // --- EXPECTED FAILURES ---
