@@ -89,8 +89,28 @@ describe('Connect and Pair', () => {
       expect(addrs.length).to.equal(1);
       expect(addrs[0][0]).to.be.oneOf(['n', 'm', '2']);
       addrData.startPath[1] = helpers.BTC_COIN;
+
+      // Keys outside the cache with skipCache = true
+      addrData.startPath[4] = 1000000;
+      addrData.n = 3;
+      addrData.skipCache = true;
+      addrs = await helpers.getAddresses(client, addrData, 2000);
+      expect(addrs.length).to.equal(addrData.n);
       
       // --- EXPECTED FAILURES ---
+      // Keys outside the cache with skipCache = false
+      addrData.startPath[4] = 1000000;
+      addrData.n = 3;
+      addrData.skipCache = false;
+      try {
+        addrs = await helpers.getAddresses(client, addrData, 2000);
+        expect(addrs).to.equal(null);
+      } catch (err) {
+        expect(err).to.not.equal(null);
+      }
+      addrData.startPath[4] = 0;
+      addrData.n = 1;
+
       // Unsupported purpose (m/<purpose>/)
       addrData.startPath[0] = 0; // Purpose 0 -- undefined
       try {
