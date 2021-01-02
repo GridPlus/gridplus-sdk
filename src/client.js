@@ -178,9 +178,15 @@ class Client {
     // Specify the number of subsequent addresses to request.
     // We also allow the user to skip the cache and request any address related to the asset
     // in the wallet.
-    const flag = skipCache === true ? bitwise.nibble.read(SKIP_CACHE_FLAG) : bitwise.nibble.read(0);
-    const count = bitwise.nibble.read(n);
-    const val = bitwise.byte.write(flag.concat(count));
+    let val;
+    const fwConstants = getFwVersionConst(this.fwVersion);
+    if (true === fwConstants.addrFlagsAllowed) {
+      const flag = skipCache === true ? bitwise.nibble.read(SKIP_CACHE_FLAG) : bitwise.nibble.read(0);
+      const count = bitwise.nibble.read(n);
+      val = bitwise.byte.write(flag.concat(count));
+    } else {
+      val = n;
+    }
     payload.writeUInt8(val, off); off++;
     const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
     return this._request(param, (err, res) => {

@@ -185,11 +185,13 @@ function getFwVersionConst(v) {
         c.ethMaxDataSz = c.reqMaxDataSz - 128;
         c.ethMaxMsgSz = c.ethMaxDataSz;
         c.ethMaxGasPrice = 500000000000; // 500 gwei
+        c.addrFlagsAllowed = false;
     } else if (v[1] >= 10 && v[2] >= 0) {
         c.reqMaxDataSz = 1678;
         c.ethMaxDataSz = c.reqMaxDataSz - 128;
         c.ethMaxMsgSz = c.ethMaxDataSz;
         c.ethMaxGasPrice = 1000000000000; // 1000 gwei
+        c.addrFlagsAllowed = true;
     }
     return c;
 }
