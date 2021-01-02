@@ -27,11 +27,11 @@ let client = null;
 let numRandom = 20; // Number of random tests to conduct
 const randomTxData = [];
 const randomTxDataLabels = [];
+let ETH_GAS_PRICE_MAX;                  // value depends on firmware version
 const ETH_GAS_LIMIT_MIN = 22000;        // Ether transfer (smallest op) is 22k gas
-const ETH_GAS_LIMIT_MAX = 10000000;     // 10M is bigger than the block size
-const ETH_GAS_PRICE_MAX = 500000000000; // 500,000,000,000 = 500 GWei - no one should need more
+const ETH_GAS_LIMIT_MAX = 12500000;     // 10M is bigger than the block size
 const ETH_GAS_PRICE_MIN = 1000000;      // 1,000,000 = 0.001 GWei - minimum
-
+const MSG_PAYLOAD_METADATA_SZ = 28;     // Metadata that must go in ETH_MSG requests
 const defaultTxData = {
   nonce: 0,
   gasPrice: 1200000000,
@@ -40,6 +40,11 @@ const defaultTxData = {
   value: 100,
   data: null
 };
+
+function buildIterLabels() {
+  for (let i = 0; i < numRandom; i++)
+    randomTxDataLabels.push({ label: `${i+1}/${numRandom}`, number: i })
+}
 
 function buildRandomTxData() {
   // Constants from firmware
@@ -53,7 +58,6 @@ function buildRandomTxData() {
       data: `0x${crypto.randomBytes(Math.floor(Math.random() * 100)).toString('hex')}`,
     }
     randomTxData.push(tx);
-    randomTxDataLabels.push({ label: `${i+1}/${numRandom}`, number: i })
   }
 }
 
@@ -61,7 +65,8 @@ function buildRandomMsg(type='signPersonal') {
   if (type === 'signPersonal') {
     // A random string will do
     const isHexStr = Math.random() > 0.5;
-    const L = Math.floor(Math.random() * constants.ETH_MSG_MAX_SIZE);
+    const fwConstants = constants.getFwVersionConst(client.fwVersion);
+    const L = Math.floor(Math.random() * (fwConstants.ethMaxDataSz - MSG_PAYLOAD_METADATA_SZ));
     if (isHexStr)
       return `0x${crypto.randomBytes(L).toString('hex')}`; // Get L hex bytes (represented with a string with 2*L chars)
     else
@@ -127,7 +132,8 @@ async function testTxPass(req, chain=null) {
 async function testTxFail(req) {
   try {
     const tx = await helpers.sign(client, req);
-    expect(tx.tx).to.equal(null); 
+    expect(tx.tx).to.equal(null);
+    foundError = true;
   } catch (err) {
     expect(err).to.not.equal(null);
   }
@@ -149,10 +155,11 @@ async function testMsg(req, pass=true) {
   }
 }
 
-// Build the random tx vectors
+// Determine the number of random transactions we should build
 if (process.env.N)
   numRandom = parseInt(process.env.N);
-buildRandomTxData();
+// Build the labels
+buildIterLabels();
 
 describe('Setup client', () => {
   it('Should setup the test client', () => {
@@ -168,6 +175,11 @@ describe('Setup client', () => {
     expect(connectErr).to.equal(null);
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
+    // Set the correct max gas price based on firmware version
+    const fwConstants = constants.getFwVersionConst(client.fwVersion);
+    ETH_GAS_PRICE_MAX = fwConstants.ethMaxGasPrice;
+    // Build the random transactions
+    buildRandomTxData();
   });
 })
 
@@ -251,7 +263,8 @@ if (!process.env.skip) {
 
       // Test boundary of new dataSz
       chain.chainId = chain.networkId = getChainId(51, 0); // UINT64_MAX should pass
-      const maxDataSz = constants.ETH_DATA_MAX_SIZE - 9; // Subtract 8 bytes for chainID and 1 byte for chainIdSz
+      const fwConstants = constants.getFwVersionConst(client.fwVersion);
+      const maxDataSz = fwConstants.ethMaxDataSz - 9; // Subtract 8 bytes for chainID and 1 byte for chainIdSz
       txData.data = `0x${crypto.randomBytes(Math.floor(Math.random() * maxDataSz)).toString('hex')}`;
       await testTxPass(buildTxReq(txData, chain.chainId), chain);
       txData.data = `0x${crypto.randomBytes(Math.floor(Math.random() * maxDataSz+1)).toString('hex')}`;
@@ -294,13 +307,14 @@ if (!process.env.skip) {
           s += xs
         return s;
       }
-      txData.data = buildDataStr(1, constants.ETH_DATA_MAX_SIZE - 1)
+      const fwConstants = constants.getFwVersionConst(client.fwVersion);
+      txData.data = buildDataStr(1, fwConstants.ethMaxDataSz - 1)
       await testTxPass(buildTxReq(txData))
-      txData.data = buildDataStr(2, constants.ETH_DATA_MAX_SIZE)  
+      txData.data = buildDataStr(2, fwConstants.ethMaxDataSz)  
       await testTxPass(buildTxReq(txData))
 
       // Expected failures
-      txData.data = buildDataStr(3, constants.ETH_DATA_MAX_SIZE + 1)
+      txData.data = buildDataStr(3, fwConstants.ethMaxDataSz + 1)
       await testTxFail(buildTxReq(txData))
     });
 
@@ -412,7 +426,6 @@ describe('Test random transaction data', function() {
       await testTxPass(buildTxReq(txData, network))
       setTimeout(() => { next() }, 2500);
     } catch (err) {
-      console.log('error from payload', network, txData)
       setTimeout(() => { next(err) }, 2500);
     }
   })
@@ -444,8 +457,10 @@ describe('Test ETH personalSign', function() {
 
   it('Msg: sign_personal boundary conditions', async () => {
     const protocol = 'signPersonal';
-    const maxValid = `0x${crypto.randomBytes(constants.ETH_MSG_MAX_SIZE).toString('hex')}`;
-    const minInvalid = `0x${crypto.randomBytes(constants.ETH_MSG_MAX_SIZE + 1).toString('hex')}`;
+    const fwConstants = constants.getFwVersionConst(client.fwVersion);
+    const maxSz = fwConstants.ethMaxDataSz;
+    const maxValid = `0x${crypto.randomBytes(maxSz).toString('hex')}`;
+    const minInvalid = `0x${crypto.randomBytes(maxSz + 1).toString('hex')}`;
     const zeroInvalid = '0x';
     await testMsg(buildMsgReq(maxValid, protocol), true);
     await testMsg(buildMsgReq(minInvalid, protocol), false);

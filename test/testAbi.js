@@ -213,7 +213,8 @@ function createDef() {
   def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
   const data = helpers.ensureHexBuffer(buildEthData(def));
   // Make sure the transaction will fit in the firmware buffer size
-  if (data.length > constants.ETH_DATA_MAX_SIZE)
+  const fwConstants = constants.getFwVersionConst(client.fwVersion)
+  if (data.length > fwConstants.ethMaxDataSz)
     return createDef();
   
   return def;
@@ -532,8 +533,6 @@ describe('Test ABI Markdown', () => {
   })
 
   it.each(indices, 'Test ABI markdown of payload #%s', ['i'], async (n, next) => {
-    if (n.i < 7)
-      return setTimeout(() => {next()}, 1000);
     const def = abiDefs[n.i];
     req.data.data = buildEthData(def)
     try {

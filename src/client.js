@@ -16,6 +16,7 @@ const {
   toPaddedDER,
 } = require('./util');
 const {
+  getFwVersionConst,
   ADDR_STR_LEN,
   ENC_MSG_LEN,
   decResLengths,
@@ -198,21 +199,24 @@ class Client {
       return cb('Unsupported currency');
     }
 
+    // All transaction requests must be put into the same sized buffer.
+    // This comes from sizeof(GpTransactionRequest_t), but note we remove
+    // the 2-byte schemaId since it is not returned from our resolver.
+    // Note that different firmware versions may have different data sizes.
+    const fwConstants = getFwVersionConst(this.fwVersion);
+
     // Build the signing request payload to send to the device. If we catch
     // bad params, return an error instead
+    data.ethMaxDataSz = fwConstants.ethMaxDataSz;
+    data.ethMaxMsgSz = fwConstants.ethMaxMsgSz;
     const req = signReqResolver[currency](data);
     if (req.err !== undefined) return cb({ err: req.err });
-    // All transaction requests must be put into the same sized buffer
-    // so that checksums may be validated. The full size is 1266 bytes,
-    // but that includes a 1-byte prefix (`SIGN_TRANSACTION`), 2 bytes
-    // indicating the schema type, and 4 bytes for a checksum.
-    // Therefore, the payload itself has 1224 - 7 = 1217 bytes of space.
-    const MAX_SIGN_REQ_DATA_SIZE = 1152;
-    if (req.payload.length > MAX_SIGN_REQ_DATA_SIZE)
+
+    if (req.payload.length > fwConstants.reqMaxDataSz)
       return cb('Transaction is too large');
 
     // Build the payload
-    const payload = Buffer.alloc(2 + MAX_SIGN_REQ_DATA_SIZE);
+    const payload = Buffer.alloc(2 + fwConstants.reqMaxDataSz);
     let off = 0;
     // Copy request schema (e.g. ETH or BTC transfer)
     payload.writeUInt16BE(req.schema, off); off += 2;
@@ -483,7 +487,11 @@ class Client {
     let off = 0;
     const pairingStatus = res.readUInt8(off); off++;
     // If we are already paired, we get the next ephemeral key
-    const pub = res.slice(off, res.length).toString('hex');
+    const pub = res.slice(off, off + 65).toString('hex'); off += 65;
+    // Grab the firmware version (will be 0-length for older fw versions)
+    // It is of format |fix|minor|major|reserved|
+    this.fwVersion = res.slice(off, off + 4);
+    // Set the public key
     this.ephemeralPub = getP256KeyPairFromPub(pub);
     // return the state of our pairing
     return (pairingStatus === messageConstants.PAIRED);

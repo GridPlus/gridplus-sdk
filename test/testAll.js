@@ -143,9 +143,10 @@ describe('Connect and Pair', () => {
 
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
-    const GAS_PRICE_MAX = 100000000000;
+    const fwConstants = constants.getFwVersionConst(client.fwVersion)
+    const GAS_PRICE_MAX = fwConstants.ethMaxGasPrice;
     const GAS_LIMIT_MIN = 22000;
-    const GAS_LIMIT_MAX = 10000000;
+    const GAS_LIMIT_MAX = 12500000;
     
     const txData = {
       nonce: 0,
@@ -172,6 +173,11 @@ describe('Connect and Pair', () => {
     tx = await helpers.sign(client, req);
     expect(tx.tx).to.not.equal(null);
     req.data.chainId = 'rinkeby';
+
+    req.data.data = client.crypto.randomBytes(fwConstants.ethMaxDataSz).toString('hex');
+    tx = await(helpers.sign(client, req));
+    expect(tx.tx).to.not.equal(null);
+    req.data.data = null;
 
     // Invalid chainId
     req.data.chainId = 'notachain';
@@ -248,7 +254,7 @@ describe('Connect and Pair', () => {
     req.data.value = 0.3 * 10 ** 18;
     
     // Data too large
-    req.data.data = client.crypto.randomBytes(constants.ETH_DATA_MAX_SIZE + 1).toString('hex');
+    req.data.data = client.crypto.randomBytes(fwConstants.ethMaxDataSz + 1).toString('hex');
     try {
       tx = await(helpers.sign(client, req));
       expect(tx.tx).to.equal(null);
