@@ -156,7 +156,7 @@ class Client {
   getAddresses(opts, cb) {
     const SKIP_CACHE_FLAG = 1;
     const MAX_ADDR = 10;
-    const { startPath, n, skipCache=false } = opts;
+    const { startPath, n, skipCache=true } = opts;
     if (startPath === undefined || n === undefined || startPath.length !== 5) {
       return cb('Please provide `startPath` and `n` options');
     } else if (n > MAX_ADDR) {

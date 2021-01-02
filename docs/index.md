@@ -117,7 +117,7 @@ client.addresses(req, (err, res) => {
 |:-----------|:----------|:-----------------|:----------------|:----------------------|
 | `startPath` | Array    | none             | n/a             | First address path in BIP44 tree to return. You must provide 5 indices to form the path. |
 | `n`        | number    | 1                | n/a             | Number of subsequent addresses after `start` to derive. These will increment over the final index in the path |
-| `skipCache` | bool     | false            | n/a             | If set to true, skip the restriction that only cached addresses may be requested. This allows the user to request any address for a supported currency (BTC and ETH) |
+| `skipCache` | bool     | true            | n/a             | If set to true, skip the restriction that only cached addresses may be requested. This allows the user to request any address for a supported currency (BTC and ETH) |
 
 **Response:**
 
