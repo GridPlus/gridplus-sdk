@@ -63,7 +63,8 @@ describe('Connect and Pair', () => {
       const addrData = { 
         currency: 'BTC', 
         startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_COIN, HARDENED_OFFSET, 0, 0], 
-        n: 5
+        n: 5,
+        skipCache: false,
       }
       // Bitcoin addresses
       // NOTE: The format of address will be based on the user's Lattice settings
