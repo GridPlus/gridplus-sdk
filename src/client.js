@@ -490,7 +490,7 @@ class Client {
     const pub = res.slice(off, off + 65).toString('hex'); off += 65;
     // Grab the firmware version (will be 0-length for older fw versions)
     // It is of format |fix|minor|major|reserved|
-    this.fwVersion = res.slice(off);
+    this.fwVersion = res.slice(off, off + 4);
     // Set the public key
     this.ephemeralPub = getP256KeyPairFromPub(pub);
     // return the state of our pairing

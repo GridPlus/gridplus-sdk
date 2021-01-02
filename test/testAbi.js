@@ -533,8 +533,6 @@ describe('Test ABI Markdown', () => {
   })
 
   it.each(indices, 'Test ABI markdown of payload #%s', ['i'], async (n, next) => {
-    if (n.i < 7)
-      return setTimeout(() => {next()}, 1000);
     const def = abiDefs[n.i];
     req.data.data = buildEthData(def)
     try {
