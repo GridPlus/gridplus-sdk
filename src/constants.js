@@ -190,7 +190,7 @@ function getFwVersionConst(v) {
         c.reqMaxDataSz = 1678;
         c.ethMaxDataSz = c.reqMaxDataSz - 128;
         c.ethMaxMsgSz = c.ethMaxDataSz;
-        c.ethMaxGasPrice = 1000000000000; // 1000 gwei
+        c.ethMaxGasPrice = 20000000000000; // 20000 gwei
         c.addrFlagsAllowed = true;
     }
     return c;
