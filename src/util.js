@@ -90,6 +90,21 @@ const signReqResolver = {
   'ETH_MSG': buildEthereumMsgRequest,
 }
 
+// Temporary helper to determine if this is a supported BIP44 parent path
+function isValidAssetPath(path) {
+  const HARDENED_OFFSET = 0x80000000;
+  const allowedPurposes = [HARDENED_OFFSET+49, HARDENED_OFFSET+44];
+  const allowedCoins = [HARDENED_OFFSET, HARDENED_OFFSET+1, HARDENED_OFFSET+60];
+  const allowedAccounts = [HARDENED_OFFSET];
+  const allowedChange = [0, 1]
+  return (
+    (allowedPurposes.indexOf(path[0]) >= 0) &&
+    (allowedCoins.indexOf(path[1]) >= 0) &&
+    (allowedAccounts.indexOf(path[2]) >= 0) &&
+    (allowedChange.indexOf(path[3]) >= 0)
+  );
+}
+
 //--------------------------------------------------
 // CRYPTO UTILS
 //--------------------------------------------------
@@ -130,6 +145,7 @@ function getP256KeyPairFromPub(pub) {
 
 
 module.exports = {
+  isValidAssetPath,
   ensureHexBuffer,
   signReqResolver,
   aes256_decrypt,

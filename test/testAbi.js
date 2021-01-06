@@ -109,7 +109,7 @@ function randBytes(type) {
 }
 
 function randString() {
-  return generateName(randInt(100)); // Up to a 100 character string
+  return generateName(1+randInt(99)); // Up to a 100 character string
 }
 
 function getRandType() {
@@ -184,12 +184,13 @@ function genRandVal(type) {
 }
 
 function buildEthData(def) {
-  return `0x${def.sig}${ethAbi.rawEncode(def._typeNames, def._vals).toString('hex')}`
+  const encoded = ethAbi.rawEncode(def._typeNames, def._vals);
+  return `0x${def.sig}${encoded.toString('hex')}`
 }
 
 function createDef() {
   const def = {
-    name: generateName(50),
+    name: `function_${randInt(5000000)}`,
     sig: null,
     params: [],
     _vals: [],
@@ -456,6 +457,7 @@ describe('Preloaded ABI definitions', () => {
   })
 })
 
+
 describe('Add ABI definitions', () => {
   beforeEach(() => {
     expect(caughtErr).to.equal(null, 'Error found in prior test. Aborting.');
@@ -481,6 +483,7 @@ describe('Add ABI definitions', () => {
       expect(err).to.equal(null, err);
     }
   })
+
 })
 
 describe('Test ABI Markdown', () => {

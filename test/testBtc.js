@@ -79,7 +79,7 @@ describe('exportSeed', () => {
     }
 
     const res = await helpers.test(client, jobReq);
-    const _res = helpers.parseWalletJobResp(res);
+    const _res = helpers.parseWalletJobResp(res, client.fwVersion);
     expect(_res.resultStatus).to.equal(0);
     const data = helpers.deserializeExportSeedJobResult(_res.result);
     const activeWalletSeed = helpers.copyBuffer(data.seed);

@@ -351,25 +351,33 @@ exports.jobTypes = {
 }
 exports.gpErrors = {
   GP_SUCCESS: 0x00,
-  GP_EINVAL: 0xea, // -22
-  GP_ENODATA: 0xc3, // -61
-  GP_EOVERFLOW: 0xac, // -84
-  GP_EALREADY: 0x8e, // -114
-  GP_ENODEV: 0xed, // -19
-  GP_EAGAIN: 0xf5, // -11
+  GP_EINVAL: (0xffffffff+1) - 22, // (4294967061)
+  GP_ENODATA: (0xffffffff+1) - 61, // (4294967100)
+  GP_EOVERFLOW: (0xffffffff+1) - 84, // (4294967123)
+  GP_EALREADY: (0xffffffff+1) - 114, // (4294967153)
+  GP_ENODEV: (0xffffffff+1) - 19, // (4294967058)
+  GP_EAGAIN: (0xffffffff+1) - 11, // (4294967050)
 }
 
 //---------------------------------------------------
 // General helpers
 //---------------------------------------------------
-exports.parseWalletJobResp = function(res) {
+exports.parseWalletJobResp = function(res, v) {
   const jobRes = {
     resultStatus: null,
     result: null,
   };
   jobRes.resultStatus = res.readUInt32LE(0);
   const dataLen = res.readUInt16LE(4);
-  jobRes.result = res.slice(6, 6+dataLen);
+  if (v.length === 0 || (v[1] < 10 && v[2] === 0)) {
+    // Legacy fw versions (<v0.10.0) erroneously add 4 bytes to the front
+    // of the data, which is always zeros. This was a mistake in encoding 
+    // the status code.
+    jobRes.result = res.slice(10, 10+dataLen);
+  } else {
+    // New fw versions don't have this extra space
+    jobRes.result = res.slice(6, 6+dataLen);
+  }
   return jobRes;  
 }
 
@@ -462,7 +470,7 @@ exports.serializeGetAddressesJobData = function(data) {
 }
 
 exports.deserializeGetAddressesJobResult = function(res) {
-  let off = 4; // Skip past status code
+  let off = 0;
   const getAddrResult = {
     count: null,
     addresses: [],
@@ -533,7 +541,7 @@ exports.serializeSignTxJobData = function(data) {
 }
 
 exports.deserializeSignTxJobResult = function(res) {
-  let off = 4; // Skip past status code
+  let off = 0;
   const getTxResult = {
     numOutputs: null,
     outputs: [],
@@ -592,9 +600,7 @@ exports.serializeExportSeedJobData = function() {
 };
 
 exports.deserializeExportSeedJobResult = function(res) {
-  // Skip past 4-byte status code
-  // Next 32 bytes are the seed
-  return { seed: res.slice(4, 68) };
+  return { seed: res.slice(0, 64) };
 }
 
 //---------------------------------------------------
