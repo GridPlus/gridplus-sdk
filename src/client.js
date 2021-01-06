@@ -4,6 +4,7 @@ const bitcoin = require('./bitcoin');
 const ethereum = require('./ethereum');
 const { buildAddAbiPayload, abiParsers, MAX_ABI_DEFS } = require('./ethereumAbi');
 const {
+  isValidAssetPath,
   signReqResolver,
   aes256_decrypt,
   aes256_encrypt,
@@ -162,6 +163,9 @@ class Client {
     } else if (n > MAX_ADDR) {
       return cb(`You may only request ${MAX_ADDR} addresses at once.`);
     }
+
+    if (skipCache === true && false === isValidAssetPath(startPath))
+      return cb('Parent path is not supported');
 
     const payload = Buffer.alloc(1 + 32 + startPath.length * 4);
     let off = 0;
