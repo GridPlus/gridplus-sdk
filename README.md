@@ -15,19 +15,19 @@ The documentation for this SDK can be found [here](https://gridplus-sdk.readthed
 
 If you have a Lattice1 device that is connected to the internet, you can run the full test suite with:
 
-```
+```sh
 npm test
 ```
 
 If you would like to run tests multiple times, you will need to re-pair with a fresh, random key pair using the above command.
 If you instead wish to quickly test non-pairing items, consider the following setup:
 
-```
-// Pair with a hardcoded, re-usable test key. You only need to do this ONCE!
+```sh
+# Pair with a hardcoded, re-usable test key. You only need to do this ONCE!
 env REUSE_KEY=1 npm test
 
-// All subsequent tests will use the re-usable key if you specify your device ID
-// as an env variable
+# All subsequent tests will use the re-usable key if you specify your device ID
+# as an env variable
 env DEVICE_ID='my_device_id' npm test
 ```
 
@@ -41,13 +41,13 @@ Once you have paired with a device in a re-usable way (i.e. using the commands a
 
 Ethereum tests include both boundary checks on transaction params and randomized test vectors (20 by default). You can run the suite with:
 
-```
+```sh
 env DEVICE_ID='my_device_id' npm run test-eth
 ```
 
 If you wish to do more or fewer than 20 random transaction tests, you can specify the `N` param:
 
-```
+```sh
 env DEVICE_ID='my_device_id' N=25 npm run test-eth
 ```
 
@@ -64,13 +64,13 @@ Bitcoin tests cover legacy and segwit spends on both mainnet and testnet. They a
 
 Run the tests with:
 
-```
+```sh
 env DEVICE_ID='my_device_id' npm run test-btc
 ```
 
 If you want to specify the above params:
 
-```
+```sh
 env DEVICE_ID='my_device_id' N=5 MNEMONIC='negative spare peasant raw feature camera glide notice fee gown heavy depart' npm run test-btc
 ```
 
@@ -78,7 +78,7 @@ env DEVICE_ID='my_device_id' N=5 MNEMONIC='negative spare peasant raw feature ca
 
 You may test functionality around loading Ethereum ABI definitions and displaying calldata in a markdwon screen with the following script:
 
-```
+```sh
 env DEVICE_ID='my_device_id' N=<numRandomTests> npm run test-eth-abi
 ```
 
@@ -94,6 +94,6 @@ We can test debug firmware builds using the `client.test` function in the SDK. T
 
 Lattice firmware uses "wallet jobs" to interact with the SafeCard/Lattice wallet directly. The SDK does not have access to these methods in production builds, but for debug builds the test harness can be used to interact with them.
 
-```
+```sh
 env DEVICE_ID='my_device_id' npm run test-wallet-jobs
 ```
