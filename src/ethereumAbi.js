@@ -61,6 +61,20 @@ exports.buildAddAbiPayload = function(defs) {
   return b;
 }
 
+// Get the 4-byte function identifier based on the canonical name
+exports.getFuncSig = function(f) {
+  // Canonical name is:
+  // funcName(paramType0, ..., paramTypeN)
+  let canonicalName = `${f.name}(`;
+  f.inputs.forEach((input) => {
+    canonicalName += `${input.type},`
+  })
+  if (f.inputs.length > 0)
+    canonicalName = canonicalName.slice(0, canonicalName.length - 1)
+  canonicalName += ')'
+  return keccak256(canonicalName).slice(0, 8);
+}
+
 //--------------------------------------
 // PARSERS
 //--------------------------------------
@@ -68,7 +82,7 @@ function parseEtherscanAbiDefs(_defs) { // `_defs` are `result` of the parsed re
   const defs = [];
   _defs.forEach((d) => {
     if (d.name && d.inputs && d.type === 'function' && d.stateMutability !== 'view') {
-      const sig = getFuncSig(d);
+      const sig = exports.getFuncSig(d);
       const params = parseEtherscanAbiInputs(d.inputs);
       defs.push({
         name: d.name,
@@ -87,20 +101,6 @@ exports.abiParsers = {
 //--------------------------------------
 // HELPERS
 //--------------------------------------
-// Get the 4-byte function identifier based on the canonical name
-function getFuncSig(f) {
-  // Canonical name is:
-  // funcName(paramType0, ..., paramTypeN)
-  let canonicalName = `${f.name}(`;
-  f.inputs.forEach((input) => {
-    canonicalName += `${input.type},`
-  })
-  if (f.inputs.length > 0)
-    canonicalName = canonicalName.slice(0, canonicalName.length - 1)
-  canonicalName += ')'
-  return keccak256(canonicalName).slice(0, 8);
-}
-
 // Parse the ABI param data into structs Lattice firmware will recognize.
 function parseEtherscanAbiInputs(inputs) {
   const data = [];

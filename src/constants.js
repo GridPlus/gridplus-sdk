@@ -175,6 +175,7 @@ const ETH_ABI_LATTICE_FW_TYPE_MAP = {
     'bytes32': 48,
     'bytes': 49,
     'string': 50,
+    'tuple': 51,
 };
 
 function getFwVersionConst(v) {

@@ -1,16 +1,19 @@
 require('it-each')({ testPerIteration: true });
+const _ = require('lodash');
 // Use bn.js here instead of bignumber because it is compatable with ethereumjs-abi
 const BN = require('bn.js'); 
 const constants = require('./../src/constants');
+const abi = require('./../src/ethereumAbi');
 const randomWords = require('random-words');
 const crypto = require('crypto');
-const ethAbi = require('ethereumjs-abi');
+const ethers = require('ethers');
 const expect = require('chai').expect;
 const helpers = require('./testUtil/helpers');
 const question = require('readline-sync').question;
 const seedrandom = require('seedrandom');
-const numIter = process.env.N || 20;
 
+const encoder = new ethers.utils.AbiCoder;
+const numIter = process.env.N || 20;
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
 //---------------------------------------
 // STATE DATA
@@ -85,7 +88,8 @@ function randNumVal(type) {
       return '0x' + crypto.randomBytes(randInt(16)).toString('hex')
     case 'uint256':
     case 'uint':
-      return new BN(crypto.randomBytes(randInt(32)).toString('hex'), 16)
+      return '0x' + crypto.randomBytes(randInt(32)).toString('hex')
+      // return new BN(crypto.randomBytes(randInt(32)).toString('hex'), 16)
     default:
       throw new Error('Unsupported type: ', type)
   }
@@ -184,8 +188,23 @@ function genRandVal(type) {
 }
 
 function buildEthData(def) {
-  const encoded = ethAbi.rawEncode(def._typeNames, def._vals);
-  return `0x${def.sig}${encoded.toString('hex')}`
+  const encoded = encoder.encode(def._typeNames, def._vals);
+  return `0x${def.sig}${encoded.slice(2)}`
+}
+
+function buildFuncSelector(def) {
+  const repurposedData = {
+    name: def.name,
+    inputs: [],
+  };
+  for (let i = 0; i < def._typeNames.length; i++) {
+    let type = def._typeNames[i];
+    // Convert to canonical type, if needed
+    if (type === 'uint' || type.indexOf('uint[') > -1)
+      type = type.replace('uint', 'uint256');
+    repurposedData.inputs.push({ type })
+  }
+  return abi.getFuncSig(repurposedData);
 }
 
 function createDef() {
@@ -211,7 +230,7 @@ function createDef() {
     }
   }
   def._typeNames = getTypeNames(def.params);
-  def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+  def.sig = buildFuncSelector(def);
   const data = helpers.ensureHexBuffer(buildEthData(def));
   // Make sure the transaction will fit in the firmware buffer size
   const fwConstants = constants.getFwVersionConst(client.fwVersion)
@@ -247,7 +266,7 @@ function createBoundaryDefs() {
     ]
   };
   def._typeNames = getTypeNames(def.params);
-  def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+  def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
   // Min of each type of uint
   def = {
@@ -262,16 +281,16 @@ function createBoundaryDefs() {
       makeUintParam('uint256', '0')
     ],
     _vals: [
-      '0x',
-      '0x',
-      '0x',
-      '0x',
-      '0x',
-      '0x'
+      '0x00',
+      '0x00',
+      '0x00',
+      '0x00',
+      '0x00',
+      '0x00'
     ]
   };
   def._typeNames = getTypeNames(def.params);
-  def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+  def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
   // Powers of 10
   def = {
@@ -295,7 +314,7 @@ function createBoundaryDefs() {
     ]
   };
   def._typeNames = getTypeNames(def.params);
-  def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+  def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
 
   function makeParamSet(type) {
@@ -314,7 +333,7 @@ function createBoundaryDefs() {
     _vals: [true, [false, true], [false, false, false, false, true, false]]
   };
   def._typeNames = getTypeNames(def.params);
-  def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+  def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
 
   // address, address array (fixed), address array (variable)
@@ -329,7 +348,7 @@ function createBoundaryDefs() {
     ]
   };
   def._typeNames = getTypeNames(def.params);
-  def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+  def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
 
   // bytes, bytes array (fixed), bytes array (variable)
@@ -344,7 +363,7 @@ function createBoundaryDefs() {
     ]
   };
   def._typeNames = getTypeNames(def.params);
-  def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+  def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
 
   // string, string array (fixed), string array (variable)
@@ -359,7 +378,7 @@ function createBoundaryDefs() {
     ]
   };
   def._typeNames = getTypeNames(def.params);
-  def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+  def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
 }
 
@@ -427,7 +446,7 @@ describe('Preloaded ABI definitions', () => {
     ];
     erc20PreloadedDefs.forEach((def) => {
       def._typeNames = getTypeNames(def.params);
-      def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+      def.sig = buildFuncSelector(def);
     })
 
     try {
@@ -457,7 +476,6 @@ describe('Preloaded ABI definitions', () => {
   })
 })
 
-
 describe('Add ABI definitions', () => {
   beforeEach(() => {
     expect(caughtErr).to.equal(null, 'Error found in prior test. Aborting.');
@@ -483,7 +501,6 @@ describe('Add ABI definitions', () => {
       expect(err).to.equal(null, err);
     }
   })
-
 })
 
 describe('Test ABI Markdown', () => {
@@ -498,7 +515,7 @@ describe('Test ABI Markdown', () => {
   })
 
   it('Failure checks: it should fail to decode when variable arraySz is 0', async () => {
-    const bytesDef = JSON.parse(JSON.stringify(boundaryAbiDefs[5]));
+    const bytesDef = _.cloneDeep(boundaryAbiDefs[5])
     bytesDef._vals[2] = [];
     req.data.data = buildEthData(bytesDef);
     try {
@@ -510,8 +527,9 @@ describe('Test ABI Markdown', () => {
   })
 
   it('Failure checks: it should fail to decode when dynamic param has size 0', async () => {
-    const bytesDef = JSON.parse(JSON.stringify(boundaryAbiDefs[5]));
-    bytesDef._vals[2] = [''];
+    const bytesDef = _.cloneDeep(boundaryAbiDefs[5])
+    bytesDef._vals[2] = [Buffer.from('')];
+
     req.data.data = buildEthData(bytesDef);
     try {
       await helpers.sign(client, req);
