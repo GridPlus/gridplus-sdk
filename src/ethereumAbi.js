@@ -67,7 +67,16 @@ exports.getFuncSig = function(f) {
   // funcName(paramType0, ..., paramTypeN)
   let canonicalName = `${f.name}(`;
   f.inputs.forEach((input) => {
-    canonicalName += `${input.type},`
+    if (input.type.indexOf('tuple') > -1) {
+      const arrSuffix = input.type.slice(input.type.indexOf('tuple') + 5);
+      canonicalName += '('
+      input.components.forEach((c, i) => {
+        canonicalName += `${c.type}${i === input.components.length - 1 ? '' : ','}`;
+      })
+      canonicalName += `)${arrSuffix},`
+    } else {
+      canonicalName += `${input.type},`
+    }
   })
   if (f.inputs.length > 0)
     canonicalName = canonicalName.slice(0, canonicalName.length - 1)
@@ -102,8 +111,8 @@ exports.abiParsers = {
 // HELPERS
 //--------------------------------------
 // Parse the ABI param data into structs Lattice firmware will recognize.
-function parseEtherscanAbiInputs(inputs) {
-  const data = [];
+function parseEtherscanAbiInputs(inputs, data=[]) {
+  let tupleParams = [];
   inputs.forEach((input) => {
     const typeName = input.type;
     const d = { isArray: false, arraySz: 0, name: input.name, };
@@ -124,13 +133,17 @@ function parseEtherscanAbiInputs(inputs) {
         d.arraySz = number;
       }
     }
-    const singularTypeName = openBracketIdx > -1 ? typeName.slice(0, openBracketIdx) : typeName;
+    let singularTypeName = openBracketIdx > -1 ? typeName.slice(0, openBracketIdx) : typeName;
+    if (singularTypeName === 'tuple') {
+      singularTypeName = `tuple${input.components.length}`;
+      tupleParams = parseEtherscanAbiInputs(input.components, tupleParams);
+    }
     d.latticeTypeIdx = getTypeIdxLatticeFw(singularTypeName)
     if (!d.latticeTypeIdx)
       throw new Error(`Unsupported type: ${typeName}`)
     data.push(d)
   })
-  return data;
+  return data.concat(tupleParams);
 }
 
 // Enum values from inside Lattice firmware
