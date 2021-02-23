@@ -90,7 +90,7 @@ exports.getFuncSig = function(f) {
 function parseEtherscanAbiDefs(_defs) { // `_defs` are `result` of the parsed response
   const defs = [];
   _defs.forEach((d) => {
-    if (d.name && d.inputs && d.type === 'function' && d.stateMutability !== 'view') {
+    if (d.name && d.inputs && d.type === 'function' && d.stateMutability !== 'view' && d.constant !== true) {
       const sig = exports.getFuncSig(d);
       const params = parseEtherscanAbiInputs(d.inputs);
       defs.push({
