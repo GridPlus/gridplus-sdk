@@ -111,7 +111,7 @@ exports.abiParsers = {
 // HELPERS
 //--------------------------------------
 // Parse the ABI param data into structs Lattice firmware will recognize.
-function parseEtherscanAbiInputs(inputs, data=[]) {
+function parseEtherscanAbiInputs(inputs, data=[], isNestedTuple=false) {
   let tupleParams = [];
   inputs.forEach((input) => {
     const typeName = input.type;
@@ -135,14 +135,21 @@ function parseEtherscanAbiInputs(inputs, data=[]) {
     }
     let singularTypeName = openBracketIdx > -1 ? typeName.slice(0, openBracketIdx) : typeName;
     if (singularTypeName === 'tuple') {
+      if (isNestedTuple === true)
+        throw new Error('Nested tuples are not supported')
+      else if (tupleParams.length > 0)
+        throw new Error('Only one tuple per function is currently allowed. This function has more than one.')
       singularTypeName = `tuple${input.components.length}`;
-      tupleParams = parseEtherscanAbiInputs(input.components, tupleParams);
+      tupleParams = parseEtherscanAbiInputs(input.components, tupleParams, true);
     }
     d.latticeTypeIdx = getTypeIdxLatticeFw(singularTypeName)
     if (!d.latticeTypeIdx)
       throw new Error(`Unsupported type: ${typeName}`)
     data.push(d)
   })
+  const params = data.concat(tupleParams)
+  if (params.length > 18)
+    throw new Error('Function has too many parameters for Lattice firmware (18 max)')
   return data.concat(tupleParams);
 }
 
