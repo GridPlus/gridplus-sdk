@@ -219,6 +219,46 @@ describe('getAddresses', () => {
     helpers.validateBTCAddresses(resp, jobData, activeWalletSeed);
   })
 
+  it('Should fetch nonstandard address with proper flag set', async () => {
+    const req = { 
+      currency: 'BTC', 
+      startPath: [7842, helpers.BTC_COIN, 2532356, 0, 28802208], 
+      n: 3,
+      skipCache: true,
+    }
+    const addrs = await helpers.getAddresses(client, req, 2000);
+    const resp = {
+      count: addrs.length,
+      addresses: addrs,
+    }
+    const jobData = {
+      parent: {
+        pathDepth: 4,
+        purpose: req.startPath[0],
+        coin: req.startPath[1],
+        account: req.startPath[2],
+        change: req.startPath[3],
+      },
+      count: req.n,
+      first: req.startPath[4],
+    }
+    helpers.validateBTCAddresses(resp, jobData, activeWalletSeed);
+  })
+
+  it('Should fail to fetch with nonstanard address with an unknown currency type', async () => {
+    const req = { 
+      currency: 'BTC', 
+      startPath: [7842, helpers.BTC_COIN + 1, 2532356, 0, 28802208], 
+      n: 3,
+      skipCache: true,
+    }
+    try {
+      await helpers.getAddresses(client, req, 2000);
+    } catch (err) {
+      expect(err).to.not.equal(null)
+    }
+  })
+
 })
 
 describe('signTx', () => {

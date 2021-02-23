@@ -105,6 +105,10 @@ function isValidAssetPath(path) {
   );
 }
 
+function isValidCoinType(path) {
+  return [0x80000000, 0x80000000+1, 0x80000000+60].indexOf(path[1]) >= 0
+}
+
 //--------------------------------------------------
 // CRYPTO UTILS
 //--------------------------------------------------
@@ -146,6 +150,7 @@ function getP256KeyPairFromPub(pub) {
 
 module.exports = {
   isValidAssetPath,
+  isValidCoinType,
   ensureHexBuffer,
   signReqResolver,
   aes256_decrypt,
