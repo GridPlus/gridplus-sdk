@@ -105,7 +105,7 @@ function randAddress() {
 function randBytes(type) {
   const fixedSz = parseInt(type.slice(5));
   if (isNaN(fixedSz)) {
-    return crypto.randomBytes(randInt(100)); // up to 100 bytes of random data
+    return crypto.randomBytes(1 + randInt(99)); // up to 100 bytes of random data
   } else {
     return crypto.randomBytes(fixedSz); // Fixed number of bytes
   }
@@ -251,64 +251,61 @@ function createTupleDef() {
     params: [],
     _vals: []
   }
-  const tupleSz = 1+ randInt(3) //randInt(16);
-  const otherParamsSz = randInt(4 - tupleSz+1) //randInt(18 - (tupleSz+1))
-  const otherParamsInFrontSz = randInt(otherParamsSz);
-  // Random params going in front of the tuple
-  for (let i = 0; i < otherParamsInFrontSz; i++) {
-    const param = genRandParam();
-    def.params.push(param);
-    def._vals.push(paramToVal(param));
-  }
-  // Now do the tuple
-  const valsIdx = def._vals.length
-  def._vals.push([])
+  let numTupleParams = 0;
+  const numTuples = (1+randInt(2));
   const tupleParams = []
-  let tupleStr = '('
-  for (let j = 0; j < tupleSz; j++) {
-    const param = genRandParam()
-    tupleStr += `${param.name},`
-    tupleParams.push(param)
+  for (let i = 0; i < numTuples; i++) {
+    const thisTupleParams = []
+    for (let j = 0; j < (1+randInt(3)); j++) {
+      thisTupleParams.push(genRandParam())
+      numTupleParams++
+    }
+    let tupleStr = '('
+    thisTupleParams.forEach((param, i) => {
+      tupleStr += `${param.name}${i === thisTupleParams.length - 1 ? '' : ','}`
+    })
+    tupleStr += ')'
+    const thisTuple = genRandParam(tupleStr)
+    thisTuple.latticeTypeIdx = constants.ETH_ABI_LATTICE_FW_TYPE_MAP[`tuple${thisTupleParams.length}`]
+    def.params.push(thisTuple)
+    // Vals
+    const thisTupleVals = []
+    if (thisTuple.isArray) {
+      const sz = thisTuple.arraySz === 0 ? (1+randInt(3)) : thisTuple.arraySz;
+      for (let i = 0; i < sz; i++) {
+        const nestedVals = []
+        thisTupleParams.forEach((param) => {
+          nestedVals.push(paramToVal(param))
+        })
+        thisTupleVals.push(nestedVals)
+      }
+    } else {
+      thisTupleParams.forEach((param) => {
+        thisTupleVals.push(paramToVal(param))
+      })
+    }
+    def._vals.push(thisTupleVals)
+    tupleParams.push(thisTupleParams)
   }
-  tupleStr = tupleStr.slice(0, tupleStr.length - 1) + ')'
-  const tupleParam = genRandParam(tupleStr)
-  tupleParam.latticeTypeIdx = constants.ETH_ABI_LATTICE_FW_TYPE_MAP[`tuple${tupleSz}`]
-  def.params.push(tupleParam)
-  
-  // Any params after the tuple one?
-  for (let k = 0; k < otherParamsSz - otherParamsInFrontSz; k++) {
+  const numOther = randInt(10 - numTuples - numTupleParams);
+  for (let i = 0; i < numOther; i++) {
     const param = genRandParam();
     def.params.push(param);
     def._vals.push(paramToVal(param));
   }
-  // Add the atomic tuple params now
-  if (tupleParam.isArray) {
-    const tupleArrSz = tupleParam.arraySz > 0 ? tupleParam.arraySz : (randInt(5) + 1)
-    // Loop once to push the params
-    tupleParams.forEach((tp) => {
-      def.params.push(tp);
-    })
-    for (let i = 0; i < tupleArrSz; i++) {
-      // Loop again to convert the values and push them to a nested array
-      const nestedValsArr = []
-      tupleParams.forEach((tp) => {
-        nestedValsArr.push(paramToVal(tp))
-      })
-      // Push our values array into the tuple values array
-      def._vals[valsIdx].push(nestedValsArr)
+
+  // Add the remaining tuple params
+  for (let i = 0; i < tupleParams.length; i++) {
+    for (let j = 0; j < tupleParams[i].length; j++) {
+      def.params.push(tupleParams[i][j])
     }
-  } else {
-    tupleParams.forEach((tp) => {
-      def.params.push(tp)
-      const val = paramToVal(tp)
-      def._vals[valsIdx].push(val)
-    })
   }
-  def._typeNames = getTypeNames(def.params.slice(0, def.params.length - tupleSz));
-  def.sig = buildFuncSelector(def);
-  const data = helpers.ensureHexBuffer(buildEthData(def));
+
+  def._typeNames = getTypeNames(def.params.slice(0, def.params.length - numTupleParams));
   // Make sure the transaction will fit in the firmware buffer size
   const fwConstants = constants.getFwVersionConst(client.fwVersion)
+  def.sig = buildFuncSelector(def);
+  const data = helpers.ensureHexBuffer(buildEthData(def));
   if (data.length > fwConstants.ethMaxDataSz)
     return createTupleDef();
   return def;
@@ -475,7 +472,7 @@ describe('Setup client', () => {
     expect(client.hasActiveWallet()).to.equal(true);
   });
 })
-/*
+
 describe('Preloaded ABI definitions', () => {
   it('Should test preloaded ERC20 ABI defintions', async () => {
     const erc20PreloadedDefs = [
@@ -549,7 +546,6 @@ describe('Preloaded ABI definitions', () => {
     }
   })
 })
-*/
 
 describe('Add ABI definitions', () => {
   let defsToLoad = [];
@@ -634,7 +630,7 @@ describe('Test ABI Markdown', () => {
       expect(err).to.not.equal(null, caughtErr);
     }
   })
-/*
+
   it.each(boundaryIndices, 'Test ABI markdown of boundary conditions #%s', ['i'], async (n, next) => {
     const def = boundaryAbiDefs[n.i];
     req.data.data = buildEthData(def)
@@ -648,7 +644,7 @@ describe('Test ABI Markdown', () => {
       setTimeout(() => { next(err) }, 1000);
     }
   })
-*/
+
   it('Should validate 0x V2 payload from mainnet tx', async () => {
     // From this transaction:
     // https://etherscan.io/tx/0x8f6d830ba45cf5851fa6d47b850aa6934bf6683b238b55ea4b4ebca1fdba693d
@@ -664,7 +660,7 @@ describe('Test ABI Markdown', () => {
       setTimeout(() => {  }, 1000);
     }
   })
-/*
+
   it.each(indices, 'Test ABI markdown of payload #%s (non-tuple)', ['i'], async (n, next) => {
     const def = abiDefs[n.i];
     req.data.data = buildEthData(def)
@@ -678,20 +674,9 @@ describe('Test ABI Markdown', () => {
       setTimeout(() => { next(err) }, 1000);
     }
   })
-*/
+
   it.each(indices, 'Test ABI markdown of payload #%s (tuple)', ['i'], async (n, next) => {
     const def = tupleAbiDefs[n.i];
-    console.log('vals')
-    def._vals.forEach((val) => {
-      if (Array.isArray(val)) {
-        val.forEach((subVal) => {
-          console.log(subVal)
-        })
-      } else {
-        console.log(val)
-      }
-    })
-    console.log('typeNames', def._typeNames)
     req.data.data = buildEthData(def)
     try {
       const sigResp = await helpers.sign(client, req);

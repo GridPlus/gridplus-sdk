@@ -137,8 +137,6 @@ function parseEtherscanAbiInputs(inputs, data=[], isNestedTuple=false) {
     if (singularTypeName === 'tuple') {
       if (isNestedTuple === true)
         throw new Error('Nested tuples are not supported')
-      else if (tupleParams.length > 0)
-        throw new Error('Only one tuple per function is currently allowed. This function has more than one.')
       singularTypeName = `tuple${input.components.length}`;
       tupleParams = parseEtherscanAbiInputs(input.components, tupleParams, true);
     }
