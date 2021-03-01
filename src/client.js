@@ -222,7 +222,7 @@ class Client {
     data.ethMaxDataSz = fwConstants.ethMaxDataSz;
     data.ethMaxMsgSz = fwConstants.ethMaxMsgSz;
     const req = signReqResolver[currency](data);
-    if (req.err !== undefined) return cb({ err: req.err });
+    if (req.err !== undefined) return cb(req.err);
 
     if (req.payload.length > fwConstants.reqMaxDataSz)
       return cb('Transaction is too large');

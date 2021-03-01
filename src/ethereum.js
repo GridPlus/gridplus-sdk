@@ -176,7 +176,7 @@ exports.buildEthereumTxRequest = function(data) {
     valueBytes.copy(txReqPayload, valueOff); off += 32;
     // Ensure data field isn't too long
     if (dataBytes && dataBytes.length > ethMaxDataSz) {
-      return { err: `Data field too large (must be <=${ethMaxDataSz} bytes)` }
+      throw new Error(`Data field too large (must be <=${ethMaxDataSz} bytes)`);
     }
     // Write the data size (does *NOT* include the chainId buffer, if that exists)
     txReqPayload.writeUInt16BE(dataBytes.length, off); off += 2;
@@ -187,6 +187,7 @@ exports.buildEthereumTxRequest = function(data) {
       txReqPayload.writeUInt8(chainIdBufSz, off); off++;
       chainIdBuf.copy(txReqPayload, off); off += chainIdBufSz;
     }
+
     // Copy the data itself
     dataBytes.copy(txReqPayload, off); off += ethMaxDataSz;
     return { 
