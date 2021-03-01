@@ -61,14 +61,37 @@ exports.buildAddAbiPayload = function(defs) {
   return b;
 }
 
+// Get the 4-byte function identifier based on the canonical name
+exports.getFuncSig = function(f) {
+  // Canonical name is:
+  // funcName(paramType0, ..., paramTypeN)
+  let canonicalName = `${f.name}(`;
+  f.inputs.forEach((input) => {
+    if (input.type.indexOf('tuple') > -1) {
+      const arrSuffix = input.type.slice(input.type.indexOf('tuple') + 5);
+      canonicalName += '('
+      input.components.forEach((c, i) => {
+        canonicalName += `${c.type}${i === input.components.length - 1 ? '' : ','}`;
+      })
+      canonicalName += `)${arrSuffix},`
+    } else {
+      canonicalName += `${input.type},`
+    }
+  })
+  if (f.inputs.length > 0)
+    canonicalName = canonicalName.slice(0, canonicalName.length - 1)
+  canonicalName += ')'
+  return keccak256(canonicalName).slice(0, 8);
+}
+
 //--------------------------------------
 // PARSERS
 //--------------------------------------
 function parseEtherscanAbiDefs(_defs) { // `_defs` are `result` of the parsed response
   const defs = [];
   _defs.forEach((d) => {
-    if (d.name && d.inputs && d.type === 'function' && d.stateMutability !== 'view') {
-      const sig = getFuncSig(d);
+    if (d.name && d.inputs && d.type === 'function' && d.stateMutability !== 'view' && d.constant !== true) {
+      const sig = exports.getFuncSig(d);
       const params = parseEtherscanAbiInputs(d.inputs);
       defs.push({
         name: d.name,
@@ -87,23 +110,9 @@ exports.abiParsers = {
 //--------------------------------------
 // HELPERS
 //--------------------------------------
-// Get the 4-byte function identifier based on the canonical name
-function getFuncSig(f) {
-  // Canonical name is:
-  // funcName(paramType0, ..., paramTypeN)
-  let canonicalName = `${f.name}(`;
-  f.inputs.forEach((input) => {
-    canonicalName += `${input.type},`
-  })
-  if (f.inputs.length > 0)
-    canonicalName = canonicalName.slice(0, canonicalName.length - 1)
-  canonicalName += ')'
-  return keccak256(canonicalName).slice(0, 8);
-}
-
 // Parse the ABI param data into structs Lattice firmware will recognize.
-function parseEtherscanAbiInputs(inputs) {
-  const data = [];
+function parseEtherscanAbiInputs(inputs, data=[], isNestedTuple=false) {
+  let tupleParams = [];
   inputs.forEach((input) => {
     const typeName = input.type;
     const d = { isArray: false, arraySz: 0, name: input.name, };
@@ -124,13 +133,22 @@ function parseEtherscanAbiInputs(inputs) {
         d.arraySz = number;
       }
     }
-    const singularTypeName = openBracketIdx > -1 ? typeName.slice(0, openBracketIdx) : typeName;
+    let singularTypeName = openBracketIdx > -1 ? typeName.slice(0, openBracketIdx) : typeName;
+    if (singularTypeName === 'tuple') {
+      if (isNestedTuple === true)
+        throw new Error('Nested tuples are not supported')
+      singularTypeName = `tuple${input.components.length}`;
+      tupleParams = parseEtherscanAbiInputs(input.components, tupleParams, true);
+    }
     d.latticeTypeIdx = getTypeIdxLatticeFw(singularTypeName)
     if (!d.latticeTypeIdx)
       throw new Error(`Unsupported type: ${typeName}`)
     data.push(d)
   })
-  return data;
+  const params = data.concat(tupleParams)
+  if (params.length > 18)
+    throw new Error('Function has too many parameters for Lattice firmware (18 max)')
+  return data.concat(tupleParams);
 }
 
 // Enum values from inside Lattice firmware

@@ -175,6 +175,26 @@ const ETH_ABI_LATTICE_FW_TYPE_MAP = {
     'bytes32': 48,
     'bytes': 49,
     'string': 50,
+    'tuple1': 51,
+    'tuple2': 52,
+    'tuple3': 53,
+    'tuple4': 54,
+    'tuple5': 55,
+    'tuple6': 56,
+    'tuple7': 57,
+    'tuple8': 58,
+    'tuple9': 59,
+    'tuple10': 60,
+    'tuple11': 61,
+    'tuple12': 62,
+    'tuple13': 63,
+    'tuple14': 64,
+    'tuple15': 65,
+    'tuple16': 66,
+    'tuple17': 67,  // Firmware currently cannot support tuples larger than this
+    // 'tuple18': 68,
+    // 'tuple19': 69,
+    // 'tuple20': 70,
 };
 
 function getFwVersionConst(v) {

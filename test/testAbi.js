@@ -1,17 +1,23 @@
 require('it-each')({ testPerIteration: true });
+const _ = require('lodash');
 // Use bn.js here instead of bignumber because it is compatable with ethereumjs-abi
 const BN = require('bn.js'); 
 const constants = require('./../src/constants');
+const abi = require('./../src/ethereumAbi');
 const randomWords = require('random-words');
 const crypto = require('crypto');
-const ethAbi = require('ethereumjs-abi');
+const ethers = require('ethers');
 const expect = require('chai').expect;
 const helpers = require('./testUtil/helpers');
 const question = require('readline-sync').question;
 const seedrandom = require('seedrandom');
-const numIter = process.env.N || 20;
 
+const encoder = new ethers.utils.AbiCoder;
+const numIter = process.env.N || 10;
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
+
+const uintTypes = ['uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256'];
+
 //---------------------------------------
 // STATE DATA
 //---------------------------------------
@@ -26,11 +32,12 @@ const boundaryAbiDefs = [];
 const boundaryIndices = [];
 createBoundaryDefs();
 const abiDefs = [];
+const tupleAbiDefs = [];
 const indices = [];
-for (let i = 0; i < numIter; i++)
-  indices.push({ i });
 for (let i = 0; i < boundaryAbiDefs.length; i++)
   boundaryIndices.push({ i });
+for (let i = 0; i < numIter; i++)
+  indices.push({ i });
 
 // Transaction params
 const txData = {
@@ -63,10 +70,7 @@ function randInt(n) {
 }
 
 function isNumType(type) {
-  const numTypes = [
-    'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256', 'uint'
-  ];
-  return numTypes.indexOf(type) > -1;
+  return uintTypes.indexOf(type) > -1;
 }
 
 function randNumVal(type) {
@@ -74,18 +78,17 @@ function randNumVal(type) {
     case 'uint8':
       return '0x' + crypto.randomBytes(1).toString('hex')
     case 'uint16':
-      return '0x' + crypto.randomBytes(randInt(2)).toString('hex')
+      return '0x' + crypto.randomBytes(1 + randInt(1)).toString('hex')
     case 'uint24':
-      return '0x' + crypto.randomBytes(randInt(3)).toString('hex')
+      return '0x' + crypto.randomBytes(1 + randInt(2)).toString('hex')
     case 'uint32':
-      return '0x' + crypto.randomBytes(randInt(4)).toString('hex')
+      return '0x' + crypto.randomBytes(1 + randInt(3)).toString('hex')
     case 'uint64':
-      return '0x' + crypto.randomBytes(randInt(8)).toString('hex')
+      return '0x' + crypto.randomBytes(1 + randInt(7)).toString('hex')
     case 'uint128':
-      return '0x' + crypto.randomBytes(randInt(16)).toString('hex')
+      return '0x' + crypto.randomBytes(1 + randInt(15)).toString('hex')
     case 'uint256':
-    case 'uint':
-      return new BN(crypto.randomBytes(randInt(32)).toString('hex'), 16)
+      return '0x' + crypto.randomBytes(1 + randInt(31)).toString('hex')
     default:
       throw new Error('Unsupported type: ', type)
   }
@@ -102,7 +105,7 @@ function randAddress() {
 function randBytes(type) {
   const fixedSz = parseInt(type.slice(5));
   if (isNaN(fixedSz)) {
-    return crypto.randomBytes(randInt(100)); // up to 100 bytes of random data
+    return crypto.randomBytes(1 + randInt(99)); // up to 100 bytes of random data
   } else {
     return crypto.randomBytes(fixedSz); // Fixed number of bytes
   }
@@ -114,14 +117,13 @@ function randString() {
 
 function getRandType() {
   const i = randInt(7);
-  const uintArr = ['uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256', 'uint'];
   switch (i) {
     case 0:
       return 'address';
     case 1:
       return 'bool';
     case 2: // uint types
-      return uintArr[randInt(uintArr.length)];
+      return uintTypes[randInt(uintTypes.length)];
     case 3: // fixed bytes types (bytes1-31)
       return `bytes${1+ randInt(31)}`
     case 4: // bytes32 (this one is common so we want to give it moreweight)
@@ -133,8 +135,8 @@ function getRandType() {
   }
 }
 
-function genRandParam() {
-  const type = getRandType();
+function genRandParam(_type=null) {
+  const type = _type === null ? getRandType() : _type;
   const d = {
     name: null,
     type,
@@ -157,7 +159,7 @@ function genRandParam() {
 function getTypeNames(params) {
   const typeNames = [];
   params.forEach((param) => {
-    let typeName = param.type;
+    let typeName = getCanonicalType(param.type);
     if (param.isArray) {
       typeName += '[';
       if (param.arraySz > 0)
@@ -184,8 +186,39 @@ function genRandVal(type) {
 }
 
 function buildEthData(def) {
-  const encoded = ethAbi.rawEncode(def._typeNames, def._vals);
-  return `0x${def.sig}${encoded.toString('hex')}`
+  const encoded = encoder.encode(def._typeNames, def._vals);
+  return `0x${def.sig}${encoded.slice(2)}`
+}
+
+function getCanonicalType(type) {
+  if (type === 'uint' || type.indexOf('uint[') > -1)
+    return type.replace('uint', 'uint256');
+  return type
+}
+
+function buildFuncSelector(def) {
+  const repurposedData = {
+    name: def.name,
+    inputs: [],
+  };
+  for (let i = 0; i < def._typeNames.length; i++) {
+    // Convert to canonical type, if needed
+    repurposedData.inputs.push({ type: getCanonicalType(def._typeNames[i]) })
+  }
+  return abi.getFuncSig(repurposedData);
+}
+
+function paramToVal(param) {
+  if (param.isArray) {
+    const val = [];
+    const sz = param.arraySz === 0 ? Math.max(1, randInt(10)) : param.arraySz;
+    for (let j = 0; j < sz; j++) {
+      val.push(genRandVal(param.type))
+    }
+    return val;
+  } else {
+    return genRandVal(param.type);
+  }
 }
 
 function createDef() {
@@ -199,25 +232,82 @@ function createDef() {
   for (let i = 0; i < sz; i++) {
     const param = genRandParam();
     def.params.push(param)
-    if (param.isArray) {
-      const val = [];
-      const sz = param.arraySz === 0 ? Math.max(1, randInt(10)) : param.arraySz;
-      for (let j = 0; j < sz; j++) {
-        val.push(genRandVal(param.type))
-      }
-      def._vals.push(val);
-    } else {
-      def._vals.push(genRandVal(param.type));
-    }
+    def._vals.push(paramToVal(param))
   }
   def._typeNames = getTypeNames(def.params);
-  def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+  def.sig = buildFuncSelector(def);
   const data = helpers.ensureHexBuffer(buildEthData(def));
   // Make sure the transaction will fit in the firmware buffer size
   const fwConstants = constants.getFwVersionConst(client.fwVersion)
   if (data.length > fwConstants.ethMaxDataSz)
     return createDef();
-  
+  return def;
+}
+
+function createTupleDef() {
+  const def = {
+    name: `tupleFunc_${randInt(500000)}`,
+    sig: null,
+    params: [],
+    _vals: []
+  }
+  let numTupleParams = 0;
+  const numTuples = (1+randInt(2));
+  const tupleParams = []
+  for (let i = 0; i < numTuples; i++) {
+    const thisTupleParams = []
+    for (let j = 0; j < (1+randInt(3)); j++) {
+      thisTupleParams.push(genRandParam())
+      numTupleParams++
+    }
+    let tupleStr = '('
+    thisTupleParams.forEach((param, i) => {
+      tupleStr += `${param.name}${i === thisTupleParams.length - 1 ? '' : ','}`
+    })
+    tupleStr += ')'
+    const thisTuple = genRandParam(tupleStr)
+    thisTuple.latticeTypeIdx = constants.ETH_ABI_LATTICE_FW_TYPE_MAP[`tuple${thisTupleParams.length}`]
+    def.params.push(thisTuple)
+    // Vals
+    const thisTupleVals = []
+    if (thisTuple.isArray) {
+      const sz = thisTuple.arraySz === 0 ? (1+randInt(3)) : thisTuple.arraySz;
+      for (let i = 0; i < sz; i++) {
+        const nestedVals = []
+        thisTupleParams.forEach((param) => {
+          nestedVals.push(paramToVal(param))
+        })
+        thisTupleVals.push(nestedVals)
+      }
+    } else {
+      thisTupleParams.forEach((param) => {
+        thisTupleVals.push(paramToVal(param))
+      })
+    }
+    def._vals.push(thisTupleVals)
+    tupleParams.push(thisTupleParams)
+  }
+  const numOther = randInt(10 - numTuples - numTupleParams);
+  for (let i = 0; i < numOther; i++) {
+    const param = genRandParam();
+    def.params.push(param);
+    def._vals.push(paramToVal(param));
+  }
+
+  // Add the remaining tuple params
+  for (let i = 0; i < tupleParams.length; i++) {
+    for (let j = 0; j < tupleParams[i].length; j++) {
+      def.params.push(tupleParams[i][j])
+    }
+  }
+
+  def._typeNames = getTypeNames(def.params.slice(0, def.params.length - numTupleParams));
+  // Make sure the transaction will fit in the firmware buffer size
+  const fwConstants = constants.getFwVersionConst(client.fwVersion)
+  def.sig = buildFuncSelector(def);
+  const data = helpers.ensureHexBuffer(buildEthData(def));
+  if (data.length > fwConstants.ethMaxDataSz)
+    return createTupleDef();
   return def;
 }
 
@@ -247,7 +337,7 @@ function createBoundaryDefs() {
     ]
   };
   def._typeNames = getTypeNames(def.params);
-  def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+  def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
   // Min of each type of uint
   def = {
@@ -262,16 +352,16 @@ function createBoundaryDefs() {
       makeUintParam('uint256', '0')
     ],
     _vals: [
-      '0x',
-      '0x',
-      '0x',
-      '0x',
-      '0x',
-      '0x'
+      '0x00',
+      '0x00',
+      '0x00',
+      '0x00',
+      '0x00',
+      '0x00'
     ]
   };
   def._typeNames = getTypeNames(def.params);
-  def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+  def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
   // Powers of 10
   def = {
@@ -295,7 +385,7 @@ function createBoundaryDefs() {
     ]
   };
   def._typeNames = getTypeNames(def.params);
-  def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+  def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
 
   function makeParamSet(type) {
@@ -314,7 +404,7 @@ function createBoundaryDefs() {
     _vals: [true, [false, true], [false, false, false, false, true, false]]
   };
   def._typeNames = getTypeNames(def.params);
-  def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+  def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
 
   // address, address array (fixed), address array (variable)
@@ -329,7 +419,7 @@ function createBoundaryDefs() {
     ]
   };
   def._typeNames = getTypeNames(def.params);
-  def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+  def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
 
   // bytes, bytes array (fixed), bytes array (variable)
@@ -344,7 +434,7 @@ function createBoundaryDefs() {
     ]
   };
   def._typeNames = getTypeNames(def.params);
-  def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+  def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
 
   // string, string array (fixed), string array (variable)
@@ -359,7 +449,7 @@ function createBoundaryDefs() {
     ]
   };
   def._typeNames = getTypeNames(def.params);
-  def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+  def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
 }
 
@@ -427,7 +517,7 @@ describe('Preloaded ABI definitions', () => {
     ];
     erc20PreloadedDefs.forEach((def) => {
       def._typeNames = getTypeNames(def.params);
-      def.sig = ethAbi.methodID(def.name, def._typeNames).toString('hex');
+      def.sig = buildFuncSelector(def);
     })
 
     try {
@@ -457,8 +547,8 @@ describe('Preloaded ABI definitions', () => {
   })
 })
 
-
 describe('Add ABI definitions', () => {
+  let defsToLoad = [];
   beforeEach(() => {
     expect(caughtErr).to.equal(null, 'Error found in prior test. Aborting.');
   })
@@ -468,6 +558,7 @@ describe('Add ABI definitions', () => {
       for (let iter = 0; iter < numIter; iter++) {
         const def = createDef();
         abiDefs.push(def);
+        defsToLoad.push(def);
       }
     } catch (err) {
       caughtErr = err.toString();
@@ -475,15 +566,33 @@ describe('Add ABI definitions', () => {
     }
   })
 
+  it(`Should generate and add ${numIter} tuple-based ABI defintions to the Lattice`, async () => {
+    try {
+      for (let iter = 0; iter < numIter; iter++) {
+        const def = createTupleDef();
+        tupleAbiDefs.push(def);
+        defsToLoad.push(def);
+      }
+    } catch (err) {
+      caughtErr = err.toString();
+      expect(err).to.equal(null, err);
+    }
+  })
+
+  it('Should test parsing of a 0x V2 ABI via Etherscan', async () => {
+    const funcDef = require('./testUtil/etherscanABI_0xV2.json');
+    const newDefs = abi.abiParsers.etherscan([funcDef])
+    defsToLoad = defsToLoad.concat(newDefs);
+  })
+
   it('Should add the ABI definitions', async () => {
     try {
-      await helpers.addAbi(client, boundaryAbiDefs.concat(abiDefs));
+      await helpers.addAbi(client, boundaryAbiDefs.concat(defsToLoad));
     } catch (err) {
       caughtErr = err;
       expect(err).to.equal(null, err);
     }
   })
-
 })
 
 describe('Test ABI Markdown', () => {
@@ -498,7 +607,7 @@ describe('Test ABI Markdown', () => {
   })
 
   it('Failure checks: it should fail to decode when variable arraySz is 0', async () => {
-    const bytesDef = JSON.parse(JSON.stringify(boundaryAbiDefs[5]));
+    const bytesDef = _.cloneDeep(boundaryAbiDefs[5])
     bytesDef._vals[2] = [];
     req.data.data = buildEthData(bytesDef);
     try {
@@ -510,8 +619,9 @@ describe('Test ABI Markdown', () => {
   })
 
   it('Failure checks: it should fail to decode when dynamic param has size 0', async () => {
-    const bytesDef = JSON.parse(JSON.stringify(boundaryAbiDefs[5]));
-    bytesDef._vals[2] = [''];
+    const bytesDef = _.cloneDeep(boundaryAbiDefs[5])
+    bytesDef._vals[2] = [Buffer.from('')];
+
     req.data.data = buildEthData(bytesDef);
     try {
       await helpers.sign(client, req);
@@ -535,8 +645,38 @@ describe('Test ABI Markdown', () => {
     }
   })
 
-  it.each(indices, 'Test ABI markdown of payload #%s', ['i'], async (n, next) => {
+  it('Should validate 0x V2 payload from mainnet tx', async () => {
+    // From this transaction:
+    // https://etherscan.io/tx/0x8f6d830ba45cf5851fa6d47b850aa6934bf6683b238b55ea4b4ebca1fdba693d
+    const data = '0xb4be83d5000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000f424000000000000000000000000000000000000000000000000000000000000002a0000000000000000000000000719b8be8e2c3f07575d41a2580011db702029e5b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000038d7ea4c6800000000000000000000000000000000000000000000000000000000000000f4240000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000016cc8a5ba9a44a8d6cc3bd252591aafb46f53c8165f6e43beb3726a7481a97609f24e1f2a9d000000000000000000000000000000000000000000000000000000000000018000000000000000000000000000000000000000000000000000000000000001e00000000000000000000000000000000000000000000000000000000000000024f47261b0000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000024f47261b0000000000000000000000000949bed886c739f1a3273629b3320db0c5024c7190000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000421cca6494273aa09c8eba3b4c789ce086dfad0d93ff39740b26067658d94439d877594f5c9ce8c95c0dba45fc7ec371441ddd01641b547b14f6360887238858072502000000000000000000000000000000000000000000000000000000000000'
+    req.data.data = helpers.ensureHexBuffer(data);
+    try {
+      const sigResp = await helpers.sign(client, req);
+      expect(sigResp.tx).to.not.equal(null);
+      expect(sigResp.txHash).to.not.equal(null);
+      setTimeout(() => { }, 1000);
+    } catch (err) {
+      caughtErr = `Failed on to validate 0x V2 transaction data: ${err.toString()}`;
+      setTimeout(() => {  }, 1000);
+    }
+  })
+
+  it.each(indices, 'Test ABI markdown of payload #%s (non-tuple)', ['i'], async (n, next) => {
     const def = abiDefs[n.i];
+    req.data.data = buildEthData(def)
+    try {
+      const sigResp = await helpers.sign(client, req);
+      expect(sigResp.tx).to.not.equal(null);
+      expect(sigResp.txHash).to.not.equal(null);
+      setTimeout(() => { next() }, 1000);
+    } catch (err) {
+      caughtErr = `Failed on tx #${n.i}: ${err.toString()}`;
+      setTimeout(() => { next(err) }, 1000);
+    }
+  })
+
+  it.each(indices, 'Test ABI markdown of payload #%s (tuple)', ['i'], async (n, next) => {
+    const def = tupleAbiDefs[n.i];
     req.data.data = buildEthData(def)
     try {
       const sigResp = await helpers.sign(client, req);
