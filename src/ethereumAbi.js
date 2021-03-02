@@ -87,17 +87,24 @@ exports.getFuncSig = function(f) {
 //--------------------------------------
 // PARSERS
 //--------------------------------------
-function parseEtherscanAbiDefs(_defs) { // `_defs` are `result` of the parsed response
+function parseEtherscanAbiDefs(_defs, skipErrors=false) { // `_defs` are `result` of the parsed response
   const defs = [];
   _defs.forEach((d) => {
     if (d.name && d.inputs && d.type === 'function' && d.stateMutability !== 'view' && d.constant !== true) {
-      const sig = exports.getFuncSig(d);
-      const params = parseEtherscanAbiInputs(d.inputs);
-      defs.push({
-        name: d.name,
-        sig,
-        params,
-      })
+      try {
+        const sig = exports.getFuncSig(d);
+        const params = parseEtherscanAbiInputs(d.inputs);
+        defs.push({
+          name: d.name,
+          sig,
+          params,
+        })
+      } catch (err) {
+        if (skipErrors === true)
+          console.error('Failed to load def:', d.name, err.toString())
+        else
+          throw new Error(err)
+      }
     }
   })
   return defs;
