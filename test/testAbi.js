@@ -545,6 +545,20 @@ describe('Preloaded ABI definitions', () => {
       expect(err).to.equal(null);
     }
   })
+
+  it('Should test Uniswap swapExactEthForTokens', async () => {
+    // From this transaction:
+    // https://etherscan.io/tx/0xe777b55a2a156e37039676fe77b13c4f9e4fac1b859ca2cc610bec52a7bb3d5a
+    const data = '0x7ff36ab500000000000000000000000000000000000000000000000e77e14404341f35220000000000000000000000000000000000000000000000000000000000000080000000000000000000000000cba92e14525ba7e38627a06665213996462ec23200000000000000000000000000000000000000000000000000000000603e96510000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000b4d930279552397bba2ee473229f89ec245bc365'
+    req.data.data = helpers.ensureHexBuffer(data);
+    try {
+      const sigResp = await helpers.sign(client, req);
+      expect(sigResp.tx).to.not.equal(null);
+      expect(sigResp.txHash).to.not.equal(null);
+    } catch (err) {
+      expect(err).to.equal(null)
+    }
+  })
 })
 
 describe('Add ABI definitions', () => {
