@@ -783,10 +783,10 @@ class Client {
   }
 
   // TODO: Find a better way to export this.
-  parseAbi(source, data) {
+  parseAbi(source, data, skipErrors=false) {
     switch (source) {
       case 'etherscan':
-        return abiParsers[source](data);
+        return abiParsers[source](data, skipErrors);
       default:
         return { err: `No ${source} parser available.` };
 
