@@ -253,7 +253,7 @@ if (!process.env.skip) {
       try {
         res = await helpers.sign(client, buildTxReq(txData, chain.chainId));
       } catch (err) {
-        expect(typeof err.err).to.equal('string');
+        expect(typeof err).to.equal('string');
       }
 
       // Test out a numerical chainId as well
