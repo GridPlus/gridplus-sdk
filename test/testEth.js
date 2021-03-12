@@ -98,8 +98,11 @@ function buildRandomMsg(type='signPersonal') {
       return `0x${crypto.randomBytes(L).toString('hex')}`; // Get L hex bytes (represented with a string with 2*L chars)
     else
       return randomWords({ exactly: L, join: ' ' }).slice(0, L); // Get L ASCII characters (bytes)
+  } else if (type === 'eip712') {
+    return helpers.buildRandomEip712Object(randInt);
   }
 }
+
 
 function buildTxReq(txData, network='mainnet') {
   return {
@@ -305,7 +308,6 @@ if (!process.env.skip) {
       txData.value = `0x${new BN('10e64').toString(16)}`;
       await testTxPass(buildTxReq(txData))      
       txData.value = `0x${new BN('1e77').minus(1).toString(16)}`;
-      console.log('tx.value', txData.value)
       await testTxPass(buildTxReq(txData))
       txData.value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
       await testTxPass(buildTxReq(txData))
@@ -438,7 +440,7 @@ if (!process.env.skip) {
 
   });
 }
-
+/*
 describe('Test random transaction data', function() {
   beforeEach(() => {
     expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
@@ -501,5 +503,370 @@ describe('Test ETH personalSign', function() {
       setTimeout(() => { next(err) }, 2500);
     }
   })
+
+})
+*/
+
+describe('Test ETH EIP712', function() {
+/*
+  it('Should test canonical EIP712 example', async () => {
+    const msg = {
+      types: {
+        EIP712Domain: [
+          { name: 'name', type: 'string' },
+          { name: 'version', type: 'string' },
+          { name: 'chainId', type: 'uint256' },
+          { name: 'verifyingContract', type: 'address' }
+        ],
+        Person: [
+          { name: 'name', type: 'string' },
+          { name: 'wallet', type: 'address' }
+        ],
+        Mail: [
+          { name: 'from', type: 'Person' },
+          { name: 'to', type: 'Person' },
+          { name: 'contents', type: 'string' }
+        ]
+      },
+      primaryType: 'Mail',
+      domain: {
+        name: 'Ether Mail',
+        version: '1',
+        chainId: 12,
+        verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC'
+      },
+      message: {
+        from: {
+          name: 'Cow',
+          wallet: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826'
+        },
+        to: {
+          name: 'Bob',
+          wallet: '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB'
+        },
+        contents: 'foobar'
+      }
+    };
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.sign(client, req);
+    } catch (err) {
+      expect(err).to.equal(null)
+    }
+  })
+
+  it('Should test canonical EIP712 example with 2nd level nesting', async () => {
+    const msg = {
+      types: {
+        EIP712Domain: [
+          { name: 'name', type: 'string' },
+          { name: 'version', type: 'string' },
+          { name: 'chainId', type: 'uint256' },
+          { name: 'verifyingContract', type: 'address' }
+        ],
+        Wallet: [
+          { name: 'address', type: 'address' },
+          { name: 'balance', type: 'uint256' },
+        ],
+        Person: [
+          { name: 'name', type: 'string' },
+          { name: 'wallet', type: 'Wallet' }
+        ],
+        Mail: [
+          { name: 'from', type: 'Person' },
+          { name: 'to', type: 'Person' },
+          { name: 'contents', type: 'string' }
+        ]
+      },
+      primaryType: 'Mail',
+      domain: {
+        name: 'Ether Mail',
+        version: '1',
+        chainId: 12,
+        verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC'
+      },
+      message: {
+        from: {
+          name: 'Cow',
+          wallet: {
+            address: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826',
+            balance: '0x12345678',
+          },
+        },
+        to: {
+          name: 'Bob',
+          wallet: {
+            address: '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB',
+            balance: '0xabcdef12'
+          },
+        },
+        contents: 'foobar'
+      }
+    };
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.sign(client, req);
+    } catch (err) {
+      expect(err).to.equal(null)
+    }
+  })
+
+  it('Should test canonical EIP712 example with 3rd level nesting', async () => {
+    const msg = {
+      types: {
+        EIP712Domain: [
+          { name: 'name', type: 'string' },
+          { name: 'version', type: 'string' },
+          { name: 'chainId', type: 'uint256' },
+          { name: 'verifyingContract', type: 'address' }
+        ],
+        Wallet: [
+          { name: 'address', type: 'address' },
+          { name: 'balance', type: 'Balance' },
+        ],
+        Person: [
+          { name: 'name', type: 'string' },
+          { name: 'wallet', type: 'Wallet' }
+        ],
+        Mail: [
+          { name: 'from', type: 'Person' },
+          { name: 'to', type: 'Person' },
+          { name: 'contents', type: 'string' }
+        ],
+        Balance: [
+          { name: 'value', type: 'uint256' },
+          { name: 'currency', type: 'string' }
+        ]
+      },
+      primaryType: 'Mail',
+      domain: {
+        name: 'Ether Mail',
+        version: '1',
+        chainId: 12,
+        verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC'
+      },
+      message: {
+        from: {
+          name: 'Cow',
+          wallet: {
+            address: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826',
+            balance: {
+              value: '0x12345678',
+              currency: 'ETH',
+            }
+          },
+        },
+        to: {
+          name: 'Bob',
+          wallet: {
+            address: '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB',
+            balance: {
+              value: '0xabcdef12',
+              currency: 'UNI',
+            },
+          },
+        },
+        contents: 'foobar'
+      }
+    };
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.sign(client, req);
+    } catch (err) {
+      expect(err).to.equal(null)
+    }
+  })
+
+  it('Should test canonical EIP712 example with 3rd level nesting and params in a different order', async () => {
+    const msg = {
+      types: {
+        Balance: [
+          { name: 'value', type: 'uint256' },
+          { name: 'currency', type: 'string' }
+        ],
+        EIP712Domain: [
+          { name: 'name', type: 'string' },
+          { name: 'version', type: 'string' },
+          { name: 'chainId', type: 'uint256' },
+          { name: 'verifyingContract', type: 'address' }
+        ],
+        Person: [
+          { name: 'name', type: 'string' },
+          { name: 'wallet', type: 'Wallet' }
+        ],
+        Wallet: [
+          { name: 'address', type: 'address' },
+          { name: 'balance', type: 'Balance' },
+        ],
+        Mail: [
+          { name: 'from', type: 'Person' },
+          { name: 'to', type: 'Person' },
+          { name: 'contents', type: 'string' }
+        ],
+      },
+      primaryType: 'Mail',
+      domain: {
+        name: 'Ether Mail',
+        version: '1',
+        chainId: 12,
+        verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC'
+      },
+      message: {
+        contents: 'foobar',
+        from: {
+          name: 'Cow',
+          wallet: {
+            address: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826',
+            balance: {
+              value: '0x12345678',
+              currency: 'ETH',
+            }
+          },
+        },
+        to: {
+          name: 'Bob',
+          wallet: {
+            address: '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB',
+            balance: {
+              value: '0xabcdef12',
+              currency: 'UNI',
+            },
+          },
+        },
+      }
+    };
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.sign(client, req);
+    } catch (err) {
+      expect(err).to.equal(null)
+    }
+  })
+*/
+
+  it('Should test a bunch of EIP712 data types', async () => {
+    const msg = {
+      types: {
+        EIP712Domain: [
+          {
+            name: 'name',
+            type: 'string'
+          },
+          {
+            name: 'version',
+            type: 'string'
+          },
+          {
+            name: 'chainId',
+            type: 'uint256'
+          },
+          {
+            name: 'verifyingContract',
+            type: 'address'
+          }
+        ],
+        PrimaryStuff: [
+          { name: 'UINT8', type: 'uint8' },
+          { name: 'UINT16', type: 'uint16' },
+          { name: 'UINT32', type: 'uint32' },
+          { name: 'UINT64', type: 'uint64' },
+          { name: 'UINT256', type: 'uint256' },
+          { name: 'BYTES1', type: 'bytes1' },
+          { name: 'BYTES5', type: 'bytes5' },
+          { name: 'BYTES7', type: 'bytes7' },
+          { name: 'BYTES12', type: 'bytes12' },
+          { name: 'BYTES16', type: 'bytes16' },
+          { name: 'BYTES20', type: 'bytes20' },
+          { name: 'BYTES21', type: 'bytes21' },
+          { name: 'BYTES31', type: 'bytes31' },
+          { name: 'BYTES32', type: 'bytes32' },
+          { name: 'BYTES', type: 'bytes' },
+          { name: 'STRING', type: 'string' },
+          { name: 'BOOL', type: 'bool' },
+          { name: 'ADDRESS', type: 'address' }
+        ],
+      },
+      primaryType: 'PrimaryStuff',
+      domain: {
+        name: 'Muh Domainz',
+        version: '1',
+        chainId: 270,
+        verifyingContract: '0xcc9c93cef8c70a7b46e32b3635d1a746ee0ec5b4'
+      },
+      'message': {
+        UINT8: '0xab',
+        UINT16: '0xb1d7',
+        UINT32: '0x80bb335b',
+        UINT64: '0x259528d5bc',
+        UINT256: '0xad2693f24ba507750d1763ebae3661c07504',
+        BYTES1: '0x2f',
+        BYTES5: '0x9485269fa5',
+        BYTES7: '0xc4e8d65ce8c3cf',
+        BYTES12: '0x358eb7b28e8e1643e7c4737f',
+        BYTES16: '0x7ace034ab088fdd434f1e817f32171a0',
+        BYTES20: '0x4ab51f2d5bfdc0f1b96f83358d5f356c98583573',
+        BYTES21: '0x6ecdc19b30c7fa712ba334458d77377b6a586bbab5',
+        BYTES31: '0x06c21824a98643f96643b3220962f441210b007f4c19dfdf0dea53d097fc28',
+        BYTES32: '0x59cfcbf35256451756b02fa644d3d0748bd98f5904febf3433e6df19b4df7452',
+        BYTES: '0x0354b2c449772905b2598a93f5da69962f0444e0a6e2429e8f844f1011446f6fe81815846fb6ebe2d213968d1f8532749735f5702f565db0429b2fe596d295d9c06241389fe97fb2f3b91e1e0f2d978fb26e366737451f1193097bd0a2332e0bfc0cdb631005',
+        STRING: 'I am a string hello there human',
+        BOOL: true,
+        ADDRESS: '0x078a8d6eba928e7ea787ed48f71c5936aed4625d',
+      }
+    }
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.sign(client, req);
+    } catch (err) {
+      expect(err).to.equal(null)
+    }
+  })
+
+  // it.each(randomTxDataLabels, 'Msg: EIP712 #%s', ['label'], async function(n, next) {
+  //   const protocol = 'eip712';
+  //   const payload = buildRandomMsg(protocol);
+  //   console.log('payload', JSON.stringify(payload, null, 2))
+  //   try {
+  //     await testMsg(buildMsgReq(payload, protocol))
+  //     setTimeout(() => { next() }, 2500);
+  //   } catch (err) {
+  //     setTimeout(() => { next(err) }, 2500);
+  //   }
+  // })
 
 })

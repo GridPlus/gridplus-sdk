@@ -114,7 +114,63 @@ const signingSchema = {
 }
 
 const ethMsgProtocol = {
-    SIGN_PERSONAL: 0,
+    SIGN_PERSONAL: {
+        str: 'signPersonal',
+        enumIdx: 0,             // Enum index of this protocol in Lattice firmware
+    },
+    TYPED_DATA: {
+        str: 'typedData',
+        enumIdx: 1,
+        rawDataMaxLen: 1629,    // Max size of raw data payload in bytes
+        typeCodes: {            // Enum indices of data types in Lattice firmware
+            'bytes1': 1,
+            'bytes2': 2,
+            'bytes3': 3,
+            'bytes4': 4,
+            'bytes5': 5,
+            'bytes6': 6,
+            'bytes7': 7,
+            'bytes8': 8,
+            'bytes9': 9,
+            'bytes10': 10,
+            'bytes11': 11,
+            'bytes12': 12,
+            'bytes13': 13,
+            'bytes14': 14,
+            'bytes15': 15,
+            'bytes16': 16,
+            'bytes17': 17,
+            'bytes18': 18,
+            'bytes19': 19,
+            'bytes20': 20,
+            'bytes21': 21,
+            'bytes22': 22,
+            'bytes23': 23,
+            'bytes24': 24,
+            'bytes25': 25,
+            'bytes26': 27,
+            'bytes27': 28,
+            'bytes28': 29,
+            'bytes29': 30,
+            'bytes30': 31,
+            'bytes31': 32,
+            'bytes32': 33,
+            'uint8': 34,
+            'uint16': 35,
+            'uint32': 36,
+            'uint64': 37,
+            'uint256': 38,
+            // 'int8': 39,       // We do not support signed typed right now
+            // 'int16': 40,
+            // 'int32': 41,
+            // 'int64': 42,
+            // 'int256': 43,
+            'bool': 44,
+            'address': 45,
+            'bytes': 47,
+            'string': 48,
+        }
+    },
 }
 
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests

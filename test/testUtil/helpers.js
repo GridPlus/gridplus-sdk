@@ -9,6 +9,7 @@ const SIGHASH_ALL = 0x01;
 const HARDENED_OFFSET = 0x80000000;
 const EC = require('elliptic').ec;
 const ec = new EC('secp256k1');
+const randomWords = require('random-words');
 
 // NOTE: We use the HARDEN(49) purpose for p2sh(p2wpkh) address derivations.
 //       For p2pkh-derived addresses, we use the legacy 44' purpose
@@ -620,3 +621,122 @@ exports.serializeLoadSeedJobData = function(data) {
   req.writeUInt8(data.exportability, 65);
   return req;
 };
+
+
+//---------------------------------------------------
+// Struct builders
+//---------------------------------------------------
+exports.buildRandomEip712Object = function(randInt) {
+  function getRandomName(upperCase=false) {
+    const words = randomWords({ exactly: 1 })
+    if (upperCase === true)
+      return `${words[0].slice(0, 1).toUpperCase()}${words[0].slice(1)}`
+    return words[0];
+  }
+  function getRandomEIP712Type(customTypes=[]) {
+    const types = Object.keys(customTypes)
+                  .concat(Object.keys(constants.ethMsgProtocol.TYPED_DATA.typeCodes))
+    return {
+      name: getRandomName(),
+      type: types[randInt(types.length)]
+    }
+  }
+  function getRandomEIP712Val(type) {
+    if (type !== 'bytes' && type.slice(0, 5) === 'bytes')
+      return `0x${crypto.randomBytes(parseInt(type.slice(5))).toString('hex')}`
+    switch (type) {
+      case 'bytes':
+        return `0x${crypto.randomBytes(randInt(50)).toString('hex')}`;
+      case 'string':
+        return randomWords({ exactly: (1 + randInt(8)), join: ' ' });
+      case 'uint8':
+        return `0x${crypto.randomBytes(1).toString('hex')}`
+      case 'uint16':
+        return `0x${crypto.randomBytes(2).toString('hex')}`
+      case 'uint32':
+        return `0x${crypto.randomBytes(3).toString('hex')}`
+      case 'uint64':
+        return `0x${crypto.randomBytes(4).toString('hex')}`
+      case 'uint256':
+        return `0x${crypto.randomBytes(32).toString('hex')}`
+      case 'bool':
+        return randInt(1) > 0 ? true : false;
+      case 'address':
+        return `0x${crypto.randomBytes(20).toString('hex')}`
+      default:
+        throw new Error('unsupported eip712 type')
+    }
+  }
+  function buildCustomTypeVal(typeName, msg) {
+    const val = {};
+    const subTypes = msg.types[typeName]
+    subTypes.forEach((subType) => {
+      if (Object.keys(msg.types).indexOf(subType.type) > -1) {
+        // If this is a custom type we need to recurse
+        val[subType.name] = buildCustomTypeVal(msg[subType.type], msg)
+      } else {
+        val[subType.name] = getRandomEIP712Val(subType.type, msg)
+      }
+    })
+    return val
+  }
+
+  const msg = {
+    types: {
+      EIP712Domain: [
+        { name: 'name', type: 'string' },
+        { name: 'version', type: 'string' },
+        { name: 'chainId', type: 'uint256' },
+        { name: 'verifyingContract', type: 'address' }
+      ],
+    },
+    primaryType: `Primary_${getRandomName(true)}`,
+    domain: {
+      name: `Domain_${getRandomName(true)}`,
+      version: '1',
+      chainId: 1 + randInt(15000),
+      verifyingContract: `0x${crypto.randomBytes(20).toString('hex')}`,
+    },
+    message: {}
+  };
+  msg.types[msg.primaryType] = [];
+
+  // Create custom types and add them to the types definitions
+  const numCustomTypes = 1+ randInt(3)
+  const numDefaulTypes = 1 + randInt(3)
+  const customTypesMap = {};
+  for (let i = 0; i < numCustomTypes; i++) {
+    const subTypes = []
+    for (let j = 0; j < (1 + randInt(3)); j++) {
+      subTypes.push(getRandomEIP712Type(customTypesMap))
+    }
+    // Capitalize custom type names to distinguish them
+    let typeName = getRandomName(true)
+    typeName = `${typeName.slice(0, 1).toUpperCase()}${typeName.slice(1)}`
+    customTypesMap[typeName] = subTypes;
+    // Record the type
+    msg.types[typeName] = subTypes;
+    // Add a record in the primary type. We will need to create a value later.
+    msg.types[msg.primaryType].push({
+      name: getRandomName(),
+      type: typeName,
+    })
+  }
+  // Generate default (i.e. "atomic") types to mix into the message
+  for (let i = 0; i < numDefaulTypes; i++) {
+    const t = getRandomEIP712Type();
+    // Add to the primary type definition
+    msg.types[msg.primaryType].push(t);   
+  }
+  // Generate random values
+  msg.types[msg.primaryType].forEach((typeDef) => {
+    if (Object.keys(msg.types).indexOf(typeDef.type) === -1) {
+      // Normal EIP712 atomic type
+      msg.message[typeDef.name] = getRandomEIP712Val(typeDef.type);
+    } else {
+      // Custom type
+      msg.message[typeDef.name] = buildCustomTypeVal(typeDef.type, msg);
+    }
+  })
+  return msg
+}
