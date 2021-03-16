@@ -200,13 +200,31 @@ const ETH_ABI_LATTICE_FW_TYPE_MAP = {
 function getFwVersionConst(v) {
     const c = {
         reqMaxDataSz: 1152,
+        extraDataAllowed: false,
     };
-    if (v.length === 0 || (v[1] < 10 && v[2] === 0)) {
+    function gte(v, exp) {
+        return v[0] >= exp[0] || v[1] >= exp[1] || v[2] >= exp[2];
+    }
+    if (v.length === 0 || !gte(v, [0, 10, 0])) {
+        // Legacy versions (<0.10.0)
         c.ethMaxDataSz = c.reqMaxDataSz - 128;
         c.ethMaxMsgSz = c.ethMaxDataSz;
         c.ethMaxGasPrice = 500000000000; // 500 gwei
         c.addrFlagsAllowed = false;
-    } else if (v[1] >= 10 && v[2] >= 0) {
+        return c;
+    } 
+    if (gte(v, [0, 10, 4])) {
+        // >=0.10.3
+        c.reqMaxDataSz = 1678;
+        c.ethMaxDataSz = c.reqMaxDataSz - 128;
+        c.ethMaxMsgSz = c.ethMaxDataSz;
+        c.ethMaxGasPrice = 20000000000000; // 20000 gwei
+        c.addrFlagsAllowed = true;
+        c.extraDataFrameSz = 1500; // 1500 bytes per frame of extraData allowed
+        c.extraDataMaxFrames = 1;  // 1 frame of extraData allowed
+        c.extraDataAllowed = true;        
+    } else {
+        // >=0.10.0
         c.reqMaxDataSz = 1678;
         c.ethMaxDataSz = c.reqMaxDataSz - 128;
         c.ethMaxMsgSz = c.ethMaxDataSz;

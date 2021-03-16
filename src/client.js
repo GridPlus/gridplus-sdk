@@ -203,14 +203,14 @@ class Client {
     })
   }
 
-  sign(opts, cb) {
-    const { currency, data } = opts;
+  sign(opts, cb, cachedData=null, nextCode=null) {
+    const { currency } = opts;
+    let { data } = opts;
     if (currency === undefined || data === undefined) {
       return cb('Please provide `currency` and `data` options');
     } else if (signReqResolver[currency] === undefined) {
       return cb('Unsupported currency');
     }
-
     // All transaction requests must be put into the same sized buffer.
     // This comes from sizeof(GpTransactionRequest_t), but note we remove
     // the 2-byte schemaId since it is not returned from our resolver.
@@ -219,27 +219,36 @@ class Client {
 
     // Build the signing request payload to send to the device. If we catch
     // bad params, return an error instead
-    data.ethMaxDataSz = fwConstants.ethMaxDataSz;
-    data.ethMaxMsgSz = fwConstants.ethMaxMsgSz;
-    const req = signReqResolver[currency](data);
-    if (req.err !== undefined) return cb(req.err);
-
-    if (req.payload.length > fwConstants.reqMaxDataSz)
-      return cb('Transaction is too large');
+    // data.ethMaxDataSz = fwConstants.ethMaxDataSz;
+    // data.ethMaxMsgSz = fwConstants.ethMaxMsgSz;
+    data = { fwConstants, ...data};
+    let req, reqPayload;
+    if (cachedData !== null && nextCode !== null) {
+      req = cachedData;
+      reqPayload = Buffer.concat([nextCode, req.extraDataPayloads.shift()])
+    } else {
+      req = signReqResolver[currency](data);
+      if (req.err !== undefined) return cb(req.err);
+      if (req.payload.length > fwConstants.reqMaxDataSz)
+        return cb('Transaction is too large');
+      reqPayload = req.payload;
+    }
 
     // Build the payload
     const payload = Buffer.alloc(2 + fwConstants.reqMaxDataSz);
     let off = 0;
+    // Whether there will be follow up requests
+    const hasExtraPayloads = Number(req.extraDataPayloads.length > 0);
+    payload.writeUInt8(hasExtraPayloads, off); off += 1;  
     // Copy request schema (e.g. ETH or BTC transfer)
-    payload.writeUInt16BE(req.schema, off); off += 2;
-
+    payload.writeUInt8(req.schema, off); off += 1;
     // Copy the wallet UID
     const wallet = this.getActiveWallet();
     if (wallet === null) return cb('No active wallet.');
     wallet.uid.copy(payload, off); off += wallet.uid.length;
     // Build data based on the type of request
     // Copy the payload of the request
-    req.payload.copy(payload, off);
+    reqPayload.copy(payload, off);
     // Construct the encrypted request and send it
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
     return this._request(param, (err, res, responseCode) => {
@@ -248,11 +257,17 @@ class Client {
         // and recursively make the original request.
         this._getActiveWallet((err) => {
           if (err) return cb(err)
-          else     return this.sign(opts, cb);
+          else     return this.sign(opts, cb, cachedData, nextCode);
         })
       } else if (err) {
         // If there was another error caught, return it
         if (err) return cb(err);
+      } else if (hasExtraPayloads) {
+        const decrypted = this._handleEncResponse(res, decResLengths.sign);
+        nextCode = decrypted.data.slice(65, 73);
+        if (!cachedData)
+          cachedData = req;
+        return this.sign(opts, cb, cachedData, nextCode);
       } else {
         // Correct wallet and no errors -- handle the response
         const parsedRes = this._handleSign(res, currency, req);

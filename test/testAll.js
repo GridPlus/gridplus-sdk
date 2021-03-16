@@ -56,7 +56,7 @@ describe('Connect and Pair', () => {
       expect(client.hasActiveWallet()).to.equal(true);
     }
   });
-
+/*
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr === false) {
@@ -141,7 +141,7 @@ describe('Connect and Pair', () => {
       }
     }
   });
-
+*/
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const fwConstants = constants.getFwVersionConst(client.fwVersion)
@@ -264,7 +264,7 @@ describe('Connect and Pair', () => {
     }
 
   });
-
+/*
   it('Should sign legacy Bitcoin inputs', async () => {  
     const txData = {
       prevOuts: [
@@ -393,4 +393,5 @@ describe('Connect and Pair', () => {
     expect(signResp.tx).to.not.equal(null);
 
   })
+*/
 });
