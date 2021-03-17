@@ -110,6 +110,7 @@ const signingSchema = {
     ETH_TRANSFER: 1,
     ERC20_TRANSFER: 2,
     ETH_MSG: 3,
+    EXTRA_DATA: 4,
 }
 
 const ethMsgProtocol = {
@@ -220,7 +221,7 @@ function getFwVersionConst(v) {
         c.ethMaxMsgSz = c.ethMaxDataSz;
         c.ethMaxGasPrice = 20000000000000; // 20000 gwei
         c.addrFlagsAllowed = true;
-        c.extraDataFrameSz = 1500; // 1500 bytes per frame of extraData allowed
+        c.extraDataFrameSz = 100; // 1500 bytes per frame of extraData allowed
         c.extraDataMaxFrames = 1;  // 1 frame of extraData allowed
         c.extraDataAllowed = true;        
     } else {

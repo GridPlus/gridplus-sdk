@@ -165,11 +165,11 @@ describe('Connect and Pair', () => {
         chainId: 'rinkeby', // Can also be an integer
       }
     }
-
     // Sign a tx that does not use EIP155 (no EIP155 on rinkeby for some reason)
     let tx = await helpers.sign(client, req);
     expect(tx.tx).to.not.equal(null);
     // Sign a tx with EIP155
+    /*
     req.data.chainId = 'mainnet';
     tx = await helpers.sign(client, req);
     expect(tx.tx).to.not.equal(null);
@@ -179,7 +179,17 @@ describe('Connect and Pair', () => {
     tx = await(helpers.sign(client, req));
     expect(tx.tx).to.not.equal(null);
     req.data.data = null;
-
+*/
+    // Max data
+    const maxDataSz = fwConstants.ethMaxDataSz + (fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz);
+    console.log('fwConstants', fwConstants)
+    console.log('maxDataSz', maxDataSz)
+    const tmpSz = fwConstants.ethMaxDataSz+20 //  +10 works but +20 doesn't for some reason! FIND OUT WHY
+    req.data.data = client.crypto.randomBytes(tmpSz).toString('hex');
+    tx = await(helpers.sign(client, req));
+    expect(tx.tx).to.not.equal(null);
+    req.data.data = null;
+/*
     // Invalid chainId
     req.data.chainId = 'notachain';
     try {
@@ -255,14 +265,14 @@ describe('Connect and Pair', () => {
     req.data.value = 0.3 * 10 ** 18;
     
     // Data too large
-    req.data.data = client.crypto.randomBytes(fwConstants.ethMaxDataSz + 1).toString('hex');
+    req.data.data = client.crypto.randomBytes(maxDataSz+1).toString('hex');
     try {
       tx = await(helpers.sign(client, req));
       expect(tx.tx).to.equal(null);
     } catch (err) {
       expect(err).to.not.equal(null);
     }
-
+*/
   });
 /*
   it('Should sign legacy Bitcoin inputs', async () => {  

@@ -29,6 +29,7 @@ const {
   VERSION_BYTE,
   messageConstants,
   BASE_URL,
+  signingSchema,
 } = require('./constants');
 const Buffer = require('buffer/').Buffer;
 const EMPTY_WALLET_UID = Buffer.alloc(32);
@@ -223,15 +224,18 @@ class Client {
     // data.ethMaxMsgSz = fwConstants.ethMaxMsgSz;
     data = { fwConstants, ...data};
     let req, reqPayload;
+    let schema;
     if (cachedData !== null && nextCode !== null) {
       req = cachedData;
       reqPayload = Buffer.concat([nextCode, req.extraDataPayloads.shift()])
+      schema = signingSchema.EXTRA_DATA;
     } else {
       req = signReqResolver[currency](data);
       if (req.err !== undefined) return cb(req.err);
       if (req.payload.length > fwConstants.reqMaxDataSz)
         return cb('Transaction is too large');
       reqPayload = req.payload;
+      schema = req.schema;
     }
 
     // Build the payload
@@ -241,7 +245,7 @@ class Client {
     const hasExtraPayloads = Number(req.extraDataPayloads.length > 0);
     payload.writeUInt8(hasExtraPayloads, off); off += 1;  
     // Copy request schema (e.g. ETH or BTC transfer)
-    payload.writeUInt8(req.schema, off); off += 1;
+    payload.writeUInt8(schema, off); off += 1;
     // Copy the wallet UID
     const wallet = this.getActiveWallet();
     if (wallet === null) return cb('No active wallet.');

@@ -194,10 +194,9 @@ exports.buildEthereumTxRequest = function(data) {
       if (extraDataAllowed) {
         const frames = splitFrames(dataBytes.slice(dataSliceSz), extraDataFrameSz);
         frames.forEach((frame) => {
-          const tmpPayload = Buffer.alloc(4 + extraDataFrameSz);
-          tmpPayload.writeUInt32LE(frame.length);
-          frame.copy(tmpPayload, 4);
-          extraDataPayloads.push(tmpPayload);
+          const szLE = Buffer.alloc(4);
+          szLE.writeUInt32LE(frame.length);
+          extraDataPayloads.push(Buffer.concat([szLE, frame]));
         })
       }
     }
