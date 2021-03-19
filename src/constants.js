@@ -201,7 +201,8 @@ const ETH_ABI_LATTICE_FW_TYPE_MAP = {
 function getFwVersionConst(v) {
     const c = {
         reqMaxDataSz: 1152,
-        extraDataAllowed: false,
+        extraDataFrameSz: 0,
+        extraDataMaxFrames: 0,
     };
     function gte(v, exp) {
         return v[0] >= exp[0] || v[1] >= exp[1] || v[2] >= exp[2];
@@ -223,7 +224,6 @@ function getFwVersionConst(v) {
         c.addrFlagsAllowed = true;
         c.extraDataFrameSz = 100; // 1500 bytes per frame of extraData allowed
         c.extraDataMaxFrames = 1;  // 1 frame of extraData allowed
-        c.extraDataAllowed = true;        
     } else {
         // >=0.10.0
         c.reqMaxDataSz = 1678;

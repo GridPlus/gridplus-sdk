@@ -80,7 +80,8 @@ exports.buildEthereumTxRequest = function(data) {
   try {
     let { chainId=1 } = data;
     const { signerPath, eip155=null, fwConstants } = data;
-    const { ethMaxDataSz, extraDataAllowed, extraDataFrameSz, extraDataMaxFrames } = fwConstants;
+    const { ethMaxDataSz, extraDataFrameSz, extraDataMaxFrames } = fwConstants;
+    const extraDataAllowed = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
     // Sanity checks:
     // There are a handful of named chains we allow the user to reference (`chainIds`)
     // Custom chainIDs should be either numerical or hex strings
@@ -118,7 +119,6 @@ exports.buildEthereumTxRequest = function(data) {
     const toBytes = ensureHexBuffer(data.to);
     const valueBytes = ensureHexBuffer(data.value);
     const dataBytes = ensureHexBuffer(data.data);
-
     rawTx.push(nonceBytes);
     rawTx.push(gasPriceBytes);
     rawTx.push(gasLimitBytes);
@@ -159,7 +159,6 @@ exports.buildEthereumTxRequest = function(data) {
         throw new Error('Error parsing chainID');
       chainIdBuf.copy(txReqPayload, off); off += chainIdBuf.length;
     }
-    const dataSliceSz = (ethMaxDataSz - chainIdBufSz);
 
     // 2. BIP44 Path
     //------------------
@@ -184,21 +183,29 @@ exports.buildEthereumTxRequest = function(data) {
     // Flow data into extraData requests, which will follow-up transaction requests, if supported/applicable    
     const extraDataPayloads = [];
     if (dataBytes && dataBytes.length > ethMaxDataSz) {
-
-      // If this data is too large, throw an error
-      const totalSz = dataBytes.length + chainIdBufSz;
+      // Determine sizes and run through sanity checks
+      const chainIdExtraSz = chainIdBufSz > 0 ? chainIdBufSz + 1 : 0;
+      const totalSz = dataBytes.length + chainIdExtraSz;
       const maxSzAllowed = ethMaxDataSz + (extraDataMaxFrames * extraDataFrameSz);
       if ((!extraDataAllowed) || (extraDataAllowed && totalSz > maxSzAllowed))
-        throw new Error(`Data field too large (must be <=${maxSzAllowed-chainIdBufSz} bytes)`);
-      // If extra data is allowed, slice the remainder of the data into frames
-      if (extraDataAllowed) {
-        const frames = splitFrames(dataBytes.slice(dataSliceSz), extraDataFrameSz);
-        frames.forEach((frame) => {
-          const szLE = Buffer.alloc(4);
-          szLE.writeUInt32LE(frame.length);
-          extraDataPayloads.push(Buffer.concat([szLE, frame]));
-        })
+        throw new Error(`Data field too large (got ${dataBytes.length}; must be <=${maxSzAllowed-chainIdExtraSz} bytes)`);
+
+      // Copy over the data. Account for larger chain ID sizes if applicable.
+      const dataToCopy = Buffer.alloc(dataBytes.length + chainIdExtraSz)
+      if (chainIdExtraSz > 0) {
+        dataToCopy.writeUInt8(chainIdBufSz, 0);
+        chainIdBuf.copy(dataToCopy, 1);
+        dataBytes.copy(dataToCopy, chainIdExtraSz);
+      } else {
+        dataBytes.copy(dataToCopy, 0);
       }
+      // Split overflow data into extraData frames
+      const frames = splitFrames(dataToCopy.slice(ethMaxDataSz), extraDataFrameSz);
+      frames.forEach((frame) => {
+        const szLE = Buffer.alloc(4);
+        szLE.writeUInt32LE(frame.length);
+        extraDataPayloads.push(Buffer.concat([szLE, frame]));
+      })
     }
     // Write the data size (does *NOT* include the chainId buffer, if that exists)
     txReqPayload.writeUInt16BE(dataBytes.length, off); off += 2;
@@ -208,7 +215,7 @@ exports.buildEthereumTxRequest = function(data) {
       chainIdBuf.copy(txReqPayload, off); off += chainIdBufSz;
     }
     // Copy the first slice of the data itself
-    dataBytes.slice(0, dataSliceSz).copy(txReqPayload, off); off += dataSliceSz;
+    dataBytes.slice(0, ethMaxDataSz).copy(txReqPayload, off); off += ethMaxDataSz;
     return { 
       rawTx,
       payload: txReqPayload,
