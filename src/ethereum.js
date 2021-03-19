@@ -17,7 +17,8 @@ exports.buildEthereumMsgRequest = function(input) {
     msg: null, // Save the buffered message for later
   }
   if (input.protocol === 'signPersonal') {
-    const L = ((input.signerPath.length + 1) * 4) + input.ethMaxMsgSz + 4;
+    const MAX_MSG_SZ = input.fwConstants.ethMaxMsgSz; // TODO: Incorporate expanded sizes for ETH_MSG
+    const L = ((input.signerPath.length + 1) * 4) + MAX_MSG_SZ + 4;
     let off = 0;
     req.payload = Buffer.alloc(L);
     req.payload.writeUInt8(constants.ethMsgProtocol.SIGN_PERSONAL, 0); off += 1;
@@ -25,6 +26,7 @@ exports.buildEthereumMsgRequest = function(input) {
     for (let i = 0; i < input.signerPath.length; i++) {
       req.payload.writeUInt32LE(input.signerPath[i], off); off += 4;
     }
+
     // Write the payload buffer. The payload can come in either as a buffer or as a string
     let payload = input.payload;
     // Determine if this is a hex string
@@ -48,8 +50,8 @@ exports.buildEthereumMsgRequest = function(input) {
     req.payload.writeUInt8(displayHex, off); off += 1;
     req.payload.writeUInt16LE(payload.length, off); off += 2;
     // Make sure we didn't run past the max size
-    if (payload.length > input.ethMaxMsgSz)
-      throw new Error(`Your message is ${payload.length} bytes, but can only be a maximum of ${input.ethMaxMsgSz}`);
+    if (payload.length > MAX_MSG_SZ)
+      throw new Error(`Your message is ${payload.length} bytes, but can only be a maximum of ${MAX_MSG_SZ}`);
     payload.copy(req.payload, off);
     return req;
   } else {
@@ -216,7 +218,7 @@ exports.buildEthereumTxRequest = function(data) {
     }
     // Copy the first slice of the data itself
     dataBytes.slice(0, ethMaxDataSz).copy(txReqPayload, off); off += ethMaxDataSz;
-    return { 
+    return {
       rawTx,
       payload: txReqPayload,
       extraDataPayloads,

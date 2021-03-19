@@ -217,7 +217,6 @@ class Client {
     // the 2-byte schemaId since it is not returned from our resolver.
     // Note that different firmware versions may have different data sizes.
     const fwConstants = getFwVersionConst(this.fwVersion);
-
     // Build the signing request payload to send to the device. If we catch
     // bad params, return an error instead
     // data.ethMaxDataSz = fwConstants.ethMaxDataSz;
@@ -242,7 +241,7 @@ class Client {
     const payload = Buffer.alloc(2 + fwConstants.reqMaxDataSz);
     let off = 0;
     // Whether there will be follow up requests
-    const hasExtraPayloads = Number(req.extraDataPayloads.length > 0);
+    const hasExtraPayloads = req.extraPayloads && Number(req.extraDataPayloads.length > 0);
     payload.writeUInt8(hasExtraPayloads, off); off += 1;  
     // Copy request schema (e.g. ETH or BTC transfer)
     payload.writeUInt8(schema, off); off += 1;
