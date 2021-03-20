@@ -460,17 +460,6 @@ describe('Test ETH personalSign', function() {
     expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
   })
 
-  it.each(randomTxDataLabels, 'Msg: sign_personal #%s', ['label'], async function(n, next) {
-    const protocol = 'signPersonal';
-    const payload = buildRandomMsg(protocol);
-    try {
-      await testMsg(buildMsgReq(payload, protocol))
-      setTimeout(() => { next() }, 2500);
-    } catch (err) {
-      setTimeout(() => { next(err) }, 2500);
-    }
-  })
-
   it('Should throw error when message contains non-ASCII characters', async () => {
     const protocol = 'signPersonal';
     const msg = '⚠️';
@@ -482,12 +471,24 @@ describe('Test ETH personalSign', function() {
   it('Msg: sign_personal boundary conditions', async () => {
     const protocol = 'signPersonal';
     const fwConstants = constants.getFwVersionConst(client.fwVersion);
-    const maxSz = fwConstants.ethMaxDataSz;
-    const maxValid = `0x${crypto.randomBytes(maxSz).toString('hex')}`;
-    const minInvalid = `0x${crypto.randomBytes(maxSz + 1).toString('hex')}`;
+    const maxMsgSz = fwConstants.ethMaxMsgSz + (fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz);
+    const maxValid = `0x${crypto.randomBytes(maxMsgSz).toString('hex')}`;
+    const minInvalid = `0x${crypto.randomBytes(maxMsgSz + 1).toString('hex')}`;
     const zeroInvalid = '0x';
     await testMsg(buildMsgReq(maxValid, protocol), true);
     await testMsg(buildMsgReq(minInvalid, protocol), false);
     await testMsg(buildMsgReq(zeroInvalid, protocol), false);
   })
+
+  it.each(randomTxDataLabels, 'Msg: sign_personal #%s', ['label'], async function(n, next) {
+    const protocol = 'signPersonal';
+    const payload = buildRandomMsg(protocol);
+    try {
+      await testMsg(buildMsgReq(payload, protocol))
+      setTimeout(() => { next() }, 2500);
+    } catch (err) {
+      setTimeout(() => { next(err) }, 2500);
+    }
+  })
+
 })

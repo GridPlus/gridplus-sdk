@@ -16,9 +16,11 @@ exports.buildEthereumMsgRequest = function(input) {
     input, // Save the input for later
     msg: null, // Save the buffered message for later
   }
+  const { ethMaxMsgSz, extraDataFrameSz, extraDataMaxFrames } = input.fwConstants;
+  const MAX_BASE_MSG_SZ = ethMaxMsgSz; // TODO: Incorporate expanded sizes for ETH_MSG
+  const EXTRA_DATA_ALLOWED = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
   if (input.protocol === 'signPersonal') {
-    const MAX_MSG_SZ = input.fwConstants.ethMaxMsgSz; // TODO: Incorporate expanded sizes for ETH_MSG
-    const L = ((input.signerPath.length + 1) * 4) + MAX_MSG_SZ + 4;
+    const L = ((input.signerPath.length + 1) * 4) + MAX_BASE_MSG_SZ + 4;
     let off = 0;
     req.payload = Buffer.alloc(L);
     req.payload.writeUInt8(constants.ethMsgProtocol.SIGN_PERSONAL, 0); off += 1;
@@ -45,13 +47,29 @@ exports.buildEthereumMsgRequest = function(input) {
       // is a hex buffer with the optional argument, write that
       displayHex = input.displayHex
     }
+
+    // Flow data into extraData requests, which will follow-up transaction requests, if supported/applicable    
+    const extraDataPayloads = [];
+    if (payload.length > MAX_BASE_MSG_SZ) {
+      // Determine sizes and run through sanity checks
+      const maxSzAllowed = MAX_BASE_MSG_SZ + (extraDataMaxFrames * extraDataFrameSz);
+      if (!EXTRA_DATA_ALLOWED)
+        throw new Error(`Your message is ${payload.length} bytes, but can only be a maximum of ${MAX_BASE_MSG_SZ}`);
+      else if (EXTRA_DATA_ALLOWED && payload.length > maxSzAllowed)
+        throw new Error(`Your message is ${payload.length} bytes, but can only be a maximum of ${maxSzAllowed}`);
+      // Split overflow data into extraData frames
+      const frames = splitFrames(payload.slice(MAX_BASE_MSG_SZ), extraDataFrameSz);
+      frames.forEach((frame) => {
+        const szLE = Buffer.alloc(4);
+        szLE.writeUInt32LE(frame.length);
+        extraDataPayloads.push(Buffer.concat([szLE, frame]));
+      })
+    }
     // Write the payload and metadata into our buffer
+    req.extraDataPayloads = extraDataPayloads
     req.msg = payload;
     req.payload.writeUInt8(displayHex, off); off += 1;
     req.payload.writeUInt16LE(payload.length, off); off += 2;
-    // Make sure we didn't run past the max size
-    if (payload.length > MAX_MSG_SZ)
-      throw new Error(`Your message is ${payload.length} bytes, but can only be a maximum of ${MAX_MSG_SZ}`);
     payload.copy(req.payload, off);
     return req;
   } else {
@@ -83,7 +101,8 @@ exports.buildEthereumTxRequest = function(data) {
     let { chainId=1 } = data;
     const { signerPath, eip155=null, fwConstants } = data;
     const { ethMaxDataSz, extraDataFrameSz, extraDataMaxFrames } = fwConstants;
-    const extraDataAllowed = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
+    const EXTRA_DATA_ALLOWED = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
+    const MAX_BASE_DATA_SZ = ethMaxDataSz;
     // Sanity checks:
     // There are a handful of named chains we allow the user to reference (`chainIds`)
     // Custom chainIDs should be either numerical or hex strings
@@ -137,7 +156,7 @@ exports.buildEthereumTxRequest = function(data) {
     // 2. BUILD THE LATTICE REQUEST PAYLOAD
     //--------------
     const ETH_TX_NON_DATA_SZ = 122; // Accounts for metadata and non-data params
-    const txReqPayload = Buffer.alloc(ethMaxDataSz + ETH_TX_NON_DATA_SZ);
+    const txReqPayload = Buffer.alloc(MAX_BASE_DATA_SZ + ETH_TX_NON_DATA_SZ);
     let off = 0;
     // 1. EIP155 switch and chainID
     //------------------
@@ -184,12 +203,12 @@ exports.buildEthereumTxRequest = function(data) {
 
     // Flow data into extraData requests, which will follow-up transaction requests, if supported/applicable    
     const extraDataPayloads = [];
-    if (dataBytes && dataBytes.length > ethMaxDataSz) {
+    if (dataBytes && dataBytes.length > MAX_BASE_DATA_SZ) {
       // Determine sizes and run through sanity checks
       const chainIdExtraSz = chainIdBufSz > 0 ? chainIdBufSz + 1 : 0;
       const totalSz = dataBytes.length + chainIdExtraSz;
-      const maxSzAllowed = ethMaxDataSz + (extraDataMaxFrames * extraDataFrameSz);
-      if ((!extraDataAllowed) || (extraDataAllowed && totalSz > maxSzAllowed))
+      const maxSzAllowed = MAX_BASE_DATA_SZ + (extraDataMaxFrames * extraDataFrameSz);
+      if ((!EXTRA_DATA_ALLOWED) || (EXTRA_DATA_ALLOWED && totalSz > maxSzAllowed))
         throw new Error(`Data field too large (got ${dataBytes.length}; must be <=${maxSzAllowed-chainIdExtraSz} bytes)`);
 
       // Copy over the data. Account for larger chain ID sizes if applicable.
@@ -202,7 +221,7 @@ exports.buildEthereumTxRequest = function(data) {
         dataBytes.copy(dataToCopy, 0);
       }
       // Split overflow data into extraData frames
-      const frames = splitFrames(dataToCopy.slice(ethMaxDataSz), extraDataFrameSz);
+      const frames = splitFrames(dataToCopy.slice(MAX_BASE_DATA_SZ), extraDataFrameSz);
       frames.forEach((frame) => {
         const szLE = Buffer.alloc(4);
         szLE.writeUInt32LE(frame.length);
@@ -217,7 +236,7 @@ exports.buildEthereumTxRequest = function(data) {
       chainIdBuf.copy(txReqPayload, off); off += chainIdBufSz;
     }
     // Copy the first slice of the data itself
-    dataBytes.slice(0, ethMaxDataSz).copy(txReqPayload, off); off += ethMaxDataSz;
+    dataBytes.slice(0, MAX_BASE_DATA_SZ).copy(txReqPayload, off); off += MAX_BASE_DATA_SZ;
     return {
       rawTx,
       payload: txReqPayload,

@@ -241,7 +241,7 @@ class Client {
     const payload = Buffer.alloc(2 + fwConstants.reqMaxDataSz);
     let off = 0;
     // Whether there will be follow up requests
-    const hasExtraPayloads = req.extraPayloads && Number(req.extraDataPayloads.length > 0);
+    const hasExtraPayloads = req.extraDataPayloads && Number(req.extraDataPayloads.length > 0);
     payload.writeUInt8(hasExtraPayloads, off); off += 1;  
     // Copy request schema (e.g. ETH or BTC transfer)
     payload.writeUInt8(schema, off); off += 1;
