@@ -65,7 +65,9 @@ exports.validateEthereumMsgResponse = function(res, req) {
       `\u0019Ethereum Signed Message:\n${msg.length.toString()}`,
       'utf-8',
     );
-    return addRecoveryParam(Buffer.concat([prefix, msg]), sig, signer)
+    // NOTE: We are currently hardcoding networkID=1 and useEIP155=false but these
+    //       may be configurable in future versions
+    return addRecoveryParam(Buffer.concat([prefix, msg]), sig, signer, 1, false)
   } else {
     throw new Error('Unsupported protocol');
   }
@@ -284,9 +286,9 @@ function fixLen(msg, length) {
 // Convert a 0/1 `v` into a recovery param:
 // * For non-EIP155 transactions, return `27 + v`
 // * For EIP155 transactions, return `(CHAIN_ID*2) + 35 + v`
-function getRecoveryParam(v, useEIP155, chainId) {
+function getRecoveryParam(v, useEIP155, chainId=null) {
   // If we are not using EIP155, convert v directly to a buffer and return it
-  if (false === useEIP155)
+  if (false === useEIP155 || chainId === null)
     return Buffer.from(new BN(v).plus(27).toString(16), 'hex');
   // We will use EIP155 in most cases. Convert v to a bignum and operate on it.
   // Note that the protocol calls for v = (CHAIN_ID*2) + 35/36, where 35 or 36
