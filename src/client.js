@@ -94,7 +94,7 @@ class Client {
     const param = this._buildRequest(deviceCodes.CONNECT, this.pubKeyBytes());
     this._request(param, (err, res) => {
       if (err) return cb(err);
-      this.isPaired = this._handleConnect(res);
+      this.isPaired = this._handleConnect(res) || false;
       // Check for an active wallet. This will get bypassed if we are not paired.
       if (this.isPaired) {
         this._getActiveWallet((err) => {
