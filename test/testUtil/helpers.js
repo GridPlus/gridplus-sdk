@@ -22,7 +22,7 @@ exports.ETH_COIN = HARDENED_OFFSET+60;
 function setupTestClient(env) {
   const setup = {
     name: env.name || 'SDK Test',
-    baseUrl: 'https://signing.staging-gridpl.us',
+    baseUrl: env.baseUrl || 'https://signing.staging-gridpl.us',
     crypto,
     timeout: 120000,
   };

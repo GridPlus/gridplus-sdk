@@ -219,8 +219,6 @@ class Client {
     const fwConstants = getFwVersionConst(this.fwVersion);
     // Build the signing request payload to send to the device. If we catch
     // bad params, return an error instead
-    // data.ethMaxDataSz = fwConstants.ethMaxDataSz;
-    // data.ethMaxMsgSz = fwConstants.ethMaxMsgSz;
     data = { fwConstants, ...data};
     let req, reqPayload;
     let schema;

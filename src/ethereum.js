@@ -17,7 +17,7 @@ exports.buildEthereumMsgRequest = function(input) {
     msg: null, // Save the buffered message for later
   }
   const { ethMaxMsgSz, extraDataFrameSz, extraDataMaxFrames } = input.fwConstants;
-  const MAX_BASE_MSG_SZ = ethMaxMsgSz; // TODO: Incorporate expanded sizes for ETH_MSG
+  const MAX_BASE_MSG_SZ = ethMaxMsgSz;
   const EXTRA_DATA_ALLOWED = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
   if (input.protocol === 'signPersonal') {
     const L = ((input.signerPath.length + 1) * 4) + MAX_BASE_MSG_SZ + 4;
