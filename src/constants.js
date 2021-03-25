@@ -205,7 +205,11 @@ function getFwVersionConst(v) {
         extraDataMaxFrames: 0,
     };
     function gte(v, exp) {
-        return v[0] >= exp[0] || v[1] >= exp[1] || v[2] >= exp[2];
+        // Note that `v` fields come in as [fix|minor|major]
+        return  (v[2] > exp[0]) || 
+                (v[2] === exp[0] && v[1] > exp[1]) || 
+                (v[2] === exp[0] && v[1] === exp[1] && v[0] > exp[2]) ||
+                (v[2] === exp[0] && v[1] === exp[1] && v[0] === exp[2]);
     }
     if (v.length === 0 || !gte(v, [0, 10, 0])) {
         // Legacy versions (<0.10.0)
