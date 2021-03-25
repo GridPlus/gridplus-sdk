@@ -165,10 +165,10 @@ describe('Connect and Pair', () => {
         chainId: 'rinkeby', // Can also be an integer
       }
     }
-
     // Sign a tx that does not use EIP155 (no EIP155 on rinkeby for some reason)
     let tx = await helpers.sign(client, req);
     expect(tx.tx).to.not.equal(null);
+
     // Sign a tx with EIP155
     req.data.chainId = 'mainnet';
     tx = await helpers.sign(client, req);
@@ -230,7 +230,7 @@ describe('Connect and Pair', () => {
       expect(err).to.not.equal(null);
     }
     // Reset to valid param
-    req.data.gasLimit = 1200000000;
+    req.data.gasPrice = 1200000000;
 
     // `to` wrong size
     req.data.to = '0xe242e54155b1abc71fc118065270cecaaf8b77'
@@ -253,16 +253,25 @@ describe('Connect and Pair', () => {
     }
     // Reset to valid param
     req.data.value = 0.3 * 10 ** 18;
-    
-    // Data too large
-    req.data.data = client.crypto.randomBytes(fwConstants.ethMaxDataSz + 1).toString('hex');
+
+    // Test data range
+    const maxDataSz = fwConstants.ethMaxDataSz + (fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz);
+    req.data.data = client.crypto.randomBytes(maxDataSz).toString('hex');
+    tx = await(helpers.sign(client, req));
+    expect(tx.tx).to.not.equal(null);
+    req.data.data = client.crypto.randomBytes(maxDataSz+1).toString('hex');
     try {
       tx = await(helpers.sign(client, req));
       expect(tx.tx).to.equal(null);
     } catch (err) {
       expect(err).to.not.equal(null);
     }
-
+    req.data.data = client.crypto.randomBytes(fwConstants.ethMaxDataSz).toString('hex');
+    tx = await(helpers.sign(client, req));
+    expect(tx.tx).to.not.equal(null);
+    req.data.data = client.crypto.randomBytes(maxDataSz).toString('hex');
+    tx = await(helpers.sign(client, req));
+    expect(tx.tx).to.not.equal(null);
   });
 
   it('Should sign legacy Bitcoin inputs', async () => {  
@@ -393,4 +402,5 @@ describe('Connect and Pair', () => {
     expect(signResp.tx).to.not.equal(null);
 
   })
+
 });
