@@ -94,10 +94,7 @@ exports.validateEthereumMsgResponse = function(res, req) {
     );
     // NOTE: We are currently hardcoding networkID=1 and useEIP155=false but these
     //       may be configurable in future versions
-    const recoveredSig = addRecoveryParam(Buffer.concat([prefix, msg]), sig, signer, 1, false)
-    // `personal_sign` requesters want the `v` value as a number or they will parse it as NaN
-    recoveredSig.v = Number(`0x${recoveredSig.v.toString('hex')}`)
-    return recoveredSig;
+    return addRecoveryParam(Buffer.concat([prefix, msg]), sig, signer, 1, false)
   } else {
     throw new Error('Unsupported protocol');
   }
