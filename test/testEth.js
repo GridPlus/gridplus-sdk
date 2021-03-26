@@ -468,6 +468,15 @@ describe('Test ETH personalSign', function() {
     await testMsg(buildMsgReq(msg2, protocol), false);
   })
 
+  it('Should test ASCII buffers', async () => {
+    await testMsg(buildMsgReq(Buffer.from('i am an ascii buffer'), 'signPersonal'), true);
+    await testMsg(buildMsgReq(Buffer.from('{\n\ttest: foo\n}'), 'signPersonal'), false);
+  })
+
+  it('Should test hex buffers', async () => {
+    await testMsg(buildMsgReq(Buffer.from('abcdef', 'hex'), 'signPersonal'), true);
+  })
+
   it('Msg: sign_personal boundary conditions', async () => {
     const protocol = 'signPersonal';
     const fwConstants = constants.getFwVersionConst(client.fwVersion);
