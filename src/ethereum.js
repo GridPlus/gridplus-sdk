@@ -46,8 +46,15 @@ exports.buildEthereumMsgRequest = function(input) {
       // If this is a buffer and the user has specified whether or not this
       // is a hex buffer with the optional argument, write that
       displayHex = input.displayHex
+    } else {
+      // Otherwise, determine if this buffer is an ASCII string. If it is, set `displayHex` accordingly.
+      // NOTE: THIS MEANS THAT NON-ASCII STRINGS WILL DISPLAY AS HEX SINCE WE CANNOT KNOW IF THE REQUESTER
+      //        EXPECTED NON-ASCII CHARACTERS TO DISPLAY IN A STRING
+      // TODO: Develop a more elegant solution for this
+      if (!input.payload.toString)
+        throw new Error('Unsupported input data type');
+      displayHex = false === isASCIIStr(input.payload.toString())
     }
-
     // Flow data into extraData requests, which will follow-up transaction requests, if supported/applicable    
     const extraDataPayloads = [];
     if (payload.length > MAX_BASE_MSG_SZ) {
@@ -357,6 +364,10 @@ function writeUInt64BE(n, buf, off) {
 
 function isHexStr(str) {
   return (/^[0-9a-fA-F]+$/).test(str)
+}
+
+function isASCIIStr(str) {
+  return (/^[\x00-\x7F]+$/).test(str)
 }
 
 // Determine if the Lattice can display a string we give it. Currently, the Lattice can only
