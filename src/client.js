@@ -160,33 +160,46 @@ class Client {
     const SKIP_CACHE_FLAG = 1;
     const MAX_ADDR = 10;
     const { startPath, n, skipCache=true } = opts;
-    if (startPath === undefined || n === undefined || startPath.length !== 5) {
+    if (startPath === undefined || n === undefined)
       return cb('Please provide `startPath` and `n` options');
-    } else if (n > MAX_ADDR) {
+    if (startPath.length < 2 || startPath.length > 5)
+      return cb('Path must include between 2 and 5 indices');
+    if (n > MAX_ADDR)
       return cb(`You may only request ${MAX_ADDR} addresses at once.`);
-    }
-
     if ((skipCache === false && false === isValidAssetPath(startPath)) ||
         (skipCache === true && false === isValidCoinType(startPath)) )
       return cb('Parent path is not supported');
 
-    const payload = Buffer.alloc(1 + 32 + startPath.length * 4);
+    const fwConstants = getFwVersionConst(this.fwVersion);
+    
+    let sz = 32 + 20 + 1; // walletUID + 5 u32 indices + count/flag
+    if (fwConstants.flexibleAddrPaths) {
+      sz += 1;  // pathDepth
+    } else if (startPath.length !== 5) {
+      return cb('Current Lattice firmware only supports derivation paths with 5 indices. Please upgrade.')
+    }
+    const payload = Buffer.alloc(sz);
     let off = 0;
 
     // WalletUID
     const wallet = this.getActiveWallet();
     if (wallet === null) return cb('No active wallet.');
     wallet.uid.copy(payload, off); off += 32;
+
     // Build the start path (5x u32 indices)
-    for (let i = 0; i < startPath.length; i++) {
-      payload.writeUInt32BE(startPath[i], off);
+    if (fwConstants.flexibleAddrPaths) {
+      payload.writeUInt8(startPath.length, off);
+      off += 1;
+    }
+    for (let i = 0; i < 5; i++) {
+      if (i <= startPath.length)
+        payload.writeUInt32BE(startPath[i], off);
       off += 4;
     }
     // Specify the number of subsequent addresses to request.
     // We also allow the user to skip the cache and request any address related to the asset
     // in the wallet.
     let val;
-    const fwConstants = getFwVersionConst(this.fwVersion);
     if (true === fwConstants.addrFlagsAllowed) {
       const flag = skipCache === true ? bitwise.nibble.read(SKIP_CACHE_FLAG) : bitwise.nibble.read(0);
       const count = bitwise.nibble.read(n);

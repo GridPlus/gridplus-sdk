@@ -219,8 +219,18 @@ function getFwVersionConst(v) {
         c.addrFlagsAllowed = false;
         return c;
     } 
-    if (gte(v, [0, 10, 4])) {
-        // >=0.10.3
+    if (gte(v, [0, 10, 5])) {
+        // >=0.10.5
+        c.flexibleAddrPaths = true;
+        c.reqMaxDataSz = 1678;
+        c.ethMaxDataSz = c.reqMaxDataSz - 128;
+        c.ethMaxMsgSz = c.ethMaxDataSz;
+        c.ethMaxGasPrice = 20000000000000; // 20000 gwei
+        c.addrFlagsAllowed = true;
+        c.extraDataFrameSz = 1500; // 1500 bytes per frame of extraData allowed
+        c.extraDataMaxFrames = 1;  // 1 frame of extraData allowed
+    } else if (gte(v, [0, 10, 4])) {
+        // >=0.10.4
         c.reqMaxDataSz = 1678;
         c.ethMaxDataSz = c.reqMaxDataSz - 128;
         c.ethMaxMsgSz = c.ethMaxDataSz;

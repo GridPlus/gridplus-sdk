@@ -435,20 +435,29 @@ exports.getPubStr = (key) => {
 }
 
 // Convert a set of indices to a human readable bip32 path
-exports.stringifyPath = (x) => {
-  const convert = (x) => { return x >= HARDENED_OFFSET ? `${x - HARDENED_OFFSET}'` : `${x}`;}
-  let d = x.pathDepth;
+exports.stringifyPath = (parent) => {
+  const convert = (parent) => { return parent >= HARDENED_OFFSET ? `${parent - HARDENED_OFFSET}'` : `${parent}`;}
+  let d = parent.pathDepth;
   let s = 'm';
   if (d <= 0) return s;
-  s += `/${convert(x.purpose)}`; d--;
-  if (d <= 0) return s;
-  s += `/${convert(x.coin)}`; d--;
-  if (d <= 0) return s;
-  s += `/${convert(x.account)}`; d--;
-  if (d <= 0) return s;
-  s += `/${convert(x.change)}`; d--;
-  if (d <= 0) return s;
-  s += `/${convert(x.addr)}`; d--;
+  if (parent.purpose !== undefined) {
+    s += `/${convert(parent.purpose)}`; d--;
+    if (d <= 0) return s;
+  }
+  if (parent.coin !== undefined) {
+    s += `/${convert(parent.coin)}`; d--;
+    if (d <= 0) return s;
+  }
+  if (parent.account !== undefined) {
+    s += `/${convert(parent.account)}`; d--;
+    if (d <= 0) return s;
+  }
+  if (parent.change !== undefined) {
+    s += `/${convert(parent.change)}`; d--;
+    if (d <= 0) return s;
+  }
+  if (parent.addr !== undefined)
+    s += `/${convert(parent.addr)}`; d--;
   return s;
 }
 
@@ -491,7 +500,7 @@ exports.validateBTCAddresses = function(resp, jobData, seed, useTestnet) {
   expect(resp.count).to.equal(jobData.count);
   const wallet = bip32.fromSeed(seed);
   const path = JSON.parse(JSON.stringify(jobData.parent));
-  path.pathDepth = 5;
+  path.pathDepth = jobData.parent.pathDepth + 1;
   const network = useTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.mainnet;
   for (let i = jobData.first; i < jobData.first + jobData.count; i++) {
     path.addr = i;
@@ -504,7 +513,7 @@ exports.validateBTCAddresses = function(resp, jobData, seed, useTestnet) {
   }
 }
 
-exports.validateETHAddress = function(resp, jobData, seed) {
+exports.validateETHAddresses = function(resp, jobData, seed) {
   expect(resp.count).to.equal(jobData.count);
   // Confirm it is an Ethereum address
   expect(resp.addresses[0].slice(0, 2)).to.equal('0x');
@@ -512,11 +521,13 @@ exports.validateETHAddress = function(resp, jobData, seed) {
   // Confirm we can derive the same address from the previously exported seed
   const wallet = bip32.fromSeed(seed);
   const path = JSON.parse(JSON.stringify(jobData.parent));
-  path.pathDepth = 5;
-  path.addr = 0;
-  const priv = wallet.derivePath(exports.stringifyPath(path)).privateKey;
-  const addr = `0x${ethutil.privateToAddress(priv).toString('hex')}`;
-  expect(addr).to.equal(resp.addresses[0]);
+  path.pathDepth = jobData.parent.pathDepth + 1;
+  for (let i = jobData.first; i < jobData.first + jobData.count; i++) {
+    path.addr = i;
+    const priv = wallet.derivePath(exports.stringifyPath(path)).privateKey;
+    const addr = `0x${ethutil.privateToAddress(priv).toString('hex')}`;
+    expect(addr).to.equal(resp.addresses[i - jobData.first]);
+  }
 }
 
 //---------------------------------------------------
