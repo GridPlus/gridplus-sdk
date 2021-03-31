@@ -10,23 +10,31 @@ const secp256k1 = require('secp256k1');
 exports.buildEthereumMsgRequest = function(input) {
   if (!input.payload || !input.protocol || !input.signerPath)
     throw new Error('You must provide `payload`, `signerPath`, and `protocol` arguments in the messsage request');
+  if (input.signerPath.length > 5 || input.signerPath.length < 2) 
+      throw new Error('Please provide a signer path with 2-5 indices')
   const req = {
     schema: constants.signingSchema.ETH_MSG,
     payload: null,
     input, // Save the input for later
     msg: null, // Save the buffered message for later
   }
-  const { ethMaxMsgSz, extraDataFrameSz, extraDataMaxFrames } = input.fwConstants;
+  const { ethMaxMsgSz, extraDataFrameSz, extraDataMaxFrames, flexibleAddrPaths } = input.fwConstants;
   const MAX_BASE_MSG_SZ = ethMaxMsgSz;
   const EXTRA_DATA_ALLOWED = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
   if (input.protocol === 'signPersonal') {
-    const L = ((input.signerPath.length + 1) * 4) + MAX_BASE_MSG_SZ + 4;
+    const L = ((5 + 1) * 4) + MAX_BASE_MSG_SZ + 4;
     let off = 0;
     req.payload = Buffer.alloc(L);
     req.payload.writeUInt8(constants.ethMsgProtocol.SIGN_PERSONAL, 0); off += 1;
+    if (!flexibleAddrPaths && input.signerPath.length !== 5)
+      throw new Error('Your firmware only supports signerPath with 5 indices. Please upgrade.')
     req.payload.writeUInt32LE(input.signerPath.length, off); off += 4;
-    for (let i = 0; i < input.signerPath.length; i++) {
-      req.payload.writeUInt32LE(input.signerPath[i], off); off += 4;
+    for (let i = 0; i < 5; i++) {
+      if (i < input.signerPath.length)
+        req.payload.writeUInt32LE(input.signerPath[i], off);
+      else
+        req.payload.writeUInt32LE(0, off);
+      off += 4;
     }
 
     // Write the payload buffer. The payload can come in either as a buffer or as a string
@@ -104,7 +112,7 @@ exports.buildEthereumTxRequest = function(data) {
   try {
     let { chainId=1 } = data;
     const { signerPath, eip155=null, fwConstants } = data;
-    const { ethMaxDataSz, extraDataFrameSz, extraDataMaxFrames } = fwConstants;
+    const { ethMaxDataSz, extraDataFrameSz, extraDataMaxFrames, flexibleAddrPaths } = fwConstants;
     const EXTRA_DATA_ALLOWED = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
     const MAX_BASE_DATA_SZ = ethMaxDataSz;
     // Sanity checks:
@@ -116,8 +124,8 @@ exports.buildEthereumTxRequest = function(data) {
     if (!chainId) 
       throw new Error('Unsupported chain ID or name');
     // Sanity check on signePath
-    if (!signerPath || signerPath.length !== 5) 
-      throw new Error('Please provider full signer path (`signerPath`)')
+    if (!signerPath || signerPath.length > 5 || signerPath.length < 2) 
+      throw new Error('Please provide a signer path with 2-5 indices')
 
     // Determine if we should use EIP155 given the chainID.
     // If we are explicitly told to use eip155, we will use it. Otherwise,
@@ -189,9 +197,15 @@ exports.buildEthereumTxRequest = function(data) {
     //------------------
     // First write the number of indices in this path (will probably always be 5, but
     // we want to keep this extensible)
+    if (!flexibleAddrPaths && signerPath.length !== 5)
+      throw new Error('Your firmware only supports signerPath with 5 indices. Please upgrade.')
     txReqPayload.writeUInt32LE(signerPath.length, off); off += 4;
-    for (let i = 0; i < signerPath.length; i++) {
-      txReqPayload.writeUInt32LE(signerPath[i], off); off += 4;
+    for (let i = 0; i < 5; i++) {
+      if (i < signerPath.length)
+        txReqPayload.writeUInt32LE(signerPath[i], off);
+      else
+        txReqPayload.writeUInt32LE(0, off);
+      off += 4;
     }
 
     // 3. ETH TX request data
@@ -270,6 +284,7 @@ function stripZeros(a) {
 exports.buildEthRawTx = function(tx, sig, address, useEIP155=true) {
   // RLP-encode the data we sent to the lattice
   const rlpEncoded = rlp.encode(tx.rawTx);
+  console.log('adding recovery param to ', address)
   const newSig = addRecoveryParam(rlpEncoded, sig, address, tx.chainId, useEIP155);
   // Use the signature to generate a new raw transaction payload
   const newRawTx = tx.rawTx.slice(0, 6);

@@ -101,22 +101,22 @@ function buildRandomMsg(type='signPersonal') {
   }
 }
 
-function buildTxReq(txData, network='mainnet') {
+function buildTxReq(txData, network='mainnet', signerPath=[helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0]) {
   return {
     currency: 'ETH',
     data: {
-      signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+      signerPath,
       ...txData,
       chainId: network
     }
   }
 }
 
-function buildMsgReq(payload, protocol) {
+function buildMsgReq(payload, protocol, signerPath=[helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0]) {
   return {
     currency: 'ETH_MSG',
     data: {
-      signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+      signerPath,
       payload,
       protocol,
     }
@@ -215,6 +215,16 @@ if (!process.env.skip) {
     beforeEach(() => {
       expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
       setTimeout(() => {}, 5000);
+    })
+
+    it('Should test and validate signatures from shorter derivation paths', async () => {
+      // m/44'/60'/0'/x
+      const path = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0];
+      const txData = JSON.parse(JSON.stringify(defaultTxData));
+      await testTxPass(buildTxReq(txData, 'mainnet', path));
+      await testTxPass(buildTxReq(txData, 'mainnet', path.slice(0, 3)));      
+      await testTxPass(buildTxReq(txData, 'mainnet', path.slice(0, 2)));
+      await testTxFail(buildTxReq(txData, 'mainnet', path.slice(0, 1)));            
     })
 
     it('Should test range of chainId sizes and EIP155 tag', async () => {
@@ -434,6 +444,7 @@ if (!process.env.skip) {
       // For non-EIP155 transactions, we expect `v` to be 27 or 28
       expect(res.sig.v.toString('hex')).to.oneOf([(27).toString(16), (28).toString(16)])
     });
+  
   });
 }
 
