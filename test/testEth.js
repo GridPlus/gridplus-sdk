@@ -218,13 +218,16 @@ if (!process.env.skip) {
     })
 
     it('Should test and validate signatures from shorter derivation paths', async () => {
-      // m/44'/60'/0'/x
-      const path = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0];
-      const txData = JSON.parse(JSON.stringify(defaultTxData));
-      await testTxPass(buildTxReq(txData, 'mainnet', path));
-      await testTxPass(buildTxReq(txData, 'mainnet', path.slice(0, 3)));      
-      await testTxPass(buildTxReq(txData, 'mainnet', path.slice(0, 2)));
-      await testTxFail(buildTxReq(txData, 'mainnet', path.slice(0, 1)));            
+      const fwConstants = constants.getFwVersionConst(client.fwVersion)
+      if (fwConstants.flexibleAddrPaths) {
+        // m/44'/60'/0'/x
+        const path = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0];
+        const txData = JSON.parse(JSON.stringify(defaultTxData));
+        await testTxPass(buildTxReq(txData, 'mainnet', path));
+        await testTxPass(buildTxReq(txData, 'mainnet', path.slice(0, 3)));      
+        await testTxPass(buildTxReq(txData, 'mainnet', path.slice(0, 2)));
+        await testTxFail(buildTxReq(txData, 'mainnet', path.slice(0, 1)));            
+      }
     })
 
     it('Should test range of chainId sizes and EIP155 tag', async () => {
