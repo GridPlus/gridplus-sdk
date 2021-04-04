@@ -196,15 +196,21 @@ exports.buildEthereumTxRequest = function(data) {
 
     // 3. ETH TX request data
     //------------------
-    txReqPayload.writeUInt32BE(data.nonce, off); off += 4;
-    writeUInt64BE(data.gasPrice, txReqPayload, off); off += 8;
-    txReqPayload.writeUInt32BE(data.gasLimit, off); off += 4;
+    if (nonceBytes.length > 4)
+      throw new Error('Nonce too large');
+    nonceBytes.copy(txReqPayload, off + (4 - nonceBytes.length)); off += 4;
+    if (gasPriceBytes.length > 8)
+      throw new Error('Gas price too large');
+    gasPriceBytes.copy(txReqPayload, off + (8 - gasPriceBytes.length)); off += 8;
+    if (gasLimitBytes.length > 4)
+      throw new Error('Gas limit too large');
+    gasLimitBytes.copy(txReqPayload, off + (4 - gasLimitBytes.length)); off += 4;
+    if (toBytes.length !== 20)
+      throw new Error('Invalid `to` address');
     toBytes.copy(txReqPayload, off); off += 20;
-    // Place the value (a BE number) in an offset such that it
-    // can be interpreted as a number
-    const valueOff = off + 32 - valueBytes.length;
-    valueBytes.copy(txReqPayload, valueOff); off += 32;
-
+    if (valueBytes.length > 32)
+      throw new Error('Value too large');
+    valueBytes.copy(txReqPayload, off + (32 - valueBytes.length)); off += 32;
     // Flow data into extraData requests, which will follow-up transaction requests, if supported/applicable    
     const extraDataPayloads = [];
     if (dataBytes && dataBytes.length > MAX_BASE_DATA_SZ) {
@@ -349,16 +355,6 @@ function getRecoveryParam(v, useEIP155, chainId=null) {
   return ensureHexBuffer(chainIdBN.times(2).plus(35).plus(v).toString(16));
 }
 
-function writeUInt64BE(n, buf, off) {
-  if (typeof n === 'number') n = n.toString(16);
-  const preBuf = Buffer.alloc(8);
-  const nStr = n.length % 2 === 0 ? n.toString(16) : `0${n.toString(16)}`;
-  const nBuf = Buffer.from(nStr, 'hex');
-  nBuf.copy(preBuf, preBuf.length - nBuf.length);
-  preBuf.copy(buf, off);
-  return preBuf;
-}
-
 function isHexStr(str) {
   return (/^[0-9a-fA-F]+$/).test(str)
 }
@@ -449,8 +445,8 @@ exports.chainIds = chainIds;
 // TODO: Remove circular dependency in util.js so that we can put this function there
 function ensureHexBuffer(x) {
   if (x === null || x === 0) return Buffer.alloc(0);
-  else if (Buffer.isBuffer(x)) x = x.toString('hex');
-  if (typeof x === 'number') x = `${x.toString(16)}`;
+  else if (Buffer.isBuffer(x)) return x;
+  if (typeof x === 'number') x = `${new BN(x).toString(16)}`;
   else if (typeof x === 'string' && x.slice(0, 2) === '0x') x = x.slice(2);
   if (x.length % 2 > 0) x = `0${x}`;
   return Buffer.from(x, 'hex');
