@@ -150,12 +150,12 @@ describe('Connect and Pair', () => {
     const GAS_LIMIT_MAX = 12500000;
     
     const txData = {
-      nonce: 0,
-      gasPrice: 1200000000,
-      gasLimit: 50000,
-      to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-      value: 100,
-      data: null
+      nonce: '0x02',
+      gasPrice: '0x1fe5d61a00',
+      gasLimit: '0x034e97',
+      to: '0x1af768c0a217804cfe1a0fb739230b546a566cd6',
+      value: '0x01cba1761f7ab9870c',
+      data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8'
     };
     const req = {
       currency: 'ETH',

@@ -300,11 +300,12 @@ if (!process.env.skip) {
       await testTxPass(buildTxReq(txData))
       txData.value = 1234;
       await testTxPass(buildTxReq(txData))
-      txData.value = 10**14;
+      txData.value = `0x${new BN('10e14').toString(16)}`;
       await testTxPass(buildTxReq(txData))
-      txData.value = 10**64;
-      await testTxPass(buildTxReq(txData))
-      txData.value = 10**77;
+      txData.value = `0x${new BN('10e64').toString(16)}`;
+      await testTxPass(buildTxReq(txData))      
+      txData.value = `0x${new BN('1e77').minus(1).toString(16)}`;
+      console.log('tx.value', txData.value)
       await testTxPass(buildTxReq(txData))
       txData.value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
       await testTxPass(buildTxReq(txData))
@@ -434,6 +435,7 @@ if (!process.env.skip) {
       // For non-EIP155 transactions, we expect `v` to be 27 or 28
       expect(res.sig.v.toString('hex')).to.oneOf([(27).toString(16), (28).toString(16)])
     });
+
   });
 }
 
