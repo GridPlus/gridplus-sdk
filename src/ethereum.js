@@ -1,11 +1,11 @@
 // Utils for Ethereum transactions. This is effecitvely a shim of ethereumjs-util, which
 // does not have browser (or, by proxy, React-Native) support.
 const BN = require('bignumber.js');
-const Buffer = require('buffer/').Buffer
-const cbor = require('cbor')
+const Buffer = require('buffer/').Buffer;
+const cbor = require('cbor');
 const constants = require('./constants');
-const ethers = require('ethers')
-const eip712 = require('ethers-eip712')
+const ethers = require('ethers');
+const eip712 = require('ethers-eip712');
 const keccak256 = require('js-sha3').keccak256;
 const rlp = require('rlp-browser');
 const secp256k1 = require('secp256k1');
@@ -510,10 +510,22 @@ function buildEIP712Request(req, input) {
       throw new Error('EIP712Domain type must be defined.')
     // Parse the payload to ensure we have valid EIP712 data types and that
     // they are encoded such that Lattice firmware can parse them.
-    const parsedMsg = parseEIP712Msg(data.message, data.primaryType, data.types);
-    data.message = parsedMsg;
-    const parsedDomain = parseEIP712Msg(data.domain, 'EIP712Domain', data.types);
-    data.domain = parsedDomain;
+    // We need two different encodings:
+    // 1. Use `ethers` BigNumber when building the request to be validated by ethers-eip712.
+    //    Make sure we use a copy of the data to avoid mutation problems
+    input.payload.message = parseEIP712Msg( JSON.parse(JSON.stringify(data.message)), 
+                                            JSON.parse(JSON.stringify(data.primaryType)), 
+                                            JSON.parse(JSON.stringify(data.types)), 
+                                            true);
+    input.payload.domain = parseEIP712Msg( JSON.parse(JSON.stringify(data.domain)), 
+                                            'EIP712Domain', 
+                                            JSON.parse(JSON.stringify(data.types)), 
+                                            true);
+    // 2. Use `bignumber.js` for the request going to the Lattice, since it's the required
+    //    BigNumber lib for `cbor`, which we use to encode the request data to the Lattice.
+    data.domain = parseEIP712Msg(data.domain, 'EIP712Domain', data.types, false);
+    data.message = parseEIP712Msg(data.message, data.primaryType, data.types, false);
+    // Now build the message to be sent to the Lattice
     const buf = Buffer.from(cbor.encode(data));
     if (buf.length > TYPED_DATA.rawDataMaxLen)
       throw new Error(`Message too big (max ${TYPED_DATA.rawDataMaxLen} bytes, got ${buf.length}`);
@@ -535,15 +547,15 @@ function buildEIP712Request(req, input) {
   }
 }
 
-function parseEIP712Msg(msg, typeName, types) {
+function parseEIP712Msg(msg, typeName, types, isEthers=false) {
   try {
     const type = types[typeName];
     type.forEach((item) => {
       const isCustomType = Object.keys(types).indexOf(item.type) > -1;
       if (true === isCustomType) {
-        msg[item.name] = parseEIP712Msg(msg[item.name], item.type, types)
+        msg[item.name] = parseEIP712Msg(msg[item.name], item.type, types, isEthers)
       } else {
-        msg[item.name] = parseEIP712Item(msg[item.name], item.type)
+        msg[item.name] = parseEIP712Item(msg[item.name], item.type, isEthers)
       }
     })
   } catch (err) {
@@ -552,7 +564,7 @@ function parseEIP712Msg(msg, typeName, types) {
   return msg;
 }
 
-function parseEIP712Item(data, type) {
+function parseEIP712Item(data, type, isEthers=false) {
   if (type === 'bytes') {
     // Variable sized bytes need to be buffer type
     data = ensureHexBuffer(data);
@@ -567,10 +579,22 @@ function parseEIP712Item(data, type) {
     data = ensureHexBuffer(data);
     if (data.length !== 20)
       throw new Error(`Address type must be 20 bytes, but got ${data.length} bytes`);
+    // Ethers wants addresses as hex strings
+    if (isEthers === true) {
+      data = `0x${data.toString('hex')}`
+    }
+  } else if (type === 'uint8' || type === 'uint16' || type === 'uint32' || type === 'uint64') {
+    data = parseInt(ensureHexBuffer(data).toString('hex'), 16)
   } else if (type === 'uint256') {
-    // Uint256s should be encoded as bignums. These will get tagged by cbor.js
-    // and can get marked up properly by firmware.
-    data = new BN(ensureHexBuffer(data).toString('hex'), 16)
+    // Uint256s should be encoded as bignums.
+    if (isEthers === true) {
+      // `ethers` uses their own BigNumber lib
+      data = ethers.BigNumber.from(`0x${ensureHexBuffer(data).toString('hex')}`)
+    } else {
+      // `bignumber.js` is needed for `cbor` encoding, which gets sent to the Lattice and plays
+      // nicely with its firmware cbor lib.
+      data = new BN(ensureHexBuffer(data).toString('hex'), 16)
+    }
   } else if (type === 'bool') {
     // Booleans need to be cast to a u8
     data = data === true ? 1 : 0;
