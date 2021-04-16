@@ -113,7 +113,6 @@ describe('Setup client', () => {
   });
 })
 
-
 describe('Test ETH personalSign', function() {
   beforeEach(() => {
     expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
@@ -153,15 +152,19 @@ describe('Test ETH personalSign', function() {
     const payload = buildRandomMsg(protocol);
     try {
       await testMsg(buildMsgReq(payload, protocol))
-      setTimeout(() => { next() }, 2500);
+      setTimeout(() => { next() }, 2000);
     } catch (err) {
-      setTimeout(() => { next(err) }, 2500);
+      setTimeout(() => { next(err) }, 2000);
     }
   })
 
 })
 
 describe('Test ETH EIP712', function() {
+  beforeEach(() => {
+    expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
+  })
+
   it('Should test canonical EIP712 example', async () => {
     const msg = {
       types: {
@@ -644,10 +647,10 @@ describe('Test ETH EIP712', function() {
     const payload = buildRandomMsg(protocol);
     try {
       await testMsg(buildMsgReq(payload, protocol))
-      setTimeout(() => { next() }, 2500);
+      setTimeout(() => { next() }, 2000);
     } catch (err) {
-      // console.log(JSON.stringify(payload, null, 2))
-      setTimeout(() => { next(err) }, 2500);
+      console.log(JSON.stringify(payload, null, 2))
+      setTimeout(() => { next(err) }, 2000);
     }
   })
 
