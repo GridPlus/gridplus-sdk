@@ -1,4 +1,5 @@
 const bip32 = require('bip32');
+const bip39 = require('bip39');
 const bitcoin = require('bitcoinjs-lib');
 const crypto = require('crypto');
 const expect = require('chai').expect;
@@ -9,7 +10,6 @@ const SIGHASH_ALL = 0x01;
 const HARDENED_OFFSET = 0x80000000;
 const EC = require('elliptic').ec;
 const ec = new EC('secp256k1');
-const randomWords = require('random-words');
 
 // NOTE: We use the HARDEN(49) purpose for p2sh(p2wpkh) address derivations.
 //       For p2pkh-derived addresses, we use the legacy 44' purpose
@@ -627,11 +627,19 @@ exports.serializeLoadSeedJobData = function(data) {
 // Struct builders
 //---------------------------------------------------
 exports.buildRandomEip712Object = function(randInt) {
-  function getRandomName(upperCase=false) {
-    const words = randomWords({ exactly: 1 })
+  function randStr(n) {
+    const words = bip39.wordlists.english
+    let s = '';
+    while (s.length < n) {
+      s += `${words[randInt(words.length)]}_`
+    }
+    return s.slice(0, n)
+  }
+  function getRandomName(upperCase=false, sz=20) {
+    const name = randStr(sz);
     if (upperCase === true)
-      return `${words[0].slice(0, 1).toUpperCase()}${words[0].slice(1)}`
-    return words[0];
+      return `${name.slice(0, 1).toUpperCase()}${name.slice(1)}`
+    return name;
   }
   function getRandomEIP712Type(customTypes=[]) {
     const types = Object.keys(customTypes)
@@ -646,9 +654,9 @@ exports.buildRandomEip712Object = function(randInt) {
       return `0x${crypto.randomBytes(parseInt(type.slice(5))).toString('hex')}`
     switch (type) {
       case 'bytes':
-        return `0x${crypto.randomBytes(randInt(50)).toString('hex')}`;
+        return `0x${crypto.randomBytes(1+randInt(50)).toString('hex')}`;
       case 'string':
-        return randomWords({ exactly: (1 + randInt(8)), join: ' ' });
+        return randStr(100);
       case 'uint8':
         return `0x${crypto.randomBytes(1).toString('hex')}`
       case 'uint16':
@@ -673,7 +681,7 @@ exports.buildRandomEip712Object = function(randInt) {
     subTypes.forEach((subType) => {
       if (Object.keys(msg.types).indexOf(subType.type) > -1) {
         // If this is a custom type we need to recurse
-        val[subType.name] = buildCustomTypeVal(msg[subType.type], msg)
+        val[subType.name] = buildCustomTypeVal(subType.type, msg)
       } else {
         val[subType.name] = getRandomEIP712Val(subType.type, msg)
       }
@@ -694,7 +702,7 @@ exports.buildRandomEip712Object = function(randInt) {
     domain: {
       name: `Domain_${getRandomName(true)}`,
       version: '1',
-      chainId: 1 + randInt(15000),
+      chainId: `0x${(1 + randInt(15000)).toString(16)}`,
       verifyingContract: `0x${crypto.randomBytes(20).toString('hex')}`,
     },
     message: {}

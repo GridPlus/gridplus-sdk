@@ -253,7 +253,6 @@ class Client {
     // Construct the encrypted request and send it
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
     return this._request(param, (err, res, responseCode) => {
-      console.log('sign resp', res, err, responseCode)
       if (responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) {
         // If we catch a case where the wallet has changed, try getting the new active wallet
         // and recursively make the original request.
