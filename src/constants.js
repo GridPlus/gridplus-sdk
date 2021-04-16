@@ -256,7 +256,6 @@ const ETH_ABI_LATTICE_FW_TYPE_MAP = {
 
 function getFwVersionConst(v) {
     const c = {
-        reqMaxDataSz: 1152,
         extraDataFrameSz: 0,
         extraDataMaxFrames: 0,
     };
@@ -267,30 +266,43 @@ function getFwVersionConst(v) {
                 (v[2] === exp[0] && v[1] === exp[1] && v[0] > exp[2]) ||
                 (v[2] === exp[0] && v[1] === exp[1] && v[0] === exp[2]);
     }
-    if (v.length === 0 || !gte(v, [0, 10, 0])) {
-        // Legacy versions (<0.10.0)
-        c.ethMaxDataSz = c.reqMaxDataSz - 128;
-        c.ethMaxMsgSz = c.ethMaxDataSz;
-        c.ethMaxGasPrice = 500000000000; // 500 gwei
-        c.addrFlagsAllowed = false;
-        return c;
-    } 
-    if (gte(v, [0, 10, 4])) {
+    // Very old legacy versions do not give a version number
+    const legacy = (v.length === 0);
+    // V0.10.5 added the ability to use flexible address path sizes, which
+    // changes the `getAddress` API. It also added support for EIP712
+    if (!legacy && gte(v, [0, 10, 5])) {
+        c.varAddrPathSzAllowed = true;
+        c.eip712Supported = true;
+    }
+    // V0.10.4 introduced the ability to send signing requests over multiple
+    // data frames (i.e. in multiple requests)
+    if (!legacy && gte(v, [0, 10, 4])) {
+        c.extraDataFrameSz = 1500; // 1500 bytes per frame of extraData allowed
+        c.extraDataMaxFrames = 1;  // 1 frame of extraData allowed
+    }
+    // Various size constants have changed on the firmware side over time and
+    // are captured here
+    if (!legacy && gte(v, [0, 10, 4])) {
         // >=0.10.3
         c.reqMaxDataSz = 1678;
         c.ethMaxDataSz = c.reqMaxDataSz - 128;
         c.ethMaxMsgSz = c.ethMaxDataSz;
         c.ethMaxGasPrice = 20000000000000; // 20000 gwei
         c.addrFlagsAllowed = true;
-        c.extraDataFrameSz = 1500; // 1500 bytes per frame of extraData allowed
-        c.extraDataMaxFrames = 1;  // 1 frame of extraData allowed
-    } else {
+    } else if (!legacy && gte(v, [0, 10, 0])) {
         // >=0.10.0
         c.reqMaxDataSz = 1678;
         c.ethMaxDataSz = c.reqMaxDataSz - 128;
         c.ethMaxMsgSz = c.ethMaxDataSz;
         c.ethMaxGasPrice = 20000000000000; // 20000 gwei
         c.addrFlagsAllowed = true;
+    } else {
+        // Legacy or <0.10.0
+        c.reqMaxDataSz = 1152;
+        c.ethMaxDataSz = c.reqMaxDataSz - 128;
+        c.ethMaxMsgSz = c.ethMaxDataSz;
+        c.ethMaxGasPrice = 500000000000; // 500 gwei
+        c.addrFlagsAllowed = false;
     }
     return c;
 }

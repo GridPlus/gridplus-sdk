@@ -24,6 +24,8 @@ exports.buildEthereumMsgRequest = function(input) {
       case 'signPersonal':
         return buildPersonalSignRequest(req, input)
       case 'eip712':
+        if (!input.fwConstants.eip712Supported)
+          throw new Error('EIP712 is not supported by your Lattice firmware version. Please upgrade.')
         return buildEIP712Request(req, input)
       default:
         throw new Error('Unsupported protocol');
@@ -142,7 +144,11 @@ exports.buildEthereumTxRequest = function(data) {
     //------------------
     // First write the number of indices in this path (will probably always be 5, but
     // we want to keep this extensible)
-    txReqPayload.writeUInt32LE(signerPath.length, off); off += 4;
+    if (fwConstants.varAddrPathSzAllowed) {
+      txReqPayload.writeUInt32LE(signerPath.length, off); off += 4;
+    } else if (signerPath.length !== 5) {
+      throw new Error('Your Lattice firmware version only supports 5-index derivation paths. Please upgrade.')
+    }
     for (let i = 0; i < signerPath.length; i++) {
       txReqPayload.writeUInt32LE(signerPath[i], off); off += 4;
     }
@@ -202,7 +208,7 @@ exports.buildEthereumTxRequest = function(data) {
     dataBytes.slice(0, MAX_BASE_DATA_SZ).copy(txReqPayload, off); off += MAX_BASE_DATA_SZ;
     return {
       rawTx,
-      payload: txReqPayload,
+      payload: txReqPayload.slice(0, off),
       extraDataPayloads,
       schema: constants.signingSchema.ETH_TRANSFER,  // We will use eth transfer for all ETH txs for v1 
       chainId,
@@ -425,7 +431,11 @@ function buildPersonalSignRequest(req, input) {
   let off = 0;
   req.payload = Buffer.alloc(L);
   req.payload.writeUInt8(constants.ethMsgProtocol.SIGN_PERSONAL, 0); off += 1;
-  req.payload.writeUInt32LE(input.signerPath.length, off); off += 4;
+  if (input.fwConstants.varAddrPathSzAllowed) {
+    req.payload.writeUInt32LE(input.signerPath.length, off); off += 4;
+  } else if (input.signerPath.length !== 5) {
+    throw new Error('Your Lattice firmware only supports 5-index derivation paths. Please upgrade.')
+  }
   for (let i = 0; i < input.signerPath.length; i++) {
     req.payload.writeUInt32LE(input.signerPath[i], off); off += 4;
   }
@@ -474,11 +484,14 @@ function buildEIP712Request(req, input) {
     let off = 0;
     req.payload = Buffer.alloc(L);
     req.payload.writeUInt8(TYPED_DATA.enumIdx, 0); off += 1;
-    req.payload.writeUInt32LE(input.signerPath.length, off); off += 4;
+    if (input.fwConstants.varAddrPathSzAllowed) {
+      req.payload.writeUInt32LE(input.signerPath.length, off); off += 4;
+    } else if (input.signerPath.length !== 5) {
+      throw new Error('Your Lattice firmware only supports 5-index derivation paths. Please upgrade.')
+    }
     for (let i = 0; i < input.signerPath.length; i++) {
       req.payload.writeUInt32LE(input.signerPath[i], off); off += 4;
     }
-
     const data = JSON.parse(JSON.stringify(input.payload));
     if (!data.primaryType || !data.types[data.primaryType])
       throw new Error('primaryType must be specified and the type must be included.')
