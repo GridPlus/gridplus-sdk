@@ -140,22 +140,6 @@ async function testTxFail(req) {
   }
 }
 
-async function testMsg(req, pass=true) {
-  try {
-    const sig = await helpers.sign(client, req);
-    // Validation happens already in the client
-    if (pass === true)
-      expect(sig.sig).to.not.equal(null);
-    else
-      expect(sig.sig).to.equal(null);
-  } catch (err) {
-    if (pass === true)
-      expect(err).to.equal(null);
-    else
-      expect(err).to.not.equal(null);
-  }
-}
-
 // Determine the number of random transactions we should build
 if (process.env.N)
   numRandom = parseInt(process.env.N);
