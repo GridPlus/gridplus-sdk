@@ -98,10 +98,17 @@ function buildRandomMsg(type='signPersonal') {
       return `0x${crypto.randomBytes(L).toString('hex')}`; // Get L hex bytes (represented with a string with 2*L chars)
     else
       return randomWords({ exactly: L, join: ' ' }).slice(0, L); // Get L ASCII characters (bytes)
+  } else if (type === 'eip712') {
+    return helpers.buildRandomEip712Object(randInt);
   }
 }
 
+<<<<<<< HEAD
 function buildTxReq(txData, network='mainnet', signerPath=[helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0]) {
+=======
+
+function buildTxReq(txData, network='mainnet') {
+>>>>>>> 1c61069ea9285c03ca86ed4bc127f267eb4c0538
   return {
     currency: 'ETH',
     data: {
@@ -313,11 +320,11 @@ if (!process.env.skip) {
       await testTxPass(buildTxReq(txData))
       txData.value = 1234;
       await testTxPass(buildTxReq(txData))
-      txData.value = 10**14;
+      txData.value = `0x${new BN('10e14').toString(16)}`;
       await testTxPass(buildTxReq(txData))
-      txData.value = 10**64;
-      await testTxPass(buildTxReq(txData))
-      txData.value = 10**77;
+      txData.value = `0x${new BN('10e64').toString(16)}`;
+      await testTxPass(buildTxReq(txData))      
+      txData.value = `0x${new BN('1e77').minus(1).toString(16)}`;
       await testTxPass(buildTxReq(txData))
       txData.value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
       await testTxPass(buildTxReq(txData))
@@ -447,7 +454,6 @@ if (!process.env.skip) {
       // For non-EIP155 transactions, we expect `v` to be 27 or 28
       expect(res.sig.v.toString('hex')).to.oneOf([(27).toString(16), (28).toString(16)])
     });
-  
   });
 }
 
@@ -467,51 +473,4 @@ describe('Test random transaction data', function() {
       setTimeout(() => { next(err) }, 2500);
     }
   })
-})
-
-describe('Test ETH personalSign', function() {
-  beforeEach(() => {
-    expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
-  })
-
-  it('Should throw error when message contains non-ASCII characters', async () => {
-    const protocol = 'signPersonal';
-    const msg = '⚠️';
-    const msg2 = 'ASCII plus ⚠️';
-    await testMsg(buildMsgReq(msg, protocol), false);
-    await testMsg(buildMsgReq(msg2, protocol), false);
-  })
-
-  it('Should test ASCII buffers', async () => {
-    await testMsg(buildMsgReq(Buffer.from('i am an ascii buffer'), 'signPersonal'), true);
-    await testMsg(buildMsgReq(Buffer.from('{\n\ttest: foo\n}'), 'signPersonal'), false);
-  })
-
-  it('Should test hex buffers', async () => {
-    await testMsg(buildMsgReq(Buffer.from('abcdef', 'hex'), 'signPersonal'), true);
-  })
-
-  it('Msg: sign_personal boundary conditions', async () => {
-    const protocol = 'signPersonal';
-    const fwConstants = constants.getFwVersionConst(client.fwVersion);
-    const maxMsgSz = fwConstants.ethMaxMsgSz + (fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz);
-    const maxValid = `0x${crypto.randomBytes(maxMsgSz).toString('hex')}`;
-    const minInvalid = `0x${crypto.randomBytes(maxMsgSz + 1).toString('hex')}`;
-    const zeroInvalid = '0x';
-    await testMsg(buildMsgReq(maxValid, protocol), true);
-    await testMsg(buildMsgReq(minInvalid, protocol), false);
-    await testMsg(buildMsgReq(zeroInvalid, protocol), false);
-  })
-
-  it.each(randomTxDataLabels, 'Msg: sign_personal #%s', ['label'], async function(n, next) {
-    const protocol = 'signPersonal';
-    const payload = buildRandomMsg(protocol);
-    try {
-      await testMsg(buildMsgReq(payload, protocol))
-      setTimeout(() => { next() }, 2500);
-    } catch (err) {
-      setTimeout(() => { next(err) }, 2500);
-    }
-  })
-
 })

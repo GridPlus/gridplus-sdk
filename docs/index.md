@@ -159,9 +159,9 @@ Ethereum transactions consist of six fields. An example payload looks as follows
 
 ```
 const data = {
-    nonce: 1,
-    gasLimit: 25000,
-    gasPrice: 1000000000,
+    nonce: '0x01',
+    gasLimit: '0x61a8,
+    gasPrice: '0x2540be400,
     to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
     value: 0,
     data: '0x12345678'
@@ -178,14 +178,14 @@ const signOpts = {
 
 | Param      | Type      | Restrictions       |        
 |:-----------|:----------|:-------------------|
-| `nonce`    | number    | None               |
-| `gasLimit` | number    | Must be >=22000    |
-| `gasPrice` | number    | Must be >0         |
-| `to`       | string    | Must be 20 bytes (excluding optional `0x` prefix) |
-| `value`    | number or hex string    | None               |
-| `data`     | string    | Must be <557 bytes |
+| `nonce`    | hex string or number    | None               |
+| `gasLimit` | hex string or number    | Must be >=22000    |
+| `gasPrice` | hex string or number    | Must be >0         |
+| `to`       | hex string    | Must be 20 bytes (excluding optional `0x` prefix) |
+| `value`    | hex string or number    | None               |
+| `data`     | hex string    | Must be <557 bytes |
 | `signerPath`| Array | Address path from which to sign this transaction. NOTE: Ethereum wallets typically use the path specified in the example above for all transactions. |
-| `chainId`  | string/number    | Can be hex string, number, or name. See name options below. Default=`mainnet` |
+| `chainId`  | hex string or number    | Can be hex string, number, or name. See name options below. Default=`mainnet` |
 | `eip155` | bool    | Optional. Set the value you want to override the default EIP155 usage of the given chain (see below) |
 
 #### Chain ID
@@ -196,9 +196,9 @@ The `chainId` param is used to provide replay protectin for most Ethereum-based 
 2. An integer (only recommended for small numbers -- see below section)
 3. A hex string (e.g. `0x1234`)
 
-**Note about using large integers for `chainId`**
+**Hex strings are strongly recommended**
 
-Generally, we recommend *not* using a javascript integer if you have a large `chainId` , as it may not be correctly represented by a number in javascript. Consider the following dummy code in `node.js`:
+Generally, we recommend **not** using Javascript integers and **never** using them for fields that may contain large values, such as `value` (which is measured in units of wei, where 10**18 wei = 1 ether). We recommend using hex strings instead, as shown in the example above. Consider the following dummy code in `node.js`:
 
 ```
 > new bn(2).pow(64).toString(16)
@@ -215,7 +215,9 @@ Generally, we recommend *not* using a javascript integer if you have a large `ch
 '10000000000000180'
 ```
 
-As you can see, all sorts of problems arise from large javascript integers. Don't use them!
+As you can see, all sorts of problems arise from large Javascript integers. Don't use them!
+
+Note that in the `gridplus-sdk`, all numerical inputs are converted to big numbers, but we still recommend avoiding them.
 
 **"Named" `chainId`s**
 
