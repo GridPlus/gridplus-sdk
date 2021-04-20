@@ -111,16 +111,15 @@ describe('getAddresses', () => {
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
   })
 
-  it('Should get GP_EINVAL when `pathDepth` is not 4', async () => {
-    jobData.parent.pathDepth = 3;
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
-    await runTestCase(helpers.gpErrors.GP_EINVAL);
+  it('Should get GP_EINVAL when `pathDepth` is too large', async () => {
+    // Parent too large
     jobData.parent.pathDepth = 5;
     jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EINVAL);
-    jobData.parent.pathDepth = 4;
+    // Parent is too small
+    jobData.parent.pathDepth = 1;
     jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
-    await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    await runTestCase(helpers.gpErrors.GP_EINVAL);
   })
 
   it('Should get GP_ENODATA for unknown (random) wallet', async () => {
@@ -158,7 +157,7 @@ describe('getAddresses', () => {
     jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeGetAddressesJobResult(_res.result);
-    helpers.validateETHAddress(res, jobData, activeWalletSeed);
+    helpers.validateETHAddresses(res, jobData, activeWalletSeed);
   })
 
   it('Should validate BTC address', async () => {
@@ -259,6 +258,31 @@ describe('getAddresses', () => {
     }
   })
 
+  it('Should fetch with a shorter derivation path', async () => {
+    const req = { 
+      currency: 'ETH', 
+      startPath: [7842, helpers.ETH_COIN, 2532356, 0], 
+      n: 3,
+      skipCache: true,
+    }
+    const addrs = await helpers.getAddresses(client, req, 2000);
+    const resp = {
+      count: addrs.length,
+      addresses: addrs,
+    }
+    const jobData = {
+      parent: {
+        pathDepth: 3,
+        purpose: req.startPath[0],
+        coin: req.startPath[1],
+        account: req.startPath[2],
+      },
+      count: req.n,
+      first: req.startPath[3],
+    }
+    helpers.validateETHAddresses(resp, jobData, activeWalletSeed);
+  })
+
 })
 
 describe('signTx', () => {
@@ -330,8 +354,8 @@ describe('signTx', () => {
     await runTestCase(helpers.gpErrors.GP_EINVAL);
   })
 
-  it('Should return GP_EINVAL when a signer `pathDepth` is not 5 (full BIP44 depth)', async () => {
-    jobData.sigReq[0].signerPath.pathDepth = 4;
+  it('Should return GP_EINVAL when a signer `pathDepth` is of invalid size', async () => {
+    jobData.sigReq[0].signerPath.pathDepth = 1;
     jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EINVAL);
     jobData.sigReq[0].signerPath.pathDepth = 6;
@@ -549,7 +573,7 @@ describe('Wallet sync tests (starting with newly synced wallet)', () => {
 
   it('Should fetch and validate ETH address 0', async () => {
     const res = await makeRequest(helpers.ETH_COIN, 0, 0, 0);
-    helpers.validateETHAddress(res, jobData, activeWalletSeed); 
+    helpers.validateETHAddresses(res, jobData, activeWalletSeed); 
   })
 
   it('Should fetch and validate BTC addresses 10-19', async () => {

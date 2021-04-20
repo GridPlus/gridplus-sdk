@@ -13,6 +13,8 @@ const secp256k1 = require('secp256k1');
 exports.buildEthereumMsgRequest = function(input) {
   if (!input.payload || !input.protocol || !input.signerPath)
     throw new Error('You must provide `payload`, `signerPath`, and `protocol` arguments in the messsage request');
+  if (input.signerPath.length > 5 || input.signerPath.length < 2) 
+    throw new Error('Please provide a signer path with 2-5 indices');
   const req = {
     schema: constants.signingSchema.ETH_MSG,
     payload: null,
@@ -59,9 +61,11 @@ exports.buildEthereumTxRequest = function(data) {
   try {
     let { chainId=1 } = data;
     const { signerPath, eip155=null, fwConstants } = data;
-    const { ethMaxDataSz, extraDataFrameSz, extraDataMaxFrames } = fwConstants;
+    const { extraDataFrameSz, extraDataMaxFrames } = fwConstants;
     const EXTRA_DATA_ALLOWED = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
-    const MAX_BASE_DATA_SZ = ethMaxDataSz;
+    const MAX_BASE_DATA_SZ = fwConstants.ethMaxDataSz;
+    const VAR_PATH_SZ = fwConstants.varAddrPathSzAllowed;
+
     // Sanity checks:
     // There are a handful of named chains we allow the user to reference (`chainIds`)
     // Custom chainIDs should be either numerical or hex strings
@@ -71,8 +75,8 @@ exports.buildEthereumTxRequest = function(data) {
     if (!chainId) 
       throw new Error('Unsupported chain ID or name');
     // Sanity check on signePath
-    if (!signerPath || signerPath.length !== 5) 
-      throw new Error('Please provider full signer path (`signerPath`)')
+    if (!signerPath) 
+      throw new Error('`signerPath` not provided');
 
     // Determine if we should use EIP155 given the chainID.
     // If we are explicitly told to use eip155, we will use it. Otherwise,
@@ -140,18 +144,11 @@ exports.buildEthereumTxRequest = function(data) {
       chainIdBuf.copy(txReqPayload, off); off += chainIdBuf.length;
     }
 
-    // 2. BIP44 Path
+    // 2. Signer Path
     //------------------
-    // First write the number of indices in this path (will probably always be 5, but
-    // we want to keep this extensible)
-    if (fwConstants.varAddrPathSzAllowed) {
-      txReqPayload.writeUInt32LE(signerPath.length, off); off += 4;
-    } else if (signerPath.length !== 5) {
-      throw new Error('Your Lattice firmware version only supports 5-index derivation paths. Please upgrade.')
-    }
-    for (let i = 0; i < signerPath.length; i++) {
-      txReqPayload.writeUInt32LE(signerPath[i], off); off += 4;
-    }
+    const signerPathBuf = buildSignerPathBuf(signerPath, VAR_PATH_SZ);
+    signerPathBuf.copy(txReqPayload, off);
+    off += signerPathBuf.length;
 
     // 3. ETH TX request data
     //------------------
@@ -407,9 +404,7 @@ function ensureHexBuffer(x) {
     // For null values, return a 0-sized buffer
     if (x === null || x === 0) return Buffer.alloc(0);
     // Otherwise try to get this converted to a hex string
-    if (Buffer.isBuffer(x)) {
-      return x
-    } else if (typeof x === 'number') {
+    if (typeof x === 'number') {
       x = `${new BN(x).toString(16)}`;
     } else if (typeof x === 'string' && x.slice(0, 2) === '0x') {
       x = x.slice(2);
@@ -417,6 +412,8 @@ function ensureHexBuffer(x) {
       x = x.toString('hex')
     }
     if (x.length % 2 > 0) x = `0${x}`;
+    if (x === '00')
+      return Buffer.alloc(0);
     return Buffer.from(x, 'hex');
   } catch (err) {
     throw new Error(`Cannot convert ${x.toString()} to hex buffer (${err.toString()})`);
@@ -427,18 +424,15 @@ exports.ensureHexBuffer = ensureHexBuffer;
 
 function buildPersonalSignRequest(req, input) {
   const MAX_BASE_MSG_SZ = input.fwConstants.ethMaxMsgSz;
-  const L = ((input.signerPath.length + 1) * 4) + MAX_BASE_MSG_SZ + 4;
+  const VAR_PATH_SZ = input.fwConstants.varAddrPathSzAllowed;
+  const L = (24) + MAX_BASE_MSG_SZ + 4;
   let off = 0;
   req.payload = Buffer.alloc(L);
   req.payload.writeUInt8(constants.ethMsgProtocol.SIGN_PERSONAL, 0); off += 1;
-  if (input.fwConstants.varAddrPathSzAllowed) {
-    req.payload.writeUInt32LE(input.signerPath.length, off); off += 4;
-  } else if (input.signerPath.length !== 5) {
-    throw new Error('Your Lattice firmware only supports 5-index derivation paths. Please upgrade.')
-  }
-  for (let i = 0; i < input.signerPath.length; i++) {
-    req.payload.writeUInt32LE(input.signerPath[i], off); off += 4;
-  }
+  // Write the signer path into the buffer
+  const signerPathBuf = buildSignerPathBuf(input.signerPath, VAR_PATH_SZ);
+  signerPathBuf.copy(req.payload, off);
+  off += signerPathBuf.length;
   // Write the payload buffer. The payload can come in either as a buffer or as a string
   let payload = input.payload;
   // Determine if this is a hex string
@@ -478,20 +472,18 @@ function buildPersonalSignRequest(req, input) {
 
 function buildEIP712Request(req, input) {
   try {
-    const TYPED_DATA = constants.ethMsgProtocol.TYPED_DATA;
     const MAX_BASE_MSG_SZ = input.fwConstants.ethMaxMsgSz;
-    const L = ((input.signerPath.length + 1) * 4) + MAX_BASE_MSG_SZ + 4;
+    const VAR_PATH_SZ = input.fwConstants.varAddrPathSzAllowed;
+    const TYPED_DATA = constants.ethMsgProtocol.TYPED_DATA;
+    const L = (24) + MAX_BASE_MSG_SZ + 4;
     let off = 0;
     req.payload = Buffer.alloc(L);
     req.payload.writeUInt8(TYPED_DATA.enumIdx, 0); off += 1;
-    if (input.fwConstants.varAddrPathSzAllowed) {
-      req.payload.writeUInt32LE(input.signerPath.length, off); off += 4;
-    } else if (input.signerPath.length !== 5) {
-      throw new Error('Your Lattice firmware only supports 5-index derivation paths. Please upgrade.')
-    }
-    for (let i = 0; i < input.signerPath.length; i++) {
-      req.payload.writeUInt32LE(input.signerPath[i], off); off += 4;
-    }
+    // Write the signer path
+    const signerPathBuf = buildSignerPathBuf(input.signerPath, VAR_PATH_SZ);
+    signerPathBuf.copy(req.payload, off);
+    off += signerPathBuf.length;
+    // Parse/clean the EIP712 payload, serialize with CBOR, and write to the payload
     const data = JSON.parse(JSON.stringify(input.payload));
     if (!data.primaryType || !data.types[data.primaryType])
       throw new Error('primaryType must be specified and the type must be included.')
@@ -530,6 +522,23 @@ function buildEIP712Request(req, input) {
   }
 }
 
+function buildSignerPathBuf(signerPath, varAddrPathSzAllowed) {
+  const buf = Buffer.alloc(24);
+  let off = 0;
+  if (varAddrPathSzAllowed && signerPath.length > 5)
+    throw new Error('Signer path must be <=5 indices.');
+  if (!varAddrPathSzAllowed && signerPath.length !== 5)
+    throw new Error('Your Lattice firmware only supports 5-index derivation paths. Please upgrade.');
+  buf.writeUInt32LE(signerPath.length, off); off += 4;
+  for (let i = 0; i < 5; i++) {
+    if (i < signerPath.length)
+      buf.writeUInt32LE(signerPath[i], off); 
+    else
+      buf.writeUInt32LE(0, off);
+    off += 4;
+  }
+  return buf;
+}
 
 function getExtraData(payload, input) {
   const { ethMaxMsgSz, extraDataFrameSz, extraDataMaxFrames } = input.fwConstants;

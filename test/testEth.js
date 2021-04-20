@@ -74,10 +74,10 @@ function buildRandomTxData(fwConstants) {
   const maxDataSz = fwConstants.ethMaxDataSz + (fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz);
   for (let i = 0; i < numRandom; i++) {
     const tx = {
-      nonce: randInt(16000),
-      gasPrice: ETH_GAS_PRICE_MIN + randInt(ETH_GAS_PRICE_MAX - ETH_GAS_PRICE_MIN),
-      gasLimit: ETH_GAS_LIMIT_MIN + randInt(ETH_GAS_LIMIT_MAX - ETH_GAS_LIMIT_MIN),
-      value: randInt(10**randInt(30)),
+      nonce: `0x${new BN(randInt(16000)).toString(16)}`,
+      gasPrice: `0x${new BN(ETH_GAS_PRICE_MIN + randInt(ETH_GAS_PRICE_MAX - ETH_GAS_PRICE_MIN)).toString(16)}`,
+      gasLimit: `0x${new BN(ETH_GAS_LIMIT_MIN + randInt(ETH_GAS_LIMIT_MAX - ETH_GAS_LIMIT_MIN)).toString(16)}`,
+      value: `0x${new BN(randInt(10**randInt(30))).toString(16)}`,
       to: `0x${crypto.randomBytes(20).toString('hex')}`,
       data: `0x${crypto.randomBytes(randInt(maxDataSz)).toString('hex')}`,
       eip155: randInt(2) > 0 ? true : false,
@@ -88,40 +88,13 @@ function buildRandomTxData(fwConstants) {
   }
 }
 
-function buildRandomMsg(type='signPersonal') {
-  if (type === 'signPersonal') {
-    // A random string will do
-    const isHexStr = randInt(2) > 0 ? true : false;
-    const fwConstants = constants.getFwVersionConst(client.fwVersion);
-    const L = randInt(fwConstants.ethMaxDataSz - MSG_PAYLOAD_METADATA_SZ);
-    if (isHexStr)
-      return `0x${crypto.randomBytes(L).toString('hex')}`; // Get L hex bytes (represented with a string with 2*L chars)
-    else
-      return randomWords({ exactly: L, join: ' ' }).slice(0, L); // Get L ASCII characters (bytes)
-  } else if (type === 'eip712') {
-    return helpers.buildRandomEip712Object(randInt);
-  }
-}
-
-
-function buildTxReq(txData, network='mainnet') {
+function buildTxReq(txData, network='mainnet', signerPath=[helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0]) {
   return {
     currency: 'ETH',
     data: {
-      signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+      signerPath,
       ...txData,
       chainId: network
-    }
-  }
-}
-
-function buildMsgReq(payload, protocol) {
-  return {
-    currency: 'ETH_MSG',
-    data: {
-      signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
-      payload,
-      protocol,
     }
   }
 }
@@ -169,22 +142,6 @@ async function testTxFail(req) {
   }
 }
 
-async function testMsg(req, pass=true) {
-  try {
-    const sig = await helpers.sign(client, req);
-    // Validation happens already in the client
-    if (pass === true)
-      expect(sig.sig).to.not.equal(null);
-    else
-      expect(sig.sig).to.equal(null);
-  } catch (err) {
-    if (pass === true)
-      expect(err).to.equal(null);
-    else
-      expect(err).to.not.equal(null);
-  }
-}
-
 // Determine the number of random transactions we should build
 if (process.env.N)
   numRandom = parseInt(process.env.N);
@@ -218,6 +175,18 @@ if (!process.env.skip) {
     beforeEach(() => {
       expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
       setTimeout(() => {}, 5000);
+    })
+
+    it('Should test and validate signatures from shorter derivation paths', async () => {
+      if (constants.getFwVersionConst(client.fwVersion).varAddrPathSzAllowed) {
+        // m/44'/60'/0'/x
+        const path = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0];
+        const txData = JSON.parse(JSON.stringify(defaultTxData));
+        await testTxPass(buildTxReq(txData, 'mainnet', path));
+        await testTxPass(buildTxReq(txData, 'mainnet', path.slice(0, 3)));      
+        await testTxPass(buildTxReq(txData, 'mainnet', path.slice(0, 2)));
+        await testTxFail(buildTxReq(txData, 'mainnet', path.slice(0, 1)));            
+      }
     })
 
     it('Should test range of chainId sizes and EIP155 tag', async () => {
@@ -437,7 +406,6 @@ if (!process.env.skip) {
       // For non-EIP155 transactions, we expect `v` to be 27 or 28
       expect(res.sig.v.toString('hex')).to.oneOf([(27).toString(16), (28).toString(16)])
     });
-
   });
 }
 
