@@ -61,7 +61,7 @@ exports.buildEthereumTxRequest = function(data) {
   try {
     let { chainId=1 } = data;
     const { signerPath, eip155=null, fwConstants } = data;
-    const { ethMaxDataSz, extraDataFrameSz, extraDataMaxFrames, flexibleAddrPaths } = fwConstants;
+    const { ethMaxDataSz, extraDataFrameSz, extraDataMaxFrames } = fwConstants;
     const EXTRA_DATA_ALLOWED = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
     const MAX_BASE_DATA_SZ = ethMaxDataSz;
     // Sanity checks:
@@ -235,7 +235,8 @@ function stripZeros(a) {
 exports.buildEthRawTx = function(tx, sig, address, useEIP155=true) {
   // RLP-encode the data we sent to the lattice
   const rlpEncoded = rlp.encode(tx.rawTx);
-  const newSig = addRecoveryParam(rlpEncoded, sig, address, tx.chainId, useEIP155);
+  const hash = Buffer.from(keccak256(rlpEncoded), 'hex')
+  const newSig = addRecoveryParam(hash, sig, address, tx.chainId, useEIP155);
   // Use the signature to generate a new raw transaction payload
   const newRawTx = tx.rawTx.slice(0, 6);
   newRawTx.push(newSig.v);

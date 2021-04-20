@@ -16,7 +16,6 @@
 //        root CMakeLists.txt file (for dev units)
 require('it-each')({ testPerIteration: true });
 const BN = require('bignumber.js');
-const randomWords = require('random-words');
 const crypto = require('crypto');
 const EthTx = require('ethereumjs-tx').Transaction;
 const constants = require('./../src/constants')
@@ -33,7 +32,6 @@ let ETH_GAS_PRICE_MAX;                  // value depends on firmware version
 const ETH_GAS_LIMIT_MIN = 22000;        // Ether transfer (smallest op) is 22k gas
 const ETH_GAS_LIMIT_MAX = 12500000;     // 10M is bigger than the block size
 const ETH_GAS_PRICE_MIN = 1000000;      // 1,000,000 = 0.001 GWei - minimum
-const MSG_PAYLOAD_METADATA_SZ = 28;     // Metadata that must go in ETH_MSG requests
 const defaultTxData = {
   nonce: 0,
   gasPrice: 1200000000,
@@ -88,44 +86,13 @@ function buildRandomTxData(fwConstants) {
   }
 }
 
-function buildRandomMsg(type='signPersonal') {
-  if (type === 'signPersonal') {
-    // A random string will do
-    const isHexStr = randInt(2) > 0 ? true : false;
-    const fwConstants = constants.getFwVersionConst(client.fwVersion);
-    const L = randInt(fwConstants.ethMaxDataSz - MSG_PAYLOAD_METADATA_SZ);
-    if (isHexStr)
-      return `0x${crypto.randomBytes(L).toString('hex')}`; // Get L hex bytes (represented with a string with 2*L chars)
-    else
-      return randomWords({ exactly: L, join: ' ' }).slice(0, L); // Get L ASCII characters (bytes)
-  } else if (type === 'eip712') {
-    return helpers.buildRandomEip712Object(randInt);
-  }
-}
-
-<<<<<<< HEAD
 function buildTxReq(txData, network='mainnet', signerPath=[helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0]) {
-=======
-
-function buildTxReq(txData, network='mainnet') {
->>>>>>> 1c61069ea9285c03ca86ed4bc127f267eb4c0538
   return {
     currency: 'ETH',
     data: {
       signerPath,
       ...txData,
       chainId: network
-    }
-  }
-}
-
-function buildMsgReq(payload, protocol, signerPath=[helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0]) {
-  return {
-    currency: 'ETH_MSG',
-    data: {
-      signerPath,
-      payload,
-      protocol,
     }
   }
 }
