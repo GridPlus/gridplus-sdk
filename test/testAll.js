@@ -60,6 +60,7 @@ describe('Connect and Pair', () => {
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr === false) {
+      const fwConstants = constants.getFwVersionConst(client.fwVersion);
       const addrData = { 
         currency: 'BTC', 
         startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_COIN, HARDENED_OFFSET, 0, 0], 
@@ -81,6 +82,28 @@ describe('Connect and Pair', () => {
       addrs = await helpers.getAddresses(client, addrData, 2000);
       expect(addrs.length).to.equal(1);
       expect(addrs[0].slice(0, 2)).to.equal('0x');
+
+      // If firmware supports it, try shorter paths
+      if (fwConstants.flexibleAddrPaths) {
+        const flexData = { 
+          currency: 'ETH', 
+          startPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0], 
+          n: 1,
+          skipCache: true,
+        }
+        addrs = await helpers.getAddresses(client, flexData, 2000);
+        expect(addrs.length).to.equal(1);
+        expect(addrs[0].slice(0, 2)).to.equal('0x')
+        // Should fail to fetch this if skipCache = false because this is not
+        // a supported asset's parent path
+        flexData.skipCache = false
+        try {
+          addrs = await helpers.getAddresses(client, flexData, 2000);
+          expect(addrs).to.equal(null)
+        } catch (err) {
+          expect(err).to.not.equal(null)
+        }
+      }
 
       // Bitcoin testnet
       addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;

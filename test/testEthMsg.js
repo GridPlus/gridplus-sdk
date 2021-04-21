@@ -54,11 +54,11 @@ function buildRandomMsg(type='signPersonal') {
   }
 }
 
-function buildMsgReq(payload, protocol) {
+function buildMsgReq(payload, protocol, signerPath=[helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0]) {
   return {
     currency: 'ETH_MSG',
     data: {
-      signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+      signerPath,
       payload,
       protocol,
     }
@@ -649,7 +649,6 @@ describe('Test ETH EIP712', function() {
       await testMsg(buildMsgReq(payload, protocol))
       setTimeout(() => { next() }, 2000);
     } catch (err) {
-      console.log(JSON.stringify(payload, null, 2))
       setTimeout(() => { next(err) }, 2000);
     }
   })
