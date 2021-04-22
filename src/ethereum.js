@@ -2,7 +2,7 @@
 // does not have browser (or, by proxy, React-Native) support.
 const BN = require('bignumber.js');
 const Buffer = require('buffer/').Buffer;
-const cbor = require('cbor-web');
+const cbor = require('borc');
 const constants = require('./constants');
 const ethers = require('ethers');
 const eip712 = require('ethers-eip712');
