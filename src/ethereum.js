@@ -622,7 +622,13 @@ function parseEIP712Item(data, type, isEthers=false) {
     } else {
       // `bignumber.js` is needed for `cbor` encoding, which gets sent to the Lattice and plays
       // nicely with its firmware cbor lib.
-      data = new BN(ensureHexBuffer(data).toString('hex'), 16)
+      // NOTE: If we instantiate a `bignumber.js` object, it will not match what `borc` creates
+      // when run inside of the browser (i.e. MetaMask). Thus we introduce this hack to make sure
+      // we are creating a compatible type.
+      // TODO: Find another cbor lib that is compataible with the firmware's lib in a browser
+      // context. This is surprisingly difficult - I tried several libs and only cbor/borc have
+      // worked (borc is a supposedly "browser compatible" version of cbor)
+      data = new cbor.Encoder().semanticTypes[1][0](ensureHexBuffer(data).toString('hex'), 16)
     }
   } else if (type === 'bool') {
     // Booleans need to be cast to a u8

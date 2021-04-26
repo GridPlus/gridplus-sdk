@@ -165,7 +165,90 @@ describe('Test ETH EIP712', function() {
     expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
   })
 
-  it('Should test canonical EIP712 example', async () => {
+  it('Should get an error when the domain is too large', async () => {   
+    // Only 6 lines of text are allowed in the domain region and address types
+    // take 2 lines each. This is a firmware limitation to avoid overrunning the
+    // viewable text region
+    const msg = {
+      types: {
+        EIP712Domain: [
+          { name: 'name', type: 'string' },
+          { name: 'version', type: 'string' },
+          { name: 'chainId', type: 'uint256' },
+          { name: 'verifyingContract', type: 'address' },
+          { name: 'foo', type: 'address' },
+        ],
+        Mail: [
+          { name: 'contents', type: 'string' }
+        ]
+      },
+      primaryType: 'Mail',
+      domain: {
+        name: 'Ether Mail',
+        version: '1',
+        chainId: 12,
+        verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC',
+        foo: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccD',
+      },
+      message: {
+        contents: 'foobar'
+      }
+    };
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.sign(client, req);
+    } catch (err) {
+      expect(err).to.not.equal(null)
+    }
+  })
+
+  it('Should test simple dydx example', async () => {
+    const msg = {
+      'types': {
+        'EIP712Domain': [
+          { 'name':'name', 'type':'string'},
+          {'name':'version', 'type':'string'},
+          {'name':'chainId', 'type':'uint256'}
+        ],
+        'dYdX':[
+          {'type':'string','name':'action'},
+          {'type':'string','name':'onlySignOn'}
+        ]
+      },
+      'domain':{
+        'name':'dYdX',
+        'version':'1.0',
+        'chainId':'1'
+      },
+      'primaryType': 'dYdX',
+      'message': {
+        'action': 'dYdX STARK Key',
+        'onlySignOn': 'https://trade.dydx.exchange'
+      }
+    }
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.sign(client, req);
+    } catch (err) {
+      expect(err).to.equal(null)
+    }
+  })
+
+  it('Should test canonical EIP712 example', async () => {   
     const msg = {
       types: {
         EIP712Domain: [
@@ -598,10 +681,7 @@ describe('Test ETH EIP712', function() {
       'domain': {
         'name': 'Domain_Census_liberty_own_s',
         'version': '1',
-        'chainId': {
-          'type': 'BigNumber',
-          'hex': '0x2207'
-        },
+        'chainId': '0x2207',
         'verifyingContract': '0x52a3e01d76d2670f8fd452564b3f56eea6fc798d'
       },
       'message': {
