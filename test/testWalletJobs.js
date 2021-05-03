@@ -261,7 +261,7 @@ describe('getAddresses', () => {
   it('Should fetch with a shorter derivation path', async () => {
     const req = { 
       currency: 'ETH', 
-      startPath: [7842, helpers.ETH_COIN, 2532356, 0], 
+      startPath: [7842, helpers.ETH_COIN, 2532356, 7], 
       n: 3,
       skipCache: true,
     }
@@ -317,6 +317,32 @@ describe('signTx', () => {
     expect(outputKey.verify(jobData.sigReq[0].data, res.outputs[0].sig)).to.equal(true);
     // Ensure pubkey is correctly derived
     const wallet = bip32.fromSeed(activeWalletSeed);
+    const derivedKey = wallet.derivePath(helpers.stringifyPath(jobData.sigReq[0].signerPath));
+    const derivedPubStr = `04${ethutil.privateToPublic(derivedKey.privateKey).toString('hex')}`;
+    expect(outputPubStr).to.equal(derivedPubStr)
+  })
+
+  it('Should get GP_SUCCESS for signing out of shorter (but allowed) paths', async () => {
+    jobData.sigReq[0].signerPath =   {
+      pathDepth: 3,
+      purpose: helpers.BTC_LEGACY_PURPOSE,
+      coin: helpers.ETH_COIN,
+      account: 1572,
+      change: 0, // Not used for pathDepth=3
+      addr: 0, // Not used for pathDepth=4
+    };
+    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    const res = helpers.deserializeSignTxJobResult(_res.result);
+    // Ensure correct number of outputs returned
+    expect(res.numOutputs).to.equal(jobData.numRequests);
+    // Ensure signatures validate against provided pubkey
+    const outputKey = res.outputs[0].pubkey;
+    const outputPubStr = helpers.getPubStr(outputKey);
+    expect(outputKey.verify(jobData.sigReq[0].data, res.outputs[0].sig)).to.equal(true);
+    // Ensure pubkey is correctly derived
+    const wallet = bip32.fromSeed(activeWalletSeed);
+    console.log('stringified path', helpers.stringifyPath(jobData.sigReq[0].signerPath))
     const derivedKey = wallet.derivePath(helpers.stringifyPath(jobData.sigReq[0].signerPath));
     const derivedPubStr = `04${ethutil.privateToPublic(derivedKey.privateKey).toString('hex')}`;
     expect(outputPubStr).to.equal(derivedPubStr)
