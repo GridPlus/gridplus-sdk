@@ -606,6 +606,10 @@ function parseEIP712Item(data, type, isEthers=false) {
   } else if (type === 'address') {
     // Address must be a 20 byte buffer
     data = ensureHexBuffer(data);
+    // Edge case to handle the 0-address
+    if (data.length === 0) {
+      data = Buffer.alloc(20);
+    }
     if (data.length !== 20)
       throw new Error(`Address type must be 20 bytes, but got ${data.length} bytes`);
     // Ethers wants addresses as hex strings
@@ -615,10 +619,15 @@ function parseEIP712Item(data, type, isEthers=false) {
   } else if (type === 'uint8' || type === 'uint16' || type === 'uint32' || type === 'uint64') {
     data = parseInt(ensureHexBuffer(data).toString('hex'), 16)
   } else if (type === 'uint256') {
+    let b = ensureHexBuffer(data);
+    // Edge case to handle 0-value bignums
+    if (b.length === 0) {
+      b = Buffer.from('00', 'hex');
+    }
     // Uint256s should be encoded as bignums.
     if (isEthers === true) {
       // `ethers` uses their own BigNumber lib
-      data = ethers.BigNumber.from(`0x${ensureHexBuffer(data).toString('hex')}`)
+      data = ethers.BigNumber.from(`0x${b.toString('hex')}`)
     } else {
       // `bignumber.js` is needed for `cbor` encoding, which gets sent to the Lattice and plays
       // nicely with its firmware cbor lib.
@@ -628,7 +637,7 @@ function parseEIP712Item(data, type, isEthers=false) {
       // TODO: Find another cbor lib that is compataible with the firmware's lib in a browser
       // context. This is surprisingly difficult - I tried several libs and only cbor/borc have
       // worked (borc is a supposedly "browser compatible" version of cbor)
-      data = new cbor.Encoder().semanticTypes[1][0](ensureHexBuffer(data).toString('hex'), 16)
+      data = new cbor.Encoder().semanticTypes[1][0](b.toString('hex'), 16)
     }
   } else if (type === 'bool') {
     // Booleans need to be cast to a u8

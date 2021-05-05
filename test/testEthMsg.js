@@ -248,6 +248,47 @@ describe('Test ETH EIP712', function() {
     }
   })
 
+  it('Should test an example with 0 values', async () => {
+    const msg = {
+      'types': {
+        'EIP712Domain': [
+          { name: 'name', type: 'string' },
+          { name: 'host', type: 'string'},
+          { name: 'version', type: 'string' },
+          { name: 'chainId', type: 'uint256' },
+          { name: 'verifyingContract', type: 'address' },
+        ],
+        'Test': [
+          { name: 'owner', type: 'string' },
+        ]
+      },
+      'domain':{
+        name: 'Opensea on Matic',
+        verifyingContract: '0x0',
+        version: '1',
+        chainId: '',
+        host: '',
+      },
+      'primaryType': 'Test',
+      'message': {
+        'owner': '0x56626bd0d646ce9da4a12403b2c1ba00fb9e1c43',
+      }
+    }
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.sign(client, req);
+    } catch (err) {
+      expect(err).to.equal(null)
+    }
+  })
+
   it('Should test canonical EIP712 example', async () => {   
     const msg = {
       types: {
