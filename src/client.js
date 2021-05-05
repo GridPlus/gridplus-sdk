@@ -690,7 +690,7 @@ class Client {
       const preSerializedData = {
         inputs: [],
         outputs: [],
-        isSegwitSpend: req.origData.isSegwit,
+        spenderScriptType: req.spenderScriptType,
         network: req.origData.network,
         crypto: this.crypto,
       };
