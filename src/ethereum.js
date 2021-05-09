@@ -404,7 +404,8 @@ function ensureHexBuffer(x) {
     // For null values, return a 0-sized buffer
     if (x === null || x === 0) return Buffer.alloc(0);
     // Otherwise try to get this converted to a hex string
-    if (typeof x === 'number') {
+    if (typeof x === 'number' || new BN(x).toString() === String(x)) {
+      // If this is a number or a base-10 number string, convert it to hex
       x = `${new BN(x).toString(16)}`;
     } else if (typeof x === 'string' && x.slice(0, 2) === '0x') {
       x = x.slice(2);
