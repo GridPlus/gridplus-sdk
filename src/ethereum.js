@@ -308,7 +308,7 @@ function getRecoveryParam(v, useEIP155, chainId=null) {
   // so we add 35 to that.
   const chainIdBuf = getChainIdBuf(chainId);
   const chainIdBN = new BN(chainIdBuf.toString('hex'), 16);
-  return ensureHexBuffer(chainIdBN.times(2).plus(35).plus(v).toString(16));
+  return ensureHexBuffer(`0x${chainIdBN.times(2).plus(35).plus(v).toString(16)}`);
 }
 
 function isHexStr(str) {
@@ -347,7 +347,7 @@ function getChainIdBuf(chainId) {
     b = ensureHexBuffer(chainId);
   // If our chainID is a base-10 number, parse with bignumber.js and convert to hex buffer
   else
-    b = ensureHexBuffer(new BN(chainId).toString(16));
+    b = ensureHexBuffer(`0x${new BN(chainId).toString(16)}`);
   // Make sure the buffer is an allowed size
   if (b.length > 8)
     throw new Error('ChainID provided is too large.');
