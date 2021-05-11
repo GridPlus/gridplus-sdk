@@ -382,7 +382,16 @@ function chainUsesEIP155(chainID) {
 
 // Determine if a valid number was passed in as a hex string
 function isValidChainIdHexNumStr(s) {
-  return new BN(s, 16).isNaN() === false;
+  if (typeof s !== 'string')
+    return false;
+  if (s.slice(0, 2) !== '0x')
+    return false;
+  try {
+    const b = new BN(s, 16)
+    return b.isNaN() === false;
+  } catch (err) {
+    return false;
+  }
 }
 
 // If this is a nubmer that fits in one byte, we don't need to add it
