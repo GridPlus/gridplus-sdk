@@ -1,6 +1,6 @@
 {
   "name": "gridplus-sdk",
-  "version": "0.7.15",
+  "version": "0.7.16",
   "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
     "commit": "git-cz",
@@ -53,7 +53,7 @@
     "eslint-plugin-standard": "^4.0.0",
     "ethereumjs-tx": "^2.1.2",
     "it-each": "^0.4.0",
-    "lodash": "^4.17.20",
+    "lodash": ">=4.17.21",
     "minimist": ">=0.2.1",
     "mocha": "^5.2.0",
     "random-words": "^1.1.1",
