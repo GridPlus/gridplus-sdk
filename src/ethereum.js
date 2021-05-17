@@ -413,8 +413,10 @@ function ensureHexBuffer(x) {
     // For null values, return a 0-sized buffer
     if (x === null || x === 0) return Buffer.alloc(0);
     // Otherwise try to get this converted to a hex string
-    if (typeof x === 'number' || new BN(x).toString() === String(x)) {
+    if (typeof x === 'number' || new BN(x).toString().slice(0, 15) === String(x).slice(0, 15)) {
       // If this is a number or a base-10 number string, convert it to hex
+      // Note that the JS native `String()` loses precision for large numbers, but we only
+      // want to validate the base of the number so we don't care about far out precision.
       x = `${new BN(x).toString(16)}`;
     } else if (typeof x === 'string' && x.slice(0, 2) === '0x') {
       x = x.slice(2);
