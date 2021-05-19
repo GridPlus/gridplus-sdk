@@ -458,7 +458,7 @@ function buildPersonalSignRequest(req, input) {
   if (typeof input.payload === 'string') {
     if (input.payload.slice(0, 2) === '0x') {
       payload = ensureHexBuffer(input.payload)
-      displayHex = true === isHexStr(input.payload.slice(2));
+      displayHex = false === isASCIIStr(Buffer.from(input.payload.slice(2), 'hex').toString())
     } else {
       if (false === latticeCanDisplayStr(input.payload))
         throw new Error('Currently, the Lattice can only display ASCII strings.');
