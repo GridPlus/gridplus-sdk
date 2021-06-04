@@ -282,13 +282,10 @@ describe('Connect and Pair', () => {
     req.data.data = client.crypto.randomBytes(maxDataSz).toString('hex');
     tx = await(helpers.sign(client, req));
     expect(tx.tx).to.not.equal(null);
+    question('Please ACCEPT the following transaction only if the warning screen displays. Press enter to continue.')
     req.data.data = client.crypto.randomBytes(maxDataSz+1).toString('hex');
-    try {
-      tx = await(helpers.sign(client, req));
-      expect(tx.tx).to.equal(null);
-    } catch (err) {
-      expect(err).to.not.equal(null);
-    }
+    tx = await(helpers.sign(client, req));
+    expect(tx.tx).to.not.equal(null);
     req.data.data = client.crypto.randomBytes(fwConstants.ethMaxDataSz).toString('hex');
     tx = await(helpers.sign(client, req));
     expect(tx.tx).to.not.equal(null);
