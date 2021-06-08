@@ -61,7 +61,7 @@ exports.buildEthereumTxRequest = function(data) {
   try {
     let { chainId=1 } = data;
     const { signerPath, eip155=null, fwConstants } = data;
-    const { extraDataFrameSz, extraDataMaxFrames } = fwConstants;
+    const { extraDataFrameSz, extraDataMaxFrames, prehashAllowed } = fwConstants;
     const EXTRA_DATA_ALLOWED = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
     const MAX_BASE_DATA_SZ = fwConstants.ethMaxDataSz;
     const VAR_PATH_SZ = fwConstants.varAddrPathSzAllowed;
@@ -169,15 +169,14 @@ exports.buildEthereumTxRequest = function(data) {
     valueBytes.copy(txReqPayload, off + (32 - valueBytes.length)); off += 32;
     // Flow data into extraData requests, which will follow-up transaction requests, if supported/applicable    
     const extraDataPayloads = [];
+    let prehash = null;
     if (dataBytes && dataBytes.length > MAX_BASE_DATA_SZ) {
       // Determine sizes and run through sanity checks
       const chainIdExtraSz = chainIdBufSz > 0 ? chainIdBufSz + 1 : 0;
       const totalSz = dataBytes.length + chainIdExtraSz;
       const maxSzAllowed = MAX_BASE_DATA_SZ + (extraDataMaxFrames * extraDataFrameSz);
-      if ((!EXTRA_DATA_ALLOWED) || (EXTRA_DATA_ALLOWED && totalSz > maxSzAllowed))
-        throw new Error(`Data field too large (got ${dataBytes.length}; must be <=${maxSzAllowed-chainIdExtraSz} bytes)`);
 
-      // Copy over the data. Account for larger chain ID sizes if applicable.
+      // Copy the data into a tmp buffer. Account for larger chain ID sizes if applicable.
       const dataToCopy = Buffer.alloc(dataBytes.length + chainIdExtraSz)
       if (chainIdExtraSz > 0) {
         dataToCopy.writeUInt8(chainIdBufSz, 0);
@@ -186,13 +185,21 @@ exports.buildEthereumTxRequest = function(data) {
       } else {
         dataBytes.copy(dataToCopy, 0);
       }
-      // Split overflow data into extraData frames
-      const frames = splitFrames(dataToCopy.slice(MAX_BASE_DATA_SZ), extraDataFrameSz);
-      frames.forEach((frame) => {
-        const szLE = Buffer.alloc(4);
-        szLE.writeUInt32LE(frame.length);
-        extraDataPayloads.push(Buffer.concat([szLE, frame]));
-      })
+
+      if (prehashAllowed && totalSz > maxSzAllowed) {
+        // If this payload is too large to send, but the Lattice allows a prehashed message, do that
+        prehash = Buffer.from(keccak256(rlp.encode(rawTx)), 'hex')
+      } else {
+        if ((!EXTRA_DATA_ALLOWED) || (EXTRA_DATA_ALLOWED && totalSz > maxSzAllowed))
+          throw new Error(`Data field too large (got ${dataBytes.length}; must be <=${maxSzAllowed-chainIdExtraSz} bytes)`);
+        // Split overflow data into extraData frames
+        const frames = splitFrames(dataToCopy.slice(MAX_BASE_DATA_SZ), extraDataFrameSz);
+        frames.forEach((frame) => {
+          const szLE = Buffer.alloc(4);
+          szLE.writeUInt32LE(frame.length);
+          extraDataPayloads.push(Buffer.concat([szLE, frame]));
+        })
+      }
     }
     // Write the data size (does *NOT* include the chainId buffer, if that exists)
     txReqPayload.writeUInt16BE(dataBytes.length, off); off += 2;
@@ -201,8 +208,13 @@ exports.buildEthereumTxRequest = function(data) {
       txReqPayload.writeUInt8(chainIdBufSz, off); off++;
       chainIdBuf.copy(txReqPayload, off); off += chainIdBufSz;
     }
-    // Copy the first slice of the data itself
-    dataBytes.slice(0, MAX_BASE_DATA_SZ).copy(txReqPayload, off); off += MAX_BASE_DATA_SZ;
+    // Copy the first slice of the data itself. If this payload has been pre-hashed, include it
+    // in the `data` field. This will result in a different Lattice screen being drawn.
+    if (prehash) {
+      prehash.copy(txReqPayload, off); off += MAX_BASE_DATA_SZ;
+    } else {
+      dataBytes.slice(0, MAX_BASE_DATA_SZ).copy(txReqPayload, off); off += MAX_BASE_DATA_SZ;
+    }
     return {
       rawTx,
       payload: txReqPayload.slice(0, off),

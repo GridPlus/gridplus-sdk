@@ -285,6 +285,11 @@ function getFwVersionConst(v) {
     }
     // Very old legacy versions do not give a version number
     const legacy = (v.length === 0);
+    // V0.10.8 allows a user to sign a prehashed transaction if the payload
+    // is too big
+    if (!legacy && gte(v, [0, 10, 8])) {
+        c.prehashAllowed = true;
+    }
     // V0.10.5 added the ability to use flexible address path sizes, which
     // changes the `getAddress` API. It also added support for EIP712
     if (!legacy && gte(v, [0, 10, 5])) {
