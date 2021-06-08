@@ -1,6 +1,6 @@
 // Util for Bitcoin-specific functionality
-const bs58 = require('bs58');
-const bs58check = require('bs58check')
+const bech32 = require('bech32').bech32;
+const bs58check = require('bs58check');
 const Buffer = require('buffer/').Buffer;
 const constants = require('./constants')
 const DEFAULT_SEQUENCE = 0xffffffff;
@@ -9,7 +9,7 @@ const { HARDENED_OFFSET } = require('./constants');
 const DEFAULT_CHANGE = [44 + HARDENED_OFFSET, HARDENED_OFFSET, HARDENED_OFFSET, 1, 0];
 
 const OP = {
-  '0': 0x00,
+  ZERO: 0x00,
   HASH160: 0xa9,
   DUP: 0x76,
   EQUAL: 0x87,
@@ -22,14 +22,18 @@ const addressVersion = {
   'SEGWIT': 0x05,
   'TESTNET': 0x6F,
   'SEGWIT_TESTNET': 0xC4,
+  'SEGWIT_NATIVE_V0': 0xD0,
+  'SEGWIT_NATIVE_V0_TESTNET': 0xF0,
 }
 exports.addressVersion = addressVersion;
 
 // Bitcoin script types -- defined by the Lattice protocol spec
+// NOTE: Only certain script types are supported for the spender, but all are supported for recipient
 const scriptTypes = {
-  P2PKH: 0x01,
+  P2PKH: 0x01, // Supported spender type
   P2SH: 0x02,
-  P2SH_P2WPKH: 0x03,
+  P2SH_P2WPKH: 0x03, // Supported spender type
+  P2WPKH_V0: 0x04,
 }
 exports.scriptTypes = scriptTypes
 
@@ -54,7 +58,10 @@ exports.scriptTypes = scriptTypes
 // `isSegwit`: a boolean which determines how we serialize the data and parameterize txb
 exports.buildBitcoinTxRequest = function(data) {
   try {
-    const { prevOuts, recipient, value, changePath=DEFAULT_CHANGE, fee, isSegwit, changeVersion='SEGWIT' } = data;
+    const { 
+      prevOuts, recipient, value, changePath=DEFAULT_CHANGE, 
+      fee, isSegwit=null, changeVersion='SEGWIT', spenderScriptType=null 
+    } = data;
     if (changePath.length !== 5) throw new Error('Please provide a full change path.')
     // Serialize the request
     const payload = Buffer.alloc(59 + (69 * prevOuts.length));
@@ -72,19 +79,27 @@ exports.buildBitcoinTxRequest = function(data) {
 
     // Fee is a param
     payload.writeUInt32LE(fee, off); off += 4;
-    const recipientVersionByte = bs58.decode(recipient)[0];
-    const recipientPubkeyhash = bs58check.decode(recipient).slice(1);
+    const dec = decodeAddress(recipient);
     // Parameterize the recipient output
-    payload.writeUInt8(recipientVersionByte, off); off++;
-    recipientPubkeyhash.copy(payload, off); off += recipientPubkeyhash.length;
+    payload.writeUInt8(dec.versionByte, off); off++;
+    dec.pkh.copy(payload, off); off += dec.pkh.length;
     writeUInt64LE(value, payload, off); off += 8;
 
     // Build the inputs from the previous outputs
     payload.writeUInt8(prevOuts.length, off); off++;
     let inputSum = 0;
-    const scriptType = isSegwit === true ? 
-                        scriptTypes.P2SH_P2WPKH :  // Only support p2sh(p2wpkh) for segwit spends for now
-                        scriptTypes.P2PKH; // No support for multisig p2sh in v1 (p2sh == segwit here)
+
+    let spenderScriptTypeToUse;
+    if (spenderScriptType !== null && scriptTypes[spenderScriptType]) {
+      // For newer versions we use the input scriptType
+      spenderScriptTypeToUse = scriptTypes[spenderScriptType];
+    } else if (isSegwit !== null) {
+      // For legacy callers we use the boolean `isSegwit` to denote if we are spending
+      // *wrapped* segwit inputs
+      spenderScriptTypeToUse = isSegwit === true ? scriptTypes.P2SH_P2WPKH : scriptTypes.P2PKH;
+    } else {
+      throw new Error('Unsupported spender script type or none provided.')
+    }
     prevOuts.forEach((input) => {
       if (!input.signerPath || input.signerPath.length !== 5) {
         throw new Error('Full recipient path not specified ')
@@ -96,13 +111,14 @@ exports.buildBitcoinTxRequest = function(data) {
       payload.writeUInt32LE(input.index, off); off += 4;
       writeUInt64LE(input.value, payload, off); off += 8;
       inputSum += input.value;
-      payload.writeUInt8(scriptType, off); off++;
+      payload.writeUInt8(spenderScriptTypeToUse, off); off++;
       if (!Buffer.isBuffer(input.txHash)) input.txHash = Buffer.from(input.txHash, 'hex');
       input.txHash.copy(payload, off); off += input.txHash.length;
     })
     // Send them back!
     return {
       payload,
+      spenderScriptType: spenderScriptTypeToUse,
       schema: constants.signingSchema.BTC_TRANSFER,
       origData: data,   // We will need the original data for serializing the tx
       changeData: {     // This data helps fill in the change output
@@ -124,13 +140,13 @@ exports.buildBitcoinTxRequest = function(data) {
 // -- network = Name of network, used to determine transaction version
 // -- lockTime = Will probably always be 0
 exports.serializeTx = function(data) {
-  const { inputs, outputs, isSegwitSpend, lockTime=0, crypto } = data;
+  const { inputs, outputs, spenderScriptType, lockTime=0, crypto } = data;
   let payload = Buffer.alloc(4);
   let off = 0;
   // Always use version 2
   const version = 2;
   payload.writeUInt32LE(version, off); off += 4;
-  if (isSegwitSpend === true) {
+  if (spenderScriptType === scriptTypes.P2SH_P2WPKH) {
     payload = concat(payload, Buffer.from('00', 'hex')); // marker = 0x00
     payload = concat(payload, Buffer.from('01', 'hex')); // flag = 0x01
   }
@@ -141,7 +157,7 @@ exports.serializeTx = function(data) {
     payload = concat(payload, input.hash.reverse()); off += input.hash.length;
     const index = getU32LE(input.index);
     payload = concat(payload, index); off += index.length;
-    if (isSegwitSpend === true) {
+    if (spenderScriptType === scriptTypes.P2SH_P2WPKH) {
       // Build a vector (varSlice of varSlice) containing the redeemScript
       const redeemScript = buildRedeemScript(input.pubkey, crypto);
       const redeemScriptLen = getVarInt(redeemScript.length);
@@ -171,7 +187,7 @@ exports.serializeTx = function(data) {
     payload = concat(payload, script); off += script.length;
   })
   // Add witness data if needed
-  if (isSegwitSpend === true) {
+  if (spenderScriptType === scriptTypes.P2SH_P2WPKH) {
     const sigs = [];
     const pubkeys = [];
     for (let i = 0; i < inputs.length; i++) {
@@ -197,7 +213,7 @@ function buildRedeemScript(pubkey, crypto) {
   const redeemScript = Buffer.alloc(22);
   const shaHash = crypto.createHash('sha256').update(pubkey).digest();
   const pubkeyhash = crypto.createHash('rmd160').update(shaHash).digest();
-  redeemScript.writeUInt8(OP['0']);
+  redeemScript.writeUInt8(OP.ZERO);
   redeemScript.writeUInt8(pubkeyhash.length, 1);
   pubkeyhash.copy(redeemScript, 2);
   return redeemScript;
@@ -232,14 +248,19 @@ function buildWitness(sigs, pubkeys) {
 // Locking script buiders
 //-----------------------
 function buildLockingScript(address) {
-  const versionByte = bs58.decode(address)[0];
-  const pubkeyhash = bs58check.decode(address).slice(1);
-  if (versionByte === addressVersion.SEGWIT || versionByte === addressVersion.SEGWIT_TESTNET) { 
-    // Also works for p2sh
-    return buildP2shLockingScript(pubkeyhash);
-  } else {
-    // We assume testnet uses p2pkh
-    return buildP2pkhLockingScript(pubkeyhash);
+  const dec = decodeAddress(address);
+  switch (dec.versionByte) {
+    case addressVersion.SEGWIT_NATIVE_V0:
+    case addressVersion.SEGWIT_NATIVE_V0_TESTNET:
+      return buildP2wpkhLockingScript(dec.pkh);
+    case addressVersion.SEGWIT:
+    case addressVersion.SEGWIT_TESTNET:
+      return buildP2shLockingScript(dec.pkh);
+    case addressVersion.LEGACY:
+    case addressVersion.TESTNET:
+      return buildP2pkhLockingScript(dec.pkh);
+    default:
+      throw new Error(`Unknown version byte: ${dec.versionByte}. Cannot build BTC transaction.`);
   }
 }
 
@@ -263,6 +284,14 @@ function buildP2shLockingScript(pubkeyhash) {
   pubkeyhash.copy(out, off); off += pubkeyhash.length;
   out.writeUInt8(OP.EQUAL, off); off++;
   return out;
+}
+
+function buildP2wpkhLockingScript(pubkeyhash) {
+  const out = Buffer.alloc(2 + pubkeyhash.length);
+  out.writeUInt8(OP.ZERO, 0);
+  out.writeUInt8(pubkeyhash.length, 1);
+  pubkeyhash.copy(out, 2);
+  return out;  
 }
 
 // Static Utils
@@ -313,4 +342,28 @@ function writeUInt64LE(n, buf, off) {
   nBuf.reverse().copy(preBuf, 0);
   preBuf.copy(buf, off);
   return preBuf;
+}
+
+function decodeAddress(address) {
+let versionByte, pkh;
+  try {
+    versionByte = bs58check.decode(address)[0];
+    pkh = bs58check.decode(address).slice(1);
+  } catch (err) {
+    try {
+      const bech32Dec = bech32.decode(address);
+      if (bech32Dec.prefix === 'bc')
+        versionByte = 0xD0;
+      else if (bech32Dec.prefix === 'tb')
+        versionByte = 0xF0;
+      else
+        throw new Error('Unsupported prefix: must be bc or tb.');
+      if (bech32Dec.words[0] !== 0)
+        throw new Error(`Unsupported segwit version: must be 0, got ${bech32Dec.words[0]}`);
+      pkh = Buffer.from(bech32.fromWords(bech32Dec.words.slice(1)));
+    } catch (err) {
+      throw new Error(`Unable to decode address: ${address}: ${err.message}`)
+    }
+  }
+  return {versionByte, pkh};
 }
