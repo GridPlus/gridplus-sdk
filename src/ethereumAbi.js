@@ -3,6 +3,7 @@ const keccak256 = require('js-sha3').keccak256;
 const { ETH_ABI_LATTICE_FW_TYPE_MAP } = require('./constants');
 const NAME_MAX_SZ = 100;
 const HEADER_SZ = 5 + NAME_MAX_SZ; // 4 byte sig + name + 1 byte param count
+const CATEGORY_SZ = 32;
 const PARAM_SZ = 26; // 20 byte name + 6 byte def
 const MAX_PARAMS = 18;
 const MAX_ABI_DEFS = 2;
@@ -14,28 +15,35 @@ exports.buildAddAbiPayload = function(defs) {
     throw new Error('Missing definitions.');
   if (defs.length > exports.MAX_ABI_DEFS)
     throw new Error(`You may only add ${MAX_ABI_DEFS} ABI definitions per request.`);
-  const b = Buffer.alloc(1 + (MAX_ABI_DEFS * (HEADER_SZ + (PARAM_SZ * MAX_PARAMS))));
+  const b = Buffer.alloc(1 + (MAX_ABI_DEFS * (HEADER_SZ + CATEGORY_SZ + (PARAM_SZ * MAX_PARAMS))));
   let off = 0;
   b.writeUInt8(defs.length, off); off++;
   defs.forEach((def) => {
     if (!def.sig || !def.name || !def.params)
       throw new Error('name, sig, and params must be present for every ABI definition.')
-    // Header data
+    // -- Header data --
     const sig = Buffer.from(def.sig, 'hex');
     if (sig.length !== 4)
       throw new Error('Function signatures must always be four bytes.');
     sig.copy(b, off); off += sig.length;
     const name = Buffer.from(def.name);
     if (name.length > NAME_MAX_SZ - 1) // The -1 accounts for the null terminator
-      throw new Error(`Only function names shorter than ${NAME_MAX_SZ} characters are supported.`);
+      throw new Error(`Only function names shorter than ${NAME_MAX_SZ-1} characters are supported.`);
     Buffer.from(def.name).slice(0, NAME_MAX_SZ).copy(b, off); off += NAME_MAX_SZ;
     // Number of parameters
     const numParams = Array.isArray(def.params) ? def.params.length : 0;
     b.writeUInt8(numParams, off); off++;
-    // Don't overflow the buffer
+    // -- (optional) Category name --
+    if (def.category && typeof def.category === 'string') {
+      const category = Buffer.from(def.category);
+      if (category.length > CATEGORY_SZ - 1) // -1 accounts for null terminator
+        throw new Error(`Category name must be shorter than ${CATEGORY_SZ - 1}. Got ${category.length}`);
+      category.copy(b, off);
+    }
+    off += CATEGORY_SZ;
+    // -- Param data --
     if (numParams > MAX_PARAMS)
       throw new Error('Currently only ABI defintions with <=10 parameters are supported.');
-    // Copy the params if needed
     if (numParams > 0) {
       // First copy param names (first 20 bytes)
       def.params.forEach((param) => {

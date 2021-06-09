@@ -16,7 +16,6 @@
 //        root CMakeLists.txt file (for dev units)
 require('it-each')({ testPerIteration: true });
 const BN = require('bignumber.js');
-const randomWords = require('random-words');
 const crypto = require('crypto');
 const EthTx = require('ethereumjs-tx').Transaction;
 const constants = require('./../src/constants')

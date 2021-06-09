@@ -282,13 +282,10 @@ describe('Connect and Pair', () => {
     req.data.data = client.crypto.randomBytes(maxDataSz).toString('hex');
     tx = await(helpers.sign(client, req));
     expect(tx.tx).to.not.equal(null);
+    question('Please ACCEPT the following transaction only if the warning screen displays. Press enter to continue.')
     req.data.data = client.crypto.randomBytes(maxDataSz+1).toString('hex');
-    try {
-      tx = await(helpers.sign(client, req));
-      expect(tx.tx).to.equal(null);
-    } catch (err) {
-      expect(err).to.not.equal(null);
-    }
+    tx = await(helpers.sign(client, req));
+    expect(tx.tx).to.not.equal(null);
     req.data.data = client.crypto.randomBytes(fwConstants.ethMaxDataSz).toString('hex');
     tx = await(helpers.sign(client, req));
     expect(tx.tx).to.not.equal(null);
@@ -310,7 +307,8 @@ describe('Connect and Pair', () => {
       recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
       value: 1000,
       fee: 1000,
-      isSegwit: false,
+      // isSegwit: false, // old encoding
+      spenderScriptType: 'P2PKH',
       changePath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
       changeVersion: 'TESTNET',  // Default 'LEGACY'
       network: 'TESTNET',        // Default 'MAINNET'
@@ -326,7 +324,7 @@ describe('Connect and Pair', () => {
     expect(sigResp.txHash).to.not.equal(null);
   });
 
-  it('Should sign segwit Bitcoin inputs', async () => {  
+  it('Should sign wrapped segwit Bitcoin inputs', async () => {  
     const txData = {
       prevOuts: [
         { 
@@ -339,7 +337,37 @@ describe('Connect and Pair', () => {
       recipient: '2NGZrVvZG92qGYqzTLjCAewvPZ7JE8S8VxE',
       value: 1000,
       fee: 1000,
-      isSegwit: true,
+      // isSegwit: true, // old encoding
+      spenderScriptType: 'P2SH_P2WPKH',
+      changePath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
+      changeVersion: 'SEGWIT_TESTNET',  // Default 'LEGACY'
+      network: 'TESTNET',        // Default 'MAINNET'
+    };
+    const req = {
+      currency: 'BTC',
+      data: txData,
+    };
+    // Sign a legit tx
+    const sigResp = await helpers.sign(client, req);
+    expect(sigResp.tx).to.not.equal(null);
+    expect(sigResp.txHash).to.not.equal(null);
+  });
+
+  it('Should sign wrapped segwit Bitcoin inputs to a bech32 address', async () => {
+    const txData = {
+      prevOuts: [
+        { 
+          txHash: 'f93d0a77f58b4274d84f427d647f1f27e38b4db79fd975691e15109fde7ea06e',
+          value: 1802440,
+          index: 1,
+          signerPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
+        },
+      ],
+      recipient: 'tb1qym0z2a939lefrgw67ep5flhf43dvpg3h4s96tn',
+      value: 1000,
+      fee: 1000,
+      // isSegwit: true, // old encoding
+      spenderScriptType: 'P2SH_P2WPKH',
       changePath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
       changeVersion: 'SEGWIT_TESTNET',  // Default 'LEGACY'
       network: 'TESTNET',        // Default 'MAINNET'
