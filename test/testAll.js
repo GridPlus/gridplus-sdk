@@ -378,7 +378,6 @@ describe('Connect and Pair', () => {
     };
     // Sign a legit tx
     const sigResp = await helpers.sign(client, req);
-    console.log(sigResp)
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });

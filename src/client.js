@@ -506,7 +506,6 @@ class Client {
       return cb(null, parsed.data, parsed.responseCode); 
     })
     .catch((err) => {
-      console.log('request err', err)
       const isTimeout = err.code === 'ECONNABORTED' && err.errno === 'ETIME';
       if (isTimeout)
         return cb('Timeout waiting for device. Please ensure it is connected to the internet and try again in a minute.')
