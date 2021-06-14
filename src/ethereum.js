@@ -431,9 +431,10 @@ function isBase10NumStr(x) {
 function ensureHexBuffer(x) {
   try {
     // For null values, return a 0-sized buffer
-    if (x === null || x === 0) return Buffer.alloc(0);
+    if (x === null) return Buffer.alloc(0);
+    const isNumber = typeof x === 'number' || isBase10NumStr(x);
     // Otherwise try to get this converted to a hex string
-    if (typeof x === 'number' || isBase10NumStr(x)) {
+    if (isNumber) {
       // If this is a number or a base-10 number string, convert it to hex
       x = `${new BN(x).toString(16)}`;
     } else if (typeof x === 'string' && x.slice(0, 2) === '0x') {
@@ -442,7 +443,7 @@ function ensureHexBuffer(x) {
       x = x.toString('hex')
     }
     if (x.length % 2 > 0) x = `0${x}`;
-    if (x === '00')
+    if (x === '00' && !isNumber)
       return Buffer.alloc(0);
     return Buffer.from(x, 'hex');
   } catch (err) {
@@ -625,8 +626,6 @@ function parseEIP712Item(data, type, isEthers=false) {
   if (type === 'bytes') {
     // Variable sized bytes need to be buffer type
     data = ensureHexBuffer(data);
-    if (data.length === 0)
-      throw new Error('"bytes" type must contain at least one byte in value');
   } else if (type.slice(0, 5) === 'bytes') {
     // Fixed sizes bytes need to be buffer type. We also add some sanity checks.
     const nBytes = parseInt(type.slice(5));
