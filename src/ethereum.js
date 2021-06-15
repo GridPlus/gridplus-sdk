@@ -428,10 +428,13 @@ function isBase10NumStr(x) {
 
 // Ensure a param is represented by a buffer
 // TODO: Remove circular dependency in util.js so that we can put this function there
-function ensureHexBuffer(x) {
+function ensureHexBuffer(x, zeroIsNull=true) {
   try {
-    // For null values, return a 0-sized buffer
-    if (x === null) return Buffer.alloc(0);
+    // For null values, return a 0-sized buffer. For most situations we assume
+    // 0 should be represented with a zero-length buffer (e.g. for RLP-building
+    // txs), but it can also be treated as a 1-byte buffer (`00`) if needed
+    if (x === null || (x === 0 && zeroIsNull === true)) 
+      return Buffer.alloc(0);
     const isNumber = typeof x === 'number' || isBase10NumStr(x);
     // Otherwise try to get this converted to a hex string
     if (isNumber) {
@@ -646,7 +649,8 @@ function parseEIP712Item(data, type, isEthers=false) {
       data = `0x${data.toString('hex')}`
     }
   } else if (type === 'uint8' || type === 'uint16' || type === 'uint32' || type === 'uint64') {
-    data = parseInt(ensureHexBuffer(data).toString('hex'), 16)
+    // In this case we want the hex buffer to represent `0` as a 1-byte buffer (`00`)
+    data = parseInt(ensureHexBuffer(data, false).toString('hex'), 16)
   } else if (type === 'uint256') {
     let b = ensureHexBuffer(data);
     // Edge case to handle 0-value bignums
