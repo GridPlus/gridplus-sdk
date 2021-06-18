@@ -47,7 +47,7 @@ exports.buildAddAbiPayload = function(defs) {
     if (numParams > 0) {
       // First copy param names (first 20 bytes)
       def.params.forEach((param) => {
-        if (!param.name || !param.latticeTypeIdx || param.isArray === undefined || param.arraySz === undefined)
+        if (param.name === undefined || param.latticeTypeIdx === undefined || param.isArray === undefined || param.arraySz === undefined)
           throw new Error('name, latticeTypeIdx, isArray, and arraySz must be defined for all ABI params.');
         Buffer.from(param.name).slice(0, 20).copy(b, off); off += 20;
       })
@@ -133,32 +133,37 @@ function parseEtherscanAbiInputs(inputs, data=[], isNestedTuple=false) {
     const d = { isArray: false, arraySz: 0, name: input.name, };
     const openBracketIdx = typeName.indexOf('[');
     const closeBracketIdx = typeName.indexOf(']');
-    if (openBracketIdx > -1 && closeBracketIdx > -1) {
-      if (openBracketIdx >= closeBracketIdx) {
-        ; // not a valid param -- skip it
-      } else if ((openBracketIdx + 1) === closeBracketIdx) {
-        d.isArray = true;
-      } else {
-        // Parse the array size if applicable
-        const number = parseInt(typeName.slice(openBracketIdx, closeBracketIdx))
-        if (isNaN(number)) {
-          return d;
+    const isMultiDim = typeName.split('[').length > 2;
+    if (isMultiDim) {
+      throw new Error('Skipping function with unsupported multidimensional array type')
+    } else {
+      if (openBracketIdx > -1 && closeBracketIdx > -1) {
+        if (openBracketIdx >= closeBracketIdx) {
+          ; // not a valid param -- skip it
+        } else if ((openBracketIdx + 1) === closeBracketIdx) {
+          d.isArray = true;
+        } else {
+          // Parse the array size if applicable
+          const number = parseInt(typeName.slice(openBracketIdx, closeBracketIdx))
+          if (isNaN(number)) {
+            return d;
+          }
+          d.isArray = true;
+          d.arraySz = number;
         }
-        d.isArray = true;
-        d.arraySz = number;
       }
+      let singularTypeName = openBracketIdx > -1 ? typeName.slice(0, openBracketIdx) : typeName;
+      if (singularTypeName === 'tuple') {
+        if (isNestedTuple === true)
+          throw new Error('Nested tuples are not supported')
+        singularTypeName = `tuple${input.components.length}`;
+        tupleParams = parseEtherscanAbiInputs(input.components, tupleParams, true);
+      }
+      d.latticeTypeIdx = getTypeIdxLatticeFw(singularTypeName)
+      if (!d.latticeTypeIdx)
+        throw new Error(`Unsupported type: ${typeName}`)
+      data.push(d)
     }
-    let singularTypeName = openBracketIdx > -1 ? typeName.slice(0, openBracketIdx) : typeName;
-    if (singularTypeName === 'tuple') {
-      if (isNestedTuple === true)
-        throw new Error('Nested tuples are not supported')
-      singularTypeName = `tuple${input.components.length}`;
-      tupleParams = parseEtherscanAbiInputs(input.components, tupleParams, true);
-    }
-    d.latticeTypeIdx = getTypeIdxLatticeFw(singularTypeName)
-    if (!d.latticeTypeIdx)
-      throw new Error(`Unsupported type: ${typeName}`)
-    data.push(d)
   })
   const params = data.concat(tupleParams)
   if (params.length > 18)
