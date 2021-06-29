@@ -193,6 +193,8 @@ function buildEthData(def) {
 function getCanonicalType(type) {
   if (type === 'uint' || type.indexOf('uint[') > -1)
     return type.replace('uint', 'uint256');
+  else if (type === 'int' || type.indexOf('int[') > -1)
+    return type.replace('int', 'int256')
   return type
 }
 
@@ -338,6 +340,7 @@ function createBoundaryDefs() {
       '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
     ]
   };
+
   def._typeNames = getTypeNames(def.params);
   def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
@@ -365,6 +368,99 @@ function createBoundaryDefs() {
   def._typeNames = getTypeNames(def.params);
   def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
+
+  // Int - check around 0
+  def = {
+    name: 'IntBoundaryVals',
+    sig: null,
+    params: [
+      makeUintParam('int8', '-1'),
+      makeUintParam('int8', '0'),
+      makeUintParam('int8', '1'),
+    ],
+    _vals: [
+      -1,
+      0,
+      1,
+    ]
+  };
+
+  def._typeNames = getTypeNames(def.params);
+  def.sig = buildFuncSelector(def);
+  boundaryAbiDefs.push(def);
+  // Max int
+  def = {
+    name: 'IntMaxVals',
+    sig: null,
+    params: [
+      makeUintParam('int8', '127'), 
+      makeUintParam('int16', '32767'),
+      makeUintParam('int32', '2147483647'),
+      makeUintParam('int64', '9223372036854775807'),
+      makeUintParam('int128', '170141183460469231731687303715884105727'),
+      makeUintParam('int256', '57896044618658097711785492504343953926634992332820282019728792003956564819967')
+    ],
+    _vals: [
+      '0x7f',
+      '0x7fff',
+      '0x7fffffff',
+      '0x7fffffffffffffff',
+      '0x7fffffffffffffffffffffffffffffff',
+      '0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+    ]
+  };
+  def._typeNames = getTypeNames(def.params);
+  def.sig = buildFuncSelector(def);
+  boundaryAbiDefs.push(def);
+
+  def = {
+    name: 'IntMinVals',
+    sig: null,
+    params: [
+      makeUintParam('int8', '-127'), 
+      makeUintParam('int16', '-32767'),
+      makeUintParam('int32', '-2147483647'),
+      makeUintParam('int64', '-9223372036854775807'),
+      makeUintParam('int128', '-170141183460469231731687303715884105727'),
+      makeUintParam('int256', '-57896044618658097711785492504343953926634992332820282019728792003956564819967')
+    ],
+    _vals: [
+      -127,
+      -32767,
+      -2147483647,
+      '-0x7fffffffffffffff',
+      '-0x7fffffffffffffffffffffffffffffff',
+      '-0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+    ]
+  };
+  def._typeNames = getTypeNames(def.params);
+  def.sig = buildFuncSelector(def);
+  boundaryAbiDefs.push(def);
+
+  def = {
+    name: 'IntZeros',
+    sig: null,
+    params: [
+      makeUintParam('int8', '0'), 
+      makeUintParam('int16', '0'),
+      makeUintParam('int32', '0'),
+      makeUintParam('int64', '0'),
+      makeUintParam('int128', '0'),
+      makeUintParam('int256', '0')
+    ],
+    _vals: [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+    ]
+  };
+  def._typeNames = getTypeNames(def.params);
+  def.sig = buildFuncSelector(def);
+  boundaryAbiDefs.push(def);
+
   // Powers of 10
   def = {
     name: 'PowersOfTen',
@@ -389,7 +485,7 @@ function createBoundaryDefs() {
   def._typeNames = getTypeNames(def.params);
   def.sig = buildFuncSelector(def);
   boundaryAbiDefs.push(def);
-
+  
   function makeParamSet(type) {
     return [
       { name: `${type}_0`, type: type, isArray: false, arraySz: 0, latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP[type] },
@@ -587,6 +683,7 @@ describe('Add ABI definitions', () => {
     const newDefs = abi.abiParsers.etherscan([funcDef])
     defsToLoad = defsToLoad.concat(newDefs);
   })
+
   it('Should add the ABI definitions', async () => {
     try {
       await helpers.addAbi(client, boundaryAbiDefs.concat(defsToLoad));
@@ -609,7 +706,7 @@ describe('Test ABI Markdown', () => {
   })
 
   it('Should pass when variable arraySz is 0', async () => {
-    const bytesDef = _.cloneDeep(boundaryAbiDefs[5])
+    const bytesDef = _.cloneDeep(boundaryAbiDefs[9])
     bytesDef._vals[2] = [];
     req.data.data = buildEthData(bytesDef);
     try {
@@ -620,7 +717,7 @@ describe('Test ABI Markdown', () => {
   })
 
   it('Failure checks: it should fail to decode when dynamic param has size 0', async () => {
-    const bytesDef = _.cloneDeep(boundaryAbiDefs[5])
+    const bytesDef = _.cloneDeep(boundaryAbiDefs[9])
     bytesDef._vals[2] = [Buffer.from('')];
 
     req.data.data = buildEthData(bytesDef);
