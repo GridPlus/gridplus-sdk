@@ -188,6 +188,15 @@ if (!process.env.skip) {
       }
     })
 
+    it('Should test that chainId=137 shows "MATIC" and chainId=56 shows "BNB" units', async () => {
+      const txData = JSON.parse(JSON.stringify(defaultTxData));
+      const chain = getFakeChain();
+      chain.chainId = 137;
+      await testTxPass(buildTxReq(txData, chain.chainId), chain);
+      chain.chainId = 56;
+      await testTxPass(buildTxReq(txData, chain.chainId), chain);
+    })
+
     it('Should test range of chainId sizes and EIP155 tag', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
       // Add some random data for good measure, since this will interact with the data buffer
