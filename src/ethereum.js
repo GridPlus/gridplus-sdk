@@ -39,18 +39,16 @@ exports.buildEthereumMsgRequest = function(input) {
 
 exports.validateEthereumMsgResponse = function(res, req) {
   const { signer, sig } = res;
-  const { input, msg } = req;
+  const { input, msg, prehash=null } = req;
   if (input.protocol === 'signPersonal') {
-    const prefix = Buffer.from(
-      `\u0019Ethereum Signed Message:\n${msg.length.toString()}`,
-      'utf-8',
-    );
     // NOTE: We are currently hardcoding networkID=1 and useEIP155=false but these
     //       may be configurable in future versions
-    const hash = Buffer.from(keccak256(Buffer.concat([prefix, msg])), 'hex')
+    const hash =  prehash ? 
+                  prehash : 
+                  Buffer.from(keccak256(Buffer.concat([get_personal_sign_prefix(msg.length), msg])), 'hex');
     return addRecoveryParam(hash, sig, signer, 1, false)
   } else if (input.protocol === 'eip712') {
-    const digest = eip712.TypedDataUtils.encodeDigest(req.input.payload)
+    const digest = prehash ? prehash : eip712.TypedDataUtils.encodeDigest(req.input.payload);
     return addRecoveryParam(digest, sig, signer)
   } else {
     throw new Error('Unsupported protocol');
@@ -493,14 +491,26 @@ function buildPersonalSignRequest(req, input) {
       throw new Error('Unsupported input data type');
     displayHex = false === isASCIIStr(input.payload.toString())
   }
-  // Flow data into extraData requests, which will follow-up transaction requests, if supported/applicable    
-  const extraDataPayloads = getExtraData(payload, input);
-  // Write the payload and metadata into our buffer
-  req.extraDataPayloads = extraDataPayloads
-  req.msg = payload;
-  req.payload.writeUInt8(displayHex, off); off += 1;
-  req.payload.writeUInt16LE(payload.length, off); off += 2;
-  payload.copy(req.payload, off);
+  const fwConst = input.fwConstants;
+  const maxSzAllowed = MAX_BASE_MSG_SZ + (fwConst.extraDataMaxFrames * fwConst.extraDataFrameSz);
+  if (fwConst.ethMsgPreHashAllowed && payload.length > maxSzAllowed) {
+    // If this message will not fit and pre-hashing is allowed, do that
+    req.payload.writeUInt8(displayHex, off); off += 1;
+    req.payload.writeUInt16LE(payload.length, off); off += 2;
+    const prehash = Buffer.from(keccak256(Buffer.concat([get_personal_sign_prefix(payload.length), payload])), 'hex');
+    prehash.copy(req.payload, off);
+    req.prehash = prehash;
+  } else {
+    // Otherwise we can fit the payload.
+    // Flow data into extraData requests, which will follow-up transaction requests, if supported/applicable    
+    const extraDataPayloads = getExtraData(payload, input);
+    // Write the payload and metadata into our buffer
+    req.extraDataPayloads = extraDataPayloads
+    req.msg = payload;
+    req.payload.writeUInt8(displayHex, off); off += 1;
+    req.payload.writeUInt16LE(payload.length, off); off += 2;
+    payload.copy(req.payload, off);
+  }
   return req;
 }
 
@@ -544,12 +554,22 @@ function buildEIP712Request(req, input) {
     data.message = parseEIP712Msg(data.message, data.primaryType, data.types, false);
     // Now build the message to be sent to the Lattice
     const payload = Buffer.from(cbor.encode(data));
-    const extraDataPayloads = getExtraData(payload, input);
-    req.extraDataPayloads = extraDataPayloads;
-    req.payload.writeUInt16LE(payload.length, off); off += 2;
-    payload.copy(req.payload, off); off += payload.length;
-    // Slice out the part of the buffer that we didn't use.
-    req.payload = req.payload.slice(0, off);
+    const fwConst = input.fwConstants;
+    const maxSzAllowed = MAX_BASE_MSG_SZ + (fwConst.extraDataMaxFrames * fwConst.extraDataFrameSz);
+    if (fwConst.ethMsgPreHashAllowed && payload.length > maxSzAllowed) {
+      // If this payload is too large to send, but the Lattice allows a prehashed message, do that
+      req.payload.writeUInt16LE(payload.length, off); off += 2;
+      const prehash = Buffer.from(keccak256(eip712.TypedDataUtils.encodeDigest(req.input.payload), 'hex'), 'hex');
+      prehash.copy(req.payload, off);
+      req.prehash = prehash;
+    } else {
+      const extraDataPayloads = getExtraData(payload, input);
+      req.extraDataPayloads = extraDataPayloads;
+      req.payload.writeUInt16LE(payload.length, off); off += 2;
+      payload.copy(req.payload, off); off += payload.length;
+      // Slice out the part of the buffer that we didn't use.
+      req.payload = req.payload.slice(0, off);
+    }
     return req;
   } catch (err) {
     return { err: `Failed to build EIP712 request: ${err.message}` };
@@ -678,4 +698,11 @@ function parseEIP712Item(data, type, isEthers=false) {
   }
   // Other types don't need to be modified
   return data;
+}
+
+function get_personal_sign_prefix(L) {
+  return Buffer.from(
+    `\u0019Ethereum Signed Message:\n${L.toString()}`,
+    'utf-8',
+  );
 }

@@ -316,6 +316,11 @@ function getFwVersionConst(v) {
     }
     // Very old legacy versions do not give a version number
     const legacy = (v.length === 0);
+    // V0.10.10 allows a user to sign a prehashed ETH message if payload too big
+    if (!legacy && gte(v, [0, 10, 10])) {
+        c.ethMsgPreHashAllowed = true;
+    }
+
     // V0.10.8 allows a user to sign a prehashed transaction if the payload
     // is too big
     if (!legacy && gte(v, [0, 10, 8])) {
