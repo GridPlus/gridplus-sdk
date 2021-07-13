@@ -135,15 +135,17 @@ describe('Test ETH personalSign', function() {
     await testMsg(buildMsgReq(Buffer.from('abcdef', 'hex'), 'signPersonal'), true);
   })
 
+  it('Should test a message that needs to be prehashed', async () => {
+    await testMsg(buildMsgReq(crypto.randomBytes(4000), 'signPersonal'), true);
+  })
+
   it('Msg: sign_personal boundary conditions', async () => {
     const protocol = 'signPersonal';
     const fwConstants = constants.getFwVersionConst(client.fwVersion);
     const maxMsgSz = fwConstants.ethMaxMsgSz + (fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz);
     const maxValid = `0x${crypto.randomBytes(maxMsgSz).toString('hex')}`;
-    const minInvalid = `0x${crypto.randomBytes(maxMsgSz + 1).toString('hex')}`;
     const zeroInvalid = '0x';
     await testMsg(buildMsgReq(maxValid, protocol), true);
-    await testMsg(buildMsgReq(minInvalid, protocol), false);
     await testMsg(buildMsgReq(zeroInvalid, protocol), false);
   })
 
@@ -206,6 +208,45 @@ describe('Test ETH EIP712', function() {
       await helpers.sign(client, req);
     } catch (err) {
       expect(err).to.not.equal(null)
+    }
+  })
+
+  it('Should test a message that needs to be prehashed', async () => {
+    const msg = {
+      'types': {
+        'EIP712Domain': [
+          { 'name':'name', 'type':'string'},
+          {'name':'version', 'type':'string'},
+          {'name':'chainId', 'type':'uint256'}
+        ],
+        'dYdX':[
+          {'type':'string','name':'action'},
+          {'type':'string','name':'onlySignOn'}
+        ]
+      },
+      'domain':{
+        'name':'dYdX',
+        'version':'1.0',
+        'chainId':'1'
+      },
+      'primaryType': 'dYdX',
+      'message': {
+        'action': 'dYdX STARK Key',
+        'onlySignOn': crypto.randomBytes(4000).toString('hex'),
+      }
+    }
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.sign(client, req);
+    } catch (err) {
+      expect(err).to.equal(null)
     }
   })
 
