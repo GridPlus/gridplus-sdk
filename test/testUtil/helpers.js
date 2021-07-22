@@ -661,23 +661,20 @@ exports.buildRandomEip712Object = function(randInt) {
     }
   }
   function getRandomEIP712Val(type) {
-    if (type !== 'bytes' && type.slice(0, 5) === 'bytes')
+    if (type !== 'bytes' && type.slice(0, 5) === 'bytes') {
       return `0x${crypto.randomBytes(parseInt(type.slice(5))).toString('hex')}`
+    } else if (type === 'uint' || type === 'int') {
+      return `0x${crypto.randomBytes(32).toString('hex')}`
+    } else if (type.indexOf('uint') > -1) {
+      return `0x${crypto.randomBytes(parseInt(type.slice(4)))}`;
+    } else if (type.indexOf('int') > -1) {
+      return `0x${crypto.randomBytes(parseInt(type.slice(3)))}`;
+    }
     switch (type) {
       case 'bytes':
         return `0x${crypto.randomBytes(1+randInt(50)).toString('hex')}`;
       case 'string':
         return randStr(100);
-      case 'uint8':
-        return `0x${crypto.randomBytes(1).toString('hex')}`
-      case 'uint16':
-        return `0x${crypto.randomBytes(2).toString('hex')}`
-      case 'uint32':
-        return `0x${crypto.randomBytes(3).toString('hex')}`
-      case 'uint64':
-        return `0x${crypto.randomBytes(4).toString('hex')}`
-      case 'uint256':
-        return `0x${crypto.randomBytes(32).toString('hex')}`
       case 'bool':
         return randInt(1) > 0 ? true : false;
       case 'address':
