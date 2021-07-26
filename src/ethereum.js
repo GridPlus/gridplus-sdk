@@ -668,10 +668,8 @@ function parseEIP712Item(data, type, isEthers=false) {
     if (isEthers === true) {
       data = `0x${data.toString('hex')}`
     }
-  } else if (type === 'uint8' || type === 'uint16' || type === 'uint32' || type === 'uint64') {
-    // In this case we want the hex buffer to represent `0` as a 1-byte buffer (`00`)
-    data = parseInt(ensureHexBuffer(data, false).toString('hex'), 16)
-  } else if (type === 'uint256') {
+  } else if ( (constants.ethMsgProtocol.TYPED_DATA.typeCodes[type]) && 
+              (type.indexOf('uint') > -1 || type.indexOf('int') > -1)) {
     let b = ensureHexBuffer(data);
     // Edge case to handle 0-value bignums
     if (b.length === 0) {

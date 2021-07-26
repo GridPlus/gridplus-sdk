@@ -289,6 +289,57 @@ describe('Test ETH EIP712', function() {
     }
   })
 
+  it('Should test a Loopring message with non-standard numerical type', async () => {
+    const msg = {
+      'types':{
+        'EIP712Domain':[
+          {'name':'name','type':'string'},
+          {'name':'version','type':'string'},
+          {'name':'chainId','type':'uint256'},
+          {'name':'verifyingContract','type':'address'}
+        ],
+        'AccountUpdate':[
+          {'name':'owner','type':'address'},
+          {'name':'accountID','type':'uint32'},
+          {'name':'feeTokenID','type':'uint16'},
+          {'name':'maxFee','type':'uint96'},
+          {'name':'publicKey','type':'uint256'},
+          {'name':'validUntil','type':'uint32'},
+          {'name':'nonce','type':'uint32'}
+        ]
+      },
+      'primaryType':'AccountUpdate',
+      'domain':{
+        'name':'Loopring Protocol',
+        'version':'3.6.0',
+        'chainId':1,
+        'verifyingContract':'0x0BABA1Ad5bE3a5C0a66E7ac838a129Bf948f1eA4'
+      },
+      'message':{
+        'owner':'0x8c3b776bdac9a7a4facc3cc20cdb40832bff9005',
+        'accountID':32494,
+        'feeTokenID':0,
+        'maxFee':100,
+        'publicKey':'11413934541425201845815969801249874136651857829494005371571206042985258823663',
+        'validUntil':1631655383,
+        'nonce':0
+      }
+    }
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.sign(client, req);
+    } catch (err) {
+      expect(err).to.equal(null)
+    }
+  })
+
   it('Should test an example with 0 values', async () => {
     const msg = {
       'types': {
