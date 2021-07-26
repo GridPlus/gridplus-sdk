@@ -56,7 +56,7 @@ describe('Connect and Pair', () => {
       expect(client.hasActiveWallet()).to.equal(true);
     }
   });
-
+/*
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr === false) {
@@ -164,7 +164,7 @@ describe('Connect and Pair', () => {
       }
     }
   });
-
+*/
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
     const fwConstants = constants.getFwVersionConst(client.fwVersion)
@@ -173,11 +173,15 @@ describe('Connect and Pair', () => {
     const GAS_LIMIT_MAX = 12500000;
     
     const txData = {
+      type: 'eip1559',
+      maxPriorityFeePerGas: 8,
+      maxFeePerGas: 9,
       nonce: '0x02',
       gasPrice: '0x1fe5d61a00',
       gasLimit: '0x034e97',
       to: '0x1af768c0a217804cfe1a0fb739230b546a566cd6',
-      value: '0x01cba1761f7ab9870c',
+      // value: '0x01cba1761f7ab9870c',
+      value: 3,
       data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8'
     };
     const req = {
@@ -191,7 +195,7 @@ describe('Connect and Pair', () => {
     // Sign a tx that does not use EIP155 (no EIP155 on rinkeby for some reason)
     let tx = await helpers.sign(client, req);
     expect(tx.tx).to.not.equal(null);
-
+/*
     // Sign a tx with EIP155
     req.data.chainId = 'mainnet';
     tx = await helpers.sign(client, req);
@@ -292,8 +296,9 @@ describe('Connect and Pair', () => {
     req.data.data = client.crypto.randomBytes(maxDataSz).toString('hex');
     tx = await(helpers.sign(client, req));
     expect(tx.tx).to.not.equal(null);
+*/  
   });
-
+/*
   it('Should sign legacy Bitcoin inputs', async () => {  
     const txData = {
       prevOuts: [
@@ -453,5 +458,5 @@ describe('Connect and Pair', () => {
     expect(signResp.tx).to.not.equal(null);
 
   })
-
+*/
 });

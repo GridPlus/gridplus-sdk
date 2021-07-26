@@ -46,7 +46,7 @@ exports.validateEthereumMsgResponse = function(res, req) {
     const hash =  prehash ? 
                   prehash : 
                   Buffer.from(keccak256(Buffer.concat([get_personal_sign_prefix(msg.length), msg])), 'hex');
-    return addRecoveryParam(hash, sig, signer, 1, false)
+    return addRecoveryParam(hash, sig, signer, { chainId: 1, useEIP155: false })
   } else if (input.protocol === 'eip712') {
     const digest = prehash ? prehash : eip712.TypedDataUtils.encodeDigest(req.input.payload);
     return addRecoveryParam(digest, sig, signer)
@@ -58,10 +58,10 @@ exports.validateEthereumMsgResponse = function(res, req) {
 exports.buildEthereumTxRequest = function(data) {
   try {
     let { chainId=1 } = data;
-    const { signerPath, eip155=null, fwConstants } = data;
+    const { signerPath, eip155=null, fwConstants, type=null } = data;
     const { extraDataFrameSz, extraDataMaxFrames, prehashAllowed } = fwConstants;
     const EXTRA_DATA_ALLOWED = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
-    const MAX_BASE_DATA_SZ = fwConstants.ethMaxDataSz;
+    let MAX_BASE_DATA_SZ = fwConstants.ethMaxDataSz;
     const VAR_PATH_SZ = fwConstants.varAddrPathSzAllowed;
 
     // Sanity checks:
@@ -75,7 +75,16 @@ exports.buildEthereumTxRequest = function(data) {
     // Sanity check on signePath
     if (!signerPath) 
       throw new Error('`signerPath` not provided');
-
+    
+    // We support eip1559 and eip2930 types (as well as legacy)
+    const eip1559IsAllowed = (fwConstants.allowedEthTxTypes && 
+                              fwConstants.allowedEthTxTypes.indexOf(2) > -1);
+    const eip2930IsAllowed = (fwConstants.allowedEthTxTypes && 
+                              fwConstants.allowedEthTxTypes.indexOf(1) > -1);
+    const isEip1559 = (eip1559IsAllowed && (type === 2 || type === 'eip1559'));
+    const isEip2930 = (eip2930IsAllowed && (type === 1 || type === 'eip2930'));
+    if (type !== null && !isEip1559 && !isEip2930)
+      throw new Error('Unsupported Ethereum transaction type');
     // Determine if we should use EIP155 given the chainID.
     // If we are explicitly told to use eip155, we will use it. Otherwise,
     // we will look up if the specified chainId is associated with a chain
@@ -95,21 +104,60 @@ exports.buildEthereumTxRequest = function(data) {
     // Ensure all fields are 0x-prefixed hex strings
     const rawTx = [];
     // Build the transaction buffer array
+    const chainIdBytes = ensureHexBuffer(chainId);
     const nonceBytes = ensureHexBuffer(data.nonce);
-    const gasPriceBytes = ensureHexBuffer(data.gasPrice);
+    let gasPriceBytes = ensureHexBuffer(data.gasPrice);
     const gasLimitBytes = ensureHexBuffer(data.gasLimit);
     const toBytes = ensureHexBuffer(data.to);
     const valueBytes = ensureHexBuffer(data.value);
     const dataBytes = ensureHexBuffer(data.data);
+
+    if (isEip1559 || isEip2930) {
+      // EIP1559 and EIP2930 transactions have a chainID field
+      rawTx.push(chainIdBytes);
+    }
     rawTx.push(nonceBytes);
-    rawTx.push(gasPriceBytes);
+    let maxPriorityFeePerGasBytes, maxFeePerGasBytes;
+    if (isEip1559) {
+      if (!data.maxPriorityFeePerGas)
+        throw new Error('EIP1559 transactions must include `maxPriorityFeePerGas`');
+      if (!data.maxPriorityFeePerGas)
+        throw new Error('EIP1559 transactions must include `maxFeePerGas`');
+      maxPriorityFeePerGasBytes = ensureHexBuffer(data.maxPriorityFeePerGas);
+      rawTx.push(maxPriorityFeePerGasBytes);
+      maxFeePerGasBytes = ensureHexBuffer(data.maxFeePerGas);
+      rawTx.push(maxFeePerGasBytes);
+      // EIP1559 renamed "gasPrice" to "maxFeePerGas", but firmware still
+      // uses `gasPrice` in the struct, so update that value here.
+      gasPriceBytes = maxFeePerGasBytes;
+    } else {
+      // EIP1559 transactions do not have the gasPrice field
+      rawTx.push(gasPriceBytes);
+    }
     rawTx.push(gasLimitBytes);
     rawTx.push(toBytes);
     rawTx.push(valueBytes);
     rawTx.push(dataBytes);
+    // We do not currently support accessList in firmware so we need to prehash if
+    // the list is non-null
+    let PREHASH_FROM_ACCESS_LIST = false;
+    if (isEip1559 || isEip2930) {
+      const accessList = [];
+      if (Array.isArray(data.accessList)) {
+        data.accessList.forEach((listItem) => {
+          const keys = [];
+          listItem.storageKeys.forEach((key) => {
+            keys.push(ensureHexBuffer(key))
+          })
+          accessList.push([ ensureHexBuffer(listItem.address), keys ])
+          PREHASH_FROM_ACCESS_LIST = true;
+        })
+      }
+      rawTx.push(accessList);
+    }
     // Add empty v,r,s values
     if (useEIP155 === true) {
-      rawTx.push(ensureHexBuffer(chainId)); // v
+      rawTx.push(chainIdBytes); // v (which is the same as chainId in EIP155 txs)
       rawTx.push(ensureHexBuffer(null));    // r
       rawTx.push(ensureHexBuffer(null));    // s
     }
@@ -117,6 +165,13 @@ exports.buildEthereumTxRequest = function(data) {
     // 2. BUILD THE LATTICE REQUEST PAYLOAD
     //--------------
     const ETH_TX_NON_DATA_SZ = 122; // Accounts for metadata and non-data params
+    let ETH_TX_EXTRA_FIELDS_SZ = 0; // Accounts for newer ETH tx types (e.g. eip1559)
+    if (fwConstants.allowedEthTxTypesVersion === 1) {
+      // eip1559 and eip2930
+      // Add extra params and shrink the data region (extraData blocks are unaffected)
+      ETH_TX_EXTRA_FIELDS_SZ = fwConstants.totalExtraEthTxDataSz;
+      MAX_BASE_DATA_SZ -= ETH_TX_EXTRA_FIELDS_SZ;
+    }
     const txReqPayload = Buffer.alloc(MAX_BASE_DATA_SZ + ETH_TX_NON_DATA_SZ);
     let off = 0;
     // 1. EIP155 switch and chainID
@@ -141,7 +196,6 @@ exports.buildEthereumTxRequest = function(data) {
         throw new Error('Error parsing chainID');
       chainIdBuf.copy(txReqPayload, off); off += chainIdBuf.length;
     }
-
     // 2. Signer Path
     //------------------
     const signerPathBuf = buildSignerPathBuf(signerPath, VAR_PATH_SZ);
@@ -165,6 +219,29 @@ exports.buildEthereumTxRequest = function(data) {
     if (valueBytes.length > 32)
       throw new Error('Value too large');
     valueBytes.copy(txReqPayload, off + (32 - valueBytes.length)); off += 32;
+
+    // Extra Tx data comes before `data` in the struct
+    let PREHASH_UNSUPPORTED = false;
+    if (fwConstants.allowedEthTxTypesVersion === 1) {
+      // Some types may not be supported by firmware, so we will need to prehash
+      if (PREHASH_FROM_ACCESS_LIST) {
+        PREHASH_UNSUPPORTED = true;
+      }
+      txReqPayload.writeUint8(PREHASH_UNSUPPORTED === true, off); off += 1;  
+      // EIP1559 & EIP2930 struct version
+      if (isEip1559) {
+        txReqPayload.writeUint8(2, off); off += 1; // Eip1559 type enum value
+        if (maxPriorityFeePerGasBytes.length > 8)
+          throw new Error('maxPriorityFeePerGasBytes too large');
+        maxPriorityFeePerGasBytes.copy(txReqPayload, off + (8 - maxPriorityFeePerGasBytes.length)); off += 8;
+      } else if (isEip2930) {
+        txReqPayload.writeUint8(1, off); off += 1; // Eip2930 type enum value
+        off += fwConstants.totalExtraEthTxDataSz - 2; // Skip EIP1559 params
+      } else {
+        off += fwConstants.totalExtraEthTxDataSz - 1; // Skip EIP1559 and EIP2930 params
+      }
+    }
+
     // Flow data into extraData requests, which will follow-up transaction requests, if supported/applicable    
     const extraDataPayloads = [];
     let prehash = null;
@@ -183,11 +260,13 @@ exports.buildEthereumTxRequest = function(data) {
       } else {
         dataBytes.copy(dataToCopy, 0);
       }
-
-      if (prehashAllowed && totalSz > maxSzAllowed) {
+      if (prehashAllowed && (totalSz > maxSzAllowed || PREHASH_UNSUPPORTED)) {
         // If this payload is too large to send, but the Lattice allows a prehashed message, do that
         prehash = Buffer.from(keccak256(rlp.encode(rawTx)), 'hex')
+        console.log('prehash', prehash.toString('hex'))
+        console.log('prehash', new Uint8Array(prehash))
       } else {
+        console.log('frame splitting')
         if ((!EXTRA_DATA_ALLOWED) || (EXTRA_DATA_ALLOWED && totalSz > maxSzAllowed))
           throw new Error(`Data field too large (got ${dataBytes.length}; must be <=${maxSzAllowed-chainIdExtraSz} bytes)`);
         // Split overflow data into extraData frames
@@ -199,7 +278,9 @@ exports.buildEthereumTxRequest = function(data) {
         })
       }
     }
+
     // Write the data size (does *NOT* include the chainId buffer, if that exists)
+    console.log('dataBytes.length', dataBytes.length)
     txReqPayload.writeUInt16BE(dataBytes.length, off); off += 2;
     // Copy in the chainId buffer if needed
     if (chainIdBufSz > 0) {
@@ -215,6 +296,7 @@ exports.buildEthereumTxRequest = function(data) {
     }
     return {
       rawTx,
+      type,
       payload: txReqPayload.slice(0, off),
       extraDataPayloads,
       schema: constants.signingSchema.ETH_TRANSFER,  // We will use eth transfer for all ETH txs for v1 
@@ -239,23 +321,31 @@ function stripZeros(a) {
 
 // Given a 64-byte signature [r,s] we need to figure out the v value
 // and attah the full signature to the end of the transaction payload
-exports.buildEthRawTx = function(tx, sig, address, useEIP155=true) {
+exports.buildEthRawTx = function(tx, sig, address) {
   // RLP-encode the data we sent to the lattice
-  const rlpEncoded = rlp.encode(tx.rawTx);
+  let rlpEncoded = rlp.encode(tx.rawTx);
+  if (tx.type) {
+    rlpEncoded = Buffer.concat([Buffer.from([tx.type]), rlpEncoded])
+  }
   const hash = Buffer.from(keccak256(rlpEncoded), 'hex')
-  const newSig = addRecoveryParam(hash, sig, address, tx.chainId, useEIP155);
+  const newSig = addRecoveryParam(hash, sig, address, tx);
   // Use the signature to generate a new raw transaction payload
-  const newRawTx = tx.rawTx.slice(0, 6);
+  // Strip the last 3 items and replace them with signature components
+  const newRawTx = tx.useEIP155 ? tx.rawTx.slice(0, -3) : tx.rawTx;
   newRawTx.push(newSig.v);
   // Per `ethereumjs-tx`, RLP encoding should include signature components w/ stripped zeros
   // See: https://github.com/ethereumjs/ethereumjs-tx/blob/master/src/transaction.ts#L187
   newRawTx.push(stripZeros(newSig.r));
   newRawTx.push(stripZeros(newSig.s));
-  return rlp.encode(newRawTx).toString('hex');
+  let rlpEncodedWithSig = rlp.encode(newRawTx);
+  if (tx.type) {
+    rlpEncodedWithSig = Buffer.concat([Buffer.from([tx.type]), rlpEncodedWithSig])
+  }
+  return rlpEncodedWithSig.toString('hex');
 }
 
 // Attach a recovery parameter to a signature by brute-forcing ECRecover
-function addRecoveryParam(hashBuf, sig, address, chainId, useEIP155) {
+function addRecoveryParam(hashBuf, sig, address, txData={}) {
   try {
     // Rebuild the keccak256 hash here so we can `ecrecover`
     const hash = new Uint8Array(hashBuf);
@@ -268,14 +358,14 @@ function addRecoveryParam(hashBuf, sig, address, chainId, useEIP155) {
     let pubkey = secp256k1.ecdsaRecover(rs, v, hash, false).slice(1)
     // If the first `v` value is a match, return the sig!
     if (pubToAddrStr(pubkey) === address.toString('hex')) {
-      sig.v  = getRecoveryParam(v, useEIP155, chainId);
+      sig.v  = getRecoveryParam(v, txData);
       return sig;
     }
     // Otherwise, try the other `v` value
     v = 1;
     pubkey = secp256k1.ecdsaRecover(rs, v, hash, false).slice(1)
     if (pubToAddrStr(pubkey) === address.toString('hex')) {
-      sig.v  = getRecoveryParam(v, useEIP155, chainId);
+      sig.v  = getRecoveryParam(v, txData);
       return sig;
     } else {
       // If neither is a match, we should return an error
@@ -308,10 +398,18 @@ function fixLen(msg, length) {
 // Convert a 0/1 `v` into a recovery param:
 // * For non-EIP155 transactions, return `27 + v`
 // * For EIP155 transactions, return `(CHAIN_ID*2) + 35 + v`
-function getRecoveryParam(v, useEIP155, chainId=null) {
+function getRecoveryParam(v, txData={}) {
+  const { chainId, useEIP155, type } = txData;
   // If we are not using EIP155, convert v directly to a buffer and return it
   if (false === useEIP155 || chainId === null)
     return Buffer.from(new BN(v).plus(27).toString(16), 'hex');
+  // For EIP1559 and EIP2930 transactions, we want the recoveryParam (0 or 1)
+  // rather than the `v` value because the `chainId` is already included in the
+  // transaction payload.
+  if (type === 1 || type === 2) {
+    return ensureHexBuffer(v, true); // 0 or 1, with 0 expected as an empty buffer
+  }
+
   // We will use EIP155 in most cases. Convert v to a bignum and operate on it.
   // Note that the protocol calls for v = (CHAIN_ID*2) + 35/36, where 35 or 36
   // is decided on based on the ecrecover result. `v` is passed in as either 0 or 1

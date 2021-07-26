@@ -273,6 +273,45 @@ function getFwVersionConst(v) {
     }
     // Very old legacy versions do not give a version number
     const legacy = (v.length === 0);
+
+    // BASE FIELDS
+    //--------------------------------------
+
+    // Various size constants have changed on the firmware side over time and
+    // are captured here
+    if (!legacy && gte(v, [0, 10, 4])) {
+        // >=0.10.3
+        c.reqMaxDataSz = 1678;
+        c.ethMaxGasPrice = 20000000000000; // 20000 gwei
+        c.addrFlagsAllowed = true;
+    } else if (!legacy && gte(v, [0, 10, 0])) {
+        // >=0.10.0
+        c.reqMaxDataSz = 1678;
+        c.ethMaxGasPrice = 20000000000000; // 20000 gwei
+        c.addrFlagsAllowed = true;
+    } else {
+        // Legacy or <0.10.0
+        c.reqMaxDataSz = 1152;
+        c.ethMaxGasPrice = 500000000000; // 500 gwei
+        c.addrFlagsAllowed = false;
+    }
+    // These transformations apply to all versions
+    c.ethMaxDataSz = c.reqMaxDataSz - 128;
+    c.ethMaxMsgSz = c.ethMaxDataSz;
+
+    // EXTRA FIELDS ADDED IN LATER VERSIONS
+    //-------------------------------------
+
+    // V0.10.12 allows new ETH transaction types
+    if (!legacy && gte(v, [0, 10, 12])) {
+        c.allowedEthTxTypesVersion = 1;
+        c.allowedEthTxTypes = [
+            1, // eip2930
+            2, // eip1559
+        ]
+        c.totalExtraEthTxDataSz = 10;
+    }
+
     // V0.10.10 allows a user to sign a prehashed ETH message if payload too big
     if (!legacy && gte(v, [0, 10, 10])) {
         c.ethMsgPreHashAllowed = true;
@@ -295,30 +334,7 @@ function getFwVersionConst(v) {
         c.extraDataFrameSz = 1500; // 1500 bytes per frame of extraData allowed
         c.extraDataMaxFrames = 1;  // 1 frame of extraData allowed
     }
-    // Various size constants have changed on the firmware side over time and
-    // are captured here
-    if (!legacy && gte(v, [0, 10, 4])) {
-        // >=0.10.3
-        c.reqMaxDataSz = 1678;
-        c.ethMaxDataSz = c.reqMaxDataSz - 128;
-        c.ethMaxMsgSz = c.ethMaxDataSz;
-        c.ethMaxGasPrice = 20000000000000; // 20000 gwei
-        c.addrFlagsAllowed = true;
-    } else if (!legacy && gte(v, [0, 10, 0])) {
-        // >=0.10.0
-        c.reqMaxDataSz = 1678;
-        c.ethMaxDataSz = c.reqMaxDataSz - 128;
-        c.ethMaxMsgSz = c.ethMaxDataSz;
-        c.ethMaxGasPrice = 20000000000000; // 20000 gwei
-        c.addrFlagsAllowed = true;
-    } else {
-        // Legacy or <0.10.0
-        c.reqMaxDataSz = 1152;
-        c.ethMaxDataSz = c.reqMaxDataSz - 128;
-        c.ethMaxMsgSz = c.ethMaxDataSz;
-        c.ethMaxGasPrice = 500000000000; // 500 gwei
-        c.addrFlagsAllowed = false;
-    }
+
     return c;
 }
 
