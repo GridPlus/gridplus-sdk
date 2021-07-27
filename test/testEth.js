@@ -17,11 +17,12 @@
 require('it-each')({ testPerIteration: true });
 const BN = require('bignumber.js');
 const crypto = require('crypto');
-const EthTx = require('ethereumjs-tx').Transaction;
+const EthTx = require('@ethersproject/transactions')
 const constants = require('./../src/constants')
 const expect = require('chai').expect;
 const helpers = require('./testUtil/helpers');
 const seedrandom = require('seedrandom');
+const keccak256 = require('js-sha3').keccak256;
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
 const HARDENED_OFFSET = constants.HARDENED_OFFSET;
 let client = null;
@@ -58,17 +59,6 @@ function getChainId(pow, add) {
   return `0x${new BN(2).pow(pow).plus(add).toString(16)}`
 }
 
-function getFakeChain() {
-  return {
-    'name': 'myFakeChain',
-    'chainId': 0,
-    'networkId': 0,
-    'genesis': {},
-    'hardforks': [],
-    'bootstrapNodes': [],
-  };
-}
-
 function buildRandomTxData(fwConstants) {
   const maxDataSz = fwConstants.ethMaxDataSz + (fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz);
   for (let i = 0; i < numRandom; i++) {
@@ -87,7 +77,7 @@ function buildRandomTxData(fwConstants) {
   }
 }
 
-function buildTxReq(txData, network='mainnet', signerPath=[helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0]) {
+function buildTxReq(txData, network=1, signerPath=[helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0]) {
   return {
     currency: 'ETH',
     data: {
@@ -100,7 +90,7 @@ function buildTxReq(txData, network='mainnet', signerPath=[helpers.BTC_LEGACY_PU
 
 let foundError = false;
 
-async function testTxPass(req, chain=null) {
+async function testTxPass(req) {
   const tx = await helpers.sign(client, req);
   // Make sure there is transaction data returned
   // (this is ready for broadcast)
@@ -109,25 +99,32 @@ async function testTxPass(req, chain=null) {
     foundError = true;
   expect(txIsNull).to.equal(false);
   // Check the transaction data against a reference implementation
-  // (ethereumjs-tx)
   const txData = {
-    ...req.data,
-    v: `0x${tx.sig.v.toString('hex')}`,
+    nonce: req.data.nonce,
+    to: req.data.to,
+    gasPrice: req.data.gasPrice,
+    gasLimit: req.data.gasLimit,
+    data: req.data.data,
+    value: req.data.value,
+    chainId: new BN(req.data.chainId, 16).toNumber(),
+  };
+  const sigData = {
+    v: parseInt(`0x${tx.sig.v.toString('hex')}`),
     r: `0x${tx.sig.r}`,
     s: `0x${tx.sig.s}`,
   }
+  // Non-EIP155 transactions need to have `chainId=0` for ethers.js
+  if (sigData.v <= 28)
+    txData.chainId = 0;
   // There is one test where we submit an address without the prefix
   if (txData.to.slice(0, 2) !== '0x')
     txData.to = `0x${txData.to}`
-  if (chain === null)
-    chain = req.data.chainId;
-  const expectedTx = new EthTx(txData, { chain }).serialize()
-  const expectedTxStr = `0x${expectedTx.toString('hex')}`;
-  if (tx.tx !== expectedTxStr) {
+  const expectedTx = EthTx.serialize(txData, sigData)
+  if (tx.tx !== expectedTx) {
     foundError = true;
     console.error('Invalid tx resp!', JSON.stringify(txData))
   }
-  expect(tx.tx).to.equal(expectedTxStr);
+  expect(tx.tx).to.equal(expectedTx);
   return tx
 }
 
@@ -181,20 +178,17 @@ if (!process.env.skip) {
         // m/44'/60'/0'/x
         const path = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0];
         const txData = JSON.parse(JSON.stringify(defaultTxData));
-        await testTxPass(buildTxReq(txData, 'mainnet', path));
-        await testTxPass(buildTxReq(txData, 'mainnet', path.slice(0, 3)));      
-        await testTxPass(buildTxReq(txData, 'mainnet', path.slice(0, 2)));
-        await testTxFail(buildTxReq(txData, 'mainnet', path.slice(0, 1)));            
+        await testTxPass(buildTxReq(txData, 1, path));
+        await testTxPass(buildTxReq(txData, 1, path.slice(0, 3)));      
+        await testTxPass(buildTxReq(txData, 1, path.slice(0, 2)));
+        await testTxFail(buildTxReq(txData, 1, path.slice(0, 1)));            
       }
     })
 
     it('Should test that chainId=137 shows "MATIC" and chainId=56 shows "BNB" units', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
-      const chain = getFakeChain();
-      chain.chainId = 137;
-      await testTxPass(buildTxReq(txData, chain.chainId), chain);
-      chain.chainId = 56;
-      await testTxPass(buildTxReq(txData, chain.chainId), chain);
+      await testTxPass(buildTxReq(txData, `0x${(137).toString(16)}`));
+      await testTxPass(buildTxReq(txData, `0x${(56).toString(16)}`));
     })
 
     it('Should test range of chainId sizes and EIP155 tag', async () => {
@@ -202,76 +196,70 @@ if (!process.env.skip) {
       // Add some random data for good measure, since this will interact with the data buffer
       txData.data = `0x${crypto.randomBytes(randInt(100)).toString('hex')}`;
 
-      // Custom chains need to be fully defined for EthereumJS's Common module
-      // Here we just define a dummy chain. It isn't used for anything, but is required
-      // for us to verify the output transaction payload against EthereumJS-TX (reference impl)
-      const chain = getFakeChain();
-
+      let chainId = 1;
       // This one can fit in the normal chainID u8
-      chain.chainId = chain.networkId = getChainId(8, -2); // 254
-      await testTxPass(buildTxReq(txData, chain.chainId), chain)
 
+      chainId = getChainId(8, -2); // 254
+      await testTxPass(buildTxReq(txData, chainId))
       // These will need to go in the `data` buffer field
-      chain.chainId = chain.networkId = getChainId(8, -1); // 255
-      await testTxPass(buildTxReq(txData, chain.chainId), chain);
-      chain.chainId = chain.networkId = getChainId(8, 0); // 256
-      await testTxPass(buildTxReq(txData, chain.chainId), chain);
-      chain.chainId = chain.networkId = getChainId(16, -2);
-      await testTxPass(buildTxReq(txData, chain.chainId), chain);
-      chain.chainId = chain.networkId = getChainId(16, -1);
-      await testTxPass(buildTxReq(txData, chain.chainId), chain);
-      chain.chainId = chain.networkId = getChainId(16, 0);
-      await testTxPass(buildTxReq(txData, chain.chainId), chain);
-      chain.chainId = chain.networkId = getChainId(32, -2);
-      await testTxPass(buildTxReq(txData, chain.chainId), chain);
-      chain.chainId = chain.networkId = getChainId(32, -1);
-      await testTxPass(buildTxReq(txData, chain.chainId), chain);
-      chain.chainId = chain.networkId = getChainId(32, 0);
-      await testTxPass(buildTxReq(txData, chain.chainId), chain);
+      chainId = getChainId(8, -1); // 255
+      await testTxPass(buildTxReq(txData, chainId));
+      chainId = getChainId(8, 0); // 256
+      await testTxPass(buildTxReq(txData, chainId));
+      chainId = getChainId(16, -2);
+      await testTxPass(buildTxReq(txData, chainId));
+      chainId = getChainId(16, -1);
+      await testTxPass(buildTxReq(txData, chainId));
+      chainId = getChainId(16, 0);
+      await testTxPass(buildTxReq(txData, chainId));
+      chainId = getChainId(32, -2);
+      await testTxPass(buildTxReq(txData, chainId));
+      chainId = getChainId(32, -1);
+      await testTxPass(buildTxReq(txData, chainId));
+      chainId = getChainId(32, 0);
+      await testTxPass(buildTxReq(txData, chainId));
 
       // Annoyingly, our reference implementation that is used to validate the full
       // response payload can only build bignums of max size 2**51, so that is as
       // far as we can validate the full payload here. This of course uses the full
       // 8 byte chainID buffer, so we can test that size here.
-      chain.chainId = chain.networkId = getChainId(51, 0);
-      await testTxPass(buildTxReq(txData, chain.chainId), chain);
-
+      chainId = getChainId(51, 0);
+      await testTxPass(buildTxReq(txData, chainId));
       // Although we can't check the payload itself, we can still validate that chainIDs
       // >UINT64_MAX will fail internal checks.
       let res;
-      chain.chainId = chain.networkId = getChainId(64, -1); // UINT64_MAX should pass
-      res = await helpers.sign(client, buildTxReq(txData, chain.chainId));
+      chainId = getChainId(64, -1); // UINT64_MAX should pass
+      res = await helpers.sign(client, buildTxReq(txData, chainId));
       expect(res.tx).to.not.equal(null);
-      chain.chainId = chain.networkId = getChainId(64, 0); // UINT64_MAX+1 should fail
+      chainId = getChainId(64, 0); // UINT64_MAX+1 should fail
       try {
-        res = await helpers.sign(client, buildTxReq(txData, chain.chainId));
+        res = await helpers.sign(client, buildTxReq(txData, chainId));
       } catch (err) {
         expect(typeof err).to.equal('string');
       }
 
       // Test out a numerical chainId as well
       const numChainId = 10000
-      chain.chainId = chain.networkId = `0x${numChainId.toString(16)}`; // 0x2710
-      await testTxPass(buildTxReq(txData, numChainId), chain);
+      chainId = `0x${numChainId.toString(16)}`; // 0x2710
+      await testTxPass(buildTxReq(txData, chainId));
 
       // Test boundary of new dataSz
-      chain.chainId = chain.networkId = getChainId(51, 0); // 8 byte id
+      chainId = getChainId(51, 0); // 8 byte id
       // 8 bytes for the id itself and 1 byte for chainIdSz. This data is serialized into the request payload.
       let chainIdSz = 9;
       const fwConstants = constants.getFwVersionConst(client.fwVersion);
       const maxDataSz = fwConstants.ethMaxDataSz + (fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz);
       txData.data = `0x${crypto.randomBytes(maxDataSz - chainIdSz).toString('hex')}`;
-      await testTxPass(buildTxReq(txData, chain.chainId), chain);
+      await testTxPass(buildTxReq(txData, chainId));
       txData.data = `0x${crypto.randomBytes(maxDataSz - chainIdSz + 1).toString('hex')}`;
-      await testTxFail(buildTxReq(txData, chain.chainId), chain);
+      await testTxFail(buildTxReq(txData, chainId));
       // Also test smaller sizes
-      chain.chainId = chain.networkId = getChainId(16, -1);
+      chainId = getChainId(16, -1);
       chainIdSz = 3;
       txData.data = `0x${crypto.randomBytes(maxDataSz - chainIdSz).toString('hex')}`;
-      await testTxPass(buildTxReq(txData, chain.chainId), chain);
+      await testTxPass(buildTxReq(txData, chainId));
       txData.data = `0x${crypto.randomBytes(maxDataSz - chainIdSz + 1).toString('hex')}`;
-      await testTxFail(buildTxReq(txData, chain.chainId), chain);
-
+      await testTxFail(buildTxReq(txData, chainId));
     })
 
     it('Should test range of `value`', async () => {
@@ -393,27 +381,20 @@ if (!process.env.skip) {
 
     it('Should test EIP155', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
-      await testTxPass(buildTxReq(txData, 'rinkeby')) // Does NOT use EIP155
-      await testTxPass(buildTxReq(txData, 'mainnet')) // Uses EIP155
+      await testTxPass(buildTxReq(txData, 4)) // Does NOT use EIP155
+      await testTxPass(buildTxReq(txData, 1)) // Uses EIP155
 
       // Finally, make sure the `eip155` tag works. We will set it to false and
       // expect a result that does not include EIP155 in the payload.
-      const chain = {
-        'name': 'myFakeChain',
-        'chainId': 0,
-        'networkId': 0,
-        'genesis': {},
-        'hardforks': [],
-        'bootstrapNodes': [],
-      };      
       txData.eip155 = false;
       const numChainId = 10000;
-      chain.chainId = chain.networkId = `0x${numChainId.toString(16)}`; // 0x2710
-      await testTxPass(buildTxReq(txData, numChainId), chain);
-      const res = await testTxPass(buildTxReq(txData, numChainId), chain);
+      const chainId = `0x${numChainId.toString(16)}`; // 0x2710
+      await testTxPass(buildTxReq(txData, chainId));
+      const res = await testTxPass(buildTxReq(txData, chainId));
       // For non-EIP155 transactions, we expect `v` to be 27 or 28
       expect(res.sig.v.toString('hex')).to.oneOf([(27).toString(16), (28).toString(16)])
     });
+
   });
 }
 
@@ -424,10 +405,8 @@ describe('Test random transaction data', function() {
 
   it.each(randomTxDataLabels, 'Random transactions %s', ['label'], async function(n, next) {
     const txData = randomTxData[n.number];
-    const chain = getFakeChain();
-    chain.chainId = chain.networkId = txData._network
     try {
-      await testTxPass(buildTxReq(txData, chain.chainId), chain)
+      await testTxPass(buildTxReq(txData, txData._network))
       setTimeout(() => { next() }, 2500);
     } catch (err) {
       setTimeout(() => { next(err) }, 2500);
