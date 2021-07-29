@@ -618,8 +618,10 @@ exports.deserializeExportSeedJobResult = function(res) {
 //---------------------------------------------------
 // Delete Seed helpers
 //---------------------------------------------------
-exports.serializeDeleteSeedJobData = function() {
-  return Buffer.alloc(0);
+exports.serializeDeleteSeedJobData = function(data) {
+  const req = Buffer.alloc(1);
+  req.writeUInt8(data.iface, 0);
+  return req;
 };
 
 //---------------------------------------------------
