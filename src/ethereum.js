@@ -260,13 +260,10 @@ exports.buildEthereumTxRequest = function(data) {
       } else {
         dataBytes.copy(dataToCopy, 0);
       }
-      if (prehashAllowed && (totalSz > maxSzAllowed || PREHASH_UNSUPPORTED)) {
+      if (prehashAllowed && totalSz > maxSzAllowed) {
         // If this payload is too large to send, but the Lattice allows a prehashed message, do that
-        prehash = Buffer.from(keccak256(rlp.encode(rawTx)), 'hex')
-        console.log('prehash', prehash.toString('hex'))
-        console.log('prehash', new Uint8Array(prehash))
+        prehash = Buffer.from(keccak256(get_rlp_encoded_preimage(rawTx, type)), 'hex')
       } else {
-        console.log('frame splitting')
         if ((!EXTRA_DATA_ALLOWED) || (EXTRA_DATA_ALLOWED && totalSz > maxSzAllowed))
           throw new Error(`Data field too large (got ${dataBytes.length}; must be <=${maxSzAllowed-chainIdExtraSz} bytes)`);
         // Split overflow data into extraData frames
@@ -277,10 +274,13 @@ exports.buildEthereumTxRequest = function(data) {
           extraDataPayloads.push(Buffer.concat([szLE, frame]));
         })
       }
+    } else if (PREHASH_UNSUPPORTED) {
+      // If something is unsupported in firmware but we want to allow such transactions,
+      // we prehash the message here.
+      prehash = Buffer.from(keccak256(get_rlp_encoded_preimage(rawTx, type)), 'hex')
     }
 
     // Write the data size (does *NOT* include the chainId buffer, if that exists)
-    console.log('dataBytes.length', dataBytes.length)
     txReqPayload.writeUInt16BE(dataBytes.length, off); off += 2;
     // Copy in the chainId buffer if needed
     if (chainIdBufSz > 0) {
@@ -323,11 +323,7 @@ function stripZeros(a) {
 // and attah the full signature to the end of the transaction payload
 exports.buildEthRawTx = function(tx, sig, address) {
   // RLP-encode the data we sent to the lattice
-  let rlpEncoded = rlp.encode(tx.rawTx);
-  if (tx.type) {
-    rlpEncoded = Buffer.concat([Buffer.from([tx.type]), rlpEncoded])
-  }
-  const hash = Buffer.from(keccak256(rlpEncoded), 'hex')
+  const hash = Buffer.from(keccak256(get_rlp_encoded_preimage(tx.rawTx, tx.type)), 'hex');
   const newSig = addRecoveryParam(hash, sig, address, tx);
   // Use the signature to generate a new raw transaction payload
   // Strip the last 3 items and replace them with signature components
@@ -368,6 +364,7 @@ function addRecoveryParam(hashBuf, sig, address, txData={}) {
       sig.v  = getRecoveryParam(v, txData);
       return sig;
     } else {
+      console.log('bad sig')
       // If neither is a match, we should return an error
       throw new Error('Invalid Ethereum signature returned.');
     }
@@ -801,4 +798,12 @@ function get_personal_sign_prefix(L) {
     `\u0019Ethereum Signed Message:\n${L.toString()}`,
     'utf-8',
   );
+}
+
+function get_rlp_encoded_preimage(rawTx, txType) {
+  if (txType) {
+    return Buffer.concat([Buffer.from([txType]), rlp.encode(rawTx)]);
+  } else {
+    return rlp.encode(rawTx);
+  }
 }

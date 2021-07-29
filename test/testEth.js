@@ -112,6 +112,8 @@ async function testTxPass(req) {
     txData.maxFeePerGas = req.data.maxFeePerGas;
   if (req.data.maxPriorityFeePerGas)
     txData.maxPriorityFeePerGas = req.data.maxPriorityFeePerGas;
+  if (req.data.accessList)
+    txData.accessList = req.data.accessList;
   const sigData = {
     v: parseInt(`0x${tx.sig.v.toString('hex')}`),
     r: `0x${tx.sig.r}`,
@@ -142,7 +144,6 @@ async function testTxFail(req) {
   try {
     tx = await helpers.sign(client, req);
   } catch (err) {
-    console.log('err', err)
     expect(err).to.not.equal(null);
     return;
   }
@@ -177,7 +178,7 @@ describe('Setup client', () => {
     buildRandomTxData(fwConstants);
   });
 })
-/*
+
 describe('Test new transaction types',  () => {
   it('Should test eip1559 with no access list', async () => {
     const txData = {
@@ -190,48 +191,87 @@ describe('Test new transaction types',  () => {
       gasLimit: 50000,
       to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
       value: 100,
-      data: null,
+      data: '0xdeadbeef',
     };
     await testTxPass(buildTxReq(txData))
   })
 
-  // it('Should test eip1559 with an access list (should pre-hash)', async () => {
-  //   const txData = {
-  //     chainId: 1,
-  //     type: 2,
-  //     maxFeePerGas: 1200000000,
-  //     maxPriorityFeePerGas: 1000,
-  //     nonce: 0,
-  //     gasPrice: 1200000000,
-  //     gasLimit: 50000,
-  //     to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-  //     value: 100,
-  //     data: null,
-  //     accessList: [
-  //       { 
-  //         address: '0xe242e54155b1abc71fc118065270cecaaf8b7768', 
-  //         storageKeys: [
-  //           '0x7154f8b310ad6ce97ce3b15e3419d9863865dfe2d8635802f7f4a52a206255a6'
-  //         ]
-  //       },
-  //       { 
-  //         address: '0xe0f8ff08ef0242c461da688b8b85e438db724860', 
-  //         storageKeys: []
-  //       }
-  //     ]
-  //   };
-  //   await testTxPass(buildTxReq(txData))
-  // })
+  it('Should test eip1559 with an access list (should pre-hash)', async () => {
+    const txData = {
+      chainId: 1,
+      type: 2,
+      maxFeePerGas: 1200000000,
+      maxPriorityFeePerGas: 1000,
+      nonce: 0,
+      gasPrice: 1200000000,
+      gasLimit: 50000,
+      to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+      value: 100,
+      data: '0xdeadbeef',
+      accessList: [
+        { 
+          address: '0xe242e54155b1abc71fc118065270cecaaf8b7768', 
+          storageKeys: [
+            '0x7154f8b310ad6ce97ce3b15e3419d9863865dfe2d8635802f7f4a52a206255a6'
+          ]
+        },
+        { 
+          address: '0xe0f8ff08ef0242c461da688b8b85e438db724860', 
+          storageKeys: []
+        }
+      ]
+    };
+    await testTxPass(buildTxReq(txData))
+  })
 
+  it('Should test eip2930 with no access list', async () => {
+    const txData = {
+      chainId: 1,
+      type: 1,
+      nonce: 0,
+      gasPrice: 1200000000,
+      gasLimit: 50000,
+      to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+      value: 100,
+      data: '0xdeadbeef',
+    };
+    await testTxPass(buildTxReq(txData))
+  })
+
+  it('Should test eip2930 with an access list (should pre-hash)', async () => {
+    const txData = {
+      chainId: 1,
+      type: 1,
+      nonce: 0,
+      gasPrice: 1200000000,
+      gasLimit: 50000,
+      to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+      value: 100,
+      data: '0xdeadbeef',
+      accessList: [
+        { 
+          address: '0xe242e54155b1abc71fc118065270cecaaf8b7768', 
+          storageKeys: [
+            '0x7154f8b310ad6ce97ce3b15e3419d9863865dfe2d8635802f7f4a52a206255a6'
+          ]
+        },
+        { 
+          address: '0xe0f8ff08ef0242c461da688b8b85e438db724860', 
+          storageKeys: []
+        }
+      ]
+    };
+    await testTxPass(buildTxReq(txData))
+  })
 })
-*/
+/*
 if (!process.env.skip) {
   describe('Test ETH Tx Params', () => {
     beforeEach(() => {
       expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
       setTimeout(() => {}, 5000);
     })
-/*
+
     it('Should test and validate signatures from shorter derivation paths', async () => {
       if (constants.getFwVersionConst(client.fwVersion).varAddrPathSzAllowed) {
         // m/44'/60'/0'/x
@@ -248,7 +288,7 @@ if (!process.env.skip) {
       await testTxPass(buildTxReq(txData, `0x${(137).toString(16)}`));
       await testTxPass(buildTxReq(txData, `0x${(56).toString(16)}`));
     })
-*/
+
     it('Should test range of chainId sizes and EIP155 tag', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
       // Add some random data for good measure, since this will interact with the data buffer
@@ -256,7 +296,7 @@ if (!process.env.skip) {
 
       let chainId = 1;
       // This one can fit in the normal chainID u8
-/*
+
       chainId = getChainId(8, -2); // 254
       await testTxPass(buildTxReq(txData, chainId))
       // These will need to go in the `data` buffer field
@@ -319,20 +359,19 @@ if (!process.env.skip) {
       const metadataSz = fwConstants.totalExtraEthTxDataSz || 0;
       const maxDataSz = (fwConstants.ethMaxDataSz - metadataSz) + 
                         (fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz);
-      // txData.data = `0x${crypto.randomBytes(maxDataSz - chainIdSz).toString('hex')}`;
-      // await testTxPass(buildTxReq(txData, chainId));
-      // txData.data = `0x${crypto.randomBytes(maxDataSz - chainIdSz + 1).toString('hex')}`;
-      // await testTxFail(buildTxReq(txData, chainId));
+      txData.data = `0x${crypto.randomBytes(maxDataSz - chainIdSz).toString('hex')}`;
+      await testTxPass(buildTxReq(txData, chainId));
+      txData.data = `0x${crypto.randomBytes(maxDataSz - chainIdSz + 1).toString('hex')}`;
+      await testTxFail(buildTxReq(txData, chainId));
       // Also test smaller sizes
       chainId = getChainId(16, -1);
       chainIdSz = 3;
-      // txData.data = `0x${crypto.randomBytes(maxDataSz - chainIdSz).toString('hex')}`;
-      // await testTxPass(buildTxReq(txData, chainId));
+      txData.data = `0x${crypto.randomBytes(maxDataSz - chainIdSz).toString('hex')}`;
+      await testTxPass(buildTxReq(txData, chainId));
       txData.data = `0x${crypto.randomBytes(maxDataSz - chainIdSz + 1).toString('hex')}`;
-      console.log('dataSz', maxDataSz - chainIdSz + 1)
       await testTxFail(buildTxReq(txData, chainId));
     })
-/*
+
     it('Should test range of `value`', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData))
       txData.value = 1;
@@ -441,10 +480,10 @@ if (!process.env.skip) {
       // For non-EIP155 transactions, we expect `v` to be 27 or 28
       expect(res.sig.v.toString('hex')).to.oneOf([(27).toString(16), (28).toString(16)])
     });
-*/
+
   });
 }
-/*
+
 describe('Test random transaction data', function() {
   beforeEach(() => {
     expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
