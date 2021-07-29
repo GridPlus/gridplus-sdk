@@ -409,17 +409,19 @@ describe('deleteSeed', () => {
     expect(activeWalletSeed).to.not.equal(null, 'Prior test failed. Aborting.');
     expect(continueTests).to.equal(true, 'Unauthorized or critical failure. Aborting');
     jobType = helpers.jobTypes.WALLET_JOB_DELETE_SEED;
-    jobData = {};
+    jobData = {
+      iface: 1,
+    };
     jobReq = {
       testID: 0, // wallet_job test ID
       payload: null,
     }
   })
 
-  it('Should get GP_ENODEV for unknown (random) wallet', async () => {
+  it('Should get GP_EINVAL for unknown (random) wallet', async () => {
     const dummyWalletUID = crypto.randomBytes(32);
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
-    await runTestCase(helpers.gpErrors.GP_ENODEV);
+    await runTestCase(helpers.gpErrors.GP_EINVAL);
   })
 
   it('Should get GP_SUCCESS for a known, connected wallet.', async () => {
