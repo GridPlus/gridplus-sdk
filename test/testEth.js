@@ -32,7 +32,6 @@ const randomTxDataLabels = [];
 let ETH_GAS_PRICE_MAX;                  // value depends on firmware version
 const ETH_GAS_LIMIT_MIN = 22000;        // Ether transfer (smallest op) is 22k gas
 const ETH_GAS_LIMIT_MAX = 12500000;     // 10M is bigger than the block size
-const ETH_GAS_PRICE_MIN = 1000000;      // 1,000,000 = 0.001 GWei - minimum
 const MSG_PAYLOAD_METADATA_SZ = 28;     // Metadata that must go in ETH_MSG requests
 const defaultTxData = {
   nonce: 0,
@@ -64,7 +63,7 @@ function buildRandomTxData(fwConstants) {
   for (let i = 0; i < numRandom; i++) {
     const tx = {
       nonce: `0x${new BN(randInt(16000)).toString(16)}`,
-      gasPrice: `0x${new BN(ETH_GAS_PRICE_MIN + randInt(ETH_GAS_PRICE_MAX - ETH_GAS_PRICE_MIN)).toString(16)}`,
+      gasPrice: `0x${new BN(randInt(ETH_GAS_PRICE_MAX)).toString(16)}`,
       gasLimit: `0x${new BN(ETH_GAS_LIMIT_MIN + randInt(ETH_GAS_LIMIT_MAX - ETH_GAS_LIMIT_MIN)).toString(16)}`,
       value: `0x${new BN(randInt(10**randInt(30))).toString(16)}`,
       to: `0x${crypto.randomBytes(20).toString('hex')}`,
@@ -129,13 +128,15 @@ async function testTxPass(req) {
 }
 
 async function testTxFail(req) {
+  let tx;
   try {
-    const tx = await helpers.sign(client, req);
-    expect(tx.tx).to.equal(null);
-    foundError = true;
+    tx = await helpers.sign(client, req);
   } catch (err) {
     expect(err).to.not.equal(null);
+    return;
   }
+  const txIsNull = tx.tx === null;
+  expect(txIsNull).to.equal(true, 'Transaction successful but failure was expected.');
 }
 
 // Determine the number of random transactions we should build
@@ -184,7 +185,6 @@ if (!process.env.skip) {
         await testTxFail(buildTxReq(txData, 1, path.slice(0, 1)));            
       }
     })
-
     it('Should test that chainId=137 shows "MATIC" and chainId=56 shows "BNB" units', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
       await testTxPass(buildTxReq(txData, `0x${(137).toString(16)}`));
@@ -242,6 +242,16 @@ if (!process.env.skip) {
       const numChainId = 10000
       chainId = `0x${numChainId.toString(16)}`; // 0x2710
       await testTxPass(buildTxReq(txData, chainId));
+    })
+
+    it('Should test dataSz + chainId length boundaries', async () => {
+      // Instruct the user to reject pre-hashed payloads
+      const t = '\n\nPlease REJECT pre-hashed transactions in this test. Press Y to continue.';
+      const continueTests = require('cli-interact').getYesNo(t);
+      expect(continueTests).to.equal(true);
+
+      const txData = JSON.parse(JSON.stringify(defaultTxData));
+      let chainId = 1;
 
       // Test boundary of new dataSz
       chainId = getChainId(51, 0); // 8 byte id
@@ -306,6 +316,10 @@ if (!process.env.skip) {
       txData.data = buildDataStr(2, maxDataSz)  
       await testTxPass(buildTxReq(txData))
 
+      const t = '\n\nPlease REJECT the following tx if it is pre-hashed. Press Y to continue.';
+      const continueTests = require('cli-interact').getYesNo(t);
+      expect(continueTests).to.equal(true);
+
       // Expected failures
       txData.data = buildDataStr(3, maxDataSz + 1)
       await testTxFail(buildTxReq(txData))
@@ -315,35 +329,13 @@ if (!process.env.skip) {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
       
       // Expected passes
-      txData.gasPrice = ETH_GAS_PRICE_MIN;
+      txData.gasPrice = 0;
       await testTxPass(buildTxReq(txData))
       txData.gasPrice = ETH_GAS_PRICE_MAX;
       await testTxPass(buildTxReq(txData))
 
       // Expected failures
-      txData.gasPrice = 0;
-      await testTxFail(buildTxReq(txData))
-      txData.gasPrice = ETH_GAS_PRICE_MIN - 1;
-      await testTxFail(buildTxReq(txData))
       txData.gasPrice = ETH_GAS_PRICE_MAX + 1;
-      await testTxFail(buildTxReq(txData))
-    });
-
-    it('Should test the range of `gasLimit`', async () => {
-      const txData = JSON.parse(JSON.stringify(defaultTxData));
-      
-      // Expected passes
-      txData.gasLimit = ETH_GAS_LIMIT_MIN;
-      await testTxPass(buildTxReq(txData))
-      txData.gasLimit = ETH_GAS_LIMIT_MAX;
-      await testTxPass(buildTxReq(txData))
-
-      // Expected failures
-      txData.gasLimit = 0;
-      await testTxFail(buildTxReq(txData))
-      txData.gasLimit = ETH_GAS_LIMIT_MIN - 1;
-      await testTxFail(buildTxReq(txData))
-      txData.gasLimit = ETH_GAS_LIMIT_MAX + 1;
       await testTxFail(buildTxReq(txData))
     });
 
@@ -355,13 +347,7 @@ if (!process.env.skip) {
       await testTxPass(buildTxReq(txData))
       txData.to = 'e242e54155b1abc71fc118065270cecaaf8b7768';
       await testTxPass(buildTxReq(txData))
-
-      // Expected failures
-      txData.gasLimit = 0;
-      await testTxFail(buildTxReq(txData))
-      txData.gasLimit = 21999;
-      await testTxFail(buildTxReq(txData))
-      txData.gasLimit = 50000001;
+      txData.to = '01e242e54155b1abc71fc118065270cecaaf8b7768';
       await testTxFail(buildTxReq(txData))
     });
 
