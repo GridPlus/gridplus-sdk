@@ -90,8 +90,12 @@ exports.buildEthereumTxRequest = function(data) {
     // we will look up if the specified chainId is associated with a chain
     // that does not use EIP155 by default. Note that most do use EIP155.
     let useEIP155 = chainUsesEIP155(chainId);
-    if (eip155 !== null && typeof eip155 === 'boolean')
+    if (eip155 !== null && typeof eip155 === 'boolean') {
       useEIP155 = eip155;
+    } else if (isEip1559 || isEip2930) {
+      // Newer transaction types do not use EIP155 since the chainId is serialized
+      useEIP155 = false;
+    }
 
     // Hack for metamask, which sends value=null for 0 ETH transactions
     if (!data.value)
@@ -106,7 +110,7 @@ exports.buildEthereumTxRequest = function(data) {
     // Build the transaction buffer array
     const chainIdBytes = ensureHexBuffer(chainId);
     const nonceBytes = ensureHexBuffer(data.nonce);
-    let gasPriceBytes = ensureHexBuffer(data.gasPrice);
+    let gasPriceBytes;
     const gasLimitBytes = ensureHexBuffer(data.gasLimit);
     const toBytes = ensureHexBuffer(data.to);
     const valueBytes = ensureHexBuffer(data.value);
@@ -130,8 +134,11 @@ exports.buildEthereumTxRequest = function(data) {
       // EIP1559 renamed "gasPrice" to "maxFeePerGas", but firmware still
       // uses `gasPrice` in the struct, so update that value here.
       gasPriceBytes = maxFeePerGasBytes;
+      if (0 > Buffer.compare(maxFeePerGasBytes, maxPriorityFeePerGasBytes))
+        throw new Error('EIP1559 requirement not met: (maxFeePerGasBytes > maxPriorityFeePerGasBytes)')
     } else {
       // EIP1559 transactions do not have the gasPrice field
+      gasPriceBytes = ensureHexBuffer(data.gasPrice);
       rawTx.push(gasPriceBytes);
     }
     rawTx.push(gasLimitBytes);
@@ -154,9 +161,8 @@ exports.buildEthereumTxRequest = function(data) {
         })
       }
       rawTx.push(accessList);
-    }
-    // Add empty v,r,s values
-    if (useEIP155 === true) {
+    } else if (useEIP155 === true) {
+      // Add empty v,r,s values for EIP155 legacy transactions
       rawTx.push(chainIdBytes); // v (which is the same as chainId in EIP155 txs)
       rawTx.push(ensureHexBuffer(null));    // r
       rawTx.push(ensureHexBuffer(null));    // s
@@ -364,7 +370,6 @@ function addRecoveryParam(hashBuf, sig, address, txData={}) {
       sig.v  = getRecoveryParam(v, txData);
       return sig;
     } else {
-      console.log('bad sig')
       // If neither is a match, we should return an error
       throw new Error('Invalid Ethereum signature returned.');
     }
@@ -397,15 +402,16 @@ function fixLen(msg, length) {
 // * For EIP155 transactions, return `(CHAIN_ID*2) + 35 + v`
 function getRecoveryParam(v, txData={}) {
   const { chainId, useEIP155, type } = txData;
-  // If we are not using EIP155, convert v directly to a buffer and return it
-  if (false === useEIP155 || chainId === null)
-    return Buffer.from(new BN(v).plus(27).toString(16), 'hex');
   // For EIP1559 and EIP2930 transactions, we want the recoveryParam (0 or 1)
   // rather than the `v` value because the `chainId` is already included in the
   // transaction payload.
   if (type === 1 || type === 2) {
     return ensureHexBuffer(v, true); // 0 or 1, with 0 expected as an empty buffer
   }
+
+  // If we are not using EIP155, convert v directly to a buffer and return it
+  if (false === useEIP155 || chainId === null)
+    return Buffer.from(new BN(v).plus(27).toString(16), 'hex');
 
   // We will use EIP155 in most cases. Convert v to a bignum and operate on it.
   // Note that the protocol calls for v = (CHAIN_ID*2) + 35/36, where 35 or 36

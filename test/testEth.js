@@ -180,9 +180,42 @@ describe('Setup client', () => {
 })
 
 describe('Test new transaction types',  () => {
+  it('Should test eip1559 params', async () => {
+    const txData = {
+      type: 2,
+      maxFeePerGas: 1200000000,
+      maxPriorityFeePerGas: 1200000000,
+      nonce: 0,
+      gasLimit: 50000,
+      to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+      value: 100,
+      data: '0xdeadbeef',
+    };
+    // maxFeePerGas must be >= maxPriorityFeePerGas
+    await testTxPass(buildTxReq(txData))
+    txData.maxFeePerGas += 1;
+    await testTxPass(buildTxReq(txData))
+    txData.maxFeePerGas -= 2;
+    await testTxFail(buildTxReq(txData))
+  })
+
+  it('Should test eip1559 on a non-EIP155 network', async () => {
+    const txData = {
+      type: 2,
+      maxFeePerGas: 1200000000,
+      maxPriorityFeePerGas: 1000,
+      nonce: 0,
+      gasPrice: 1200000000,
+      gasLimit: 50000,
+      to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+      value: 100,
+      data: '0xdeadbeef',
+    };
+    await testTxPass(buildTxReq(txData), 4)
+  })
+
   it('Should test eip1559 with no access list', async () => {
     const txData = {
-      chainId: 1,
       type: 2,
       maxFeePerGas: 1200000000,
       maxPriorityFeePerGas: 1000,
@@ -198,7 +231,6 @@ describe('Test new transaction types',  () => {
 
   it('Should test eip1559 with an access list (should pre-hash)', async () => {
     const txData = {
-      chainId: 1,
       type: 2,
       maxFeePerGas: 1200000000,
       maxPriorityFeePerGas: 1000,
@@ -226,7 +258,6 @@ describe('Test new transaction types',  () => {
 
   it('Should test eip2930 with no access list', async () => {
     const txData = {
-      chainId: 1,
       type: 1,
       nonce: 0,
       gasPrice: 1200000000,
@@ -240,7 +271,6 @@ describe('Test new transaction types',  () => {
 
   it('Should test eip2930 with an access list (should pre-hash)', async () => {
     const txData = {
-      chainId: 1,
       type: 1,
       nonce: 0,
       gasPrice: 1200000000,
@@ -263,8 +293,9 @@ describe('Test new transaction types',  () => {
     };
     await testTxPass(buildTxReq(txData))
   })
+
 })
-/*
+
 if (!process.env.skip) {
   describe('Test ETH Tx Params', () => {
     beforeEach(() => {
@@ -499,4 +530,3 @@ describe('Test random transaction data', function() {
     }
   })
 })
-*/
