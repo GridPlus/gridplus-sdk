@@ -1,6 +1,6 @@
 {
   "name": "gridplus-sdk",
-  "version": "0.7.27",
+  "version": "0.8.0",
   "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
     "commit": "git-cz",
