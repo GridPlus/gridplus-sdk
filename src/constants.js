@@ -303,7 +303,7 @@ function getFwVersionConst(v) {
     //-------------------------------------
 
     // V0.10.12 allows new ETH transaction types
-    if (!legacy && gte(v, [0, 10, 12])) {
+    if (!legacy && gte(v, [0, 11, 0])) {
         c.allowedEthTxTypesVersion = 1;
         c.allowedEthTxTypes = [
             1, // eip2930

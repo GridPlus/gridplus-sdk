@@ -229,6 +229,7 @@ exports.buildEthereumTxRequest = function(data) {
     // Extra Tx data comes before `data` in the struct
     let PREHASH_UNSUPPORTED = false;
     if (fwConstants.allowedEthTxTypesVersion === 1) {
+      const extraEthTxDataSz = fwConstants.totalExtraEthTxDataSz || 0;
       // Some types may not be supported by firmware, so we will need to prehash
       if (PREHASH_FROM_ACCESS_LIST) {
         PREHASH_UNSUPPORTED = true;
@@ -242,9 +243,9 @@ exports.buildEthereumTxRequest = function(data) {
         maxPriorityFeePerGasBytes.copy(txReqPayload, off + (8 - maxPriorityFeePerGasBytes.length)); off += 8;
       } else if (isEip2930) {
         txReqPayload.writeUint8(1, off); off += 1; // Eip2930 type enum value
-        off += fwConstants.totalExtraEthTxDataSz - 2; // Skip EIP1559 params
+        off += extraEthTxDataSz - 2; // Skip EIP1559 params
       } else {
-        off += fwConstants.totalExtraEthTxDataSz - 1; // Skip EIP1559 and EIP2930 params
+        off += extraEthTxDataSz - 1; // Skip EIP1559 and EIP2930 params
       }
     }
 
