@@ -292,6 +292,7 @@ describe('Connect and Pair', () => {
     req.data.data = client.crypto.randomBytes(maxDataSz).toString('hex');
     tx = await(helpers.sign(client, req));
     expect(tx.tx).to.not.equal(null);
+
   });
 
   it('Should sign legacy Bitcoin inputs', async () => {  

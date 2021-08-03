@@ -742,7 +742,7 @@ class Client {
       const sig = parseDER(res.slice(off, (off + 2 + res[off + 1]))); off += DERLength;
       const ethAddr = res.slice(off, off + 20);
       // Determine the `v` param and add it to the sig before returning
-      const rawTx = ethereum.buildEthRawTx(req, sig, ethAddr, req.useEIP155);
+      const rawTx = ethereum.buildEthRawTx(req, sig, ethAddr);
       returnData.data = {
         tx: `0x${rawTx}`,
         txHash: `0x${ethereum.hashTransaction(rawTx)}`,
