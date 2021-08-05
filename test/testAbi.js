@@ -716,16 +716,15 @@ describe('Test ABI Markdown', () => {
     }
   })
 
-  it('Failure checks: it should fail to decode when dynamic param has size 0', async () => {
+  it('Should pass when dynamic param has size 0', async () => {
     const bytesDef = _.cloneDeep(boundaryAbiDefs[9])
     bytesDef._vals[2] = [Buffer.from('')];
 
     req.data.data = buildEthData(bytesDef);
     try {
       await helpers.sign(client, req);
-      caughtErr = 'Transaction should have been rejected but was not.';
     } catch (err) {
-      expect(err).to.not.equal(null, caughtErr);
+      expect(err).to.not.equal(null, err);
     }
   })
 
