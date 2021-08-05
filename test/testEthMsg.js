@@ -142,7 +142,9 @@ describe('Test ETH personalSign', function() {
   it('Msg: sign_personal boundary conditions', async () => {
     const protocol = 'signPersonal';
     const fwConstants = constants.getFwVersionConst(client.fwVersion);
-    const maxMsgSz = fwConstants.ethMaxMsgSz + (fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz);
+    const metadataSz = fwConstants.totalExtraEthTxDataSz || 0;
+    const maxMsgSz =  (fwConstants.ethMaxMsgSz - metadataSz) + 
+                      (fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz);
     const maxValid = `0x${crypto.randomBytes(maxMsgSz).toString('hex')}`;
     const zeroInvalid = '0x';
     await testMsg(buildMsgReq(maxValid, protocol), true);
