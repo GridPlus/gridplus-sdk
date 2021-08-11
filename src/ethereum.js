@@ -134,8 +134,6 @@ exports.buildEthereumTxRequest = function(data) {
       // EIP1559 renamed "gasPrice" to "maxFeePerGas", but firmware still
       // uses `gasPrice` in the struct, so update that value here.
       gasPriceBytes = maxFeePerGasBytes;
-      if (0 > Buffer.compare(maxFeePerGasBytes, maxPriorityFeePerGasBytes))
-        throw new Error('EIP1559 requirement not met: (maxFeePerGasBytes > maxPriorityFeePerGasBytes)')
     } else {
       // EIP1559 transactions do not have the gasPrice field
       gasPriceBytes = ensureHexBuffer(data.gasPrice);
