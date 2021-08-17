@@ -49,7 +49,7 @@ exports.validateEthereumMsgResponse = function(res, req) {
     return addRecoveryParam(hash, sig, signer, { chainId: 1, useEIP155: false })
   } else if (input.protocol === 'eip712') {
     const digest = prehash ? prehash : eip712.TypedDataUtils.encodeDigest(req.input.payload);
-    return addRecoveryParam(digest, sig, signer)
+    return addRecoveryParam(digest, sig, signer, { type: 'EIP712_MSG' })
   } else {
     throw new Error('Unsupported protocol');
   }
@@ -406,6 +406,8 @@ function getRecoveryParam(v, txData={}) {
   // transaction payload.
   if (type === 1 || type === 2) {
     return ensureHexBuffer(v, true); // 0 or 1, with 0 expected as an empty buffer
+  } else if (type === 'EIP712_MSG') {
+    return ensureHexBuffer(v, false); // 0 or 1, with 0 expected as a number
   }
 
   // If we are not using EIP155, convert v directly to a buffer and return it
