@@ -46,10 +46,12 @@ exports.validateEthereumMsgResponse = function(res, req) {
     const hash =  prehash ? 
                   prehash : 
                   Buffer.from(keccak256(Buffer.concat([get_personal_sign_prefix(msg.length), msg])), 'hex');
+    // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
     return addRecoveryParam(hash, sig, signer, { chainId: 1, useEIP155: false })
   } else if (input.protocol === 'eip712') {
     const digest = prehash ? prehash : eip712.TypedDataUtils.encodeDigest(req.input.payload);
-    return addRecoveryParam(digest, sig, signer, { type: 'EIP712_MSG' })
+    // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
+    return addRecoveryParam(digest, sig, signer, { useEIP155: false })
   } else {
     throw new Error('Unsupported protocol');
   }
@@ -406,13 +408,10 @@ function getRecoveryParam(v, txData={}) {
   // transaction payload.
   if (type === 1 || type === 2) {
     return ensureHexBuffer(v, true); // 0 or 1, with 0 expected as an empty buffer
-  } else if (type === 'EIP712_MSG') {
-    return ensureHexBuffer(v, false); // 0 or 1, with 0 expected as a number
-  }
-
-  // If we are not using EIP155, convert v directly to a buffer and return it
-  if (false === useEIP155 || chainId === null)
+  } else if (false === useEIP155 || chainId === null) {
+    // For ETH messages and non-EIP155 chains the set should be [27, 28] for `v`
     return Buffer.from(new BN(v).plus(27).toString(16), 'hex');
+  }
 
   // We will use EIP155 in most cases. Convert v to a bignum and operate on it.
   // Note that the protocol calls for v = (CHAIN_ID*2) + 35/36, where 35 or 36
