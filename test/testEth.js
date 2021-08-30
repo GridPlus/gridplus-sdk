@@ -314,10 +314,11 @@ if (!process.env.skip) {
         await testTxFail(buildTxReq(txData, 1, path.slice(0, 1)));            
       }
     })
-    it('Should test that chainId=137 shows "MATIC" and chainId=56 shows "BNB" units', async () => {
+    it('Should test named units', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
       await testTxPass(buildTxReq(txData, `0x${(137).toString(16)}`));
       await testTxPass(buildTxReq(txData, `0x${(56).toString(16)}`));
+      await testTxPass(buildTxReq(txData, `0x${(43114).toString(16)}`));      
     })
 
     it('Should test range of chainId sizes and EIP155 tag', async () => {
