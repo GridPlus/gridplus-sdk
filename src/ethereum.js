@@ -129,6 +129,8 @@ exports.buildEthereumTxRequest = function(data) {
         throw new Error('EIP1559 transactions must include `maxPriorityFeePerGas`');
       if (!data.maxPriorityFeePerGas)
         throw new Error('EIP1559 transactions must include `maxFeePerGas`');
+      if (data.maxPriorityFeePerGas > data.maxFeePerGas)
+        throw new Error('maxPriorityFeePerGas must be <= maxFeePerGas');
       maxPriorityFeePerGasBytes = ensureHexBuffer(data.maxPriorityFeePerGas);
       rawTx.push(maxPriorityFeePerGasBytes);
       maxFeePerGasBytes = ensureHexBuffer(data.maxFeePerGas);
@@ -252,21 +254,22 @@ exports.buildEthereumTxRequest = function(data) {
     // Flow data into extraData requests, which will follow-up transaction requests, if supported/applicable    
     const extraDataPayloads = [];
     let prehash = null;
-    if (dataBytes && dataBytes.length > MAX_BASE_DATA_SZ) {
-      // Determine sizes and run through sanity checks
-      const chainIdExtraSz = chainIdBufSz > 0 ? chainIdBufSz + 1 : 0;
-      const totalSz = dataBytes.length + chainIdExtraSz;
-      const maxSzAllowed = MAX_BASE_DATA_SZ + (extraDataMaxFrames * extraDataFrameSz);
 
-      // Copy the data into a tmp buffer. Account for larger chain ID sizes if applicable.
-      const dataToCopy = Buffer.alloc(dataBytes.length + chainIdExtraSz)
-      if (chainIdExtraSz > 0) {
+    // Create the buffer, prefix with chainId (if needed) and add data slice
+    const dataSz = dataBytes.length || 0;
+    const chainIdExtraSz = chainIdBufSz > 0 ? chainIdBufSz + 1 : 0;
+    const dataToCopy = Buffer.alloc(dataSz + chainIdExtraSz);
+    if (chainIdExtraSz > 0) {
         dataToCopy.writeUInt8(chainIdBufSz, 0);
         chainIdBuf.copy(dataToCopy, 1);
-        dataBytes.copy(dataToCopy, chainIdExtraSz);
-      } else {
-        dataBytes.copy(dataToCopy, 0);
-      }
+    }
+    dataBytes.copy(dataToCopy, chainIdExtraSz);
+
+    if (dataSz > MAX_BASE_DATA_SZ) {
+      // Determine sizes and run through sanity checks
+      const totalSz = dataSz + chainIdExtraSz;
+      const maxSzAllowed = MAX_BASE_DATA_SZ + (extraDataMaxFrames * extraDataFrameSz);
+
       if (prehashAllowed && totalSz > maxSzAllowed) {
         // If this payload is too large to send, but the Lattice allows a prehashed message, do that
         prehash = Buffer.from(keccak256(get_rlp_encoded_preimage(rawTx, type)), 'hex')
