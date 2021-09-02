@@ -129,8 +129,6 @@ exports.buildEthereumTxRequest = function(data) {
         throw new Error('EIP1559 transactions must include `maxPriorityFeePerGas`');
       if (!data.maxPriorityFeePerGas)
         throw new Error('EIP1559 transactions must include `maxFeePerGas`');
-      if (data.maxPriorityFeePerGas > data.maxFeePerGas)
-        throw new Error('maxPriorityFeePerGas must be <= maxFeePerGas');
       maxPriorityFeePerGasBytes = ensureHexBuffer(data.maxPriorityFeePerGas);
       rawTx.push(maxPriorityFeePerGasBytes);
       maxFeePerGasBytes = ensureHexBuffer(data.maxFeePerGas);
