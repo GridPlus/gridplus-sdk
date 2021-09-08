@@ -16,6 +16,7 @@ const ec = new EC('secp256k1');
 //       For p2pkh-derived addresses, we use the legacy 44' purpose
 //       For p2wpkh-derived addresse (not yet supported) we will use 84'
 exports.HARDENED_OFFSET = HARDENED_OFFSET;
+exports.BTC_PURPOSE_P2WPKH = HARDENED_OFFSET+84;
 exports.BTC_PURPOSE_P2SH_P2WPKH = HARDENED_OFFSET+49;
 exports.BTC_LEGACY_PURPOSE = HARDENED_OFFSET+44;
 exports.BTC_COIN = HARDENED_OFFSET;
@@ -172,22 +173,14 @@ function _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestn
 }
 
 function _btc_tx_request_builder(inputs, recipient, value, fee, segwit, isTestnet, purpose) {
-  let currencyIdx, changeVersion, networkStr;
+  let currencyIdx;
   if (isTestnet && segwit === true) {
-    networkStr = 'TESTNET';
-    changeVersion = 'SEGWIT_TESTNET';
     currencyIdx = exports.BTC_TESTNET_COIN;
   } else if (isTestnet && segwit === false) {
-    networkStr = 'TESTNET';
-    changeVersion = 'TESTNET';
     currencyIdx = exports.BTC_TESTNET_COIN;
   } else if (!isTestnet && segwit === true) {
-    networkStr = 'MAINNET';
-    changeVersion = 'SEGWIT';
     currencyIdx = exports.BTC_COIN;
   } else if (!isTestnet && segwit === false) {
-    networkStr = 'MAINNET';
-    changeVersion = 'LEGACY';
     currencyIdx = exports.BTC_COIN;
   } else {
     throw new Error('Invalid network and segwit params provided');
@@ -200,8 +193,6 @@ function _btc_tx_request_builder(inputs, recipient, value, fee, segwit, isTestne
     fee,
     isSegwit: segwit,
     changePath: [purpose, currencyIdx, HARDENED_OFFSET, 1, 0],
-    changeVersion,
-    network: networkStr,
   };
   inputs.forEach((input) => {
     txData.prevOuts.push({

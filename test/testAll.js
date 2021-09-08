@@ -309,10 +309,7 @@ describe('Connect and Pair', () => {
       value: 1000,
       fee: 1000,
       // isSegwit: false, // old encoding
-      spenderScriptType: 'P2PKH',
       changePath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
-      changeVersion: 'TESTNET',  // Default 'LEGACY'
-      network: 'TESTNET',        // Default 'MAINNET'
     };
     const req = {
       currency: 'BTC',
@@ -338,11 +335,7 @@ describe('Connect and Pair', () => {
       recipient: '2NGZrVvZG92qGYqzTLjCAewvPZ7JE8S8VxE',
       value: 1000,
       fee: 1000,
-      // isSegwit: true, // old encoding
-      spenderScriptType: 'P2SH_P2WPKH',
       changePath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
-      changeVersion: 'SEGWIT_TESTNET',  // Default 'LEGACY'
-      network: 'TESTNET',        // Default 'MAINNET'
     };
     const req = {
       currency: 'BTC',
@@ -367,11 +360,7 @@ describe('Connect and Pair', () => {
       recipient: 'tb1qym0z2a939lefrgw67ep5flhf43dvpg3h4s96tn',
       value: 1000,
       fee: 1000,
-      // isSegwit: true, // old encoding
-      spenderScriptType: 'P2SH_P2WPKH',
       changePath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
-      changeVersion: 'SEGWIT_TESTNET',  // Default 'LEGACY'
-      network: 'TESTNET',        // Default 'MAINNET'
     };
     const req = {
       currency: 'BTC',
@@ -382,6 +371,33 @@ describe('Connect and Pair', () => {
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
+
+  it('Should sign an input from a native segwit account',  async () => {
+    const txData = {
+      prevOuts: [
+        {
+          txHash: 'b2efdbdd3340d2bc547671ce3993a6f05d70343c07578f9d7f5626fdfc06fa35',
+          value: 76800,
+          index: 0,
+          signerPath: [helpers.BTC_PURPOSE_P2WPKH, helpers.BTC_TESTNET_COIN, HARDENED_OFFSET, 0, 0]
+        }
+      ],
+      recipient: '2N4gqWT4oqWL2gz9ps92z9fm2Bg3FUkqG7Q',
+      value: 70000,
+      fee: 4380,
+      isSegwit: true,
+      changePath: [helpers.BTC_PURPOSE_P2WPKH, helpers.BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
+    };
+    const req = {
+      currency: 'BTC',
+      data: txData,
+    };
+    // Sign a legit tx
+    const sigResp = await helpers.execute(client, 'sign', req);
+    expect(sigResp.tx).to.not.equal(null);
+    expect(sigResp.txHash).to.not.equal(null);
+    expect(sigResp.changeRecipient.slice(0, 2)).to.equal('tb');
+  })
 
   it('Should test permission limits', async () => {
     // Fail to add permissions where limit or window is 0
@@ -452,7 +468,6 @@ describe('Connect and Pair', () => {
     req.data.value = 1;
     signResp = await helpers.execute(client, 'sign', req);
     expect(signResp.tx).to.not.equal(null);
-
   })
 
 });

@@ -7,7 +7,11 @@ const DEFAULT_SEQUENCE = 0xffffffff;
 const DEFAULT_SIGHASH_BUFFER = Buffer.from('01', 'hex'); // SIGHASH_ALL = 0x01
 const { HARDENED_OFFSET } = require('./constants');
 const DEFAULT_CHANGE = [44 + HARDENED_OFFSET, HARDENED_OFFSET, HARDENED_OFFSET, 1, 0];
-
+const BTC_PURPOSE_P2WPKH = HARDENED_OFFSET+84;
+const BTC_PURPOSE_P2SH_P2WPKH = HARDENED_OFFSET+49;
+const BTC_LEGACY_PURPOSE = HARDENED_OFFSET+44;
+const BTC_COIN = HARDENED_OFFSET;
+const BTC_TESTNET_COIN = HARDENED_OFFSET+1;
 const OP = {
   ZERO: 0x00,
   HASH160: 0xa9,
@@ -16,26 +20,20 @@ const OP = {
   EQUALVERIFY: 0x88,
   CHECKSIG: 0xac,
 }
+const SEGWIT_V0 = 0x00;
+const SEGWIT_NATIVE_V0_PREFIX = 'bc';
+const SEGWIT_NATIVE_V0_TESTNET_PREFIX = 'tb';
 
-const addressVersion = {
-  'LEGACY': 0x00,
-  'SEGWIT': 0x05,
-  'TESTNET': 0x6F,
-  'SEGWIT_TESTNET': 0xC4,
-  'SEGWIT_NATIVE_V0': 0xD0,
-  'SEGWIT_NATIVE_V0_TESTNET': 0xF0,
-}
-exports.addressVersion = addressVersion;
+const FMT_SEGWIT_NATIVE_V0 = 0xD0;
+const FMT_SEGWIT_NATIVE_V0_TESTNET = 0xF0;
+const FMT_SEGWIT_WRAPPED = 0x05;
+const FMT_SEGWIT_WRAPPED_TESTNET = 0xC4;
+const FMT_LEGACY = 0x00;
+const FMT_LEGACY_TESTNET = 0x6F;
+const BTC_SCRIPT_TYPE_P2PKH = 0x01;
+const BTC_SCRIPT_TYPE_P2SH_P2WPKH = 0x03;
+const BTC_SCRIPT_TYPE_P2WPKH_V0 = 0x04;
 
-// Bitcoin script types -- defined by the Lattice protocol spec
-// NOTE: Only certain script types are supported for the spender, but all are supported for recipient
-const scriptTypes = {
-  P2PKH: 0x01, // Supported spender type
-  P2SH: 0x02,
-  P2SH_P2WPKH: 0x03, // Supported spender type
-  P2WPKH_V0: 0x04,
-}
-exports.scriptTypes = scriptTypes
 
 // We need to build two different objects here:
 // 1. bitcoinjs-lib TransactionBuilder object, which will be used in conjunction
@@ -59,17 +57,15 @@ exports.scriptTypes = scriptTypes
 exports.buildBitcoinTxRequest = function(data) {
   try {
     const { 
-      prevOuts, recipient, value, changePath=DEFAULT_CHANGE, 
-      fee, isSegwit=null, changeVersion='SEGWIT', spenderScriptType=null 
+      prevOuts, recipient, value, changePath=DEFAULT_CHANGE, fee,
     } = data;
     if (changePath.length !== 5) throw new Error('Please provide a full change path.')
     // Serialize the request
     const payload = Buffer.alloc(59 + (69 * prevOuts.length));
     let off = 0;
     // Change version byte (a.k.a. address format byte)
-    if (addressVersion[changeVersion] === undefined)
-      throw new Error('Invalid change version specified.');
-    payload.writeUInt8(addressVersion[changeVersion]); off++;
+    const changeFmt = getAddressFormat(changePath);
+    payload.writeUInt8(changeFmt); off++;
 
     // Build the change data
     payload.writeUInt32LE(changePath.length, off); off += 4;
@@ -89,17 +85,6 @@ exports.buildBitcoinTxRequest = function(data) {
     payload.writeUInt8(prevOuts.length, off); off++;
     let inputSum = 0;
 
-    let spenderScriptTypeToUse;
-    if (spenderScriptType !== null && scriptTypes[spenderScriptType]) {
-      // For newer versions we use the input scriptType
-      spenderScriptTypeToUse = scriptTypes[spenderScriptType];
-    } else if (isSegwit !== null) {
-      // For legacy callers we use the boolean `isSegwit` to denote if we are spending
-      // *wrapped* segwit inputs
-      spenderScriptTypeToUse = isSegwit === true ? scriptTypes.P2SH_P2WPKH : scriptTypes.P2PKH;
-    } else {
-      throw new Error('Unsupported spender script type or none provided.')
-    }
     prevOuts.forEach((input) => {
       if (!input.signerPath || input.signerPath.length !== 5) {
         throw new Error('Full recipient path not specified ')
@@ -111,18 +96,17 @@ exports.buildBitcoinTxRequest = function(data) {
       payload.writeUInt32LE(input.index, off); off += 4;
       writeUInt64LE(input.value, payload, off); off += 8;
       inputSum += input.value;
-      payload.writeUInt8(spenderScriptTypeToUse, off); off++;
+      const scriptType = getScriptType(input);
+      payload.writeUInt8(scriptType, off); off++;
       if (!Buffer.isBuffer(input.txHash)) input.txHash = Buffer.from(input.txHash, 'hex');
       input.txHash.copy(payload, off); off += input.txHash.length;
     })
     // Send them back!
     return {
       payload,
-      spenderScriptType: spenderScriptTypeToUse,
       schema: constants.signingSchema.BTC_TRANSFER,
       origData: data,   // We will need the original data for serializing the tx
       changeData: {     // This data helps fill in the change output
-        changeVersion,
         value: inputSum - (value + fee),
       }
     };
@@ -137,16 +121,16 @@ exports.buildBitcoinTxRequest = function(data) {
 // -- outputs = { value, recipient }  // expects an address string for `recipient`
 // -- isSegwitSpend = true if the inputs are being spent using segwit
 //                    (NOTE: either ALL are being spent, or none are)
-// -- network = Name of network, used to determine transaction version
 // -- lockTime = Will probably always be 0
 exports.serializeTx = function(data) {
-  const { inputs, outputs, spenderScriptType, lockTime=0, crypto } = data;
+  const { inputs, outputs, lockTime=0, crypto } = data;
   let payload = Buffer.alloc(4);
   let off = 0;
   // Always use version 2
   const version = 2;
+  const useWitness = needsWitness(inputs);
   payload.writeUInt32LE(version, off); off += 4;
-  if (spenderScriptType === scriptTypes.P2SH_P2WPKH) {
+  if (useWitness) {
     payload = concat(payload, Buffer.from('00', 'hex')); // marker = 0x00
     payload = concat(payload, Buffer.from('01', 'hex')); // flag = 0x01
   }
@@ -157,7 +141,9 @@ exports.serializeTx = function(data) {
     payload = concat(payload, input.hash.reverse()); off += input.hash.length;
     const index = getU32LE(input.index);
     payload = concat(payload, index); off += index.length;
-    if (spenderScriptType === scriptTypes.P2SH_P2WPKH) {
+    const scriptType = getScriptType(input);
+    // Build the sigScript. Note that p2wpkh does not have a scriptSig.
+    if (scriptType === BTC_SCRIPT_TYPE_P2SH_P2WPKH) {
       // Build a vector (varSlice of varSlice) containing the redeemScript
       const redeemScript = buildRedeemScript(input.pubkey, crypto);
       const redeemScriptLen = getVarInt(redeemScript.length);
@@ -165,10 +151,13 @@ exports.serializeTx = function(data) {
       const sliceLen = getVarInt(slice.length);
       payload = concat(payload, sliceLen); off += sliceLen.length;
       payload = concat(payload, slice); off += slice.length;
-    } else {
+    } else if (scriptType === BTC_SCRIPT_TYPE_P2PKH) {
       // Build the signature + pubkey script to spend this input
       const slice = buildSig(input.sig, input.pubkey);
       payload = concat(payload, slice); off += slice.length;
+    } else if (scriptType === BTC_SCRIPT_TYPE_P2WPKH_V0) {
+      const emptyScript = Buffer.from('00', 'hex')
+      payload = concat(payload, emptyScript); off += 1;
     }
     // Use the default sequence for all transactions
     const sequence = getU32LE(DEFAULT_SEQUENCE);
@@ -187,7 +176,7 @@ exports.serializeTx = function(data) {
     payload = concat(payload, script); off += script.length;
   })
   // Add witness data if needed
-  if (spenderScriptType === scriptTypes.P2SH_P2WPKH) {
+  if (useWitness) {
     const sigs = [];
     const pubkeys = [];
     for (let i = 0; i < inputs.length; i++) {
@@ -203,7 +192,22 @@ exports.serializeTx = function(data) {
 
 // Convert a pubkeyhash to a bitcoin base58check address with a version byte
 exports.getBitcoinAddress = function(pubkeyhash, version) {
-  return bs58check.encode(Buffer.concat([Buffer.from([version]), pubkeyhash]));
+  let bech32Prefix = null;
+  let bech32Version = null;
+  if (version === FMT_SEGWIT_NATIVE_V0) {
+    bech32Prefix = SEGWIT_NATIVE_V0_PREFIX;
+    bech32Version = SEGWIT_V0;
+  } else if (version === FMT_SEGWIT_NATIVE_V0_TESTNET) {
+    bech32Prefix = SEGWIT_NATIVE_V0_TESTNET_PREFIX
+    bech32Version = SEGWIT_V0;
+  }
+  if (bech32Prefix && bech32Version !== null) {
+    const words = bech32.toWords(pubkeyhash);
+    words.unshift(bech32Version);
+    return bech32.encode(bech32Prefix, words);
+  } else {
+    return bs58check.encode(Buffer.concat([Buffer.from([version]), pubkeyhash]));
+  }    
 }
 
 
@@ -250,14 +254,14 @@ function buildWitness(sigs, pubkeys) {
 function buildLockingScript(address) {
   const dec = decodeAddress(address);
   switch (dec.versionByte) {
-    case addressVersion.SEGWIT_NATIVE_V0:
-    case addressVersion.SEGWIT_NATIVE_V0_TESTNET:
+    case FMT_SEGWIT_NATIVE_V0:
+    case FMT_SEGWIT_NATIVE_V0_TESTNET:
       return buildP2wpkhLockingScript(dec.pkh);
-    case addressVersion.SEGWIT:
-    case addressVersion.SEGWIT_TESTNET:
+    case FMT_SEGWIT_WRAPPED:
+    case FMT_SEGWIT_WRAPPED_TESTNET:
       return buildP2shLockingScript(dec.pkh);
-    case addressVersion.LEGACY:
-    case addressVersion.TESTNET:
+    case FMT_LEGACY:
+    case FMT_LEGACY_TESTNET:
       return buildP2pkhLockingScript(dec.pkh);
     default:
       throw new Error(`Unknown version byte: ${dec.versionByte}. Cannot build BTC transaction.`);
@@ -345,25 +349,82 @@ function writeUInt64LE(n, buf, off) {
 }
 
 function decodeAddress(address) {
-let versionByte, pkh;
+  let versionByte, pkh;
   try {
     versionByte = bs58check.decode(address)[0];
     pkh = bs58check.decode(address).slice(1);
   } catch (err) {
     try {
       const bech32Dec = bech32.decode(address);
-      if (bech32Dec.prefix === 'bc')
-        versionByte = 0xD0;
-      else if (bech32Dec.prefix === 'tb')
-        versionByte = 0xF0;
+      if (bech32Dec.prefix === SEGWIT_NATIVE_V0_PREFIX)
+        versionByte = FMT_SEGWIT_NATIVE_V0;
+      else if (bech32Dec.prefix === SEGWIT_NATIVE_V0_TESTNET_PREFIX)
+        versionByte = FMT_SEGWIT_NATIVE_V0_TESTNET;
       else
         throw new Error('Unsupported prefix: must be bc or tb.');
       if (bech32Dec.words[0] !== 0)
         throw new Error(`Unsupported segwit version: must be 0, got ${bech32Dec.words[0]}`);
+      
       pkh = Buffer.from(bech32.fromWords(bech32Dec.words.slice(1)));
     } catch (err) {
       throw new Error(`Unable to decode address: ${address}: ${err.message}`)
     }
   }
   return {versionByte, pkh};
+}
+
+// Determine the address format (a.k.a. "version") depending on the
+// purpose of the dervation path.
+function getAddressFormat(path) {
+  if (path.length < 2)
+    throw new Error('Path must be >1 index');
+  const purpose = path[0];
+  const coin = path[1];
+  if (purpose === BTC_PURPOSE_P2WPKH && coin === BTC_COIN) {
+    return FMT_SEGWIT_NATIVE_V0;
+  } else if (purpose === BTC_PURPOSE_P2WPKH && coin === BTC_TESTNET_COIN) {
+    return FMT_SEGWIT_NATIVE_V0_TESTNET;
+  } else if (purpose === BTC_PURPOSE_P2SH_P2WPKH && coin === BTC_COIN) {
+    return FMT_SEGWIT_WRAPPED;
+  } else if (purpose === BTC_PURPOSE_P2SH_P2WPKH && coin === BTC_TESTNET_COIN) {
+    return FMT_SEGWIT_WRAPPED_TESTNET;
+  } else if (purpose === BTC_LEGACY_PURPOSE && coin === BTC_COIN) {
+    return FMT_LEGACY;
+  } else if (purpose === BTC_LEGACY_PURPOSE && coin === BTC_TESTNET_COIN) {
+    return FMT_LEGACY_TESTNET;
+  } else {
+    throw new Error('Invalid Bitcoin path provided. Cannot determine address format.')
+  }
+}
+exports.getAddressFormat = getAddressFormat;
+
+// Determine the script type for an input based on its owner's derivation
+// path's `purpose` index. 
+// We do not support p2sh and only issue single-key addresses from the Lattice
+// so we can determine this based on path alone.
+function getScriptType(input) {
+  switch (input.signerPath[0]) {
+    case BTC_LEGACY_PURPOSE:
+      return BTC_SCRIPT_TYPE_P2PKH;
+    case BTC_PURPOSE_P2SH_P2WPKH:
+      return BTC_SCRIPT_TYPE_P2SH_P2WPKH;
+    case BTC_PURPOSE_P2WPKH:
+      return BTC_SCRIPT_TYPE_P2WPKH_V0;
+    default:
+      throw new Error(`Unsupported path purpose (${input.signerPath[0]}): cannot determine BTC script type.`);
+  }
+}
+
+// Determine if a a transaction should have a witness portion.
+// This will return true if any input is p2sh(p2wpkh) or p2wpkh.
+// We determine the script type based on the derivation path.
+function needsWitness(inputs) {
+  let w = false;
+  inputs.forEach((input) => {
+    if ((input.signerPath[0] === BTC_PURPOSE_P2WPKH) || 
+        (input.signerPath[0] === BTC_PURPOSE_P2SH_P2WPKH)) {
+      w = true;
+    }
+  })
+  return w;
 }
