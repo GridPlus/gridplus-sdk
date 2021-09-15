@@ -144,7 +144,7 @@ function parseEtherscanAbiInputs(inputs, data=[], isNestedTuple=false) {
           d.isArray = true;
         } else {
           // Parse the array size if applicable
-          const number = parseInt(typeName.slice(openBracketIdx, closeBracketIdx))
+          const number = parseInt(typeName.slice(openBracketIdx + 1, closeBracketIdx))
           if (isNaN(number)) {
             return d;
           }
