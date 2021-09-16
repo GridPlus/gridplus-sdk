@@ -191,12 +191,7 @@ describe('Test new transaction types',  () => {
       value: 100,
       data: '0xdeadbeef',
     };
-    // maxFeePerGas must be >= maxPriorityFeePerGas
     await testTxPass(buildTxReq(txData))
-    txData.maxFeePerGas += 1;
-    await testTxPass(buildTxReq(txData))
-    txData.maxFeePerGas -= 2;
-    await testTxFail(buildTxReq(txData))
   })
 
   it('Should test eip1559 on a non-EIP155 network', async () => {

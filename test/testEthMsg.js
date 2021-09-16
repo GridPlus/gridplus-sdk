@@ -112,7 +112,7 @@ describe('Setup client', () => {
     ETH_GAS_PRICE_MAX = fwConstants.ethMaxGasPrice;
   });
 })
-
+/*
 describe('Test ETH personalSign', function() {
   beforeEach(() => {
     expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
@@ -163,7 +163,7 @@ describe('Test ETH personalSign', function() {
   })
 
 })
-
+*/
 describe('Test ETH EIP712', function() {
   beforeEach(() => {
     expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
@@ -327,6 +327,23 @@ describe('Test ETH EIP712', function() {
         'nonce':0
       }
     }
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.sign(client, req);
+    } catch (err) {
+      expect(err).to.equal(null)
+    }
+  })
+
+  it('Should test a large 1inch transaction', async () => {
+    const msg = JSON.parse(`{"primaryType":"Order","types":{"EIP712Domain":[{"name":"name","type":"string"},{"name":"version","type":"string"},{"name":"chainId","type":"uint256"},{"name":"verifyingContract","type":"address"}],"Order":[{"name":"salt","type":"uint256"},{"name":"makerAsset","type":"address"},{"name":"takerAsset","type":"address"},{"name":"makerAssetData","type":"bytes"},{"name":"takerAssetData","type":"bytes"},{"name":"getMakerAmount","type":"bytes"},{"name":"getTakerAmount","type":"bytes"},{"name":"predicate","type":"bytes"},{"name":"permit","type":"bytes"},{"name":"interaction","type":"bytes"}]},"domain":{"name":"1inch Limit Order Protocol","version":"1","chainId":137,"verifyingContract":"0xb707d89d29c189421163515c59e42147371d6857"},"message":{"salt":"885135864076","makerAsset":"0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270","takerAsset":"0x8f3cf7ad23cd3cadbd9735aff958023239c6a063","makerAssetData":"0x23b872dd0000000000000000000000003e3e2ccdd7bae6bbd4a64e8d16ca8842061335eb00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000de0b6b3a7640000","takerAssetData":"0x23b872dd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e3e2ccdd7bae6bbd4a64e8d16ca8842061335eb00000000000000000000000000000000000000000000000018fae27693b40000","getMakerAmount":"0xf4a215c30000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000000018fae27693b40000","getTakerAmount":"0x296637bf0000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000000018fae27693b40000","predicate":"0x961d5b1e000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000002000000000000000000000000b707d89d29c189421163515c59e42147371d6857000000000000000000000000b707d89d29c189421163515c59e42147371d68570000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000044cf6fc6e30000000000000000000000003e3e2ccdd7bae6bbd4a64e8d16ca8842061335eb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002463592c2b00000000000000000000000000000000000000000000000000000000613e28e500000000000000000000000000000000000000000000000000000000","permit":"0x","interaction":"0x"}}`)
     const req = {
       currency: 'ETH_MSG',
       data: {
