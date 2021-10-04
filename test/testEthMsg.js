@@ -169,50 +169,6 @@ describe('Test ETH EIP712', function() {
     expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
   })
 
-  it('Should get an error when the domain is too large', async () => {   
-    // Only 6 lines of text are allowed in the domain region and address types
-    // take 2 lines each. This is a firmware limitation to avoid overrunning the
-    // viewable text region
-    const msg = {
-      types: {
-        EIP712Domain: [
-          { name: 'name', type: 'string' },
-          { name: 'version', type: 'string' },
-          { name: 'chainId', type: 'uint256' },
-          { name: 'verifyingContract', type: 'address' },
-          { name: 'foo', type: 'address' },
-        ],
-        Mail: [
-          { name: 'contents', type: 'string' }
-        ]
-      },
-      primaryType: 'Mail',
-      domain: {
-        name: 'Ether Mail',
-        version: '1',
-        chainId: 12,
-        verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC',
-        foo: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccD',
-      },
-      message: {
-        contents: 'foobar'
-      }
-    };
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
-        protocol: 'eip712',
-        payload: msg,
-      }
-    }
-    try {
-      await helpers.sign(client, req);
-    } catch (err) {
-      expect(err).to.not.equal(null)
-    }
-  })
-
   it('Should test a message that needs to be prehashed', async () => {
     const msg = {
       'types': {
@@ -630,6 +586,286 @@ describe('Test ETH EIP712', function() {
         },
       }
     };
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.sign(client, req);
+    } catch (err) {
+      expect(err).to.equal(null)
+    }
+  })
+
+  it('Should test a payload with an array type', async () => {
+    const msg = {
+      'types': {
+        'EIP712Domain': [
+          {
+            'name': 'name',
+            'type': 'string'
+          }
+        ],
+        'UserVotePayload': [
+          {
+            'name': 'allocations',
+            'type': 'UserVoteAllocationItem[]'
+          }
+        ],
+        'UserVoteAllocationItem': [
+          {
+            'name': 'reactorKey',
+            'type': 'bytes32'
+          },
+          {
+            'name': 'amount',
+            'type': 'uint256'
+          }
+        ]
+      },
+      'primaryType': 'UserVotePayload',
+      'domain': {
+        'name': 'Tokemak Voting',
+        'version': '1',
+        'chainId': 1,
+        'verifyingContract': '0x4495982ea5ed9c1b7cec37434cbf930b9472e823'
+      },
+      'message': {
+        'allocations': [
+          {
+            'reactorKey': '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
+            'amount': '1'
+          },
+          {
+            'reactorKey': '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
+            'amount': '2'
+          }
+        ]
+      }
+    }
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.sign(client, req);
+    } catch (err) {
+      expect(err).to.equal(null)
+    }
+  })
+
+  it('Should test multiple array types', async () => {
+    const msg = {
+      'types': {
+        'EIP712Domain': [
+          {
+            'name': 'name',
+            'type': 'string'
+          }
+        ],
+        'UserVotePayload': [
+          {
+            'name': 'integer',
+            'type': 'uint256',
+          },
+          {
+            'name': 'allocations',
+            'type': 'UserVoteAllocationItem[]'
+          },
+          {
+            'name': 'dummy',
+            'type': 'uint256'
+          },
+          {
+            'name': 'integerArray',
+            'type': 'uint256[]'
+          },
+        ],
+        'UserVoteAllocationItem': [
+          {
+            'name': 'reactorKey',
+            'type': 'bytes32'
+          },
+          {
+            'name': 'amount',
+            'type': 'uint256'
+          }
+        ]
+      },
+      'primaryType': 'UserVotePayload',
+      'domain': {
+        'name': 'Tokemak Voting',
+      },
+      'message': {
+        'integer': 56,
+        'allocations': [
+          {
+            'reactorKey': '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
+            'amount': '1'
+          },
+          {
+            'reactorKey': '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
+            'amount': '2'
+          }
+        ],
+        'dummy': 52,
+        'integerArray': [1,2,3],
+      }
+    }
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.sign(client, req);
+    } catch (err) {
+      expect(err).to.equal(null)
+    }
+  })
+
+  it('Should test a nested array', async () => {
+    const msg = {
+      'types': {
+        'EIP712Domain': [
+          {
+            'name': 'name',
+            'type': 'string'
+          }
+        ],
+        'UserVotePayload': [
+          {
+            'name': 'allocations',
+            'type': 'UserVoteAllocationItem[]'
+          }
+        ],
+        'UserVoteAllocationItem': [
+          {
+            'name': 'reactorKey',
+            'type': 'bytes32'
+          },
+          {
+            'name': 'amount',
+            'type': 'uint256[]'
+          }
+        ]
+      },
+      'primaryType': 'UserVotePayload',
+      'domain': {
+        'name': 'Tokemak Voting',
+      },
+      'message': {
+        'allocations': [
+          {
+            'reactorKey': '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
+            'amount': ['1', '2']
+          },
+          {
+            'reactorKey': '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
+            'amount': ['2', '3']
+          }
+        ]
+      }
+    }
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.sign(client, req);
+    } catch (err) {
+      expect(err).to.equal(null)
+    }
+  })
+
+  it('Should test a nested array of custom type', async () => {
+    const msg = {
+      'types': {
+        'EIP712Domain': [
+          {
+            'name': 'name',
+            'type': 'string'
+          }
+        ],
+        'DummyThing': [
+          {
+            'name': 'foo',
+            'type': 'bytes'
+          }
+        ],
+        'UserVotePayload': [
+          {
+            'name': 'test',
+            'type': 'string'
+          },
+          {
+            'name': 'athing',
+            'type': 'uint32'
+          },
+          {
+            'name': 'allocations',
+            'type': 'UserVoteAllocationItem[]'
+          }
+        ],
+        'UserVoteAllocationItem': [
+          {
+            'name': 'reactorKey',
+            'type': 'bytes32'
+          },
+          {
+            'name': 'dummy',
+            'type': 'DummyThing[]'
+          }
+        ]
+      },
+      'primaryType': 'UserVotePayload',
+      'domain': {
+        'name': 'Tokemak Voting',
+      },
+      'message': {
+        'athing': 5,
+        'test': 'hello',
+        'allocations': [
+          {
+            'reactorKey': '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
+            'dummy': [ 
+              {
+                'foo': '0xabcd', 
+              },
+              {
+                'foo': '0x123456'
+              }
+            ]            
+          },
+          {
+            'reactorKey': '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
+            'dummy': [
+              {
+                'foo': '0xdeadbeef', 
+              },
+              {
+                'foo': '0x'
+              }
+            ]
+          }
+        ]
+      }
+    }
     const req = {
       currency: 'ETH_MSG',
       data: {
