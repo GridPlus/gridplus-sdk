@@ -734,12 +734,48 @@ function parseEIP712Msg(msg, typeName, types, isEthers=false) {
   try {
     const type = types[typeName];
     type.forEach((item) => {
-      const isCustomType = Object.keys(types).indexOf(item.type) > -1;
-      if (true === isCustomType) {
-        msg[item.name] = parseEIP712Msg(msg[item.name], item.type, types, isEthers)
+      const isArrayType = item.type.indexOf('[') > -1;
+      const singularType = isArrayType ? item.type.slice(0, item.type.indexOf('[')) : item.type;
+      const isCustomType = Object.keys(types).indexOf(singularType) > -1;
+      if (isCustomType && Array.isArray(msg)) {
+        // For custom types we need to jump into the `msg` using the key (name of type) and 
+        // parse that entire sub-struct as if it were a message.
+        // We will recurse into sub-structs until we reach a level where every item is an
+        // elementary (i.e. non-custom) type.
+        // For arrays, we need to loop through each message item.
+        for (let i = 0; i < msg.length; i++) {
+            msg[i][item.name] = parseEIP712Msg(msg[i][item.name], singularType, types, isEthers)
+        }
+      } else if (isCustomType) {
+        // Not an array means we can jump directly into the sub-struct to convert
+        msg[item.name] = parseEIP712Msg(msg[item.name], singularType, types, isEthers)
+      } else if (Array.isArray(msg)) {
+        // If we have an array for this particular type and the type we are parsing
+        // is *not* a custom type, loop through the array elements and convert the types.
+        for (let i = 0; i < msg.length; i++) {
+          if (isArrayType) {
+            // If this type is itself an array, loop through those elements and parse individually.
+            // This code is not reachable for custom types so we assume these are arrays of
+            // elementary types.
+            for (let j = 0; j < msg[i][item.name].length; j++) {
+              msg[i][item.name][j] = parseEIP712Item(msg[i][item.name][j], singularType, isEthers)
+            }
+          } else {
+            // Non-arrays parse + replace one value for the elementary type
+            msg[i][item.name] = parseEIP712Item(msg[i][item.name], singularType, isEthers)
+          }
+        }
+      } else if (isArrayType) {
+        // If we have an elementary array type and a non-array message level, 
+        //loop through the array and parse + replace  each item individually.
+        for (let i = 0; i < msg[item.name].length; i++) {
+          msg[item.name][i] = parseEIP712Item(msg[item.name][i], singularType, isEthers)
+        }
       } else {
-        msg[item.name] = parseEIP712Item(msg[item.name], item.type, isEthers)
+        // If this is a singular elementary type, simply parse + replace.
+        msg[item.name] = parseEIP712Item(msg[item.name], singularType, isEthers)
       }
+      
     })
   } catch (err) {
     throw new Error(err.message);
