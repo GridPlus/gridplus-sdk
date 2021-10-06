@@ -65,7 +65,6 @@ exports.buildEthereumTxRequest = function(data) {
     const EXTRA_DATA_ALLOWED = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
     let MAX_BASE_DATA_SZ = fwConstants.ethMaxDataSz;
     const VAR_PATH_SZ = fwConstants.varAddrPathSzAllowed;
-
     // Sanity checks:
     // There are a handful of named chains we allow the user to reference (`chainIds`)
     // Custom chainIDs should be either numerical or hex strings
@@ -106,7 +105,6 @@ exports.buildEthereumTxRequest = function(data) {
     //--------------
     // 1. BUILD THE RAW TX FOR FUTURE RLP ENCODING
     //--------------
-
     // Ensure all fields are 0x-prefixed hex strings
     const rawTx = [];
     // Build the transaction buffer array

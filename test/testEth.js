@@ -90,7 +90,7 @@ function buildTxReq(txData, network=1, signerPath=[helpers.BTC_LEGACY_PURPOSE, h
 let foundError = false;
 
 async function testTxPass(req) {
-  const tx = await helpers.sign(client, req);
+  const tx = await helpers.execute(client, 'sign', req);
   // Make sure there is transaction data returned
   // (this is ready for broadcast)
   const txIsNull = tx.tx === null;
@@ -142,7 +142,7 @@ async function testTxPass(req) {
 async function testTxFail(req) {
   let tx;
   try {
-    tx = await helpers.sign(client, req);
+    tx = await helpers.execute(client, 'sign', req);
   } catch (err) {
     expect(err).to.not.equal(null);
     return;
@@ -355,11 +355,11 @@ if (!process.env.skip) {
       // >UINT64_MAX will fail internal checks.
       let res;
       chainId = getChainId(64, -1); // UINT64_MAX should pass
-      res = await helpers.sign(client, buildTxReq(txData, chainId));
+      res = await helpers.execute(client, 'sign', buildTxReq(txData, chainId));
       expect(res.tx).to.not.equal(null);
       chainId = getChainId(64, 0); // UINT64_MAX+1 should fail
       try {
-        res = await helpers.sign(client, buildTxReq(txData, chainId));
+        res = await helpers.execute(client, 'sign', buildTxReq(txData, chainId));
       } catch (err) {
         expect(typeof err).to.equal('string');
       }

@@ -34,7 +34,7 @@ const BTC_PARENT_PATH = {
 }
 
 async function runTestCase(expectedCode) {
-    const res = await helpers.test(client, jobReq);
+    const res = await helpers.execute(client, 'test', jobReq);
     const parsedRes = helpers.parseWalletJobResp(res, client.fwVersion);
     expect(parsedRes.resultStatus).to.equal(expectedCode);
     return parsedRes;
@@ -199,7 +199,7 @@ describe('getAddresses', () => {
       n: 3,
       skipCache: true,
     }
-    const addrs = await helpers.getAddresses(client, req, 2000);
+    const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
     const resp = {
       count: addrs.length,
       addresses: addrs,
@@ -225,7 +225,7 @@ describe('getAddresses', () => {
       n: 3,
       skipCache: true,
     }
-    const addrs = await helpers.getAddresses(client, req, 2000);
+    const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
     const resp = {
       count: addrs.length,
       addresses: addrs,
@@ -252,7 +252,7 @@ describe('getAddresses', () => {
       skipCache: true,
     }
     try {
-      await helpers.getAddresses(client, req, 2000);
+      await helpers.execute(client, 'getAddresses', req, 2000);
     } catch (err) {
       expect(err).to.not.equal(null)
     }
@@ -265,7 +265,7 @@ describe('getAddresses', () => {
       n: 3,
       skipCache: true,
     }
-    const addrs = await helpers.getAddresses(client, req, 2000);
+    const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
     const resp = {
       count: addrs.length,
       addresses: addrs,

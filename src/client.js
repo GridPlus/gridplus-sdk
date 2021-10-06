@@ -246,7 +246,6 @@ class Client {
       reqPayload = req.payload;
       schema = req.schema;
     }
-
     // Build the payload
     const payload = Buffer.alloc(2 + fwConstants.reqMaxDataSz);
     let off = 0;
@@ -365,7 +364,150 @@ class Client {
         if (err) return cb(err);
       } else {
         // Correct wallet and no errors -- handle the response
-        const d = this._handleEncResponse(res, decResLengths.finalizePair);
+        const d = this._handleEncResponse(res, decResLengths.empty);
+        if (d.err)
+          return cb(d.err);
+        return cb(null);
+      }
+    })
+  }
+
+  getKvRecords(opts, cb) {
+    const { type = 0, n = 1, start = 0 } = opts;
+    const fwConstants = getFwVersionConst(this.fwVersion);
+    if (!fwConstants.kvActionsAllowed) {
+      return cb('Unsupported. Please update firmware.');
+    } else if (n < 1) {
+      return cb('You must request at least one record.')
+    }
+    const payload = Buffer.alloc(9);
+    payload.writeUInt32LE(type);
+    payload.writeUInt8(n, 4);
+    payload.writeUInt32LE(start, 5);
+    // Encrypt the request and send it to the Lattice.
+    const param = this._buildEncRequest(encReqCodes.GET_KV_RECORDS, payload);
+    return this._request(param, (err, res, responseCode) => {
+      if (responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) {
+        // If we catch a case where the wallet has changed, try getting the new active wallet
+        // and recursively make the original request.
+        this._getActiveWallet((err) => {
+          if (err) return cb(err)
+          else     return this.getKvRecords(opts, cb);
+        })
+      } else if (err) {
+        // If there was another error caught, return it
+        if (err) return cb(err);
+      } else {
+        // Correct wallet and no errors -- handle the response
+        const d = this._handleEncResponse(res, decResLengths.getKvRecords);
+        if (d.err)
+          return cb(d.err);
+        // Decode the response
+        let off = 65; // Skip 65 byte pubkey prefix
+        const nTotal = parseInt(d.data.slice(off, off+4).toString('hex'), 16); off += 4;
+        const nFetched = parseInt(d.data.slice(off, off+1).toString('hex'), 16); off += 1;
+        if (nFetched > fwConstants.kvActionMaxNum)
+          return cb('Too many records fetched. Firmware error.');
+        const records = [];
+        for (let i = 0; i < nFetched; i++) {
+          const r = {};
+          r.id = parseInt(d.data.slice(off, off + 4).toString('hex'), 16); off += 4;
+          r.type = parseInt(d.data.slice(off, off + 4).toString('hex'), 16); off += 4;
+          r.caseSensitive = parseInt(d.data.slice(off, off + 1).toString('hex'), 16) === 1 ? true : false; off += 1;
+          const keySz = parseInt(d.data.slice(off, off + 1).toString('hex'), 16); off += 1;
+          r.key = d.data.slice(off, off + keySz-1); off += (fwConstants.kvKeyMaxStrSz + 1);
+          const valSz = parseInt(d.data.slice(off, off + 1).toString('hex'), 16); off += 1;
+          r.val = d.data.slice(off, off + valSz-1); off += (fwConstants.kvValMaxStrSz + 1);
+          records.push(r);
+        }
+        return cb(null, { records, total: nTotal, fetched: nFetched });
+      }
+    })
+  }
+
+  addKvRecords(opts, cb) {
+    const { type = 0, records = {}, caseSensitive=false } = opts;
+    const fwConstants = getFwVersionConst(this.fwVersion);
+    if (!fwConstants.kvActionsAllowed) {
+      return cb('Unsupported. Please update firmware.');
+    } else if (typeof records !== 'object' || Object.keys(records).length === 0) {
+      return cb('One or more key-value mapping must be provided in `records` param.');
+    } else if (Object.keys(records).length > fwConstants.kvActionMaxNum) {
+      return cb(`Too many keys provided. Please only provide up to ${fwConstants.kvActionMaxNum}.`);
+    }
+    const payload = Buffer.alloc(1 + (139 * fwConstants.kvActionMaxNum));
+    payload.writeUInt8(Object.keys(records).length);
+    let off = 1;
+    Object.keys(records).forEach((key) => {
+      if (typeof key !== 'string' || String(key).length > fwConstants.kvKeyMaxStrSz) {
+        return cb(`Key ${key} too large. Must be <32 characters.`)
+      } else if (typeof records[key] !== 'string' || String(records[key]).length > fwConstants.kvValMaxStrSz) {
+        return cb(`Value ${records[key]} too large. Must be <64 characters.`)
+      }
+      // Skip the ID portion. This will get added by firmware.
+      payload.writeUInt32LE(0, off); off += 4;
+      payload.writeUInt32LE(type, off); off += 4;
+      payload.writeUInt8(caseSensitive === true, off); off += 1;
+      payload.writeUInt8(String(key).length + 1, off); off += 1;
+      Buffer.from(String(key)).copy(payload, off); off += (fwConstants.kvKeyMaxStrSz + 1);
+      payload.writeUInt8(String(records[key]).length + 1, off); off += 1;
+      Buffer.from(String(records[key])).copy(payload, off); off += (fwConstants.kvValMaxStrSz + 1);
+    })
+    // Encrypt the request and send it to the Lattice.
+    const param = this._buildEncRequest(encReqCodes.ADD_KV_RECORDS, payload);
+    return this._request(param, (err, res, responseCode) => {
+      if (responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) {
+        // If we catch a case where the wallet has changed, try getting the new active wallet
+        // and recursively make the original request.
+        this._getActiveWallet((err) => {
+          if (err) return cb(err)
+          else     return this.addKvRecords(opts, cb);
+        })
+      } else if (err) {
+        // If there was another error caught, return it
+        if (err) return cb(err);
+      } else {
+        // Correct wallet and no errors -- handle the response
+        const d = this._handleEncResponse(res, decResLengths.empty);
+        if (d.err)
+          return cb(d.err);
+        return cb(null);
+      }
+    })
+  }
+
+  removeKvRecords(opts, cb) {
+    const { type = 0, ids = [] } = opts;
+    const fwConstants = getFwVersionConst(this.fwVersion);
+    if (!fwConstants.kvActionsAllowed) {
+      return cb('Unsupported. Please update firmware.');
+    } else if (!Array.isArray(ids) || ids.length < 1) {
+      return cb('You must include one or more `ids` to removed.')
+    } else if (ids.length > fwConstants.kvRemoveMaxNum) {
+      return cb(`Only up to ${fwConstants.kvRemoveMaxNum} records may be removed at once.`)
+    }
+    const payload = Buffer.alloc(5 + (4 * fwConstants.kvRemoveMaxNum));
+    payload.writeUInt32LE(type);
+    payload.writeUInt8(ids.length, 4);
+    for (let i = 0; i < ids.length; i++) {
+      payload.writeUInt32LE(ids[i], 5 + (4 * i))
+    }
+    // Encrypt the request and send it to the Lattice.
+    const param = this._buildEncRequest(encReqCodes.REMOVE_KV_RECORDS, payload);
+    return this._request(param, (err, res, responseCode) => {
+      if (responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) {
+        // If we catch a case where the wallet has changed, try getting the new active wallet
+        // and recursively make the original request.
+        this._getActiveWallet((err) => {
+          if (err) return cb(err)
+          else     return this.removeKvRecords(opts, cb);
+        })
+      } else if (err) {
+        // If there was another error caught, return it
+        if (err) return cb(err);
+      } else {
+        // Correct wallet and no errors -- handle the response
+        const d = this._handleEncResponse(res, decResLengths.empty);
         if (d.err)
           return cb(d.err);
         return cb(null);
@@ -426,7 +568,6 @@ class Client {
     // Get the ephemeral id - all encrypted requests require there to be an
     // epehemeral public key in order to send
     const ephemId = parseInt(this._getEphemId().toString('hex'), 16)
-    
     // Build the payload and checksum
     const payloadPreCs = Buffer.concat([Buffer.from([enc_request_code]), payload]);
     const cs = checksum(payloadPreCs);
@@ -570,7 +711,7 @@ class Client {
   // for the next request
   // @returns error (or null)
   _handlePair(encRes) {
-    const d = this._handleEncResponse(encRes, decResLengths.finalizePair);
+    const d = this._handleEncResponse(encRes, decResLengths.empty);
     if (d.err) return d.err;
     // Remove the pairing salt - we're paired!
     this.pairingSalt = null;

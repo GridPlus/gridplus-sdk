@@ -621,7 +621,7 @@ describe('Preloaded ABI definitions', () => {
     try {
       const approveDef = erc20PreloadedDefs[0]; 
       req.data.data = helpers.ensureHexBuffer(buildEthData(approveDef));
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       caughtErr = 'Failed to markdown ERC20 approval def.';
       expect(err).to.equal(null);
@@ -629,7 +629,7 @@ describe('Preloaded ABI definitions', () => {
     try {
       const transfer = erc20PreloadedDefs[1]; 
       req.data.data = helpers.ensureHexBuffer(buildEthData(transfer));
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       caughtErr = 'Failed to markdown ERC20 transfer def.';
       expect(err).to.equal(null);
@@ -637,7 +637,7 @@ describe('Preloaded ABI definitions', () => {
     try {
       const transferFrom = erc20PreloadedDefs[2]; 
       req.data.data = helpers.ensureHexBuffer(buildEthData(transferFrom));
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       caughtErr = 'Failed to markdown ERC20 transferFrom def.';
       expect(err).to.equal(null);
@@ -686,7 +686,7 @@ describe('Add ABI definitions', () => {
 
   it('Should add the ABI definitions', async () => {
     try {
-      await helpers.addAbi(client, boundaryAbiDefs.concat(defsToLoad));
+      await helpers.execute(client, 'addAbi', boundaryAbiDefs.concat(defsToLoad));
     } catch (err) {
       caughtErr = err;
       expect(err).to.equal(null, err);
@@ -710,7 +710,7 @@ describe('Test ABI Markdown', () => {
     bytesDef._vals[2] = [];
     req.data.data = buildEthData(bytesDef);
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.not.equal(null, err);
     }
@@ -722,7 +722,7 @@ describe('Test ABI Markdown', () => {
 
     req.data.data = buildEthData(bytesDef);
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.not.equal(null, err);
     }
@@ -732,7 +732,7 @@ describe('Test ABI Markdown', () => {
     const def = boundaryAbiDefs[n.i];
     req.data.data = buildEthData(def)
     try {
-      const sigResp = await helpers.sign(client, req);
+      const sigResp = await helpers.execute(client, 'sign', req);
       expect(sigResp.tx).to.not.equal(null);
       expect(sigResp.txHash).to.not.equal(null);
       setTimeout(() => { next() }, 1000);
@@ -746,7 +746,7 @@ describe('Test ABI Markdown', () => {
     const def = abiDefs[n.i];
     req.data.data = buildEthData(def)
     try {
-      const sigResp = await helpers.sign(client, req);
+      const sigResp = await helpers.execute(client, 'sign', req);
       expect(sigResp.tx).to.not.equal(null);
       expect(sigResp.txHash).to.not.equal(null);
       setTimeout(() => { next() }, 1000);
@@ -760,7 +760,7 @@ describe('Test ABI Markdown', () => {
     const def = tupleAbiDefs[n.i];
     req.data.data = buildEthData(def)
     try {
-      const sigResp = await helpers.sign(client, req);
+      const sigResp = await helpers.execute(client, 'sign', req);
       expect(sigResp.tx).to.not.equal(null);
       expect(sigResp.txHash).to.not.equal(null);
       setTimeout(() => { next() }, 1000);

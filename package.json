@@ -14,6 +14,7 @@
     "test-eth": "mocha --timeout 180000 -R spec test/testEth.js --recursive --exit",
     "test-eth-msg": "mocha --timeout 180000 -R spec test/testEthMsg.js --recursive --exit",
     "test-btc": "mocha --timeout 180000 -R spec test/testBtc.js --recursive --exit",
+    "test-kv": "mocha --timeout 180000 -R spec test/testKv.js --recursive --exit",
     "test-wallet-jobs": "mocha --timeout 300000 -R spec test/testWalletJobs.js --recursive --exit"
   },
   "main": "./index.js",
