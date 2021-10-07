@@ -18,6 +18,7 @@ const {
   toPaddedDER,
 } = require('./util');
 const {
+  ASCII_REGEX,
   getFwVersionConst,
   ADDR_STR_LEN,
   ENC_MSG_LEN,
@@ -378,7 +379,9 @@ class Client {
     if (!fwConstants.kvActionsAllowed) {
       return cb('Unsupported. Please update firmware.');
     } else if (n < 1) {
-      return cb('You must request at least one record.')
+      return cb('You must request at least one record.');
+    } else if (n > fwConstants.kvActionMaxNum) {
+      return cb(`You may only request up to ${fwConstants.kvActionMaxNum} records at once.`);
     }
     const payload = Buffer.alloc(9);
     payload.writeUInt32LE(type);
@@ -415,9 +418,9 @@ class Client {
           r.type = parseInt(d.data.slice(off, off + 4).toString('hex'), 16); off += 4;
           r.caseSensitive = parseInt(d.data.slice(off, off + 1).toString('hex'), 16) === 1 ? true : false; off += 1;
           const keySz = parseInt(d.data.slice(off, off + 1).toString('hex'), 16); off += 1;
-          r.key = d.data.slice(off, off + keySz-1); off += (fwConstants.kvKeyMaxStrSz + 1);
+          r.key = d.data.slice(off, off + keySz-1).toString(); off += (fwConstants.kvKeyMaxStrSz + 1);
           const valSz = parseInt(d.data.slice(off, off + 1).toString('hex'), 16); off += 1;
-          r.val = d.data.slice(off, off + valSz-1); off += (fwConstants.kvValMaxStrSz + 1);
+          r.val = d.data.slice(off, off + valSz-1).toString(); off += (fwConstants.kvValMaxStrSz + 1);
           records.push(r);
         }
         return cb(null, { records, total: nTotal, fetched: nFetched });
@@ -434,25 +437,35 @@ class Client {
       return cb('One or more key-value mapping must be provided in `records` param.');
     } else if (Object.keys(records).length > fwConstants.kvActionMaxNum) {
       return cb(`Too many keys provided. Please only provide up to ${fwConstants.kvActionMaxNum}.`);
+    } else if (Object.keys(records).length < 1) {
+      return cb('You must provide at least one key to add.')
     }
     const payload = Buffer.alloc(1 + (139 * fwConstants.kvActionMaxNum));
     payload.writeUInt8(Object.keys(records).length);
     let off = 1;
-    Object.keys(records).forEach((key) => {
-      if (typeof key !== 'string' || String(key).length > fwConstants.kvKeyMaxStrSz) {
-        return cb(`Key ${key} too large. Must be <32 characters.`)
-      } else if (typeof records[key] !== 'string' || String(records[key]).length > fwConstants.kvValMaxStrSz) {
-        return cb(`Value ${records[key]} too large. Must be <64 characters.`)
-      }
-      // Skip the ID portion. This will get added by firmware.
-      payload.writeUInt32LE(0, off); off += 4;
-      payload.writeUInt32LE(type, off); off += 4;
-      payload.writeUInt8(caseSensitive === true, off); off += 1;
-      payload.writeUInt8(String(key).length + 1, off); off += 1;
-      Buffer.from(String(key)).copy(payload, off); off += (fwConstants.kvKeyMaxStrSz + 1);
-      payload.writeUInt8(String(records[key]).length + 1, off); off += 1;
-      Buffer.from(String(records[key])).copy(payload, off); off += (fwConstants.kvValMaxStrSz + 1);
-    })
+    try {
+      Object.keys(records).forEach((key) => {
+        if (typeof key !== 'string' || String(key).length > fwConstants.kvKeyMaxStrSz) {
+          throw new Error(`Key ${key} too large. Must be <=${fwConstants.kvKeyMaxStrSz} characters.`);
+        } else if (typeof records[key] !== 'string' || String(records[key]).length > fwConstants.kvValMaxStrSz) {
+          throw new Error(`Value ${records[key]} too large. Must be <$={fwConstants.kvValMaxStrSz} characters.`);
+        } else if (String(key).length === 0 || String(records[key]).length === 0) {
+          throw new Error('Keys and values must be >0 characters.');
+        } else if (!ASCII_REGEX.test(key) || !ASCII_REGEX.test(records[key])) {
+          throw new Error('Unicode characters are not supported.');
+        }
+        // Skip the ID portion. This will get added by firmware.
+        payload.writeUInt32LE(0, off); off += 4;
+        payload.writeUInt32LE(type, off); off += 4;
+        payload.writeUInt8(caseSensitive === true, off); off += 1;
+        payload.writeUInt8(String(key).length + 1, off); off += 1;
+        Buffer.from(String(key)).copy(payload, off); off += (fwConstants.kvKeyMaxStrSz + 1);
+        payload.writeUInt8(String(records[key]).length + 1, off); off += 1;
+        Buffer.from(String(records[key])).copy(payload, off); off += (fwConstants.kvValMaxStrSz + 1);
+      })
+    } catch (err) {
+      return cb(`Error building request: ${err.message}`);
+    }
     // Encrypt the request and send it to the Lattice.
     const param = this._buildEncRequest(encReqCodes.ADD_KV_RECORDS, payload);
     return this._request(param, (err, res, responseCode) => {

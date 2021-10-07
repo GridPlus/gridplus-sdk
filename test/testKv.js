@@ -105,6 +105,36 @@ describe('Connect and Pair', () => {
     }
   })
 
+  it('Should fail to add records with unicode characters', async () => {
+    const badKey = { '0x🔥🦍': 'Muh name' }
+    const badVal = { '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D': 'val🔥🦍'}
+    try {
+      await helpers.execute(client, 'addKvRecords', { records: badKey });
+    } catch (err) {
+      expect(err).to.not.equal(null, 'Should have failed to add Unicode key but did not');
+    }
+    try {
+      await helpers.execute(client, 'addKvRecords', { records: badVal });
+    } catch (err) {
+      expect(err).to.not.equal(null, 'Should have failed to add Unicode key but did not');
+    }
+  })
+
+  it('Should fail to add zero length keys and values', async () => {
+    const badKey = { '': 'Muh name' }
+    const badVal = { '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D': ''}
+    try {
+      await helpers.execute(client, 'addKvRecords', { records: badKey });
+    } catch (err) {
+      expect(err).to.not.equal(null, 'Should have failed to add Unicode key but did not');
+    }
+    try {
+      await helpers.execute(client, 'addKvRecords', { records: badVal });
+    } catch (err) {
+      expect(err).to.not.equal(null, 'Should have failed to add Unicode key but did not');
+    }
+  })
+
   it('Should fetch the newly created records', async () => {
     try {
       const opts = { 
@@ -131,6 +161,54 @@ describe('Connect and Pair', () => {
     }
   })
 
+  it('Should make an EIP712 request that uses the record', async () => {
+    const msg = {
+      'types': {
+        'EIP712Domain': [
+          { name: 'name', type: 'string' },
+          { name: 'verifyingContract', type: 'address' },
+        ],
+        'Test': [
+          { name: 'owner', type: 'string' },
+          { name: 'ownerAddr', type: 'address' }
+        ]
+      },
+      'domain':{
+        name: 'A Message',
+        verifyingContract: RANDOM_ADDR,
+      },
+      'primaryType': 'Test',
+      'message': {
+        'owner': RANDOM_ADDR,
+        'ownerAddr': RANDOM_ADDR,
+      }
+    }
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.execute(client, 'sign', req);
+    } catch (err) {
+      expect(err).to.equal(null)
+    }
+  })
+
+  it('Should make a request that will get ABI-decoded (ERC20 transfer)', async () => {
+    const req = JSON.parse(JSON.stringify(ETH_REQ))
+    req.data.data = `0x23b872dd00000000000000000000000057974eb88e50cc61049b44e43e90d3bc40fa61c0000000000000000000000000${RANDOM_ADDR.slice(2)}000000000000000000000000000000000000000000000000000000000000270f`
+    try {
+      question('Please reject the following request if the address appears in hex');
+      await helpers.execute(client, 'sign', req);
+    } catch (err) {
+      expect(err).to.equal(null, err)
+    }
+  })
+
   it('Should remove key value records', async () => {
     try {
       const idsToRemove = []
@@ -151,7 +229,7 @@ describe('Connect and Pair', () => {
       }
       const resp = await helpers.execute(client, 'getKvRecords', opts)
       const { records, total, fetched } = resp;
-      expect(total).to.equal(0);
+      expect(total).to.equal(_numStartingRecords);
       expect(fetched).to.equal(0);
       expect(records.length).to.equal(0);
     } catch (err) {
@@ -216,11 +294,12 @@ describe('Connect and Pair', () => {
       }
       const resp = await helpers.execute(client, 'getKvRecords', opts)
       const { records, total, fetched } = resp;
-      expect(total).to.equal(0);
+      expect(total).to.equal(_numStartingRecords);
       expect(fetched).to.equal(0);
       expect(records.length).to.equal(0);
     } catch (err) {
       expect(err).to.equal(null, err);
     }
   })
+
 })

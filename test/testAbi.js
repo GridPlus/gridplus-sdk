@@ -686,7 +686,7 @@ describe('Add ABI definitions', () => {
 
   it('Should add the ABI definitions', async () => {
     try {
-      await helpers.execute(client, 'addAbi', boundaryAbiDefs.concat(defsToLoad));
+      await helpers.execute(client, 'addAbiDefs', boundaryAbiDefs.concat(defsToLoad));
     } catch (err) {
       caughtErr = err;
       expect(err).to.equal(null, err);

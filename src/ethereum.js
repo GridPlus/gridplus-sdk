@@ -421,14 +421,6 @@ function getRecoveryParam(v, txData={}) {
   return ensureHexBuffer(`0x${chainIdBN.times(2).plus(35).plus(v).toString(16)}`);
 }
 
-function isHexStr(str) {
-  return (/^[0-9a-fA-F]+$/).test(str)
-}
-
-function isASCIIStr(str) {
-  return (/^[\x00-\x7F]+$/).test(str)
-}
-
 // Determine if the Lattice can display a string we give it. Currently, the Lattice can only
 // display ASCII strings, so we will reject other UTF8 codes.
 // In the future we may add a mechanism to display certain UTF8 codes such as popular emojis.
@@ -572,7 +564,7 @@ function buildPersonalSignRequest(req, input) {
   if (typeof input.payload === 'string') {
     if (input.payload.slice(0, 2) === '0x') {
       payload = ensureHexBuffer(input.payload)
-      displayHex = false === isASCIIStr(Buffer.from(input.payload.slice(2), 'hex').toString())
+      displayHex = false === constants.ASCII_REGEX.test(Buffer.from(input.payload.slice(2), 'hex').toString())
     } else {
       if (false === latticeCanDisplayStr(input.payload))
         throw new Error('Currently, the Lattice can only display ASCII strings.');
@@ -589,7 +581,7 @@ function buildPersonalSignRequest(req, input) {
     // TODO: Develop a more elegant solution for this
     if (!input.payload.toString)
       throw new Error('Unsupported input data type');
-    displayHex = false === isASCIIStr(input.payload.toString())
+    displayHex = false === constants.ASCII_REGEX.test(input.payload.toString())
   }
   const fwConst = input.fwConstants;
   let maxSzAllowed = MAX_BASE_MSG_SZ + (fwConst.extraDataMaxFrames * fwConst.extraDataFrameSz);
