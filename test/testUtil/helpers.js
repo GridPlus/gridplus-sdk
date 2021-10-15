@@ -60,49 +60,11 @@ function pair(client, secret) {
   })
 }
 
-function getAddresses(client, opts, timeout=0) {
+function execute(client, func, opts) {
   return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      client.getAddresses(opts, (err, res) => {
-        if (err) return reject(err);
-        return resolve(res);
-      })
-    }, timeout);
-  })
-}
-
-function sign(client, opts) {
-  return new Promise((resolve, reject) => {
-    client.sign(opts, (err, res) => {
+    client[func](opts, (err, res) => {
       if (err) return reject(err);
       return resolve(res);
-    })
-  })
-}
-
-function addPermissionV0(client, opts) {
-  return new Promise((resolve, reject) => {
-    client.addPermissionV0(opts, (err, res) => {
-      if (err) return reject(err);
-      return resolve(res);
-    })
-  })
-}
-
-function test(client, opts) {
-  return new Promise((resolve, reject) => {
-    client.test(opts, (err, res) => {
-      if (err) return reject(err);
-      return resolve(res);
-    })
-  })
-}
-
-function addAbi(client, opts) {
-  return new Promise((resolve, reject) => {
-    client.addAbiDefs(opts, (err) => {
-      if (err) return reject(err);
-      return resolve();
     })
   })
 }
@@ -326,11 +288,7 @@ exports.harden = (x) => { return x + HARDENED_OFFSET; }
 exports.setupTestClient = setupTestClient;
 exports.connect = connect;
 exports.pair = pair;
-exports.getAddresses = getAddresses;
-exports.sign = sign;
-exports.addPermissionV0 = addPermissionV0;
-exports.test = test;
-exports.addAbi = addAbi;
+exports.execute = execute;
 exports.stripDER = stripDER;
 exports.setup_btc_sig_test = setup_btc_sig_test;
 

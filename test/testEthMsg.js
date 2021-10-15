@@ -67,7 +67,7 @@ function buildMsgReq(payload, protocol, signerPath=[helpers.BTC_LEGACY_PURPOSE, 
 
 async function testMsg(req, pass=true) {
   try {
-    const sig = await helpers.sign(client, req);
+    const sig = await helpers.execute(client, 'sign', req);
     // Validation happens already in the client
     if (pass === true) {
       foundError = sig.sig === null;
@@ -216,7 +216,7 @@ describe('Test ETH EIP712', function() {
       }
     }
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.equal(null)
     }
@@ -255,7 +255,7 @@ describe('Test ETH EIP712', function() {
       }
     }
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.equal(null)
     }
@@ -306,7 +306,7 @@ describe('Test ETH EIP712', function() {
       }
     }
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.equal(null)
     }
@@ -323,7 +323,7 @@ describe('Test ETH EIP712', function() {
       }
     }
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.equal(null)
     }
@@ -364,7 +364,7 @@ describe('Test ETH EIP712', function() {
       }
     }
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.equal(null)
     }
@@ -417,7 +417,7 @@ describe('Test ETH EIP712', function() {
       }
     }
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.equal(null)
     }
@@ -480,7 +480,7 @@ describe('Test ETH EIP712', function() {
       }
     }
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.equal(null)
     }
@@ -553,7 +553,7 @@ describe('Test ETH EIP712', function() {
       }
     }
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.equal(null)
     }
@@ -626,7 +626,7 @@ describe('Test ETH EIP712', function() {
       }
     }
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.equal(null)
     }
@@ -687,7 +687,7 @@ describe('Test ETH EIP712', function() {
       }
     }
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.equal(null)
     }
@@ -760,7 +760,7 @@ describe('Test ETH EIP712', function() {
       }
     }
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.equal(null)
     }
@@ -818,7 +818,7 @@ describe('Test ETH EIP712', function() {
       }
     }
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.equal(null)
     }
@@ -906,7 +906,7 @@ describe('Test ETH EIP712', function() {
       }
     }
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.equal(null)
     }
@@ -991,7 +991,7 @@ describe('Test ETH EIP712', function() {
       }
     }
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.equal(null)
     }
@@ -1118,7 +1118,7 @@ describe('Test ETH EIP712', function() {
       }
     }
     try {
-      await helpers.sign(client, req);
+      await helpers.execute(client, 'sign', req);
     } catch (err) {
       expect(err).to.equal(null)
     }

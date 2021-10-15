@@ -65,7 +65,6 @@ exports.buildEthereumTxRequest = function(data) {
     const EXTRA_DATA_ALLOWED = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
     let MAX_BASE_DATA_SZ = fwConstants.ethMaxDataSz;
     const VAR_PATH_SZ = fwConstants.varAddrPathSzAllowed;
-
     // Sanity checks:
     // There are a handful of named chains we allow the user to reference (`chainIds`)
     // Custom chainIDs should be either numerical or hex strings
@@ -106,7 +105,6 @@ exports.buildEthereumTxRequest = function(data) {
     //--------------
     // 1. BUILD THE RAW TX FOR FUTURE RLP ENCODING
     //--------------
-
     // Ensure all fields are 0x-prefixed hex strings
     const rawTx = [];
     // Build the transaction buffer array
@@ -423,14 +421,6 @@ function getRecoveryParam(v, txData={}) {
   return ensureHexBuffer(`0x${chainIdBN.times(2).plus(35).plus(v).toString(16)}`);
 }
 
-function isHexStr(str) {
-  return (/^[0-9a-fA-F]+$/).test(str)
-}
-
-function isASCIIStr(str) {
-  return (/^[\x00-\x7F]+$/).test(str)
-}
-
 // Determine if the Lattice can display a string we give it. Currently, the Lattice can only
 // display ASCII strings, so we will reject other UTF8 codes.
 // In the future we may add a mechanism to display certain UTF8 codes such as popular emojis.
@@ -574,7 +564,7 @@ function buildPersonalSignRequest(req, input) {
   if (typeof input.payload === 'string') {
     if (input.payload.slice(0, 2) === '0x') {
       payload = ensureHexBuffer(input.payload)
-      displayHex = false === isASCIIStr(Buffer.from(input.payload.slice(2), 'hex').toString())
+      displayHex = false === constants.ASCII_REGEX.test(Buffer.from(input.payload.slice(2), 'hex').toString())
     } else {
       if (false === latticeCanDisplayStr(input.payload))
         throw new Error('Currently, the Lattice can only display ASCII strings.');
@@ -591,7 +581,7 @@ function buildPersonalSignRequest(req, input) {
     // TODO: Develop a more elegant solution for this
     if (!input.payload.toString)
       throw new Error('Unsupported input data type');
-    displayHex = false === isASCIIStr(input.payload.toString())
+    displayHex = false === constants.ASCII_REGEX.test(input.payload.toString())
   }
   const fwConst = input.fwConstants;
   let maxSzAllowed = MAX_BASE_MSG_SZ + (fwConst.extraDataMaxFrames * fwConst.extraDataFrameSz);
