@@ -112,7 +112,7 @@ describe('Setup client', () => {
     ETH_GAS_PRICE_MAX = fwConstants.ethMaxGasPrice;
   });
 })
-/*
+
 describe('Test ETH personalSign', function() {
   beforeEach(() => {
     expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
@@ -139,15 +139,29 @@ describe('Test ETH personalSign', function() {
     await testMsg(buildMsgReq(crypto.randomBytes(4000), 'signPersonal'), true);
   })
 
-  it('Msg: sign_personal boundary conditions', async () => {
+  it('Msg: sign_personal boundary conditions and auto-rejected requests', async () => {
     const protocol = 'signPersonal';
     const fwConstants = constants.getFwVersionConst(client.fwVersion);
     const metadataSz = fwConstants.totalExtraEthTxDataSz || 0;
-    const maxMsgSz =  (fwConstants.ethMaxMsgSz - metadataSz) + 
+    // `personal_sign` requests have a max size smaller than other requests because a header
+    // is displayed in the text region of the screen. The size of this is captured
+    // by `fwConstants.personalSignHeaderSz`.
+    const maxMsgSz =  (fwConstants.ethMaxMsgSz - metadataSz - fwConstants.personalSignHeaderSz) + 
                       (fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz);
     const maxValid = `0x${crypto.randomBytes(maxMsgSz).toString('hex')}`;
+    const minInvalid = `0x${crypto.randomBytes(maxMsgSz+1).toString('hex')}`;
     const zeroInvalid = '0x';
-    await testMsg(buildMsgReq(maxValid, protocol), true);
+    // The largest non-hardened index which will take the most chars to print
+    const x = HARDENED_OFFSET - 1;
+    // Okay sooo this is a bit awkward. We have to use a known coin_type here (e.g. ETH)
+    // or else firmware will return an error, but the maxSz is based on the max length
+    // of a path, which is larger than we can actually print.
+    // I guess all this tests is that the first one is shown in plaintext while the second
+    // one (which is too large) gets prehashed.
+    const largeSignPath = [x, HARDENED_OFFSET+60, x, x, x]
+    await testMsg(buildMsgReq(maxValid, protocol, largeSignPath), true);
+    await testMsg(buildMsgReq(minInvalid, protocol, largeSignPath), true);
+    // Using a zero length payload should auto-reject
     await testMsg(buildMsgReq(zeroInvalid, protocol), false);
   })
 
@@ -163,7 +177,7 @@ describe('Test ETH personalSign', function() {
   })
 
 })
-*/
+
 describe('Test ETH EIP712', function() {
   beforeEach(() => {
     expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
