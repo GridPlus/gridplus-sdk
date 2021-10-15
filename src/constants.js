@@ -302,7 +302,16 @@ function getFwVersionConst(v) {
     // EXTRA FIELDS ADDED IN LATER VERSIONS
     //-------------------------------------
 
-    // V0.10.12 allows new ETH transaction types
+    // V0.11.2 changed how messages are displayed. For personal_sign messages
+    // we now write the header (`Signer: <path>`) into the main body of the screen.
+    // This means personal sign message max size is slightly smaller than for
+    // EIP712 messages because in the latter case there is no header
+    // Note that `<path>` has max size of 62 bytes (`m/X/X/...`)
+    if (!legacy && gte(v, [0, 11, 2])) {
+        c.personalSignHeaderSz = 72;
+    }
+
+    // V0.11.0 allows new ETH transaction types
     if (!legacy && gte(v, [0, 11, 0])) {
         c.allowedEthTxTypesVersion = 1;
         c.allowedEthTxTypes = [
