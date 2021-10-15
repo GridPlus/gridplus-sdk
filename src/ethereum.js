@@ -594,7 +594,11 @@ function buildPersonalSignRequest(req, input) {
     displayHex = false === isASCIIStr(input.payload.toString())
   }
   const fwConst = input.fwConstants;
-  const maxSzAllowed = MAX_BASE_MSG_SZ + (fwConst.extraDataMaxFrames * fwConst.extraDataFrameSz);
+  let maxSzAllowed = MAX_BASE_MSG_SZ + (fwConst.extraDataMaxFrames * fwConst.extraDataFrameSz);
+  if (fwConst.personalSignHeaderSz) {
+    // Account for the personal_sign header string
+    maxSzAllowed -= fwConst.personalSignHeaderSz;
+  }
   if (fwConst.ethMsgPreHashAllowed && payload.length > maxSzAllowed) {
     // If this message will not fit and pre-hashing is allowed, do that
     req.payload.writeUInt8(displayHex, off); off += 1;
