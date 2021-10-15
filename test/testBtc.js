@@ -43,7 +43,7 @@ for (let i = 0; i < count; i++) {
 }
 
 async function testSign(req, signingKeys, sigHashes) {
-  const tx = await helpers.sign(client, req);
+  const tx = await helpers.execute(client, 'sign', req);
   expect(tx.sigs.length).to.equal(signingKeys.length);
   expect(tx.sigs.length).to.equal(sigHashes.length);
   for (let i = 0; i < tx.sigs.length; i++) {
@@ -78,7 +78,7 @@ describe('exportSeed', () => {
       payload: helpers.serializeJobData(jobType, activeWalletUID, jobData),
     }
 
-    const res = await helpers.test(client, jobReq);
+    const res = await helpers.execute(client, 'test', jobReq);
     const _res = helpers.parseWalletJobResp(res, client.fwVersion);
     expect(_res.resultStatus).to.equal(0);
     const data = helpers.deserializeExportSeedJobResult(_res.result);
