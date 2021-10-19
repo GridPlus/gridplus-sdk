@@ -14,6 +14,7 @@
 //
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)
+// To run these tests you will need a dev Lattice with: `FEATURE_TEST_RUNNER=1`
 const bip32 = require('bip32');
 const crypto = require('crypto');
 const expect = require('chai').expect;
