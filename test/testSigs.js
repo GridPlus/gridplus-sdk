@@ -15,7 +15,8 @@ const TEST_MNEMONIC = 'nose elder baby marriage frequent list ' +
                       'iron purity throw vintage crew artefact ' +
                       'pyramid dash split announce trend grain';
 const TEST_SEED = bip39.mnemonicToSeedSync(TEST_MNEMONIC);
-let client, activeWalletUID, jobType, jobData, jobReq, latticeSeed=null, continueTests=true, txReq, msgReq;
+let client, activeWalletUID, jobType, jobData, jobReq, txReq, msgReq;
+let latticeSeed=null, continueTests=true, skipSeedLoading=false, skipSeedRestore = false;
 const LEDGER_ROOT_PATH = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0]
 
 async function runTestCase(expectedCode) {
@@ -95,14 +96,21 @@ describe('Setup Test', () => {
     expect(continueTests).to.equal(true, 'Unauthorized or critical failure. Aborting');
   })
 
-  it('Should tell the user to use a SafeCard', async () => {
-    question(
-      '\nYou must have a SafeCard inserted and setup with a seed to run these tests.\n' +
-      'Press any key to continue.'
+  it('Should find out if we need to load the seed', async () => {
+    // Determine if we should skip the process of loading the test seed.
+    // This should only be selected if the user has previously chosen not
+    // to re-load the original seed at the end of this test script.
+    const result = question(
+      '\nDo you have the test seed loaded already? (Y/N) '
     );
+    if (result.toLowerCase() === 'y') {
+      skipSeedLoading = true;
+    }
   })
 
   it('Should fetch the seed', async () => {
+    if (skipSeedLoading)
+      return;
     _setupJob(helpers.jobTypes.WALLET_JOB_EXPORT_SEED)
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeExportSeedJobResult(_res.result);
@@ -110,23 +118,31 @@ describe('Setup Test', () => {
   })
 
   it('Should remove the seed', async () => {
+    if (skipSeedLoading)
+      return;
     _setupJob(helpers.jobTypes.WALLET_JOB_DELETE_SEED)
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
   })
 
   it('Should load the known test seed', async () => {
+    if (skipSeedLoading)
+      return;
     _setupJob(helpers.jobTypes.WALLET_JOB_LOAD_SEED, {seed: TEST_SEED})    
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
   });
 
   it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
+    if (skipSeedLoading)
+      return;
     question(
       '\nPlease remove, re-insert, and unlock your SafeCard.\n' +
-      'Press any key to continue after addresses have fully synced.'
+      'Press enter to continue after addresses have fully synced.'
     );
   })
 
   it('Should re-connect to the Lattice and update the walletUID.', async () => {
+    if (skipSeedLoading)
+      return;
     expect(process.env.DEVICE_ID).to.not.equal(null);
     await helpers.connect(client, process.env.DEVICE_ID);
     expect(client.isPaired).to.equal(true);
@@ -134,7 +150,7 @@ describe('Setup Test', () => {
     activeWalletUID = helpers.copyBuffer(client.getActiveWallet().uid)
   });
 
-  it('Should ensure export seed matches the seed we just loaded', async () => {
+  it('Should ensure export seed matches the test seed', async () => {
     _setupJob(helpers.jobTypes.WALLET_JOB_EXPORT_SEED)
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeExportSeedJobResult(_res.result);
@@ -145,7 +161,7 @@ describe('Setup Test', () => {
       continueTests = false;
   })
 
-  it('Should validate some Ledger addresses', async () => {
+  it('Should validate some Ledger addresses derived from the test seed', async () => {
     // These addresses were all fetched using MetaMask with a real ledger loaded with TEST_MNEOMNIC
     // NOTE: These are 0-indexed indices whereas MetaMask shows 1-indexed (addr0 -> metamask1)
     const path0 = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0]
@@ -311,11 +327,11 @@ describe('Test deterministic signatures on EIP712 messages', () => {
   it('Should validate signature from addr0', async () => {
     const expected =  'dbf9a493935770f97a1f0886f370345508398ac76fbf31ccf1c30d8846d3febf' + // r
                       '047e8ae03e146044e7857f1e485921a9d978b1ead93bdd0de6be619dfb72f0b5' + // s
-                      '01'                                                                 // len
+                      '01'                                                                 // v
     try {
       const res = await helpers.execute(client, 'sign', msgReq);
-      const len = (parseInt(res.sig.v.toString('hex'), 16) - 27).toString(16).padStart(2, '0');
-      const sig = `${res.sig.r}${res.sig.s}${len}`
+      const v = (parseInt(res.sig.v.toString('hex'), 16) - 27).toString(16).padStart(2, '0');
+      const sig = `${res.sig.r}${res.sig.s}${v}`
       expect(sig).to.equal(expected)
     } catch (err) {
       expect(err).to.equal(null)
@@ -324,12 +340,12 @@ describe('Test deterministic signatures on EIP712 messages', () => {
   it('Should validate signature from addr1', async () => {
     const expected =  '9e784c6388f6f938f94239c67dc764909b86f34ec29312f4c623138fd7192115' + // r
                       '5efbc9af2339e04303bf300366a675dd90d33fdb26d131c17b278725d36d728e' + // s
-                      '00';                                                                // len
+                      '00';                                                                // v
     msgReq.data.signerPath[2] = constants.HARDENED_OFFSET + 1;
     try {
       const res = await helpers.execute(client, 'sign', msgReq);
-      const len = (parseInt(res.sig.v.toString('hex'), 16) - 27).toString(16).padStart(2, '0');
-      const sig = `${res.sig.r}${res.sig.s}${len}`
+      const v = (parseInt(res.sig.v.toString('hex'), 16) - 27).toString(16).padStart(2, '0');
+      const sig = `${res.sig.r}${res.sig.s}${v}`
       expect(sig).to.equal(expected)
     } catch (err) {
       expect(err).to.equal(null)
@@ -338,12 +354,12 @@ describe('Test deterministic signatures on EIP712 messages', () => {
   it('Should validate signature from addr8', async () => {
     const expected =  '6e7e9bfc4773291713bb5cdc483057d43a95a5082920bdd1dd3470caf6f11155' + // r
                       '6c163b7d489f37ffcecfd20dab2de6a8a04f79af7e265b249db9b4973e75c7d1' + // s
-                      '00';                                                                // len
+                      '00';                                                                // v
     msgReq.data.signerPath[2] = constants.HARDENED_OFFSET + 8;
     try {
       const res = await helpers.execute(client, 'sign', msgReq);
-      const len = (parseInt(res.sig.v.toString('hex'), 16) - 27).toString(16).padStart(2, '0');
-      const sig = `${res.sig.r}${res.sig.s}${len}`
+      const v = (parseInt(res.sig.v.toString('hex'), 16) - 27).toString(16).padStart(2, '0');
+      const sig = `${res.sig.r}${res.sig.s}${v}`
       expect(sig).to.equal(expected)
     } catch (err) {
       expect(err).to.equal(null)
@@ -356,7 +372,26 @@ describe('Teardown Test', () => {
     expect(continueTests).to.equal(true, 'Unauthorized or critical failure. Aborting');
   })
 
+  it('Should find out if we should reload the seed', async () => {
+    if (skipSeedLoading) {
+      skipSeedRestore = true;
+      return;
+    }
+    // Determine if we should skip the process of restoring the original seed.
+    // A user might choose Y here if they want to debug the signing requests
+    // here more quickly, but please be aware that you will lose your original seed.
+    const result = question(
+      '\nWARNING: If you choose `N` you will no longer be able to restore your original seed from these tests.' +
+      '\nDo you want to reload your original seed? (Y/N) '
+    );
+    if (result.toLowerCase() !== 'y') {
+      skipSeedRestore = true;
+    }
+  })
+
   it('Should remove the seed', async () => {
+    if (skipSeedRestore)
+      return;
     jobType = helpers.jobTypes.WALLET_JOB_DELETE_SEED;
     jobData = {
       iface: 1,
@@ -370,18 +405,24 @@ describe('Teardown Test', () => {
   })
 
   it('Should load the seed', async () => {
+    if (skipSeedRestore)
+      return;
     _setupJob(helpers.jobTypes.WALLET_JOB_LOAD_SEED, {seed: latticeSeed})  
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
   });
 
   it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
+    if (skipSeedRestore)
+      return;
     question(
       '\nPlease remove, re-insert, and unlock your SafeCard.\n' +
-      'Press any key to continue after addresses have fully synced.'
+      'Press enter to continue after addresses have fully synced.'
     );
   })
 
   it('Should re-connect to the Lattice and update the walletUID.', async () => {
+    if (skipSeedRestore)
+      return;
     expect(process.env.DEVICE_ID).to.not.equal(null);
     await helpers.connect(client, process.env.DEVICE_ID);
     expect(client.isPaired).to.equal(true);
@@ -390,6 +431,8 @@ describe('Teardown Test', () => {
   });
 
   it('Should ensure export seed matches the seed we just loaded', async () => {
+    if (skipSeedRestore)
+      return;
     // Export the seed and make sure it matches!
     _setupJob(helpers.jobTypes.WALLET_JOB_EXPORT_SEED)
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
@@ -400,5 +443,4 @@ describe('Teardown Test', () => {
     if (exportedSeed.toString('hex') !== latticeSeed.toString('hex'))
       continueTests = false;
   })
-
 })
