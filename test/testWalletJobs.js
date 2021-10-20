@@ -343,7 +343,6 @@ describe('signTx', () => {
     expect(outputKey.verify(jobData.sigReq[0].data, res.outputs[0].sig)).to.equal(true);
     // Ensure pubkey is correctly derived
     const wallet = bip32.fromSeed(activeWalletSeed);
-    console.log('stringified path', helpers.stringifyPath(jobData.sigReq[0].signerPath))
     const derivedKey = wallet.derivePath(helpers.stringifyPath(jobData.sigReq[0].signerPath));
     const derivedPubStr = `04${ethutil.privateToPublic(derivedKey.privateKey).toString('hex')}`;
     expect(outputPubStr).to.equal(derivedPubStr)

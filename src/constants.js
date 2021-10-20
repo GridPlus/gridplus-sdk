@@ -309,7 +309,7 @@ function getFwVersionConst(v) {
     // V0.11.5 added an API for creating, removing, and fetching key-val file
     // records. For the purposes of this SDK, we only hook into one type of kv
     // file: address names.
-    if (!legacy && gte(v, [0, 11, 5])) {
+    if (!legacy && gte(v, [0, 12, 0])) {
         c.kvActionsAllowed = true;
         c.kvKeyMaxStrSz = 63;
         c.kvValMaxStrSz = 63;
