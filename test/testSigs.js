@@ -221,43 +221,42 @@ describe('Test deterministic signatures on personal_sign messages', () => {
   })
 
   it('Should validate signature from addr0', async () => {
-    const expected =  '4820a558ab69907c90141f4857f54a7d71e77' +
-                      '91f84478fef7b9a3e5b200ee242529cc19a58' +
-                      'ed8fa017510d24a443b757018834b3e3585a7' +
-                      '199168d3af4b3837e01'
+    const expected =  '4820a558ab69907c90141f4857f54a7d71e7791f84478fef7b9a3e5b200ee242' + // r
+                      '529cc19a58ed8fa017510d24a443b757018834b3e3585a7199168d3af4b3837e' + // s
+                      '01';                                                                // len
     try {
       const res = await helpers.execute(client, 'sign', msgReq);
-      const sig = `${res.sig.r}${res.sig.s}${parseInt(res.sig.v.toString('hex'), 16)} - 27`
+      const len = (parseInt(res.sig.v.toString('hex'), 16) - 27).toString(16).padStart(2, '0');
+      const sig = `${res.sig.r}${res.sig.s}${len}`
       expect(sig).to.equal(expected)
-      console.log(res)
     } catch (err) {
       expect(err).to.equal(null)
     }
   })
 
   it('Should validate signature from addr1', async () => {
-    const expected =  'c292c988b26ae24a06a8270f2794c259ec574' +
-                      '2168ed77cd635cba041f767a5692e4d218a02' +
-                      'ba0b5f82b80488ccc519b67fb37a9f4cbb1d3' +
-                      '5d9ce4b99e8afcc1801'
+    const expected =  'c292c988b26ae24a06a8270f2794c259ec5742168ed77cd635cba041f767a569' + // r
+                      '2e4d218a02ba0b5f82b80488ccc519b67fb37a9f4cbb1d35d9ce4b99e8afcc18' + // s
+                      '01'                                                                 // len
     msgReq.data.signerPath[2] = constants.HARDENED_OFFSET + 1;
     try {
       const res = await helpers.execute(client, 'sign', msgReq);
-      const sig = `${res.sig.r}${res.sig.s}${parseInt(res.sig.v.toString('hex'), 16)} - 27`
+      const len = (parseInt(res.sig.v.toString('hex'), 16) - 27).toString(16).padStart(2, '0');
+      const sig = `${res.sig.r}${res.sig.s}${len}`
       expect(sig).to.equal(expected)
     } catch (err) {
       expect(err).to.equal(null)
     }
   })
   it('Should validate signature from addr8', async () => {
-    const expected =  '60cadafdbb7cba590a37eeff854d2598af719' +
-                      '04077312875ef7b4f525d4dcb525903ae9e4b' +
-                      '7e61f6f24abfe9a1d5fb1375347ef6a48f7ab' +
-                      'e2319c89f426eb27c00'
+    const expected =  '60cadafdbb7cba590a37eeff854d2598af71904077312875ef7b4f525d4dcb52' + // r
+                      '5903ae9e4b7e61f6f24abfe9a1d5fb1375347ef6a48f7abe2319c89f426eb27c' + // s
+                      '00';                                                                // len
     msgReq.data.signerPath[2] = constants.HARDENED_OFFSET + 8;
     try {
       const res = await helpers.execute(client, 'sign', msgReq);
-      const sig = `${res.sig.r}${res.sig.s}${parseInt(res.sig.v.toString('hex'), 16)} - 27`
+      const len = (parseInt(res.sig.v.toString('hex'), 16) - 27).toString(16).padStart(2, '0');
+      const sig = `${res.sig.r}${res.sig.s}${len}`
       expect(sig).to.equal(expected)
     } catch (err) {
       expect(err).to.equal(null)
@@ -275,11 +274,11 @@ describe('Test deterministic signatures on EIP712 messages', () => {
         payload: {
           types: {
             Greeting: [
-              { 
+              {
                 name: 'salutation',
                 type:'string'
               },
-              { 
+              {
                 name: 'target',
                 type: 'string'
               },
@@ -310,42 +309,41 @@ describe('Test deterministic signatures on EIP712 messages', () => {
   })
 
   it('Should validate signature from addr0', async () => {
-    const expected =  'dbf9a493935770f97a1f0886f370345508398' +
-                      'ac76fbf31ccf1c30d8846d3febf047e8ae03e' +
-                      '146044e7857f1e485921a9d978b1ead93bdd0' +
-                      'de6be619dfb72f0b501'
+    const expected =  'dbf9a493935770f97a1f0886f370345508398ac76fbf31ccf1c30d8846d3febf' + // r
+                      '047e8ae03e146044e7857f1e485921a9d978b1ead93bdd0de6be619dfb72f0b5' + // s
+                      '01'                                                                 // len
     try {
       const res = await helpers.execute(client, 'sign', msgReq);
-      const sig = `${res.sig.r}${res.sig.s}${parseInt(res.sig.v.toString('hex'), 16)} - 27`
+      const len = (parseInt(res.sig.v.toString('hex'), 16) - 27).toString(16).padStart(2, '0');
+      const sig = `${res.sig.r}${res.sig.s}${len}`
       expect(sig).to.equal(expected)
-      console.log(res)
     } catch (err) {
       expect(err).to.equal(null)
     }
   })
   it('Should validate signature from addr1', async () => {
-    const expected =  '9e784c6388f6f938f94239c67dc764909b86f' +
-                      '34ec29312f4c623138fd71921155efbc9af23' +
-                      '39e04303bf300366a675dd90d33fdb26d131c' +
-                      '17b278725d36d728e00'
+    const expected =  '9e784c6388f6f938f94239c67dc764909b86f34ec29312f4c623138fd7192115' + // r
+                      '5efbc9af2339e04303bf300366a675dd90d33fdb26d131c17b278725d36d728e' + // s
+                      '00';                                                                // len
     msgReq.data.signerPath[2] = constants.HARDENED_OFFSET + 1;
     try {
       const res = await helpers.execute(client, 'sign', msgReq);
-      const sig = `${res.sig.r}${res.sig.s}${parseInt(res.sig.v.toString('hex'), 16)} - 27`
+      const len = (parseInt(res.sig.v.toString('hex'), 16) - 27).toString(16).padStart(2, '0');
+      const sig = `${res.sig.r}${res.sig.s}${len}`
       expect(sig).to.equal(expected)
     } catch (err) {
       expect(err).to.equal(null)
     }
   })
   it('Should validate signature from addr8', async () => {
-    const expected =  '6e7e9bfc4773291713bb5cdc483057d43a95a' +
-                      '5082920bdd1dd3470caf6f111556c163b7d48' +
-                      '9f37ffcecfd20dab2de6a8a04f79af7e265b2' +
-                      '49db9b4973e75c7d100'
+    const expected =  '6e7e9bfc4773291713bb5cdc483057d43a95a5082920bdd1dd3470caf6f11155' + // r
+                      '6c163b7d489f37ffcecfd20dab2de6a8a04f79af7e265b249db9b4973e75c7d1' + // s
+                      '00';                                                                // len
     msgReq.data.signerPath[2] = constants.HARDENED_OFFSET + 8;
     try {
       const res = await helpers.execute(client, 'sign', msgReq);
-      const sig = `${res.sig.r}${res.sig.s}${parseInt(res.sig.v.toString('hex'), 16)} - 27`
+      const len = (parseInt(res.sig.v.toString('hex'), 16) - 27).toString(16).padStart(2, '0');
+      const sig = `${res.sig.r}${res.sig.s}${len}`
       expect(sig).to.equal(expected)
     } catch (err) {
       expect(err).to.equal(null)
