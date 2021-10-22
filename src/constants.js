@@ -49,17 +49,17 @@ const deviceCodes = {
 }
 
 const encReqCodes = {
-    'FINALIZE_PAIRING': 0x00,
-    'GET_ADDRESSES': 0x01,
-    'ADD_PERMISSION': 0x02,
-    'SIGN_TRANSACTION': 0x03,
-    'GET_WALLETS': 0x04,
-    'ADD_PERMISSION_V0': 0x05,
-    'ADD_ABI_DEFS': 0x06,
-    'GET_KV_RECORDS': 0x07,
-    'ADD_KV_RECORDS': 0x08,
-    'REMOVE_KV_RECORDS': 0x09,
-    'TEST': 0x10,
+    'FINALIZE_PAIRING': 0,
+    'GET_ADDRESSES': 1,
+    'ADD_PERMISSION': 2,
+    'SIGN_TRANSACTION': 3,
+    'GET_WALLETS': 4,
+    'ADD_PERMISSION_V0': 5,
+    'ADD_ABI_DEFS': 6,
+    'GET_KV_RECORDS': 7,
+    'ADD_KV_RECORDS': 8,
+    'REMOVE_KV_RECORDS': 9,
+    'TEST': 10,
 }
 
 const messageConstants = {
@@ -309,7 +309,7 @@ function getFwVersionConst(v) {
     // V0.11.5 added an API for creating, removing, and fetching key-val file
     // records. For the purposes of this SDK, we only hook into one type of kv
     // file: address names.
-    if (!legacy && gte(v, [0, 11, 5])) {
+    if (!legacy && gte(v, [0, 12, 0])) {
         c.kvActionsAllowed = true;
         c.kvKeyMaxStrSz = 63;
         c.kvValMaxStrSz = 63;
