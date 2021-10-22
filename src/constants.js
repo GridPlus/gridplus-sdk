@@ -9,11 +9,12 @@ const ADDR_STR_LEN = 129; // 128-char strings (null terminated)
 // These are NOT counted in `decResLengths`, meaning these values are 69-bytes smaller than the
 // corresponding structs in firmware.
 const decResLengths = {
-    finalizePair: 0,                    // Only contains the pubkey
+    empty: 0,                           // Only contains the pubkey
     getAddresses: 10 * ADDR_STR_LEN,    // 10x 129 byte strings (128 bytes + null terminator)
     sign: 1090,                         // 1 DER signature for ETH, 10 for BTC + change pubkeyhash
     getWallets: 142,                    // 71 bytes per wallet record (response contains internal and external)
     addAbiDefs: 8,
+    getKvRecords: 1395,
     test: 1646                          // Max size of test response payload
 }
 
@@ -48,14 +49,17 @@ const deviceCodes = {
 }
 
 const encReqCodes = {
-    'FINALIZE_PAIRING': 0x00,
-    'GET_ADDRESSES': 0x01,
-    'ADD_PERMISSION': 0x02,
-    'SIGN_TRANSACTION': 0x03,
-    'GET_WALLETS': 0x04,
-    'ADD_PERMISSION_V0': 0x05,
-    'ADD_ABI_DEFS': 0x06,
-    'TEST': 0x07,
+    'FINALIZE_PAIRING': 0,
+    'GET_ADDRESSES': 1,
+    'ADD_PERMISSION': 2,
+    'SIGN_TRANSACTION': 3,
+    'GET_WALLETS': 4,
+    'ADD_PERMISSION_V0': 5,
+    'ADD_ABI_DEFS': 6,
+    'GET_KV_RECORDS': 7,
+    'ADD_KV_RECORDS': 8,
+    'REMOVE_KV_RECORDS': 9,
+    'TEST': 10,
 }
 
 const messageConstants = {
@@ -302,7 +306,27 @@ function getFwVersionConst(v) {
     // EXTRA FIELDS ADDED IN LATER VERSIONS
     //-------------------------------------
 
-    // V0.10.12 allows new ETH transaction types
+    // V0.11.5 added an API for creating, removing, and fetching key-val file
+    // records. For the purposes of this SDK, we only hook into one type of kv
+    // file: address names.
+    if (!legacy && gte(v, [0, 12, 0])) {
+        c.kvActionsAllowed = true;
+        c.kvKeyMaxStrSz = 63;
+        c.kvValMaxStrSz = 63;
+        c.kvActionMaxNum = 10;
+        c.kvRemoveMaxNum = 100;
+    }
+
+    // V0.11.2 changed how messages are displayed. For personal_sign messages
+    // we now write the header (`Signer: <path>`) into the main body of the screen.
+    // This means personal sign message max size is slightly smaller than for
+    // EIP712 messages because in the latter case there is no header
+    // Note that `<path>` has max size of 62 bytes (`m/X/X/...`)
+    if (!legacy && gte(v, [0, 11, 2])) {
+        c.personalSignHeaderSz = 72;
+    }
+
+    // V0.11.0 allows new ETH transaction types
     if (!legacy && gte(v, [0, 11, 0])) {
         c.allowedEthTxTypesVersion = 1;
         c.allowedEthTxTypes = [
@@ -339,6 +363,7 @@ function getFwVersionConst(v) {
 }
 
 module.exports = {
+    ASCII_REGEX: (/^[\x00-\x7F]+$/),
     getFwVersionConst,
     ADDR_STR_LEN,
     AES_IV,

@@ -14,6 +14,7 @@
 //
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)
+// To run these tests you will need a dev Lattice with: `FEATURE_TEST_RUNNER=1`
 const bip32 = require('bip32');
 const crypto = require('crypto');
 const expect = require('chai').expect;
@@ -34,7 +35,7 @@ const BTC_PARENT_PATH = {
 }
 
 async function runTestCase(expectedCode) {
-    const res = await helpers.test(client, jobReq);
+    const res = await helpers.execute(client, 'test', jobReq);
     const parsedRes = helpers.parseWalletJobResp(res, client.fwVersion);
     expect(parsedRes.resultStatus).to.equal(expectedCode);
     return parsedRes;
@@ -199,7 +200,7 @@ describe('getAddresses', () => {
       n: 3,
       skipCache: true,
     }
-    const addrs = await helpers.getAddresses(client, req, 2000);
+    const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
     const resp = {
       count: addrs.length,
       addresses: addrs,
@@ -225,7 +226,7 @@ describe('getAddresses', () => {
       n: 3,
       skipCache: true,
     }
-    const addrs = await helpers.getAddresses(client, req, 2000);
+    const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
     const resp = {
       count: addrs.length,
       addresses: addrs,
@@ -252,7 +253,7 @@ describe('getAddresses', () => {
       skipCache: true,
     }
     try {
-      await helpers.getAddresses(client, req, 2000);
+      await helpers.execute(client, 'getAddresses', req, 2000);
     } catch (err) {
       expect(err).to.not.equal(null)
     }
@@ -265,7 +266,7 @@ describe('getAddresses', () => {
       n: 3,
       skipCache: true,
     }
-    const addrs = await helpers.getAddresses(client, req, 2000);
+    const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
     const resp = {
       count: addrs.length,
       addresses: addrs,
@@ -342,7 +343,6 @@ describe('signTx', () => {
     expect(outputKey.verify(jobData.sigReq[0].data, res.outputs[0].sig)).to.equal(true);
     // Ensure pubkey is correctly derived
     const wallet = bip32.fromSeed(activeWalletSeed);
-    console.log('stringified path', helpers.stringifyPath(jobData.sigReq[0].signerPath))
     const derivedKey = wallet.derivePath(helpers.stringifyPath(jobData.sigReq[0].signerPath));
     const derivedPubStr = `04${ethutil.privateToPublic(derivedKey.privateKey).toString('hex')}`;
     expect(outputPubStr).to.equal(derivedPubStr)

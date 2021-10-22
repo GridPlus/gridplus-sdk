@@ -147,7 +147,6 @@ function getP256KeyPairFromPub(pub) {
   return ec.keyFromPublic(pub, 'hex');
 }
 
-
 module.exports = {
   isValidAssetPath,
   isValidCoinType,
