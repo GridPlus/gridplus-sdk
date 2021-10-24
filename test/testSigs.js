@@ -142,111 +142,25 @@ describe('Connect', () => {
   });
 })
 
-describe('Setup Test', () => {
-  beforeEach(() => {
-    expect(continueTests).to.equal(true, 'Unauthorized or critical failure. Aborting');
-  })
-
-  it('Should find out if we need to load the seed', async () => {
-    // Determine if we should skip the process of loading the test seed.
-    // This should only be selected if the user has previously chosen not
-    // to re-load the original seed at the end of this test script.
+describe('Test non-exportable seed on SafeCard (if available)', () => {
+  // This needs to be done before tests that use the `test` API route because
+  // there is some sort of bug related to directly submitting wallet jobs
+  // and then switching EMV interfaces.
+  // This bug does not affect any users of production devices since
+  // the test route is commented out.
+  // TODO: Remove this comment when bug is fixed in firmware.
+  it('Should ask if the user wants to test a card with a non-exportable seed', async () => {
     const result = question(
-      '\nDo you have the test seed loaded already? (Y/N) '
+      '\nIf you have a SafeCard with a NON-EXPORTABLE seed loaded, please insert and unlock it now.' +
+      '\nDo you have a non-exportable SafeCard seed loaded and wish to continue? (Y/N) '
     );
-    if (result.toLowerCase() !== 'n') {
-      skipSeedLoading = true;
+    if (result.toLowerCase() !== 'y') {
+      skipNonExportableSeed = true;
     }
-  })
-
-  it('Should fetch the seed', async () => {
-    if (skipSeedLoading)
-      return;
-    _setupJob(helpers.jobTypes.WALLET_JOB_EXPORT_SEED)
-    const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
-    const res = helpers.deserializeExportSeedJobResult(_res.result);
-    latticeSeed = helpers.copyBuffer(res.seed);
-  })
-
-  it('Should remove the seed', async () => {
-    if (skipSeedLoading)
-      return;
-    _setupJob(helpers.jobTypes.WALLET_JOB_DELETE_SEED)
-    await runTestCase(helpers.gpErrors.GP_SUCCESS);
-  })
-
-  it('Should load the known test seed', async () => {
-    if (skipSeedLoading)
-      return;
-    _setupJob(helpers.jobTypes.WALLET_JOB_LOAD_SEED, {seed: TEST_SEED})    
-    await runTestCase(helpers.gpErrors.GP_SUCCESS);
   });
-
-  it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
-    if (skipSeedLoading)
+  it('Should validate non-exportable seed sigs all differ (from each other and from deterministic sigs)', async () => {
+    if (skipNonExportableSeed)
       return;
-    question(
-      '\nPlease remove, re-insert, and unlock your SafeCard.\n' +
-      'Press enter to continue after addresses have fully synced.'
-    );
-  })
-
-  it('Should re-connect to the Lattice and update the walletUID.', async () => {
-    if (skipSeedLoading)
-      return;
-    expect(process.env.DEVICE_ID).to.not.equal(null);
-    await helpers.connect(client, process.env.DEVICE_ID);
-    expect(client.isPaired).to.equal(true);
-    expect(client.hasActiveWallet()).to.equal(true);
-    activeWalletUID = helpers.copyBuffer(client.getActiveWallet().uid)
-  });
-
-  it('Should ensure export seed matches the test seed', async () => {
-    _setupJob(helpers.jobTypes.WALLET_JOB_EXPORT_SEED)
-    const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
-    const res = helpers.deserializeExportSeedJobResult(_res.result);
-    const exportedSeed = helpers.copyBuffer(res.seed);
-    expect(exportedSeed.toString('hex')).to.equal(TEST_SEED.toString('hex'));
-    // Abort if this fails
-    if (exportedSeed.toString('hex') !== TEST_SEED.toString('hex'))
-      continueTests = false;
-  })
-
-  it('Should validate some Ledger addresses derived from the test seed', async () => {
-    // These addresses were all fetched using MetaMask with a real ledger loaded with TEST_MNEOMNIC
-    // NOTE: These are 0-indexed indices whereas MetaMask shows 1-indexed (addr0 -> metamask1)
-    const path0 = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0]
-    const addr0 = '0x17E43083812d45040E4826D2f214601bc730F60C'
-    const path1 = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET+1, 0, 0]
-    const addr1 = '0xfb25a9D4472A55083042672e42309056763B667E'
-    const path8 = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET+8, 0, 0]
-    const addr8 = '0x8A520d7f70906Ebe00F40131791eFF414230Ea5c'
-    // Derive these from the seed as a sanity check
-    expect(deriveAddress(TEST_SEED, path0).toLowerCase()).to.equal(addr0.toLowerCase(), 'Incorrect address 0 derived.')
-    expect(deriveAddress(TEST_SEED, path1).toLowerCase()).to.equal(addr1.toLowerCase(), 'Incorrect address 1 derived.')
-    expect(deriveAddress(TEST_SEED, path8).toLowerCase()).to.equal(addr8.toLowerCase(), 'Incorrect address 8 derived.')
-    // Fetch these addresses from the Lattice and validate
-
-    const req = { 
-      currency: 'ETH',
-      startPath: path0,
-      n: 1,
-      skipCache: true,
-    }
-    const latAddr0 = await helpers.execute(client, 'getAddresses', req, 2000);
-    expect(latAddr0[0].toLowerCase()).to.equal(addr0.toLowerCase(), 'Incorrect address 0 fetched.')
-    req.startPath = path1;
-    const latAddr1 = await helpers.execute(client, 'getAddresses', req, 2000);
-    expect(latAddr1[0].toLowerCase()).to.equal(addr1.toLowerCase(), 'Incorrect address 1 fetched.')
-    req.startPath = path8;
-    const latAddr8 = await helpers.execute(client, 'getAddresses', req, 2000);
-    expect(latAddr8[0].toLowerCase()).to.equal(addr8.toLowerCase(), 'Incorrect address 8 fetched.')
-  })
-
-})
-
-describe('Test signatures on ETH transactions', () => {
-  beforeEach(() => {
     txReq = {
       currency: 'ETH',
       chainId: 1,
@@ -262,94 +176,6 @@ describe('Test signatures on ETH transactions', () => {
         data: '0xdeadbeef'
       }
     };
-  })
-
-  it('Should validate uniformity of 5 consecutive tx signatures', async () => {
-    try {
-      txReq.data.signerPath[2] = constants.HARDENED_OFFSET;
-      const tx1_addr0 = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr0 = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr0 = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr0 = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr0 = await helpers.execute(client, 'sign', txReq);
-      expect(getSigStr(tx1_addr0.sig)).to.equal(getSigStr(tx2_addr0.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr0.sig)).to.equal(getSigStr(tx3_addr0.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr0.sig)).to.equal(getSigStr(tx4_addr0.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr0.sig)).to.equal(getSigStr(tx5_addr0.sig), 'Txs not uniform:');
-      txReq.data.signerPath[2] = constants.HARDENED_OFFSET + 1;
-      const tx1_addr1 = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr1 = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr1 = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr1 = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr1 = await helpers.execute(client, 'sign', txReq);
-      expect(getSigStr(tx1_addr1.sig)).to.equal(getSigStr(tx2_addr1.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr1.sig)).to.equal(getSigStr(tx3_addr1.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr1.sig)).to.equal(getSigStr(tx4_addr1.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr1.sig)).to.equal(getSigStr(tx5_addr1.sig), 'Txs not uniform:');
-      txReq.data.signerPath[2] = constants.HARDENED_OFFSET + 8;
-      const tx1_addr8 = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr8 = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr8 = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr8 = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr8 = await helpers.execute(client, 'sign', txReq);
-      expect(getSigStr(tx1_addr8.sig)).to.equal(getSigStr(tx2_addr8.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr8.sig)).to.equal(getSigStr(tx3_addr8.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr8.sig)).to.equal(getSigStr(tx4_addr8.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr8.sig)).to.equal(getSigStr(tx5_addr8.sig, 'Txs not uniform:'));
-    } catch (err) {
-      expect(err.message).to.equal(null, 'Caught error: ')
-    }
-  });
-
-  it('Should validate uniformity of 5 consecutive tx signatures (with oversized data)', async () => {
-    try {
-      txReq.data.data = `0x${crypto.randomBytes(4000).toString('hex')}`;
-      const tx1_addr0 = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr0 = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr0 = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr0 = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr0 = await helpers.execute(client, 'sign', txReq);
-      expect(getSigStr(tx1_addr0.sig)).to.equal(getSigStr(tx2_addr0.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr0.sig)).to.equal(getSigStr(tx3_addr0.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr0.sig)).to.equal(getSigStr(tx4_addr0.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr0.sig)).to.equal(getSigStr(tx5_addr0.sig), 'Txs not uniform:');
-      txReq.data.signerPath[2] = constants.HARDENED_OFFSET + 1;
-      const tx1_addr1 = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr1 = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr1 = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr1 = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr1 = await helpers.execute(client, 'sign', txReq);
-      expect(getSigStr(tx1_addr1.sig)).to.equal(getSigStr(tx2_addr1.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr1.sig)).to.equal(getSigStr(tx3_addr1.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr1.sig)).to.equal(getSigStr(tx4_addr1.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr1.sig)).to.equal(getSigStr(tx5_addr1.sig), 'Txs not uniform:');
-      txReq.data.signerPath[2] = constants.HARDENED_OFFSET + 8;
-      const tx1_addr8 = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr8 = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr8 = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr8 = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr8 = await helpers.execute(client, 'sign', txReq);
-      expect(getSigStr(tx1_addr8.sig)).to.equal(getSigStr(tx2_addr8.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr8.sig)).to.equal(getSigStr(tx3_addr8.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr8.sig)).to.equal(getSigStr(tx4_addr8.sig), 'Txs not uniform:');
-      expect(getSigStr(tx1_addr8.sig)).to.equal(getSigStr(tx5_addr8.sig), 'Txs not uniform:');
-    } catch (err) {
-      expect(err.message).to.equal(null, 'Caught error: ')
-    }
-  });
- 
-  it('Should ask if the user wants to test a card with a non-exportable seed', async () => {
-    const result = question(
-      '\nIf you have a SafeCard with a NON-EXPORTABLE seed loaded, please insert and unlock it now.' +
-      '\nDo you have a non-exportable SafeCard seed loaded and wish to continue? (Y/N) '
-    );
-    if (result.toLowerCase() !== 'y') {
-      skipNonExportableSeed = true;
-    }
-  });
-  it('Should validate non-exportable seed sigs all differ (from each other and from deterministic sigs)', async () => {
-    if (skipNonExportableSeed)
-      return;
     // Validate that tx sigs are non-uniform
     txReq.data.signerPath[2] = constants.HARDENED_OFFSET;
     const tx1_addr0 = await helpers.execute(client, 'sign', txReq);
@@ -414,6 +240,202 @@ describe('Test signatures on ETH transactions', () => {
   });
 })
 
+describe('Setup Test', () => {
+  beforeEach(() => {
+    expect(continueTests).to.equal(true, 'Unauthorized or critical failure. Aborting');
+  })
+
+  it('Should find out if we need to load the seed', async () => {
+    // Determine if we should skip the process of loading the test seed.
+    // This should only be selected if the user has previously chosen not
+    // to re-load the original seed at the end of this test script.
+    const result = question(
+      '\nDo you have the test seed loaded already? (Y/N) '
+    );
+    if (result.toLowerCase() !== 'n') {
+      skipSeedLoading = true;
+    }
+  })
+
+  it('Should fetch the seed', async () => {
+    if (skipSeedLoading)
+      return;
+    _setupJob(helpers.jobTypes.WALLET_JOB_EXPORT_SEED)
+    const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    const res = helpers.deserializeExportSeedJobResult(_res.result);
+    latticeSeed = helpers.copyBuffer(res.seed);
+  })
+
+  it('Should remove the seed', async () => {
+    if (skipSeedLoading)
+      return;
+    _setupJob(helpers.jobTypes.WALLET_JOB_DELETE_SEED)
+    await runTestCase(helpers.gpErrors.GP_SUCCESS);
+  })
+
+  it('Should load the known test seed', async () => {
+    if (skipSeedLoading)
+      return;
+    _setupJob(helpers.jobTypes.WALLET_JOB_LOAD_SEED, {seed: TEST_SEED})    
+    await runTestCase(helpers.gpErrors.GP_SUCCESS);
+  });
+
+  it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
+    if (skipSeedLoading)
+      return;
+    question(
+      '\nPlease remove, re-insert, and unlock your SafeCard.\n' +
+      'Press enter to continue after addresses have fully synced.'
+    );
+  })
+
+  it('Should re-connect to the Lattice and update the walletUID.', async () => {
+    expect(process.env.DEVICE_ID).to.not.equal(null);
+    await helpers.connect(client, process.env.DEVICE_ID);
+    expect(client.isPaired).to.equal(true);
+    expect(client.hasActiveWallet()).to.equal(true);
+    activeWalletUID = helpers.copyBuffer(client.getActiveWallet().uid)
+  });
+
+  it('Should ensure export seed matches the test seed', async () => {
+    _setupJob(helpers.jobTypes.WALLET_JOB_EXPORT_SEED)
+    const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    const res = helpers.deserializeExportSeedJobResult(_res.result);
+    const exportedSeed = helpers.copyBuffer(res.seed);
+    expect(exportedSeed.toString('hex')).to.equal(TEST_SEED.toString('hex'), 'Seeds did not match');
+    // Abort if this fails
+    if (exportedSeed.toString('hex') !== TEST_SEED.toString('hex'))
+      continueTests = false;
+  })
+
+  it('Should validate some Ledger addresses derived from the test seed', async () => {
+    // These addresses were all fetched using MetaMask with a real ledger loaded with TEST_MNEOMNIC
+    // NOTE: These are 0-indexed indices whereas MetaMask shows 1-indexed (addr0 -> metamask1)
+    const path0 = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0]
+    const addr0 = '0x17E43083812d45040E4826D2f214601bc730F60C'
+    const path1 = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET+1, 0, 0]
+    const addr1 = '0xfb25a9D4472A55083042672e42309056763B667E'
+    const path8 = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET+8, 0, 0]
+    const addr8 = '0x8A520d7f70906Ebe00F40131791eFF414230Ea5c'
+    // Derive these from the seed as a sanity check
+    expect(deriveAddress(TEST_SEED, path0).toLowerCase()).to.equal(addr0.toLowerCase(), 'Incorrect address 0 derived.')
+    expect(deriveAddress(TEST_SEED, path1).toLowerCase()).to.equal(addr1.toLowerCase(), 'Incorrect address 1 derived.')
+    expect(deriveAddress(TEST_SEED, path8).toLowerCase()).to.equal(addr8.toLowerCase(), 'Incorrect address 8 derived.')
+    // Fetch these addresses from the Lattice and validate
+
+    const req = { 
+      currency: 'ETH',
+      startPath: path0,
+      n: 1,
+      skipCache: true,
+    }
+    const latAddr0 = await helpers.execute(client, 'getAddresses', req, 2000);
+    expect(latAddr0[0].toLowerCase()).to.equal(addr0.toLowerCase(), 'Incorrect address 0 fetched.')
+    req.startPath = path1;
+    const latAddr1 = await helpers.execute(client, 'getAddresses', req, 2000);
+    expect(latAddr1[0].toLowerCase()).to.equal(addr1.toLowerCase(), 'Incorrect address 1 fetched.')
+    req.startPath = path8;
+    const latAddr8 = await helpers.execute(client, 'getAddresses', req, 2000);
+    expect(latAddr8[0].toLowerCase()).to.equal(addr8.toLowerCase(), 'Incorrect address 8 fetched.')
+  })
+
+})
+
+describe('Test uniformity of Ethereum transaction sigs', () => {
+    beforeEach(() => {
+    txReq = {
+      currency: 'ETH',
+      chainId: 1,
+      data: {
+        signerPath: LEDGER_ROOT_PATH,
+        type: 2,
+        maxFeePerGas: 1200000000,
+        maxPriorityFeePerGas: 1200000000,
+        nonce: 0,
+        gasLimit: 50000,
+        to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+        value: 100,
+        data: '0xdeadbeef'
+      }
+    };
+  })
+
+  it('Should validate uniformity of 5 consecutive tx signatures', async () => {
+    try {
+      txReq.data.signerPath[2] = constants.HARDENED_OFFSET;
+      const tx1_addr0 = await helpers.execute(client, 'sign', txReq);
+      const tx2_addr0 = await helpers.execute(client, 'sign', txReq);
+      const tx3_addr0 = await helpers.execute(client, 'sign', txReq);
+      const tx4_addr0 = await helpers.execute(client, 'sign', txReq);
+      const tx5_addr0 = await helpers.execute(client, 'sign', txReq);
+      expect(getSigStr(tx1_addr0.sig)).to.equal(getSigStr(tx2_addr0.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr0.sig)).to.equal(getSigStr(tx3_addr0.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr0.sig)).to.equal(getSigStr(tx4_addr0.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr0.sig)).to.equal(getSigStr(tx5_addr0.sig), 'Txs not uniform:');
+      txReq.data.signerPath[2] = constants.HARDENED_OFFSET + 1;
+      const tx1_addr1 = await helpers.execute(client, 'sign', txReq);
+      const tx2_addr1 = await helpers.execute(client, 'sign', txReq);
+      const tx3_addr1 = await helpers.execute(client, 'sign', txReq);
+      const tx4_addr1 = await helpers.execute(client, 'sign', txReq);
+      const tx5_addr1 = await helpers.execute(client, 'sign', txReq);
+      expect(getSigStr(tx1_addr1.sig)).to.equal(getSigStr(tx2_addr1.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr1.sig)).to.equal(getSigStr(tx3_addr1.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr1.sig)).to.equal(getSigStr(tx4_addr1.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr1.sig)).to.equal(getSigStr(tx5_addr1.sig), 'Txs not uniform:');
+      txReq.data.signerPath[2] = constants.HARDENED_OFFSET + 8;
+      const tx1_addr8 = await helpers.execute(client, 'sign', txReq);
+      const tx2_addr8 = await helpers.execute(client, 'sign', txReq);
+      const tx3_addr8 = await helpers.execute(client, 'sign', txReq);
+      const tx4_addr8 = await helpers.execute(client, 'sign', txReq);
+      const tx5_addr8 = await helpers.execute(client, 'sign', txReq);
+      expect(getSigStr(tx1_addr8.sig)).to.equal(getSigStr(tx2_addr8.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr8.sig)).to.equal(getSigStr(tx3_addr8.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr8.sig)).to.equal(getSigStr(tx4_addr8.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr8.sig)).to.equal(getSigStr(tx5_addr8.sig, 'Txs not uniform:'));
+    } catch (err) {
+      expect(err.message).to.equal(null, 'Caught error: ')
+    }
+  });
+
+  it('Should validate uniformity of 5 consecutive tx signatures (with oversized data)', async () => {
+    try {
+      txReq.data.data = `0x${crypto.randomBytes(4000).toString('hex')}`;
+      txReq.data.signerPath[2] = constants.HARDENED_OFFSET;
+      const tx1_addr0 = await helpers.execute(client, 'sign', txReq);
+      const tx2_addr0 = await helpers.execute(client, 'sign', txReq);
+      const tx3_addr0 = await helpers.execute(client, 'sign', txReq);
+      const tx4_addr0 = await helpers.execute(client, 'sign', txReq);
+      const tx5_addr0 = await helpers.execute(client, 'sign', txReq);
+      expect(getSigStr(tx1_addr0.sig)).to.equal(getSigStr(tx2_addr0.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr0.sig)).to.equal(getSigStr(tx3_addr0.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr0.sig)).to.equal(getSigStr(tx4_addr0.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr0.sig)).to.equal(getSigStr(tx5_addr0.sig), 'Txs not uniform:');
+      txReq.data.signerPath[2] = constants.HARDENED_OFFSET + 1;
+      const tx1_addr1 = await helpers.execute(client, 'sign', txReq);
+      const tx2_addr1 = await helpers.execute(client, 'sign', txReq);
+      const tx3_addr1 = await helpers.execute(client, 'sign', txReq);
+      const tx4_addr1 = await helpers.execute(client, 'sign', txReq);
+      const tx5_addr1 = await helpers.execute(client, 'sign', txReq);
+      expect(getSigStr(tx1_addr1.sig)).to.equal(getSigStr(tx2_addr1.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr1.sig)).to.equal(getSigStr(tx3_addr1.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr1.sig)).to.equal(getSigStr(tx4_addr1.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr1.sig)).to.equal(getSigStr(tx5_addr1.sig), 'Txs not uniform:');
+      txReq.data.signerPath[2] = constants.HARDENED_OFFSET + 8;
+      const tx1_addr8 = await helpers.execute(client, 'sign', txReq);
+      const tx2_addr8 = await helpers.execute(client, 'sign', txReq);
+      const tx3_addr8 = await helpers.execute(client, 'sign', txReq);
+      const tx4_addr8 = await helpers.execute(client, 'sign', txReq);
+      const tx5_addr8 = await helpers.execute(client, 'sign', txReq);
+      expect(getSigStr(tx1_addr8.sig)).to.equal(getSigStr(tx2_addr8.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr8.sig)).to.equal(getSigStr(tx3_addr8.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr8.sig)).to.equal(getSigStr(tx4_addr8.sig), 'Txs not uniform:');
+      expect(getSigStr(tx1_addr8.sig)).to.equal(getSigStr(tx5_addr8.sig), 'Txs not uniform:');
+    } catch (err) {
+      expect(err.message).to.equal(null, 'Caught error: ')
+    }
+  });
+
+})
 
 describe('Compare personal_sign signatures vs Ledger vectors (1)', () => {
   beforeEach(() => {
