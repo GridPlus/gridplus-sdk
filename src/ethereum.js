@@ -232,15 +232,15 @@ exports.buildEthereumTxRequest = function(data) {
       if (PREHASH_FROM_ACCESS_LIST) {
         PREHASH_UNSUPPORTED = true;
       }
-      txReqPayload.writeUint8(PREHASH_UNSUPPORTED === true, off); off += 1;  
+      txReqPayload.writeUInt8(PREHASH_UNSUPPORTED === true, off); off += 1;  
       // EIP1559 & EIP2930 struct version
       if (isEip1559) {
-        txReqPayload.writeUint8(2, off); off += 1; // Eip1559 type enum value
+        txReqPayload.writeUInt8(2, off); off += 1; // Eip1559 type enum value
         if (maxPriorityFeePerGasBytes.length > 8)
           throw new Error('maxPriorityFeePerGasBytes too large');
         maxPriorityFeePerGasBytes.copy(txReqPayload, off + (8 - maxPriorityFeePerGasBytes.length)); off += 8;
       } else if (isEip2930) {
-        txReqPayload.writeUint8(1, off); off += 1; // Eip2930 type enum value
+        txReqPayload.writeUInt8(1, off); off += 1; // Eip2930 type enum value
         off += extraEthTxDataSz - 2; // Skip EIP1559 params
       } else {
         off += extraEthTxDataSz - 1; // Skip EIP1559 and EIP2930 params
