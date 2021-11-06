@@ -14,6 +14,7 @@ const ec = new EC('secp256k1');
 // NOTE: We use the HARDEN(49) purpose for p2sh(p2wpkh) address derivations.
 //       For p2pkh-derived addresses, we use the legacy 44' purpose
 //       For p2wpkh-derived addresse (not yet supported) we will use 84'
+exports.HARDENED_OFFSET = HARDENED_OFFSET;
 exports.BTC_PURPOSE_P2SH_P2WPKH = HARDENED_OFFSET+49;
 exports.BTC_LEGACY_PURPOSE = HARDENED_OFFSET+44;
 exports.BTC_COIN = HARDENED_OFFSET;
