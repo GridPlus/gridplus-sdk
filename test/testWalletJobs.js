@@ -16,6 +16,7 @@
 //        root CMakeLists.txt file (for dev units)
 // To run these tests you will need a dev Lattice with: `FEATURE_TEST_RUNNER=1`
 const bip32 = require('bip32');
+const bip39 = require('bip39');
 const crypto = require('crypto');
 const expect = require('chai').expect;
 const ethutil = require('ethereumjs-util');
@@ -396,12 +397,138 @@ describe('signTx', () => {
 describe('Get delete permission', () => {
   it('Should get permission to remove seed.', () => {
     expect(continueTests).to.equal(true, 'Unauthorized or critical failure. Aborting');
-    const t = '\n\nThe following test will remove your seed.\n' +
+    const t = '\n\nThe following tests will remove your seed.\n' +
               'It should be added back in a later test, but these tests could fail!\n' +
               'Do you want to proceed?';
     continueTests = cli.getYesNo(t);
     expect(continueTests).to.equal(true);
   })
+})
+
+describe('Test leading zeros', () => {
+  // Use a known seed to derive private keys with leading zeros to test firmware derivation
+  const mnemonic = 'erosion loan violin drip laundry harsh social mercy leaf original habit buffalo';
+  const KNOWN_SEED = bip39.mnemonicToSeedSync(mnemonic);
+  const wallet = bip32.fromSeed(KNOWN_SEED);
+  const basePath = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, helpers.HARDENED_OFFSET, 0, 0];
+  const parentPathStr = 'm/44\'/60\'/0\'/0';
+  let addrReq, txReq;
+
+  async function runZerosTest(idx, numZeros) {
+    const refPriv = wallet.derivePath(`${parentPathStr}/${idx}`).privateKey;
+    for (let i = 0; i < numZeros; i++) {
+      expect(refPriv[i]).to.equal(0, `Should be ${numZeros} leading privKey zeros but got <${idx+1}`);
+    }
+    const ref = `0x${ethutil.privateToAddress(refPriv).toString('hex').toLowerCase()}`;
+    addrReq.startPath[4] = idx;
+    txReq.data.signerPath[4] = idx;
+    const addrs = await helpers.execute(client, 'getAddresses', addrReq);
+    if (addrs[0].toLowerCase() !== ref) {
+      continueTests = false;
+      expect(addrs[0].toLowerCase()).to.equal(ref, 'Failed to derive correct address for known seed');
+    }
+    const tx = await helpers.execute(client, 'sign', txReq);
+    if (`0x${tx.signer.toString('hex').toLowerCase()}` !== ref) {
+      continueTests = false;
+      expect(addrs[0].toLowerCase()).to.equal(ref, 'Failed to sign from correct address for known seed');
+    }
+  }
+
+  beforeEach (() => {
+    expect(activeWalletSeed).to.not.equal(null, 'Prior test failed. Aborting.');
+    expect(continueTests).to.equal(true, 'Unauthorized or critical failure. Aborting');
+    addrReq = { 
+      currency: 'ETH', 
+      startPath: basePath,
+      n: 1,
+      skipCache: true,
+    };
+    txReq = {
+      currency: 'ETH',
+      data: {
+        signerPath: basePath,
+        nonce: '0x02',
+        gasPrice: '0x1fe5d61a00',
+        gasLimit: '0x034e97',
+        to: '0x1af768c0a217804cfe1a0fb739230b546a566cd6',
+        value: '0x100000',
+        data: null,
+        chainId: 1,
+      }
+    }
+  })
+
+  it('Should remove the current seed', async () => {
+    jobType = helpers.jobTypes.WALLET_JOB_DELETE_SEED;
+    jobData = {
+      iface: 1,
+    };
+    jobReq = {
+      testID: 0, // wallet_job test ID
+      payload: null,
+    }
+    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    await runTestCase(helpers.gpErrors.GP_SUCCESS);
+  });
+
+  it('Should load the new seed', async () => {
+    jobType = helpers.jobTypes.WALLET_JOB_LOAD_SEED;
+    jobData = {
+      iface: 1, // external SafeCard interface
+      seed: KNOWN_SEED,
+      exportability: 2, // always exportable
+    };
+    jobReq = {
+      testID: 0, // wallet_job test ID
+      payload: null,
+    }
+    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    await runTestCase(helpers.gpErrors.GP_SUCCESS);
+  });
+
+  it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
+    const newQ = cli.getYesNo;
+    const t = '\n\nPlease remove your SafeCard, then re-insert and unlock it.\nWait for addresses to sync!\n'+
+              'Press Y when the card is re-inserted and addresses have finished syncing.';
+    continueTests = newQ(t);
+    expect(continueTests).to.equal(true, 'You must remove, re-insert, and unlock your SafeCard to run this test.');
+  })
+
+  it('Should make sure the first address is correct', async () => {
+    const ref = `0x${ethutil.privateToAddress(wallet.derivePath(`${parentPathStr}/0`).privateKey).toString('hex').toLowerCase()}`;
+    const addrs = await helpers.execute(client, 'getAddresses', addrReq);
+    if (addrs[0].toLowerCase() !== ref) {
+      continueTests = false;
+      expect(addrs[0].toLowerCase()).to.equal(ref, 'Failed to derive correct address for known seed');
+    }
+  })
+
+  // One leading privKey zero -> P(1/256)
+  it('Should test address m/44\'/60\'/0\'/0/396 (1 leading zero byte)', async () => {
+    await runZerosTest(396, 1);
+  });
+
+  it('Should test address m/44\'/60\'/0\'/0/406 (1 leading zero byte)', async () => {
+    await runZerosTest(406, 1);
+  });
+  it('Should test address m/44\'/60\'/0\'/0/668 (1 leading zero byte)', async () => {
+    await runZerosTest(668, 1);
+  });
+
+  // Two leading privKey zeros -> P(1/65536)
+  it('Should test address m/44\'/60\'/0\'/0/71068 (2 leading zero bytes)', async () => {
+    await runZerosTest(71068, 2);
+  });
+  it('Should test address m/44\'/60\'/0\'/0/82173 (2 leading zero bytes)', async () => {
+    await runZerosTest(82173, 2);
+  });
+
+  // Three leading privKey zeros -> P(1/16777216)
+  // Unlikely any user ever runs into these but I wanted to derive the addrs for funsies
+  it('Should test address m/44\'/60\'/0\'/0/11981831 (3 leading zero bytes)', async () => {
+    await runZerosTest(11981831, 3);
+  });
+
 })
 
 describe('deleteSeed', () => {
