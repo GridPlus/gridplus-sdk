@@ -150,6 +150,7 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
   // the test route is commented out.
   // TODO: Remove this comment when bug is fixed in firmware.
   it('Should ask if the user wants to test a card with a non-exportable seed', async () => {
+    // NOTE: non-exportable seeds were deprecated from the normal setup pathway in firmware v0.12.0
     const result = question(
       '\nIf you have a SafeCard with a NON-EXPORTABLE seed loaded, please insert and unlock it now.' +
       '\nDo you have a non-exportable SafeCard seed loaded and wish to continue? (Y/N) '
@@ -229,15 +230,6 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     expect(sig2).to.not.equal(jsSig, 'Addr8 sig was not random');
     expect(sig2).to.not.equal(sig, 'Addr8 sig was not random');
   })
-
-  it('Should ask the user to insert the original card.', async () => {
-    if (skipNonExportableSeed)
-      return;
-    question(
-      '\nPlease remove your SafeCard (with the non-exportable seed) and re-insert + unlock' +
-      '\nyour original SafeCard. Press enter once the original card is inserted and unlocked.'
-    );
-  });
 })
 
 describe('Setup Test', () => {
@@ -250,10 +242,19 @@ describe('Setup Test', () => {
     // This should only be selected if the user has previously chosen not
     // to re-load the original seed at the end of this test script.
     const result = question(
-      '\nDo you have the test seed loaded already? (Y/N) '
+      'Please insert and unlock a normal SafeCard (with an exportable seed).' +
+      '\nDo you have the test seed loaded on this card already? (Y/N) '
     );
     if (result.toLowerCase() !== 'n') {
       skipSeedLoading = true;
+    } else {
+      // TODO: Remove this once firmware is fixed
+      console.log('WARNING: if you ran the non-exportable seed tests and also are trying ' +
+                  'to load a seed here, your tests will fail. This has to do with some ' +
+                  'edge case in the firmware test runner and EMV applet. We are looking into ' +
+                  'it but for now please do not use this combination. This issue only ' +
+                  'affects the test runner which is why it is not higher priority');
+
     }
   })
 
