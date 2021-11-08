@@ -6,6 +6,7 @@ const expect = require('chai').expect;
 const ethutil = require('ethereumjs-util');
 const Sdk = require('../../index.js');
 const constants = require('../../src/constants');
+const util = require('../../src/util')
 const SIGHASH_ALL = 0x01;
 const HARDENED_OFFSET = 0x80000000;
 const EC = require('elliptic').ec;
@@ -218,30 +219,13 @@ function _btc_tx_request_builder(inputs, recipient, value, fee, segwit, isTestne
 
 // Convert DER signature to buffer of form `${r}${s}`
 function stripDER(derSig) {
-  let off = 0;
-  if (derSig[off] !== 0x30)
-    throw new Error('Invalid DER signature')
-  off++;
-  const sig = { r: null, s: null }
-  const l = derSig[off]; off++;
-  if (derSig[off] !== 0x02)
-    throw new Error('Invalid DER signature')
-  off++;
-  const rl = derSig[off]; off++;
-  // Sometimes there are leading zeros, which are accounted for in the
-  // DER component length. However, we need to strip them to validate
-  // using bip32.js (which uses tiny-secp256k1)
-  let sliceStart = off + (rl - 32);
-  sig.r = derSig.slice(sliceStart, off + rl); off += rl;
-  if (derSig[off] !== 0x02)
-    throw new Error('Invalid DER signature')
-  off++;
-  const sl = derSig[off]; off++;
-  sliceStart = off + (sl - 32);
-  sig.s = derSig.slice(sliceStart, off + sl); off += sl;
-  if (sl + rl +4 !== l)
-    throw new Error('Invalid DER signature')
-  return Buffer.concat([sig.r, sig.s])
+  const parsed = util.parseDER(derSig)
+  parsed.s = Buffer.from(parsed.s.slice(-32));
+  parsed.r = Buffer.from(parsed.r.slice(-32));
+  const sig = Buffer.alloc(64);
+  parsed.r.copy(sig, 32-parsed.r.length);
+  parsed.s.copy(sig, 64-parsed.s.length);
+  return sig;
 }
 
 function _get_signing_keys(wallet, inputs, isTestnet, purpose) {
@@ -254,8 +238,13 @@ function _get_signing_keys(wallet, inputs, isTestnet, purpose) {
   return keys;
 }
 
-function _generate_btc_address(isTestnet, isSegwit) {
-  const keyPair = bitcoin.ECPair.makeRandom();
+function _generate_btc_address(isTestnet, isSegwit, rand) {
+  const priv = Buffer.alloc(32);
+  for (let j = 0; j < 8; j++) {
+    // 32 bits of randomness per call
+    priv.writeUInt32BE(Math.floor(rand.quick() * 2**32), j * 4);
+  }
+  const keyPair = bitcoin.ECPair.fromPrivateKey(priv);
   const network = isTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.mainnet;
   let obj;
   if (isSegwit === true) {
@@ -269,11 +258,11 @@ function _generate_btc_address(isTestnet, isSegwit) {
   return obj.address;
 }
 
-function setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputs, purpose) {
-    const recipient = _generate_btc_address(isTestnet, isSegwit);
+function setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputs, purpose, rand) {
+    const recipient = _generate_btc_address(isTestnet, isSegwit, rand);
     const sumInputs = _getSumInputs(inputs);
-    const fee = Math.floor(Math.random() * 50000)
-    const _value = useChange === true ? Math.floor(Math.random() * sumInputs) : sumInputs;
+    const fee = Math.floor(rand.quick() * 50000)
+    const _value = useChange === true ? Math.floor(rand.quick() * sumInputs) : sumInputs;
     const value = _value - fee;
     const sigHashes = _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestnet, isSegwit, purpose);
     const signingKeys = _get_signing_keys(wallet, inputs, isTestnet, purpose);
