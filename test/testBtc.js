@@ -17,8 +17,9 @@
 require('it-each')({ testPerIteration: true });
 const expect = require('chai').expect;
 const helpers = require('./testUtil/helpers');
-const crypto = require('crypto');
-let client, activeWalletUID, wallet = null;
+const seedrandom = require('seedrandom');
+const prng = new seedrandom(process.env.SEED || 'myrandomseed');
+let client, activeWalletUID, wallet = null, continueTests=true;
 
 const PURPOSE = helpers.BTC_PURPOSE_P2SH_P2WPKH;
 
@@ -30,15 +31,22 @@ const bip32 = require('bip32')
 
 // Build the inputs. By default we will build 10. Note that there are `n` tests for
 // *each category*, where `n` is the number of inputs.
+function rand32Bit() {
+  return Math.floor(prng.quick() * 2**32);
+}
 const inputs = [];
 const numInputs = [];
 const count = process.env.N ? process.env.N : 10;
 for (let i = 0; i < count; i++) {
-  const hash = crypto.randomBytes(32).toString('hex');
-  const value = Math.floor(Math.random() * 1000000 * 10**8); // Random value up to 1M BTC ;)
-  const signerIdx = Math.floor(Math.random() * 19); // Random signer (keep it inside initial cache of 20)
-  const idx = Math.floor(Math.random() * 25); // Random previous output index (keep it small)
-  inputs.push({hash, value, signerIdx, idx });
+  const hash = Buffer.alloc(32);
+  for (let j = 0; j < 8; j++) {
+    // 32 bits of randomness per call
+    hash.writeUInt32BE(rand32Bit(), j * 4);
+  }
+  const value = Math.floor(rand32Bit());
+  const signerIdx = Math.floor(prng.quick() * 19); // Random signer (keep it inside initial cache of 20)
+  const idx = Math.floor(prng.quick() * 25); // Random previous output index (keep it small)
+  inputs.push({hash: hash.toString('hex'), value, signerIdx, idx });
   numInputs.push({ label: `${i+1}`, number: i+1 });
 }
 
@@ -48,7 +56,13 @@ async function testSign(req, signingKeys, sigHashes) {
   expect(tx.sigs.length).to.equal(sigHashes.length);
   for (let i = 0; i < tx.sigs.length; i++) {
     const sig = helpers.stripDER(tx.sigs[i]);
-    expect(signingKeys[i].verify(sigHashes[i], sig)).to.equal(true, 'Signature validation failed');
+    const verification = signingKeys[i].verify(sigHashes[i], sig);
+    if (!verification)
+      continueTests = false;
+    expect(verification).to.equal(true, 
+      `Signature validation failed for priv=${signingKeys[i].privateKey.toString('hex')}, `+
+      `hash=${sigHashes[i].toString('hex')}, sig=${sig.toString('hex')}`
+    );
   }
 }
 
@@ -125,6 +139,9 @@ describe('exportSeed', () => {
 // });
 
 describe('segwit, testnet, change', function(){
+    beforeEach(() => {
+      expect(continueTests).to.equal(true, 'Previous test failed. Aborting');
+    })
 
     it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
       expect(wallet).to.not.equal(null, 'Wallet not available')
@@ -132,7 +149,7 @@ describe('segwit, testnet, change', function(){
       const isTestnet = true;
       const isSegwit = true;
       const useChange = true;
-      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice, PURPOSE);
+      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice, PURPOSE, prng);
       try {
         await testSign(p.txReq, p.signingKeys, p.sigHashes);
         next();
@@ -144,6 +161,9 @@ describe('segwit, testnet, change', function(){
 });
 
 describe('segwit, mainnet, change', function(){
+    beforeEach(() => {
+      expect(continueTests).to.equal(true, 'Previous test failed. Aborting');
+    })
 
     it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
       expect(wallet).to.not.equal(null, 'Wallet not available')
@@ -151,7 +171,7 @@ describe('segwit, mainnet, change', function(){
       const isTestnet = false;
       const isSegwit = true;
       const useChange = true;
-      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice, PURPOSE);
+      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice, PURPOSE, prng);
       try {
         await testSign(p.txReq, p.signingKeys, p.sigHashes);
         next();
@@ -163,6 +183,9 @@ describe('segwit, mainnet, change', function(){
 });
 
 describe('segwit, mainnet, no change', function(){
+    beforeEach(() => {
+      expect(continueTests).to.equal(true, 'Previous test failed. Aborting');
+    })
 
     it.each(numInputs, 'Testing with %s inputs', ['label'], async function(n, next) {
       expect(wallet).to.not.equal(null, 'Wallet not available')
@@ -170,7 +193,7 @@ describe('segwit, mainnet, no change', function(){
       const isTestnet = false;
       const isSegwit = true;
       const useChange = false;
-      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice, PURPOSE);
+      const p = helpers.setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputsSlice, PURPOSE, prng);
       try {
         await testSign(p.txReq, p.signingKeys, p.sigHashes);
         next();
