@@ -157,7 +157,7 @@ describe('getAddresses', () => {
     helpers.validateETHAddresses(res, jobData, activeWalletSeed);
   })
 
-  it('Should validate BTC address', async () => {
+  it('Should validate the first BTC address', async () => {
     jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeGetAddressesJobResult(_res.result);
@@ -172,7 +172,7 @@ describe('getAddresses', () => {
     helpers.validateBTCAddresses(res, jobData, activeWalletSeed);
   })
 
-  it('Should validate BTC address (testnet)', async () => {
+  it('Should validate the first BTC address (testnet)', async () => {
     jobData.parent.coin = helpers.BTC_TESTNET_COIN;
     jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
@@ -189,7 +189,7 @@ describe('getAddresses', () => {
     helpers.validateBTCAddresses(res, jobData, activeWalletSeed, true);
   })
 
-  it('Should fetch BTC addresses outside the cache with the proper flag set', async () => {
+  it('Should fetch BTC addresses outside the cache', async () => {
     const req = { 
       currency: 'BTC', 
       startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_COIN, helpers.BTC_COIN, 0, 28802208], 
@@ -215,7 +215,33 @@ describe('getAddresses', () => {
     helpers.validateBTCAddresses(resp, jobData, activeWalletSeed);
   })
 
-  it('Should fetch nonstandard address with proper flag set', async () => {
+  it('Should fetch BTC addresses (bech32) outside the cache', async () => {
+    const req = { 
+      currency: 'BTC', 
+      startPath: [helpers.BTC_PURPOSE_P2WPKH, helpers.BTC_COIN, helpers.BTC_COIN, 0, 28802208], 
+      n: 3,
+      skipCache: true,
+    }
+    const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
+    const resp = {
+      count: addrs.length,
+      addresses: addrs,
+    }
+    const jobData = {
+      parent: {
+        pathDepth: 4,
+        purpose: req.startPath[0],
+        coin: req.startPath[1],
+        account: req.startPath[2],
+        change: req.startPath[3],
+      },
+      count: req.n,
+      first: req.startPath[4],
+    }
+    helpers.validateBTCAddresses(resp, jobData, activeWalletSeed);
+  })
+
+  it('Should fetch address with nonstandard purpose', async () => {
     const req = { 
       currency: 'BTC', 
       startPath: [7842, helpers.BTC_COIN, 2532356, 0, 28802208], 
@@ -238,6 +264,7 @@ describe('getAddresses', () => {
       count: req.n,
       first: req.startPath[4],
     }
+    // Let the validator know this is a nonstandard purpose
     helpers.validateBTCAddresses(resp, jobData, activeWalletSeed);
   })
 

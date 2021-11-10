@@ -114,6 +114,17 @@ describe('Connect and Pair', () => {
       expect(addrs[0][0]).to.be.oneOf(['n', 'm', '2']);
       addrData.startPath[1] = helpers.BTC_COIN;
 
+      // Bech32
+      addrData.startPath[0] = helpers.BTC_PURPOSE_P2WPKH;
+      addrData.skipCache = true;
+      addrData.n = 1;
+      addrs = await helpers.execute(client, 'getAddresses', addrData, 2000);
+      expect(addrs.length).to.equal(1);
+      expect(addrs[0].slice(0, 3)).to.be.oneOf(['bc1']);
+      addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
+      addrData.skipCache = false;
+      addrData.n = 5;
+
       // Keys outside the cache with skipCache = true
       addrData.startPath[4] = 1000000;
       addrData.n = 3;

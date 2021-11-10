@@ -444,12 +444,22 @@ exports.validateBTCAddresses = function(resp, jobData, seed, useTestnet) {
   const network = useTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.mainnet;
   for (let i = jobData.first; i < jobData.first + jobData.count; i++) {
     path.addr = i;
+    // Validate the address
+    const purpose = jobData.parent.purpose;
     const pubkey = wallet.derivePath(exports.stringifyPath(path)).publicKey;
-    // The format of the address depends on the device setting. We will check both types.
-    // NOTE: At time of writing, we do not support native bech32 segwit addresses
-    const p2sh_p2wpkh = bitcoin.payments.p2sh({redeem: bitcoin.payments.p2wpkh({ pubkey, network })}).address;
-    const p2pkh = bitcoin.payments.p2pkh({ pubkey, network }).address;
-    expect([p2sh_p2wpkh, p2pkh]).to.include.members([resp.addresses[i-jobData.first]]);
+    let address;
+    if (purpose === exports.BTC_PURPOSE_P2WPKH) {
+      // Bech32
+      address = bitcoin.payments.p2wpkh({ pubkey }).address;
+    } else if (purpose === exports.BTC_PURPOSE_P2SH_P2WPKH) {
+      // Wrapped segwit
+      address = bitcoin.payments.p2sh({redeem: bitcoin.payments.p2wpkh({ pubkey, network })}).address;
+    } else {
+      // Legacy
+      // This is the default and any unrecognized purpose will yield a legacy address.
+      address = bitcoin.payments.p2pkh({ pubkey, network }).address;
+    }
+    expect(address).to.equal(resp.addresses[i-jobData.first]);
   }
 }
 
