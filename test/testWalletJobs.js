@@ -15,14 +15,17 @@
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)
 // To run these tests you will need a dev Lattice with: `FEATURE_TEST_RUNNER=1`
+const ethjsBN = require('bn.js')
 const bip32 = require('bip32');
 const bip39 = require('bip39');
 const crypto = require('crypto');
 const expect = require('chai').expect;
 const ethutil = require('ethereumjs-util');
 const cli = require('cli-interact');
+const rlp = require('rlp');
+const keccak256 = require('js-sha3').keccak256;
 const helpers = require('./testUtil/helpers');
-let client, activeWalletUID, jobType, jobData, jobReq, activeWalletSeed=null, continueTests=false;
+let client, activeWalletUID, jobType, jobData, jobReq, activeWalletSeed=null, continueTests=true;
 // For v1, all BTC addresses are derived via BIP49 (only p2sh-p2wpkh transactions are supported)
 const USE_BIP49 = true;
 // Define the default parent path. We use BTC as the default
@@ -41,14 +44,6 @@ async function runTestCase(expectedCode) {
     expect(parsedRes.resultStatus).to.equal(expectedCode);
     return parsedRes;
 }
-
-describe('Test setup', () => {
-  it('Should ensure both Lattice and SafeCard wallets are available.', () => {
-    const t = '\n\nDo you have an unlocked SafeCard with a wallet inserted? ';
-    continueTests = cli.getYesNo(t);
-    expect(continueTests).to.equal(true);
-  })
-})
 
 describe('Test Wallet Jobs', () => {
 
@@ -410,28 +405,59 @@ describe('Test leading zeros', () => {
   const mnemonic = 'erosion loan violin drip laundry harsh social mercy leaf original habit buffalo';
   const KNOWN_SEED = bip39.mnemonicToSeedSync(mnemonic);
   const wallet = bip32.fromSeed(KNOWN_SEED);
-  const basePath = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, helpers.HARDENED_OFFSET, 0, 0];
-  const parentPathStr = 'm/44\'/60\'/0\'/0';
+  let basePath = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, helpers.HARDENED_OFFSET, 0, 0];
+  let parentPathStr = 'm/44\'/60\'/0\'/0';
   let addrReq, txReq;
 
-  async function runZerosTest(idx, numZeros) {
-    const refPriv = wallet.derivePath(`${parentPathStr}/${idx}`).privateKey;
+  async function runZerosTest(idx, numZeros, testPub=false) {
+    const w = wallet.derivePath(`${parentPathStr}/${idx}`);
+    const refPriv = w.privateKey;
+    const refPub = w.publicKey;
     for (let i = 0; i < numZeros; i++) {
-      expect(refPriv[i]).to.equal(0, `Should be ${numZeros} leading privKey zeros but got <${idx+1}`);
+      if (testPub) {
+        // We expect the first byte to be 2 or 3. We need to inspect the bytes after that
+        expect(refPub[1+i]).to.equal(0, `Should be ${numZeros} leading pubKey zeros but got ${i}.`);
+      } else {
+        expect(refPriv[i]).to.equal(0, `Should be ${numZeros} leading privKey zeros but got ${i}.`);
+      }
     }
+    // Validate the exported address
     const ref = `0x${ethutil.privateToAddress(refPriv).toString('hex').toLowerCase()}`;
-    addrReq.startPath[4] = idx;
-    txReq.data.signerPath[4] = idx;
+    addrReq.startPath[addrReq.startPath.length - 1] = idx;
+    txReq.data.signerPath[txReq.data.signerPath.length - 1] = idx;
     const addrs = await helpers.execute(client, 'getAddresses', addrReq);
     if (addrs[0].toLowerCase() !== ref) {
       continueTests = false;
       expect(addrs[0].toLowerCase()).to.equal(ref, 'Failed to derive correct address for known seed');
     }
+    // Validate the signer coming back from the sign request
     const tx = await helpers.execute(client, 'sign', txReq);
     if (`0x${tx.signer.toString('hex').toLowerCase()}` !== ref) {
       continueTests = false;
       expect(addrs[0].toLowerCase()).to.equal(ref, 'Failed to sign from correct address for known seed');
     }
+
+    // Validate the signature itself against the expected signer
+    const rlpData = rlp.decode(tx.tx)
+    // The returned data contains the signature, which we need to clear out
+    // Note that all requests coming in here must be legacy ETH txs
+    rlpData[6] = Buffer.from('01', 'hex'); // chainID must be 1
+    rlpData[7] = Buffer.alloc(0);
+    rlpData[8] = Buffer.alloc(0);
+    const rlpEnc = rlp.encode(rlpData);
+    const txHashLessSig = Buffer.from(keccak256(rlpEnc), 'hex');
+    // Rebuild sig
+    // Subtract 37 to account for EIP155 (all requests here must have chainID=1)
+    const _v = parseInt(tx.sig.v.toString('hex'), 16) - 37;
+    const v = new ethjsBN(_v + 27);
+    const r = Buffer.from(tx.sig.r, 'hex')
+    const s = Buffer.from(tx.sig.s, 'hex')
+    const recoveredAddr = ethutil.publicToAddress(ethutil.ecrecover(txHashLessSig, v, r, s));
+    // Ensure recovered address is consistent with the one that got returned in the tx obj
+    expect( recoveredAddr.toString('hex')).to.equal(tx.signer.toString('hex'), 
+            'Returned signer inconsistend with sig');
+    // Ensure returned address matches derived address
+    expect(`0x${recoveredAddr.toString('hex')}`).to.equal(ref)
   }
 
   beforeEach (() => {
@@ -507,7 +533,6 @@ describe('Test leading zeros', () => {
   it('Should test address m/44\'/60\'/0\'/0/396 (1 leading zero byte)', async () => {
     await runZerosTest(396, 1);
   });
-
   it('Should test address m/44\'/60\'/0\'/0/406 (1 leading zero byte)', async () => {
     await runZerosTest(406, 1);
   });
@@ -529,6 +554,51 @@ describe('Test leading zeros', () => {
     await runZerosTest(11981831, 3);
   });
 
+  // Pubkeys are also used in the signature process, so we need to test paths with
+  // leading zeros in the X component of the pubkey (compressed pubkeys are used)
+  // We will test with a modification to the base path, which will produce a pubkey
+  // with a leading zero byte.
+  // We want this leading-zero pubkey to be a parent derivation path to then
+  // test all further derivations
+  it('Should switch to testing public keys', async () => {
+    parentPathStr = 'm/44\'/60\'/0\'';
+    basePath[3] = 153;
+    basePath = basePath.slice(0, 4)
+  })
+
+  // There should be no problems with the parent path here because the result
+  // is the leading-zero pubkey directly. Since we do not do a further derivation
+  // with that leading-zero pubkey, there should never be any issues.
+  it('Should test address m/44\'/60\'/0\'/153', async () => {
+    await runZerosTest(153, 1, true);
+  });
+
+  it('Should prepare for one more derivation step', async () => {
+    parentPathStr = 'm/44\'/60\'/0\'/153';
+    basePath.push(0);
+  })
+
+  // Now we will derive one more step with the leading zero pubkey feeding
+  // into the derivation. This tests an edge case in firmware.
+  it('Should test address m/44\'/60\'/0\'/153/0', async () => {
+    await runZerosTest(0, 0);
+  })
+
+  it('Should test address m/44\'/60\'/0\'/153/1', async () => {
+    await runZerosTest(1, 0);
+  })
+
+  it('Should test address m/44\'/60\'/0\'/153/5', async () => {
+    await runZerosTest(5, 0);
+  })
+
+  it('Should test address m/44\'/60\'/0\'/153/10000', async () => {
+    await runZerosTest(10000, 0);
+  })
+
+  it('Should test address m/44\'/60\'/0\'/153/9876543', async () => {
+    await runZerosTest(9876543, 0);
+  })
 })
 
 describe('deleteSeed', () => {
@@ -986,5 +1056,4 @@ describe('Wallet sync tests (starting with newly synced wallet)', () => {
     const res = await makeRequest(helpers.BTC_TESTNET_COIN, 1, 0, 0);
     helpers.validateBTCAddresses(res, jobData, activeWalletSeed, true);
   });
-
 })
