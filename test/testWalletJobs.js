@@ -255,7 +255,7 @@ describe('getAddresses', () => {
     }
   })
 
-  it('Should fetch with a shorter derivation path', async () => {
+  it('Should validate address with pathDepth=4', async () => {
     const req = { 
       currency: 'ETH', 
       startPath: [7842, helpers.ETH_COIN, 2532356, 7], 
@@ -280,6 +280,29 @@ describe('getAddresses', () => {
     helpers.validateETHAddresses(resp, jobData, activeWalletSeed);
   })
 
+  it('Should validate address with pathDepth=3', async () => {
+    const req = { 
+      currency: 'ETH', 
+      startPath: [7842, helpers.ETH_COIN, 2532356], 
+      n: 3,
+      skipCache: true,
+    }
+    const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
+    const resp = {
+      count: addrs.length,
+      addresses: addrs,
+    }
+    const jobData = {
+      parent: {
+        pathDepth: 2,
+        purpose: req.startPath[0],
+        coin: req.startPath[1],
+      },
+      count: req.n,
+      first: req.startPath[2],
+    }
+    helpers.validateETHAddresses(resp, jobData, activeWalletSeed);
+  })
 })
 
 describe('signTx', () => {
