@@ -142,6 +142,96 @@ describe('Connect', () => {
   });
 })
 
+describe('Test non-exportable seed on SafeCard (if available)', () => {
+  // This needs to be done before tests that use the `test` API route because
+  // there is some sort of bug related to directly submitting wallet jobs
+  // and then switching EMV interfaces.
+  // This bug does not affect any users of production devices since
+  // the test route is commented out.
+  // TODO: Remove this comment when bug is fixed in firmware.
+  it('Should ask if the user wants to test a card with a non-exportable seed', async () => {
+    // NOTE: non-exportable seeds were deprecated from the normal setup pathway in firmware v0.12.0
+    const result = question(
+      '\nIf you have a SafeCard with a NON-EXPORTABLE seed loaded, please insert and unlock it now.' +
+      '\nDo you have a non-exportable SafeCard seed loaded and wish to continue? (Y/N) '
+    );
+    if (result.toLowerCase() !== 'y') {
+      skipNonExportableSeed = true;
+    }
+  });
+  it('Should validate non-exportable seed sigs all differ (from each other and from deterministic sigs)', async () => {
+    if (skipNonExportableSeed)
+      return;
+    txReq = {
+      currency: 'ETH',
+      chainId: 1,
+      data: {
+        signerPath: LEDGER_ROOT_PATH,
+        type: 2,
+        maxFeePerGas: 1200000000,
+        maxPriorityFeePerGas: 1200000000,
+        nonce: 0,
+        gasLimit: 50000,
+        to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+        value: 100,
+        data: '0xdeadbeef'
+      }
+    };
+    // Validate that tx sigs are non-uniform
+    txReq.data.signerPath[2] = constants.HARDENED_OFFSET;
+    const tx1_addr0 = await helpers.execute(client, 'sign', txReq);
+    const tx2_addr0 = await helpers.execute(client, 'sign', txReq);
+    const tx3_addr0 = await helpers.execute(client, 'sign', txReq);
+    const tx4_addr0 = await helpers.execute(client, 'sign', txReq);
+    const tx5_addr0 = await helpers.execute(client, 'sign', txReq);
+    expect(getSigStr(tx1_addr0.sig)).to.not.equal(getSigStr(tx2_addr0.sig));
+    expect(getSigStr(tx1_addr0.sig)).to.not.equal(getSigStr(tx3_addr0.sig));
+    expect(getSigStr(tx1_addr0.sig)).to.not.equal(getSigStr(tx4_addr0.sig));
+    expect(getSigStr(tx1_addr0.sig)).to.not.equal(getSigStr(tx5_addr0.sig));
+    
+    // Validate that signPersonal message sigs are non-uniform and do not match deterministic ones
+    let res, res2, jsSig, sig, sig2;
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: LEDGER_ROOT_PATH,
+        protocol: 'signPersonal',
+        payload: 'test message'
+      }
+    }
+    // Address index 0
+    req.data.signerPath[2] = constants.HARDENED_OFFSET;
+    jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
+    res = await helpers.execute(client, 'sign', req);
+    sig = getSigStr(res.sig);
+    expect(sig).to.not.equal(jsSig, 'Addr0 sig was not random');
+    res2 = await helpers.execute(client, 'sign', req);
+    sig2 = getSigStr(res2.sig);
+    expect(sig2).to.not.equal(jsSig, 'Addr0 sig was not random');
+    expect(sig2).to.not.equal(sig, 'Addr0 sig was not random');
+    // Address index 1
+    req.data.signerPath[2] = constants.HARDENED_OFFSET + 1;
+    jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
+    res = await helpers.execute(client, 'sign', req);
+    sig = getSigStr(res.sig);
+    expect(sig).to.not.equal(jsSig, 'Addr1 sig was not random');
+    res2 = await helpers.execute(client, 'sign', req);
+    sig2 = getSigStr(res2.sig);
+    expect(sig2).to.not.equal(jsSig, 'Addr1 sig was not random');
+    expect(sig2).to.not.equal(sig, 'Addr1 sig was not random');
+    // Address index 8
+    req.data.signerPath[2] = constants.HARDENED_OFFSET + 8;
+    jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
+    res = await helpers.execute(client, 'sign', req);
+    sig = getSigStr(res.sig);
+    expect(sig).to.not.equal(jsSig, 'Addr8 sig was not random');
+    res2 = await helpers.execute(client, 'sign', req);
+    sig2 = getSigStr(res2.sig);
+    expect(sig2).to.not.equal(jsSig, 'Addr8 sig was not random');
+    expect(sig2).to.not.equal(sig, 'Addr8 sig was not random');
+  })
+})
+
 describe('Setup Test', () => {
   beforeEach(() => {
     expect(continueTests).to.equal(true, 'Unauthorized or critical failure. Aborting');
@@ -152,10 +242,19 @@ describe('Setup Test', () => {
     // This should only be selected if the user has previously chosen not
     // to re-load the original seed at the end of this test script.
     const result = question(
-      '\nDo you have the test seed loaded already? (Y/N) '
+      'Please insert and unlock a normal SafeCard (with an exportable seed).' +
+      '\nDo you have the test seed loaded on this card already? (Y/N) '
     );
     if (result.toLowerCase() !== 'n') {
       skipSeedLoading = true;
+    } else {
+      // TODO: Remove this once firmware is fixed
+      console.log('WARNING: if you ran the non-exportable seed tests and also are trying ' +
+                  'to load a seed here, your tests will fail. This has to do with some ' +
+                  'edge case in the firmware test runner and EMV applet. We are looking into ' +
+                  'it but for now please do not use this combination. This issue only ' +
+                  'affects the test runner which is why it is not higher priority');
+
     }
   })
 
@@ -192,8 +291,6 @@ describe('Setup Test', () => {
   })
 
   it('Should re-connect to the Lattice and update the walletUID.', async () => {
-    if (skipSeedLoading)
-      return;
     expect(process.env.DEVICE_ID).to.not.equal(null);
     await helpers.connect(client, process.env.DEVICE_ID);
     expect(client.isPaired).to.equal(true);
@@ -206,7 +303,7 @@ describe('Setup Test', () => {
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeExportSeedJobResult(_res.result);
     const exportedSeed = helpers.copyBuffer(res.seed);
-    expect(exportedSeed.toString('hex')).to.equal(TEST_SEED.toString('hex'));
+    expect(exportedSeed.toString('hex')).to.equal(TEST_SEED.toString('hex'), 'Seeds did not match');
     // Abort if this fails
     if (exportedSeed.toString('hex') !== TEST_SEED.toString('hex'))
       continueTests = false;
@@ -245,8 +342,8 @@ describe('Setup Test', () => {
 
 })
 
-describe('Test signatures on ETH transactions', () => {
-  beforeEach(() => {
+describe('Test uniformity of Ethereum transaction sigs', () => {
+    beforeEach(() => {
     txReq = {
       currency: 'ETH',
       chainId: 1,
@@ -304,6 +401,7 @@ describe('Test signatures on ETH transactions', () => {
   it('Should validate uniformity of 5 consecutive tx signatures (with oversized data)', async () => {
     try {
       txReq.data.data = `0x${crypto.randomBytes(4000).toString('hex')}`;
+      txReq.data.signerPath[2] = constants.HARDENED_OFFSET;
       const tx1_addr0 = await helpers.execute(client, 'sign', txReq);
       const tx2_addr0 = await helpers.execute(client, 'sign', txReq);
       const tx3_addr0 = await helpers.execute(client, 'sign', txReq);
@@ -337,83 +435,8 @@ describe('Test signatures on ETH transactions', () => {
       expect(err.message).to.equal(null, 'Caught error: ')
     }
   });
- 
-  it('Should ask if the user wants to test a card with a non-exportable seed', async () => {
-    const result = question(
-      '\nIf you have a SafeCard with a NON-EXPORTABLE seed loaded, please insert and unlock it now.' +
-      '\nDo you have a non-exportable SafeCard seed loaded and wish to continue? (Y/N) '
-    );
-    if (result.toLowerCase() !== 'y') {
-      skipNonExportableSeed = true;
-    }
-  });
-  it('Should validate non-exportable seed sigs all differ (from each other and from deterministic sigs)', async () => {
-    if (skipNonExportableSeed)
-      return;
-    // Validate that tx sigs are non-uniform
-    txReq.data.signerPath[2] = constants.HARDENED_OFFSET;
-    const tx1_addr0 = await helpers.execute(client, 'sign', txReq);
-    const tx2_addr0 = await helpers.execute(client, 'sign', txReq);
-    const tx3_addr0 = await helpers.execute(client, 'sign', txReq);
-    const tx4_addr0 = await helpers.execute(client, 'sign', txReq);
-    const tx5_addr0 = await helpers.execute(client, 'sign', txReq);
-    expect(getSigStr(tx1_addr0.sig)).to.not.equal(getSigStr(tx2_addr0.sig));
-    expect(getSigStr(tx1_addr0.sig)).to.not.equal(getSigStr(tx3_addr0.sig));
-    expect(getSigStr(tx1_addr0.sig)).to.not.equal(getSigStr(tx4_addr0.sig));
-    expect(getSigStr(tx1_addr0.sig)).to.not.equal(getSigStr(tx5_addr0.sig));
-    
-    // Validate that signPersonal message sigs are non-uniform and do not match deterministic ones
-    let res, res2, jsSig, sig, sig2;
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: LEDGER_ROOT_PATH,
-        protocol: 'signPersonal',
-        payload: 'test message'
-      }
-    }
-    // Address index 0
-    req.data.signerPath[2] = constants.HARDENED_OFFSET;
-    jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
-    res = await helpers.execute(client, 'sign', req);
-    sig = getSigStr(res.sig);
-    expect(sig).to.not.equal(jsSig, 'Addr0 sig was not random');
-    res2 = await helpers.execute(client, 'sign', req);
-    sig2 = getSigStr(res2.sig);
-    expect(sig2).to.not.equal(jsSig, 'Addr0 sig was not random');
-    expect(sig2).to.not.equal(sig, 'Addr0 sig was not random');
-    // Address index 1
-    req.data.signerPath[2] = constants.HARDENED_OFFSET + 1;
-    jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
-    res = await helpers.execute(client, 'sign', req);
-    sig = getSigStr(res.sig);
-    expect(sig).to.not.equal(jsSig, 'Addr1 sig was not random');
-    res2 = await helpers.execute(client, 'sign', req);
-    sig2 = getSigStr(res2.sig);
-    expect(sig2).to.not.equal(jsSig, 'Addr1 sig was not random');
-    expect(sig2).to.not.equal(sig, 'Addr1 sig was not random');
-    // Address index 8
-    req.data.signerPath[2] = constants.HARDENED_OFFSET + 8;
-    jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
-    res = await helpers.execute(client, 'sign', req);
-    sig = getSigStr(res.sig);
-    expect(sig).to.not.equal(jsSig, 'Addr8 sig was not random');
-    res2 = await helpers.execute(client, 'sign', req);
-    sig2 = getSigStr(res2.sig);
-    expect(sig2).to.not.equal(jsSig, 'Addr8 sig was not random');
-    expect(sig2).to.not.equal(sig, 'Addr8 sig was not random');
-  })
 
-  it('Should ask the user to insert the original card.', async () => {
-    if (skipNonExportableSeed)
-      return;
-    question(
-      '\nPlease remove your SafeCard (with the non-exportable seed) and re-insert + unlock' +
-      '\nyour original SafeCard. Press enter once the original card is inserted and unlocked.'
-    );
-  });
 })
-
 
 describe('Compare personal_sign signatures vs Ledger vectors (1)', () => {
   beforeEach(() => {
