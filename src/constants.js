@@ -117,9 +117,23 @@ const signingSchema = {
     EXTRA_DATA: 4,
 }
 
+const HARDENED_OFFSET = 0x80000000; // Hardened offset
+const BIP_CONSTANTS = {
+    PURPOSES: {
+        ETH: HARDENED_OFFSET + 44,
+        BTC_LEGACY: HARDENED_OFFSET + 44,
+        BTC_WRAPPED_SEGWIT: HARDENED_OFFSET + 49,
+        BTC_SEGWIT: HARDENED_OFFSET + 84,
+    },
+    COINS: {
+        ETH: HARDENED_OFFSET + 60,
+        BTC: HARDENED_OFFSET,
+        BTC_TESTNET: HARDENED_OFFSET + 1,
+    }
+}
+
 const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
 const VERSION_BYTE = 1;
-const HARDENED_OFFSET = 0x80000000; // Hardened offset
 const HANDLE_LARGER_CHAIN_ID = 255; // ChainId value to signify larger chainID is in data buffer
 const MAX_CHAIN_ID_BYTES = 8; // Max number of bytes to contain larger chainID in data buffer
 
@@ -306,7 +320,13 @@ function getFwVersionConst(v) {
     // EXTRA FIELDS ADDED IN LATER VERSIONS
     //-------------------------------------
 
-    // V0.11.5 added an API for creating, removing, and fetching key-val file
+    // V0.13.0 added native segwit addresses and fixed a bug in exporting
+    // legacy bitcoin addresses
+    if (!legacy && gte(v, [0, 13, 0])) {
+        c.allowBtcLegacyAndSegwitAddrs = true;
+    }
+
+    // V0.12.0 added an API for creating, removing, and fetching key-val file
     // records. For the purposes of this SDK, we only hook into one type of kv
     // file: address names.
     if (!legacy && gte(v, [0, 12, 0])) {
@@ -367,6 +387,7 @@ module.exports = {
     getFwVersionConst,
     ADDR_STR_LEN,
     AES_IV,
+    BIP_CONSTANTS,
     BASE_URL,
     ENC_MSG_LEN,
     addressSizes,

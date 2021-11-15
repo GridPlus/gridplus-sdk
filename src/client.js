@@ -168,11 +168,10 @@ class Client {
     if (n > MAX_ADDR)
       return cb(`You may only request ${MAX_ADDR} addresses at once.`);
 
-    if ((skipCache === false && false === isValidAssetPath(startPath)) ||
-        (skipCache === true && false === isValidCoinType(startPath)) )
-      return cb('Parent path is not supported');
-
     const fwConstants = getFwVersionConst(this.fwVersion);
+    if (!isValidAssetPath(startPath, fwConstants))
+      return cb('Parent derivation path is not supported');
+
     let sz = 32 + 20 + 1; // walletUID + 5 u32 indices + count/flag
     if (fwConstants.varAddrPathSzAllowed) {
       sz += 1;  // pathDepth

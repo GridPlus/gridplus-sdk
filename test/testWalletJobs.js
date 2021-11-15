@@ -241,10 +241,10 @@ describe('getAddresses', () => {
     helpers.validateBTCAddresses(resp, jobData, activeWalletSeed);
   })
 
-  it('Should fetch address with nonstandard purpose', async () => {
+  it('Should fetch address with nonstandard path', async () => {
     const req = { 
       currency: 'BTC', 
-      startPath: [7842, helpers.BTC_COIN, 2532356, 0, 28802208], 
+      startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_COIN, 2532356, 5828, 28802208], 
       n: 3,
       skipCache: true,
     }
@@ -268,10 +268,10 @@ describe('getAddresses', () => {
     helpers.validateBTCAddresses(resp, jobData, activeWalletSeed);
   })
 
-  it('Should fail to fetch with nonstanard address with an unknown currency type', async () => {
+  it('Should fail to fetch from path with an unknown currency type', async () => {
     const req = { 
       currency: 'BTC', 
-      startPath: [7842, helpers.BTC_COIN + 1, 2532356, 0, 28802208], 
+      startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_COIN + 2, 2532356, 5828, 28802208],
       n: 3,
       skipCache: true,
     }
@@ -285,7 +285,7 @@ describe('getAddresses', () => {
   it('Should validate address with pathDepth=4', async () => {
     const req = { 
       currency: 'ETH', 
-      startPath: [7842, helpers.ETH_COIN, 2532356, 7], 
+      startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.ETH_COIN, 2532356, 7], 
       n: 3,
       skipCache: true,
     }
@@ -310,7 +310,7 @@ describe('getAddresses', () => {
   it('Should validate address with pathDepth=3', async () => {
     const req = { 
       currency: 'ETH', 
-      startPath: [7842, helpers.ETH_COIN, 2532356], 
+      startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.ETH_COIN, 2532356], 
       n: 3,
       skipCache: true,
     }
