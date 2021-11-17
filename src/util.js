@@ -5,10 +5,10 @@ const Buffer = require('buffer/').Buffer
 const aes = require('aes-js');
 const crc32 = require('crc-32');
 const elliptic = require('elliptic');
-const { AES_IV, responseCodes, responseMsgs, VERSION_BYTE } = require('./constants');
+const { AES_IV, BIP_CONSTANTS, responseCodes, responseMsgs, VERSION_BYTE } = require('./constants');
+const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
 const ec = new EC('p256');
-
 //--------------------------------------------------
 // LATTICE UTILS
 //--------------------------------------------------
@@ -90,23 +90,19 @@ const signReqResolver = {
   'ETH_MSG': buildEthereumMsgRequest,
 }
 
-// Temporary helper to determine if this is a supported BIP44 parent path
-function isValidAssetPath(path) {
-  const HARDENED_OFFSET = 0x80000000;
-  const allowedPurposes = [HARDENED_OFFSET+49, HARDENED_OFFSET+44];
-  const allowedCoins = [HARDENED_OFFSET, HARDENED_OFFSET+1, HARDENED_OFFSET+60];
-  const allowedAccounts = [HARDENED_OFFSET];
-  const allowedChange = [0, 1]
+function isValidAssetPath(path, fwConstants) {
+  const allowedPurposes = [PURPOSES.ETH, PURPOSES.BTC_LEGACY, PURPOSES.BTC_WRAPPED_SEGWIT, PURPOSES.BTC_SEGWIT];
+  const allowedCoins = [COINS.ETH, COINS.BTC, COINS.BTC_TESTNET];
+  // Make sure firmware supports this Bitcoin path
+  const isBitcoin = path[1] === COINS.BTC || path[1] === COINS.BTC_TESTNET;
+  const isBitcoinNonWrappedSegwit = isBitcoin && path[0] !== PURPOSES.BTC_WRAPPED_SEGWIT;
+  if (isBitcoinNonWrappedSegwit && !fwConstants.allowBtcLegacyAndSegwitAddrs)
+    return false;
+  // Make sure this path is otherwise valid
   return (
     (allowedPurposes.indexOf(path[0]) >= 0) &&
-    (allowedCoins.indexOf(path[1]) >= 0) &&
-    (allowedAccounts.indexOf(path[2]) >= 0) &&
-    (allowedChange.indexOf(path[3]) >= 0)
+    (allowedCoins.indexOf(path[1]) >= 0)
   );
-}
-
-function isValidCoinType(path) {
-  return [0x80000000, 0x80000000+1, 0x80000000+60].indexOf(path[1]) >= 0
 }
 
 //--------------------------------------------------
@@ -149,7 +145,6 @@ function getP256KeyPairFromPub(pub) {
 
 module.exports = {
   isValidAssetPath,
-  isValidCoinType,
   ensureHexBuffer,
   signReqResolver,
   aes256_decrypt,
