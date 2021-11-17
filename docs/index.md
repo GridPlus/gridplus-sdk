@@ -284,9 +284,7 @@ const data = {
     fee: 1000,
     isSegwit: true,
     changePath: [HARDENED_OFFSET+49, HARDENED_OFFSET, HARDENED_OFFSET, 1, 1],
-    changeVersion: 'SEGWIT_TESTNET',
-    network: 'TESTNET',
-}
+=}
 const signOpts = {
     currency: 'BTC',
     data: data,
@@ -304,13 +302,6 @@ const signOpts = {
 | `fee`                     | number    | Must be >0                   | Number of satoshis reserved for the transaction fee |
 | `isSegwit`                | bool      | Must be true/false           | True if the inputs are encumbered by P2SH(P2WPKH), i.e. segwit |
 | `changePath`             | Array    |  Must have 5x 4-byte numbers                          | BIP44 address path to which the change will go |
-| `changeVersion`           | string    | Must be one of below options | Version byte to build change address based on `changePath` |
-| `network`                 | string    | Must be one of below options | Bitcoin network this transaction will be broadcast on |
-
-| Param            | Default          |   Options              |
-|:-----------------|:-----------------|:-----------------------|
-| `changeVersion`  | `SEGWIT`         | `LEGACY`, `SEGWIT`, `TESTNET`, `SEGWIT_TESTNET` |
-| `network`        |  `MAINNET`       | `MAINNET`, `TESTNET`   |
 
 
 ## Requesting the Signature

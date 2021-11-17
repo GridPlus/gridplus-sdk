@@ -168,11 +168,10 @@ class Client {
     if (n > MAX_ADDR)
       return cb(`You may only request ${MAX_ADDR} addresses at once.`);
 
-    if ((skipCache === false && false === isValidAssetPath(startPath)) ||
-        (skipCache === true && false === isValidCoinType(startPath)) )
-      return cb('Parent path is not supported');
-
     const fwConstants = getFwVersionConst(this.fwVersion);
+    if (!isValidAssetPath(startPath, fwConstants))
+      return cb('Parent derivation path is not supported');
+
     let sz = 32 + 20 + 1; // walletUID + 5 u32 indices + count/flag
     if (fwConstants.varAddrPathSzAllowed) {
       sz += 1;  // pathDepth
@@ -240,7 +239,11 @@ class Client {
       reqPayload = Buffer.concat([nextCode, req.extraDataPayloads.shift()])
       schema = signingSchema.EXTRA_DATA;
     } else {
-      req = signReqResolver[currency](data);
+      try {
+        req = signReqResolver[currency](data);
+      } catch (err) {
+        return cb(`Error building BTC transaction request: ${err.message}`);
+      }
       if (req.err !== undefined) return cb(req.err);
       if (req.payload.length > fwConstants.reqMaxDataSz)
         return cb('Transaction is too large');
@@ -664,7 +667,7 @@ class Client {
       if (isTimeout)
         return cb('Timeout waiting for device. Please ensure it is connected to the internet and try again in a minute.')
       else
-        return cb('Failed to make request to device.');
+        return cb(`Failed to make request to device: ${err.message}`);
     });
   }
 
@@ -798,11 +801,10 @@ class Client {
     const PKH_PREFIX_LEN = 20;
     let off = PUBKEY_PREFIX_LEN; // Skip past pubkey prefix
     const res = decrypted.data;
-
     // Get the change data if we are making a BTC transaction
     let changeRecipient;
     if (currencyType === 'BTC') {
-      const changeVersion = bitcoin.addressVersion[req.changeData.changeVersion];
+      const changeVersion = bitcoin.getAddressFormat(req.origData.changePath);
       const changePubkeyhash = res.slice(off, off + PKH_PREFIX_LEN); off += PKH_PREFIX_LEN;
       changeRecipient = bitcoin.getBitcoinAddress(changePubkeyhash, changeVersion);
     }
@@ -843,8 +845,6 @@ class Client {
       const preSerializedData = {
         inputs: [],
         outputs: [],
-        spenderScriptType: req.spenderScriptType,
-        network: req.origData.network,
         crypto: this.crypto,
       };
 
@@ -868,6 +868,7 @@ class Client {
           index: req.origData.prevOuts[i].index,
           sig: sigs[i],
           pubkey: pubkeys[i],
+          signerPath: req.origData.prevOuts[i].signerPath,
         });
       }
 

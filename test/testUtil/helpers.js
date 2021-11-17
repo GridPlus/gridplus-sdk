@@ -8,19 +8,19 @@ const Sdk = require('../../index.js');
 const constants = require('../../src/constants');
 const util = require('../../src/util')
 const SIGHASH_ALL = 0x01;
-const HARDENED_OFFSET = 0x80000000;
 const EC = require('elliptic').ec;
 const ec = new EC('secp256k1');
 
 // NOTE: We use the HARDEN(49) purpose for p2sh(p2wpkh) address derivations.
 //       For p2pkh-derived addresses, we use the legacy 44' purpose
 //       For p2wpkh-derived addresse (not yet supported) we will use 84'
-exports.HARDENED_OFFSET = HARDENED_OFFSET;
-exports.BTC_PURPOSE_P2SH_P2WPKH = HARDENED_OFFSET+49;
-exports.BTC_LEGACY_PURPOSE = HARDENED_OFFSET+44;
-exports.BTC_COIN = HARDENED_OFFSET;
-exports.BTC_TESTNET_COIN = HARDENED_OFFSET+1;
-exports.ETH_COIN = HARDENED_OFFSET+60;
+exports.HARDENED_OFFSET = constants.HARDENED_OFFSET;
+exports.BTC_PURPOSE_P2WPKH = constants.BIP_CONSTANTS.PURPOSES.BTC_SEGWIT;
+exports.BTC_PURPOSE_P2SH_P2WPKH = constants.BIP_CONSTANTS.PURPOSES.BTC_WRAPPED_SEGWIT;
+exports.BTC_LEGACY_PURPOSE = constants.BIP_CONSTANTS.PURPOSES.BTC_LEGACY;
+exports.BTC_COIN = constants.BIP_CONSTANTS.COINS.BTC;
+exports.BTC_TESTNET_COIN = constants.BIP_CONSTANTS.COINS.BTC_TESTNET;
+exports.ETH_COIN = constants.BIP_CONSTANTS.COINS.ETH;
 
 function setupTestClient(env) {
   const setup = {
@@ -72,7 +72,7 @@ function execute(client, func, opts) {
 }
 
 const unharden = (x) => { 
-  return x >= HARDENED_OFFSET ? x - HARDENED_OFFSET : x; 
+  return x >= constants.HARDENED_OFFSET ? x - constants.HARDENED_OFFSET : x; 
 }
 
 const buildPath = (purpose, currencyIdx, signerIdx, change=0) => {
@@ -172,22 +172,14 @@ function _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestn
 }
 
 function _btc_tx_request_builder(inputs, recipient, value, fee, segwit, isTestnet, purpose) {
-  let currencyIdx, changeVersion, networkStr;
+  let currencyIdx;
   if (isTestnet && segwit === true) {
-    networkStr = 'TESTNET';
-    changeVersion = 'SEGWIT_TESTNET';
     currencyIdx = exports.BTC_TESTNET_COIN;
   } else if (isTestnet && segwit === false) {
-    networkStr = 'TESTNET';
-    changeVersion = 'TESTNET';
     currencyIdx = exports.BTC_TESTNET_COIN;
   } else if (!isTestnet && segwit === true) {
-    networkStr = 'MAINNET';
-    changeVersion = 'SEGWIT';
     currencyIdx = exports.BTC_COIN;
   } else if (!isTestnet && segwit === false) {
-    networkStr = 'MAINNET';
-    changeVersion = 'LEGACY';
     currencyIdx = exports.BTC_COIN;
   } else {
     throw new Error('Invalid network and segwit params provided');
@@ -199,16 +191,14 @@ function _btc_tx_request_builder(inputs, recipient, value, fee, segwit, isTestne
     value,
     fee,
     isSegwit: segwit,
-    changePath: [purpose, currencyIdx, HARDENED_OFFSET, 1, 0],
-    changeVersion,
-    network: networkStr,
+    changePath: [purpose, currencyIdx, constants.HARDENED_OFFSET, 1, 0],
   };
   inputs.forEach((input) => {
     txData.prevOuts.push({
       txHash: input.hash,
       value: input.value,
       index: input.idx,
-      signerPath: [purpose, currencyIdx, HARDENED_OFFSET, 0, input.signerIdx]
+      signerPath: [purpose, currencyIdx, constants.HARDENED_OFFSET, 0, input.signerIdx]
     })
   })
   return {
@@ -274,7 +264,7 @@ function setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputs, purp
     }
 }
 
-exports.harden = (x) => { return x + HARDENED_OFFSET; }
+exports.harden = (x) => { return x + constants.HARDENED_OFFSET; }
 exports.setupTestClient = setupTestClient;
 exports.connect = connect;
 exports.pair = pair;
@@ -385,7 +375,11 @@ exports.getPubStr = (key) => {
 
 // Convert a set of indices to a human readable bip32 path
 exports.stringifyPath = (parent) => {
-  const convert = (parent) => { return parent >= HARDENED_OFFSET ? `${parent - HARDENED_OFFSET}'` : `${parent}`;}
+  const convert = (parent) => { 
+    return  parent >= constants.HARDENED_OFFSET ? 
+            `${parent - constants.HARDENED_OFFSET}'` : 
+            `${parent}`;
+  }
   let d = parent.pathDepth;
   let s = 'm';
   if (d <= 0) return s;
@@ -453,12 +447,22 @@ exports.validateBTCAddresses = function(resp, jobData, seed, useTestnet) {
   const network = useTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.mainnet;
   for (let i = jobData.first; i < jobData.first + jobData.count; i++) {
     path.addr = i;
+    // Validate the address
+    const purpose = jobData.parent.purpose;
     const pubkey = wallet.derivePath(exports.stringifyPath(path)).publicKey;
-    // The format of the address depends on the device setting. We will check both types.
-    // NOTE: At time of writing, we do not support native bech32 segwit addresses
-    const p2sh_p2wpkh = bitcoin.payments.p2sh({redeem: bitcoin.payments.p2wpkh({ pubkey, network })}).address;
-    const p2pkh = bitcoin.payments.p2pkh({ pubkey, network }).address;
-    expect([p2sh_p2wpkh, p2pkh]).to.include.members([resp.addresses[i-jobData.first]]);
+    let address;
+    if (purpose === exports.BTC_PURPOSE_P2WPKH) {
+      // Bech32
+      address = bitcoin.payments.p2wpkh({ pubkey }).address;
+    } else if (purpose === exports.BTC_PURPOSE_P2SH_P2WPKH) {
+      // Wrapped segwit
+      address = bitcoin.payments.p2sh({redeem: bitcoin.payments.p2wpkh({ pubkey, network })}).address;
+    } else {
+      // Legacy
+      // This is the default and any unrecognized purpose will yield a legacy address.
+      address = bitcoin.payments.p2pkh({ pubkey, network }).address;
+    }
+    expect(address).to.equal(resp.addresses[i-jobData.first]);
   }
 }
 
