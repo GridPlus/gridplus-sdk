@@ -5,13 +5,8 @@ const Buffer = require('buffer/').Buffer;
 const constants = require('./constants')
 const DEFAULT_SEQUENCE = 0xffffffff;
 const DEFAULT_SIGHASH_BUFFER = Buffer.from('01', 'hex'); // SIGHASH_ALL = 0x01
-const { HARDENED_OFFSET } = require('./constants');
-const DEFAULT_CHANGE = [44 + HARDENED_OFFSET, HARDENED_OFFSET, HARDENED_OFFSET, 1, 0];
-const BTC_PURPOSE_P2WPKH = HARDENED_OFFSET+84;
-const BTC_PURPOSE_P2SH_P2WPKH = HARDENED_OFFSET+49;
-const BTC_LEGACY_PURPOSE = HARDENED_OFFSET+44;
-const BTC_COIN = HARDENED_OFFSET;
-const BTC_TESTNET_COIN = HARDENED_OFFSET+1;
+const { BIP_CONSTANTS } = require('./constants');
+const { PURPOSES, COINS } = BIP_CONSTANTS;
 const OP = {
   ZERO: 0x00,
   HASH160: 0xa9,
@@ -57,9 +52,12 @@ const BTC_SCRIPT_TYPE_P2WPKH_V0 = 0x04;
 exports.buildBitcoinTxRequest = function(data) {
   try {
     const { 
-      prevOuts, recipient, value, changePath=DEFAULT_CHANGE, fee,
+      prevOuts, recipient, value, changePath, fee,
     } = data;
-    if (changePath.length !== 5) throw new Error('Please provide a full change path.')
+    if (!changePath)
+      throw new Error('No changePath provided.');
+    if (changePath.length !== 5) 
+      throw new Error('Please provide a full change path.');
     // Serialize the request
     const payload = Buffer.alloc(59 + (69 * prevOuts.length));
     let off = 0;
@@ -380,17 +378,17 @@ function getAddressFormat(path) {
     throw new Error('Path must be >1 index');
   const purpose = path[0];
   const coin = path[1];
-  if (purpose === BTC_PURPOSE_P2WPKH && coin === BTC_COIN) {
+  if (purpose === PURPOSES.BTC_SEGWIT && coin === COINS.BTC) {
     return FMT_SEGWIT_NATIVE_V0;
-  } else if (purpose === BTC_PURPOSE_P2WPKH && coin === BTC_TESTNET_COIN) {
+  } else if (purpose === PURPOSES.BTC_SEGWIT && coin === COINS.BTC_TESTNET) {
     return FMT_SEGWIT_NATIVE_V0_TESTNET;
-  } else if (purpose === BTC_PURPOSE_P2SH_P2WPKH && coin === BTC_COIN) {
+  } else if (purpose === PURPOSES.BTC_WRAPPED_SEGWIT && coin === COINS.BTC) {
     return FMT_SEGWIT_WRAPPED;
-  } else if (purpose === BTC_PURPOSE_P2SH_P2WPKH && coin === BTC_TESTNET_COIN) {
+  } else if (purpose === PURPOSES.BTC_WRAPPED_SEGWIT && coin === COINS.BTC_TESTNET) {
     return FMT_SEGWIT_WRAPPED_TESTNET;
-  } else if (purpose === BTC_LEGACY_PURPOSE && coin === BTC_COIN) {
+  } else if (purpose === PURPOSES.BTC_LEGACY && coin === COINS.BTC) {
     return FMT_LEGACY;
-  } else if (purpose === BTC_LEGACY_PURPOSE && coin === BTC_TESTNET_COIN) {
+  } else if (purpose === PURPOSES.BTC_LEGACY && coin === COINS.BTC_TESTNET) {
     return FMT_LEGACY_TESTNET;
   } else {
     throw new Error('Invalid Bitcoin path provided. Cannot determine address format.')
@@ -404,11 +402,11 @@ exports.getAddressFormat = getAddressFormat;
 // so we can determine this based on path alone.
 function getScriptType(input) {
   switch (input.signerPath[0]) {
-    case BTC_LEGACY_PURPOSE:
+    case PURPOSES.BTC_LEGACY:
       return BTC_SCRIPT_TYPE_P2PKH;
-    case BTC_PURPOSE_P2SH_P2WPKH:
+    case PURPOSES.BTC_WRAPPED_SEGWIT:
       return BTC_SCRIPT_TYPE_P2SH_P2WPKH;
-    case BTC_PURPOSE_P2WPKH:
+    case PURPOSES.BTC_SEGWIT:
       return BTC_SCRIPT_TYPE_P2WPKH_V0;
     default:
       throw new Error(`Unsupported path purpose (${input.signerPath[0]}): cannot determine BTC script type.`);
@@ -421,8 +419,8 @@ function getScriptType(input) {
 function needsWitness(inputs) {
   let w = false;
   inputs.forEach((input) => {
-    if ((input.signerPath[0] === BTC_PURPOSE_P2WPKH) || 
-        (input.signerPath[0] === BTC_PURPOSE_P2SH_P2WPKH)) {
+    if ((input.signerPath[0] === PURPOSES.BTC_SEGWIT) || 
+        (input.signerPath[0] === PURPOSES.BTC_WRAPPED_SEGWIT)) {
       w = true;
     }
   })
