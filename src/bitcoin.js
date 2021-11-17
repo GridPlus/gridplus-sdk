@@ -199,7 +199,7 @@ exports.getBitcoinAddress = function(pubkeyhash, version) {
     bech32Prefix = SEGWIT_NATIVE_V0_TESTNET_PREFIX
     bech32Version = SEGWIT_V0;
   }
-  if (bech32Prefix && bech32Version !== null) {
+  if (bech32Prefix !== null && bech32Version !== null) {
     const words = bech32.toWords(pubkeyhash);
     words.unshift(bech32Version);
     return bech32.encode(bech32Prefix, words);
