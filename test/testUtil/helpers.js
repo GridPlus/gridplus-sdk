@@ -408,7 +408,7 @@ exports.stringifyPath = (parent) => {
 // Get Addresses helpers
 //---------------------------------------------------
 exports.serializeGetAddressesJobData = function(data) {
-  const req = Buffer.alloc(32);
+  const req = Buffer.alloc(33);
   let off = 0;
   req.writeUInt32LE(data.parent.pathDepth, off); off+=4;
   req.writeUInt32LE(data.parent.purpose, off); off+=4;
@@ -417,7 +417,10 @@ exports.serializeGetAddressesJobData = function(data) {
   req.writeUInt32LE(data.parent.change, off); off+=4;
   req.writeUInt32LE(data.parent.addr, off); off+=4;
   req.writeUInt32LE(data.first, off); off+=4;
-  req.writeUInt32LE(data.count, off);
+  req.writeUInt32LE(data.count, off); off+=4;
+  if (data.flag) {
+    req.writeUInt8(data.flag, off);
+  }
   return req;
 }
 

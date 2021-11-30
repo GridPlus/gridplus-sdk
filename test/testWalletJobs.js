@@ -26,12 +26,10 @@ const rlp = require('rlp');
 const keccak256 = require('js-sha3').keccak256;
 const helpers = require('./testUtil/helpers');
 let client, activeWalletUID, jobType, jobData, jobReq, activeWalletSeed=null, continueTests=true;
-// For v1, all BTC addresses are derived via BIP49 (only p2sh-p2wpkh transactions are supported)
-const USE_BIP49 = true;
 // Define the default parent path. We use BTC as the default
 const BTC_PARENT_PATH = {
   pathDepth: 4,
-  purpose: USE_BIP49 === true ? helpers.BTC_PURPOSE_P2SH_P2WPKH : helpers.BTC_LEGACY_PURPOSE,
+  purpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
   coin: helpers.BTC_COIN,
   account: helpers.BTC_COIN,
   change: 0,
@@ -154,6 +152,18 @@ describe('getAddresses', () => {
     jobData.count = 11;
     jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EOVERFLOW);
+  })
+
+  it('Should validate an ETH address from a different EVM coin type', async () => {
+    // NOTE: We can only fetch non-ETH EVM coin types if we skip caching
+    jobData.parent.purpose = helpers.BTC_LEGACY_PURPOSE;
+    jobData.parent.coin = helpers.HARDENED_OFFSET + 1007; // Fantom coin_type via SLIP44
+    // Since we don't cache this type of address we have to set the skipCache flag
+    jobData.flag = 1;
+    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    const res = helpers.deserializeGetAddressesJobResult(_res.result);
+    helpers.validateETHAddresses(res, jobData, activeWalletSeed);
   })
 
   it('Should validate first ETH', async () => {
@@ -444,6 +454,12 @@ describe('signTx', () => {
     jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EINVAL);
     jobData.sigReq[0].signerPath.pathDepth = 5;
+    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    await runTestCase(helpers.gpErrors.GP_SUCCESS);
+  })
+
+  it('Should get GP_SUCCESS when signing from a non-ETH EVM path', async () => {
+    jobData.sigReq[0].signerPath.coin = helpers.HARDENED_OFFSET + 1007;
     jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
   })
