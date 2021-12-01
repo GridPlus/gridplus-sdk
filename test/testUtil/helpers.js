@@ -453,7 +453,7 @@ exports.validateBTCAddresses = function(resp, jobData, seed, useTestnet) {
     let address;
     if (purpose === exports.BTC_PURPOSE_P2WPKH) {
       // Bech32
-      address = bitcoin.payments.p2wpkh({ pubkey }).address;
+      address = bitcoin.payments.p2wpkh({ pubkey, network }).address;
     } else if (purpose === exports.BTC_PURPOSE_P2SH_P2WPKH) {
       // Wrapped segwit
       address = bitcoin.payments.p2sh({redeem: bitcoin.payments.p2wpkh({ pubkey, network })}).address;
