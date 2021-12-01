@@ -975,6 +975,16 @@ class Client {
 
     }
   }
+
+  // Get constants related to Lattice firmware. These constants change
+  // based on firmware version and are useful for debugging.
+  // Client must be connected to return data
+  firmwareConstants() {
+    if (this.fwVersion) {
+      return getFwVersionConst(this.fwVersion)
+    }
+    return null;
+  }
 }
 
 module.exports = Client;

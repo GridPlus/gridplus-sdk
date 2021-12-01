@@ -58,8 +58,17 @@ describe('Test Wallet Jobs', () => {
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
     activeWalletUID = helpers.copyBuffer(client.getActiveWallet().uid)
+    const fwConstants = client.firmwareConstants();
+    if (fwConstants) {
+      // If firmware supports segwit addresses, they are the default address
+      // type that gets cached on a new wallet, so we need to change our default.
+      // NOTE: We plan on deprecating caching functionality but it has a significant
+      // effect on these tests so we will do this for now.
+      BTC_PARENT_PATH.purpose = fwConstants.allowBtcLegacyAndSegwitAddrs ?
+                                helpers.BTC_PURPOSE_P2WPKH :
+                                helpers.BTC_PURPOSE_P2SH_P2WPKH;
+    }
   });
-
 })
 
 describe('exportSeed', () => {
@@ -108,13 +117,13 @@ describe('getAddresses', () => {
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
   })
 
-  it('Should get GP_EINVAL when `pathDepth` is too large', async () => {
+  it('Should get GP_EINVAL when `pathDepth` is out of range', async () => {
     // Parent too large
     jobData.parent.pathDepth = 5;
     jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EINVAL);
     // Parent is too small
-    jobData.parent.pathDepth = 1;
+    jobData.parent.pathDepth = 0;
     jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EINVAL);
   })
@@ -330,6 +339,7 @@ describe('getAddresses', () => {
     }
     helpers.validateETHAddresses(resp, jobData, activeWalletSeed);
   })
+
 })
 
 describe('signTx', () => {
