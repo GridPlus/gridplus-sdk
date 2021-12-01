@@ -5,7 +5,9 @@ const Buffer = require('buffer/').Buffer
 const aes = require('aes-js');
 const crc32 = require('crc-32');
 const elliptic = require('elliptic');
-const { AES_IV, BIP_CONSTANTS, responseCodes, responseMsgs, VERSION_BYTE } = require('./constants');
+const { 
+  AES_IV, BIP_CONSTANTS, HARDENED_OFFSET, responseCodes, responseMsgs, VERSION_BYTE 
+} = require('./constants');
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
 const ec = new EC('p256');
@@ -93,6 +95,13 @@ const signReqResolver = {
 function isValidAssetPath(path, fwConstants) {
   const allowedPurposes = [PURPOSES.ETH, PURPOSES.BTC_LEGACY, PURPOSES.BTC_WRAPPED_SEGWIT, PURPOSES.BTC_SEGWIT];
   const allowedCoins = [COINS.ETH, COINS.BTC, COINS.BTC_TESTNET];
+  // These coin types were given to us by MyCrypto. They should be allowed, but we expect
+  // an Ethereum-type address with these coin types.
+  // These all use SLIP44: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
+  const allowedMyCryptoCoins = [ 
+    60, 61, 966, 700, 9006, 9000, 1007, 553, 178, 137,  37310, 108, 40, 889, 1987, 820,
+    6060, 1620, 1313114, 76, 246529, 246785, 1001, 227, 916, 464, 2221, 344, 73799, 246,
+  ]
   // Make sure firmware supports this Bitcoin path
   const isBitcoin = path[1] === COINS.BTC || path[1] === COINS.BTC_TESTNET;
   const isBitcoinNonWrappedSegwit = isBitcoin && path[0] !== PURPOSES.BTC_WRAPPED_SEGWIT;
@@ -101,7 +110,10 @@ function isValidAssetPath(path, fwConstants) {
   // Make sure this path is otherwise valid
   return (
     (allowedPurposes.indexOf(path[0]) >= 0) &&
-    (allowedCoins.indexOf(path[1]) >= 0)
+    (
+      allowedCoins.indexOf(path[1]) >= 0 ||
+      allowedMyCryptoCoins.indexOf(path[1] - HARDENED_OFFSET) > 0
+    )
   );
 }
 

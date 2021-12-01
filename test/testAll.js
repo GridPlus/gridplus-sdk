@@ -82,7 +82,6 @@ describe('Connect and Pair', () => {
       addrs = await helpers.execute(client, 'getAddresses', addrData, 2000);
       expect(addrs.length).to.equal(1);
       expect(addrs[0].slice(0, 2)).to.equal('0x');
-
       // If firmware supports it, try shorter paths
       if (fwConstants.flexibleAddrPaths) {
         const flexData = { 
@@ -200,7 +199,8 @@ describe('Connect and Pair', () => {
       }
     }
     // Sign a tx that does not use EIP155 (no EIP155 on rinkeby for some reason)
-    let tx = await helpers.execute(client, 'sign', req);
+    let tx;
+    tx = await helpers.execute(client, 'sign', req);
     expect(tx.tx).to.not.equal(null);
 
     // Sign a tx with EIP155
@@ -304,6 +304,11 @@ describe('Connect and Pair', () => {
     tx = await(helpers.execute(client, 'sign', req));
     expect(tx.tx).to.not.equal(null);
 
+    // Test non-ETH EVM coin_type
+    req.data.signerPath[1] = helpers.HARDENED_OFFSET + 1007;
+    req.data.data = null;
+    tx = await(helpers.execute(client, 'sign', req));
+    expect(tx.tx).to.not.equal(null);
   });
 
   it('Should sign legacy Bitcoin inputs', async () => {  
