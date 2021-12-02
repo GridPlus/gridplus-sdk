@@ -116,7 +116,13 @@ class Client {
     if (this.name.length > 24) {
       return cb('Name is too many characters. Please change it to <25 characters.');
     }
-    nameBuf.write(this.name);
+    if (pairingSecret.length > 0) {
+      // If a pairing secret of zero length is passed in, it usually indicates
+      // we want to cancel the pairing attempt. In this case we pass a zero-length
+      // name buffer so the firmware can know not to draw the error screen.
+      // Note that we still expect an error to come back (RESP_ERR_PAIR_FAIL)
+      nameBuf.write(this.name);
+    }
     // Make sure we add a null termination byte to the pairing secret
     const preImage = Buffer.concat([pubKey, nameBuf, Buffer.from(pairingSecret)]);
     const hash = this.crypto.createHash('sha256').update(preImage).digest();
