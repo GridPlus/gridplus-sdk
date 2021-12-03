@@ -665,7 +665,7 @@ class Client {
           this._request(data, cb, retryCount-1);
         }, 3000);
       } else if (walletMissing && canRetry) {
-        // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old ative walletUID
+        // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old active walletUID
         this._resetActiveWallets();
         return this._request(data, cb, retryCount-1);
       } else if (invalidEphemId && canRetry) {
