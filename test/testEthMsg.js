@@ -341,6 +341,7 @@ describe('Test ETH EIP712', function() {
         ],
         'Test': [
           { name: 'owner', type: 'string' },
+          { name: 'testArray', type: 'uint256[]'}
         ]
       },
       'domain':{
@@ -353,6 +354,7 @@ describe('Test ETH EIP712', function() {
       'primaryType': 'Test',
       'message': {
         'owner': '0x56626bd0d646ce9da4a12403b2c1ba00fb9e1c43',
+        'testArray': [],
       }
     }
     const req = {
