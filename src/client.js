@@ -44,7 +44,7 @@ class Client {
     this.baseUrl = baseUrl || BASE_URL;
     this.crypto = crypto;
     this.name = name || 'Unknown';
-    
+
     // Derive an ECDSA keypair using the p256 curve. The public key will
     // be used as an identifier
     this.privKey = privKey || this.crypto.randomBytes(32);
@@ -74,7 +74,7 @@ class Client {
       }
     }
   }
-  
+
   //=======================================================================
   // LATTICE FUNCTIONS
   //=======================================================================
@@ -85,7 +85,7 @@ class Client {
   connect(deviceId, cb) {
     // User may "re-connect" if a device ID has previously been stored
     if (typeof deviceId === 'function') {
-      if (!this.deviceId) 
+      if (!this.deviceId)
         return cb('No device ID has been stored. Please connect with your device ID first.')
       cb = deviceId;
     } else {
@@ -105,7 +105,7 @@ class Client {
       } else {
         return cb(null);
       }
-      
+
     });
   }
 
@@ -142,7 +142,7 @@ class Client {
         if (err) return cb(err);
         return cb(null, this.hasActiveWallet());
       }, true);
-    })  
+    })
   }
 
   test(data, cb) {
@@ -157,7 +157,7 @@ class Client {
     this._request(param, (err, res) => {
       if (err) return cb(err);
       const decrypted = this._handleEncResponse(res, decResLengths.test);
-      if (decrypted.err !== null ) 
+      if (decrypted.err !== null )
         return cb(decrypted.err);
       return cb(null, decrypted.data.slice(65)); // remove ephem pub
     })
@@ -261,7 +261,7 @@ class Client {
     let off = 0;
     // Whether there will be follow up requests
     const hasExtraPayloads = req.extraDataPayloads && Number(req.extraDataPayloads.length > 0);
-    payload.writeUInt8(hasExtraPayloads, off); off += 1;  
+    payload.writeUInt8(hasExtraPayloads, off); off += 1;
     // Copy request schema (e.g. ETH or BTC transfer)
     payload.writeUInt8(schema, off); off += 1;
     // Copy the wallet UID
@@ -325,7 +325,7 @@ class Client {
         return cb(err);
       const decrypted = this._handleEncResponse(res, decResLengths.addAbiDefs);
       // Grab the 8 byte code to fast track our next request, if needed
-      nextCode = decrypted.data.slice(65, 73); 
+      nextCode = decrypted.data.slice(65, 73);
       // No defs left? Return success
       if (defs.length === 0)
         return cb(null);
@@ -333,7 +333,7 @@ class Client {
       this.addAbiDefs(defs, cb, nextCode, defs);
     })
   }
-  
+
   addPermissionV0(opts, cb) {
     const { currency, timeWindow, limit, decimals, asset } = opts;
     if (!currency || timeWindow === undefined || limit === undefined || decimals === undefined ||
@@ -611,7 +611,7 @@ class Client {
     // Next N bytes
     newEncPayload.copy(newPayload, 4);
     return this._buildRequest(deviceCodes.ENCRYPTED_REQUEST, newPayload);
-  
+
   }
 
   // Build a request to send to the device.
@@ -661,11 +661,11 @@ class Client {
       const canRetry = retryCount > 0;
       if (deviceBusy && canRetry) {
         // Wait a few seconds and retry
-        setTimeout(() => { 
+        setTimeout(() => {
           this._request(data, cb, retryCount-1);
         }, 3000);
       } else if (walletMissing && canRetry) {
-        // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old ative walletUID
+        // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old active walletUID
         this._resetActiveWallets();
         return this._request(data, cb, retryCount-1);
       } else if (invalidEphemId && canRetry) {
@@ -685,7 +685,7 @@ class Client {
         cb(parsed.err);
       } else {
         // All good
-        cb(null, parsed.data, parsed.responseCode); 
+        cb(null, parsed.data, parsed.responseCode);
       }
     })
     .catch((err) => {
@@ -721,7 +721,7 @@ class Client {
   }
 
   // All encrypted responses must be decrypted with the previous shared secret. Per specification,
-  // decrypted responses will all contain a 65-byte public key as the prefix, which becomes the 
+  // decrypted responses will all contain a 65-byte public key as the prefix, which becomes the
   // new ephemeralPub.
   _handleEncResponse(encRes, len) {
     // Decrypt response
@@ -788,7 +788,7 @@ class Client {
     let walletUID;
     // Read the external wallet data first. If it is non-null, the external wallet will
     // be the active wallet of the device and we should save it.
-    // If the external wallet is blank, it means there is no card present and we should 
+    // If the external wallet is blank, it means there is no card present and we should
     // save and use the interal wallet.
     // If both wallets are empty, it means the device still needs to be set up.
     const walletDescriptorLen = 71;
@@ -805,7 +805,7 @@ class Client {
 
     // Offset the first item
     off += walletDescriptorLen;
-    
+
     // External
     walletUID = res.slice(off, off+32);
     this.activeWallets.external.uid = walletUID;
@@ -839,7 +839,7 @@ class Client {
     const DERLength = 74; // max size of a DER signature -- all Lattice sigs are this long
     const SIGS_OFFSET = 10 * DERLength; // 10 signature slots precede 10 pubkey slots
     const PUBKEYS_OFFSET = PUBKEY_PREFIX_LEN + PKH_PREFIX_LEN + SIGS_OFFSET;
-    
+
     if (currencyType === 'BTC') {
       const compressedPubLength = 33;  // Size of compressed public key
       const pubkeys = [];
@@ -886,7 +886,7 @@ class Client {
           recipient: changeRecipient,
         });
       }
-      
+
       // Add the inputs
       for (let i = 0; i < sigs.length; i++) {
         preSerializedData.inputs.push({
@@ -908,10 +908,10 @@ class Client {
         // to validate the transactions.
         preSerializedData.isSegwitSpend = false;
         preImageTxHash = bitcoin.serializeTx(preSerializedData);
-      }  
+      }
       let txHash = this.crypto.createHash('sha256').update(Buffer.from(preImageTxHash, 'hex')).digest();
       txHash = this.crypto.createHash('sha256').update(txHash).digest().reverse().toString('hex');
-      
+
       // Add extra data for debugging/lookup purposes
       returnData.data = {
         tx: serializedTx,
@@ -974,7 +974,7 @@ class Client {
   hasActiveWallet() {
     return this.getActiveWallet() !== null;
   }
-  
+
   // Get 64 bytes representing the public key
   // This is the uncompressed key without the leading 04 byte
   pubKeyBytes(LE=false) {
