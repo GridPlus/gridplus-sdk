@@ -324,6 +324,8 @@ function getFwVersionConst(v) {
     // legacy bitcoin addresses
     if (!legacy && gte(v, [0, 13, 0])) {
         c.allowBtcLegacyAndSegwitAddrs = true;
+        // Random address to be used when trying to deploy a contract
+        c.contractDeployKey = '0x08002e0fec8e6acf00835f43c9764f7364fa3f42';
     }
 
     // V0.12.0 added an API for creating, removing, and fetching key-val file
