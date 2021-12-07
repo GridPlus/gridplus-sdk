@@ -658,19 +658,39 @@ class Client {
       if (!res || !res.body) return cb(`Invalid response: ${res}`)
       else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
       const parsed = parseLattice1Response(res.body.message);
-      // If the device is busy, retry if we can
-      if (( parsed.responseCode === responseCodes.RESP_ERR_DEV_BUSY ||
-            parsed.responseCode === responseCodes.RESP_ERR_GCE_TIMEOUT ) 
-            && (retryCount > 0)) {
-        return setTimeout(() => { this._request(data, cb, retryCount-1) }, 3000);
-      }
-      // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old ative walletUID
-      if (parsed.responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) 
+      const deviceBusy = (parsed.responseCode === responseCodes.RESP_ERR_DEV_BUSY ||
+                          parsed.responseCode === responseCodes.RESP_ERR_GCE_TIMEOUT);
+      const walletMissing = parsed.responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT;
+      const invalidEphemId = parsed.responseCode === responseCodes.RESP_ERR_INVALID_EPHEM_ID;
+      const canRetry = retryCount > 0;
+      if (deviceBusy && canRetry) {
+        // Wait a few seconds and retry
+        setTimeout(() => { 
+          this._request(data, cb, retryCount-1);
+        }, 3000);
+      } else if (walletMissing && canRetry) {
+        // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old active walletUID
         this._resetActiveWallets();
-      // If there was an error in the response, return it
-      if (parsed.err) 
-        return cb(parsed.err);
-      return cb(null, parsed.data, parsed.responseCode); 
+        return this._request(data, cb, retryCount-1);
+      } else if (invalidEphemId && canRetry) {
+        // Reconnect and retry
+        this.connect(this.deviceId, (err, isPaired) => {
+          if (err) {
+            cb(err);
+          } else if (!isPaired) {
+            cb('Not paired to device.')
+          } else {
+            // Retry
+            this._request(data, cb, retryCount-1);
+          }
+        })
+      } else if (parsed.err) {
+        // If there was an error in the response, return it
+        cb(parsed.err);
+      } else {
+        // All good
+        cb(null, parsed.data, parsed.responseCode); 
+      }
     })
     .catch((err) => {
       const isTimeout = err.code === 'ECONNABORTED' && err.errno === 'ETIME';
