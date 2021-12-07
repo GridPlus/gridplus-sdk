@@ -61,7 +61,9 @@ exports.buildEthereumTxRequest = function(data) {
   try {
     let { chainId=1 } = data;
     const { signerPath, eip155=null, fwConstants, type=null } = data;
-    const { extraDataFrameSz, extraDataMaxFrames, prehashAllowed } = fwConstants;
+    const { 
+      contractDeployKey, extraDataFrameSz, extraDataMaxFrames, prehashAllowed 
+    } = fwConstants;
     const EXTRA_DATA_ALLOWED = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
     let MAX_BASE_DATA_SZ = fwConstants.ethMaxDataSz;
     const VAR_PATH_SZ = fwConstants.varAddrPathSzAllowed;
@@ -76,7 +78,12 @@ exports.buildEthereumTxRequest = function(data) {
     // Sanity check on signePath
     if (!signerPath) 
       throw new Error('`signerPath` not provided');
-    
+
+    // Is this a contract deployment?
+    if (data.to === null && !contractDeployKey) {
+      throw new Error('Contract deployment not supported. Please update your Lattice firmware.');
+    }
+    const isDeployment = data.to === null && contractDeployKey;
     // We support eip1559 and eip2930 types (as well as legacy)
     const eip1559IsAllowed = (fwConstants.allowedEthTxTypes && 
                               fwConstants.allowedEthTxTypes.indexOf(2) > -1);
@@ -112,7 +119,17 @@ exports.buildEthereumTxRequest = function(data) {
     const nonceBytes = ensureHexBuffer(data.nonce);
     let gasPriceBytes;
     const gasLimitBytes = ensureHexBuffer(data.gasLimit);
-    const toBytes = ensureHexBuffer(data.to);
+    // Handle contract deployment (indicated by `to` being `null`)
+    // For contract deployment we write a 20-byte key to the request
+    // buffer, which gets swapped for an empty buffer in firmware.
+    let toRlpElem, toBytes;
+    if (isDeployment) {
+      toRlpElem = Buffer.alloc(0);
+      toBytes = ensureHexBuffer(contractDeployKey);
+    } else {
+      toRlpElem = ensureHexBuffer(data.to);
+      toBytes = ensureHexBuffer(data.to);
+    }
     const valueBytes = ensureHexBuffer(data.value);
     const dataBytes = ensureHexBuffer(data.data);
 
@@ -140,7 +157,7 @@ exports.buildEthereumTxRequest = function(data) {
       rawTx.push(gasPriceBytes);
     }
     rawTx.push(gasLimitBytes);
-    rawTx.push(toBytes);
+    rawTx.push(toRlpElem);
     rawTx.push(valueBytes);
     rawTx.push(dataBytes);
     // We do not currently support accessList in firmware so we need to prehash if
