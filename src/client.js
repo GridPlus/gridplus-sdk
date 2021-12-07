@@ -39,8 +39,12 @@ class Client {
   constructor({ baseUrl, crypto, name, privKey, timeout, retryCount } = {}) {
     // Definitions
     // if (!baseUrl) throw new Error('baseUrl is required');
-    if (name && name.length > 24) throw new Error('name must be less than 24 characters');
-    if (!crypto) throw new Error('crypto provider is required');
+    if (name && (name.length < 5 || name.length > 24) {
+      throw new Error('`name` must be 5-24 characters');
+    }
+    if (!crypto) {
+      throw new Error('crypto provider is required');
+    }
     this.baseUrl = baseUrl || BASE_URL;
     this.crypto = crypto;
     this.name = name || 'Unknown';
@@ -113,8 +117,8 @@ class Client {
     // Build the secret hash from the salt
     const pubKey = this.pubKeyBytes();
     const nameBuf = Buffer.alloc(25);
-    if (this.name.length > 24) {
-      return cb('Name is too many characters. Please change it to <25 characters.');
+    if (this.name.length < 5 || this.name.length > 24) {
+      return cb('Invalid length for name provided. Must be 5-24 characters.');
     }
     if (pairingSecret.length > 0) {
       // If a pairing secret of zero length is passed in, it usually indicates
