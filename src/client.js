@@ -39,7 +39,7 @@ class Client {
   constructor({ baseUrl, crypto, name, privKey, timeout, retryCount } = {}) {
     // Definitions
     // if (!baseUrl) throw new Error('baseUrl is required');
-    if (name && (name.length < 5 || name.length > 24) {
+    if (name && (name.length < 5 || name.length > 24)) {
       throw new Error('`name` must be 5-24 characters');
     }
     if (!crypto) {
