@@ -1,18 +1,16 @@
 require('it-each')({ testPerIteration: true });
 const _ = require('lodash');
-// Use bn.js here instead of bignumber because it is compatable with ethereumjs-abi
-const BN = require('bn.js'); 
 const constants = require('./../src/constants');
 const abi = require('./../src/ethereumAbi');
 const randomWords = require('random-words');
 const crypto = require('crypto');
-const ethers = require('ethers');
+const ethersAbi = require('ethersproject/abi');
 const expect = require('chai').expect;
 const helpers = require('./testUtil/helpers');
 const question = require('readline-sync').question;
 const seedrandom = require('seedrandom');
 
-const encoder = new ethers.utils.AbiCoder;
+const encoder = new ethersAbi.AbiCoder;
 const numIter = process.env.N || 10;
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
 

@@ -4,7 +4,7 @@ const BN = require('bignumber.js');
 const Buffer = require('buffer/').Buffer;
 const cbor = require('borc');
 const constants = require('./constants');
-const ethers = require('ethers');
+const ethersBigNum = require('@ethersproject/bignumber');
 const eip712 = require('ethers-eip712');
 const keccak256 = require('js-sha3').keccak256;
 const rlp = require('rlp-browser');
@@ -827,7 +827,7 @@ function parseEIP712Item(data, type, isEthers=false) {
     // Uint256s should be encoded as bignums.
     if (isEthers === true) {
       // `ethers` uses their own BigNumber lib
-      data = ethers.BigNumber.from(`0x${b.toString('hex')}`)
+      data = ethersBigNum.BigNumber.from(`0x${b.toString('hex')}`)
     } else {
       // `bignumber.js` is needed for `cbor` encoding, which gets sent to the Lattice and plays
       // nicely with its firmware cbor lib.
