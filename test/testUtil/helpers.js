@@ -296,11 +296,29 @@ exports.gpErrors = {
   GP_EALREADY: (0xffffffff+1) - 114, // (4294967153)
   GP_ENODEV: (0xffffffff+1) - 19, // (4294967058)
   GP_EAGAIN: (0xffffffff+1) - 11, // (4294967050)
+  GP_FAILURE: (0xffffffff+1) - 128,
 }
 
 //---------------------------------------------------
 // General helpers
 //---------------------------------------------------
+exports.getCodeMsg = function(code, expected) {
+  if (code !== expected) {
+    let codeTxt = code, expectedTxt = expected;
+    Object.keys(exports.gpErrors).forEach((key) => {
+      if (code === exports.gpErrors[key]) {
+        codeTxt = key;
+      }
+      if (expected === exports.gpErrors[key]) {
+        expectedTxt = key;
+      }
+    })
+    return `Incorrect response code. Got ${codeTxt}. Expected ${expectedTxt}`
+  }
+  return '';
+}
+
+
 exports.parseWalletJobResp = function(res, v) {
   const jobRes = {
     resultStatus: null,
@@ -418,9 +436,8 @@ exports.serializeGetAddressesJobData = function(data) {
   req.writeUInt32LE(data.parent.addr, off); off+=4;
   req.writeUInt32LE(data.first, off); off+=4;
   req.writeUInt32LE(data.count, off); off+=4;
-  if (data.flag) {
-    req.writeUInt8(data.flag, off);
-  }
+  // Deprecated skipCache flag. It isn't used by firmware anymore.
+  req.writeUInt8(1, off);
   return req;
 }
 

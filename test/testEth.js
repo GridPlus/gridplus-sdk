@@ -22,7 +22,6 @@ const constants = require('./../src/constants')
 const expect = require('chai').expect;
 const helpers = require('./testUtil/helpers');
 const seedrandom = require('seedrandom');
-const keccak256 = require('js-sha3').keccak256;
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
 const HARDENED_OFFSET = constants.HARDENED_OFFSET;
 let client = null;
@@ -32,7 +31,6 @@ const randomTxDataLabels = [];
 let ETH_GAS_PRICE_MAX;                  // value depends on firmware version
 const ETH_GAS_LIMIT_MIN = 22000;        // Ether transfer (smallest op) is 22k gas
 const ETH_GAS_LIMIT_MAX = 12500000;     // 10M is bigger than the block size
-const MSG_PAYLOAD_METADATA_SZ = 28;     // Metadata that must go in ETH_MSG requests
 const defaultTxData = {
   nonce: 0,
   gasPrice: 1200000000,

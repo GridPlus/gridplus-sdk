@@ -328,7 +328,6 @@ describe('Setup Test', () => {
       currency: 'ETH',
       startPath: path0,
       n: 1,
-      skipCache: true,
     }
     const latAddr0 = await helpers.execute(client, 'getAddresses', req, 2000);
     expect(latAddr0[0].toLowerCase()).to.equal(addr0.toLowerCase(), 'Incorrect address 0 fetched.')

@@ -117,7 +117,6 @@ client.addresses(req, (err, res) => {
 |:-----------|:----------|:-----------------|:----------------|:----------------------|
 | `startPath` | Array    | none             | n/a             | First address path in BIP44 tree to return. You must provide 5 indices to form the path. |
 | `n`        | number    | 1                | n/a             | Number of subsequent addresses after `start` to derive. These will increment over the final index in the path |
-| `skipCache` | bool     | true            | n/a             | If set to true, skip the restriction that only cached addresses may be requested. This allows the user to request any address for a supported currency (BTC and ETH). Ignored for Lattice firmware versions <0.10.0 |
 
 **Response:**
 
@@ -131,16 +130,6 @@ res = [
     '3PNwCSHKNfCjzvcU8XE9N8wp8DRxrUzsyL'
 ]
 ```
-
-## The Address Cache
-
-If `skipCache=false`, the requester may only fetch addresses that have been saved to the Lattice's cache. This is used mainly for BTC to keep track
-of which addresses have been generated in an effort to sync an HD wallet. **Since the gap limit of ETH is 0, caching isn't relevant for it, so you should generally use `skipCache=true` when requesting ETH addresses.**
-
-The following restrictions apply when using `skipCache=false`:
-
-* `ETH`: The Lattice only returns the 0-th index address (`m/44'/60'/0'/0/0`) of the current wallet (either on-board Lattice or external SafeCard). This means `n` must be equal to `1` and the only acceptable path is that of the 0-th index address.
-* `BTC`: Currently we only support `p2sh-p2wpkh` BTC addresses which use [BIP49](https://en.bitcoin.it/wiki/BIP_0049): `m/49'/0'/0'/0/x`. If testnet is enabled (`testnet3`), we also allow `m/49'/1'/0'/0/x`. Here, `x` may be any address that has been "cached" by the Lattice. We cache addresses relative to the requested address based on the [gap limit](https://blog.blockonomics.co/bitcoin-what-is-this-gap-limit-4f098e52d7e1?gi=616654046ec4). For the regular wallet, the gap limit is 20. In addition to these addresses, the user may request change addresses (`m/49'/0'/0/1/x` and `m/49'/1'/0'/1/x`). The gap limit for change addresses is 1. Because the Lattice itself is stateless, it creates new addresses whenever previous addresses are requested. For example, if regular addresses 0-19 have been cached (i.e. on an initial cache) and the user requests addresses 9-19, the wallet would then cache 20-29 and the user could then request any of those addresses (which would, in turn, lead to more becoming available). The same logic applies for change addresses, but only the subsequent one would get cached. Note that if you request addresses outside of the gap limit, you will get an error and no new addresses will be cached.
 
 # Requesting Signatures
 

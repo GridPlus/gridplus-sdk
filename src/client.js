@@ -170,7 +170,7 @@ class Client {
   getAddresses(opts, cb) {
     const SKIP_CACHE_FLAG = 1;
     const MAX_ADDR = 10;
-    const { startPath, n, skipCache=true } = opts;
+    const { startPath, n } = opts;
     if (startPath === undefined || n === undefined)
       return cb('Please provide `startPath` and `n` options');
     if (startPath.length < 2 || startPath.length > 5)
@@ -210,7 +210,9 @@ class Client {
     // in the wallet.
     let val;
     if (true === fwConstants.addrFlagsAllowed) {
-      const flag = skipCache === true ? bitwise.nibble.read(SKIP_CACHE_FLAG) : bitwise.nibble.read(0);
+      // Address caching was removed in 0.13.0 so this flag is now deprecated.
+      // All requests against older devices also use the skipFlag=true now.
+      const flag = bitwise.nibble.read(SKIP_CACHE_FLAG);
       const count = bitwise.nibble.read(n);
       val = bitwise.byte.write(flag.concat(count));
     } else {
