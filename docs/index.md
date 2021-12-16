@@ -66,6 +66,14 @@ If you get a non-error response, it means you can talk to the device. Note that 
 
 > The `deviceId` is listed on your Lattice under `Settings->Device Info`
 
+### Canceling a Pairing Request
+
+If you get `isPaired = false` in the callback, this request will have started the pairing request with the specified device, which will now be showing a random 8 character pairing code for 60 seconds. 
+
+If you wish to cancel this request, you may call `pair()` with an empty string `''` as the first argument. This will 
+gracefully cancel the request. You may also call `pair()` with any random string which will also cancel the request, but 
+the Lattice will show an error screen.
+
 # Pairing with a Lattice
 
 > This function requires the user to interact with the Lattice. It therefore uses your client's timeout to sever the request if needed.
