@@ -20,7 +20,8 @@ const uintTypes = ['uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256'];
 // STATE DATA
 //---------------------------------------
 let client = null;
-let caughtErr = null;
+let continueTests = true;
+let NUM_DEFS_SAVED = 0;
 
 // Definitions and indices (the latter are used with it.each and must be defined at the
 // top of the file).
@@ -569,7 +570,93 @@ describe('Setup client', () => {
   });
 })
 
+describe('Test ABI fetch, create, delete', () => {
+  const TEST_DEF = {
+    name: 'Test function',
+    sig: null,
+    params: [
+      {
+        name: 'muh address',
+        type: 'address',
+        isArray: false,
+        arraySz: 0,
+        latticeTypeIdx: 1
+      },
+    ],
+    _typeNames: [ 'address' ],
+    _vals: [ `0x${crypto.randomBytes(20)} `]
+  }
+  TEST_DEF.sig = buildFuncSelector(TEST_DEF);
+  beforeEach(() => {
+    expect(continueTests).to.equal(true, 'Prior test failed. Aborting.');
+  })
+
+  it('Should remove the def if it is already saved', async () => {
+    try {
+      await helpers.execute(client, 'removeAbiRecords', { sigs: [ TEST_DEF.sig ] });
+    } catch (err) {
+      continueTests = false;
+      expect(err.message).to.equal(null);
+    }
+  })
+  
+  it('Should determine how many definitions there are to start', async () => {
+    try {
+      const records = await helpers.execute(client, 'getAbiRecords', { n: 5, startIdx: 0 });
+      NUM_DEFS_SAVED = records.numFetched + records.numRemaining;
+    } catch (err) {
+      continueTests = false;
+      expect(err.message).to.equal(null);
+    }
+  })
+
+  it('Should add a def', async () => {
+    try {
+      await helpers.execute(client, 'addAbiDefs', [TEST_DEF]);
+      question('Please press enter when you have finished saving the definition on your Lattice.')
+    } catch (err) {
+      continueTests = false;
+      expect(err.message).to.equal(null);
+    }
+  })
+
+  it('Should ensure the number of defs went up', async () => {
+    try {
+      const records = await helpers.execute(client, 'getAbiRecords', { n: 1, startIdx: 0 });
+      expect(records.numFetched + records.numRemaining).to.equal(NUM_DEFS_SAVED + 1);
+    } catch (err) {
+      continueTests = false;
+      expect(err.message).to.equal(null);
+    }
+  })
+
+  it('Should remove the def', async () => {
+    try {
+      const resp = await helpers.execute(client, 'removeAbiRecords', { sigs: [ TEST_DEF.sig ] });
+      expect(resp.numRemoved).to.equal(1);
+      expect(resp.numTried).to.equal(1);
+    } catch (err) {
+      continueTests = false;
+      expect(err.message).to.equal(null);
+    }
+  })
+
+  it('Should ensure the number of defs went down', async () => {
+    try {
+      const records = await helpers.execute(client, 'getAbiRecords', { n: 1, startIdx: 0 });
+      expect(records.numFetched + records.numRemaining).to.equal(NUM_DEFS_SAVED);
+    } catch (err) {
+      continueTests = false;
+      expect(err.message).to.equal(null);
+    }
+  })
+})
+
 describe('Preloaded ABI definitions', () => {
+  beforeEach(() => {
+    expect(continueTests).to.equal(true, 'Prior test failed. Aborting.');
+  })
+
   it('Should test preloaded ERC20 ABI defintions', async () => {
     const erc20PreloadedDefs = [
       {
@@ -621,24 +708,24 @@ describe('Preloaded ABI definitions', () => {
       req.data.data = helpers.ensureHexBuffer(buildEthData(approveDef));
       await helpers.execute(client, 'sign', req);
     } catch (err) {
-      caughtErr = 'Failed to markdown ERC20 approval def.';
-      expect(err).to.equal(null);
+      continueTests = false;
+      expect(err.message).to.equal(null);
     }
     try {
       const transfer = erc20PreloadedDefs[1]; 
       req.data.data = helpers.ensureHexBuffer(buildEthData(transfer));
       await helpers.execute(client, 'sign', req);
     } catch (err) {
-      caughtErr = 'Failed to markdown ERC20 transfer def.';
-      expect(err).to.equal(null);
+      continueTests = false;
+      expect(err.message).to.equal(null);
     }
     try {
       const transferFrom = erc20PreloadedDefs[2]; 
       req.data.data = helpers.ensureHexBuffer(buildEthData(transferFrom));
       await helpers.execute(client, 'sign', req);
     } catch (err) {
-      caughtErr = 'Failed to markdown ERC20 transferFrom def.';
-      expect(err).to.equal(null);
+      continueTests = false;
+      expect(err.message).to.equal(null);
     }
   })
 
@@ -647,7 +734,7 @@ describe('Preloaded ABI definitions', () => {
 describe('Add ABI definitions', () => {
   let defsToLoad = [];
   beforeEach(() => {
-    expect(caughtErr).to.equal(null, 'Error found in prior test. Aborting.');
+    expect(continueTests).to.equal(true, 'Prior test failed. Aborting.');
   })
 
   it(`Should generate and add ${numIter} ABI definitions to the Lattice`, async () => {
@@ -658,7 +745,7 @@ describe('Add ABI definitions', () => {
         defsToLoad.push(def);
       }
     } catch (err) {
-      caughtErr = err.toString();
+      continueTests = false;
       expect(err).to.equal(null, err);
     }
   })
@@ -671,7 +758,7 @@ describe('Add ABI definitions', () => {
         defsToLoad.push(def);
       }
     } catch (err) {
-      caughtErr = err.toString();
+      continueTests = false;
       expect(err).to.equal(null, err);
     }
   })
@@ -685,8 +772,9 @@ describe('Add ABI definitions', () => {
   it('Should add the ABI definitions', async () => {
     try {
       await helpers.execute(client, 'addAbiDefs', boundaryAbiDefs.concat(defsToLoad));
+      question('Press enter when all definitions are saved.')
     } catch (err) {
-      caughtErr = err;
+      continueTests = false;
       expect(err).to.equal(null, err);
     }
   })
@@ -694,7 +782,7 @@ describe('Add ABI definitions', () => {
 
 describe('Test ABI Markdown', () => {
   beforeEach(() => {
-    expect(caughtErr).to.equal(null, 'Error found in prior test. Aborting.');
+    expect(continueTests).to.equal(true, 'Prior test failed. Aborting.');
     req.data.data = null;
   })
 
@@ -710,6 +798,7 @@ describe('Test ABI Markdown', () => {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      continueTests = false;
       expect(err).to.not.equal(null, err);
     }
   })
@@ -722,6 +811,7 @@ describe('Test ABI Markdown', () => {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      continueTests = false;
       expect(err).to.not.equal(null, err);
     }
   })
@@ -735,7 +825,7 @@ describe('Test ABI Markdown', () => {
       expect(sigResp.txHash).to.not.equal(null);
       setTimeout(() => { next() }, 1000);
     } catch (err) {
-      caughtErr = `Failed on tx #${n.i}: ${err.toString()}`;
+      continueTests = false;
       setTimeout(() => { next(err) }, 1000);
     }
   })
@@ -749,7 +839,7 @@ describe('Test ABI Markdown', () => {
       expect(sigResp.txHash).to.not.equal(null);
       setTimeout(() => { next() }, 1000);
     } catch (err) {
-      caughtErr = `Failed on tx #${n.i}: ${err.toString()}`;
+      continueTests = false;
       setTimeout(() => { next(err) }, 1000);
     }
   })
@@ -763,9 +853,44 @@ describe('Test ABI Markdown', () => {
       expect(sigResp.txHash).to.not.equal(null);
       setTimeout(() => { next() }, 1000);
     } catch (err) {
-      caughtErr = `Failed on tx #${n.i}: ${err.toString()}`;
+      continueTests = false;
       setTimeout(() => { next(err) }, 1000);
     }
   })
 
+})
+
+describe('Cleanup', () => {
+  let records;
+
+  beforeEach(() => {
+    expect(continueTests).to.equal(true, 'Prior test failed. Aborting.');
+  })
+
+  it('Should get all ABI records added by these tests', async () => {
+    try {
+      records = await helpers.execute(client, 'getAbiRecords', { n: 500, startIdx: NUM_DEFS_SAVED })
+      const expected = boundaryAbiDefs.length + 1 + (2 * numIter)
+      expect(records.numRemaining).to.equal(0, 'More ABI records than expected.')
+      expect(records.numFetched).to.equal(expected, 'Incorrect number of ABI records returned. Were defs already loaded?')
+    } catch (err) {
+      continueTests = false;
+      expect(err.message).to.equal(null);
+    }
+  })
+
+  it('Should remove all ABI records added by these tests', async () => {
+    const sigs = [];
+    records.records.forEach((r) => {
+      sigs.push(r.header.sig)
+    })
+    try {
+      const resp = await helpers.execute(client, 'removeAbiRecords', { sigs });
+      expect(resp.numRemoved).to.equal(sigs.length);
+      expect(resp.numTried).to.equal(sigs.length);
+    } catch (err) {
+      continueTests = false;
+      expect(err.message).to.equal(null);
+    }
+  })
 })
