@@ -60,9 +60,20 @@ describe('Test Wallet Jobs', () => {
     expect(process.env.DEVICE_ID).to.not.equal(null);
     await helpers.connect(client, process.env.DEVICE_ID);
     expect(client.isPaired).to.equal(true);
-    expect(client.hasActiveWallet()).to.equal(true);
+    const EMPTY_WALLET_UID = Buffer.alloc(32);
+    const internalUID = client.activeWallets.internal.uid;
+    const externalUID = client.activeWallets.external.uid;
+    const checkOne = !EMPTY_WALLET_UID.equals(internalUID);
+    const checkTwo = !EMPTY_WALLET_UID.equals(externalUID);
+    const checkThree = !!client.hasActiveWallet();
+    const checkFour = !!client.getActiveWallet().uid.equals(externalUID);
+    continueTests = (checkOne && checkTwo && checkThree && checkFour);
+    expect(checkOne).to.equal(true, 'Internal A90 must be enabled.');
+    expect(checkTwo).to.equal(true, 'P60 with exportable seed must be inserted.');    
+    expect(checkThree).to.equal(true, 'No active wallet discovered');
+    expect(checkFour).to.equal(true, 'P60 should be active wallet but is not registered as it.')
     currentWalletUID = getCurrentWalletUID();
-    const fwConstants = client.firmwareConstants();
+    const fwConstants = constants.getFwVersionConst(client.fwVersion);
     if (fwConstants) {
       // If firmware supports bech32 segwit addresses, they are the default address
       BTC_PARENT_PATH.purpose = fwConstants.allowBtcLegacyAndSegwitAddrs ?
@@ -218,6 +229,30 @@ describe('getAddresses', () => {
   it('Should fetch a set of BTC addresses (bech32)', async () => {
     const req = { 
       startPath: [helpers.BTC_PURPOSE_P2WPKH, helpers.BTC_COIN, helpers.BTC_COIN, 0, 28802208], 
+      n: 3,
+    }
+    const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
+    const resp = {
+      count: addrs.length,
+      addresses: addrs,
+    }
+    const jobData = {
+      parent: {
+        pathDepth: 4,
+        purpose: req.startPath[0],
+        coin: req.startPath[1],
+        account: req.startPath[2],
+        change: req.startPath[3],
+      },
+      count: req.n,
+      first: req.startPath[4],
+    }
+    helpers.validateBTCAddresses(resp, jobData, origWalletSeed);
+  })
+
+  it('Should fetch a set of BTC addresses (legacy)', async () => {
+    const req = { 
+      startPath: [helpers.BTC_PURPOSE_P2PKH, helpers.BTC_COIN, helpers.BTC_COIN, 0, 28802208], 
       n: 3,
     }
     const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
@@ -774,9 +809,9 @@ describe('Load Original Seed Back', () => {
   })
 
   // Test both safecard and a90
-  it('Should get GP_EOVERFLOW if interface already has a seed', async () => {
+  it('Should get GP_FAILURE if interface already has a seed', async () => {
     jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
-    await runTestCase(helpers.gpErrors.GP_EOVERFLOW);
+    await runTestCase(helpers.gpErrors.GP_FAILURE);
   });
 
   // Wait for user to remove safecard
