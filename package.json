@@ -24,7 +24,6 @@
     "url": "https://github.com/GridPlus/gridplus-sdk.git"
   },
   "dependencies": {
-    "@ethersproject/bignumber": "^5.5.0",
     "aes-js": "^3.1.1",
     "bech32": "^2.0.0",
     "bignumber.js": "^9.0.1",
@@ -34,8 +33,7 @@
     "buffer": "^5.6.0",
     "crc-32": "^1.2.0",
     "elliptic": "6.5.4",
-    "ethers": "^5.5.2",
-    "ethers-eip712": "^0.2.0",
+    "eth-eip712-util": "^2.3.1",
     "js-sha3": "^0.8.0",
     "rlp-browser": "^1.0.1",
     "secp256k1": "4.0.2",
