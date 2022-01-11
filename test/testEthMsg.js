@@ -218,6 +218,7 @@ describe('Test ETH EIP712', function() {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      foundError = true;
       expect(err).to.equal(null)
     }
   })
@@ -257,6 +258,7 @@ describe('Test ETH EIP712', function() {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      foundError = true;
       expect(err).to.equal(null)
     }
   })
@@ -308,6 +310,7 @@ describe('Test ETH EIP712', function() {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      foundError = true;
       expect(err).to.equal(null)
     }
   })
@@ -325,6 +328,7 @@ describe('Test ETH EIP712', function() {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      foundError = true;
       expect(err).to.equal(null)
     }
   })
@@ -368,6 +372,7 @@ describe('Test ETH EIP712', function() {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      foundError = true;
       expect(err).to.equal(null)
     }
   })
@@ -421,6 +426,7 @@ describe('Test ETH EIP712', function() {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      foundError = true;
       expect(err).to.equal(null)
     }
   })
@@ -484,6 +490,7 @@ describe('Test ETH EIP712', function() {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      foundError = true;
       expect(err).to.equal(null)
     }
   })
@@ -557,6 +564,7 @@ describe('Test ETH EIP712', function() {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      foundError = true;
       expect(err).to.equal(null)
     }
   })
@@ -630,6 +638,7 @@ describe('Test ETH EIP712', function() {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      foundError = true;
       expect(err).to.equal(null)
     }
   })
@@ -691,6 +700,7 @@ describe('Test ETH EIP712', function() {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      foundError = true;
       expect(err).to.equal(null)
     }
   })
@@ -764,6 +774,7 @@ describe('Test ETH EIP712', function() {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      foundError = true;
       expect(err).to.equal(null)
     }
   })
@@ -822,6 +833,7 @@ describe('Test ETH EIP712', function() {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      foundError = true;
       expect(err).to.equal(null)
     }
   })
@@ -910,6 +922,7 @@ describe('Test ETH EIP712', function() {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      foundError = true;
       expect(err).to.equal(null)
     }
   })
@@ -995,11 +1008,152 @@ describe('Test ETH EIP712', function() {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      foundError = true;
+      expect(err).to.equal(null)
+    }
+  })
+
+  it('Should test a payload with a nested type in multiple nesting levels', async () => {   
+    const msg = {
+      'types': {
+        'EIP712Domain': [
+          {
+            'name': 'name',
+            'type': 'string'
+          },
+        ],
+        'PrimaryType': [
+          {
+            'name': 'one',
+            'type': 'Type1'
+          },
+          {
+            'name': 'zero',
+            'type': 'Type0'
+          },
+        ],
+        'Type1': [
+          {
+            'name': '1s',
+            'type': 'string'
+          },
+        ],
+        'Type0': [
+          {
+            'name': 'one',
+            'type': 'Type1'
+          }
+        ]
+      },
+      'primaryType': 'PrimaryType',
+      'domain': {
+        'name': 'Domain',
+      },
+      'message': {
+        'one': {
+          '1s': 'nestedOne',
+        },
+        'zero': {
+          'one': {
+            '1s': 'nestedTwo',
+          }
+        },
+      }
+    }
+
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.execute(client, 'sign', req);
+    } catch (err) {
+      foundError = true;
       expect(err).to.equal(null)
     }
   })
 
   it('Should test a payload that requires use of extraData frames', async () => {
+    const msg = {
+      types: {
+        EIP712Domain: [
+          { name: 'name', type: 'string' },
+          { name: 'version', type: 'string' },
+          { name: 'chainId', type: 'uint256' },
+          { name: 'verifyingContract', type: 'address' }
+        ],
+        Wallet: [
+          { name: 'address', type: 'address' },
+          { name: 'balance', type: 'Balance' },
+        ],
+        Person: [
+          { name: 'name', type: 'string' },
+          { name: 'wallet', type: 'Wallet' }
+        ],
+        Mail: [
+          { name: 'from', type: 'Person' },
+          { name: 'to', type: 'Person' },
+          { name: 'contents', type: 'string' }
+        ],
+        Balance: [
+          { name: 'value', type: 'uint256' },
+          { name: 'currency', type: 'string' }
+        ]
+      },
+      primaryType: 'Mail',
+      domain: {
+        name: 'Ether Mail',
+        version: '1',
+        chainId: 12,
+        verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC'
+      },
+      message: {
+        from: {
+          name: 'Cow',
+          wallet: {
+            address: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826',
+            balance: {
+              value: '0x12345678',
+              currency: 'ETH',
+            }
+          },
+        },
+        to: {
+          name: 'Bob',
+          wallet: {
+            address: '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB',
+            balance: {
+              value: '0xabcdef12',
+              currency: 'UNI',
+            },
+          },
+        },
+        contents: 'stupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimes'
+      }
+    };
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      }
+    }
+    try {
+      await helpers.execute(client, 'sign', req);
+    } catch (err) {
+      foundError = true;
+      expect(err).to.equal(null)
+    }
+  });
+
+  it('Should test random edge case #1', async () => {
+    // This was a randomly generated payload which caused an edge case.
+    // It has been slimmed down but definition structure is preserved.
     const msg = {
       'types': {
         'EIP712Domain': [
@@ -1020,95 +1174,61 @@ describe('Test ETH EIP712', function() {
             'type': 'address'
           }
         ],
-        'Primary_Promote_room_donate_': [
+        'Primary_Click': [
           {
-            'name': 'assist_dumb_bubble_g',
-            'type': 'Open_either_fetch_gr'
+            'name': 'utility',
+            'type': 'Expose'
           },
           {
-            'name': 'jungle_symptom_meat_',
-            'type': 'Unfair_device_vocal_'
+            'name': 'aisle',
+            'type': 'Cancel'
           },
           {
-            'name': 'buzz_attract_crater_',
-            'type': 'Capital_junk_pet_dig'
+            'name': 'gym',
+            'type': 'Razor'
           },
           {
-            'name': 'achieve_twenty_found',
-            'type': 'bytes24'
-          },
-          {
-            'name': 'tent_cradle_bamboo_s',
-            'type': 'bytes19'
+            'name': 'drift_patch_cable_bi',
+            'type': 'bytes1'
           }
         ],
-        'Open_either_fetch_gr': [
+        'Expose': [
           {
-            'name': 'afraid_three_silver_',
-            'type': 'string'
-          },
+            'name': 'favorite',
+            'type': 'bytes21'
+          }
+        ],
+        'Cancel': [
           {
-            'name': 'two_wedding_author_a',
+            'name': 'clever',
+            'type': 'uint200'
+          }
+        ],
+        'Razor': [
+          {
+            'name': 'private',
             'type': 'bytes2'
-          },
-          {
-            'name': 'sudden_tail_exclude_',
-            'type': 'bytes11'
-          }
-        ],
-        'Unfair_device_vocal_': [
-          {
-            'name': 'feel_affair_curve_av',
-            'type': 'bytes3'
-          },
-          {
-            'name': 'deer_spoil_indicate_',
-            'type': 'address'
-          }
-        ],
-        'Capital_junk_pet_dig': [
-          {
-            'name': 'return_palace_flock_',
-            'type': 'bytes32'
-          },
-          {
-            'name': 'manage_cement_area_t',
-            'type': 'bytes3'
-          },
-          {
-            'name': 'pole_pluck_odor_circ',
-            'type': 'Open_either_fetch_gr'
           }
         ]
       },
-      'primaryType': 'Primary_Promote_room_donate_',
+      'primaryType': 'Primary_Click',
       'domain': {
-        'name': 'Domain_Census_liberty_own_s',
+        'name': 'Domain_Avocado_luggage_twel',
         'version': '1',
-        'chainId': '0x2207',
-        'verifyingContract': '0x52a3e01d76d2670f8fd452564b3f56eea6fc798d'
+        'chainId': '0x324e',
+        'verifyingContract': '0x69f758a7911448c2f7aa6df15ca27d69ffa1c6b7'
       },
       'message': {
-        'assist_dumb_bubble_g': {
-          'afraid_three_silver_': 'duck_acquire_chaos_rough_leader_merry_symptom_slab_tooth_bachelor_news_produce_bleak_young_skin_toot',
-          'two_wedding_author_a': '0x9604',
-          'sudden_tail_exclude_': '0xf996bed91579769e5bd995',
+        'utility': {
+          'favorite': '0x891b56dc6ab87ab73cf69761183d499283f1925871'
         },
-        'jungle_symptom_meat_': {
-          'feel_affair_curve_av': '0x4f493d',
-          'deer_spoil_indicate_': '0x344b29a452b79bb8e4ef37f2c7688faafd0d2c7d'
+        'aisle': {
+          'clever': '0x0102'
         },
-        'buzz_attract_crater_': {
-          'return_palace_flock_': '0x93012c3a0c21d9adaaa3fb009f06a7bd90449b13df99096f1bdce9c48e16dbec',
-          'manage_cement_area_t': '0x37b91f',
-          'pole_pluck_odor_circ': {
-            'afraid_three_silver_': 'author_never_range_boring_rabbit_meat_notable_excuse_attract_project_east_film_stay_twenty_cause_squ',
-            'two_wedding_author_a': '0xf301',
-            'sudden_tail_exclude_': '0xb5b5f8c2b5120c8aba2497',
-          }
+        'gym': {
+          'private': '0xbb42',
         },
-        'achieve_twenty_found': '0xa5e8c0daacbf617191ec37b0cea3e23b15e4237935733d8c',
-        'tent_cradle_bamboo_s': '0x4bd62f055b4a0ac7f52fe604bd7da4debdd291',
+        'drift_patch_cable_bi': '0xb4'
       }
     }
     const req = {
@@ -1122,6 +1242,7 @@ describe('Test ETH EIP712', function() {
     try {
       await helpers.execute(client, 'sign', req);
     } catch (err) {
+      foundError = true;
       expect(err).to.equal(null)
     }
   })
@@ -1136,5 +1257,5 @@ describe('Test ETH EIP712', function() {
       setTimeout(() => { next(err) }, 2000);
     }
   })
-
+  
 })
