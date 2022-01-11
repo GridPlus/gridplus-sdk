@@ -153,7 +153,7 @@ describe('getAddresses', () => {
   })
 
   it('Should validate an ETH address from a different EVM coin type', async () => {
-    jobData.parent.purpose = helpers.BTC_LEGACY_PURPOSE;
+    jobData.parent.purpose = helpers.BTC_PURPOSE_P2PKH;
     jobData.parent.coin = helpers.HARDENED_OFFSET + 1007; // Fantom coin_type via SLIP44
     jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
@@ -162,7 +162,7 @@ describe('getAddresses', () => {
   })
 
   it('Should validate first ETH', async () => {
-    jobData.parent.purpose = helpers.BTC_LEGACY_PURPOSE;
+    jobData.parent.purpose = helpers.BTC_PURPOSE_P2PKH;
     jobData.parent.coin = helpers.ETH_COIN;
     jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
@@ -389,9 +389,9 @@ describe('getAddresses', () => {
     await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2WPKH);
     await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2WPKH);
     // Legacy (x3)
-    await testRandomBtcAddrs(helpers.BTC_LEGACY_PURPOSE);
-    await testRandomBtcAddrs(helpers.BTC_LEGACY_PURPOSE);
-    await testRandomBtcAddrs(helpers.BTC_LEGACY_PURPOSE);
+    await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2PKH);
+    await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2PKH);
+    await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2PKH);
     // Segwit (x3)
     await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2WPKH);
     await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2WPKH);
@@ -440,7 +440,7 @@ describe('signTx', () => {
   it('Should get GP_SUCCESS for signing out of shorter (but allowed) paths', async () => {
     jobData.sigReq[0].signerPath =   {
       pathDepth: 3,
-      purpose: helpers.BTC_LEGACY_PURPOSE,
+      purpose: helpers.BTC_PURPOSE_P2PKH,
       coin: helpers.ETH_COIN,
       account: 1572,
       change: 0, // Not used for pathDepth=3
@@ -529,7 +529,7 @@ describe('Test leading zeros', () => {
   const mnemonic = 'erosion loan violin drip laundry harsh social mercy leaf original habit buffalo';
   const KNOWN_SEED = bip39.mnemonicToSeedSync(mnemonic);
   const wallet = bip32.fromSeed(KNOWN_SEED);
-  let basePath = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, helpers.HARDENED_OFFSET, 0, 0];
+  let basePath = [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, helpers.HARDENED_OFFSET, 0, 0];
   let parentPathStr = 'm/44\'/60\'/0\'/0';
   let addrReq, txReq;
 

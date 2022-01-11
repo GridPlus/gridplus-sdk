@@ -14,7 +14,7 @@ let _fetchedRecords = [];
 const ETH_REQ = {
   currency: 'ETH',
   data: {
-    signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0],
+    signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0],
     nonce: '0x02',
     gasPrice: '0x1fe5d61a00',
     gasLimit: '0x034e97',
@@ -186,7 +186,7 @@ describe('Connect and Pair', () => {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
