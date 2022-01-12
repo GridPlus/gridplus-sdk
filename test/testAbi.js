@@ -49,7 +49,7 @@ const txData = {
 const req = {
   currency: 'ETH',
   data: {
-    signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0],
+    signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0],
     ...txData,
     chainId: 'rinkeby', // Can also be an integer
   }

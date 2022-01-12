@@ -75,7 +75,7 @@ describe('Connect and Pair', () => {
       expect(addrs[0][0]).to.equal('3');
 
       // Ethereum addresses
-      addrData.startPath[0] = helpers.BTC_LEGACY_PURPOSE;
+      addrData.startPath[0] = helpers.BTC_PURPOSE_P2PKH;
       addrData.startPath[1] = helpers.ETH_COIN;
       addrData.n = 1;
       addrs = await helpers.execute(client, 'getAddresses', addrData, 2000);
@@ -85,7 +85,7 @@ describe('Connect and Pair', () => {
       if (fwConstants.flexibleAddrPaths) {
         const flexData = { 
           currency: 'ETH', 
-          startPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0], 
+          startPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0], 
           n: 1,
         }
         addrs = await helpers.execute(client, 'getAddresses', flexData, 2000);
@@ -167,7 +167,7 @@ describe('Connect and Pair', () => {
     const req = {
       currency: 'ETH',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         ...txData,
         chainId: 'rinkeby', // Can also be an integer
       }
@@ -433,7 +433,7 @@ describe('Connect and Pair', () => {
     const req = {
       currency: 'ETH',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         ...txData,
         chainId: 'rinkeby', // Can also be an integer
       }

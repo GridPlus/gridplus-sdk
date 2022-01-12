@@ -39,7 +39,14 @@ Once you have paired with a device in a re-usable way (i.e. using the commands a
 
 **ETH**
 
-Ethereum tests include both boundary checks on transaction params and randomized test vectors (20 by default). You can run the suite with:
+Ethereum tests include both boundary checks on transaction params and randomized test vectors (20 by default). 
+
+*`env` options:*
+
+* `N=<int>` (default=`3`) - number of random vectors to test
+* `SEED=<string>` (default=`myrandomseed`) - randomness for the pseudorandom number generator that builds deterministic test vectors
+
+Run the suite with:
 
 ```sh
 env DEVICE_ID='my_device_id' npm run test-eth
@@ -47,31 +54,21 @@ env DEVICE_ID='my_device_id' npm run test-eth
 
 If you wish to do more or fewer than 20 random transaction tests, you can specify the `N` param:
 
-```sh
-env DEVICE_ID='my_device_id' N=25 npm run test-eth
-```
-
 
 **BTC**
 
-Bitcoin tests cover legacy and segwit spends on both mainnet and testnet. They are completely randomized and when you run them, the following happens:
+Bitcoin tests cover legacy, wrapped segwit, and segwit spending to all address types. Vectors are built deterministically using the seed and all permutations are tested.
 
-1. Build a wallet using a mnemonic. There is a default mnemonic matching other GridPlus tests, but you can pass your own in with the `env` param `MNEMONIC`. This mnemonic **must** match the wallet on your Lattice or none of these tests will work.
-2. Build a bunch of randomized inputs. The number defaults to 10, but you can define a number with the `env` param `N`.
-3. Use `bitcoinjs-lib` to generate a series of sighashes corresponding to the inputs. These first need to be signed with the respective keys, which can be derived using the wallet from step 1.
-4. Build the Lattice request with the same inputs. You will get `N` signatures back from the Lattice (in addition to a fully broadcastable transaction payload, which we do not use in these tests). Note that `N` must be <11, as the Lattice will only sign up to 10 inputs together.
-5. With the `bitcoinjs-lib` sighashes, the derived keys from the wallet, and now signatures from the Lattice, we validate the signatures against the sighashes. If the validation passes, it means we built the correct sighash in the Lattice and signed it with the correct derived key.
+*`env` options:*
+
+* `N=<int>` (default=`3`) - number of inputs per test. Note that if you choose e.g. `N=2` each test will first test one input, then will test two. Must be >0 and <11.
+* `SEED=<string>` (default=`myrandomseed`) - randomness for the pseudorandom number generator that builds deterministic test vectors
+* `TESTNET=<any>` (default=`false`) - if set to any value you will test all combinations for both mainnet and testnet transactions (doubles number of tests run)
 
 Run the tests with:
 
 ```sh
 env DEVICE_ID='my_device_id' npm run test-btc
-```
-
-If you want to specify the above params:
-
-```sh
-env DEVICE_ID='my_device_id' N=5 MNEMONIC='negative spare peasant raw feature camera glide notice fee gown heavy depart' npm run test-btc
 ```
 
 ### Ethereum ABI Tests
