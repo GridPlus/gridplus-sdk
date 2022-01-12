@@ -54,7 +54,7 @@ function buildRandomMsg(type='signPersonal') {
   }
 }
 
-function buildMsgReq(payload, protocol, signerPath=[helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0]) {
+function buildMsgReq(payload, protocol, signerPath=[helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0]) {
   return {
     currency: 'ETH_MSG',
     data: {
@@ -210,7 +210,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
@@ -250,7 +250,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
@@ -302,7 +302,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
@@ -320,7 +320,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
@@ -364,7 +364,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
@@ -418,7 +418,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
@@ -482,7 +482,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
@@ -556,7 +556,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
@@ -630,7 +630,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
@@ -692,7 +692,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
@@ -766,7 +766,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
@@ -825,7 +825,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
@@ -914,7 +914,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
@@ -1000,7 +1000,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
@@ -1064,7 +1064,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
@@ -1138,7 +1138,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }
@@ -1234,7 +1234,7 @@ describe('Test ETH EIP712', function() {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       }

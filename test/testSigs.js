@@ -29,7 +29,7 @@ const TEST_MNEMONIC = 'nose elder baby marriage frequent list ' +
 const TEST_SEED = bip39.mnemonicToSeedSync(TEST_MNEMONIC);
 let client, activeWalletUID, jobType, jobData, jobReq, txReq, msgReq;
 let latticeSeed=null, continueTests=true, skipSeedLoading=false, skipSeedRestore = false, skipNonExportableSeed = false;
-const LEDGER_ROOT_PATH = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0]
+const LEDGER_ROOT_PATH = [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0]
 let numIter = 20;
 if (process.env.N)
   numIter = parseInt(process.env.N);
@@ -312,11 +312,11 @@ describe('Setup Test', () => {
   it('Should validate some Ledger addresses derived from the test seed', async () => {
     // These addresses were all fetched using MetaMask with a real ledger loaded with TEST_MNEOMNIC
     // NOTE: These are 0-indexed indices whereas MetaMask shows 1-indexed (addr0 -> metamask1)
-    const path0 = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0]
+    const path0 = [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, constants.HARDENED_OFFSET, 0, 0]
     const addr0 = '0x17E43083812d45040E4826D2f214601bc730F60C'
-    const path1 = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET+1, 0, 0]
+    const path1 = [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, constants.HARDENED_OFFSET+1, 0, 0]
     const addr1 = '0xfb25a9D4472A55083042672e42309056763B667E'
-    const path8 = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, constants.HARDENED_OFFSET+8, 0, 0]
+    const path8 = [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, constants.HARDENED_OFFSET+8, 0, 0]
     const addr8 = '0x8A520d7f70906Ebe00F40131791eFF414230Ea5c'
     // Derive these from the seed as a sanity check
     expect(deriveAddress(TEST_SEED, path0).toLowerCase()).to.equal(addr0.toLowerCase(), 'Incorrect address 0 derived.')
