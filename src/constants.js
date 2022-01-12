@@ -88,6 +88,7 @@ const responseCodes = {
     RESP_ERR_DEV_LOCKED: 0x8b,
     RESP_ERR_DISABLED: 0x8c,
     RESP_ERR_ALREADY: 0x8d,
+    RESP_ERR_INVALID_EPHEM_ID: 0x8e,
 }
 
 const responseMsgs = {
@@ -105,7 +106,8 @@ const responseMsgs = {
     [responseCodes.RESP_ERR_WALLET_NOT_PRESENT]: 'Incorrect Wallet UID Provided',
     [responseCodes.RESP_ERR_DEV_LOCKED]: 'Device Locked',
     [responseCodes.RESP_ERR_DISABLED]: 'Disabled',
-    [responseCodes.RESP_ERR_ALREADY]: 'Record already exists. You must first remove it on your device.'
+    [responseCodes.RESP_ERR_ALREADY]: 'Record already exists. You must first remove it on your device.',
+    [responseCodes.RESP_ERR_INVALID_EPHEM_ID]: 'Could not find requester. Please reconnect.'
 }
  
 
@@ -324,6 +326,8 @@ function getFwVersionConst(v) {
     // legacy bitcoin addresses
     if (!legacy && gte(v, [0, 13, 0])) {
         c.allowBtcLegacyAndSegwitAddrs = true;
+        // Random address to be used when trying to deploy a contract
+        c.contractDeployKey = '0x08002e0fec8e6acf00835f43c9764f7364fa3f42';
     }
 
     // V0.12.0 added an API for creating, removing, and fetching key-val file

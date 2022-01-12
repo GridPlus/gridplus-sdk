@@ -4,8 +4,7 @@ const BN = require('bignumber.js');
 const Buffer = require('buffer/').Buffer;
 const cbor = require('borc');
 const constants = require('./constants');
-const ethers = require('ethers');
-const eip712 = require('ethers-eip712');
+const eip712 = require('eth-eip712-util').TypedDataUtils;
 const keccak256 = require('js-sha3').keccak256;
 const rlp = require('rlp-browser');
 const secp256k1 = require('secp256k1');
@@ -49,7 +48,8 @@ exports.validateEthereumMsgResponse = function(res, req) {
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
     return addRecoveryParam(hash, sig, signer, { chainId: 1, useEIP155: false })
   } else if (input.protocol === 'eip712') {
-    const digest = prehash ? prehash : eip712.TypedDataUtils.encodeDigest(req.input.payload);
+    const encoded = eip712.hash(req.input.payload);
+    const digest = prehash ? prehash : encoded
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
     return addRecoveryParam(digest, sig, signer, { useEIP155: false })
   } else {
@@ -61,7 +61,9 @@ exports.buildEthereumTxRequest = function(data) {
   try {
     let { chainId=1 } = data;
     const { signerPath, eip155=null, fwConstants, type=null } = data;
-    const { extraDataFrameSz, extraDataMaxFrames, prehashAllowed } = fwConstants;
+    const { 
+      contractDeployKey, extraDataFrameSz, extraDataMaxFrames, prehashAllowed 
+    } = fwConstants;
     const EXTRA_DATA_ALLOWED = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
     let MAX_BASE_DATA_SZ = fwConstants.ethMaxDataSz;
     const VAR_PATH_SZ = fwConstants.varAddrPathSzAllowed;
@@ -76,7 +78,12 @@ exports.buildEthereumTxRequest = function(data) {
     // Sanity check on signePath
     if (!signerPath) 
       throw new Error('`signerPath` not provided');
-    
+
+    // Is this a contract deployment?
+    if (data.to === null && !contractDeployKey) {
+      throw new Error('Contract deployment not supported. Please update your Lattice firmware.');
+    }
+    const isDeployment = data.to === null && contractDeployKey;
     // We support eip1559 and eip2930 types (as well as legacy)
     const eip1559IsAllowed = (fwConstants.allowedEthTxTypes && 
                               fwConstants.allowedEthTxTypes.indexOf(2) > -1);
@@ -112,7 +119,17 @@ exports.buildEthereumTxRequest = function(data) {
     const nonceBytes = ensureHexBuffer(data.nonce);
     let gasPriceBytes;
     const gasLimitBytes = ensureHexBuffer(data.gasLimit);
-    const toBytes = ensureHexBuffer(data.to);
+    // Handle contract deployment (indicated by `to` being `null`)
+    // For contract deployment we write a 20-byte key to the request
+    // buffer, which gets swapped for an empty buffer in firmware.
+    let toRlpElem, toBytes;
+    if (isDeployment) {
+      toRlpElem = Buffer.alloc(0);
+      toBytes = ensureHexBuffer(contractDeployKey);
+    } else {
+      toRlpElem = ensureHexBuffer(data.to);
+      toBytes = ensureHexBuffer(data.to);
+    }
     const valueBytes = ensureHexBuffer(data.value);
     const dataBytes = ensureHexBuffer(data.data);
 
@@ -140,7 +157,7 @@ exports.buildEthereumTxRequest = function(data) {
       rawTx.push(gasPriceBytes);
     }
     rawTx.push(gasLimitBytes);
-    rawTx.push(toBytes);
+    rawTx.push(toRlpElem);
     rawTx.push(valueBytes);
     rawTx.push(dataBytes);
     // We do not currently support accessList in firmware so we need to prehash if
@@ -633,9 +650,9 @@ function buildEIP712Request(req, input) {
       throw new Error('EIP712Domain type must be defined.')
     // Parse the payload to ensure we have valid EIP712 data types and that
     // they are encoded such that Lattice firmware can parse them.
-    // We need two different encodings:
-    // 1. Use `ethers` BigNumber when building the request to be validated by ethers-eip712.
-    //    Make sure we use a copy of the data to avoid mutation problems
+    // We need two different encodings: one to send to the Lattice in a format that plays
+    // nicely with our firmware CBOR decoder. The other is formatted to be consumable by
+    // our EIP712 validation module.
     input.payload.message = parseEIP712Msg( JSON.parse(JSON.stringify(data.message)), 
                                             JSON.parse(JSON.stringify(data.primaryType)), 
                                             JSON.parse(JSON.stringify(data.types)), 
@@ -644,8 +661,6 @@ function buildEIP712Request(req, input) {
                                             'EIP712Domain', 
                                             JSON.parse(JSON.stringify(data.types)), 
                                             true);
-    // 2. Use `bignumber.js` for the request going to the Lattice, since it's the required
-    //    BigNumber lib for `cbor`, which we use to encode the request data to the Lattice.
     data.domain = parseEIP712Msg(data.domain, 'EIP712Domain', data.types, false);
     data.message = parseEIP712Msg(data.message, data.primaryType, data.types, false);
     // Now build the message to be sent to the Lattice
@@ -655,7 +670,8 @@ function buildEIP712Request(req, input) {
     if (fwConst.ethMsgPreHashAllowed && payload.length > maxSzAllowed) {
       // If this payload is too large to send, but the Lattice allows a prehashed message, do that
       req.payload.writeUInt16LE(payload.length, off); off += 2;
-      const prehash = Buffer.from(keccak256(eip712.TypedDataUtils.encodeDigest(req.input.payload), 'hex'), 'hex');
+      const encoded = eip712.hash(req.input.payload)
+      const prehash = Buffer.from(keccak256(encoded, 'hex'), 'hex');
       prehash.copy(req.payload, off);
       req.prehash = prehash;
     } else {
@@ -724,7 +740,7 @@ function splitFrames(data, frameSz) {
   return frames;
 }
 
-function parseEIP712Msg(msg, typeName, types, isEthers=false) {
+function parseEIP712Msg(msg, typeName, types, forJSParser=false) {
   try {
     const type = types[typeName];
     type.forEach((item) => {
@@ -738,11 +754,11 @@ function parseEIP712Msg(msg, typeName, types, isEthers=false) {
         // elementary (i.e. non-custom) type.
         // For arrays, we need to loop through each message item.
         for (let i = 0; i < msg.length; i++) {
-            msg[i][item.name] = parseEIP712Msg(msg[i][item.name], singularType, types, isEthers)
+            msg[i][item.name] = parseEIP712Msg(msg[i][item.name], singularType, types, forJSParser)
         }
       } else if (isCustomType) {
         // Not an array means we can jump directly into the sub-struct to convert
-        msg[item.name] = parseEIP712Msg(msg[item.name], singularType, types, isEthers)
+        msg[item.name] = parseEIP712Msg(msg[item.name], singularType, types, forJSParser)
       } else if (Array.isArray(msg)) {
         // If we have an array for this particular type and the type we are parsing
         // is *not* a custom type, loop through the array elements and convert the types.
@@ -752,22 +768,22 @@ function parseEIP712Msg(msg, typeName, types, isEthers=false) {
             // This code is not reachable for custom types so we assume these are arrays of
             // elementary types.
             for (let j = 0; j < msg[i][item.name].length; j++) {
-              msg[i][item.name][j] = parseEIP712Item(msg[i][item.name][j], singularType, isEthers)
+              msg[i][item.name][j] = parseEIP712Item(msg[i][item.name][j], singularType, forJSParser)
             }
           } else {
             // Non-arrays parse + replace one value for the elementary type
-            msg[i][item.name] = parseEIP712Item(msg[i][item.name], singularType, isEthers)
+            msg[i][item.name] = parseEIP712Item(msg[i][item.name], singularType, forJSParser)
           }
         }
       } else if (isArrayType) {
         // If we have an elementary array type and a non-array message level, 
         //loop through the array and parse + replace  each item individually.
         for (let i = 0; i < msg[item.name].length; i++) {
-          msg[item.name][i] = parseEIP712Item(msg[item.name][i], singularType, isEthers)
+          msg[item.name][i] = parseEIP712Item(msg[item.name][i], singularType, forJSParser)
         }
       } else {
         // If this is a singular elementary type, simply parse + replace.
-        msg[item.name] = parseEIP712Item(msg[item.name], singularType, isEthers)
+        msg[item.name] = parseEIP712Item(msg[item.name], singularType, forJSParser)
       }
       
     })
@@ -777,16 +793,24 @@ function parseEIP712Msg(msg, typeName, types, isEthers=false) {
   return msg;
 }
 
-function parseEIP712Item(data, type, isEthers=false) {
+function parseEIP712Item(data, type, forJSParser=false) {
   if (type === 'bytes') {
     // Variable sized bytes need to be buffer type
     data = ensureHexBuffer(data);
+    if (forJSParser) {
+        // For EIP712 encoding module it's easier to encode hex strings
+        data = `0x${data.toString('hex')}`
+    }
   } else if (type.slice(0, 5) === 'bytes') {
     // Fixed sizes bytes need to be buffer type. We also add some sanity checks.
     const nBytes = parseInt(type.slice(5));
     data = ensureHexBuffer(data);
     if (data.length !== nBytes)
       throw new Error(`Expected ${type} type, but got ${data.length} bytes`);
+    if (forJSParser) {
+        // For EIP712 encoding module it's easier to encode hex strings
+        data = `0x${data.toString('hex')}`
+    }
   } else if (type === 'address') {
     // Address must be a 20 byte buffer
     data = ensureHexBuffer(data);
@@ -796,8 +820,8 @@ function parseEIP712Item(data, type, isEthers=false) {
     }
     if (data.length !== 20)
       throw new Error(`Address type must be 20 bytes, but got ${data.length} bytes`);
-    // Ethers wants addresses as hex strings
-    if (isEthers === true) {
+    // For EIP712 encoding module it's easier to encode hex strings
+    if (forJSParser) {
       data = `0x${data.toString('hex')}`
     }
   } else if ( (constants.ethMsgProtocol.TYPED_DATA.typeCodes[type]) && 
@@ -808,9 +832,9 @@ function parseEIP712Item(data, type, isEthers=false) {
       b = Buffer.from('00', 'hex');
     }
     // Uint256s should be encoded as bignums.
-    if (isEthers === true) {
-      // `ethers` uses their own BigNumber lib
-      data = ethers.BigNumber.from(`0x${b.toString('hex')}`)
+    if (forJSParser) {
+      // For EIP712 encoding in this module we need strings to represent the numbers
+      data = `0x${b.toString('hex')}`
     } else {
       // `bignumber.js` is needed for `cbor` encoding, which gets sent to the Lattice and plays
       // nicely with its firmware cbor lib.

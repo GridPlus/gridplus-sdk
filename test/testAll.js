@@ -65,7 +65,6 @@ describe('Connect and Pair', () => {
         currency: 'BTC', 
         startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_COIN, HARDENED_OFFSET, 0, 0], 
         n: 5,
-        skipCache: false,
       }
       // Bitcoin addresses
       // NOTE: The format of address will be based on the user's Lattice settings
@@ -76,33 +75,22 @@ describe('Connect and Pair', () => {
       expect(addrs[0][0]).to.equal('3');
 
       // Ethereum addresses
-      addrData.startPath[0] = helpers.BTC_LEGACY_PURPOSE;
+      addrData.startPath[0] = helpers.BTC_PURPOSE_P2PKH;
       addrData.startPath[1] = helpers.ETH_COIN;
       addrData.n = 1;
       addrs = await helpers.execute(client, 'getAddresses', addrData, 2000);
       expect(addrs.length).to.equal(1);
       expect(addrs[0].slice(0, 2)).to.equal('0x');
-
       // If firmware supports it, try shorter paths
       if (fwConstants.flexibleAddrPaths) {
         const flexData = { 
           currency: 'ETH', 
-          startPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0], 
+          startPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0], 
           n: 1,
-          skipCache: true,
         }
         addrs = await helpers.execute(client, 'getAddresses', flexData, 2000);
         expect(addrs.length).to.equal(1);
         expect(addrs[0].slice(0, 2)).to.equal('0x')
-        // Should fail to fetch this if skipCache = false because this is not
-        // a supported asset's parent path
-        flexData.skipCache = false
-        try {
-          addrs = await helpers.execute(client, 'getAddresses', flexData, 2000);
-          expect(addrs).to.equal(null)
-        } catch (err) {
-          expect(err).to.not.equal(null)
-        }
       }
 
       // Bitcoin testnet
@@ -116,33 +104,17 @@ describe('Connect and Pair', () => {
 
       // Bech32
       addrData.startPath[0] = helpers.BTC_PURPOSE_P2WPKH;
-      addrData.skipCache = true;
       addrData.n = 1;
       addrs = await helpers.execute(client, 'getAddresses', addrData, 2000);
       expect(addrs.length).to.equal(1);
       expect(addrs[0].slice(0, 3)).to.be.oneOf(['bc1']);
       addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
-      addrData.skipCache = false;
       addrData.n = 5;
 
-      // Keys outside the cache with skipCache = true
       addrData.startPath[4] = 1000000;
       addrData.n = 3;
-      addrData.skipCache = true;
       addrs = await helpers.execute(client, 'getAddresses', addrData, 2000);
       expect(addrs.length).to.equal(addrData.n);
-      
-      // --- EXPECTED FAILURES ---
-      // Keys outside the cache with skipCache = false
-      addrData.startPath[4] = 1000000;
-      addrData.n = 3;
-      addrData.skipCache = false;
-      try {
-        addrs = await helpers.execute(client, 'getAddresses', addrData, 2000);
-        expect(addrs).to.equal(null);
-      } catch (err) {
-        expect(err).to.not.equal(null);
-      }
       addrData.startPath[4] = 0;
       addrData.n = 1;
 
@@ -173,6 +145,7 @@ describe('Connect and Pair', () => {
       } catch (err) {
         expect(err).to.not.equal(null);
       }
+
     }
   });
 
@@ -194,13 +167,14 @@ describe('Connect and Pair', () => {
     const req = {
       currency: 'ETH',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         ...txData,
         chainId: 'rinkeby', // Can also be an integer
       }
     }
     // Sign a tx that does not use EIP155 (no EIP155 on rinkeby for some reason)
-    let tx = await helpers.execute(client, 'sign', req);
+    let tx;
+    tx = await helpers.execute(client, 'sign', req);
     expect(tx.tx).to.not.equal(null);
 
     // Sign a tx with EIP155
@@ -304,6 +278,11 @@ describe('Connect and Pair', () => {
     tx = await(helpers.execute(client, 'sign', req));
     expect(tx.tx).to.not.equal(null);
 
+    // Test non-ETH EVM coin_type
+    req.data.signerPath[1] = helpers.HARDENED_OFFSET + 1007;
+    req.data.data = null;
+    tx = await(helpers.execute(client, 'sign', req));
+    expect(tx.tx).to.not.equal(null);
   });
 
   it('Should sign legacy Bitcoin inputs', async () => {  
@@ -454,7 +433,7 @@ describe('Connect and Pair', () => {
     const req = {
       currency: 'ETH',
       data: {
-        signerPath: [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+        signerPath: [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
         ...txData,
         chainId: 'rinkeby', // Can also be an integer
       }

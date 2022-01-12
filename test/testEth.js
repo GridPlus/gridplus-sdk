@@ -22,17 +22,15 @@ const constants = require('./../src/constants')
 const expect = require('chai').expect;
 const helpers = require('./testUtil/helpers');
 const seedrandom = require('seedrandom');
-const keccak256 = require('js-sha3').keccak256;
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
 const HARDENED_OFFSET = constants.HARDENED_OFFSET;
 let client = null;
-let numRandom = 20; // Number of random tests to conduct
+let numRandom = process.env.N || 20; // Number of random tests to conduct
 const randomTxData = [];
 const randomTxDataLabels = [];
 let ETH_GAS_PRICE_MAX;                  // value depends on firmware version
 const ETH_GAS_LIMIT_MIN = 22000;        // Ether transfer (smallest op) is 22k gas
 const ETH_GAS_LIMIT_MAX = 12500000;     // 10M is bigger than the block size
-const MSG_PAYLOAD_METADATA_SZ = 28;     // Metadata that must go in ETH_MSG requests
 const defaultTxData = {
   nonce: 0,
   gasPrice: 1200000000,
@@ -76,7 +74,7 @@ function buildRandomTxData(fwConstants) {
   }
 }
 
-function buildTxReq(txData, network=1, signerPath=[helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0]) {
+function buildTxReq(txData, network=1, signerPath=[helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0]) {
   return {
     currency: 'ETH',
     data: {
@@ -301,7 +299,7 @@ if (!process.env.skip) {
     it('Should test and validate signatures from shorter derivation paths', async () => {
       if (constants.getFwVersionConst(client.fwVersion).varAddrPathSzAllowed) {
         // m/44'/60'/0'/x
-        const path = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, HARDENED_OFFSET, 0];
+        const path = [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0];
         const txData = JSON.parse(JSON.stringify(defaultTxData));
         await testTxPass(buildTxReq(txData, 1, path));
         await testTxPass(buildTxReq(txData, 1, path.slice(0, 3)));      

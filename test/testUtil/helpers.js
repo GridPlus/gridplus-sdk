@@ -17,7 +17,7 @@ const ec = new EC('secp256k1');
 exports.HARDENED_OFFSET = constants.HARDENED_OFFSET;
 exports.BTC_PURPOSE_P2WPKH = constants.BIP_CONSTANTS.PURPOSES.BTC_SEGWIT;
 exports.BTC_PURPOSE_P2SH_P2WPKH = constants.BIP_CONSTANTS.PURPOSES.BTC_WRAPPED_SEGWIT;
-exports.BTC_LEGACY_PURPOSE = constants.BIP_CONSTANTS.PURPOSES.BTC_LEGACY;
+exports.BTC_PURPOSE_P2PKH = constants.BIP_CONSTANTS.PURPOSES.BTC_LEGACY;
 exports.BTC_COIN = constants.BIP_CONSTANTS.COINS.BTC;
 exports.BTC_TESTNET_COIN = constants.BIP_CONSTANTS.COINS.BTC_TESTNET;
 exports.ETH_COIN = constants.BIP_CONSTANTS.COINS.ETH;
@@ -87,27 +87,24 @@ function _getSumInputs(inputs) {
   return sum;
 }
 
-function _get_btc_change_addr(pubKey, isSegwit, network) {
-  let obj = null;
-  if (true === isSegwit) {
-     const p2wpkh = bitcoin.payments.p2wpkh({ 
-      pubkey: pubKey,
-      network,
+function _get_btc_addr(pubkey, purpose, network) {
+  let obj;
+  if (purpose === exports.BTC_PURPOSE_P2SH_P2WPKH) {
+    // Wrapped segwit requires p2sh wrapping
+    obj = bitcoin.payments.p2sh({
+      redeem: bitcoin.payments.p2wpkh({ pubkey, network }),
+      network
     });
-    obj = bitcoin.payments.p2sh({ 
-      redeem: p2wpkh, 
-      network,
-    });
+  } else if (purpose === exports.BTC_PURPOSE_P2WPKH) {
+    obj = bitcoin.payments.p2wpkh({ pubkey, network });
   } else {
-    obj = bitcoin.payments.p2pkh({ 
-      pubkey: pubKey,
-      network,
-    })
+    // Native segwit and legacy addresses are treated teh same
+    obj = bitcoin.payments.p2pkh({ pubkey, network });
   }
   return obj.address;
 }
 
-function _start_tx_builder(wallet, recipient, value, fee, inputs, network, isSegwit, purpose) {
+function _start_tx_builder(wallet, recipient, value, fee, inputs, network, purpose) {
   const txb = new bitcoin.TransactionBuilder(network)
   const inputSum = _getSumInputs(inputs);
   txb.addOutput(recipient, value);
@@ -117,80 +114,78 @@ function _start_tx_builder(wallet, recipient, value, fee, inputs, network, isSeg
     const path = buildPath(purpose, exports.harden(networkIdx), 0, 1)
     const btc_0_change = wallet.derivePath(path);
     const btc_0_change_pub = bitcoin.ECPair.fromPublicKey(btc_0_change.publicKey).publicKey;
-    const changeAddr = _get_btc_change_addr(btc_0_change_pub, isSegwit, network)
+    const changeAddr = _get_btc_addr(btc_0_change_pub, purpose, network)
     txb.addOutput(changeAddr, changeValue)
   } else if (changeValue < 0) {
     throw new Error('Value + fee > sumInputs!')
   }
   inputs.forEach((input) => {
+    let scriptSig = null;
     // here we use `i` as the index of the input. This value is arbitrary, but needs to be consistent
-    txb.addInput(input.hash, input.idx) 
+    if (purpose === exports.BTC_PURPOSE_P2WPKH) {
+      // For native segwit we need to add a scriptSig to the input
+      const coin =  network === bitcoin.networks.testnet ? 
+                    exports.BTC_TESTNET_COIN : 
+                    exports.BTC_COIN;
+      const path = buildPath(purpose, coin, input.signerIdx);
+      const keyPair = wallet.derivePath(path);
+      const p2wpkh = bitcoin.payments.p2wpkh({ 
+        pubkey: keyPair.publicKey,
+        network,
+      });
+      scriptSig = p2wpkh.output;
+    }
+    txb.addInput(input.hash, input.idx, null, scriptSig) 
   })
   return txb
 }
 
-function _build_sighashes(txb, isSegwit) {
+function _build_sighashes(txb, purpose) {
   const hashes = [];
   txb.__inputs.forEach((input, i) => {
-    if (isSegwit === true)
-      hashes.push(txb.__tx.hashForWitnessV0(i, input.signScript, input.value, SIGHASH_ALL))
-    else
+    if (purpose === exports.BTC_PURPOSE_P2PKH) {
       hashes.push(txb.__tx.hashForSignature(i, input.signScript, SIGHASH_ALL));
+    } else {
+      hashes.push(txb.__tx.hashForWitnessV0(i, input.signScript, input.value, SIGHASH_ALL))
+    }
   })
   return hashes;
 }
 
-function _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestnet, isSegwit, purpose) {
-  let network, networkIdx;
-  if (isTestnet === true) {
-    network = bitcoin.networks.testnet;
-    networkIdx = 1;
-  } else {
-    network = bitcoin.networks.mainnet;
-    networkIdx = 0;
-  }
-  const txb = _start_tx_builder(wallet, recipient, value, fee, inputs, network, isSegwit, purpose)
+function _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestnet, purpose) {
+  const coin = isTestnet ? exports.BTC_TESTNET_COIN : exports.BTC_COIN;
+  const network = isTestnet ? bitcoin.networks.testnet : bitcoin.networks.mainnet;
+  const txb = _start_tx_builder(wallet, recipient, value, fee, inputs, network, purpose)
   inputs.forEach((input, i) => {
-    const path = buildPath(purpose, exports.harden(networkIdx), input.signerIdx);
-    const _signer = wallet.derivePath(path)
-    const signer = bitcoin.ECPair.fromPrivateKey(_signer.privateKey, { network })
-    if (true === isSegwit) {
+    const path = buildPath(purpose, coin, input.signerIdx);
+    const keyPair = wallet.derivePath(path)
+    const priv = bitcoin.ECPair.fromPrivateKey(keyPair.privateKey, { network })
+    if (purpose === exports.BTC_PURPOSE_P2SH_P2WPKH) {
       const p2wpkh = bitcoin.payments.p2wpkh({ 
-        pubkey: _signer.publicKey,
+        pubkey: keyPair.publicKey,
         network,
       });
       const p2sh = bitcoin.payments.p2sh({ 
         redeem: p2wpkh, 
         network,
       });
-      txb.sign(i, signer, p2sh.redeem.output, null, input.value)
-    } else {
-      txb.sign(i, signer)
+      txb.sign(i, priv, p2sh.redeem.output, null, input.value)
+    } else if (purpose === exports.BTC_PURPOSE_P2WPKH) {
+      txb.sign(i, priv, null, null, input.value)      
+    } else { // Legacy
+      txb.sign(i, priv)
     }
   })
-  return _build_sighashes(txb, isSegwit);
+  return _build_sighashes(txb, purpose);
 }
 
-function _btc_tx_request_builder(inputs, recipient, value, fee, segwit, isTestnet, purpose) {
-  let currencyIdx;
-  if (isTestnet && segwit === true) {
-    currencyIdx = exports.BTC_TESTNET_COIN;
-  } else if (isTestnet && segwit === false) {
-    currencyIdx = exports.BTC_TESTNET_COIN;
-  } else if (!isTestnet && segwit === true) {
-    currencyIdx = exports.BTC_COIN;
-  } else if (!isTestnet && segwit === false) {
-    currencyIdx = exports.BTC_COIN;
-  } else {
-    throw new Error('Invalid network and segwit params provided');
-  }
-
+function _btc_tx_request_builder(inputs, recipient, value, fee, isTestnet, purpose) {
+  const currencyIdx = isTestnet ? exports.BTC_TESTNET_COIN : exports.BTC_COIN;
   const txData = {
     prevOuts: [],
     recipient,
     value,
     fee,
-    isSegwit: segwit,
     changePath: [purpose, currencyIdx, constants.HARDENED_OFFSET, 1, 0],
   };
   inputs.forEach((input) => {
@@ -228,7 +223,7 @@ function _get_signing_keys(wallet, inputs, isTestnet, purpose) {
   return keys;
 }
 
-function _generate_btc_address(isTestnet, isSegwit, rand) {
+function _generate_btc_address(isTestnet, purpose, rand) {
   const priv = Buffer.alloc(32);
   for (let j = 0; j < 8; j++) {
     // 32 bits of randomness per call
@@ -236,32 +231,24 @@ function _generate_btc_address(isTestnet, isSegwit, rand) {
   }
   const keyPair = bitcoin.ECPair.fromPrivateKey(priv);
   const network = isTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.mainnet;
-  let obj;
-  if (isSegwit === true) {
-    obj = bitcoin.payments.p2sh({
-      redeem: bitcoin.payments.p2wpkh({ pubkey: keyPair.publicKey, network }),
-      network
-    });
-  } else {
-    obj = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey, network });
-  }
-  return obj.address;
+  return _get_btc_addr(keyPair.publicKey, purpose, network);
 }
 
-function setup_btc_sig_test(isTestnet, isSegwit, useChange, wallet, inputs, purpose, rand) {
-    const recipient = _generate_btc_address(isTestnet, isSegwit, rand);
-    const sumInputs = _getSumInputs(inputs);
-    const fee = Math.floor(rand.quick() * 50000)
-    const _value = useChange === true ? Math.floor(rand.quick() * sumInputs) : sumInputs;
-    const value = _value - fee;
-    const sigHashes = _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestnet, isSegwit, purpose);
-    const signingKeys = _get_signing_keys(wallet, inputs, isTestnet, purpose);
-    const txReq = _btc_tx_request_builder(inputs, recipient, value, fee, isSegwit, isTestnet, purpose);
-    return {
-      sigHashes,
-      signingKeys,
-      txReq,
-    }
+function setup_btc_sig_test(opts, wallet, inputs, rand) {
+  const { isTestnet, useChange, spenderPurpose, recipientPurpose } = opts;
+  const recipient = _generate_btc_address(isTestnet, recipientPurpose, rand);
+  const sumInputs = _getSumInputs(inputs);
+  const fee = Math.floor(rand.quick() * 50000)
+  const _value = useChange === true ? Math.floor(rand.quick() * sumInputs) : sumInputs;
+  const value = _value - fee;
+  const sigHashes = _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestnet, spenderPurpose);
+  const signingKeys = _get_signing_keys(wallet, inputs, isTestnet, spenderPurpose);
+  const txReq = _btc_tx_request_builder(inputs, recipient, value, fee, isTestnet, spenderPurpose);
+  return {
+    sigHashes,
+    signingKeys,
+    txReq,
+  }
 }
 
 exports.harden = (x) => { return x + constants.HARDENED_OFFSET; }
@@ -296,11 +283,29 @@ exports.gpErrors = {
   GP_EALREADY: (0xffffffff+1) - 114, // (4294967153)
   GP_ENODEV: (0xffffffff+1) - 19, // (4294967058)
   GP_EAGAIN: (0xffffffff+1) - 11, // (4294967050)
+  GP_FAILURE: (0xffffffff+1) - 128,
 }
 
 //---------------------------------------------------
 // General helpers
 //---------------------------------------------------
+exports.getCodeMsg = function(code, expected) {
+  if (code !== expected) {
+    let codeTxt = code, expectedTxt = expected;
+    Object.keys(exports.gpErrors).forEach((key) => {
+      if (code === exports.gpErrors[key]) {
+        codeTxt = key;
+      }
+      if (expected === exports.gpErrors[key]) {
+        expectedTxt = key;
+      }
+    })
+    return `Incorrect response code. Got ${codeTxt}. Expected ${expectedTxt}`
+  }
+  return '';
+}
+
+
 exports.parseWalletJobResp = function(res, v) {
   const jobRes = {
     resultStatus: null,
@@ -408,7 +413,7 @@ exports.stringifyPath = (parent) => {
 // Get Addresses helpers
 //---------------------------------------------------
 exports.serializeGetAddressesJobData = function(data) {
-  const req = Buffer.alloc(32);
+  const req = Buffer.alloc(33);
   let off = 0;
   req.writeUInt32LE(data.parent.pathDepth, off); off+=4;
   req.writeUInt32LE(data.parent.purpose, off); off+=4;
@@ -417,7 +422,9 @@ exports.serializeGetAddressesJobData = function(data) {
   req.writeUInt32LE(data.parent.change, off); off+=4;
   req.writeUInt32LE(data.parent.addr, off); off+=4;
   req.writeUInt32LE(data.first, off); off+=4;
-  req.writeUInt32LE(data.count, off);
+  req.writeUInt32LE(data.count, off); off+=4;
+  // Deprecated skipCache flag. It isn't used by firmware anymore.
+  req.writeUInt8(1, off);
   return req;
 }
 
@@ -453,7 +460,7 @@ exports.validateBTCAddresses = function(resp, jobData, seed, useTestnet) {
     let address;
     if (purpose === exports.BTC_PURPOSE_P2WPKH) {
       // Bech32
-      address = bitcoin.payments.p2wpkh({ pubkey }).address;
+      address = bitcoin.payments.p2wpkh({ pubkey, network }).address;
     } else if (purpose === exports.BTC_PURPOSE_P2SH_P2WPKH) {
       // Wrapped segwit
       address = bitcoin.payments.p2sh({redeem: bitcoin.payments.p2wpkh({ pubkey, network })}).address;

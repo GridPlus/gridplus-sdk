@@ -12,8 +12,6 @@
 //
 // After you do the above, you can run this test with `env DEVICE_ID='<your_device_id>' npm run test-wallet-jobs`
 //
-// NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
-//        root CMakeLists.txt file (for dev units)
 // To run these tests you will need a dev Lattice with: `FEATURE_TEST_RUNNER=1`
 const ethjsBN = require('bn.js')
 const bip32 = require('bip32');
@@ -23,15 +21,15 @@ const expect = require('chai').expect;
 const ethutil = require('ethereumjs-util');
 const cli = require('cli-interact');
 const rlp = require('rlp');
+const constants = require('./../src/constants');
+const seedrandom = require('seedrandom');
 const keccak256 = require('js-sha3').keccak256;
 const helpers = require('./testUtil/helpers');
-let client, activeWalletUID, jobType, jobData, jobReq, activeWalletSeed=null, continueTests=true;
-// For v1, all BTC addresses are derived via BIP49 (only p2sh-p2wpkh transactions are supported)
-const USE_BIP49 = true;
+let client, currentWalletUID, jobType, jobData, jobReq, origWalletSeed=null, continueTests=true;
 // Define the default parent path. We use BTC as the default
 const BTC_PARENT_PATH = {
   pathDepth: 4,
-  purpose: USE_BIP49 === true ? helpers.BTC_PURPOSE_P2SH_P2WPKH : helpers.BTC_LEGACY_PURPOSE,
+  purpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
   coin: helpers.BTC_COIN,
   account: helpers.BTC_COIN,
   change: 0,
@@ -41,8 +39,14 @@ const BTC_PARENT_PATH = {
 async function runTestCase(expectedCode) {
     const res = await helpers.execute(client, 'test', jobReq);
     const parsedRes = helpers.parseWalletJobResp(res, client.fwVersion);
-    expect(parsedRes.resultStatus).to.equal(expectedCode);
+    continueTests = parsedRes.resultStatus === expectedCode;
+    expect(parsedRes.resultStatus).to.equal(expectedCode, 
+      helpers.getCodeMsg(parsedRes.resultStatus, expectedCode));
     return parsedRes;
+}
+
+function getCurrentWalletUID() {
+  return helpers.copyBuffer(client.getActiveWallet().uid)
 }
 
 describe('Test Wallet Jobs', () => {
@@ -56,10 +60,27 @@ describe('Test Wallet Jobs', () => {
     expect(process.env.DEVICE_ID).to.not.equal(null);
     await helpers.connect(client, process.env.DEVICE_ID);
     expect(client.isPaired).to.equal(true);
-    expect(client.hasActiveWallet()).to.equal(true);
-    activeWalletUID = helpers.copyBuffer(client.getActiveWallet().uid)
+    const EMPTY_WALLET_UID = Buffer.alloc(32);
+    const internalUID = client.activeWallets.internal.uid;
+    const externalUID = client.activeWallets.external.uid;
+    const checkOne = !EMPTY_WALLET_UID.equals(internalUID);
+    const checkTwo = !EMPTY_WALLET_UID.equals(externalUID);
+    const checkThree = !!client.hasActiveWallet();
+    const checkFour = !!client.getActiveWallet().uid.equals(externalUID);
+    continueTests = (checkOne && checkTwo && checkThree && checkFour);
+    expect(checkOne).to.equal(true, 'Internal A90 must be enabled.');
+    expect(checkTwo).to.equal(true, 'P60 with exportable seed must be inserted.');    
+    expect(checkThree).to.equal(true, 'No active wallet discovered');
+    expect(checkFour).to.equal(true, 'P60 should be active wallet but is not registered as it.')
+    currentWalletUID = getCurrentWalletUID();
+    const fwConstants = constants.getFwVersionConst(client.fwVersion);
+    if (fwConstants) {
+      // If firmware supports bech32 segwit addresses, they are the default address
+      BTC_PARENT_PATH.purpose = fwConstants.allowBtcLegacyAndSegwitAddrs ?
+                                helpers.BTC_PURPOSE_P2WPKH :
+                                helpers.BTC_PURPOSE_P2SH_P2WPKH;
+    }
   });
-
 })
 
 describe('exportSeed', () => {
@@ -74,10 +95,10 @@ describe('exportSeed', () => {
   })
 
   it('Should get GP_SUCCESS for a known, connected wallet', async () => {
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeExportSeedJobResult(_res.result);
-    activeWalletSeed = helpers.copyBuffer(res.seed);
+    origWalletSeed = helpers.copyBuffer(res.seed);
   })
 
   it('Should get GP_ENODEV for unknown (random) wallet', async () => {
@@ -90,7 +111,7 @@ describe('exportSeed', () => {
 describe('getAddresses', () => {
   beforeEach (() => {
     expect(continueTests).to.equal(true, 'Unauthorized or critical failure. Aborting');
-    expect(activeWalletSeed).to.not.equal(null, 'Prior test failed. Aborting.');
+    expect(origWalletSeed).to.not.equal(null, 'Prior test failed. Aborting.');
     jobType = helpers.jobTypes.WALLET_JOB_GET_ADDRESSES;
     jobData = {
       parent: JSON.parse(JSON.stringify(BTC_PARENT_PATH)),
@@ -104,97 +125,87 @@ describe('getAddresses', () => {
   });
 
   it('Should get GP_SUCCESS for active wallet', async () => {
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
   })
 
-  it('Should get GP_EINVAL when `pathDepth` is too large', async () => {
+  it('Should get GP_EINVAL when `pathDepth` is out of range', async () => {
     // Parent too large
     jobData.parent.pathDepth = 5;
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EINVAL);
     // Parent is too small
-    jobData.parent.pathDepth = 1;
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobData.parent.pathDepth = 0;
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EINVAL);
   })
 
-  it('Should get GP_ENODATA for unknown (random) wallet', async () => {
+  it('Should get GP_FAILURE for unknown (random) wallet', async () => {
     const dummyWalletUID = crypto.randomBytes(32);
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
-    await runTestCase(helpers.gpErrors.GP_ENODATA);
-  })
-
-  it('Should get GP_ENODATA if `first` < num cached, but the `first` + `count` - 1 address is > num cached', async () => {
-    jobData.parent.purpose = helpers.BTC_LEGACY_PURPOSE;
-    jobData.parent.coin = helpers.ETH_COIN;
-    jobData.count = 10;
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
-    await runTestCase(helpers.gpErrors.GP_ENODATA);
-  })
-
-  it('Should get GP_ENODATA if `first` is > num cached', async () => {
-    jobData.parent.purpose = helpers.BTC_LEGACY_PURPOSE;
-    jobData.parent.coin = helpers.ETH_COIN;
-    jobData.first = 1;
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
-    await runTestCase(helpers.gpErrors.GP_ENODATA);
+    await runTestCase(helpers.gpErrors.GP_FAILURE);
   })
 
   it('Should get GP_EOVERFLOW if `count` exceeds the max request size', async () => {
     jobData.count = 11;
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EOVERFLOW);
   })
 
-  it('Should validate first ETH', async () => {
-    // Make sure we have cached the first ETH address (for later tests)
-    jobData.parent.purpose = helpers.BTC_LEGACY_PURPOSE;
-    jobData.parent.coin = helpers.ETH_COIN;
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+  it('Should validate an ETH address from a different EVM coin type', async () => {
+    jobData.parent.purpose = helpers.BTC_PURPOSE_P2PKH;
+    jobData.parent.coin = helpers.HARDENED_OFFSET + 1007; // Fantom coin_type via SLIP44
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeGetAddressesJobResult(_res.result);
-    helpers.validateETHAddresses(res, jobData, activeWalletSeed);
+    helpers.validateETHAddresses(res, jobData, origWalletSeed);
+  })
+
+  it('Should validate first ETH', async () => {
+    jobData.parent.purpose = helpers.BTC_PURPOSE_P2PKH;
+    jobData.parent.coin = helpers.ETH_COIN;
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
+    const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    const res = helpers.deserializeGetAddressesJobResult(_res.result);
+    helpers.validateETHAddresses(res, jobData, origWalletSeed);
   })
 
   it('Should validate the first BTC address', async () => {
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeGetAddressesJobResult(_res.result);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed);
+    helpers.validateBTCAddresses(res, jobData, origWalletSeed);
   })
 
   it('Should validate first BTC change address', async () => {
     jobData.parent.change = 1;
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeGetAddressesJobResult(_res.result);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed);
+    helpers.validateBTCAddresses(res, jobData, origWalletSeed);
   })
 
   it('Should validate the first BTC address (testnet)', async () => {
     jobData.parent.coin = helpers.BTC_TESTNET_COIN;
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeGetAddressesJobResult(_res.result);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed, true);
+    helpers.validateBTCAddresses(res, jobData, origWalletSeed, true);
   })
 
   it('Should validate first BTC change address (testnet)', async () => {
     jobData.parent.change = 1;
     jobData.parent.coin = helpers.BTC_TESTNET_COIN;
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeGetAddressesJobResult(_res.result);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed, true);
+    helpers.validateBTCAddresses(res, jobData, origWalletSeed, true);
   })
 
-  it('Should fetch BTC addresses outside the cache', async () => {
+  it('Should fetch a set of BTC addresses', async () => {
     const req = { 
-      currency: 'BTC', 
       startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_COIN, helpers.BTC_COIN, 0, 28802208], 
       n: 3,
-      skipCache: true,
     }
     const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
     const resp = {
@@ -212,15 +223,13 @@ describe('getAddresses', () => {
       count: req.n,
       first: req.startPath[4],
     }
-    helpers.validateBTCAddresses(resp, jobData, activeWalletSeed);
+    helpers.validateBTCAddresses(resp, jobData, origWalletSeed);
   })
 
-  it('Should fetch BTC addresses (bech32) outside the cache', async () => {
+  it('Should fetch a set of BTC addresses (bech32)', async () => {
     const req = { 
-      currency: 'BTC', 
       startPath: [helpers.BTC_PURPOSE_P2WPKH, helpers.BTC_COIN, helpers.BTC_COIN, 0, 28802208], 
       n: 3,
-      skipCache: true,
     }
     const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
     const resp = {
@@ -238,15 +247,37 @@ describe('getAddresses', () => {
       count: req.n,
       first: req.startPath[4],
     }
-    helpers.validateBTCAddresses(resp, jobData, activeWalletSeed);
+    helpers.validateBTCAddresses(resp, jobData, origWalletSeed);
+  })
+
+  it('Should fetch a set of BTC addresses (legacy)', async () => {
+    const req = { 
+      startPath: [helpers.BTC_PURPOSE_P2PKH, helpers.BTC_COIN, helpers.BTC_COIN, 0, 28802208], 
+      n: 3,
+    }
+    const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
+    const resp = {
+      count: addrs.length,
+      addresses: addrs,
+    }
+    const jobData = {
+      parent: {
+        pathDepth: 4,
+        purpose: req.startPath[0],
+        coin: req.startPath[1],
+        account: req.startPath[2],
+        change: req.startPath[3],
+      },
+      count: req.n,
+      first: req.startPath[4],
+    }
+    helpers.validateBTCAddresses(resp, jobData, origWalletSeed);
   })
 
   it('Should fetch address with nonstandard path', async () => {
     const req = { 
-      currency: 'BTC', 
       startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_COIN, 2532356, 5828, 28802208], 
       n: 3,
-      skipCache: true,
     }
     const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
     const resp = {
@@ -265,15 +296,13 @@ describe('getAddresses', () => {
       first: req.startPath[4],
     }
     // Let the validator know this is a nonstandard purpose
-    helpers.validateBTCAddresses(resp, jobData, activeWalletSeed);
+    helpers.validateBTCAddresses(resp, jobData, origWalletSeed);
   })
 
   it('Should fail to fetch from path with an unknown currency type', async () => {
     const req = { 
-      currency: 'BTC', 
       startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.BTC_COIN + 2, 2532356, 5828, 28802208],
       n: 3,
-      skipCache: true,
     }
     try {
       await helpers.execute(client, 'getAddresses', req, 2000);
@@ -284,10 +313,8 @@ describe('getAddresses', () => {
 
   it('Should validate address with pathDepth=4', async () => {
     const req = { 
-      currency: 'ETH', 
       startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.ETH_COIN, 2532356, 7], 
       n: 3,
-      skipCache: true,
     }
     const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
     const resp = {
@@ -304,15 +331,13 @@ describe('getAddresses', () => {
       count: req.n,
       first: req.startPath[3],
     }
-    helpers.validateETHAddresses(resp, jobData, activeWalletSeed);
+    helpers.validateETHAddresses(resp, jobData, origWalletSeed);
   })
 
   it('Should validate address with pathDepth=3', async () => {
     const req = { 
-      currency: 'ETH', 
       startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.ETH_COIN, 2532356], 
       n: 3,
-      skipCache: true,
     }
     const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
     const resp = {
@@ -328,14 +353,57 @@ describe('getAddresses', () => {
       count: req.n,
       first: req.startPath[2],
     }
-    helpers.validateETHAddresses(resp, jobData, activeWalletSeed);
+    helpers.validateETHAddresses(resp, jobData, origWalletSeed);
   })
+
+  it('Should validate random Bitcoin addresses of all types', async () => {
+    const prng = new seedrandom('btctestseed');
+    async function testRandomBtcAddrs(purpose) {
+      const account = Math.floor((constants.HARDENED_OFFSET + 100000) * prng.quick());
+      const addr = Math.floor((constants.HARDENED_OFFSET + 100000) * prng.quick());
+      const req = { 
+        startPath: [purpose, helpers.BTC_COIN, account, 0, addr], 
+        n: 1,
+      }
+      const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
+      const resp = {
+        count: addrs.length,
+        addresses: addrs,
+      }
+      const jobData = {
+        parent: {
+          pathDepth: 4,
+          purpose: req.startPath[0],
+          coin: req.startPath[1],
+          account: req.startPath[2],
+          change: req.startPath[3],
+        },
+        count: req.n,
+        first: req.startPath[4],
+      }
+      helpers.validateBTCAddresses(resp, jobData, origWalletSeed);
+    }
+
+    // Wrapped Segwit (x3)
+    await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2WPKH);
+    await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2WPKH);
+    await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2WPKH);
+    // Legacy (x3)
+    await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2PKH);
+    await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2PKH);
+    await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2PKH);
+    // Segwit (x3)
+    await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2WPKH);
+    await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2WPKH);
+    await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2WPKH);
+  })
+
 })
 
 describe('signTx', () => {
   beforeEach (() => {
     expect(continueTests).to.equal(true, 'Unauthorized or critical failure. Aborting');
-    expect(activeWalletSeed).to.not.equal(null, 'Prior test failed. Aborting.');
+    expect(origWalletSeed).to.not.equal(null, 'Prior test failed. Aborting.');
     jobType = helpers.jobTypes.WALLET_JOB_SIGN_TX;
     const path = JSON.parse(JSON.stringify(BTC_PARENT_PATH));
     path.pathDepth = 5;
@@ -353,7 +421,7 @@ describe('signTx', () => {
   });
 
   it('Should get GP_SUCCESS for active wallet', async () => {
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeSignTxJobResult(_res.result);
     // Ensure correct number of outputs returned
@@ -363,7 +431,7 @@ describe('signTx', () => {
     const outputPubStr = helpers.getPubStr(outputKey);
     expect(outputKey.verify(jobData.sigReq[0].data, res.outputs[0].sig)).to.equal(true);
     // Ensure pubkey is correctly derived
-    const wallet = bip32.fromSeed(activeWalletSeed);
+    const wallet = bip32.fromSeed(origWalletSeed);
     const derivedKey = wallet.derivePath(helpers.stringifyPath(jobData.sigReq[0].signerPath));
     const derivedPubStr = `04${ethutil.privateToPublic(derivedKey.privateKey).toString('hex')}`;
     expect(outputPubStr).to.equal(derivedPubStr)
@@ -372,13 +440,13 @@ describe('signTx', () => {
   it('Should get GP_SUCCESS for signing out of shorter (but allowed) paths', async () => {
     jobData.sigReq[0].signerPath =   {
       pathDepth: 3,
-      purpose: helpers.BTC_LEGACY_PURPOSE,
+      purpose: helpers.BTC_PURPOSE_P2PKH,
       coin: helpers.ETH_COIN,
       account: 1572,
       change: 0, // Not used for pathDepth=3
       addr: 0, // Not used for pathDepth=4
     };
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeSignTxJobResult(_res.result);
     // Ensure correct number of outputs returned
@@ -388,7 +456,7 @@ describe('signTx', () => {
     const outputPubStr = helpers.getPubStr(outputKey);
     expect(outputKey.verify(jobData.sigReq[0].data, res.outputs[0].sig)).to.equal(true);
     // Ensure pubkey is correctly derived
-    const wallet = bip32.fromSeed(activeWalletSeed);
+    const wallet = bip32.fromSeed(origWalletSeed);
     const derivedKey = wallet.derivePath(helpers.stringifyPath(jobData.sigReq[0].signerPath));
     const derivedPubStr = `04${ethutil.privateToPublic(derivedKey.privateKey).toString('hex')}`;
     expect(outputPubStr).to.equal(derivedPubStr)
@@ -407,34 +475,40 @@ describe('signTx', () => {
     // This test requires a wallet on each interface, which means the active wallet needs
     // to be external and the internal wallet needs to exist.
     const ERR_MSG = 'ERROR: This test requires an enabled Lattice wallet and active SafeCard wallet!';
-    expect(helpers.copyBuffer(wallets.external.uid).toString('hex')).to.equal(activeWalletUID.toString('hex'), ERR_MSG);
+    expect(helpers.copyBuffer(wallets.external.uid).toString('hex')).to.equal(currentWalletUID.toString('hex'), ERR_MSG);
     expect(helpers.copyBuffer(wallets.internal.uid).toString('hex')).to.not.equal(EMPTY_WALLET_UID.toString('hex'), ERR_MSG);
-    const inactiveWalletUID = helpers.copyBuffer(wallets.internal.uid)
-    jobReq.payload = helpers.serializeJobData(jobType, inactiveWalletUID, jobData);
+    const incurrentWalletUID = helpers.copyBuffer(wallets.internal.uid)
+    jobReq.payload = helpers.serializeJobData(jobType, incurrentWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_ENODEV);
   })
 
   it('Should get GP_EINVAL when `numRequests` is 0', async () => {
     jobData.numRequests = 0;
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EINVAL);
   })
 
   it('Should get GP_EINVAL when `numRequests` exceeds the max allowed', async () => {
     jobData.numRequests = 11;
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EINVAL);
   })
 
   it('Should return GP_EINVAL when a signer `pathDepth` is of invalid size', async () => {
     jobData.sigReq[0].signerPath.pathDepth = 1;
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EINVAL);
     jobData.sigReq[0].signerPath.pathDepth = 6;
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EINVAL);
     jobData.sigReq[0].signerPath.pathDepth = 5;
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
+    await runTestCase(helpers.gpErrors.GP_SUCCESS);
+  })
+
+  it('Should get GP_SUCCESS when signing from a non-ETH EVM path', async () => {
+    jobData.sigReq[0].signerPath.coin = helpers.HARDENED_OFFSET + 1007;
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
   })
 })
@@ -455,7 +529,7 @@ describe('Test leading zeros', () => {
   const mnemonic = 'erosion loan violin drip laundry harsh social mercy leaf original habit buffalo';
   const KNOWN_SEED = bip39.mnemonicToSeedSync(mnemonic);
   const wallet = bip32.fromSeed(KNOWN_SEED);
-  let basePath = [helpers.BTC_LEGACY_PURPOSE, helpers.ETH_COIN, helpers.HARDENED_OFFSET, 0, 0];
+  let basePath = [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, helpers.HARDENED_OFFSET, 0, 0];
   let parentPathStr = 'm/44\'/60\'/0\'/0';
   let addrReq, txReq;
 
@@ -511,13 +585,11 @@ describe('Test leading zeros', () => {
   }
 
   beforeEach (() => {
-    expect(activeWalletSeed).to.not.equal(null, 'Prior test failed. Aborting.');
+    expect(origWalletSeed).to.not.equal(null, 'Prior test failed. Aborting.');
     expect(continueTests).to.equal(true, 'Unauthorized or critical failure. Aborting');
     addrReq = { 
-      currency: 'ETH', 
       startPath: basePath,
       n: 1,
-      skipCache: true,
     };
     txReq = {
       currency: 'ETH',
@@ -543,7 +615,7 @@ describe('Test leading zeros', () => {
       testID: 0, // wallet_job test ID
       payload: null,
     }
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
   });
 
@@ -558,16 +630,21 @@ describe('Test leading zeros', () => {
       testID: 0, // wallet_job test ID
       payload: null,
     }
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
   });
 
   it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
     const newQ = cli.getYesNo;
-    const t = '\n\nPlease remove your SafeCard, then re-insert and unlock it.\nWait for addresses to sync!\n'+
-              'Press Y when the card is re-inserted and addresses have finished syncing.';
+    const t = '\n\nPlease remove your SafeCard, then re-insert and unlock it.\n'+
+              'Press Y when the card is re-inserted and its wallet has finished syncing.';
     continueTests = newQ(t);
     expect(continueTests).to.equal(true, 'You must remove, re-insert, and unlock your SafeCard to run this test.');
+  })
+
+  it('Should reconnect to update the wallet UIDs', async () => {
+    await helpers.connect(client, process.env.DEVICE_ID);
+    currentWalletUID = getCurrentWalletUID();
   })
 
   it('Should make sure the first address is correct', async () => {
@@ -653,7 +730,7 @@ describe('Test leading zeros', () => {
 
 describe('deleteSeed', () => {
   beforeEach (() => {
-    expect(activeWalletSeed).to.not.equal(null, 'Prior test failed. Aborting.');
+    expect(origWalletSeed).to.not.equal(null, 'Prior test failed. Aborting.');
     expect(continueTests).to.equal(true, 'Unauthorized or critical failure. Aborting');
     jobType = helpers.jobTypes.WALLET_JOB_DELETE_SEED;
     jobData = {
@@ -672,19 +749,19 @@ describe('deleteSeed', () => {
   })
 
   it('Should get GP_SUCCESS for a known, connected wallet.', async () => {
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
   })
 })
 
-describe('loadSeed', () => {
+describe('Load Original Seed Back', () => {
   beforeEach (() => {
-    expect(activeWalletSeed).to.not.equal(null, 'Prior test failed. Aborting.');
+    expect(origWalletSeed).to.not.equal(null, 'Prior test failed. Aborting.');
     expect(continueTests).to.equal(true, 'Unauthorized or critical failure. Aborting');
     jobType = helpers.jobTypes.WALLET_JOB_LOAD_SEED;
     jobData = {
       iface: 1, // external SafeCard interface
-      seed: activeWalletSeed,
+      seed: origWalletSeed,
       exportability: 2, // always exportable
     };
     jobReq = {
@@ -695,41 +772,46 @@ describe('loadSeed', () => {
 
   it('Should get GP_EINVAL if `exportability` option is invalid', async () => {
     jobData.exportability = 3; // past range
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EINVAL);
   });
 
   it('Should get GP_SUCCESS when valid seed is provided to valid interface', async () => {
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
   });
 
   it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
     const newQ = cli.getYesNo;
-    const t = '\n\nPlease remove your SafeCard, then re-insert and unlock it.\nWait for addresses to sync!\n'+
-              'Press Y when the card is re-inserted and addresses have finished syncing.';
+    const t = '\n\nPlease remove your SafeCard, then re-insert and unlock it.\n'+
+              'Press Y when the card is re-inserted and the wallet has finished syncing.';
     continueTests = newQ(t);
     expect(continueTests).to.equal(true, 'You must remove, re-insert, and unlock your SafeCard to run this test.');
+  })
+
+  it('Should reconnect to update the wallet UIDs', async () => {
+    await helpers.connect(client, process.env.DEVICE_ID);
+    currentWalletUID = getCurrentWalletUID();
   })
 
   it('Should ensure export seed matches the seed we just loaded', async () => {
     // Export the seed and make sure it matches!
     jobType = helpers.jobTypes.WALLET_JOB_EXPORT_SEED;
     jobData = {};
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeExportSeedJobResult(_res.result);
     const exportedSeed = helpers.copyBuffer(res.seed);
-    expect(exportedSeed.toString('hex')).to.equal(activeWalletSeed.toString('hex'));
+    expect(exportedSeed.toString('hex')).to.equal(origWalletSeed.toString('hex'));
     // Abort if this fails
-    if (exportedSeed.toString('hex') !== activeWalletSeed.toString('hex'))
+    if (exportedSeed.toString('hex') !== origWalletSeed.toString('hex'))
       continueTests = false;
   })
 
   // Test both safecard and a90
-  it('Should get GP_EOVERFLOW if interface already has a seed', async () => {
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
-    await runTestCase(helpers.gpErrors.GP_EOVERFLOW);
+  it('Should get GP_FAILURE if interface already has a seed', async () => {
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
+    await runTestCase(helpers.gpErrors.GP_FAILURE);
   });
 
   // Wait for user to remove safecard
@@ -737,7 +819,7 @@ describe('loadSeed', () => {
     const newQ = cli.getYesNo;
     continueTests = newQ('Please remove your SafeCard to run this test. Press Y when you have done so.');
     expect(continueTests).to.equal(true, 'You must remove your SafeCard when prompted to complete this test.');
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EAGAIN);
   });
 
@@ -747,363 +829,13 @@ describe('loadSeed', () => {
     expect(continueTests).to.equal(true, 'You must re-insert and unlock your SafeCard when prompted to complete this test.');
     jobType = helpers.jobTypes.WALLET_JOB_EXPORT_SEED;
     jobData = {};
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeExportSeedJobResult(_res.result);
     const currentSeed = helpers.copyBuffer(res.seed);
-    expect(currentSeed.toString('hex')).to.equal(activeWalletSeed.toString('hex'))
-    if (currentSeed.toString('hex') !== activeWalletSeed.toString('hex'))
+    expect(currentSeed.toString('hex')).to.equal(origWalletSeed.toString('hex'))
+    if (currentSeed.toString('hex') !== origWalletSeed.toString('hex'))
       continueTests = false;
   })
 
-})
-
-// Test wallet sync behavior. Most of the complexity comes from BTC and BTC_TESTNET coins, as
-// the wallet must sync up to the GAP_LIMIT past the highest requested address index, when that
-// address index is in range of addresses already synced. GAP_LIMIT is 20 for BTC and BTC_TESTNET
-// and is 1 for change of those currencies and 0 for ETH (i.e. we can only ever request ETH addr 0).
-// We assume a starting point of addresses 0-19 synced. This is because when the seed is removed
-// via the deleteSeed request, the wallet cache is also removed. When the seed is re-loaded and the
-// interface comes up, the device automatically syncs the first GAP_LIMIT addresses for each currency.
-// (NOTE: For ETH we do sync the first address, even though the gap limit is 0)
-describe('Wallet sync tests (starting with newly synced wallet)', () => {
-
-  // It takes about 2 seconds for the device to request and cache a new address
-  const ADDR_SYNC_TIMEOUT = 2000;
-
-  beforeEach ((done) => {
-    expect(activeWalletSeed).to.not.equal(null, 'Prior test failed. Aborting.');
-    expect(continueTests).to.equal(true, 'Unauthorized or critical failure. Aborting');
-    jobType = helpers.jobTypes.WALLET_JOB_GET_ADDRESSES;
-    jobData = {
-      parent: JSON.parse(JSON.stringify(BTC_PARENT_PATH)),
-      first: 0,
-      count: 1,
-    };
-    jobReq = {
-      testID: 0, // wallet_job test ID
-      payload: null,
-    }
-    // Timeout between requests to give a bit more of a buffer.
-    // In some cases, there will be one address syncing.
-    // This also gives resliency regardless.
-    setTimeout(() => { done(); }, ADDR_SYNC_TIMEOUT);
-  });
-
-  async function makeRequest(coin, change, first, last, expectedErr=helpers.gpErrors.GP_SUCCESS) {
-    // If this is a non-BTC coin, determine the BIP path purpose
-    switch (coin) {
-      case helpers.ETH_COIN:
-        jobData.parent.purpose = helpers.BTC_LEGACY_PURPOSE;
-        break;
-      default:
-        break;
-    }
-    jobData.parent.coin = coin;
-    jobData.parent.change = change;
-    jobData.first = first;
-    jobData.count = last - first + 1;
-    jobReq.payload = helpers.serializeJobData(jobType, activeWalletUID, jobData);
-    if (expectedErr === helpers.gpErrors.GP_SUCCESS) {
-      const _res = await runTestCase(expectedErr);
-      return helpers.deserializeGetAddressesJobResult(_res.result);
-    } else {
-      await runTestCase(expectedErr);
-    }
-  }
-
-  function waitForSync(numAddrs, done) {
-    setTimeout(() => { 
-      expect(true).to.equal(true); 
-      done(); 
-    }, numAddrs * ADDR_SYNC_TIMEOUT);
-  }
-
-  it('Should fail to fetch ETH address 1', async () => {
-    await makeRequest(helpers.ETH_COIN, 0, 1, 1, helpers.gpErrors.GP_ENODATA); 
-  })
-
-  it('Should fail to fetch BTC address 17-23', async () => {
-    await makeRequest(helpers.BTC_COIN, 0, 17, 23, helpers.gpErrors.GP_ENODATA); 
-  })
-  it('Should fail to fetch BTC address 20', async () => {
-    await makeRequest(helpers.BTC_COIN, 0, 20, 20, helpers.gpErrors.GP_ENODATA); 
-  })
-
-  it('Should fail to fetch BTC change address 1', async () => {
-    await makeRequest(helpers.BTC_COIN, 1, 1, 1, helpers.gpErrors.GP_ENODATA); 
-  })
-
-  it('Should fail to fetch BTC_TESTNET address 17-23', async () => {
-    await makeRequest(helpers.BTC_TESTNET_COIN, 0, 17, 23, helpers.gpErrors.GP_ENODATA); 
-  })
-  
-  it('Should fail to fetch BTC_TESTNET address 20', async () => {
-    await makeRequest(helpers.BTC_TESTNET_COIN, 0, 20, 20, helpers.gpErrors.GP_ENODATA); 
-  })
-  
-  it('Should fail to fetch BTC_TESTNET change address 1', async () => {
-    await makeRequest(helpers.BTC_TESTNET_COIN, 1, 17, 23, helpers.gpErrors.GP_ENODATA); 
-  })
-
-  it('Should fetch and validate ETH address 0', async () => {
-    const res = await makeRequest(helpers.ETH_COIN, 0, 0, 0);
-    helpers.validateETHAddresses(res, jobData, activeWalletSeed); 
-  })
-
-  it('Should fetch and validate BTC addresses 10-19', async () => {
-    const res = await makeRequest(helpers.BTC_COIN, 0, 10, 19);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed); 
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC->39)', (done) => {
-    waitForSync(20, done);
-  })
-
-  it('Should fetch and validate BTC change address 0', async () => {
-    const res = await makeRequest(helpers.BTC_COIN, 1, 0, 0);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed); 
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC(change)->1)', (done) => {
-    waitForSync(1, done);
-  })
-
-  it('Should fetch and validate BTC_TESTNET addresses 10-19', async () => {
-    const res = await makeRequest(helpers.BTC_TESTNET_COIN, 0, 10, 19);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed, true); 
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC_TESTNET->39)', (done) => {
-    waitForSync(20, done);
-  })
-
-  it('Should fetch and validate BTC_TESTNET change address 0', async () => {
-    const res = await makeRequest(helpers.BTC_TESTNET_COIN, 1, 0, 0);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed, true);
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC_TESTNET(change)->1)', (done) => {
-    waitForSync(1, done);
-  })
-
-  it('Should still fail to fetch ETH address 1 (because GAP_LIMIT=0)', async () => {
-    await makeRequest(helpers.ETH_COIN, 0, 1, 1, helpers.gpErrors.GP_ENODATA); 
-  })
-
-  it('Should fail to fetch BTC address 40', async () => {
-    await makeRequest(helpers.BTC_COIN, 0, 40, 40, helpers.gpErrors.GP_ENODATA); 
-  })
-
-  it('Should fail to fetch BTC_TESTNET address 40', async () => {
-    await makeRequest(helpers.BTC_TESTNET_COIN, 0, 40, 40, helpers.gpErrors.GP_ENODATA); 
-  })
-
-  it('Should fetch and validate BTC addresses 17-23', async () => {
-    const res = await makeRequest(helpers.BTC_COIN, 0, 17, 23);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed);
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC->43)', (done) => {
-    waitForSync(4, done);
-  })
-
-  it('Should fail to fetch BTC address 44', async () => {
-    await makeRequest(helpers.BTC_COIN, 0, 44, 44, helpers.gpErrors.GP_ENODATA); 
-  })
-
-  it('Should fetch and validate BTC address 30-38', async () => {
-    const res = await makeRequest(helpers.BTC_COIN, 0, 30, 38);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed);
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC->58)', (done) => {
-    waitForSync(15, done);
-  })
-
-  it('Should fetch and validate BTC change address 1', async () => {
-    const res = await makeRequest(helpers.BTC_COIN, 1, 1, 1);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed);
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC(change)->2)', (done) => {
-    waitForSync(1, done);
-  })
-
-  it('Should fail to fetch BTC_TESTNET address 40', async () => {
-    await makeRequest(helpers.BTC_TESTNET_COIN, 0, 40, 40, helpers.gpErrors.GP_ENODATA); 
-  })
-
-  it('Should fetch and validate BTC_TESTNET addresses 17-23', async () => {
-    const res = await makeRequest(helpers.BTC_TESTNET_COIN, 0, 17, 23);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed, true);
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC_TESTNET->43)', (done) => {
-    waitForSync(4, done);
-  })
-
-  it('Should fail to fetch BTC_TESTNET address 44', async () => {
-    await makeRequest(helpers.BTC_TESTNET_COIN, 0, 44, 44, helpers.gpErrors.GP_ENODATA); 
-  })
-
-  it('Should fetch and validate BTC_TESTNET address 30-38', async () => {
-    const res = await makeRequest(helpers.BTC_TESTNET_COIN, 0, 30, 38);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed, true);
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC_TESTNET->58)', (done) => {
-    waitForSync(15, done);
-  })
-
-  it('Should fetch and validate BTC_TESTNET change address 1', async () => {
-    const res = await makeRequest(helpers.BTC_TESTNET_COIN, 1, 1, 1);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed, true);
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC_TESTNET(change)->2)', (done) => {
-    waitForSync(1, done);
-  })
-
-  it('Should fail to fetch BTC addresses 59-61', async () => {
-    await makeRequest(helpers.BTC_COIN, 0, 59, 61, helpers.gpErrors.GP_ENODATA);
-  })
-
-  it('Should fail to fetch BTC address 59', async () => {
-    await makeRequest(helpers.BTC_COIN, 0, 59, 59, helpers.gpErrors.GP_ENODATA);
-  })
-
-  it('Should fail to fetch BTC change address 3', async () => {
-    await makeRequest(helpers.BTC_COIN, 1, 3, 3, helpers.gpErrors.GP_ENODATA);
-  })
-
-  it('Should fail to fetch BTC_TESTNET addresses 59-61', async () => {
-    await makeRequest(helpers.BTC_TESTNET_COIN, 0, 59, 61, helpers.gpErrors.GP_ENODATA);
-  })
-
-  it('Should fail to fetch BTC_TESTNET address 59', async () => {
-    await makeRequest(helpers.BTC_TESTNET_COIN, 0, 59, 59, helpers.gpErrors.GP_ENODATA);
-  })
-
-  it('Should fail to fetch BTC_TESTNET change address 3', async () => {
-    await makeRequest(helpers.BTC_TESTNET_COIN, 1, 3, 3, helpers.gpErrors.GP_ENODATA);
-  })
-
-  it('Should fetch and validate BTC address 58', async () => {
-    const res = await makeRequest(helpers.BTC_COIN, 0, 58, 58);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed);
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC->78)', (done) => {
-    waitForSync(20, done);
-  })
-  
-  it('Should fetch and validate BTC_TESTNET address 58', async () => {
-    const res = await makeRequest(helpers.BTC_TESTNET_COIN, 0, 58, 58);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed, true);
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC_TESTNET->78)', (done) => {
-    waitForSync(20, done);
-  })
-
-  it('Should fetch and validate BTC address 36-45', async () => {
-    const res = await makeRequest(helpers.BTC_COIN, 0, 36, 45);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed);
-  })
-
-  it('Should fail to fetch BTC address 70-79', async () => {
-    await makeRequest(helpers.BTC_COIN, 1, 70, 79, helpers.gpErrors.GP_ENODATA);
-  })
-
-  it('Should fetch and validate BTC address 70-78', async () => {
-    const res = await makeRequest(helpers.BTC_COIN, 0, 70, 78);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed);
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC->99)', (done) => {
-    waitForSync(20, done);
-  })
-
-  it('Should fetch and validate BTC_TESTNET address 36-45', async () => {
-    const res = await makeRequest(helpers.BTC_TESTNET_COIN, 0, 36, 45);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed, true);
-  })
-
-  it('Should fail to fetch BTC_TESTNET address 70-79', async () => {
-    await makeRequest(helpers.BTC_TESTNET_COIN, 1, 70, 79, helpers.gpErrors.GP_ENODATA);
-  })
-  
-  it('Should fetch and validate BTC_TESTNET address 70-78', async () => {
-    const res = await makeRequest(helpers.BTC_TESTNET_COIN, 0, 70, 78);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed, true);
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC_TESTNET->99)', (done) => {
-    waitForSync(20, done);
-  })
-
-  it('Should fail to fetch BTC change address 3', async () => {
-    await makeRequest(helpers.BTC_COIN, 1, 3, 3, helpers.gpErrors.GP_ENODATA);
-  })
-
-  it('Should fail to fetch BTC_TESTNET change address 3', async () => {
-    await makeRequest(helpers.BTC_TESTNET_COIN, 1, 3, 3, helpers.gpErrors.GP_ENODATA);
-  })
-
-  it('Should fetch and validate BTC change address 2', async () => {
-    const res = await makeRequest(helpers.BTC_COIN, 1, 2, 2);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed);
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC(change)->3)', (done) => {
-    waitForSync(1, done);
-  })
-
-  it('Should fetch and validate BTC change address 3', async () => {
-    const res = await makeRequest(helpers.BTC_COIN, 1, 3, 3);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed);
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC(change)->4)', (done) => {
-    waitForSync(1, done);
-  })
-
-  it('Should fetch and validate BTC_TESTNET change address 2', async () => {
-    const res = await makeRequest(helpers.BTC_TESTNET_COIN, 1, 2, 2);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed, true);
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC_TESTNET(change)->3)', (done) => {
-    waitForSync(1, done);
-  })
-
-  it('Should fetch and validate BTC_TESTNET change address 3', async () => {
-    const res = await makeRequest(helpers.BTC_TESTNET_COIN, 1, 3, 3);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed, true);
-  })
-
-  it('Should wait while the wallet syncs new addresses (BTC_TESTNET(change)->3)', (done) => {
-    waitForSync(1, done);
-  })
-
-  it('Should fetch and validate BTC address 0-9', async () => {
-    const res = await makeRequest(helpers.BTC_COIN, 0, 0, 9);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed);
-  });
-
-  it('Should fetch and validate BTC change address 0', async () => {
-    const res = await makeRequest(helpers.BTC_COIN, 1, 0, 0);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed);
-  });
-
-  it('Should fetch and validate BTC_TESTNET address 0-9', async () => {
-    const res = await makeRequest(helpers.BTC_TESTNET_COIN, 0, 0, 9);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed, true);
-  });
-
-  it('Should fetch and validate BTC_TESTNET address 0', async () => {
-    const res = await makeRequest(helpers.BTC_TESTNET_COIN, 1, 0, 0);
-    helpers.validateBTCAddresses(res, jobData, activeWalletSeed, true);
-  });
 })

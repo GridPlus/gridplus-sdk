@@ -5,7 +5,6 @@ const ethereum = require('./ethereum');
 const { buildAddAbiPayload, abiParsers, MAX_ABI_DEFS } = require('./ethereumAbi');
 const {
   isValidAssetPath,
-  isValidCoinType,
   signReqResolver,
   aes256_decrypt,
   aes256_encrypt,
@@ -39,8 +38,12 @@ class Client {
   constructor({ baseUrl, crypto, name, privKey, timeout, retryCount } = {}) {
     // Definitions
     // if (!baseUrl) throw new Error('baseUrl is required');
-    if (name && name.length > 24) throw new Error('name must be less than 24 characters');
-    if (!crypto) throw new Error('crypto provider is required');
+    if (name && (name.length < 5 || name.length > 24)) {
+      throw new Error('`name` must be 5-24 characters');
+    }
+    if (!crypto) {
+      throw new Error('crypto provider is required');
+    }
     this.baseUrl = baseUrl || BASE_URL;
     this.crypto = crypto;
     this.name = name || 'Unknown';
@@ -113,10 +116,16 @@ class Client {
     // Build the secret hash from the salt
     const pubKey = this.pubKeyBytes();
     const nameBuf = Buffer.alloc(25);
-    if (this.name.length > 24) {
-      return cb('Name is too many characters. Please change it to <25 characters.');
+    if (this.name.length < 5 || this.name.length > 24) {
+      return cb('Invalid length for name provided. Must be 5-24 characters.');
     }
-    nameBuf.write(this.name);
+    if (pairingSecret.length > 0) {
+      // If a pairing secret of zero length is passed in, it usually indicates
+      // we want to cancel the pairing attempt. In this case we pass a zero-length
+      // name buffer so the firmware can know not to draw the error screen.
+      // Note that we still expect an error to come back (RESP_ERR_PAIR_FAIL)
+      nameBuf.write(this.name);
+    }
     // Make sure we add a null termination byte to the pairing secret
     const preImage = Buffer.concat([pubKey, nameBuf, Buffer.from(pairingSecret)]);
     const hash = this.crypto.createHash('sha256').update(preImage).digest();
@@ -160,7 +169,7 @@ class Client {
   getAddresses(opts, cb) {
     const SKIP_CACHE_FLAG = 1;
     const MAX_ADDR = 10;
-    const { startPath, n, skipCache=true } = opts;
+    const { startPath, n } = opts;
     if (startPath === undefined || n === undefined)
       return cb('Please provide `startPath` and `n` options');
     if (startPath.length < 2 || startPath.length > 5)
@@ -200,7 +209,9 @@ class Client {
     // in the wallet.
     let val;
     if (true === fwConstants.addrFlagsAllowed) {
-      const flag = skipCache === true ? bitwise.nibble.read(SKIP_CACHE_FLAG) : bitwise.nibble.read(0);
+      // Address caching was removed in 0.13.0 so this flag is now deprecated.
+      // All requests against older devices also use the skipFlag=true now.
+      const flag = bitwise.nibble.read(SKIP_CACHE_FLAG);
       const count = bitwise.nibble.read(n);
       val = bitwise.byte.write(flag.concat(count));
     } else {
@@ -648,19 +659,39 @@ class Client {
       if (!res || !res.body) return cb(`Invalid response: ${res}`)
       else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
       const parsed = parseLattice1Response(res.body.message);
-      // If the device is busy, retry if we can
-      if (( parsed.responseCode === responseCodes.RESP_ERR_DEV_BUSY ||
-            parsed.responseCode === responseCodes.RESP_ERR_GCE_TIMEOUT ) 
-            && (retryCount > 0)) {
-        return setTimeout(() => { this._request(data, cb, retryCount-1) }, 3000);
-      }
-      // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old ative walletUID
-      if (parsed.responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) 
+      const deviceBusy = (parsed.responseCode === responseCodes.RESP_ERR_DEV_BUSY ||
+                          parsed.responseCode === responseCodes.RESP_ERR_GCE_TIMEOUT);
+      const walletMissing = parsed.responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT;
+      const invalidEphemId = parsed.responseCode === responseCodes.RESP_ERR_INVALID_EPHEM_ID;
+      const canRetry = retryCount > 0;
+      if (deviceBusy && canRetry) {
+        // Wait a few seconds and retry
+        setTimeout(() => { 
+          this._request(data, cb, retryCount-1);
+        }, 3000);
+      } else if (walletMissing && canRetry) {
+        // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old active walletUID
         this._resetActiveWallets();
-      // If there was an error in the response, return it
-      if (parsed.err) 
-        return cb(parsed.err);
-      return cb(null, parsed.data, parsed.responseCode); 
+        return this._request(data, cb, retryCount-1);
+      } else if (invalidEphemId && canRetry) {
+        // Reconnect and retry
+        this.connect(this.deviceId, (err, isPaired) => {
+          if (err) {
+            cb(err);
+          } else if (!isPaired) {
+            cb('Not paired to device.')
+          } else {
+            // Retry
+            this._request(data, cb, retryCount-1);
+          }
+        })
+      } else if (parsed.err) {
+        // If there was an error in the response, return it
+        cb(parsed.err);
+      } else {
+        // All good
+        cb(null, parsed.data, parsed.responseCode); 
+      }
     })
     .catch((err) => {
       const isTimeout = err.code === 'ECONNABORTED' && err.errno === 'ETIME';
