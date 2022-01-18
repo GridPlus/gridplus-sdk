@@ -3,6 +3,7 @@
   "version": "0.9.3",
   "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "commit": "git-cz",
     "lint": "eslint src",
     "lint:fix": "eslint --fix src test __tests__",
