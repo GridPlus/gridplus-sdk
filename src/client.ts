@@ -1,41 +1,37 @@
-const bitwise = require('bitwise');
-const superagent = require('superagent');
-const bitcoin = require('./bitcoin');
-const ethereum = require('./ethereum');
-const {
-  buildAddAbiPayload,
-  abiParsers,
-  MAX_ABI_DEFS,
-} = require('./ethereumAbi');
-const {
-  isValidAssetPath,
-  signReqResolver,
+import bitwise from 'bitwise';
+import { Buffer } from 'buffer/';
+import superagent from 'superagent';
+import bitcoin from './bitcoin';
+import {
+  ADDR_STR_LEN,
+  ASCII_REGEX,
+  BASE_URL,
+  decResLengths,
+  deviceCodes,
+  encReqCodes,
+  ENC_MSG_LEN,
+  getFwVersionConst,
+  messageConstants,
+  REQUEST_TYPE_BYTE,
+  responseCodes,
+  signingSchema,
+  VERSION_BYTE,
+} from './constants';
+import ethereum from './ethereum';
+import { abiParsers, buildAddAbiPayload, MAX_ABI_DEFS } from './ethereumAbi';
+import {
   aes256_decrypt,
   aes256_encrypt,
-  parseDER,
   checksum,
   ensureHexBuffer,
   getP256KeyPair,
   getP256KeyPairFromPub,
+  isValidAssetPath,
+  parseDER,
   parseLattice1Response,
+  signReqResolver,
   toPaddedDER,
-} = require('./util');
-const {
-  ASCII_REGEX,
-  getFwVersionConst,
-  ADDR_STR_LEN,
-  ENC_MSG_LEN,
-  decResLengths,
-  deviceCodes,
-  encReqCodes,
-  responseCodes,
-  REQUEST_TYPE_BYTE,
-  VERSION_BYTE,
-  messageConstants,
-  BASE_URL,
-  signingSchema,
-} = require('./constants');
-const Buffer = require('buffer/').Buffer;
+} from './util';
 const EMPTY_WALLET_UID = Buffer.alloc(32);
 
 class Client {

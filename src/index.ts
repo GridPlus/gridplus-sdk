@@ -1,4 +1,4 @@
-const Client = require('./src/client');
+import Client from './src/client';
 
 module.exports = {
   Client,

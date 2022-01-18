@@ -1,22 +1,22 @@
 // Static utility functions
-const { buildBitcoinTxRequest } = require('./bitcoin');
-const {
-  buildEthereumTxRequest,
-  buildEthereumMsgRequest,
-  ensureHexBuffer,
-} = require('./ethereum');
-const Buffer = require('buffer/').Buffer;
-const aes = require('aes-js');
-const crc32 = require('crc-32');
-const elliptic = require('elliptic');
-const {
+import aes from 'aes-js';
+import { Buffer as Buffer } from 'buffer/';
+import crc32 from 'crc-32';
+import elliptic from 'elliptic';
+import { buildBitcoinTxRequest } from './bitcoin';
+import {
   AES_IV,
   BIP_CONSTANTS,
   HARDENED_OFFSET,
   responseCodes,
   responseMsgs,
   VERSION_BYTE,
-} = require('./constants');
+} from './constants';
+import {
+  buildEthereumMsgRequest,
+  buildEthereumTxRequest,
+  ensureHexBuffer,
+} from './ethereum';
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
 const ec = new EC('p256');

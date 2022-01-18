@@ -392,9 +392,10 @@ function getFwVersionConst(v) {
 
   return c;
 }
+const ASCII_REGEX = /^[\x00-\x7F]+$/;
 
 module.exports = {
-  ASCII_REGEX: /^[\x00-\x7F]+$/,
+  ASCII_REGEX,
   getFwVersionConst,
   ADDR_STR_LEN,
   AES_IV,

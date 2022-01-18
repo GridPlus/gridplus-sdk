@@ -7,17 +7,19 @@
 //                which will get tiring to authorize manually. Feel free to run
 //                this with `AUTO_SIGN_DEV_ONLY=1` in Lattice firmware. We don't
 //                need to validate any screen logic with these tests.
+
+
 require('it-each')({ testPerIteration: true });
-const bip32 = require('bip32');
-const bip39 = require('bip39');
-const crypto = require('crypto');
-const ethutil = require('ethereumjs-util');
-const expect = require('chai').expect;
-const keccak256 = require('js-sha3').keccak256;
-const question = require('readline-sync').question;
-const seedrandom = require('seedrandom');
-const constants = require('./../src/constants');
-const helpers = require('./testUtil/helpers');
+import bip32 from 'bip32';
+import bip39 from 'bip39';
+import { expect as expect } from 'chai';
+import crypto from 'crypto';
+import ethutil from 'ethereumjs-util';
+import { keccak256 } from 'js-sha3';
+import { question } from 'readline-sync';
+import seedrandom from 'seedrandom';
+import constants from './../src/constants';
+import helpers from './testUtil/helpers';
 
 //---------
 // Constants

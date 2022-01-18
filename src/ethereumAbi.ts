@@ -1,6 +1,6 @@
-const Buffer = require('buffer/').Buffer;
-const keccak256 = require('js-sha3').keccak256;
-const { ETH_ABI_LATTICE_FW_TYPE_MAP } = require('./constants');
+import { Buffer } from 'buffer/';
+import { keccak256 } from 'js-sha3';
+import { ETH_ABI_LATTICE_FW_TYPE_MAP } from './constants';
 const NAME_MAX_SZ = 100;
 const HEADER_SZ = 5 + NAME_MAX_SZ; // 4 byte sig + name + 1 byte param count
 const CATEGORY_SZ = 32;

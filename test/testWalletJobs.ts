@@ -13,18 +13,18 @@
 // After you do the above, you can run this test with `env DEVICE_ID='<your_device_id>' npm run test-wallet-jobs`
 //
 // To run these tests you will need a dev Lattice with: `FEATURE_TEST_RUNNER=1`
-import ethjsBN from "bn.js";
-import bip32 from "bip32";
-import bip39 from "bip39";
-import crypto from "crypto";
-import { expect as expect } from "chai";
-import ethutil from "ethereumjs-util";
-import cli from "cli-interact";
-import rlp from "rlp";
-import constants from "./../src/constants";
-import seedrandom from "seedrandom";
-import { keccak256 as keccak256 } from "js-sha3";
-import helpers from "./testUtil/helpers";
+import bip32 from 'bip32';
+import bip39 from 'bip39';
+import ethjsBN from 'bn.js';
+import { expect as expect } from 'chai';
+import cli from 'cli-interact';
+import crypto from 'crypto';
+import ethutil from 'ethereumjs-util';
+import { keccak256 } from 'js-sha3';
+import rlp from 'rlp';
+import seedrandom from 'seedrandom';
+import constants from './../src/constants';
+import helpers from './testUtil/helpers';
 let client,
   currentWalletUID,
   jobType,

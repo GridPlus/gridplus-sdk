@@ -1,8 +1,8 @@
 // Basic tests for atomic SDK functionality
-const constants = require('./../src/constants');
-const expect = require('chai').expect;
-const question = require('readline-sync').question;
-const helpers = require('./testUtil/helpers');
+import constants from './../src/constants';
+import { expect as expect } from 'chai';
+import { question as question } from 'readline-sync';
+import helpers from './testUtil/helpers';
 const HARDENED_OFFSET = constants.HARDENED_OFFSET;
 let client, id;
 let caughtErr = false;

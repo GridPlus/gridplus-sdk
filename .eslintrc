@@ -50,6 +50,8 @@
     "quotes": [
       "error", "single"
     ],
-    "react/react-in-jsx-scope": "off"
+    "no-control-regex": "off",
+    "react/react-in-jsx-scope": "off",
+    "@typescript-eslint/no-var-requires": "off"
   }
 }

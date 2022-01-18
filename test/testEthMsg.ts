@@ -15,12 +15,12 @@
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)
 require('it-each')({ testPerIteration: true });
-const randomWords = require('random-words');
-const crypto = require('crypto');
-const constants = require('./../src/constants');
-const expect = require('chai').expect;
-const helpers = require('./testUtil/helpers');
-const seedrandom = require('seedrandom');
+import { expect } from 'chai';
+import crypto from 'crypto';
+import randomWords from 'random-words';
+import seedrandom from 'seedrandom';
+import constants from './../src/constants';
+import helpers from './testUtil/helpers';
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
 const HARDENED_OFFSET = constants.HARDENED_OFFSET;
 let client = null;

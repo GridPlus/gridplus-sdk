@@ -1,13 +1,13 @@
 // Utils for Ethereum transactions. This is effecitvely a shim of ethereumjs-util, which
 // does not have browser (or, by proxy, React-Native) support.
-const BN = require('bignumber.js');
-const Buffer = require('buffer/').Buffer;
-const cbor = require('borc');
-const constants = require('./constants');
-const eip712 = require('eth-eip712-util').TypedDataUtils;
-const keccak256 = require('js-sha3').keccak256;
-const rlp = require('rlp-browser');
-const secp256k1 = require('secp256k1');
+import BN from 'bignumber.js';
+import cbor from 'borc';
+import { Buffer } from 'buffer/';
+import { TypedDataUtils as eip712 } from 'eth-eip712-util';
+import { keccak256 } from 'js-sha3';
+import rlp from 'rlp-browser';
+import secp256k1 from 'secp256k1';
+import constants from './constants';
 
 exports.buildEthereumMsgRequest = function (input) {
   if (!input.payload || !input.protocol || !input.signerPath)

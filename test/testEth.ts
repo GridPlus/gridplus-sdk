@@ -14,14 +14,16 @@
 //
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)
+
+
 require('it-each')({ testPerIteration: true });
-const BN = require('bignumber.js');
-const crypto = require('crypto');
-const EthTx = require('@ethersproject/transactions');
-const constants = require('./../src/constants');
-const expect = require('chai').expect;
-const helpers = require('./testUtil/helpers');
-const seedrandom = require('seedrandom');
+import EthTx from '@ethersproject/transactions';
+import BN from 'bignumber.js';
+import { expect as expect } from 'chai';
+import crypto from 'crypto';
+import seedrandom from 'seedrandom';
+import constants from './../src/constants';
+import helpers from './testUtil/helpers';
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
 const HARDENED_OFFSET = constants.HARDENED_OFFSET;
 let client = null;
@@ -306,6 +308,7 @@ if (!process.env.skip) {
         false,
         'Error found in prior test. Aborting.'
       );
+      //eslint-disable-line
       setTimeout(() => {}, 5000);
     });
 

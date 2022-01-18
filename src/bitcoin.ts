@@ -1,11 +1,10 @@
 // Util for Bitcoin-specific functionality
-const bech32 = require('bech32').bech32;
-const bs58check = require('bs58check');
-const Buffer = require('buffer/').Buffer;
-const constants = require('./constants');
+import { bech32 } from 'bech32';
+import bs58check from 'bs58check';
+import { Buffer } from 'buffer/';
+import constants, { BIP_CONSTANTS } from './constants';
 const DEFAULT_SEQUENCE = 0xffffffff;
 const DEFAULT_SIGHASH_BUFFER = Buffer.from('01', 'hex'); // SIGHASH_ALL = 0x01
-const { BIP_CONSTANTS } = require('./constants');
 const { PURPOSES, COINS } = BIP_CONSTANTS;
 const OP = {
   ZERO: 0x00,

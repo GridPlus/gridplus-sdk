@@ -1,14 +1,14 @@
-const bip32 = require('bip32');
-const bip39 = require('bip39');
-const bitcoin = require('bitcoinjs-lib');
-const crypto = require('crypto');
-const expect = require('chai').expect;
-const ethutil = require('ethereumjs-util');
-const Sdk = require('../../src/index.ts');
-const constants = require('../../src/constants');
-const util = require('../../src/util');
+import bip32 from 'bip32';
+import bip39 from 'bip39';
+import bitcoin from 'bitcoinjs-lib';
+import crypto from 'crypto';
+import { expect as expect } from 'chai';
+import ethutil from 'ethereumjs-util';
+import Sdk from '../../src/index.ts';
+import constants from '../../src/constants';
+import util from '../../src/util';
 const SIGHASH_ALL = 0x01;
-const EC = require('elliptic').ec;
+import { ec as EC } from 'elliptic';
 const ec = new EC('secp256k1');
 
 // NOTE: We use the HARDEN(49) purpose for p2sh(p2wpkh) address derivations.

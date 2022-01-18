@@ -1,14 +1,14 @@
 require('it-each')({ testPerIteration: true });
-const _ = require('lodash');
-const constants = require('./../src/constants');
-const abi = require('./../src/ethereumAbi');
-const randomWords = require('random-words');
-const crypto = require('crypto');
-const ethersAbi = require('@ethersproject/abi');
-const expect = require('chai').expect;
-const helpers = require('./testUtil/helpers');
-const question = require('readline-sync').question;
-const seedrandom = require('seedrandom');
+import ethersAbi from '@ethersproject/abi';
+import { expect as expect } from 'chai';
+import crypto from 'crypto';
+import _ from 'lodash';
+import randomWords from 'random-words';
+import { question as question } from 'readline-sync';
+import seedrandom from 'seedrandom';
+import constants from './../src/constants';
+import abi from './../src/ethereumAbi';
+import helpers from './testUtil/helpers';
 
 const encoder = new ethersAbi.AbiCoder();
 const numIter = process.env.N || 10;
@@ -724,7 +724,7 @@ describe('Add ABI definitions', () => {
   });
 
   it('Should test parsing of a 0x V2 ABI via Etherscan', async () => {
-    const funcDef = require('./testUtil/etherscanABI_0xV2.json');
+    import funcDef from './testUtil/etherscanABI_0xV2.json';
     const newDefs = abi.abiParsers.etherscan([funcDef]);
     defsToLoad = defsToLoad.concat(newDefs);
   });
