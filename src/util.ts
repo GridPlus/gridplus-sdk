@@ -10,12 +10,12 @@ import {
   HARDENED_OFFSET,
   responseCodes,
   responseMsgs,
-  VERSION_BYTE,
+  VERSION_BYTE
 } from './constants';
 import {
   buildEthereumMsgRequest,
   buildEthereumTxRequest,
-  ensureHexBuffer,
+  ensureHexBuffer
 } from './ethereum';
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
@@ -180,7 +180,7 @@ function getP256KeyPairFromPub(pub) {
   return ec.keyFromPublic(pub, 'hex');
 }
 
-module.exports = {
+export {
   isValidAssetPath,
   ensureHexBuffer,
   signReqResolver,

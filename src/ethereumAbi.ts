@@ -6,13 +6,12 @@ const HEADER_SZ = 5 + NAME_MAX_SZ; // 4 byte sig + name + 1 byte param count
 const CATEGORY_SZ = 32;
 const PARAM_SZ = 26; // 20 byte name + 6 byte def
 const MAX_PARAMS = 18;
-const MAX_ABI_DEFS = 2;
-exports.MAX_ABI_DEFS = MAX_ABI_DEFS;
+export const MAX_ABI_DEFS = 2;
 
 // Build a request to add ABI data
-exports.buildAddAbiPayload = function (defs) {
+export const buildAddAbiPayload = function (defs) {
   if (!defs || !Array.isArray(defs)) throw new Error('Missing definitions.');
-  if (defs.length > exports.MAX_ABI_DEFS)
+  if (defs.length > MAX_ABI_DEFS)
     throw new Error(
       `You may only add ${MAX_ABI_DEFS} ABI definitions per request.`
     );
@@ -102,7 +101,7 @@ exports.buildAddAbiPayload = function (defs) {
 };
 
 // Get the 4-byte function identifier based on the canonical name
-exports.getFuncSig = function (f) {
+export const getFuncSig = function (f) {
   // Canonical name is:
   // funcName(paramType0, ..., paramTypeN)
   let canonicalName = `${f.name}(`;
@@ -141,7 +140,7 @@ function parseEtherscanAbiDefs(_defs, skipErrors = false) {
       d.constant !== true
     ) {
       try {
-        const sig = exports.getFuncSig(d);
+        const sig = getFuncSig(d);
         const params = parseEtherscanAbiInputs(d.inputs);
         defs.push({
           name: d.name,
@@ -158,7 +157,7 @@ function parseEtherscanAbiDefs(_defs, skipErrors = false) {
   return defs;
 }
 
-exports.abiParsers = {
+export const abiParsers = {
   etherscan: parseEtherscanAbiDefs,
 };
 

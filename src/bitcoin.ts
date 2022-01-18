@@ -2,7 +2,7 @@
 import { bech32 } from 'bech32';
 import bs58check from 'bs58check';
 import { Buffer } from 'buffer/';
-import constants, { BIP_CONSTANTS } from './constants';
+import { BIP_CONSTANTS } from './constants';
 const DEFAULT_SEQUENCE = 0xffffffff;
 const DEFAULT_SIGHASH_BUFFER = Buffer.from('01', 'hex'); // SIGHASH_ALL = 0x01
 const { PURPOSES, COINS } = BIP_CONSTANTS;
@@ -47,7 +47,7 @@ const BTC_SCRIPT_TYPE_P2WPKH_V0 = 0x04;
 //              already based on the number of inputs plus two outputs
 // `version`:   Transaction version of the inputs. All inputs must be of the same version!
 // `isSegwit`: a boolean which determines how we serialize the data and parameterize txb
-exports.buildBitcoinTxRequest = function (data) {
+const buildBitcoinTxRequest = function (data) {
   try {
     const { prevOuts, recipient, value, changePath, fee } = data;
     if (!changePath) throw new Error('No changePath provided.');
@@ -131,7 +131,7 @@ exports.buildBitcoinTxRequest = function (data) {
 // -- isSegwitSpend = true if the inputs are being spent using segwit
 //                    (NOTE: either ALL are being spent, or none are)
 // -- lockTime = Will probably always be 0
-exports.serializeTx = function (data) {
+const serializeTx = function (data) {
   const { inputs, outputs, lockTime = 0, crypto } = data;
   let payload = Buffer.alloc(4);
   let off = 0;
@@ -214,7 +214,7 @@ exports.serializeTx = function (data) {
 };
 
 // Convert a pubkeyhash to a bitcoin base58check address with a version byte
-exports.getBitcoinAddress = function (pubkeyhash, version) {
+const getBitcoinAddress = function (pubkeyhash, version) {
   let bech32Prefix = null;
   let bech32Version = null;
   if (version === FMT_SEGWIT_NATIVE_V0) {
@@ -237,7 +237,7 @@ exports.getBitcoinAddress = function (pubkeyhash, version) {
 
 // Builder utils
 //-----------------------
-function buildRedeemScript(pubkey, crypto) {
+function buildRedeemScript (pubkey, crypto) {
   const redeemScript = Buffer.alloc(22);
   const shaHash = crypto.createHash('sha256').update(pubkey).digest();
   const pubkeyhash = crypto.createHash('rmd160').update(shaHash).digest();
@@ -248,7 +248,7 @@ function buildRedeemScript(pubkey, crypto) {
 }
 
 // Var slice of signature + var slice of pubkey
-function buildSig(sig, pubkey) {
+function buildSig (sig, pubkey) {
   sig = Buffer.concat([sig, DEFAULT_SIGHASH_BUFFER]);
   const sigLen = getVarInt(sig.length);
   const pubkeyLen = getVarInt(pubkey.length);
@@ -259,7 +259,7 @@ function buildSig(sig, pubkey) {
 
 // Witness is written as a "vector", which is a list of varSlices
 // prefixed by the number of items
-function buildWitness(sigs, pubkeys) {
+function buildWitness (sigs, pubkeys) {
   let witness = Buffer.alloc(0);
   // Two items in each vector (sig, pubkey)
   const len = Buffer.alloc(1);
@@ -276,7 +276,7 @@ function buildWitness(sigs, pubkeys) {
 
 // Locking script buiders
 //-----------------------
-function buildLockingScript(address) {
+function buildLockingScript (address) {
   const dec = decodeAddress(address);
   switch (dec.versionByte) {
     case FMT_SEGWIT_NATIVE_V0:
@@ -295,7 +295,7 @@ function buildLockingScript(address) {
   }
 }
 
-function buildP2pkhLockingScript(pubkeyhash) {
+function buildP2pkhLockingScript (pubkeyhash) {
   const out = Buffer.alloc(5 + pubkeyhash.length);
   let off = 0;
   out.writeUInt8(OP.DUP, off);
@@ -313,7 +313,7 @@ function buildP2pkhLockingScript(pubkeyhash) {
   return out;
 }
 
-function buildP2shLockingScript(pubkeyhash) {
+function buildP2shLockingScript (pubkeyhash) {
   const out = Buffer.alloc(3 + pubkeyhash.length);
   let off = 0;
   out.writeUInt8(OP.HASH160, off);
@@ -327,7 +327,7 @@ function buildP2shLockingScript(pubkeyhash) {
   return out;
 }
 
-function buildP2wpkhLockingScript(pubkeyhash) {
+function buildP2wpkhLockingScript (pubkeyhash) {
   const out = Buffer.alloc(2 + pubkeyhash.length);
   out.writeUInt8(OP.ZERO, 0);
   out.writeUInt8(pubkeyhash.length, 1);
@@ -337,23 +337,23 @@ function buildP2wpkhLockingScript(pubkeyhash) {
 
 // Static Utils
 //----------------------
-function concat(base, addition) {
+function concat (base, addition) {
   return Buffer.concat([base, addition]);
 }
 
-function getU64LE(x) {
+function getU64LE (x) {
   const buffer = Buffer.alloc(8);
   writeUInt64LE(x, buffer, 0);
   return buffer;
 }
 
-function getU32LE(x) {
+function getU32LE (x) {
   const buffer = Buffer.alloc(4);
   buffer.writeUInt32LE(x);
   return buffer;
 }
 
-function getVarInt(x) {
+function getVarInt (x) {
   let buffer;
   if (x < 0xfd) {
     buffer = Buffer.alloc(1);
@@ -375,7 +375,7 @@ function getVarInt(x) {
   return buffer;
 }
 
-function writeUInt64LE(n, buf, off) {
+function writeUInt64LE (n, buf, off) {
   if (typeof n === 'number') n = n.toString(16);
   const preBuf = Buffer.alloc(8);
   const nStr = n.length % 2 === 0 ? n.toString(16) : `0${n.toString(16)}`;
@@ -385,7 +385,7 @@ function writeUInt64LE(n, buf, off) {
   return preBuf;
 }
 
-function decodeAddress(address) {
+function decodeAddress (address) {
   let versionByte, pkh;
   try {
     versionByte = bs58check.decode(address)[0];
@@ -413,7 +413,7 @@ function decodeAddress(address) {
 
 // Determine the address format (a.k.a. "version") depending on the
 // purpose of the dervation path.
-function getAddressFormat(path) {
+function getAddressFormat (path) {
   if (path.length < 2) throw new Error('Path must be >1 index');
   const purpose = path[0];
   const coin = path[1];
@@ -438,13 +438,12 @@ function getAddressFormat(path) {
     );
   }
 }
-exports.getAddressFormat = getAddressFormat;
 
 // Determine the script type for an input based on its owner's derivation
 // path's `purpose` index.
 // We do not support p2sh and only issue single-key addresses from the Lattice
 // so we can determine this based on path alone.
-function getScriptType(input) {
+function getScriptType (input) {
   switch (input.signerPath[0]) {
     case PURPOSES.BTC_LEGACY:
       return BTC_SCRIPT_TYPE_P2PKH;
@@ -462,7 +461,7 @@ function getScriptType(input) {
 // Determine if a a transaction should have a witness portion.
 // This will return true if any input is p2sh(p2wpkh) or p2wpkh.
 // We determine the script type based on the derivation path.
-function needsWitness(inputs) {
+function needsWitness (inputs) {
   let w = false;
   inputs.forEach((input) => {
     if (
@@ -473,4 +472,11 @@ function needsWitness(inputs) {
     }
   });
   return w;
+}
+
+export default {
+  buildBitcoinTxRequest,
+  serializeTx,
+  getBitcoinAddress,
+  getAddressFormat,
 }

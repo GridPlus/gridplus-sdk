@@ -1,27 +1,26 @@
 import bip32 from 'bip32';
 import bip39 from 'bip39';
 import bitcoin from 'bitcoinjs-lib';
-import crypto from 'crypto';
 import { expect as expect } from 'chai';
+import crypto from 'crypto';
+import { ec as EC } from 'elliptic';
 import ethutil from 'ethereumjs-util';
+import { ADDR_STR_LEN, BIP_CONSTANTS, ethMsgProtocol, HARDENED_OFFSET } from '../../src/constants';
 import Sdk from '../../src/index.ts';
-import constants from '../../src/constants';
 import util from '../../src/util';
 const SIGHASH_ALL = 0x01;
-import { ec as EC } from 'elliptic';
 const ec = new EC('secp256k1');
 
 // NOTE: We use the HARDEN(49) purpose for p2sh(p2wpkh) address derivations.
 //       For p2pkh-derived addresses, we use the legacy 44' purpose
 //       For p2wpkh-derived addresse (not yet supported) we will use 84'
-exports.HARDENED_OFFSET = constants.HARDENED_OFFSET;
-exports.BTC_PURPOSE_P2WPKH = constants.BIP_CONSTANTS.PURPOSES.BTC_SEGWIT;
-exports.BTC_PURPOSE_P2SH_P2WPKH =
-  constants.BIP_CONSTANTS.PURPOSES.BTC_WRAPPED_SEGWIT;
-exports.BTC_PURPOSE_P2PKH = constants.BIP_CONSTANTS.PURPOSES.BTC_LEGACY;
-exports.BTC_COIN = constants.BIP_CONSTANTS.COINS.BTC;
-exports.BTC_TESTNET_COIN = constants.BIP_CONSTANTS.COINS.BTC_TESTNET;
-exports.ETH_COIN = constants.BIP_CONSTANTS.COINS.ETH;
+export const BTC_PURPOSE_P2WPKH = BIP_CONSTANTS.PURPOSES.BTC_SEGWIT;
+export const BTC_PURPOSE_P2SH_P2WPKH =
+  BIP_CONSTANTS.PURPOSES.BTC_WRAPPED_SEGWIT;
+export const BTC_PURPOSE_P2PKH = BIP_CONSTANTS.PURPOSES.BTC_LEGACY;
+export const BTC_COIN = BIP_CONSTANTS.COINS.BTC;
+export const BTC_TESTNET_COIN = BIP_CONSTANTS.COINS.BTC_TESTNET;
+export const ETH_COIN = BIP_CONSTANTS.COINS.ETH;
 
 function setupTestClient(env) {
   const setup = {
@@ -74,7 +73,7 @@ function execute(client, func, opts) {
 }
 
 const unharden = (x) => {
-  return x >= constants.HARDENED_OFFSET ? x - constants.HARDENED_OFFSET : x;
+  return x >= HARDENED_OFFSET ? x - HARDENED_OFFSET : x;
 };
 
 const buildPath = (purpose, currencyIdx, signerIdx, change = 0) => {
@@ -93,13 +92,13 @@ function _getSumInputs(inputs) {
 
 function _get_btc_addr(pubkey, purpose, network) {
   let obj;
-  if (purpose === exports.BTC_PURPOSE_P2SH_P2WPKH) {
+  if (purpose === BTC_PURPOSE_P2SH_P2WPKH) {
     // Wrapped segwit requires p2sh wrapping
     obj = bitcoin.payments.p2sh({
       redeem: bitcoin.payments.p2wpkh({ pubkey, network }),
       network,
     });
-  } else if (purpose === exports.BTC_PURPOSE_P2WPKH) {
+  } else if (purpose === BTC_PURPOSE_P2WPKH) {
     obj = bitcoin.payments.p2wpkh({ pubkey, network });
   } else {
     // Native segwit and legacy addresses are treated teh same
@@ -123,7 +122,7 @@ function _start_tx_builder(
   const changeValue = inputSum - value - fee;
   if (changeValue > 0) {
     const networkIdx = network === bitcoin.networks.testnet ? 1 : 0;
-    const path = buildPath(purpose, exports.harden(networkIdx), 0, 1);
+    const path = buildPath(purpose, export const harden(networkIdx), 0, 1);
     const btc_0_change = wallet.derivePath(path);
     const btc_0_change_pub = bitcoin.ECPair.fromPublicKey(
       btc_0_change.publicKey
@@ -136,12 +135,12 @@ function _start_tx_builder(
   inputs.forEach((input) => {
     let scriptSig = null;
     // here we use `i` as the index of the input. This value is arbitrary, but needs to be consistent
-    if (purpose === exports.BTC_PURPOSE_P2WPKH) {
+    if (purpose === BTC_PURPOSE_P2WPKH) {
       // For native segwit we need to add a scriptSig to the input
       const coin =
         network === bitcoin.networks.testnet
-          ? exports.BTC_TESTNET_COIN
-          : exports.BTC_COIN;
+          ? BTC_TESTNET_COIN
+          : BTC_COIN;
       const path = buildPath(purpose, coin, input.signerIdx);
       const keyPair = wallet.derivePath(path);
       const p2wpkh = bitcoin.payments.p2wpkh({
@@ -158,7 +157,7 @@ function _start_tx_builder(
 function _build_sighashes(txb, purpose) {
   const hashes = [];
   txb.__inputs.forEach((input, i) => {
-    if (purpose === exports.BTC_PURPOSE_P2PKH) {
+    if (purpose === BTC_PURPOSE_P2PKH) {
       hashes.push(txb.__tx.hashForSignature(i, input.signScript, SIGHASH_ALL));
     } else {
       hashes.push(
@@ -178,7 +177,7 @@ function _get_reference_sighashes(
   isTestnet,
   purpose
 ) {
-  const coin = isTestnet ? exports.BTC_TESTNET_COIN : exports.BTC_COIN;
+  const coin = isTestnet ? BTC_TESTNET_COIN : BTC_COIN;
   const network = isTestnet
     ? bitcoin.networks.testnet
     : bitcoin.networks.mainnet;
@@ -195,7 +194,7 @@ function _get_reference_sighashes(
     const path = buildPath(purpose, coin, input.signerIdx);
     const keyPair = wallet.derivePath(path);
     const priv = bitcoin.ECPair.fromPrivateKey(keyPair.privateKey, { network });
-    if (purpose === exports.BTC_PURPOSE_P2SH_P2WPKH) {
+    if (purpose === BTC_PURPOSE_P2SH_P2WPKH) {
       const p2wpkh = bitcoin.payments.p2wpkh({
         pubkey: keyPair.publicKey,
         network,
@@ -205,7 +204,7 @@ function _get_reference_sighashes(
         network,
       });
       txb.sign(i, priv, p2sh.redeem.output, null, input.value);
-    } else if (purpose === exports.BTC_PURPOSE_P2WPKH) {
+    } else if (purpose === BTC_PURPOSE_P2WPKH) {
       txb.sign(i, priv, null, null, input.value);
     } else {
       // Legacy
@@ -223,13 +222,13 @@ function _btc_tx_request_builder(
   isTestnet,
   purpose
 ) {
-  const currencyIdx = isTestnet ? exports.BTC_TESTNET_COIN : exports.BTC_COIN;
+  const currencyIdx = isTestnet ? BTC_TESTNET_COIN : BTC_COIN;
   const txData = {
     prevOuts: [],
     recipient,
     value,
     fee,
-    changePath: [purpose, currencyIdx, constants.HARDENED_OFFSET, 1, 0],
+    changePath: [purpose, currencyIdx, HARDENED_OFFSET, 1, 0],
   };
   inputs.forEach((input) => {
     txData.prevOuts.push({
@@ -239,7 +238,7 @@ function _btc_tx_request_builder(
       signerPath: [
         purpose,
         currencyIdx,
-        constants.HARDENED_OFFSET,
+        HARDENED_OFFSET,
         0,
         input.signerIdx,
       ],
@@ -322,15 +321,10 @@ function setup_btc_sig_test(opts, wallet, inputs, rand) {
   };
 }
 
-exports.harden = (x) => {
-  return x + constants.HARDENED_OFFSET;
+export const harden = (x) => {
+  return x + HARDENED_OFFSET;
 };
-exports.setupTestClient = setupTestClient;
-exports.connect = connect;
-exports.pair = pair;
-exports.execute = execute;
-exports.stripDER = stripDER;
-exports.setup_btc_sig_test = setup_btc_sig_test;
+
 
 //============================================================
 // Wallet Job integration test helpers
@@ -340,14 +334,14 @@ exports.setup_btc_sig_test = setup_btc_sig_test;
 //---------------------------------------------------
 // Relevant test harness constants
 //---------------------------------------------------
-exports.jobTypes = {
+export const jobTypes = {
   WALLET_JOB_GET_ADDRESSES: 1,
   WALLET_JOB_SIGN_TX: 2,
   WALLET_JOB_LOAD_SEED: 3,
   WALLET_JOB_EXPORT_SEED: 4,
   WALLET_JOB_DELETE_SEED: 5,
 };
-exports.gpErrors = {
+export const gpErrors = {
   GP_SUCCESS: 0x00,
   GP_EINVAL: 0xffffffff + 1 - 22, // (4294967061)
   GP_ENODATA: 0xffffffff + 1 - 61, // (4294967100)
@@ -361,15 +355,15 @@ exports.gpErrors = {
 //---------------------------------------------------
 // General helpers
 //---------------------------------------------------
-exports.getCodeMsg = function (code, expected) {
+export const getCodeMsg = function (code, expected) {
   if (code !== expected) {
     let codeTxt = code,
       expectedTxt = expected;
-    Object.keys(exports.gpErrors).forEach((key) => {
-      if (code === exports.gpErrors[key]) {
+    Object.keys(gpErrors).forEach((key) => {
+      if (code === gpErrors[key]) {
         codeTxt = key;
       }
-      if (expected === exports.gpErrors[key]) {
+      if (expected === gpErrors[key]) {
         expectedTxt = key;
       }
     });
@@ -378,7 +372,7 @@ exports.getCodeMsg = function (code, expected) {
   return '';
 };
 
-exports.parseWalletJobResp = function (res, v) {
+export const parseWalletJobResp = function (res, v) {
   const jobRes = {
     resultStatus: null,
     result: null,
@@ -397,23 +391,23 @@ exports.parseWalletJobResp = function (res, v) {
   return jobRes;
 };
 
-exports.serializeJobData = function (job, walletUID, data) {
+export const serializeJobData = function (job, walletUID, data) {
   let serData;
   switch (job) {
-    case exports.jobTypes.WALLET_JOB_GET_ADDRESSES:
-      serData = exports.serializeGetAddressesJobData(data);
+    case jobTypes.WALLET_JOB_GET_ADDRESSES:
+      serData = serializeGetAddressesJobData(data);
       break;
-    case exports.jobTypes.WALLET_JOB_SIGN_TX:
-      serData = exports.serializeSignTxJobData(data);
+    case jobTypes.WALLET_JOB_SIGN_TX:
+      serData = serializeSignTxJobData(data);
       break;
-    case exports.jobTypes.WALLET_JOB_EXPORT_SEED:
-      serData = exports.serializeExportSeedJobData(data);
+    case jobTypes.WALLET_JOB_EXPORT_SEED:
+      serData = serializeExportSeedJobData(data);
       break;
-    case exports.jobTypes.WALLET_JOB_DELETE_SEED:
-      serData = exports.serializeDeleteSeedJobData(data);
+    case jobTypes.WALLET_JOB_DELETE_SEED:
+      serData = serializeDeleteSeedJobData(data);
       break;
-    case exports.jobTypes.WALLET_JOB_LOAD_SEED:
-      serData = exports.serializeLoadSeedJobData(data);
+    case jobTypes.WALLET_JOB_LOAD_SEED:
+      serData = serializeLoadSeedJobData(data);
       break;
     default:
       throw new Error('Unsupported job type');
@@ -438,17 +432,17 @@ exports.serializeJobData = function (job, walletUID, data) {
 };
 
 // First byte of the result data is the error code
-exports.jobResErrCode = function (res) {
+export const jobResErrCode = function (res) {
   return res.result.readUInt32LE(0);
 };
 
 // Have to do this weird copy because `Buffer`s from the client are not real buffers
 // which is a vestige of requiring support on react native
-exports.copyBuffer = (x) => {
+export const copyBuffer = (x) => {
   return Buffer.from(x.toString('hex'), 'hex');
 };
 
-exports.getPubStr = (key) => {
+export const getPubStr = (key) => {
   const _pub = key.getPublic();
   const pub = Buffer.alloc(65);
   pub.writeUInt8(0x04, 0);
@@ -458,10 +452,10 @@ exports.getPubStr = (key) => {
 };
 
 // Convert a set of indices to a human readable bip32 path
-exports.stringifyPath = (parent) => {
+export const stringifyPath = (parent) => {
   const convert = (parent) => {
-    return parent >= constants.HARDENED_OFFSET
-      ? `${parent - constants.HARDENED_OFFSET}'`
+    return parent >= HARDENED_OFFSET
+      ? `${parent - HARDENED_OFFSET}'`
       : `${parent}`;
   };
   let d = parent.pathDepth;
@@ -495,7 +489,7 @@ exports.stringifyPath = (parent) => {
 //---------------------------------------------------
 // Get Addresses helpers
 //---------------------------------------------------
-exports.serializeGetAddressesJobData = function (data) {
+export const serializeGetAddressesJobData = function (data) {
   const req = Buffer.alloc(33);
   let off = 0;
   req.writeUInt32LE(data.parent.pathDepth, off);
@@ -519,7 +513,7 @@ exports.serializeGetAddressesJobData = function (data) {
   return req;
 };
 
-exports.deserializeGetAddressesJobResult = function (res) {
+export const deserializeGetAddressesJobResult = function (res) {
   let off = 0;
   const getAddrResult = {
     count: null,
@@ -528,8 +522,8 @@ exports.deserializeGetAddressesJobResult = function (res) {
   getAddrResult.count = res.readUInt32LE(off);
   off += 4;
   for (let i = 0; i < getAddrResult.count; i++) {
-    const _addr = res.slice(off, off + constants.ADDR_STR_LEN);
-    off += constants.ADDR_STR_LEN;
+    const _addr = res.slice(off, off + ADDR_STR_LEN);
+    off += ADDR_STR_LEN;
     for (let j = 0; j < _addr.length; j++)
       if (_addr[j] === 0x00) {
         getAddrResult.addresses.push(_addr.slice(0, j).toString('utf8'));
@@ -539,7 +533,7 @@ exports.deserializeGetAddressesJobResult = function (res) {
   return getAddrResult;
 };
 
-exports.validateBTCAddresses = function (resp, jobData, seed, useTestnet) {
+export const validateBTCAddresses = function (resp, jobData, seed, useTestnet) {
   expect(resp.count).to.equal(jobData.count);
   const wallet = bip32.fromSeed(seed);
   const path = JSON.parse(JSON.stringify(jobData.parent));
@@ -550,12 +544,12 @@ exports.validateBTCAddresses = function (resp, jobData, seed, useTestnet) {
     path.addr = i;
     // Validate the address
     const purpose = jobData.parent.purpose;
-    const pubkey = wallet.derivePath(exports.stringifyPath(path)).publicKey;
+    const pubkey = wallet.derivePath(stringifyPath(path)).publicKey;
     let address;
-    if (purpose === exports.BTC_PURPOSE_P2WPKH) {
+    if (purpose === BTC_PURPOSE_P2WPKH) {
       // Bech32
       address = bitcoin.payments.p2wpkh({ pubkey, network }).address;
-    } else if (purpose === exports.BTC_PURPOSE_P2SH_P2WPKH) {
+    } else if (purpose === BTC_PURPOSE_P2SH_P2WPKH) {
       // Wrapped segwit
       address = bitcoin.payments.p2sh({
         redeem: bitcoin.payments.p2wpkh({ pubkey, network }),
@@ -569,7 +563,7 @@ exports.validateBTCAddresses = function (resp, jobData, seed, useTestnet) {
   }
 };
 
-exports.validateETHAddresses = function (resp, jobData, seed) {
+export const validateETHAddresses = function (resp, jobData, seed) {
   expect(resp.count).to.equal(jobData.count);
   // Confirm it is an Ethereum address
   expect(resp.addresses[0].slice(0, 2)).to.equal('0x');
@@ -580,7 +574,7 @@ exports.validateETHAddresses = function (resp, jobData, seed) {
   path.pathDepth = jobData.parent.pathDepth + 1;
   for (let i = jobData.first; i < jobData.first + jobData.count; i++) {
     path.addr = i;
-    const priv = wallet.derivePath(exports.stringifyPath(path)).privateKey;
+    const priv = wallet.derivePath(stringifyPath(path)).privateKey;
     const addr = `0x${ethutil.privateToAddress(priv).toString('hex')}`;
     expect(addr).to.equal(resp.addresses[i - jobData.first]);
   }
@@ -589,7 +583,7 @@ exports.validateETHAddresses = function (resp, jobData, seed) {
 //---------------------------------------------------
 // Sign Transaction helpers
 //---------------------------------------------------
-exports.serializeSignTxJobData = function (data) {
+export const serializeSignTxJobData = function (data) {
   const n = data.sigReq.length;
   const req = Buffer.alloc(4 + 56 * n);
   let off = 0;
@@ -615,7 +609,7 @@ exports.serializeSignTxJobData = function (data) {
   return req;
 };
 
-exports.deserializeSignTxJobResult = function (res) {
+export const deserializeSignTxJobResult = function (res) {
   let off = 0;
   const getTxResult = {
     numOutputs: null,
@@ -673,7 +667,7 @@ exports.deserializeSignTxJobResult = function (res) {
   return getTxResult;
 };
 
-exports.ensureHexBuffer = function (x) {
+export const ensureHexBuffer = function (x) {
   if (x === null || x === 0) return Buffer.alloc(0);
   else if (Buffer.isBuffer(x)) x = x.toString('hex');
   if (typeof x === 'number') x = `${x.toString(16)}`;
@@ -685,18 +679,18 @@ exports.ensureHexBuffer = function (x) {
 //---------------------------------------------------
 // Export Seed helpers
 //---------------------------------------------------
-exports.serializeExportSeedJobData = function () {
+export const serializeExportSeedJobData = function () {
   return Buffer.alloc(0);
 };
 
-exports.deserializeExportSeedJobResult = function (res) {
+export const deserializeExportSeedJobResult = function (res) {
   return { seed: res.slice(0, 64) };
 };
 
 //---------------------------------------------------
 // Delete Seed helpers
 //---------------------------------------------------
-exports.serializeDeleteSeedJobData = function (data) {
+export const serializeDeleteSeedJobData = function (data) {
   const req = Buffer.alloc(1);
   req.writeUInt8(data.iface, 0);
   return req;
@@ -705,7 +699,7 @@ exports.serializeDeleteSeedJobData = function (data) {
 //---------------------------------------------------
 // Load Seed helpers
 //---------------------------------------------------
-exports.serializeLoadSeedJobData = function (data) {
+export const serializeLoadSeedJobData = function (data) {
   const req = Buffer.alloc(66);
   req.writeUInt8(data.iface, 0);
   data.seed.copy(req, 1);
@@ -716,7 +710,7 @@ exports.serializeLoadSeedJobData = function (data) {
 //---------------------------------------------------
 // Struct builders
 //---------------------------------------------------
-exports.buildRandomEip712Object = function (randInt) {
+export const buildRandomEip712Object = function (randInt) {
   function randStr(n) {
     const words = bip39.wordlists.english;
     let s = '';
@@ -733,7 +727,7 @@ exports.buildRandomEip712Object = function (randInt) {
   }
   function getRandomEIP712Type(customTypes = []) {
     const types = Object.keys(customTypes).concat(
-      Object.keys(constants.ethMsgProtocol.TYPED_DATA.typeCodes)
+      Object.keys(ethMsgProtocol.TYPED_DATA.typeCodes)
     );
     return {
       name: getRandomName(),

@@ -15,7 +15,7 @@ import {
   REQUEST_TYPE_BYTE,
   responseCodes,
   signingSchema,
-  VERSION_BYTE,
+  VERSION_BYTE
 } from './constants';
 import ethereum from './ethereum';
 import { abiParsers, buildAddAbiPayload, MAX_ABI_DEFS } from './ethereumAbi';
@@ -30,11 +30,11 @@ import {
   parseDER,
   parseLattice1Response,
   signReqResolver,
-  toPaddedDER,
+  toPaddedDER
 } from './util';
-const EMPTY_WALLET_UID = Buffer.alloc(32);
 
-class Client {
+const EMPTY_WALLET_UID = Buffer.alloc(32);
+export class Client {
   constructor({ baseUrl, crypto, name, privKey, timeout, retryCount } = {}) {
     // Definitions
     // if (!baseUrl) throw new Error('baseUrl is required');
@@ -1110,4 +1110,3 @@ class Client {
   }
 }
 
-module.exports = Client;

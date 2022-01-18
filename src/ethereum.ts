@@ -7,9 +7,9 @@ import { TypedDataUtils as eip712 } from 'eth-eip712-util';
 import { keccak256 } from 'js-sha3';
 import rlp from 'rlp-browser';
 import secp256k1 from 'secp256k1';
-import constants from './constants';
+import { ASCII_REGEX, ethMsgProtocol, HANDLE_LARGER_CHAIN_ID, MAX_CHAIN_ID_BYTES, signingSchema } from './constants';
 
-exports.buildEthereumMsgRequest = function (input) {
+const buildEthereumMsgRequest = function (input) {
   if (!input.payload || !input.protocol || !input.signerPath)
     throw new Error(
       'You must provide `payload`, `signerPath`, and `protocol` arguments in the messsage request'
@@ -17,7 +17,7 @@ exports.buildEthereumMsgRequest = function (input) {
   if (input.signerPath.length > 5 || input.signerPath.length < 2)
     throw new Error('Please provide a signer path with 2-5 indices');
   const req = {
-    schema: constants.signingSchema.ETH_MSG,
+    schema: signingSchema.ETH_MSG,
     payload: null,
     input, // Save the input for later
     msg: null, // Save the buffered message for later
@@ -40,7 +40,7 @@ exports.buildEthereumMsgRequest = function (input) {
   }
 };
 
-exports.validateEthereumMsgResponse = function (res, req) {
+const validateEthereumMsgResponse = function (res, req) {
   const { signer, sig } = res;
   const { input, msg, prehash = null } = req;
   if (input.protocol === 'signPersonal') {
@@ -67,7 +67,7 @@ exports.validateEthereumMsgResponse = function (res, req) {
   }
 };
 
-exports.buildEthereumTxRequest = function (data) {
+const buildEthereumTxRequest = function (data) {
   try {
     let { chainId = 1 } = data;
     const { signerPath, eip155 = null, fwConstants, type = null } = data;
@@ -226,10 +226,10 @@ exports.buildEthereumTxRequest = function (data) {
     if (useChainIdBuffer(chainId) === true) {
       chainIdBuf = getChainIdBuf(chainId);
       chainIdBufSz = chainIdBuf.length;
-      if (chainIdBufSz > constants.MAX_CHAIN_ID_BYTES)
+      if (chainIdBufSz > MAX_CHAIN_ID_BYTES)
         throw new Error('ChainID provided is too large.');
       // Signal to Lattice firmware that it needs to read the chainId from the tx.data buffer
-      txReqPayload.writeUInt8(constants.HANDLE_LARGER_CHAIN_ID, off);
+      txReqPayload.writeUInt8(HANDLE_LARGER_CHAIN_ID, off);
       off++;
     } else {
       // For chainIDs <255, write it to the chainId u8 slot in the main tx buffer
@@ -372,7 +372,7 @@ exports.buildEthereumTxRequest = function (data) {
       type,
       payload: txReqPayload.slice(0, off),
       extraDataPayloads,
-      schema: constants.signingSchema.ETH_TRANSFER, // We will use eth transfer for all ETH txs for v1
+      schema: signingSchema.ETH_TRANSFER, // We will use eth transfer for all ETH txs for v1
       chainId,
       useEIP155,
       signerPath,
@@ -394,7 +394,7 @@ function stripZeros(a) {
 
 // Given a 64-byte signature [r,s] we need to figure out the v value
 // and attah the full signature to the end of the transaction payload
-exports.buildEthRawTx = function (tx, sig, address) {
+const buildEthRawTx = function (tx, sig, address) {
   // RLP-encode the data we sent to the lattice
   const hash = Buffer.from(
     keccak256(get_rlp_encoded_preimage(tx.rawTx, tx.type)),
@@ -454,7 +454,7 @@ function addRecoveryParam(hashBuf, sig, address, txData = {}) {
 }
 
 // Convert an RLP-serialized transaction (plus signature) into a transaction hash
-exports.hashTransaction = function (serializedTx) {
+const hashTransaction = function (serializedTx) {
   return keccak256(Buffer.from(serializedTx, 'hex'));
 };
 
@@ -576,7 +576,7 @@ function useChainIdBuffer(id) {
   return true;
 }
 
-exports.chainIds = chainIds;
+const chainIds = chainIds;
 
 function isBase10NumStr(x) {
   const bn = new BN(x).toString().split('.').join('');
@@ -613,7 +613,7 @@ function ensureHexBuffer(x, zeroIsNull = true) {
     );
   }
 }
-exports.ensureHexBuffer = ensureHexBuffer;
+const ensureHexBuffer = ensureHexBuffer;
 
 function buildPersonalSignRequest(req, input) {
   const MAX_BASE_MSG_SZ = input.fwConstants.ethMaxMsgSz;
@@ -621,7 +621,7 @@ function buildPersonalSignRequest(req, input) {
   const L = 24 + MAX_BASE_MSG_SZ + 4;
   let off = 0;
   req.payload = Buffer.alloc(L);
-  req.payload.writeUInt8(constants.ethMsgProtocol.SIGN_PERSONAL, 0);
+  req.payload.writeUInt8(ethMsgProtocol.SIGN_PERSONAL, 0);
   off += 1;
   // Write the signer path into the buffer
   const signerPathBuf = buildSignerPathBuf(input.signerPath, VAR_PATH_SZ);
@@ -636,7 +636,7 @@ function buildPersonalSignRequest(req, input) {
       payload = ensureHexBuffer(input.payload);
       displayHex =
         false ===
-        constants.ASCII_REGEX.test(
+      ASCII_REGEX.test(
           Buffer.from(input.payload.slice(2), 'hex').toString()
         );
     } else {
@@ -656,7 +656,7 @@ function buildPersonalSignRequest(req, input) {
     //        EXPECTED NON-ASCII CHARACTERS TO DISPLAY IN A STRING
     // TODO: Develop a more elegant solution for this
     if (!input.payload.toString) throw new Error('Unsupported input data type');
-    displayHex = false === constants.ASCII_REGEX.test(input.payload.toString());
+    displayHex = false === ASCII_REGEX.test(input.payload.toString());
   }
   const fwConst = input.fwConstants;
   let maxSzAllowed =
@@ -699,7 +699,7 @@ function buildEIP712Request(req, input) {
   try {
     const MAX_BASE_MSG_SZ = input.fwConstants.ethMaxMsgSz;
     const VAR_PATH_SZ = input.fwConstants.varAddrPathSzAllowed;
-    const TYPED_DATA = constants.ethMsgProtocol.TYPED_DATA;
+    const TYPED_DATA = ethMsgProtocol.TYPED_DATA;
     const L = 24 + MAX_BASE_MSG_SZ + 4;
     let off = 0;
     req.payload = Buffer.alloc(L);
@@ -953,7 +953,7 @@ function parseEIP712Item(data, type, forJSParser = false) {
       data = `0x${data.toString('hex')}`;
     }
   } else if (
-    constants.ethMsgProtocol.TYPED_DATA.typeCodes[type] &&
+    ethMsgProtocol.TYPED_DATA.typeCodes[type] &&
     (type.indexOf('uint') > -1 || type.indexOf('int') > -1)
   ) {
     let b = ensureHexBuffer(data);
@@ -997,4 +997,14 @@ function get_rlp_encoded_preimage(rawTx, txType) {
   } else {
     return rlp.encode(rawTx);
   }
+}
+
+export default {
+  buildEthereumMsgRequest,
+  validateEthereumMsgResponse,
+  buildEthereumTxRequest,
+  buildEthRawTx,
+  hashTransaction,
+  chainIds,
+  ensureHexBuffer,
 }

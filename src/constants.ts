@@ -394,7 +394,7 @@ function getFwVersionConst(v) {
 }
 const ASCII_REGEX = /^[\x00-\x7F]+$/;
 
-module.exports = {
+export {
   ASCII_REGEX,
   getFwVersionConst,
   ADDR_STR_LEN,
