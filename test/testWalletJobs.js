@@ -35,6 +35,7 @@ const BTC_PARENT_PATH = {
   change: 0,
   addr: 0, // Not used for pathDepth=4
 }
+const TEST_MNEMONIC = 'erosion loan violin drip laundry harsh social mercy leaf original habit buffalo';
 
 async function runTestCase(expectedCode) {
     const res = await helpers.execute(client, 'test', jobReq);
@@ -526,7 +527,7 @@ describe('Get delete permission', () => {
 
 describe('Test leading zeros', () => {
   // Use a known seed to derive private keys with leading zeros to test firmware derivation
-  const mnemonic = 'erosion loan violin drip laundry harsh social mercy leaf original habit buffalo';
+  const mnemonic = TEST_MNEMONIC;
   const KNOWN_SEED = bip39.mnemonicToSeedSync(mnemonic);
   const wallet = bip32.fromSeed(KNOWN_SEED);
   let basePath = [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, helpers.HARDENED_OFFSET, 0, 0];
@@ -725,6 +726,66 @@ describe('Test leading zeros', () => {
 
   it('Should test address m/44\'/60\'/0\'/153/9876543', async () => {
     await runZerosTest(9876543, 0);
+  })
+})
+
+describe('Test eth_getEncryptionPublicKey', () => {
+  const mnemonic = TEST_MNEMONIC;
+  const KNOWN_SEED = bip39.mnemonicToSeedSync(mnemonic);
+  const wallet = bip32.fromSeed(KNOWN_SEED);
+  let basePath = [helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, helpers.HARDENED_OFFSET, 0, 0];
+  let parentPathStr = 'm/44\'/60\'/0\'/0';
+  let addrReq, txReq;
+
+  beforeEach (() => {
+    expect(origWalletSeed).to.not.equal(null, 'Prior test failed. Aborting.');
+    expect(continueTests).to.equal(true, 'Unauthorized or critical failure. Aborting');
+    addrReq = {
+      startPath: basePath,
+      n: 1,
+    };
+  })
+
+  it('Should reconnect to update the wallet UIDs', async () => {
+    await helpers.connect(client, process.env.DEVICE_ID);
+    currentWalletUID = getCurrentWalletUID();
+  })
+
+  it('Should make sure the first address is correct', async () => {
+    const ref = `0x${ethutil.privateToAddress(wallet.derivePath(`${parentPathStr}/0`).privateKey).toString('hex').toLowerCase()}`;
+    const addrs = await helpers.execute(client, 'getAddresses', addrReq);
+    if (addrs[0].toLowerCase() !== ref) {
+      continueTests = false;
+      expect(addrs[0].toLowerCase()).to.equal(ref, 'Failed to derive correct address for known seed');
+    }
+  })
+
+  it('Should fetch encryption public key', async () => {
+    jobType = helpers.jobTypes.WALLET_JOB_GET_ETH_ENC_PUBK;
+    jobData.basePath = {
+      pathDepth: 5,
+      purpose: helpers.BTC_PURPOSE_P2PKH,
+      coin: helpers.ETH_COIN,
+      account: helpers.HARDENED_OFFSET,
+      change: 0,
+      addr: 0
+    };
+    jobReq = {
+      testID: 0, // wallet_job test ID
+      payload: null,
+    };
+    jobReq.payload = helpers.serializeJobData(jobType, currentWalletUID, jobData);
+    const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    const res = helpers.deserializeGetEthEncPubkJobResult(_res.result);
+
+    // The following key will display as "vl2LR67rjj5dfwi2ZrLaeqzeTb5sqfQMgKzH2F9Cgl4=" in the
+    // test-dapp because it encodes it with base64.
+    const pk = Buffer.from([
+      0xbe, 0x5d, 0x8b, 0x47, 0xae, 0xeb, 0x8e, 0x3e, 0x5d, 0x7f, 0x08, 0xb6, 0x66, 0xb2, 0xda, 0x7a,
+      0xac, 0xde, 0x4d, 0xbe, 0x6c, 0xa9, 0xf4, 0x0c, 0x80, 0xac, 0xc7, 0xd8, 0x5f, 0x42, 0x82, 0x5e
+    ]);
+
+    expect(pk.equals(res.pubKey)).to.equal(true, 'Expected ETH public encryption key did not match');
   })
 })
 

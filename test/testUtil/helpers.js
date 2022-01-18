@@ -274,6 +274,7 @@ exports.jobTypes = {
   WALLET_JOB_LOAD_SEED: 3,
   WALLET_JOB_EXPORT_SEED: 4,
   WALLET_JOB_DELETE_SEED: 5,
+  WALLET_JOB_GET_ETH_ENC_PUBK: 6,
 }
 exports.gpErrors = {
   GP_SUCCESS: 0x00,
@@ -342,6 +343,9 @@ exports.serializeJobData = function(job, walletUID, data) {
       break;
     case exports.jobTypes.WALLET_JOB_LOAD_SEED:
       serData = exports.serializeLoadSeedJobData(data);
+      break;
+    case exports.jobTypes.WALLET_JOB_GET_ETH_ENC_PUBK:
+      serData = exports.serializeGetEthEncPubkJobData(data);
       break;
     default:
       throw new Error('Unsupported job type');
@@ -594,6 +598,27 @@ exports.serializeLoadSeedJobData = function(data) {
   return req;
 };
 
+//---------------------------------------------------
+// Get Eth Enc Public Key helpers
+//---------------------------------------------------
+exports.deserializeGetEthEncPubkJobResult = function(res) {
+  return {
+    path: res.slice(0, 24),
+    pubKey: res.slice(24, 24+32)
+  };
+}
+
+exports.serializeGetEthEncPubkJobData = function(data) {
+  const req = Buffer.alloc(24);
+  let off = 0;
+  req.writeUInt32LE(data.basePath.pathDepth, off); off+=4;
+  req.writeUInt32LE(data.basePath.purpose, off); off+=4;
+  req.writeUInt32LE(data.basePath.coin, off); off+=4;
+  req.writeUInt32LE(data.basePath.account, off); off+=4;
+  req.writeUInt32LE(data.basePath.change, off); off+=4;
+  req.writeUInt32LE(data.basePath.addr, off);
+  return req;
+};
 
 //---------------------------------------------------
 // Struct builders
