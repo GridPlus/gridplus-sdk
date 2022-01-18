@@ -14,18 +14,15 @@
 //
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)
-
-
 require('it-each')({ testPerIteration: true });
 import EthTx from '@ethersproject/transactions';
 import BN from 'bignumber.js';
 import { expect as expect } from 'chai';
 import crypto from 'crypto';
 import seedrandom from 'seedrandom';
-import constants from './../src/constants';
+import { getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
 import helpers from './testUtil/helpers';
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
-const HARDENED_OFFSET = constants.HARDENED_OFFSET;
 let client = null;
 let numRandom = process.env.N || 20; // Number of random tests to conduct
 const randomTxData = [];
@@ -183,7 +180,7 @@ describe('Setup client', () => {
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
     // Set the correct max gas price based on firmware version
-    const fwConstants = constants.getFwVersionConst(client.fwVersion);
+    const fwConstants = getFwVersionConst(client.fwVersion);
     ETH_GAS_PRICE_MAX = fwConstants.ethMaxGasPrice;
     // Build the random transactions
     buildRandomTxData(fwConstants);
@@ -313,7 +310,7 @@ if (!process.env.skip) {
     });
 
     it('Should test and validate signatures from shorter derivation paths', async () => {
-      if (constants.getFwVersionConst(client.fwVersion).varAddrPathSzAllowed) {
+      if (getFwVersionConst(client.fwVersion).varAddrPathSzAllowed) {
         // m/44'/60'/0'/x
         const path = [
           helpers.BTC_PURPOSE_P2PKH,
@@ -406,7 +403,7 @@ if (!process.env.skip) {
       chainId = getChainId(51, 0); // 8 byte id
       // 8 bytes for the id itself and 1 byte for chainIdSz. This data is serialized into the request payload.
       let chainIdSz = 9;
-      const fwConstants = constants.getFwVersionConst(client.fwVersion);
+      const fwConstants = getFwVersionConst(client.fwVersion);
       const metadataSz = fwConstants.totalExtraEthTxDataSz || 0;
       const maxDataSz =
         fwConstants.ethMaxDataSz -
@@ -470,7 +467,7 @@ if (!process.env.skip) {
         for (let i = 0; i < n; i++) s += xs;
         return s;
       }
-      const fwConstants = constants.getFwVersionConst(client.fwVersion);
+      const fwConstants = getFwVersionConst(client.fwVersion);
       const maxDataSz =
         fwConstants.ethMaxDataSz +
         fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;

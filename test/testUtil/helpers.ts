@@ -830,3 +830,34 @@ export const buildRandomEip712Object = function (randInt) {
   });
   return msg;
 };
+
+export default {
+  BTC_PURPOSE_P2WPKH,
+  BTC_PURPOSE_P2SH_P2WPKH,
+  BTC_PURPOSE_P2PKH,
+  BTC_COIN,
+  BTC_TESTNET_COIN,
+  ETH_COIN,
+  harden,
+  jobTypes,
+  gpErrors,
+  getCodeMsg,
+  parseWalletJobResp,
+  serializeJobData,
+  jobResErrCode,
+  copyBuffer,
+  getPubStr,
+  stringifyPath,
+  serializeGetAddressesJobData,
+  deserializeGetAddressesJobResult,
+  validateBTCAddresses,
+  validateETHAddresses,
+  serializeSignTxJobData,
+  deserializeSignTxJobResult,
+  ensureHexBuffer,
+  serializeExportSeedJobData,
+  deserializeExportSeedJobResult,
+  serializeDeleteSeedJobData,
+  serializeLoadSeedJobData,
+  buildRandomEip712Object,
+}

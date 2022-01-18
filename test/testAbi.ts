@@ -6,7 +6,7 @@ import _ from 'lodash';
 import randomWords from 'random-words';
 import { question as question } from 'readline-sync';
 import seedrandom from 'seedrandom';
-import constants from './../src/constants';
+import { ETH_ABI_LATTICE_FW_TYPE_MAP, getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
 import abi from './../src/ethereumAbi';
 import helpers from './testUtil/helpers';
 
@@ -50,7 +50,7 @@ const req = {
     signerPath: [
       helpers.BTC_PURPOSE_P2PKH,
       helpers.ETH_COIN,
-      constants.HARDENED_OFFSET,
+      HARDENED_OFFSET,
       0,
       0,
     ],
@@ -144,7 +144,7 @@ function genRandParam(_type = null) {
     type,
     isArray: randBool(),
     arraySz: 0,
-    latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP[type],
+    latticeTypeIdx: ETH_ABI_LATTICE_FW_TYPE_MAP[type],
   };
   if (d.isArray && randBool()) d.arraySz = randInt(10);
   d.name = d.type;
@@ -234,7 +234,7 @@ function createDef() {
   def.sig = buildFuncSelector(def);
   const data = helpers.ensureHexBuffer(buildEthData(def));
   // Make sure the transaction will fit in the firmware buffer size
-  const fwConstants = constants.getFwVersionConst(client.fwVersion);
+  const fwConstants = getFwVersionConst(client.fwVersion);
   const maxDataSz =
     fwConstants.ethMaxDataSz +
     fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
@@ -265,7 +265,7 @@ function createTupleDef() {
     tupleStr += ')';
     const thisTuple = genRandParam(tupleStr);
     thisTuple.latticeTypeIdx =
-      constants.ETH_ABI_LATTICE_FW_TYPE_MAP[`tuple${thisTupleParams.length}`];
+      ETH_ABI_LATTICE_FW_TYPE_MAP[`tuple${thisTupleParams.length}`];
     def.params.push(thisTuple);
     // Vals
     const thisTupleVals = [];
@@ -304,7 +304,7 @@ function createTupleDef() {
     def.params.slice(0, def.params.length - numTupleParams)
   );
   // Make sure the transaction will fit in the firmware buffer size
-  const fwConstants = constants.getFwVersionConst(client.fwVersion);
+  const fwConstants = getFwVersionConst(client.fwVersion);
   const maxDataSz =
     fwConstants.ethMaxDataSz +
     fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
@@ -322,7 +322,7 @@ function createBoundaryDefs() {
       type: type,
       isArray: false,
       arraySz: 0,
-      latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP[type],
+      latticeTypeIdx: ETH_ABI_LATTICE_FW_TYPE_MAP[type],
     };
   }
   let def = {
@@ -486,21 +486,21 @@ function createBoundaryDefs() {
         type: type,
         isArray: false,
         arraySz: 0,
-        latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP[type],
+        latticeTypeIdx: ETH_ABI_LATTICE_FW_TYPE_MAP[type],
       },
       {
         name: `${type}_1`,
         type: type,
         isArray: true,
         arraySz: 2,
-        latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP[type],
+        latticeTypeIdx: ETH_ABI_LATTICE_FW_TYPE_MAP[type],
       },
       {
         name: `${type}_2`,
         type: type,
         isArray: true,
         arraySz: 0,
-        latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP[type],
+        latticeTypeIdx: ETH_ABI_LATTICE_FW_TYPE_MAP[type],
       },
     ];
   }
@@ -593,14 +593,14 @@ describe('Preloaded ABI definitions', () => {
             type: 'address',
             isArray: false,
             arraySz: 0,
-            latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP['address'],
+            latticeTypeIdx: ETH_ABI_LATTICE_FW_TYPE_MAP['address'],
           },
           {
             name: 'value',
             type: 'uint256',
             isArray: false,
             arraySz: 0,
-            latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP['uint256'],
+            latticeTypeIdx: ETH_ABI_LATTICE_FW_TYPE_MAP['uint256'],
           },
         ],
         _vals: ['0x2a4e921a7da4d381d84c51fe466ff7288bf2ce41', 10000],
@@ -614,21 +614,21 @@ describe('Preloaded ABI definitions', () => {
             type: 'address',
             isArray: false,
             arraySz: 0,
-            latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP['address'],
+            latticeTypeIdx: ETH_ABI_LATTICE_FW_TYPE_MAP['address'],
           },
           {
             name: 'to',
             type: 'address',
             isArray: false,
             arraySz: 0,
-            latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP['address'],
+            latticeTypeIdx: ETH_ABI_LATTICE_FW_TYPE_MAP['address'],
           },
           {
             name: 'value',
             type: 'uint256',
             isArray: false,
             arraySz: 0,
-            latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP['uint256'],
+            latticeTypeIdx: ETH_ABI_LATTICE_FW_TYPE_MAP['uint256'],
           },
         ],
         _vals: [
@@ -646,14 +646,14 @@ describe('Preloaded ABI definitions', () => {
             type: 'address',
             isArray: false,
             arraySz: 0,
-            latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP['address'],
+            latticeTypeIdx: ETH_ABI_LATTICE_FW_TYPE_MAP['address'],
           },
           {
             name: 'value',
             type: 'uint256',
             isArray: false,
             arraySz: 0,
-            latticeTypeIdx: constants.ETH_ABI_LATTICE_FW_TYPE_MAP['uint256'],
+            latticeTypeIdx: ETH_ABI_LATTICE_FW_TYPE_MAP['uint256'],
           },
         ],
         _vals: ['0x39b657f4d86119e11de818e477a31c13feeb618c', 1234],

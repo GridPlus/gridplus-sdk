@@ -23,7 +23,7 @@ import ethutil from 'ethereumjs-util';
 import { keccak256 } from 'js-sha3';
 import rlp from 'rlp';
 import seedrandom from 'seedrandom';
-import constants from './../src/constants';
+import { getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
 import helpers from './testUtil/helpers';
 let client,
   currentWalletUID,
@@ -89,7 +89,7 @@ describe('Test Wallet Jobs', () => {
       'P60 should be active wallet but is not registered as it.'
     );
     currentWalletUID = getCurrentWalletUID();
-    const fwConstants = constants.getFwVersionConst(client.fwVersion);
+    const fwConstants = getFwVersionConst(client.fwVersion);
     if (fwConstants) {
       // If firmware supports bech32 segwit addresses, they are the default address
       BTC_PARENT_PATH.purpose = fwConstants.allowBtcLegacyAndSegwitAddrs
@@ -461,10 +461,10 @@ describe('getAddresses', () => {
     const prng = new seedrandom('btctestseed');
     async function testRandomBtcAddrs(purpose) {
       const account = Math.floor(
-        (constants.HARDENED_OFFSET + 100000) * prng.quick()
+        (HARDENED_OFFSET + 100000) * prng.quick()
       );
       const addr = Math.floor(
-        (constants.HARDENED_OFFSET + 100000) * prng.quick()
+        (HARDENED_OFFSET + 100000) * prng.quick()
       );
       const req = {
         startPath: [purpose, helpers.BTC_COIN, account, 0, addr],

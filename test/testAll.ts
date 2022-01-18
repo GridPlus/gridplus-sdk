@@ -1,9 +1,9 @@
 // Basic tests for atomic SDK functionality
-import constants from './../src/constants';
-import { expect as expect } from 'chai';
-import { question as question } from 'readline-sync';
+import { expect } from 'chai';
+import { question } from 'readline-sync';
+import { getFwVersionConst, HARDENED_OFFSET, responseCodes, responseMsgs } from '../src/constants';
 import helpers from './testUtil/helpers';
-const HARDENED_OFFSET = constants.HARDENED_OFFSET;
+
 let client, id;
 let caughtErr = false;
 
@@ -57,7 +57,7 @@ describe('Connect and Pair', () => {
   it('Should get addresses', async () => {
     expect(caughtErr).to.equal(false);
     if (caughtErr === false) {
-      const fwConstants = constants.getFwVersionConst(client.fwVersion);
+      const fwConstants = getFwVersionConst(client.fwVersion);
       const addrData = {
         currency: 'BTC',
         startPath: [
@@ -158,7 +158,7 @@ describe('Connect and Pair', () => {
 
   it('Should sign Ethereum transactions', async () => {
     // Constants from firmware
-    const fwConstants = constants.getFwVersionConst(client.fwVersion);
+    const fwConstants = getFwVersionConst(client.fwVersion);
     const GAS_PRICE_MAX = fwConstants.ethMaxGasPrice;
     const GAS_LIMIT_MIN = 22000;
     const GAS_LIMIT_MAX = 12500000;
@@ -491,9 +491,9 @@ describe('Connect and Pair', () => {
     try {
       await helpers.execute(client, 'addPermissionV0', opts);
     } catch (err) {
-      const expectedCode = constants.responseCodes.RESP_ERR_ALREADY;
+      const expectedCode = responseCodes.RESP_ERR_ALREADY;
       expect(
-        err.indexOf(constants.responseMsgs[expectedCode])
+        err.indexOf(responseMsgs[expectedCode])
       ).to.be.greaterThan(-1);
     }
     // Spend 2 wei
@@ -534,9 +534,9 @@ describe('Connect and Pair', () => {
       signResp = await helpers.execute(client, 'sign', req);
       expect(signResp.tx).to.equal(null);
     } catch (err) {
-      const expectedCode = constants.responseCodes.RESP_ERR_USER_DECLINED;
+      const expectedCode = responseCodes.RESP_ERR_USER_DECLINED;
       expect(
-        err.indexOf(constants.responseMsgs[expectedCode])
+        err.indexOf(responseMsgs[expectedCode])
       ).to.be.greaterThan(-1);
     }
     // Spend 1 wei this time. This should be allowed by the permission.

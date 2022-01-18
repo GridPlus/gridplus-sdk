@@ -19,10 +19,9 @@ import { expect } from 'chai';
 import crypto from 'crypto';
 import randomWords from 'random-words';
 import seedrandom from 'seedrandom';
-import constants from './../src/constants';
+import { getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
 import helpers from './testUtil/helpers';
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
-const HARDENED_OFFSET = constants.HARDENED_OFFSET;
 let client = null;
 let numRandom = 20; // Number of random tests to conduct
 const randomTxDataLabels = [];
@@ -43,7 +42,7 @@ function buildRandomMsg(type = 'signPersonal') {
   if (type === 'signPersonal') {
     // A random string will do
     const isHexStr = randInt(2) > 0 ? true : false;
-    const fwConstants = constants.getFwVersionConst(client.fwVersion);
+    const fwConstants = getFwVersionConst(client.fwVersion);
     const L = randInt(fwConstants.ethMaxDataSz - MSG_PAYLOAD_METADATA_SZ);
     if (isHexStr) return `0x${crypto.randomBytes(L).toString('hex')}`;
     // Get L hex bytes (represented with a string with 2*L chars)
@@ -116,7 +115,7 @@ describe('Setup client', () => {
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
     // Set the correct max gas price based on firmware version
-    const fwConstants = constants.getFwVersionConst(client.fwVersion);
+    const fwConstants = getFwVersionConst(client.fwVersion);
     ETH_GAS_PRICE_MAX = fwConstants.ethMaxGasPrice;
   });
 });
@@ -158,7 +157,7 @@ describe('Test ETH personalSign', function () {
 
   it('Msg: sign_personal boundary conditions and auto-rejected requests', async () => {
     const protocol = 'signPersonal';
-    const fwConstants = constants.getFwVersionConst(client.fwVersion);
+    const fwConstants = getFwVersionConst(client.fwVersion);
     const metadataSz = fwConstants.totalExtraEthTxDataSz || 0;
     // `personal_sign` requests have a max size smaller than other requests because a header
     // is displayed in the text region of the screen. The size of this is captured

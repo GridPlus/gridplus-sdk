@@ -1,7 +1,7 @@
 // Basic tests for atomic SDK functionality
-import constants from './../src/constants';
 import { expect as expect } from 'chai';
 import { question as question } from 'readline-sync';
+import { HARDENED_OFFSET } from '../src/constants';
 import helpers from './testUtil/helpers';
 let client, id;
 let caughtErr = false;
@@ -17,7 +17,7 @@ const ETH_REQ = {
     signerPath: [
       helpers.BTC_PURPOSE_P2PKH,
       helpers.ETH_COIN,
-      constants.HARDENED_OFFSET,
+      HARDENED_OFFSET,
       0,
       0,
     ],
@@ -215,7 +215,7 @@ describe('Connect and Pair', () => {
         signerPath: [
           helpers.BTC_PURPOSE_P2PKH,
           helpers.ETH_COIN,
-          constants.HARDENED_OFFSET,
+          HARDENED_OFFSET,
           0,
           0,
         ],
