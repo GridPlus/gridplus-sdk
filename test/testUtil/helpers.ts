@@ -1,15 +1,15 @@
-const bip32 = require("bip32");
-const bip39 = require("bip39");
-const bitcoin = require("bitcoinjs-lib");
-const crypto = require("crypto");
-const expect = require("chai").expect;
-const ethutil = require("ethereumjs-util");
-const Sdk = require("../../src/index.ts");
-const constants = require("../../src/constants");
-const util = require("../../src/util");
+const bip32 = require('bip32');
+const bip39 = require('bip39');
+const bitcoin = require('bitcoinjs-lib');
+const crypto = require('crypto');
+const expect = require('chai').expect;
+const ethutil = require('ethereumjs-util');
+const Sdk = require('../../src/index.ts');
+const constants = require('../../src/constants');
+const util = require('../../src/util');
 const SIGHASH_ALL = 0x01;
-const EC = require("elliptic").ec;
-const ec = new EC("secp256k1");
+const EC = require('elliptic').ec;
+const ec = new EC('secp256k1');
 
 // NOTE: We use the HARDEN(49) purpose for p2sh(p2wpkh) address derivations.
 //       For p2pkh-derived addresses, we use the legacy 44' purpose
@@ -25,23 +25,23 @@ exports.ETH_COIN = constants.BIP_CONSTANTS.COINS.ETH;
 
 function setupTestClient(env) {
   const setup = {
-    name: env.name || "SDK Test",
-    baseUrl: env.baseUrl || "https://signing.gridpl.us",
+    name: env.name || 'SDK Test',
+    baseUrl: env.baseUrl || 'https://signing.gridpl.us',
     crypto,
     timeout: 120000,
   };
   const REUSABLE_KEY =
-    "3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca";
+    '3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca';
   // If the user passes a deviceID in the env, we assume they have previously
   // connected to the Lattice.
   if (env.DEVICE_ID) {
-    setup.privKey = Buffer.from(REUSABLE_KEY, "hex");
+    setup.privKey = Buffer.from(REUSABLE_KEY, 'hex');
   }
   // Separate check -- if we are connecting for the first time but want to be able
   // to reconnect quickly with the same device ID as an env var, we need to pair
   // with a reusable key
   if (parseInt(env.REUSE_KEY) === 1) {
-    setup.privKey = Buffer.from(REUSABLE_KEY, "hex");
+    setup.privKey = Buffer.from(REUSABLE_KEY, 'hex');
   }
   // Initialize a global SDK client
   const client = new Sdk.Client(setup);
@@ -131,7 +131,7 @@ function _start_tx_builder(
     const changeAddr = _get_btc_addr(btc_0_change_pub, purpose, network);
     txb.addOutput(changeAddr, changeValue);
   } else if (changeValue < 0) {
-    throw new Error("Value + fee > sumInputs!");
+    throw new Error('Value + fee > sumInputs!');
   }
   inputs.forEach((input) => {
     let scriptSig = null;
@@ -246,7 +246,7 @@ function _btc_tx_request_builder(
     });
   });
   return {
-    currency: "BTC",
+    currency: 'BTC',
     data: txData,
   };
 }
@@ -375,7 +375,7 @@ exports.getCodeMsg = function (code, expected) {
     });
     return `Incorrect response code. Got ${codeTxt}. Expected ${expectedTxt}`;
   }
-  return "";
+  return '';
 };
 
 exports.parseWalletJobResp = function (res, v) {
@@ -416,14 +416,14 @@ exports.serializeJobData = function (job, walletUID, data) {
       serData = exports.serializeLoadSeedJobData(data);
       break;
     default:
-      throw new Error("Unsupported job type");
+      throw new Error('Unsupported job type');
   }
   if (
     false === Buffer.isBuffer(serData) ||
     false === Buffer.isBuffer(walletUID) ||
     32 !== walletUID.length
   )
-    throw new Error("Invalid params");
+    throw new Error('Invalid params');
 
   const req = Buffer.alloc(serData.length + 40);
   let off = 0;
@@ -445,7 +445,7 @@ exports.jobResErrCode = function (res) {
 // Have to do this weird copy because `Buffer`s from the client are not real buffers
 // which is a vestige of requiring support on react native
 exports.copyBuffer = (x) => {
-  return Buffer.from(x.toString("hex"), "hex");
+  return Buffer.from(x.toString('hex'), 'hex');
 };
 
 exports.getPubStr = (key) => {
@@ -454,7 +454,7 @@ exports.getPubStr = (key) => {
   pub.writeUInt8(0x04, 0);
   _pub.getX().toBuffer().copy(pub, 1);
   _pub.getY().toBuffer().copy(pub, 33);
-  return pub.toString("hex");
+  return pub.toString('hex');
 };
 
 // Convert a set of indices to a human readable bip32 path
@@ -465,7 +465,7 @@ exports.stringifyPath = (parent) => {
       : `${parent}`;
   };
   let d = parent.pathDepth;
-  let s = "m";
+  let s = 'm';
   if (d <= 0) return s;
   if (parent.purpose !== undefined) {
     s += `/${convert(parent.purpose)}`;
@@ -532,7 +532,7 @@ exports.deserializeGetAddressesJobResult = function (res) {
     off += constants.ADDR_STR_LEN;
     for (let j = 0; j < _addr.length; j++)
       if (_addr[j] === 0x00) {
-        getAddrResult.addresses.push(_addr.slice(0, j).toString("utf8"));
+        getAddrResult.addresses.push(_addr.slice(0, j).toString('utf8'));
         break;
       }
   }
@@ -572,7 +572,7 @@ exports.validateBTCAddresses = function (resp, jobData, seed, useTestnet) {
 exports.validateETHAddresses = function (resp, jobData, seed) {
   expect(resp.count).to.equal(jobData.count);
   // Confirm it is an Ethereum address
-  expect(resp.addresses[0].slice(0, 2)).to.equal("0x");
+  expect(resp.addresses[0].slice(0, 2)).to.equal('0x');
   expect(resp.addresses[0].length).to.equal(42);
   // Confirm we can derive the same address from the previously exported seed
   const wallet = bip32.fromSeed(seed);
@@ -581,7 +581,7 @@ exports.validateETHAddresses = function (resp, jobData, seed) {
   for (let i = jobData.first; i < jobData.first + jobData.count; i++) {
     path.addr = i;
     const priv = wallet.derivePath(exports.stringifyPath(path)).privateKey;
-    const addr = `0x${ethutil.privateToAddress(priv).toString("hex")}`;
+    const addr = `0x${ethutil.privateToAddress(priv).toString('hex')}`;
     expect(addr).to.equal(resp.addresses[i - jobData.first]);
   }
 };
@@ -656,16 +656,16 @@ exports.deserializeSignTxJobResult = function (res) {
     o.signerPath.addr = _o.readUInt32LE(_off);
     _off += 4;
     o.pubkey = ec.keyFromPublic(
-      _o.slice(_off, _off + 65).toString("hex"),
-      "hex"
+      _o.slice(_off, _off + 65).toString('hex'),
+      'hex'
     );
     _off += PK_LEN;
     // We get back a DER signature in 74 bytes, but not all the bytes are necessarily
     // used. The second byte contains the DER sig length, so we need to use that.
     const derLen = _o[_off + 1];
     o.sig = Buffer.from(
-      _o.slice(_off, _off + 2 + derLen).toString("hex"),
-      "hex"
+      _o.slice(_off, _off + 2 + derLen).toString('hex'),
+      'hex'
     );
     getTxResult.outputs.push(o);
   }
@@ -675,11 +675,11 @@ exports.deserializeSignTxJobResult = function (res) {
 
 exports.ensureHexBuffer = function (x) {
   if (x === null || x === 0) return Buffer.alloc(0);
-  else if (Buffer.isBuffer(x)) x = x.toString("hex");
-  if (typeof x === "number") x = `${x.toString(16)}`;
-  else if (typeof x === "string" && x.slice(0, 2) === "0x") x = x.slice(2);
+  else if (Buffer.isBuffer(x)) x = x.toString('hex');
+  if (typeof x === 'number') x = `${x.toString(16)}`;
+  else if (typeof x === 'string' && x.slice(0, 2) === '0x') x = x.slice(2);
   if (x.length % 2 > 0) x = `0${x}`;
-  return Buffer.from(x, "hex");
+  return Buffer.from(x, 'hex');
 };
 
 //---------------------------------------------------
@@ -719,7 +719,7 @@ exports.serializeLoadSeedJobData = function (data) {
 exports.buildRandomEip712Object = function (randInt) {
   function randStr(n) {
     const words = bip39.wordlists.english;
-    let s = "";
+    let s = '';
     while (s.length < n) {
       s += `${words[randInt(words.length)]}_`;
     }
@@ -741,26 +741,26 @@ exports.buildRandomEip712Object = function (randInt) {
     };
   }
   function getRandomEIP712Val(type) {
-    if (type !== "bytes" && type.slice(0, 5) === "bytes") {
-      return `0x${crypto.randomBytes(parseInt(type.slice(5))).toString("hex")}`;
-    } else if (type === "uint" || type === "int") {
-      return `0x${crypto.randomBytes(32).toString("hex")}`;
-    } else if (type.indexOf("uint") > -1) {
+    if (type !== 'bytes' && type.slice(0, 5) === 'bytes') {
+      return `0x${crypto.randomBytes(parseInt(type.slice(5))).toString('hex')}`;
+    } else if (type === 'uint' || type === 'int') {
+      return `0x${crypto.randomBytes(32).toString('hex')}`;
+    } else if (type.indexOf('uint') > -1) {
       return `0x${crypto.randomBytes(parseInt(type.slice(4)))}`;
-    } else if (type.indexOf("int") > -1) {
+    } else if (type.indexOf('int') > -1) {
       return `0x${crypto.randomBytes(parseInt(type.slice(3)))}`;
     }
     switch (type) {
-      case "bytes":
-        return `0x${crypto.randomBytes(1 + randInt(50)).toString("hex")}`;
-      case "string":
+      case 'bytes':
+        return `0x${crypto.randomBytes(1 + randInt(50)).toString('hex')}`;
+      case 'string':
         return randStr(100);
-      case "bool":
+      case 'bool':
         return randInt(1) > 0 ? true : false;
-      case "address":
-        return `0x${crypto.randomBytes(20).toString("hex")}`;
+      case 'address':
+        return `0x${crypto.randomBytes(20).toString('hex')}`;
       default:
-        throw new Error("unsupported eip712 type");
+        throw new Error('unsupported eip712 type');
     }
   }
   function buildCustomTypeVal(typeName, msg) {
@@ -780,18 +780,18 @@ exports.buildRandomEip712Object = function (randInt) {
   const msg = {
     types: {
       EIP712Domain: [
-        { name: "name", type: "string" },
-        { name: "version", type: "string" },
-        { name: "chainId", type: "uint256" },
-        { name: "verifyingContract", type: "address" },
+        { name: 'name', type: 'string' },
+        { name: 'version', type: 'string' },
+        { name: 'chainId', type: 'uint256' },
+        { name: 'verifyingContract', type: 'address' },
       ],
     },
     primaryType: `Primary_${getRandomName(true)}`,
     domain: {
       name: `Domain_${getRandomName(true)}`,
-      version: "1",
+      version: '1',
       chainId: `0x${(1 + randInt(15000)).toString(16)}`,
-      verifyingContract: `0x${crypto.randomBytes(20).toString("hex")}`,
+      verifyingContract: `0x${crypto.randomBytes(20).toString('hex')}`,
     },
     message: {},
   };
