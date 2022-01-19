@@ -196,7 +196,7 @@ describe('getAddresses', () => {
 
   it('Should validate an ETH address from a different EVM coin type', async () => {
     jobData.parent.purpose = helpers.BTC_PURPOSE_P2PKH;
-    jobData.parent.coin = helpers.HARDENED_OFFSET + 1007; // Fantom coin_type via SLIP44
+    jobData.parent.coin = HARDENED_OFFSET + 1007; // Fantom coin_type via SLIP44
     jobReq.payload = helpers.serializeJobData(
       jobType,
       currentWalletUID,
@@ -279,7 +279,7 @@ describe('getAddresses', () => {
       ],
       n: 3,
     };
-    const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
+    const addrs: any = await helpers.execute(client, 'getAddresses', req);
     const resp = {
       count: addrs.length,
       addresses: addrs,
@@ -309,7 +309,7 @@ describe('getAddresses', () => {
       ],
       n: 3,
     };
-    const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
+    const addrs: any = await helpers.execute(client, 'getAddresses', req);
     const resp = {
       count: addrs.length,
       addresses: addrs,
@@ -339,7 +339,7 @@ describe('getAddresses', () => {
       ],
       n: 3,
     };
-    const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
+    const addrs: any = await helpers.execute(client, 'getAddresses', req);
     const resp = {
       count: addrs.length,
       addresses: addrs,
@@ -369,7 +369,7 @@ describe('getAddresses', () => {
       ],
       n: 3,
     };
-    const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
+    const addrs: any = await helpers.execute(client, 'getAddresses', req);
     const resp = {
       count: addrs.length,
       addresses: addrs,
@@ -401,7 +401,7 @@ describe('getAddresses', () => {
       n: 3,
     };
     try {
-      await helpers.execute(client, 'getAddresses', req, 2000);
+      await helpers.execute(client, 'getAddresses', req);
     } catch (err) {
       expect(err).to.not.equal(null);
     }
@@ -417,7 +417,7 @@ describe('getAddresses', () => {
       ],
       n: 3,
     };
-    const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
+    const addrs: any = await helpers.execute(client, 'getAddresses', req);
     const resp = {
       count: addrs.length,
       addresses: addrs,
@@ -440,7 +440,7 @@ describe('getAddresses', () => {
       startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.ETH_COIN, 2532356],
       n: 3,
     };
-    const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
+    const addrs: any = await helpers.execute(client, 'getAddresses', req);
     const resp = {
       count: addrs.length,
       addresses: addrs,
@@ -470,7 +470,7 @@ describe('getAddresses', () => {
         startPath: [purpose, helpers.BTC_COIN, account, 0, addr],
         n: 1,
       };
-      const addrs = await helpers.execute(client, 'getAddresses', req, 2000);
+      const addrs: any = await helpers.execute(client, 'getAddresses', req);
       const resp = {
         count: addrs.length,
         addresses: addrs,
@@ -666,7 +666,7 @@ describe('signTx', () => {
   });
 
   it('Should get GP_SUCCESS when signing from a non-ETH EVM path', async () => {
-    jobData.sigReq[0].signerPath.coin = helpers.HARDENED_OFFSET + 1007;
+    jobData.sigReq[0].signerPath.coin = HARDENED_OFFSET + 1007;
     jobReq.payload = helpers.serializeJobData(
       jobType,
       currentWalletUID,
@@ -700,7 +700,7 @@ describe('Test leading zeros', () => {
   let basePath = [
     helpers.BTC_PURPOSE_P2PKH,
     helpers.ETH_COIN,
-    helpers.HARDENED_OFFSET,
+    HARDENED_OFFSET,
     0,
     0,
   ];
@@ -732,7 +732,7 @@ describe('Test leading zeros', () => {
       .toLowerCase()}`;
     addrReq.startPath[addrReq.startPath.length - 1] = idx;
     txReq.data.signerPath[txReq.data.signerPath.length - 1] = idx;
-    const addrs = await helpers.execute(client, 'getAddresses', addrReq);
+    const addrs: any = await helpers.execute(client, 'getAddresses', addrReq);
     if (addrs[0].toLowerCase() !== ref) {
       continueTests = false;
       expect(addrs[0].toLowerCase()).to.equal(
@@ -741,7 +741,7 @@ describe('Test leading zeros', () => {
       );
     }
     // Validate the signer coming back from the sign request
-    const tx = await helpers.execute(client, 'sign', txReq);
+    const tx: any = await helpers.execute(client, 'sign', txReq);
     if (`0x${tx.signer.toString('hex').toLowerCase()}` !== ref) {
       continueTests = false;
       expect(addrs[0].toLowerCase()).to.equal(
@@ -751,7 +751,7 @@ describe('Test leading zeros', () => {
     }
 
     // Validate the signature itself against the expected signer
-    const rlpData = rlp.decode(tx.tx);
+    const rlpData: any = rlp.decode(tx.tx);
     // The returned data contains the signature, which we need to clear out
     // Note that all requests coming in here must be legacy ETH txs
     rlpData[6] = Buffer.from('01', 'hex'); // chainID must be 1
@@ -860,7 +860,7 @@ describe('Test leading zeros', () => {
       .privateToAddress(wallet.derivePath(`${parentPathStr}/0`).privateKey)
       .toString('hex')
       .toLowerCase()}`;
-    const addrs = await helpers.execute(client, 'getAddresses', addrReq);
+    const addrs: any = await helpers.execute(client, 'getAddresses', addrReq);
     if (addrs[0].toLowerCase() !== ref) {
       continueTests = false;
       expect(addrs[0].toLowerCase()).to.equal(

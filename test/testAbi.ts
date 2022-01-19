@@ -8,6 +8,7 @@ import { question as question } from 'readline-sync';
 import seedrandom from 'seedrandom';
 import { ETH_ABI_LATTICE_FW_TYPE_MAP, getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
 import abi from './../src/ethereumAbi';
+import funcDef from './testUtil/etherscanABI_0xV2.json';
 import helpers from './testUtil/helpers';
 
 const encoder = new ethersAbi.AbiCoder();
@@ -92,7 +93,7 @@ function randNumVal(type) {
     case 'uint256':
       return '0x' + crypto.randomBytes(1 + randInt(31)).toString('hex');
     default:
-      throw new Error('Unsupported type: ', type);
+      throw new Error(`Unsupported type: ${type}`);
   }
 }
 
@@ -176,7 +177,7 @@ function genRandVal(type) {
   else if (type === 'bool') return randBool();
   else if (type === 'string') return randString();
   else if (type.slice(0, 5) === 'bytes') return randBytes(type);
-  throw new Error('Unsupported type: ', type);
+  throw new Error(`Unsupported type: ${type}`);
 }
 
 function buildEthData(def) {
@@ -218,7 +219,7 @@ function paramToVal(param) {
 }
 
 function createDef() {
-  const def = {
+  const def: any = {
     name: `function_${randInt(5000000)}`,
     sig: null,
     params: [],
@@ -243,7 +244,7 @@ function createDef() {
 }
 
 function createTupleDef() {
-  const def = {
+  const def: any = {
     name: `tupleFunc_${randInt(500000)}`,
     sig: null,
     params: [],
@@ -325,7 +326,7 @@ function createBoundaryDefs() {
       latticeTypeIdx: ETH_ABI_LATTICE_FW_TYPE_MAP[type],
     };
   }
-  let def = {
+  let def: any = {
     name: 'UintMaxVals',
     sig: null,
     params: [
@@ -659,7 +660,7 @@ describe('Preloaded ABI definitions', () => {
         _vals: ['0x39b657f4d86119e11de818e477a31c13feeb618c', 1234],
       },
     ];
-    erc20PreloadedDefs.forEach((def) => {
+    erc20PreloadedDefs.forEach((def: any) => {
       def._typeNames = getTypeNames(def.params);
       def.sig = buildFuncSelector(def);
     });
@@ -700,7 +701,7 @@ describe('Add ABI definitions', () => {
   it(`Should generate and add ${numIter} ABI definitions to the Lattice`, async () => {
     try {
       for (let iter = 0; iter < numIter; iter++) {
-        const def = createDef();
+        const def: any = createDef();
         abiDefs.push(def);
         defsToLoad.push(def);
       }
@@ -713,7 +714,7 @@ describe('Add ABI definitions', () => {
   it(`Should generate and add ${numIter} tuple-based ABI defintions to the Lattice`, async () => {
     try {
       for (let iter = 0; iter < numIter; iter++) {
-        const def = createTupleDef();
+        const def: any = createTupleDef();
         tupleAbiDefs.push(def);
         defsToLoad.push(def);
       }
@@ -724,7 +725,6 @@ describe('Add ABI definitions', () => {
   });
 
   it('Should test parsing of a 0x V2 ABI via Etherscan', async () => {
-    import funcDef from './testUtil/etherscanABI_0xV2.json';
     const newDefs = abi.abiParsers.etherscan([funcDef]);
     defsToLoad = defsToLoad.concat(newDefs);
   });
@@ -779,15 +779,16 @@ describe('Test ABI Markdown', () => {
     }
   });
 
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     boundaryIndices,
     'Test ABI markdown of boundary conditions #%s',
     ['i'],
     async (n, next) => {
-      const def = boundaryAbiDefs[n.i];
+      const def: any = boundaryAbiDefs[n.i];
       req.data.data = buildEthData(def);
       try {
-        const sigResp = await helpers.execute(client, 'sign', req);
+        const sigResp: any = await helpers.execute(client, 'sign', req);
         expect(sigResp.tx).to.not.equal(null);
         expect(sigResp.txHash).to.not.equal(null);
         setTimeout(() => {
@@ -802,15 +803,16 @@ describe('Test ABI Markdown', () => {
     }
   );
 
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     indices,
     'Test ABI markdown of payload #%s (non-tuple)',
     ['i'],
     async (n, next) => {
-      const def = abiDefs[n.i];
+      const def: any = abiDefs[n.i];
       req.data.data = buildEthData(def);
       try {
-        const sigResp = await helpers.execute(client, 'sign', req);
+        const sigResp: any = await helpers.execute(client, 'sign', req);
         expect(sigResp.tx).to.not.equal(null);
         expect(sigResp.txHash).to.not.equal(null);
         setTimeout(() => {
@@ -825,15 +827,16 @@ describe('Test ABI Markdown', () => {
     }
   );
 
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     indices,
     'Test ABI markdown of payload #%s (tuple)',
     ['i'],
     async (n, next) => {
-      const def = tupleAbiDefs[n.i];
+      const def: any = tupleAbiDefs[n.i];
       req.data.data = buildEthData(def);
       try {
-        const sigResp = await helpers.execute(client, 'sign', req);
+        const sigResp: any = await helpers.execute(client, 'sign', req);
         expect(sigResp.tx).to.not.equal(null);
         expect(sigResp.txHash).to.not.equal(null);
         setTimeout(() => {

@@ -60,7 +60,7 @@ function buildRandomTxData(fwConstants) {
     fwConstants.ethMaxDataSz +
     fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
   for (let i = 0; i < numRandom; i++) {
-    const tx = {
+    const tx: any = {
       nonce: `0x${new BN(randInt(16000)).toString(16)}`,
       gasPrice: `0x${new BN(randInt(ETH_GAS_PRICE_MAX)).toString(16)}`,
       gasLimit: `0x${new BN(
@@ -101,14 +101,14 @@ function buildTxReq(
 let foundError = false;
 
 async function testTxPass(req) {
-  const tx = await helpers.execute(client, 'sign', req);
+  const tx: any = await helpers.execute(client, 'sign', req);
   // Make sure there is transaction data returned
   // (this is ready for broadcast)
   const txIsNull = tx.tx === null;
   if (txIsNull === true) foundError = true;
   expect(txIsNull).to.equal(false);
   // Check the transaction data against a reference implementation
-  const txData = {
+  const txData: any = {
     type: req.data.type || null,
     nonce: req.data.nonce,
     to: req.data.to,
@@ -214,7 +214,7 @@ describe('Test new transaction types', () => {
       value: 100,
       data: '0xdeadbeef',
     };
-    await testTxPass(buildTxReq(txData), 4);
+    await testTxPass(buildTxReq(txData));
   });
 
   it('Should test eip1559 with no access list', async () => {
@@ -305,8 +305,7 @@ if (!process.env.skip) {
         false,
         'Error found in prior test. Aborting.'
       );
-      //eslint-disable-line
-      setTimeout(() => {}, 5000);
+      setTimeout(() => { return undefined }, 5000);
     });
 
     it('Should test and validate signatures from shorter derivation paths', async () => {
@@ -327,9 +326,9 @@ if (!process.env.skip) {
     });
     it('Should test named units', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
-      await testTxPass(buildTxReq(txData, `0x${(137).toString(16)}`));
-      await testTxPass(buildTxReq(txData, `0x${(56).toString(16)}`));
-      await testTxPass(buildTxReq(txData, `0x${(43114).toString(16)}`));
+      await testTxPass(buildTxReq(txData, `0x${(137).toString(16)}` as unknown as number));
+      await testTxPass(buildTxReq(txData, `0x${(56).toString(16)}` as unknown as number));
+      await testTxPass(buildTxReq(txData, `0x${(43114).toString(16)}` as unknown as number));
     });
 
     it('Should test range of chainId sizes and EIP155 tag', async () => {
@@ -337,7 +336,7 @@ if (!process.env.skip) {
       // Add some random data for good measure, since this will interact with the data buffer
       txData.data = `0x${crypto.randomBytes(randInt(100)).toString('hex')}`;
 
-      let chainId = 1;
+      let chainId: any = 1;
       // This one can fit in the normal chainID u8
 
       chainId = getChainId(8, -2); // 254
@@ -397,7 +396,7 @@ if (!process.env.skip) {
       expect(continueTests).to.equal(true);
 
       const txData = JSON.parse(JSON.stringify(defaultTxData));
-      let chainId = 1;
+      let chainId: any = 1;
 
       // Test boundary of new dataSz
       chainId = getChainId(51, 0); // 8 byte id
@@ -536,7 +535,7 @@ if (!process.env.skip) {
       // expect a result that does not include EIP155 in the payload.
       txData.eip155 = false;
       const numChainId = 10000;
-      const chainId = `0x${numChainId.toString(16)}`; // 0x2710
+      const chainId: any = `0x${numChainId.toString(16)}`; // 0x2710
       await testTxPass(buildTxReq(txData, chainId));
       const res = await testTxPass(buildTxReq(txData, chainId));
       // For non-EIP155 transactions, we expect `v` to be 27 or 28
@@ -552,7 +551,7 @@ describe('Test random transaction data', function () {
   beforeEach(() => {
     expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
   });
-
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     randomTxDataLabels,
     'Random transactions %s',

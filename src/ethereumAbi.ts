@@ -225,3 +225,10 @@ function parseEtherscanAbiInputs(inputs, data = [], isNestedTuple = false) {
 function getTypeIdxLatticeFw(type) {
   return ETH_ABI_LATTICE_FW_TYPE_MAP[type];
 }
+
+export default {
+  MAX_ABI_DEFS,
+  buildAddAbiPayload,
+  getFuncSig,
+  abiParsers,
+}

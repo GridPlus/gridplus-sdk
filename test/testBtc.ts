@@ -53,7 +53,7 @@ for (let i = 0; i < count; i++) {
 }
 
 async function testSign(req, signingKeys, sigHashes) {
-  const tx = await helpers.execute(client, 'sign', req);
+  const tx: any = await helpers.execute(client, 'sign', req);
   expect(tx.sigs.length).to.equal(signingKeys.length);
   expect(tx.sigs.length).to.equal(sigHashes.length);
   for (let i = 0; i < tx.sigs.length; i++) {
@@ -114,8 +114,7 @@ async function runTestSet(opts, wallet, inputsSlice, next) {
       opts.isTestnet = true;
       opts.useChange = true;
       await run(
-        helpers.setup_btc_sig_test(opts, wallet, inputsSlice, prng),
-        next
+        helpers.setup_btc_sig_test(opts, wallet, inputsSlice, prng)
       );
     } catch (err) {
       expect(err).to.equal(
@@ -130,8 +129,7 @@ async function runTestSet(opts, wallet, inputsSlice, next) {
       opts.isTestnet = true;
       opts.useChange = false;
       await run(
-        helpers.setup_btc_sig_test(opts, wallet, inputsSlice, prng),
-        next
+        helpers.setup_btc_sig_test(opts, wallet, inputsSlice, prng)
       );
     } catch (err) {
       expect(err).to.equal(
@@ -147,8 +145,7 @@ async function runTestSet(opts, wallet, inputsSlice, next) {
     opts.isTestnet = false;
     opts.useChange = true;
     await run(
-      helpers.setup_btc_sig_test(opts, wallet, inputsSlice, prng),
-      next
+      helpers.setup_btc_sig_test(opts, wallet, inputsSlice, prng)
     );
   } catch (err) {
     expect(err).to.equal(
@@ -163,8 +160,7 @@ async function runTestSet(opts, wallet, inputsSlice, next) {
     opts.isTestnet = false;
     opts.useChange = false;
     await run(
-      helpers.setup_btc_sig_test(opts, wallet, inputsSlice, prng),
-      next
+      helpers.setup_btc_sig_test(opts, wallet, inputsSlice, prng)
     );
   } catch (err) {
     expect(err).to.equal(
@@ -181,7 +177,7 @@ describe('Test segwit spender (p2wpkh)', function () {
   beforeEach(() => {
     expect(continueTests).to.equal(true, 'Previous test failed. Aborting');
   });
-
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     numInputs,
     '%s inputs (p2wpkh->p2pkh)',
@@ -196,7 +192,7 @@ describe('Test segwit spender (p2wpkh)', function () {
       await runTestSet(opts, wallet, inputsSlice, next);
     }
   );
-
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     numInputs,
     '%s inputs (p2wpkh->p2sh-p2wpkh)',
@@ -211,7 +207,7 @@ describe('Test segwit spender (p2wpkh)', function () {
       await runTestSet(opts, wallet, inputsSlice, next);
     }
   );
-
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     numInputs,
     '%s inputs (p2wpkh->p2wpkh)',
@@ -232,7 +228,7 @@ describe('Test wrapped segwit spender (p2sh-p2wpkh)', function () {
   beforeEach(() => {
     expect(continueTests).to.equal(true, 'Previous test failed. Aborting');
   });
-
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     numInputs,
     '%s inputs (p2sh-p2wpkh->p2pkh)',
@@ -247,7 +243,7 @@ describe('Test wrapped segwit spender (p2sh-p2wpkh)', function () {
       await runTestSet(opts, wallet, inputsSlice, next);
     }
   );
-
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     numInputs,
     '%s inputs (p2sh-p2wpkh->p2sh-p2wpkh)',
@@ -262,7 +258,7 @@ describe('Test wrapped segwit spender (p2sh-p2wpkh)', function () {
       await runTestSet(opts, wallet, inputsSlice, next);
     }
   );
-
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     numInputs,
     '%s inputs (p2sh-p2wpkh->p2wpkh)',
@@ -283,7 +279,7 @@ describe('Test legacy spender (p2pkh)', function () {
   beforeEach(() => {
     expect(continueTests).to.equal(true, 'Previous test failed. Aborting');
   });
-
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     numInputs,
     '%s inputs (p2pkh->p2pkh)',
@@ -298,7 +294,7 @@ describe('Test legacy spender (p2pkh)', function () {
       await runTestSet(opts, wallet, inputsSlice, next);
     }
   );
-
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     numInputs,
     '%s inputs (p2pkh->p2sh-p2wpkh)',
@@ -313,7 +309,7 @@ describe('Test legacy spender (p2pkh)', function () {
       await runTestSet(opts, wallet, inputsSlice, next);
     }
   );
-
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     numInputs,
     '%s inputs (p2pkh->p2wpkh)',

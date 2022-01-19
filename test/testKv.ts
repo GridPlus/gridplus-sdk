@@ -91,7 +91,7 @@ describe('Connect and Pair', () => {
 
   it('Should get the initial set of records', async () => {
     try {
-      const resp = await helpers.execute(client, 'getKvRecords', {
+      const resp: any = await helpers.execute(client, 'getKvRecords', {
         n: 2,
         start: 0,
       });
@@ -165,7 +165,7 @@ describe('Connect and Pair', () => {
         n: 2,
         start: _numStartingRecords,
       };
-      const resp = await helpers.execute(client, 'getKvRecords', opts);
+      const resp: any = await helpers.execute(client, 'getKvRecords', opts);
       const { records, total, fetched } = resp;
       _fetchedRecords = records;
       expect(total).to.equal(fetched + _numStartingRecords);
@@ -263,7 +263,7 @@ describe('Connect and Pair', () => {
         n: 1,
         start: _numStartingRecords,
       };
-      const resp = await helpers.execute(client, 'getKvRecords', opts);
+      const resp: any = await helpers.execute(client, 'getKvRecords', opts);
       const { records, total, fetched } = resp;
       expect(total).to.equal(_numStartingRecords);
       expect(fetched).to.equal(0);
@@ -305,7 +305,7 @@ describe('Connect and Pair', () => {
         n: 1,
         start: _numStartingRecords,
       };
-      const resp = await helpers.execute(client, 'getKvRecords', opts);
+      const resp: any = await helpers.execute(client, 'getKvRecords', opts);
       const { records, total, fetched } = resp;
       expect(total).to.equal(_numStartingRecords + 1);
       expect(fetched).to.equal(1);
@@ -334,7 +334,7 @@ describe('Connect and Pair', () => {
         n: 1,
         start: _numStartingRecords,
       };
-      const resp = await helpers.execute(client, 'getKvRecords', opts);
+      const resp: any = await helpers.execute(client, 'getKvRecords', opts);
       const { records, total, fetched } = resp;
       expect(total).to.equal(_numStartingRecords);
       expect(fetched).to.equal(0);

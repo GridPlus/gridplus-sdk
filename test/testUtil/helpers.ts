@@ -6,8 +6,8 @@ import crypto from 'crypto';
 import { ec as EC } from 'elliptic';
 import ethutil from 'ethereumjs-util';
 import { ADDR_STR_LEN, BIP_CONSTANTS, ethMsgProtocol, HARDENED_OFFSET } from '../../src/constants';
-import Sdk from '../../src/index.ts';
-import util from '../../src/util';
+import { Client } from '../../src/index';
+import { parseDER } from '../../src/util';
 const SIGHASH_ALL = 0x01;
 const ec = new EC('secp256k1');
 
@@ -23,7 +23,7 @@ export const BTC_TESTNET_COIN = BIP_CONSTANTS.COINS.BTC_TESTNET;
 export const ETH_COIN = BIP_CONSTANTS.COINS.ETH;
 
 function setupTestClient(env) {
-  const setup = {
+  const setup: any = {
     name: env.name || 'SDK Test',
     baseUrl: env.baseUrl || 'https://signing.gridpl.us',
     crypto,
@@ -43,7 +43,7 @@ function setupTestClient(env) {
     setup.privKey = Buffer.from(REUSABLE_KEY, 'hex');
   }
   // Initialize a global SDK client
-  const client = new Sdk.Client(setup);
+  const client = new Client(setup);
   return client;
 }
 
@@ -122,7 +122,7 @@ function _start_tx_builder(
   const changeValue = inputSum - value - fee;
   if (changeValue > 0) {
     const networkIdx = network === bitcoin.networks.testnet ? 1 : 0;
-    const path = buildPath(purpose, export const harden(networkIdx), 0, 1);
+    const path = buildPath(purpose, harden(networkIdx), 0, 1);
     const btc_0_change = wallet.derivePath(path);
     const btc_0_change_pub = bitcoin.ECPair.fromPublicKey(
       btc_0_change.publicKey
@@ -252,7 +252,7 @@ function _btc_tx_request_builder(
 
 // Convert DER signature to buffer of form `${r}${s}`
 function stripDER(derSig) {
-  const parsed = util.parseDER(derSig);
+  const parsed = parseDER(derSig);
   parsed.s = Buffer.from(parsed.s.slice(-32));
   parsed.r = Buffer.from(parsed.r.slice(-32));
   const sig = Buffer.alloc(64);
@@ -401,7 +401,7 @@ export const serializeJobData = function (job, walletUID, data) {
       serData = serializeSignTxJobData(data);
       break;
     case jobTypes.WALLET_JOB_EXPORT_SEED:
-      serData = serializeExportSeedJobData(data);
+      serData = serializeExportSeedJobData();
       break;
     case jobTypes.WALLET_JOB_DELETE_SEED:
       serData = serializeDeleteSeedJobData(data);
@@ -533,7 +533,7 @@ export const deserializeGetAddressesJobResult = function (res) {
   return getAddrResult;
 };
 
-export const validateBTCAddresses = function (resp, jobData, seed, useTestnet) {
+export const validateBTCAddresses = function (resp, jobData, seed, useTestnet?) {
   expect(resp.count).to.equal(jobData.count);
   const wallet = bip32.fromSeed(seed);
   const path = JSON.parse(JSON.stringify(jobData.parent));
@@ -587,7 +587,7 @@ export const serializeSignTxJobData = function (data) {
   const n = data.sigReq.length;
   const req = Buffer.alloc(4 + 56 * n);
   let off = 0;
-  req.writeUInt32LE(data.numRequests);
+  req.writeUInt32LE(data.numRequests, 0);
   off += 4;
   for (let i = 0; i < n; i++) {
     const r = data.sigReq[i];
@@ -765,7 +765,7 @@ export const buildRandomEip712Object = function (randInt) {
         // If this is a custom type we need to recurse
         val[subType.name] = buildCustomTypeVal(subType.type, msg);
       } else {
-        val[subType.name] = getRandomEIP712Val(subType.type, msg);
+        val[subType.name] = getRandomEIP712Val(subType.type);
       }
     });
     return val;
@@ -794,7 +794,7 @@ export const buildRandomEip712Object = function (randInt) {
   // Create custom types and add them to the types definitions
   const numCustomTypes = 1 + randInt(3);
   const numDefaulTypes = 1 + randInt(3);
-  const customTypesMap = {};
+  const customTypesMap: any = {};
   for (let i = 0; i < numCustomTypes; i++) {
     const subTypes = [];
     for (let j = 0; j < 1 + randInt(3); j++) {
@@ -839,16 +839,22 @@ export default {
   BTC_TESTNET_COIN,
   ETH_COIN,
   harden,
+  connect,
+  pair,
+  execute,
   jobTypes,
   gpErrors,
   getCodeMsg,
   parseWalletJobResp,
   serializeJobData,
+  setupTestClient,
   jobResErrCode,
   copyBuffer,
   getPubStr,
   stringifyPath,
+  stripDER,
   serializeGetAddressesJobData,
+  setup_btc_sig_test,
   deserializeGetAddressesJobResult,
   validateBTCAddresses,
   validateETHAddresses,

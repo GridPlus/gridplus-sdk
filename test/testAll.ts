@@ -81,7 +81,7 @@ describe('Connect and Pair', () => {
       addrData.startPath[0] = helpers.BTC_PURPOSE_P2PKH;
       addrData.startPath[1] = helpers.ETH_COIN;
       addrData.n = 1;
-      addrs = await helpers.execute(client, 'getAddresses', addrData, 2000);
+      addrs = await helpers.execute(client, 'getAddresses', addrData);
       expect(addrs.length).to.equal(1);
       expect(addrs[0].slice(0, 2)).to.equal('0x');
       // If firmware supports it, try shorter paths
@@ -96,7 +96,7 @@ describe('Connect and Pair', () => {
           ],
           n: 1,
         };
-        addrs = await helpers.execute(client, 'getAddresses', flexData, 2000);
+        addrs = await helpers.execute(client, 'getAddresses', flexData);
         expect(addrs.length).to.equal(1);
         expect(addrs[0].slice(0, 2)).to.equal('0x');
       }
@@ -105,7 +105,7 @@ describe('Connect and Pair', () => {
       addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
       addrData.startPath[1] = helpers.BTC_TESTNET_COIN;
       addrData.n = 1;
-      addrs = await helpers.execute(client, 'getAddresses', addrData, 2000);
+      addrs = await helpers.execute(client, 'getAddresses', addrData);
       expect(addrs.length).to.equal(1);
       expect(addrs[0][0]).to.be.oneOf(['n', 'm', '2']);
       addrData.startPath[1] = helpers.BTC_COIN;
@@ -113,7 +113,7 @@ describe('Connect and Pair', () => {
       // Bech32
       addrData.startPath[0] = helpers.BTC_PURPOSE_P2WPKH;
       addrData.n = 1;
-      addrs = await helpers.execute(client, 'getAddresses', addrData, 2000);
+      addrs = await helpers.execute(client, 'getAddresses', addrData);
       expect(addrs.length).to.equal(1);
       expect(addrs[0].slice(0, 3)).to.be.oneOf(['bc1']);
       addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
@@ -121,7 +121,7 @@ describe('Connect and Pair', () => {
 
       addrData.startPath[4] = 1000000;
       addrData.n = 3;
-      addrs = await helpers.execute(client, 'getAddresses', addrData, 2000);
+      addrs = await helpers.execute(client, 'getAddresses', addrData);
       expect(addrs.length).to.equal(addrData.n);
       addrData.startPath[4] = 0;
       addrData.n = 1;
@@ -129,7 +129,7 @@ describe('Connect and Pair', () => {
       // Unsupported purpose (m/<purpose>/)
       addrData.startPath[0] = 0; // Purpose 0 -- undefined
       try {
-        addrs = await helpers.execute(client, 'getAddresses', addrData, 2000);
+        addrs = await helpers.execute(client, 'getAddresses', addrData);
         expect(addrs).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -139,7 +139,7 @@ describe('Connect and Pair', () => {
       // Unsupported currency
       addrData.startPath[1] = HARDENED_OFFSET + 5; // 5' currency - aka unknown
       try {
-        addrs = await helpers.execute(client, 'getAddresses', addrData, 2000);
+        addrs = await helpers.execute(client, 'getAddresses', addrData);
         expect(addrs).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -148,7 +148,7 @@ describe('Connect and Pair', () => {
       // Too many addresses (n>10)
       addrData.n = 11;
       try {
-        addrs = await helpers.execute(client, 'getAddresses', addrData, 2000);
+        addrs = await helpers.execute(client, 'getAddresses', addrData);
         expect(addrs).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -171,7 +171,7 @@ describe('Connect and Pair', () => {
       value: '0x01cba1761f7ab9870c',
       data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
     };
-    const req = {
+    const req: any = {
       currency: 'ETH',
       data: {
         signerPath: [
@@ -300,7 +300,7 @@ describe('Connect and Pair', () => {
     expect(tx.tx).to.not.equal(null);
 
     // Test non-ETH EVM coin_type
-    req.data.signerPath[1] = helpers.HARDENED_OFFSET + 1007;
+    req.data.signerPath[1] = HARDENED_OFFSET + 1007;
     req.data.data = null;
     tx = await helpers.execute(client, 'sign', req);
     expect(tx.tx).to.not.equal(null);
@@ -341,7 +341,7 @@ describe('Connect and Pair', () => {
     };
 
     // Sign a legit tx
-    const sigResp = await helpers.execute(client, 'sign', req);
+    const sigResp: any = await helpers.execute(client, 'sign', req);
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
@@ -379,7 +379,7 @@ describe('Connect and Pair', () => {
       data: txData,
     };
     // Sign a legit tx
-    const sigResp = await helpers.execute(client, 'sign', req);
+    const sigResp: any = await helpers.execute(client, 'sign', req);
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
@@ -417,7 +417,7 @@ describe('Connect and Pair', () => {
       data: txData,
     };
     // Sign a legit tx
-    const sigResp = await helpers.execute(client, 'sign', req);
+    const sigResp: any = await helpers.execute(client, 'sign', req);
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
   });
@@ -456,7 +456,7 @@ describe('Connect and Pair', () => {
       data: txData,
     };
     // Sign a legit tx
-    const sigResp = await helpers.execute(client, 'sign', req);
+    const sigResp: any = await helpers.execute(client, 'sign', req);
     expect(sigResp.tx).to.not.equal(null);
     expect(sigResp.txHash).to.not.equal(null);
     expect(sigResp.changeRecipient.slice(0, 2)).to.equal('tb');
@@ -521,7 +521,7 @@ describe('Connect and Pair', () => {
     };
     // Test the spending limit. The first two requests should auto-sign.
     // Spend once -> 3 wei left
-    let signResp = await helpers.execute(client, 'sign', req);
+    let signResp: any = await helpers.execute(client, 'sign', req);
     expect(signResp.tx).to.not.equal(null);
     // Spend again -> 1 wei left
     signResp = await helpers.execute(client, 'sign', req);

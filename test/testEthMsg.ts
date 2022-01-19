@@ -26,7 +26,6 @@ let client = null;
 let numRandom = 20; // Number of random tests to conduct
 const randomTxDataLabels = [];
 const MSG_PAYLOAD_METADATA_SZ = 28; // Metadata that must go in ETH_MSG requests
-let ETH_GAS_PRICE_MAX; // value depends on firmware version
 let foundError = false;
 
 function randInt(n) {
@@ -75,7 +74,7 @@ function buildMsgReq(
 
 async function testMsg(req, pass = true) {
   try {
-    const sig = await helpers.execute(client, 'sign', req);
+    const sig: any = await helpers.execute(client, 'sign', req);
     // Validation happens already in the client
     if (pass === true) {
       foundError = sig.sig === null;
@@ -114,9 +113,6 @@ describe('Setup client', () => {
     expect(connectErr).to.equal(null);
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
-    // Set the correct max gas price based on firmware version
-    const fwConstants = getFwVersionConst(client.fwVersion);
-    ETH_GAS_PRICE_MAX = fwConstants.ethMaxGasPrice;
   });
 });
 
@@ -183,7 +179,7 @@ describe('Test ETH personalSign', function () {
     // Using a zero length payload should auto-reject
     await testMsg(buildMsgReq(zeroInvalid, protocol), false);
   });
-
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     randomTxDataLabels,
     'Msg: sign_personal #%s',
@@ -1390,7 +1386,7 @@ describe('Test ETH EIP712', function () {
       expect(err).to.equal(null);
     }
   });
-
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     randomTxDataLabels,
     'Msg: EIP712 #%s',
