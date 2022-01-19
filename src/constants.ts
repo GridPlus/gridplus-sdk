@@ -285,7 +285,7 @@ const ethMsgProtocol = {
 };
 
 function getFwVersionConst(v) {
-  const c = {
+  const c: any = {
     extraDataFrameSz: 0,
     extraDataMaxFrames: 0,
   };

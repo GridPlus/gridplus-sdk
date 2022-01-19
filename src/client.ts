@@ -24,7 +24,6 @@ import {
   aes256_decrypt,
   aes256_encrypt,
   checksum,
-  ensureHexBuffer,
   getP256KeyPair,
   getP256KeyPairFromPub,
   isValidAssetPath,
@@ -414,7 +413,7 @@ export class Client {
     if (Buffer.from(name).length > 255) return cb('Asset name too long.');
     Buffer.from(name).copy(payload, 0);
     // Convert the limit to a 32 byte hex buffer and copy it in
-    const limitBuf = ensureHexBuffer(limit);
+    const limitBuf = ethereum.ensureHexBuffer(limit);
     if (limitBuf.length > 32) return cb('Limit too large.');
     limitBuf.copy(payload, 256 + (32 - limitBuf.length));
     // Copy the time window (seconds)
@@ -1137,6 +1136,7 @@ export class Client {
       // Need to flip X and Y components to little endian
       const x = pb.slice(1, 33).reverse();
       const y = pb.slice(33, 65).reverse();
+      // @ts-expect-error - TODO: Find out why Buffer won't accept pb[0]
       return Buffer.concat([pb[0], x, y]);
     } else {
       return pb;

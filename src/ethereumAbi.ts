@@ -85,6 +85,7 @@ export const buildAddAbiPayload = function (defs) {
       def.params.forEach((param) => {
         b.writeUInt8(param.latticeTypeIdx, off);
         off++;
+        //@ts-expect-error - TODO: this arg will always be coerced to undefined in writeUInt8
         b.writeUInt8(param.isArray === true, off);
         off++;
         b.writeUInt32LE(param.arraySz, off);
@@ -169,7 +170,7 @@ function parseEtherscanAbiInputs(inputs, data = [], isNestedTuple = false) {
   let tupleParams = [];
   inputs.forEach((input) => {
     const typeName = input.type;
-    const d = { isArray: false, arraySz: 0, name: input.name };
+    const d: any = { isArray: false, arraySz: 0, name: input.name };
     const openBracketIdx = typeName.indexOf('[');
     const closeBracketIdx = typeName.indexOf(']');
     const isMultiDim = typeName.split('[').length > 2;

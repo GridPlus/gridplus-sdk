@@ -3,7 +3,7 @@ import aes from 'aes-js';
 import { Buffer as Buffer } from 'buffer/';
 import crc32 from 'crc-32';
 import elliptic from 'elliptic';
-import { buildBitcoinTxRequest } from './bitcoin';
+import bitcoin from './bitcoin';
 import {
   AES_IV,
   BIP_CONSTANTS,
@@ -12,11 +12,7 @@ import {
   responseMsgs,
   VERSION_BYTE
 } from './constants';
-import {
-  buildEthereumMsgRequest,
-  buildEthereumTxRequest,
-  ensureHexBuffer
-} from './ethereum';
+import ethereum from './ethereum';
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
 const ec = new EC('p256');
@@ -26,7 +22,7 @@ const ec = new EC('p256');
 
 // Parse a response from the Lattice1
 function parseLattice1Response(r) {
-  const parsed = {
+  const parsed: any = {
     err: null,
     data: null,
   };
@@ -103,9 +99,9 @@ function toPaddedDER(sig) {
 // TRANSACTION UTILS
 //--------------------------------------------------
 const signReqResolver = {
-  BTC: buildBitcoinTxRequest,
-  ETH: buildEthereumTxRequest,
-  ETH_MSG: buildEthereumMsgRequest,
+  BTC: bitcoin.buildBitcoinTxRequest,
+  ETH: ethereum.buildEthereumTxRequest,
+  ETH_MSG: ethereum.buildEthereumMsgRequest,
 };
 
 function isValidAssetPath(path, fwConstants) {
@@ -182,7 +178,6 @@ function getP256KeyPairFromPub(pub) {
 
 export {
   isValidAssetPath,
-  ensureHexBuffer,
   signReqResolver,
   aes256_decrypt,
   aes256_encrypt,
