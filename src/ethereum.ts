@@ -3,7 +3,7 @@
 import BN from 'bignumber.js';
 import cbor from 'borc';
 import { Buffer } from 'buffer/';
-import { TypedDataUtils as eip712 } from 'eth-eip712-util';
+import * as eip712 from 'eth-eip712-util';
 import { keccak256 } from 'js-sha3';
 import rlp from 'rlp-browser';
 import secp256k1 from 'secp256k1';
@@ -58,7 +58,7 @@ const validateEthereumMsgResponse = function (res, req) {
       useEIP155: false,
     });
   } else if (input.protocol === 'eip712') {
-    const encoded = eip712.hash(req.input.payload);
+    const encoded = eip712.hashForSignTypedData_v4(req.input.payload);
     const digest = prehash ? prehash : encoded;
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
     return addRecoveryParam(digest, sig, signer, { useEIP155: false });
@@ -270,6 +270,7 @@ const buildEthereumTxRequest = function (data) {
       if (PREHASH_FROM_ACCESS_LIST) {
         PREHASH_UNSUPPORTED = true;
       }
+      // @ts-expect-error - TODO: this argument will be coerced to undefined
       txReqPayload.writeUInt8(PREHASH_UNSUPPORTED === true, off);
       off += 1;
       // EIP1559 & EIP2930 struct version
@@ -335,7 +336,7 @@ const buildEthereumTxRequest = function (data) {
         );
         frames.forEach((frame) => {
           const szLE = Buffer.alloc(4);
-          szLE.writeUInt32LE(frame.length);
+          szLE.writeUInt32LE(frame.length, 0);
           extraDataPayloads.push(Buffer.concat([szLE, frame]));
         });
       }
@@ -475,7 +476,7 @@ function fixLen(msg, length) {
 // Convert a 0/1 `v` into a recovery param:
 // * For non-EIP155 transactions, return `27 + v`
 // * For EIP155 transactions, return `(CHAIN_ID*2) + 35 + v`
-function getRecoveryParam(v, txData = {}) {
+function getRecoveryParam (v, txData: any = {}) {
   const { chainId, useEIP155, type } = txData;
   // For EIP1559 and EIP2930 transactions, we want the recoveryParam (0 or 1)
   // rather than the `v` value because the `chainId` is already included in the
@@ -576,8 +577,6 @@ function useChainIdBuffer(id) {
   return true;
 }
 
-const chainIds = chainIds;
-
 function isBase10NumStr(x) {
   const bn = new BN(x).toString().split('.').join('');
   const s = new String(x);
@@ -587,7 +586,6 @@ function isBase10NumStr(x) {
 }
 
 // Ensure a param is represented by a buffer
-// TODO: Remove circular dependency in util.js so that we can put this function there
 function ensureHexBuffer(x, zeroIsNull = true) {
   try {
     // For null values, return a 0-sized buffer. For most situations we assume
@@ -613,7 +611,6 @@ function ensureHexBuffer(x, zeroIsNull = true) {
     );
   }
 }
-const ensureHexBuffer = ensureHexBuffer;
 
 function buildPersonalSignRequest(req, input) {
   const MAX_BASE_MSG_SZ = input.fwConstants.ethMaxMsgSz;
@@ -757,8 +754,8 @@ function buildEIP712Request(req, input) {
       // If this payload is too large to send, but the Lattice allows a prehashed message, do that
       req.payload.writeUInt16LE(payload.length, off);
       off += 2;
-      const encoded = eip712.hash(req.input.payload);
-      const prehash = Buffer.from(keccak256(encoded, 'hex'), 'hex');
+      const encoded = eip712.hashForSignTypedData_v4(req.input.payload);
+      const prehash = Buffer.from(keccak256(encoded), 'hex');
       prehash.copy(req.payload, off);
       req.prehash = prehash;
     } else {
@@ -821,7 +818,7 @@ function getExtraData(payload, input) {
     );
     frames.forEach((frame) => {
       const szLE = Buffer.alloc(4);
-      szLE.writeUInt32LE(frame.length);
+      szLE.writeUInt32LE(frame.length, 0);
       extraDataPayloads.push(Buffer.concat([szLE, frame]));
     });
   }
