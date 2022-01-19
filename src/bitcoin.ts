@@ -2,7 +2,7 @@
 import { bech32 } from 'bech32';
 import bs58check from 'bs58check';
 import { Buffer } from 'buffer/';
-import { BIP_CONSTANTS } from './constants';
+import { BIP_CONSTANTS, signingSchema } from './constants';
 const DEFAULT_SEQUENCE = 0xffffffff;
 const DEFAULT_SIGHASH_BUFFER = Buffer.from('01', 'hex'); // SIGHASH_ALL = 0x01
 const { PURPOSES, COINS } = BIP_CONSTANTS;
@@ -58,7 +58,7 @@ const buildBitcoinTxRequest = function (data) {
     let off = 0;
     // Change version byte (a.k.a. address format byte)
     const changeFmt = getAddressFormat(changePath);
-    payload.writeUInt8(changeFmt);
+    payload.writeUInt8(changeFmt, 0);
     off++;
 
     // Build the change data
@@ -112,7 +112,7 @@ const buildBitcoinTxRequest = function (data) {
     // Send them back!
     return {
       payload,
-      schema: constants.signingSchema.BTC_TRANSFER,
+      schema: signingSchema.BTC_TRANSFER,
       origData: data, // We will need the original data for serializing the tx
       changeData: {
         // This data helps fill in the change output
@@ -241,7 +241,7 @@ function buildRedeemScript (pubkey, crypto) {
   const redeemScript = Buffer.alloc(22);
   const shaHash = crypto.createHash('sha256').update(pubkey).digest();
   const pubkeyhash = crypto.createHash('rmd160').update(shaHash).digest();
-  redeemScript.writeUInt8(OP.ZERO);
+  redeemScript.writeUInt8(OP.ZERO, 0);
   redeemScript.writeUInt8(pubkeyhash.length, 1);
   pubkeyhash.copy(redeemScript, 2);
   return redeemScript;
@@ -263,7 +263,7 @@ function buildWitness (sigs, pubkeys) {
   let witness = Buffer.alloc(0);
   // Two items in each vector (sig, pubkey)
   const len = Buffer.alloc(1);
-  len.writeUInt8(2);
+  len.writeUInt8(2, 0);
   for (let i = 0; i < sigs.length; i++) {
     const sig = Buffer.concat([sigs[i], DEFAULT_SIGHASH_BUFFER]);
     const sigLen = getVarInt(sig.length);
@@ -349,15 +349,15 @@ function getU64LE (x) {
 
 function getU32LE (x) {
   const buffer = Buffer.alloc(4);
-  buffer.writeUInt32LE(x);
+  buffer.writeUInt32LE(x, 0);
   return buffer;
 }
 
 function getVarInt (x) {
-  let buffer;
+  let buffer: Buffer;
   if (x < 0xfd) {
     buffer = Buffer.alloc(1);
-    buffer.writeUInt8(x);
+    buffer.writeUInt8(x, 0);
   } else if (x <= 0xffff) {
     buffer = Buffer.alloc(3);
     buffer.writeUInt8(0xfd, 0);
