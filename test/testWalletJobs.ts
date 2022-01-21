@@ -14,7 +14,7 @@
 //
 // To run these tests you will need a dev Lattice with: `FEATURE_TEST_RUNNER=1`
 import bip32 from 'bip32';
-import bip39 from 'bip39';
+import { mnemonicToSeedSync } from 'bip39';
 import ethjsBN from 'bn.js';
 import { expect as expect } from 'chai';
 import cli from 'cli-interact';
@@ -695,7 +695,7 @@ describe('Test leading zeros', () => {
   // Use a known seed to derive private keys with leading zeros to test firmware derivation
   const mnemonic =
     'erosion loan violin drip laundry harsh social mercy leaf original habit buffalo';
-  const KNOWN_SEED = bip39.mnemonicToSeedSync(mnemonic);
+  const KNOWN_SEED = mnemonicToSeedSync(mnemonic);
   const wallet = bip32.fromSeed(KNOWN_SEED);
   let basePath = [
     helpers.BTC_PURPOSE_P2PKH,

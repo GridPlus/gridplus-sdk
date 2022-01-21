@@ -1,5 +1,5 @@
 import bip32 from 'bip32';
-import bip39 from 'bip39';
+import { wordlists } from 'bip39';
 import bitcoin from 'bitcoinjs-lib';
 import { expect as expect } from 'chai';
 import crypto from 'crypto';
@@ -712,7 +712,7 @@ export const serializeLoadSeedJobData = function (data) {
 //---------------------------------------------------
 export const buildRandomEip712Object = function (randInt) {
   function randStr(n) {
-    const words = bip39.wordlists.english;
+    const words = wordlists.english;
     let s = '';
     while (s.length < n) {
       s += `${words[randInt(words.length)]}_`;

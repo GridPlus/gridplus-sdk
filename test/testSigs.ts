@@ -9,7 +9,7 @@
 //                need to validate any screen logic with these tests.
 require('it-each')({ testPerIteration: true });
 import bip32 from 'bip32';
-import bip39 from 'bip39';
+import { mnemonicToSeedSync } from 'bip39';
 import { expect as expect } from 'chai';
 import crypto from 'crypto';
 import ethutil from 'ethereumjs-util';
@@ -27,7 +27,7 @@ const TEST_MNEMONIC =
   'cargo swallow memory universe smooth involve ' +
   'iron purity throw vintage crew artefact ' +
   'pyramid dash split announce trend grain';
-const TEST_SEED = bip39.mnemonicToSeedSync(TEST_MNEMONIC);
+const TEST_SEED = mnemonicToSeedSync(TEST_MNEMONIC);
 let client, activeWalletUID, jobType, jobData, jobReq, txReq, msgReq;
 let latticeSeed = null,
   continueTests = true,
