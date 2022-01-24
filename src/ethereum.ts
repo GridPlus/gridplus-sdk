@@ -3,7 +3,8 @@
 import BN from 'bignumber.js';
 import cbor from 'borc';
 import { Buffer } from 'buffer/';
-import * as eip712 from 'eth-eip712-util';
+//@ts-expect-error - This third-party package is not typed properly
+import { TypedDataUtils } from 'eth-eip712-util';
 import { keccak256 } from 'js-sha3';
 import rlp from 'rlp-browser';
 import secp256k1 from 'secp256k1';
@@ -58,7 +59,7 @@ const validateEthereumMsgResponse = function (res, req) {
       useEIP155: false,
     });
   } else if (input.protocol === 'eip712') {
-    const encoded = eip712.hashForSignTypedData_v4(req.input.payload);
+    const encoded = TypedDataUtils.hash(req.input.payload);
     const digest = prehash ? prehash : encoded;
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
     return addRecoveryParam(digest, sig, signer, { useEIP155: false });
@@ -754,7 +755,7 @@ function buildEIP712Request(req, input) {
       // If this payload is too large to send, but the Lattice allows a prehashed message, do that
       req.payload.writeUInt16LE(payload.length, off);
       off += 2;
-      const encoded = eip712.hashForSignTypedData_v4(req.input.payload);
+      const encoded = TypedDataUtils.hash(req.input.payload);
       const prehash = Buffer.from(keccak256(encoded), 'hex');
       prehash.copy(req.payload, off);
       req.prehash = prehash;
