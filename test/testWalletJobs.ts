@@ -19,7 +19,7 @@ import ethjsBN from 'bn.js';
 import { expect as expect } from 'chai';
 import cli from 'cli-interact';
 import crypto from 'crypto';
-import ethutil from 'ethereumjs-util';
+import { ecrecover, privateToAddress, privateToPublic, publicToAddress } from 'ethereumjs-util';
 import { keccak256 } from 'js-sha3';
 import rlp from 'rlp';
 import seedrandom from 'seedrandom';
@@ -550,8 +550,7 @@ describe('signTx', () => {
     const derivedKey = wallet.derivePath(
       helpers.stringifyPath(jobData.sigReq[0].signerPath)
     );
-    const derivedPubStr = `04${ethutil
-      .privateToPublic(derivedKey.privateKey)
+    const derivedPubStr = `04${privateToPublic(derivedKey.privateKey)
       .toString('hex')}`;
     expect(outputPubStr).to.equal(derivedPubStr);
   });
@@ -585,8 +584,7 @@ describe('signTx', () => {
     const derivedKey = wallet.derivePath(
       helpers.stringifyPath(jobData.sigReq[0].signerPath)
     );
-    const derivedPubStr = `04${ethutil
-      .privateToPublic(derivedKey.privateKey)
+    const derivedPubStr = `04${privateToPublic(derivedKey.privateKey)
       .toString('hex')}`;
     expect(outputPubStr).to.equal(derivedPubStr);
   });
@@ -726,8 +724,7 @@ describe('Test leading zeros', () => {
       }
     }
     // Validate the exported address
-    const ref = `0x${ethutil
-      .privateToAddress(refPriv)
+    const ref = `0x${privateToAddress(refPriv)
       .toString('hex')
       .toLowerCase()}`;
     addrReq.startPath[addrReq.startPath.length - 1] = idx;
@@ -765,8 +762,8 @@ describe('Test leading zeros', () => {
     const v = new ethjsBN(_v + 27);
     const r = Buffer.from(tx.sig.r, 'hex');
     const s = Buffer.from(tx.sig.s, 'hex');
-    const recoveredAddr = ethutil.publicToAddress(
-      ethutil.ecrecover(txHashLessSig, v, r, s)
+    const recoveredAddr = publicToAddress(
+      ecrecover(txHashLessSig, v, r, s)
     );
     // Ensure recovered address is consistent with the one that got returned in the tx obj
     expect(recoveredAddr.toString('hex')).to.equal(
@@ -856,8 +853,7 @@ describe('Test leading zeros', () => {
   });
 
   it('Should make sure the first address is correct', async () => {
-    const ref = `0x${ethutil
-      .privateToAddress(wallet.derivePath(`${parentPathStr}/0`).privateKey)
+    const ref = `0x${privateToAddress(wallet.derivePath(`${parentPathStr}/0`).privateKey)
       .toString('hex')
       .toLowerCase()}`;
     const addrs: any = await helpers.execute(client, 'getAddresses', addrReq);
