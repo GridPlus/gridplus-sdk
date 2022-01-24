@@ -4,7 +4,7 @@ import bitcoin from 'bitcoinjs-lib';
 import { expect as expect } from 'chai';
 import crypto from 'crypto';
 import { ec as EC } from 'elliptic';
-import ethutil from 'ethereumjs-util';
+import { privateToAddress } from 'ethereumjs-util';
 import { ADDR_STR_LEN, BIP_CONSTANTS, ethMsgProtocol, HARDENED_OFFSET } from '../../src/constants';
 import { Client } from '../../src/index';
 import { parseDER } from '../../src/util';
@@ -575,7 +575,7 @@ export const validateETHAddresses = function (resp, jobData, seed) {
   for (let i = jobData.first; i < jobData.first + jobData.count; i++) {
     path.addr = i;
     const priv = wallet.derivePath(stringifyPath(path)).privateKey;
-    const addr = `0x${ethutil.privateToAddress(priv).toString('hex')}`;
+    const addr = `0x${privateToAddress(priv).toString('hex')}`;
     expect(addr).to.equal(resp.addresses[i - jobData.first]);
   }
 };
