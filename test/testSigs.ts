@@ -12,7 +12,7 @@ import bip32 from 'bip32';
 import { mnemonicToSeedSync } from 'bip39';
 import { expect as expect } from 'chai';
 import crypto from 'crypto';
-import ethutil from 'ethereumjs-util';
+import { ecsign, privateToAddress } from 'ethereumjs-util';
 import { keccak256 } from 'js-sha3';
 import { question } from 'readline-sync';
 import seedrandom from 'seedrandom';
@@ -79,7 +79,7 @@ function getPathStr(path) {
 function deriveAddress(seed, path) {
   const wallet = bip32.fromSeed(seed);
   const priv = wallet.derivePath(getPathStr(path)).privateKey;
-  return `0x${ethutil.privateToAddress(priv).toString('hex')}`;
+  return `0x${privateToAddress(priv).toString('hex')}`;
 }
 
 function signPersonalJS(_msg, path) {
@@ -88,7 +88,7 @@ function signPersonalJS(_msg, path) {
   const PERSONAL_SIGN_PREFIX = '\u0019Ethereum Signed Message:\n';
   const msg = PERSONAL_SIGN_PREFIX + String(_msg.length) + _msg;
   const hash: any = new Uint8Array(Buffer.from(keccak256(msg), 'hex'));
-  const sig = ethutil.ecsign(hash, priv);
+  const sig = ecsign(hash, priv);
   const v = (sig.v - 27).toString(16).padStart(2, '0');
   return `${sig.r.toString('hex')}${sig.s.toString('hex')}${v}`;
 }
