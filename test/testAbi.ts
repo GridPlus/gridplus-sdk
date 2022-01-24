@@ -1,5 +1,5 @@
 require('it-each')({ testPerIteration: true });
-import ethersAbi from '@ethersproject/abi';
+import { AbiCoder } from '@ethersproject/abi';
 import { expect as expect } from 'chai';
 import crypto from 'crypto';
 import _ from 'lodash';
@@ -11,7 +11,7 @@ import abi from './../src/ethereumAbi';
 import funcDef from './testUtil/etherscanABI_0xV2.json';
 import helpers from './testUtil/helpers';
 
-const encoder = new ethersAbi.AbiCoder();
+const encoder = new AbiCoder();
 const numIter = process.env.N || 10;
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
 
