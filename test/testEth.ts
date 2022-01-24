@@ -15,7 +15,7 @@
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)
 require('it-each')({ testPerIteration: true });
-import EthTx from '@ethersproject/transactions';
+import { serialize } from '@ethersproject/transactions';
 import BN from 'bignumber.js';
 import { expect as expect } from 'chai';
 import crypto from 'crypto';
@@ -137,7 +137,7 @@ async function testTxPass(req) {
     txData.chainId = 0;
   // There is one test where we submit an address without the prefix
   if (txData.to.slice(0, 2) !== '0x') txData.to = `0x${txData.to}`;
-  const expectedTx = EthTx.serialize(txData, sigData);
+  const expectedTx = serialize(txData, sigData);
   if (tx.tx !== expectedTx) {
     foundError = true;
   }
