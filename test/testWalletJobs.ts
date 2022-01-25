@@ -21,7 +21,7 @@ import cli from 'cli-interact';
 import crypto from 'crypto';
 import { ecrecover, privateToAddress, privateToPublic, publicToAddress } from 'ethereumjs-util';
 import { keccak256 } from 'js-sha3';
-import rlp from 'rlp';
+import { decode, encode } from 'rlp';
 import seedrandom from 'seedrandom';
 import { getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
 import helpers from './testUtil/helpers';
@@ -748,13 +748,13 @@ describe('Test leading zeros', () => {
     }
 
     // Validate the signature itself against the expected signer
-    const rlpData: any = rlp.decode(tx.tx);
+    const rlpData: any = decode(tx.tx);
     // The returned data contains the signature, which we need to clear out
     // Note that all requests coming in here must be legacy ETH txs
     rlpData[6] = Buffer.from('01', 'hex'); // chainID must be 1
     rlpData[7] = Buffer.alloc(0);
     rlpData[8] = Buffer.alloc(0);
-    const rlpEnc = rlp.encode(rlpData);
+    const rlpEnc = encode(rlpData);
     const txHashLessSig = Buffer.from(keccak256(rlpEnc), 'hex');
     // Rebuild sig
     // Subtract 37 to account for EIP155 (all requests here must have chainID=1)
