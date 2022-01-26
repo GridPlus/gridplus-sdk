@@ -1,6 +1,6 @@
 {
   "name": "gridplus-sdk",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
     "commit": "git-cz",
@@ -33,7 +33,7 @@
     "buffer": "^5.6.0",
     "crc-32": "^1.2.0",
     "elliptic": "6.5.4",
-    "eth-eip712-util": "^2.3.1",
+    "eth-eip712-util-browser": "0.0.2",
     "js-sha3": "^0.8.0",
     "rlp-browser": "^1.0.1",
     "secp256k1": "4.0.2",
