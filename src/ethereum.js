@@ -369,7 +369,7 @@ function addRecoveryParam(hashBuf, sig, address, txData={}) {
     // Rebuild the keccak256 hash here so we can `ecrecover`
     const hash = new Uint8Array(hashBuf);
     let v = 0;
-    // Fix signature componenet lengths to 32 bytes each
+    // Fix signature component lengths to 32 bytes each
     const r = fixLen(sig.r, 32); sig.r = r;
     const s = fixLen(sig.s, 32); sig.s = s;
     // Calculate the recovery param
