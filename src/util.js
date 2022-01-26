@@ -1,18 +1,13 @@
 // Static utility functions
-import aes from 'aes-js';
-import { Buffer as Buffer } from 'buffer/';
-import crc32 from 'crc-32';
-import elliptic from 'elliptic';
-import bitcoin from './bitcoin';
-import {
-  AES_IV,
-  BIP_CONSTANTS,
-  HARDENED_OFFSET,
-  responseCodes,
-  responseMsgs,
-  VERSION_BYTE
-} from './constants';
-import ethereum from './ethereum';
+const { buildBitcoinTxRequest } = require('./bitcoin');
+const { buildEthereumTxRequest, buildEthereumMsgRequest, ensureHexBuffer } = require('./ethereum');
+const Buffer = require('buffer/').Buffer
+const aes = require('aes-js');
+const crc32 = require('crc-32');
+const elliptic = require('elliptic');
+const { 
+  AES_IV, BIP_CONSTANTS, HARDENED_OFFSET, responseCodes, responseMsgs, VERSION_BYTE 
+} = require('./constants');
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
 const ec = new EC('p256');
@@ -22,16 +17,15 @@ const ec = new EC('p256');
 
 // Parse a response from the Lattice1
 function parseLattice1Response(r) {
-  const parsed: any = {
+  const parsed = {
     err: null,
     data: null,
-  };
+  }
   const b = Buffer.from(r, 'hex');
   let off = 0;
-
+  
   // Get protocol version
-  const protoVer = b.readUInt8(off);
-  off++;
+  const protoVer = b.readUInt8(off); off++;
   if (protoVer !== VERSION_BYTE) {
     parsed.err = 'Incorrect protocol version. Please update your SDK';
     return parsed;
@@ -39,27 +33,21 @@ function parseLattice1Response(r) {
 
   // Get the type of response
   // Should always be 0x00
-  const msgType = b.readUInt8(off);
-  off++;
+  const msgType = b.readUInt8(off); off++;
   if (msgType !== 0x00) {
     parsed.err = 'Incorrect response from Lattice1';
     return parsed;
   }
 
   // Get the payload
-  b.readUInt32BE(off);
-  off += 4; // First 4 bytes is the id, but we don't need that anymore
-  const len = b.readUInt16BE(off);
-  off += 2;
-  const payload = b.slice(off, off + len);
-  off += len;
+  b.readUInt32BE(off); off+=4; // First 4 bytes is the id, but we don't need that anymore
+  const len = b.readUInt16BE(off); off+=2;
+  const payload = b.slice(off, off+len); off+=len;
 
   // Get response code
   const responseCode = payload.readUInt8(0);
   if (responseCode !== responseCodes.RESP_SUCCESS) {
-    parsed.err = `Error from device: ${
-      responseMsgs[responseCode] ? responseMsgs[responseCode] : 'Unknown Error'
-    }`;
+    parsed.err = `Error from device: ${responseMsgs[responseCode] ? responseMsgs[responseCode] : 'Unknown Error'}`;
     parsed.responseCode = responseCode;
     return parsed;
   } else {
@@ -70,11 +58,11 @@ function parseLattice1Response(r) {
   const cs = b.readUInt32BE(off);
   const expectedCs = checksum(b.slice(0, b.length - 4));
   if (cs !== expectedCs) {
-    parsed.err = 'Invalid checksum from device response';
+    parsed.err = 'Invalid checksum from device response'
     parsed.data = null;
     return parsed;
   }
-
+  
   return parsed;
 }
 
@@ -99,38 +87,33 @@ function toPaddedDER(sig) {
 // TRANSACTION UTILS
 //--------------------------------------------------
 const signReqResolver = {
-  BTC: bitcoin.buildBitcoinTxRequest,
-  ETH: ethereum.buildEthereumTxRequest,
-  ETH_MSG: ethereum.buildEthereumMsgRequest,
-};
+  'BTC': buildBitcoinTxRequest,
+  'ETH': buildEthereumTxRequest,
+  'ETH_MSG': buildEthereumMsgRequest,
+}
 
 function isValidAssetPath(path, fwConstants) {
-  const allowedPurposes = [
-    PURPOSES.ETH,
-    PURPOSES.BTC_LEGACY,
-    PURPOSES.BTC_WRAPPED_SEGWIT,
-    PURPOSES.BTC_SEGWIT,
-  ];
+  const allowedPurposes = [PURPOSES.ETH, PURPOSES.BTC_LEGACY, PURPOSES.BTC_WRAPPED_SEGWIT, PURPOSES.BTC_SEGWIT];
   const allowedCoins = [COINS.ETH, COINS.BTC, COINS.BTC_TESTNET];
   // These coin types were given to us by MyCrypto. They should be allowed, but we expect
   // an Ethereum-type address with these coin types.
   // These all use SLIP44: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-  const allowedMyCryptoCoins = [
-    60, 61, 966, 700, 9006, 9000, 1007, 553, 178, 137, 37310, 108, 40, 889,
-    1987, 820, 6060, 1620, 1313114, 76, 246529, 246785, 1001, 227, 916, 464,
-    2221, 344, 73799, 246,
-  ];
+  const allowedMyCryptoCoins = [ 
+    60, 61, 966, 700, 9006, 9000, 1007, 553, 178, 137,  37310, 108, 40, 889, 1987, 820,
+    6060, 1620, 1313114, 76, 246529, 246785, 1001, 227, 916, 464, 2221, 344, 73799, 246,
+  ]
   // Make sure firmware supports this Bitcoin path
   const isBitcoin = path[1] === COINS.BTC || path[1] === COINS.BTC_TESTNET;
-  const isBitcoinNonWrappedSegwit =
-    isBitcoin && path[0] !== PURPOSES.BTC_WRAPPED_SEGWIT;
+  const isBitcoinNonWrappedSegwit = isBitcoin && path[0] !== PURPOSES.BTC_WRAPPED_SEGWIT;
   if (isBitcoinNonWrappedSegwit && !fwConstants.allowBtcLegacyAndSegwitAddrs)
     return false;
   // Make sure this path is otherwise valid
   return (
-    allowedPurposes.indexOf(path[0]) >= 0 &&
-    (allowedCoins.indexOf(path[1]) >= 0 ||
-      allowedMyCryptoCoins.indexOf(path[1] - HARDENED_OFFSET) > 0)
+    (allowedPurposes.indexOf(path[0]) >= 0) &&
+    (
+      allowedCoins.indexOf(path[1]) >= 0 ||
+      allowedMyCryptoCoins.indexOf(path[1] - HARDENED_OFFSET) > 0
+    )
   );
 }
 
@@ -140,8 +123,7 @@ function isValidAssetPath(path, fwConstants) {
 function aes256_encrypt(data, key) {
   const iv = Buffer.from(AES_IV);
   const aesCbc = new aes.ModeOfOperation.cbc(key, iv);
-  const paddedData =
-    data.length % 16 === 0 ? data : aes.padding.pkcs7.pad(data);
+  const paddedData = (data.length) % 16 === 0 ? data : aes.padding.pkcs7.pad(data);
   return Buffer.from(aesCbc.encrypt(paddedData));
 }
 
@@ -155,20 +137,17 @@ function aes256_decrypt(data, key) {
 function parseDER(sigBuf) {
   if (sigBuf[0] !== 0x30 || sigBuf[2] !== 0x02) return null;
   let off = 3;
-  const sig = { r: null, s: null };
-  const rLen = sigBuf[off];
-  off++;
-  sig.r = sigBuf.slice(off, off + rLen);
-  off += rLen;
+  const sig = { r: null, s: null }
+  const rLen = sigBuf[off]; off++;
+  sig.r = sigBuf.slice(off, off + rLen); off += rLen
   if (sigBuf[off] !== 0x02) return null;
   off++;
-  const sLen = sigBuf[off];
-  off++;
+  const sLen = sigBuf[off]; off++;
   sig.s = sigBuf.slice(off, off + sLen);
   return sig;
 }
 
-function getP256KeyPair(priv) {
+function getP256KeyPair (priv) {
   return ec.keyFromPrivate(priv, 'hex');
 }
 
@@ -176,8 +155,9 @@ function getP256KeyPairFromPub(pub) {
   return ec.keyFromPublic(pub, 'hex');
 }
 
-export {
+module.exports = {
   isValidAssetPath,
+  ensureHexBuffer,
   signReqResolver,
   aes256_decrypt,
   aes256_encrypt,
@@ -187,4 +167,4 @@ export {
   getP256KeyPair,
   getP256KeyPairFromPub,
   toPaddedDER,
-};
+}
