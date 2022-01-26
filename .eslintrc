@@ -4,13 +4,8 @@
     "mocha": true,
     "node": true
   },
-  "root": true,
-  "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint"],
   "extends": [
-    "eslint:recommended",
-    "plugin:@typescript-eslint/eslint-recommended",
-    "plugin:@typescript-eslint/recommended"
+    "eslint:recommended"
   ],
   "parserOptions": {
     "ecmaFeatures": {
@@ -50,9 +45,6 @@
     "quotes": [
       "error", "single"
     ],
-    "no-control-regex": "off",
-    "react/react-in-jsx-scope": "off",
-    "@typescript-eslint/no-var-requires": "off",
-    "@typescript-eslint/no-explicit-any": "off"
+    "react/react-in-jsx-scope": "off"
   }
 }
