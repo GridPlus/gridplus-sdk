@@ -278,15 +278,8 @@ class Client {
     reqPayload.copy(payload, off);
     // Construct the encrypted request and send it
     const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
-    return this._request(param, (err, res, responseCode) => {
-      if (responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) {
-        // If we catch a case where the wallet has changed, try getting the new active wallet
-        // and recursively make the original request.
-        this._getActiveWallet((err) => {
-          if (err) return cb(err)
-          else     return this.sign(opts, cb, cachedData, nextCode);
-        })
-      } else if (err) {
+    return this._request(param, (err, res) => {
+      if (err) {
         // If there was another error caught, return it
         if (err) return cb(err);
       } else if (hasExtraPayloads) {
@@ -366,15 +359,8 @@ class Client {
     payload.writeUInt8(decimals, 292);
     // Encrypt the request and send it to the Lattice.
     const param = this._buildEncRequest(encReqCodes.ADD_PERMISSION_V0, payload);
-    return this._request(param, (err, res, responseCode) => {
-      if (responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) {
-        // If we catch a case where the wallet has changed, try getting the new active wallet
-        // and recursively make the original request.
-        this._getActiveWallet((err) => {
-          if (err) return cb(err)
-          else     return this.addPermissionV0(opts, cb);
-        })
-      } else if (err) {
+    return this._request(param, (err, res) => {
+      if (err) {
         // If there was another error caught, return it
         if (err) return cb(err);
       } else {
@@ -403,15 +389,8 @@ class Client {
     payload.writeUInt32LE(start, 5);
     // Encrypt the request and send it to the Lattice.
     const param = this._buildEncRequest(encReqCodes.GET_KV_RECORDS, payload);
-    return this._request(param, (err, res, responseCode) => {
-      if (responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) {
-        // If we catch a case where the wallet has changed, try getting the new active wallet
-        // and recursively make the original request.
-        this._getActiveWallet((err) => {
-          if (err) return cb(err)
-          else     return this.getKvRecords(opts, cb);
-        })
-      } else if (err) {
+    return this._request(param, (err, res) => {
+      if (err) {
         // If there was another error caught, return it
         if (err) return cb(err);
       } else {
@@ -482,15 +461,8 @@ class Client {
     }
     // Encrypt the request and send it to the Lattice.
     const param = this._buildEncRequest(encReqCodes.ADD_KV_RECORDS, payload);
-    return this._request(param, (err, res, responseCode) => {
-      if (responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) {
-        // If we catch a case where the wallet has changed, try getting the new active wallet
-        // and recursively make the original request.
-        this._getActiveWallet((err) => {
-          if (err) return cb(err)
-          else     return this.addKvRecords(opts, cb);
-        })
-      } else if (err) {
+    return this._request(param, (err, res) => {
+      if (err) {
         // If there was another error caught, return it
         if (err) return cb(err);
       } else {
@@ -521,15 +493,8 @@ class Client {
     }
     // Encrypt the request and send it to the Lattice.
     const param = this._buildEncRequest(encReqCodes.REMOVE_KV_RECORDS, payload);
-    return this._request(param, (err, res, responseCode) => {
-      if (responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT) {
-        // If we catch a case where the wallet has changed, try getting the new active wallet
-        // and recursively make the original request.
-        this._getActiveWallet((err) => {
-          if (err) return cb(err)
-          else     return this.removeKvRecords(opts, cb);
-        })
-      } else if (err) {
+    return this._request(param, (err, res) => {
+      if (err) {
         // If there was another error caught, return it
         if (err) return cb(err);
       } else {
@@ -656,32 +621,42 @@ class Client {
     superagent.post(url).timeout(this.timeout)
     .send({data})
     .then(res => {
-      if (!res || !res.body) return cb(`Invalid response: ${res}`)
-      else if (res.body.status !== 200) return cb(`Error code ${res.body.status}: ${res.body.message}`)
+      // Handle formatting or generic HTTP errors
+      if (!res || !res.body)  {
+        return cb(`Invalid response: ${res}`)
+      } else if (res.body.status !== 200) {
+        return cb(`Error code ${res.body.status}: ${res.body.message}`)
+      }
+      // Handle retry logic
       const parsed = parseLattice1Response(res.body.message);
       const deviceBusy = (parsed.responseCode === responseCodes.RESP_ERR_DEV_BUSY ||
                           parsed.responseCode === responseCodes.RESP_ERR_GCE_TIMEOUT);
-      const walletMissing = parsed.responseCode === responseCodes.RESP_ERR_WALLET_NOT_PRESENT;
+      const wrongWallet = parsed.responseCode === responseCodes.RESP_ERR_WRONG_WALLET;
       const invalidEphemId = parsed.responseCode === responseCodes.RESP_ERR_INVALID_EPHEM_ID;
       const canRetry = retryCount > 0;
+      // Clean up state if needed
+      if (wrongWallet) {
+        // If we got a `wrongWallet` error, we should clear our wallet state, reconnect,
+        // and get the current active wallet before retrying the original request.
+        this._resetActiveWallets();
+      }
+      // Re-connect and/or retry request if needed
       if (deviceBusy && canRetry) {
         // Wait a few seconds and retry
         setTimeout(() => { 
           this._request(data, cb, retryCount-1);
         }, 3000);
-      } else if (walletMissing && canRetry) {
-        // If we caugh a `ErrWalletNotPresent` make sure we aren't caching an old active walletUID
-        this._resetActiveWallets();
-        return this._request(data, cb, retryCount-1);
-      } else if (invalidEphemId && canRetry) {
+      } else if ((wrongWallet || invalidEphemId) && canRetry) {
         // Reconnect and retry
         this.connect(this.deviceId, (err, isPaired) => {
           if (err) {
+            // Abort on connection error
             cb(err);
           } else if (!isPaired) {
+            // Abort if we are not paired
             cb('Not paired to device.')
           } else {
-            // Retry
+            // Retry the original request
             this._request(data, cb, retryCount-1);
           }
         })
