@@ -97,7 +97,7 @@ class Client {
       this.deviceId = deviceId;
     }
     const param = this._buildRequest(deviceCodes.CONNECT, this.pubKeyBytes());
-    this._request(param, (err, res) => {
+    this._request(param, null, (err, res) => {
       if (err) return cb(err);
       this.isPaired = this._handleConnect(res) || false;
       // Check for an active wallet. This will get bypassed if we are not paired.
@@ -134,8 +134,7 @@ class Client {
     const payload = Buffer.concat([nameBuf, derSig]);
 
     // Build the request
-    const param = this._buildEncRequest(encReqCodes.FINALIZE_PAIRING, payload);
-    this._request(param, (err, res) => {
+    this._request(payload, 'FINALIZE_PAIRING', (err, res) => {
       if (err) return cb(err);
       // Recover the ephemeral key
       const errStr = this._handlePair(res);
@@ -156,8 +155,7 @@ class Client {
     payload.writeUInt32BE(data.testID, 0);
     payload.writeUInt16BE(data.payload.length, 4);
     data.payload.copy(payload, 6);
-    const param = this._buildEncRequest(encReqCodes.TEST, payload);
-    this._request(param, (err, res) => {
+    this._request(payload, 'TEST', (err, res) => {
       if (err) return cb(err);
       const decrypted = this._handleEncResponse(res, decResLengths.test);
       if (decrypted.err !== null ) 
@@ -218,8 +216,7 @@ class Client {
       val = n;
     }
     payload.writeUInt8(val, off); off++;
-    const param = this._buildEncRequest(encReqCodes.GET_ADDRESSES, payload);
-    return this._request(param, (err, res) => {
+    return this._request(payload, 'GET_ADDRESSES', (err, res) => {
       if (err) return cb(err);
       const parsedRes = this._handleGetAddresses(res);
       if (parsedRes.err) return cb(parsedRes.err);
@@ -277,8 +274,7 @@ class Client {
     // Copy the payload of the request
     reqPayload.copy(payload, off);
     // Construct the encrypted request and send it
-    const param = this._buildEncRequest(encReqCodes.SIGN_TRANSACTION, payload);
-    return this._request(param, (err, res) => {
+    return this._request(payload, 'SIGN_TRANSACTION', (err, res) => {
       if (err) {
         // If there was another error caught, return it
         if (err) return cb(err);
@@ -315,8 +311,7 @@ class Client {
     if (nextCode !== null)
       nextCode.copy(payload, 2);
     abiPayload.copy(payload, 10);
-    const param = this._buildEncRequest(encReqCodes.ADD_ABI_DEFS, payload);
-    return this._request(param, (err, res, responseCode) => {
+    return this._request(payload, 'ADD_ABI_DEFS', (err, res, responseCode) => {
       if (responseCode && responseCode !== responseCodes.RESP_SUCCESS)
         return cb('Error making request.');
       else if (err)
@@ -358,8 +353,7 @@ class Client {
     payload.writeUInt32BE(timeWindow, 288);
     payload.writeUInt8(decimals, 292);
     // Encrypt the request and send it to the Lattice.
-    const param = this._buildEncRequest(encReqCodes.ADD_PERMISSION_V0, payload);
-    return this._request(param, (err, res) => {
+    return this._request(payload, 'ADD_PERMISSION_V0', (err, res) => {
       if (err) {
         // If there was another error caught, return it
         if (err) return cb(err);
@@ -388,8 +382,7 @@ class Client {
     payload.writeUInt8(n, 4);
     payload.writeUInt32LE(start, 5);
     // Encrypt the request and send it to the Lattice.
-    const param = this._buildEncRequest(encReqCodes.GET_KV_RECORDS, payload);
-    return this._request(param, (err, res) => {
+    return this._request(payload, 'GET_KV_RECORDS', (err, res) => {
       if (err) {
         // If there was another error caught, return it
         if (err) return cb(err);
@@ -460,8 +453,7 @@ class Client {
       return cb(`Error building request: ${err.message}`);
     }
     // Encrypt the request and send it to the Lattice.
-    const param = this._buildEncRequest(encReqCodes.ADD_KV_RECORDS, payload);
-    return this._request(param, (err, res) => {
+    return this._request(payload, 'ADD_KV_RECORDS', (err, res) => {
       if (err) {
         // If there was another error caught, return it
         if (err) return cb(err);
@@ -492,8 +484,7 @@ class Client {
       payload.writeUInt32LE(ids[i], 5 + (4 * i))
     }
     // Encrypt the request and send it to the Lattice.
-    const param = this._buildEncRequest(encReqCodes.REMOVE_KV_RECORDS, payload);
-    return this._request(param, (err, res) => {
+    return this._request(payload, 'REMOVE_KV_RECORDS', (err, res) => {
       if (err) {
         // If there was another error caught, return it
         if (err) return cb(err);
@@ -524,8 +515,7 @@ class Client {
     } else {
       // No active wallet? Get it from the device
       const payload = Buffer.alloc(0);
-      const param = this._buildEncRequest(encReqCodes.GET_WALLETS, payload);
-      return this._request(param, (err, res) => {
+      return this._request(payload, 'GET_WALLETS', (err, res) => {
         if (err) {
           this._resetActiveWallets();
           return cb(err);
@@ -615,8 +605,16 @@ class Client {
     return req;
   }
 
-  _request(data, cb, retryCount=this.retryCount) {
-    if (!this.deviceId) return cb('Serial is not set. Please set it and try again.');
+  _request(payload, encReqCode, cb, retryCount=this.retryCount) {
+    if (!this.deviceId) {
+      return cb('Device ID is not set. Please set it and try again.');
+    } else if (encReqCode && encReqCodes[encReqCode] === undefined) {
+      return cb('Unknown encrypted request code.');
+    }
+    // Encrypt the data if appropriate. Most requests are end-to-end encrypted,
+    // but some (e.g. CONNNECT) are not encrypted.
+    const data = encReqCode ? this._buildEncRequest(encReqCodes[encReqCode], payload) : 
+                              payload;
     const url = `${this.baseUrl}/${this.deviceId}`;
     superagent.post(url).timeout(this.timeout)
     .send({data})
@@ -644,7 +642,7 @@ class Client {
       if (deviceBusy && canRetry) {
         // Wait a few seconds and retry
         setTimeout(() => { 
-          this._request(data, cb, retryCount-1);
+          this._request(payload, encReqCode, cb, retryCount-1);
         }, 3000);
       } else if ((wrongWallet || invalidEphemId) && canRetry) {
         // Reconnect and retry
@@ -657,7 +655,7 @@ class Client {
             cb('Not paired to device.')
           } else {
             // Retry the original request
-            this._request(data, cb, retryCount-1);
+            this._request(payload, encReqCode, cb, retryCount-1);
           }
         })
       } else if (parsed.err) {
