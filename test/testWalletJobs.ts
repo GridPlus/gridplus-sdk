@@ -16,7 +16,7 @@
 import bip32 from 'bip32';
 import { mnemonicToSeedSync } from 'bip39';
 import ethjsBN from 'bn.js';
-import { expect as expect } from 'chai';
+import { expect } from 'chai';
 import cli from 'cli-interact';
 import crypto from 'crypto';
 import { ecrecover, privateToAddress, privateToPublic, publicToAddress } from 'ethereumjs-util';

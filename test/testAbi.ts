@@ -1,14 +1,13 @@
 require('it-each')({ testPerIteration: true });
 import { AbiCoder } from '@ethersproject/abi';
-import { expect as expect } from 'chai';
+import { expect } from 'chai';
 import crypto from 'crypto';
 import _ from 'lodash';
 import randomWords from 'random-words';
-import { question as question } from 'readline-sync';
+import { question } from 'readline-sync';
 import seedrandom from 'seedrandom';
 import { ETH_ABI_LATTICE_FW_TYPE_MAP, getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
 import abi from './../src/ethereumAbi';
-import funcDef from './testUtil/etherscanABI_0xV2.json';
 import helpers from './testUtil/helpers';
 
 const encoder = new AbiCoder();
@@ -725,6 +724,101 @@ describe('Add ABI definitions', () => {
   });
 
   it('Should test parsing of a 0x V2 ABI via Etherscan', async () => {
+    const funcDef = {
+      'constant': false,
+      'inputs': [
+        {
+          'components': [
+            {
+              'name': 'makerAddress',
+              'type': 'address'
+            },
+            {
+              'name': 'takerAddress',
+              'type': 'address'
+            },
+            {
+              'name': 'feeRecipientAddress',
+              'type': 'address'
+            },
+            {
+              'name': 'senderAddress',
+              'type': 'address'
+            },
+            {
+              'name': 'makerAssetAmount',
+              'type': 'uint256'
+            },
+            {
+              'name': 'takerAssetAmount',
+              'type': 'uint256'
+            },
+            {
+              'name': 'makerFee',
+              'type': 'uint256'
+            },
+            {
+              'name': 'takerFee',
+              'type': 'uint256'
+            },
+            {
+              'name': 'expirationTimeSeconds',
+              'type': 'uint256'
+            },
+            {
+              'name': 'salt',
+              'type': 'uint256'
+            },
+            {
+              'name': 'makerAssetData',
+              'type': 'bytes'
+            },
+            {
+              'name': 'takerAssetData',
+              'type': 'bytes'
+            }
+          ],
+          'name': 'order',
+          'type': 'tuple'
+        },
+        {
+          'name': 'takerAssetFillAmount',
+          'type': 'uint256'
+        },
+        {
+          'name': 'signature',
+          'type': 'bytes'
+        }
+      ],
+      'name': 'fillOrder',
+      'outputs': [
+        {
+          'components': [
+            {
+              'name': 'makerAssetFilledAmount',
+              'type': 'uint256'
+            },
+            {
+              'name': 'takerAssetFilledAmount',
+              'type': 'uint256'
+            },
+            {
+              'name': 'makerFeePaid',
+              'type': 'uint256'
+            },
+            {
+              'name': 'takerFeePaid',
+              'type': 'uint256'
+            }
+          ],
+          'name': 'fillResults',
+          'type': 'tuple'
+        }
+      ],
+      'payable': false,
+      'stateMutability': 'nonpayable',
+      'type': 'function'
+    }
     const newDefs = abi.abiParsers.etherscan([funcDef]);
     defsToLoad = defsToLoad.concat(newDefs);
   });

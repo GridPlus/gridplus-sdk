@@ -4,7 +4,7 @@ import BN from 'bignumber.js';
 import cbor from 'borc';
 import { Buffer } from 'buffer/';
 //@ts-expect-error - This third-party package is not typed properly
-import { TypedDataUtils } from 'eth-eip712-util';
+import { TypedDataUtils } from 'eth-eip712-util-browser';
 import { keccak256 } from 'js-sha3';
 import rlp from 'rlp-browser';
 import secp256k1 from 'secp256k1';
@@ -271,8 +271,7 @@ const buildEthereumTxRequest = function (data) {
       if (PREHASH_FROM_ACCESS_LIST) {
         PREHASH_UNSUPPORTED = true;
       }
-      // @ts-expect-error - TODO: this argument will be coerced to undefined
-      txReqPayload.writeUInt8(PREHASH_UNSUPPORTED === true, off);
+      txReqPayload.writeUInt8(PREHASH_UNSUPPORTED ? 1 : 0, off);
       off += 1;
       // EIP1559 & EIP2930 struct version
       if (isEip1559) {

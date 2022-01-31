@@ -85,8 +85,7 @@ export const buildAddAbiPayload = function (defs) {
       def.params.forEach((param) => {
         b.writeUInt8(param.latticeTypeIdx, off);
         off++;
-        //@ts-expect-error - TODO: this arg will always be coerced to undefined in writeUInt8
-        b.writeUInt8(param.isArray === true, off);
+        b.writeUInt8(param.isArray ? 1 : 0, off);
         off++;
         b.writeUInt32LE(param.arraySz, off);
         off += 4;

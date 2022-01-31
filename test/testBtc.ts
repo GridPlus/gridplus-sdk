@@ -1,26 +1,7 @@
-// Tests for BTC transaction edge cases
-// NOTE: You must run the following BEFORE executing these tests:
-//
-// 1. Pair with the device once. This will ask you for your deviceID, which will
-//    act as a salt for your pairing:
-//
-//    env REUSE_KEY=1 npm run test
-//
-// 2. Connect with the same deviceID you specfied in 1:
-//
-//    env DEVICE_ID='<your_device_id>' npm test
-//
-// After you do the above, you can run this test with `env DEVICE_ID='<your_device_id>' npm run test-btc`
-//
-// NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
-//        root CMakeLists.txt file (for dev units)
+// You must have `FEATURE_TEST_RUNNER=0` enabled in firmware to run these tests.
 require('it-each')({ testPerIteration: true });
-// Bitcoin specific functionality/setup
-// !!!! IMPORTANT NOTE: YOU MUST RUN THESE TESTS AGAINST A LATTICE WHOSE SEED WAS RECOVERED USING
-//                      THE MNEMONIC SPECIFIED BELOW!!!!
-// Set up the wallet:
 import bip32 from 'bip32';
-import { expect as expect } from 'chai';
+import { expect } from 'chai';
 import seedrandom from 'seedrandom';
 import helpers from './testUtil/helpers';
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
@@ -60,13 +41,9 @@ async function testSign(req, signingKeys, sigHashes) {
     const sig = helpers.stripDER(tx.sigs[i]);
     const verification = signingKeys[i].verify(sigHashes[i], sig);
     if (!verification) continueTests = false;
-    expect(verification).to.equal(
-      true,
-      `Signature validation failed for priv=${signingKeys[
-        i
-      ].privateKey.toString('hex')}, ` +
-        `hash=${sigHashes[i].toString('hex')}, sig=${sig.toString('hex')}`
-    );
+    expect(verification).to.equal(true,
+      `Signature validation failed for priv=${signingKeys[i].privateKey.toString('hex')}, `
+      + `hash=${sigHashes[i].toString('hex')}, sig=${sig.toString('hex')}`);
   }
 }
 

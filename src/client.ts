@@ -4,19 +4,33 @@ import { Buffer } from 'buffer/';
 import superagent from 'superagent';
 import bitcoin from './bitcoin';
 import {
-  ADDR_STR_LEN, ASCII_REGEX, BASE_URL, decResLengths,
+  ADDR_STR_LEN,
+  ASCII_REGEX,
+  BASE_URL,
+  decResLengths,
   deviceCodes,
-  encReqCodes, ENC_MSG_LEN, getFwVersionConst, messageConstants, REQUEST_TYPE_BYTE, responseCodes, signingSchema, VERSION_BYTE
+  encReqCodes,
+  ENC_MSG_LEN,
+  getFwVersionConst,
+  messageConstants,
+  REQUEST_TYPE_BYTE,
+  responseCodes,
+  signingSchema,
+  VERSION_BYTE,
 } from './constants';
 import ethereum from './ethereum';
-import {
-  abiParsers, buildAddAbiPayload, MAX_ABI_DEFS
-} from './ethereumAbi';
+import { abiParsers, buildAddAbiPayload, MAX_ABI_DEFS } from './ethereumAbi';
 import {
   aes256_decrypt,
-  aes256_encrypt, checksum,
+  aes256_encrypt,
+  checksum,
   getP256KeyPair,
-  getP256KeyPairFromPub, isValidAssetPath, parseDER, parseLattice1Response, signReqResolver, toPaddedDER
+  getP256KeyPairFromPub,
+  isValidAssetPath,
+  parseDER,
+  parseLattice1Response,
+  signReqResolver,
+  toPaddedDER,
 } from './util';
 const EMPTY_WALLET_UID = Buffer.alloc(32);
 
@@ -74,7 +88,7 @@ export class Client {
     // Derive an ECDSA keypair using the p256 curve. The public key will
     // be used as an identifier
     this.privKey = privKey || this.crypto.randomBytes(32);
-    this.key = getP256KeyPair(this.privKey); //.encode('hex');
+    this.key = getP256KeyPair(this.privKey);
 
     // Stateful params
     this.ephemeralPub = null;
@@ -508,7 +522,7 @@ export class Client {
           String(records[key]).length > fwConstants.kvValMaxStrSz
         ) {
           throw new Error(
-            `Value ${records[key]} too large. Must be <$={fwConstants.kvValMaxStrSz} characters.`
+            `Value ${records[key]} too large. Must be <=${fwConstants.kvValMaxStrSz} characters.`
           );
         } else if (
           String(key).length === 0 ||
@@ -523,8 +537,7 @@ export class Client {
         off += 4;
         payload.writeUInt32LE(type, off);
         off += 4;
-        // @ts-expect-error - TODO: writeUInt8 cannot take a boolean. It will always be coerced to undefined.
-        payload.writeUInt8(caseSensitive === true, off);
+        payload.writeUInt8(caseSensitive ? 1 : 0, off);
         off += 1;
         payload.writeUInt8(String(key).length + 1, off);
         off += 1;

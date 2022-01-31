@@ -17,7 +17,7 @@
 require('it-each')({ testPerIteration: true });
 import { serialize } from '@ethersproject/transactions';
 import BN from 'bignumber.js';
-import { expect as expect } from 'chai';
+import { expect } from 'chai';
 import crypto from 'crypto';
 import seedrandom from 'seedrandom';
 import { getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
@@ -79,7 +79,7 @@ function buildRandomTxData(fwConstants) {
 
 function buildTxReq(
   txData,
-  network = 1,
+  network: string | number = 1,
   signerPath = [
     helpers.BTC_PURPOSE_P2PKH,
     helpers.ETH_COIN,
@@ -326,9 +326,9 @@ if (!process.env.skip) {
     });
     it('Should test named units', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
-      await testTxPass(buildTxReq(txData, `0x${(137).toString(16)}` as unknown as number));
-      await testTxPass(buildTxReq(txData, `0x${(56).toString(16)}` as unknown as number));
-      await testTxPass(buildTxReq(txData, `0x${(43114).toString(16)}` as unknown as number));
+      await testTxPass(buildTxReq(txData, `0x${(137).toString(16)}`));
+      await testTxPass(buildTxReq(txData, `0x${(56).toString(16)}`));
+      await testTxPass(buildTxReq(txData, `0x${(43114).toString(16)}`));
     });
 
     it('Should test range of chainId sizes and EIP155 tag', async () => {

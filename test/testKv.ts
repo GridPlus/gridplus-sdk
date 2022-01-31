@@ -1,6 +1,6 @@
 // Basic tests for atomic SDK functionality
-import { expect as expect } from 'chai';
-import { question as question } from 'readline-sync';
+import { expect } from 'chai';
+import { question } from 'readline-sync';
 import { HARDENED_OFFSET } from '../src/constants';
 import helpers from './testUtil/helpers';
 let client, id;

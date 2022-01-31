@@ -1,6 +1,6 @@
 // Static utility functions
 import aes from 'aes-js';
-import { Buffer as Buffer } from 'buffer/';
+import { Buffer } from 'buffer/';
 import crc32 from 'crc-32';
 import elliptic from 'elliptic';
 import bitcoin from './bitcoin';

@@ -1,16 +1,8 @@
-// Tests for validating deterministic signatures, which were introduced
-// in Lattice firmware 0.12.0.
-// This utilizes the Lattice's test harness to ensure signatures are
-// deterministic based on the loaded seed and message.
-// To run these tests you will need a dev Lattice with: `FEATURE_TEST_RUNNER=1`
-// FRIENDLY NOTE: This test obviously runs a lot of signature requests,
-//                which will get tiring to authorize manually. Feel free to run
-//                this with `AUTO_SIGN_DEV_ONLY=1` in Lattice firmware. We don't
-//                need to validate any screen logic with these tests.
+// You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
 require('it-each')({ testPerIteration: true });
 import bip32 from 'bip32';
 import { mnemonicToSeedSync } from 'bip39';
-import { expect as expect } from 'chai';
+import { expect } from 'chai';
 import crypto from 'crypto';
 import { ecsign, privateToAddress } from 'ethereumjs-util';
 import { keccak256 } from 'js-sha3';
