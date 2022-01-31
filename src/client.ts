@@ -41,6 +41,7 @@ export class Client {
   deviceId: any;
   isPaired: boolean;
   retryCount: any;
+  fwVersion: any;
   activeWallets: {
     internal: {
       uid: Buffer; // 32 byte id
