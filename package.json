@@ -3,22 +3,23 @@
   "version": "0.9.7",
   "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "commit": "git-cz",
-    "lint": "eslint src",
-    "lint:fix": "eslint --fix src test __tests__",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint --fix src test --ext .ts",
     "precommit": "npm run lint:fix && npm run test",
     "prepublish": "",
     "postinstall": "",
-    "test": "mocha --timeout 120000 -R spec test/testAll.js --recursive --exit",
-    "test-abi": "mocha --timeout 360000 -R spec test/testAbi.js --recursive --exit",
-    "test-eth": "mocha --timeout 180000 -R spec test/testEth.js --recursive --exit",
-    "test-eth-msg": "mocha --timeout 180000 -R spec test/testEthMsg.js --recursive --exit",
-    "test-btc": "mocha --timeout 180000 -R spec test/testBtc.js --recursive --exit",
-    "test-kv": "mocha --timeout 180000 -R spec test/testKv.js --recursive --exit",
-    "test-wallet-jobs": "mocha --timeout 300000 -R spec test/testWalletJobs.js --recursive --exit",
-    "test-sigs": "mocha --timeout 300000 -R spec test/testSigs.js --recursive --exit"
+    "test": "ts-mocha --timeout 120000 -R spec test/testAll.ts --recursive --exit",
+    "test-abi": "ts-mocha --timeout 360000 -R spec test/testAbi.ts --recursive --exit",
+    "test-eth": "ts-mocha --timeout 180000 -R spec test/testEth.ts --recursive --exit",
+    "test-eth-msg": "ts-mocha --timeout 180000 -R spec test/testEthMsg.ts --recursive --exit",
+    "test-btc": "ts-mocha --timeout 180000 -R spec test/testBtc.ts --recursive --exit",
+    "test-kv": "ts-mocha --timeout 180000 -R spec test/testKv.ts --recursive --exit",
+    "test-wallet-jobs": "ts-mocha --timeout 300000 -R spec test/testWalletJobs.ts --recursive --exit",
+    "test-sigs": "ts-mocha --timeout 300000 -R spec test/testSigs.ts --recursive --exit"
   },
-  "main": "./index.js",
+  "main": "./dist/index.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/GridPlus/gridplus-sdk.git"
@@ -33,7 +34,7 @@
     "buffer": "^5.6.0",
     "crc-32": "^1.2.0",
     "elliptic": "6.5.4",
-    "eth-eip712-util-browser": "^0.0.3",
+    "eth-eip712-util": "^2.3.1",
     "js-sha3": "^0.8.0",
     "rlp-browser": "^1.0.1",
     "secp256k1": "4.0.2",
@@ -42,18 +43,17 @@
   "devDependencies": {
     "@ethersproject/abi": "^5.5.0",
     "@ethersproject/transactions": "^5.5.0",
+    "@types/expect": "^24.3.0",
+    "@types/mocha": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.10.0",
+    "@typescript-eslint/parser": "^5.10.0",
     "acorn": ">=6.4.1",
     "bip32": "^1.0.4",
     "bip39": "^3.0.2",
     "bitcoinjs-lib": "4.0.3",
     "chai": "^4.2.0",
     "cli-interact": "^0.1.9",
-    "eslint": "^5.9.0",
-    "eslint-config-standard": "^12.0.0",
-    "eslint-plugin-import": "^2.20.2",
-    "eslint-plugin-node": "^8.0.0",
-    "eslint-plugin-promise": "^4.0.1",
-    "eslint-plugin-standard": "^4.0.0",
+    "eslint": "^8.7.0",
     "ethereumjs-util": "^7.1.0",
     "it-each": "^0.4.0",
     "lodash": ">=4.17.21",
@@ -62,11 +62,12 @@
     "random-words": "^1.1.1",
     "readline-sync": "^1.4.9",
     "rlp": "^2.2.7",
-    "seedrandom": "^3.0.5"
+    "seedrandom": "^3.0.5",
+    "ts-mocha": "^9.0.2",
+    "typescript": "^4.5.4"
   },
   "files": [
-    "index.js",
-    "src"
+    "dist"
   ],
   "license": "MIT"
 }
