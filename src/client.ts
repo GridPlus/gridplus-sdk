@@ -354,7 +354,7 @@ export class Client {
       // No defs left? Return success
       if (defs.length === 0) return cb(null);
       // Add the next set
-      this.addAbiDefs(defs, cb, nextCode, defs);
+      this.addAbiDefs(defs, cb, nextCode);
     });
   }
 
