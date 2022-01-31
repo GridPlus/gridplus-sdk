@@ -1,45 +1,63 @@
-const bitwise = require('bitwise');
-const superagent = require('superagent');
-const bitcoin = require('./bitcoin');
-const ethereum = require('./ethereum');
-const {
-  buildAddAbiPayload,
-  abiParsers,
-  MAX_ABI_DEFS,
-} = require('./ethereumAbi');
-const {
-  isValidAssetPath,
-  signReqResolver,
-  aes256_decrypt,
-  aes256_encrypt,
-  parseDER,
-  checksum,
-  ensureHexBuffer,
-  getP256KeyPair,
-  getP256KeyPairFromPub,
-  parseLattice1Response,
-  toPaddedDER,
-} = require('./util');
-const {
-  ASCII_REGEX,
-  getFwVersionConst,
-  ADDR_STR_LEN,
-  ENC_MSG_LEN,
-  decResLengths,
+import bitwise from 'bitwise';
+import { Byte } from 'bitwise/types';
+import { Buffer } from 'buffer/';
+import superagent from 'superagent';
+import bitcoin from './bitcoin';
+import {
+  ADDR_STR_LEN, ASCII_REGEX, BASE_URL, decResLengths,
   deviceCodes,
-  encReqCodes,
-  responseCodes,
-  REQUEST_TYPE_BYTE,
-  VERSION_BYTE,
-  messageConstants,
-  BASE_URL,
-  signingSchema,
-} = require('./constants');
-const Buffer = require('buffer/').Buffer;
+  encReqCodes, ENC_MSG_LEN, getFwVersionConst, messageConstants, REQUEST_TYPE_BYTE, responseCodes, signingSchema, VERSION_BYTE
+} from './constants';
+import ethereum from './ethereum';
+import {
+  abiParsers, buildAddAbiPayload, MAX_ABI_DEFS
+} from './ethereumAbi';
+import {
+  aes256_decrypt,
+  aes256_encrypt, checksum,
+  getP256KeyPair,
+  getP256KeyPairFromPub, isValidAssetPath, parseDER, parseLattice1Response, signReqResolver, toPaddedDER
+} from './util';
 const EMPTY_WALLET_UID = Buffer.alloc(32);
 
-class Client {
-  constructor({ baseUrl, crypto, name, privKey, timeout, retryCount } = {}) {
+type ClientParams = {
+  baseUrl?: string;
+  crypto: string;
+  name: string;
+  privKey?: string;
+  key?: string;
+  pairingSalt?: string;
+  retryCount?: number;
+  timeout?: number;
+}
+export class Client {
+  baseUrl: any;
+  crypto: any;
+  name: any;
+  privKey: any;
+  key: any;
+  ephemeralPub: any;
+  sharedSecret: any;
+  timeout: any;
+  deviceId: any;
+  isPaired: boolean;
+  retryCount: any;
+  activeWallets: {
+    internal: {
+      uid: Buffer; // 32 byte id
+      name: any; // 20 char (max) string
+      capabilities: any; // 4 byte flag
+      external: boolean;
+    }; external: {
+      uid: Buffer; // 32 byte id
+      name: any; // 20 char (max) string
+      capabilities: any; // 4 byte flag
+      external: boolean;
+    };
+  };
+  pairingSalt: any;
+
+  constructor({ baseUrl, crypto, name, privKey, timeout, retryCount }: ClientParams) {
     // Definitions
     // if (!baseUrl) throw new Error('baseUrl is required');
     if (name && (name.length < 5 || name.length > 24)) {
@@ -221,7 +239,7 @@ class Client {
       // All requests against older devices also use the skipFlag=true now.
       const flag = bitwise.nibble.read(SKIP_CACHE_FLAG);
       const count = bitwise.nibble.read(n);
-      val = bitwise.byte.write(flag.concat(count));
+      val = bitwise.byte.write(flag.concat(count) as Byte);
     } else {
       val = n;
     }
@@ -301,6 +319,7 @@ class Client {
       } else {
         // Correct wallet and no errors -- handle the response
         const parsedRes = this._handleSign(res, currency, req);
+        // @ts-expect-error - TODO: should handle case where parsedRes does not contain data
         return cb(parsedRes.err, parsedRes.data);
       }
     });
@@ -319,7 +338,7 @@ class Client {
     // Let the firmware know how many defs are remaining *after this one*.
     // If this is a positive number, firmware will send us a temporary code
     // to bypass user authorization if the user has configured easy ABI loading.
-    payload.writeUInt16LE(defs.length);
+    payload.writeUInt16LE(defs.length, 0);
     // If this is a follow-up request, we don't need to ask for user authorization
     // if we use the correct temporary u64
     if (nextCode !== null) nextCode.copy(payload, 2);
@@ -363,7 +382,7 @@ class Client {
     if (Buffer.from(name).length > 255) return cb('Asset name too long.');
     Buffer.from(name).copy(payload, 0);
     // Convert the limit to a 32 byte hex buffer and copy it in
-    const limitBuf = ensureHexBuffer(limit);
+    const limitBuf = ethereum.ensureHexBuffer(limit);
     if (limitBuf.length > 32) return cb('Limit too large.');
     limitBuf.copy(payload, 256 + (32 - limitBuf.length));
     // Copy the time window (seconds)
@@ -396,7 +415,7 @@ class Client {
       );
     }
     const payload = Buffer.alloc(9);
-    payload.writeUInt32LE(type);
+    payload.writeUInt32LE(type, 0);
     payload.writeUInt8(n, 4);
     payload.writeUInt32LE(start, 5);
     // Encrypt the request and send it to the Lattice.
@@ -421,7 +440,7 @@ class Client {
           return cb('Too many records fetched. Firmware error.');
         const records = [];
         for (let i = 0; i < nFetched; i++) {
-          const r = {};
+          const r: any = {};
           r.id = parseInt(d.data.slice(off, off + 4).toString('hex'), 16);
           off += 4;
           r.type = parseInt(d.data.slice(off, off + 4).toString('hex'), 16);
@@ -472,7 +491,7 @@ class Client {
       return cb('You must provide at least one key to add.');
     }
     const payload = Buffer.alloc(1 + 139 * fwConstants.kvActionMaxNum);
-    payload.writeUInt8(Object.keys(records).length);
+    payload.writeUInt8(Object.keys(records).length, 0);
     let off = 1;
     try {
       Object.keys(records).forEach((key) => {
@@ -503,6 +522,7 @@ class Client {
         off += 4;
         payload.writeUInt32LE(type, off);
         off += 4;
+        // @ts-expect-error - TODO: writeUInt8 cannot take a boolean. It will always be coerced to undefined.
         payload.writeUInt8(caseSensitive === true, off);
         off += 1;
         payload.writeUInt8(String(key).length + 1, off);
@@ -544,7 +564,7 @@ class Client {
       );
     }
     const payload = Buffer.alloc(5 + 4 * fwConstants.kvRemoveMaxNum);
-    payload.writeUInt32LE(type);
+    payload.writeUInt32LE(type, 0);
     payload.writeUInt8(ids.length, 4);
     for (let i = 0; i < ids.length; i++) {
       payload.writeUInt32LE(ids[i], 5 + 4 * i);
@@ -939,7 +959,7 @@ class Client {
         n += 1;
       }
       // Build the transaction data to be serialized
-      const preSerializedData = {
+      const preSerializedData: any = {
         inputs: [],
         outputs: [],
         crypto: this.crypto,
@@ -999,7 +1019,7 @@ class Client {
         sigs,
       };
     } else if (currencyType === 'ETH') {
-      const sig = parseDER(res.slice(off, off + 2 + res[off + 1]));
+      const sig: any = parseDER(res.slice(off, off + 2 + res[off + 1]));
       off += DERLength;
       const ethAddr = res.slice(off, off + 20);
       // Determine the `v` param and add it to the sig before returning
@@ -1069,6 +1089,7 @@ class Client {
       // Need to flip X and Y components to little endian
       const x = pb.slice(1, 33).reverse();
       const y = pb.slice(33, 65).reverse();
+      // @ts-expect-error - TODO: Find out why Buffer won't accept pb[0]
       return Buffer.concat([pb[0], x, y]);
     } else {
       return pb;
@@ -1086,4 +1107,3 @@ class Client {
   }
 }
 
-module.exports = Client;

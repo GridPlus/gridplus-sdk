@@ -15,15 +15,14 @@
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)
 require('it-each')({ testPerIteration: true });
-const BN = require('bignumber.js');
-const crypto = require('crypto');
-const EthTx = require('@ethersproject/transactions');
-const constants = require('./../src/constants');
-const expect = require('chai').expect;
-const helpers = require('./testUtil/helpers');
-const seedrandom = require('seedrandom');
+import { serialize } from '@ethersproject/transactions';
+import BN from 'bignumber.js';
+import { expect as expect } from 'chai';
+import crypto from 'crypto';
+import seedrandom from 'seedrandom';
+import { getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
+import helpers from './testUtil/helpers';
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
-const HARDENED_OFFSET = constants.HARDENED_OFFSET;
 let client = null;
 let numRandom = process.env.N || 20; // Number of random tests to conduct
 const randomTxData = [];
@@ -61,7 +60,7 @@ function buildRandomTxData(fwConstants) {
     fwConstants.ethMaxDataSz +
     fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
   for (let i = 0; i < numRandom; i++) {
-    const tx = {
+    const tx: any = {
       nonce: `0x${new BN(randInt(16000)).toString(16)}`,
       gasPrice: `0x${new BN(randInt(ETH_GAS_PRICE_MAX)).toString(16)}`,
       gasLimit: `0x${new BN(
@@ -102,14 +101,14 @@ function buildTxReq(
 let foundError = false;
 
 async function testTxPass(req) {
-  const tx = await helpers.execute(client, 'sign', req);
+  const tx: any = await helpers.execute(client, 'sign', req);
   // Make sure there is transaction data returned
   // (this is ready for broadcast)
   const txIsNull = tx.tx === null;
   if (txIsNull === true) foundError = true;
   expect(txIsNull).to.equal(false);
   // Check the transaction data against a reference implementation
-  const txData = {
+  const txData: any = {
     type: req.data.type || null,
     nonce: req.data.nonce,
     to: req.data.to,
@@ -138,7 +137,7 @@ async function testTxPass(req) {
     txData.chainId = 0;
   // There is one test where we submit an address without the prefix
   if (txData.to.slice(0, 2) !== '0x') txData.to = `0x${txData.to}`;
-  const expectedTx = EthTx.serialize(txData, sigData);
+  const expectedTx = serialize(txData, sigData);
   if (tx.tx !== expectedTx) {
     foundError = true;
   }
@@ -181,7 +180,7 @@ describe('Setup client', () => {
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
     // Set the correct max gas price based on firmware version
-    const fwConstants = constants.getFwVersionConst(client.fwVersion);
+    const fwConstants = getFwVersionConst(client.fwVersion);
     ETH_GAS_PRICE_MAX = fwConstants.ethMaxGasPrice;
     // Build the random transactions
     buildRandomTxData(fwConstants);
@@ -215,7 +214,7 @@ describe('Test new transaction types', () => {
       value: 100,
       data: '0xdeadbeef',
     };
-    await testTxPass(buildTxReq(txData), 4);
+    await testTxPass(buildTxReq(txData));
   });
 
   it('Should test eip1559 with no access list', async () => {
@@ -306,11 +305,11 @@ if (!process.env.skip) {
         false,
         'Error found in prior test. Aborting.'
       );
-      setTimeout(() => {}, 5000);
+      setTimeout(() => { return undefined }, 5000);
     });
 
     it('Should test and validate signatures from shorter derivation paths', async () => {
-      if (constants.getFwVersionConst(client.fwVersion).varAddrPathSzAllowed) {
+      if (getFwVersionConst(client.fwVersion).varAddrPathSzAllowed) {
         // m/44'/60'/0'/x
         const path = [
           helpers.BTC_PURPOSE_P2PKH,
@@ -327,9 +326,9 @@ if (!process.env.skip) {
     });
     it('Should test named units', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
-      await testTxPass(buildTxReq(txData, `0x${(137).toString(16)}`));
-      await testTxPass(buildTxReq(txData, `0x${(56).toString(16)}`));
-      await testTxPass(buildTxReq(txData, `0x${(43114).toString(16)}`));
+      await testTxPass(buildTxReq(txData, `0x${(137).toString(16)}` as unknown as number));
+      await testTxPass(buildTxReq(txData, `0x${(56).toString(16)}` as unknown as number));
+      await testTxPass(buildTxReq(txData, `0x${(43114).toString(16)}` as unknown as number));
     });
 
     it('Should test range of chainId sizes and EIP155 tag', async () => {
@@ -337,7 +336,7 @@ if (!process.env.skip) {
       // Add some random data for good measure, since this will interact with the data buffer
       txData.data = `0x${crypto.randomBytes(randInt(100)).toString('hex')}`;
 
-      let chainId = 1;
+      let chainId: any = 1;
       // This one can fit in the normal chainID u8
 
       chainId = getChainId(8, -2); // 254
@@ -397,13 +396,13 @@ if (!process.env.skip) {
       expect(continueTests).to.equal(true);
 
       const txData = JSON.parse(JSON.stringify(defaultTxData));
-      let chainId = 1;
+      let chainId: any = 1;
 
       // Test boundary of new dataSz
       chainId = getChainId(51, 0); // 8 byte id
       // 8 bytes for the id itself and 1 byte for chainIdSz. This data is serialized into the request payload.
       let chainIdSz = 9;
-      const fwConstants = constants.getFwVersionConst(client.fwVersion);
+      const fwConstants = getFwVersionConst(client.fwVersion);
       const metadataSz = fwConstants.totalExtraEthTxDataSz || 0;
       const maxDataSz =
         fwConstants.ethMaxDataSz -
@@ -467,7 +466,7 @@ if (!process.env.skip) {
         for (let i = 0; i < n; i++) s += xs;
         return s;
       }
-      const fwConstants = constants.getFwVersionConst(client.fwVersion);
+      const fwConstants = getFwVersionConst(client.fwVersion);
       const maxDataSz =
         fwConstants.ethMaxDataSz +
         fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
@@ -536,7 +535,7 @@ if (!process.env.skip) {
       // expect a result that does not include EIP155 in the payload.
       txData.eip155 = false;
       const numChainId = 10000;
-      const chainId = `0x${numChainId.toString(16)}`; // 0x2710
+      const chainId: any = `0x${numChainId.toString(16)}`; // 0x2710
       await testTxPass(buildTxReq(txData, chainId));
       const res = await testTxPass(buildTxReq(txData, chainId));
       // For non-EIP155 transactions, we expect `v` to be 27 or 28
@@ -552,7 +551,7 @@ describe('Test random transaction data', function () {
   beforeEach(() => {
     expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
   });
-
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     randomTxDataLabels,
     'Random transactions %s',
