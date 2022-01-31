@@ -1,18 +1,17 @@
-const Buffer = require('buffer/').Buffer;
-const keccak256 = require('js-sha3').keccak256;
-const { ETH_ABI_LATTICE_FW_TYPE_MAP } = require('./constants');
+import { Buffer } from 'buffer/';
+import { keccak256 } from 'js-sha3';
+import { ETH_ABI_LATTICE_FW_TYPE_MAP } from './constants';
 const NAME_MAX_SZ = 100;
 const HEADER_SZ = 5 + NAME_MAX_SZ; // 4 byte sig + name + 1 byte param count
 const CATEGORY_SZ = 32;
 const PARAM_SZ = 26; // 20 byte name + 6 byte def
 const MAX_PARAMS = 18;
-const MAX_ABI_DEFS = 2;
-exports.MAX_ABI_DEFS = MAX_ABI_DEFS;
+export const MAX_ABI_DEFS = 2;
 
 // Build a request to add ABI data
-exports.buildAddAbiPayload = function (defs) {
+export const buildAddAbiPayload = function (defs) {
   if (!defs || !Array.isArray(defs)) throw new Error('Missing definitions.');
-  if (defs.length > exports.MAX_ABI_DEFS)
+  if (defs.length > MAX_ABI_DEFS)
     throw new Error(
       `You may only add ${MAX_ABI_DEFS} ABI definitions per request.`
     );
@@ -86,6 +85,7 @@ exports.buildAddAbiPayload = function (defs) {
       def.params.forEach((param) => {
         b.writeUInt8(param.latticeTypeIdx, off);
         off++;
+        //@ts-expect-error - TODO: this arg will always be coerced to undefined in writeUInt8
         b.writeUInt8(param.isArray === true, off);
         off++;
         b.writeUInt32LE(param.arraySz, off);
@@ -102,7 +102,7 @@ exports.buildAddAbiPayload = function (defs) {
 };
 
 // Get the 4-byte function identifier based on the canonical name
-exports.getFuncSig = function (f) {
+export const getFuncSig = function (f) {
   // Canonical name is:
   // funcName(paramType0, ..., paramTypeN)
   let canonicalName = `${f.name}(`;
@@ -141,7 +141,7 @@ function parseEtherscanAbiDefs(_defs, skipErrors = false) {
       d.constant !== true
     ) {
       try {
-        const sig = exports.getFuncSig(d);
+        const sig = getFuncSig(d);
         const params = parseEtherscanAbiInputs(d.inputs);
         defs.push({
           name: d.name,
@@ -158,7 +158,7 @@ function parseEtherscanAbiDefs(_defs, skipErrors = false) {
   return defs;
 }
 
-exports.abiParsers = {
+export const abiParsers = {
   etherscan: parseEtherscanAbiDefs,
 };
 
@@ -170,7 +170,7 @@ function parseEtherscanAbiInputs(inputs, data = [], isNestedTuple = false) {
   let tupleParams = [];
   inputs.forEach((input) => {
     const typeName = input.type;
-    const d = { isArray: false, arraySz: 0, name: input.name };
+    const d: any = { isArray: false, arraySz: 0, name: input.name };
     const openBracketIdx = typeName.indexOf('[');
     const closeBracketIdx = typeName.indexOf(']');
     const isMultiDim = typeName.split('[').length > 2;
@@ -224,4 +224,11 @@ function parseEtherscanAbiInputs(inputs, data = [], isNestedTuple = false) {
 // Enum values from inside Lattice firmware
 function getTypeIdxLatticeFw(type) {
   return ETH_ABI_LATTICE_FW_TYPE_MAP[type];
+}
+
+export default {
+  MAX_ABI_DEFS,
+  buildAddAbiPayload,
+  getFuncSig,
+  abiParsers,
 }

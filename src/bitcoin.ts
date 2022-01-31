@@ -1,11 +1,10 @@
 // Util for Bitcoin-specific functionality
-const bech32 = require('bech32').bech32;
-const bs58check = require('bs58check');
-const Buffer = require('buffer/').Buffer;
-const constants = require('./constants');
+import { bech32 } from 'bech32';
+import bs58check from 'bs58check';
+import { Buffer } from 'buffer/';
+import { BIP_CONSTANTS, signingSchema } from './constants';
 const DEFAULT_SEQUENCE = 0xffffffff;
 const DEFAULT_SIGHASH_BUFFER = Buffer.from('01', 'hex'); // SIGHASH_ALL = 0x01
-const { BIP_CONSTANTS } = require('./constants');
 const { PURPOSES, COINS } = BIP_CONSTANTS;
 const OP = {
   ZERO: 0x00,
@@ -48,7 +47,7 @@ const BTC_SCRIPT_TYPE_P2WPKH_V0 = 0x04;
 //              already based on the number of inputs plus two outputs
 // `version`:   Transaction version of the inputs. All inputs must be of the same version!
 // `isSegwit`: a boolean which determines how we serialize the data and parameterize txb
-exports.buildBitcoinTxRequest = function (data) {
+const buildBitcoinTxRequest = function (data) {
   try {
     const { prevOuts, recipient, value, changePath, fee } = data;
     if (!changePath) throw new Error('No changePath provided.');
@@ -59,7 +58,7 @@ exports.buildBitcoinTxRequest = function (data) {
     let off = 0;
     // Change version byte (a.k.a. address format byte)
     const changeFmt = getAddressFormat(changePath);
-    payload.writeUInt8(changeFmt);
+    payload.writeUInt8(changeFmt, 0);
     off++;
 
     // Build the change data
@@ -113,7 +112,7 @@ exports.buildBitcoinTxRequest = function (data) {
     // Send them back!
     return {
       payload,
-      schema: constants.signingSchema.BTC_TRANSFER,
+      schema: signingSchema.BTC_TRANSFER,
       origData: data, // We will need the original data for serializing the tx
       changeData: {
         // This data helps fill in the change output
@@ -132,7 +131,7 @@ exports.buildBitcoinTxRequest = function (data) {
 // -- isSegwitSpend = true if the inputs are being spent using segwit
 //                    (NOTE: either ALL are being spent, or none are)
 // -- lockTime = Will probably always be 0
-exports.serializeTx = function (data) {
+const serializeTx = function (data) {
   const { inputs, outputs, lockTime = 0, crypto } = data;
   let payload = Buffer.alloc(4);
   let off = 0;
@@ -215,7 +214,7 @@ exports.serializeTx = function (data) {
 };
 
 // Convert a pubkeyhash to a bitcoin base58check address with a version byte
-exports.getBitcoinAddress = function (pubkeyhash, version) {
+const getBitcoinAddress = function (pubkeyhash, version) {
   let bech32Prefix = null;
   let bech32Version = null;
   if (version === FMT_SEGWIT_NATIVE_V0) {
@@ -242,7 +241,7 @@ function buildRedeemScript(pubkey, crypto) {
   const redeemScript = Buffer.alloc(22);
   const shaHash = crypto.createHash('sha256').update(pubkey).digest();
   const pubkeyhash = crypto.createHash('rmd160').update(shaHash).digest();
-  redeemScript.writeUInt8(OP.ZERO);
+  redeemScript.writeUInt8(OP.ZERO, 0);
   redeemScript.writeUInt8(pubkeyhash.length, 1);
   pubkeyhash.copy(redeemScript, 2);
   return redeemScript;
@@ -264,7 +263,7 @@ function buildWitness(sigs, pubkeys) {
   let witness = Buffer.alloc(0);
   // Two items in each vector (sig, pubkey)
   const len = Buffer.alloc(1);
-  len.writeUInt8(2);
+  len.writeUInt8(2, 0);
   for (let i = 0; i < sigs.length; i++) {
     const sig = Buffer.concat([sigs[i], DEFAULT_SIGHASH_BUFFER]);
     const sigLen = getVarInt(sig.length);
@@ -350,15 +349,15 @@ function getU64LE(x) {
 
 function getU32LE(x) {
   const buffer = Buffer.alloc(4);
-  buffer.writeUInt32LE(x);
+  buffer.writeUInt32LE(x, 0);
   return buffer;
 }
 
 function getVarInt (x) {
-  let buffer;
+  let buffer: Buffer;
   if (x < 0xfd) {
     buffer = Buffer.alloc(1);
-    buffer.writeUInt8(x);
+    buffer.writeUInt8(x, 0);
   } else if (x <= 0xffff) {
     buffer = Buffer.alloc(3);
     buffer.writeUInt8(0xfd, 0);
@@ -439,7 +438,6 @@ function getAddressFormat(path) {
     );
   }
 }
-exports.getAddressFormat = getAddressFormat;
 
 // Determine the script type for an input based on its owner's derivation
 // path's `purpose` index.
@@ -474,4 +472,11 @@ function needsWitness(inputs) {
     }
   });
   return w;
+}
+
+export default {
+  buildBitcoinTxRequest,
+  serializeTx,
+  getBitcoinAddress,
+  getAddressFormat,
 }

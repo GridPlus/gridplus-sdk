@@ -285,7 +285,7 @@ const ethMsgProtocol = {
 };
 
 function getFwVersionConst(v) {
-  const c = {
+  const c: any = {
     extraDataFrameSz: 0,
     extraDataMaxFrames: 0,
   };
@@ -392,9 +392,10 @@ function getFwVersionConst(v) {
 
   return c;
 }
+const ASCII_REGEX = /^[\x00-\x7F]+$/;
 
-module.exports = {
-  ASCII_REGEX: /^[\x00-\x7F]+$/,
+export {
+  ASCII_REGEX,
   getFwVersionConst,
   ADDR_STR_LEN,
   AES_IV,

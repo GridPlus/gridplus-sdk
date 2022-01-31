@@ -15,19 +15,18 @@
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)
 require('it-each')({ testPerIteration: true });
-const randomWords = require('random-words');
-const crypto = require('crypto');
-const constants = require('./../src/constants');
-const expect = require('chai').expect;
-const helpers = require('./testUtil/helpers');
-const seedrandom = require('seedrandom');
+import { expect } from 'chai';
+import crypto from 'crypto';
+import randomWords from 'random-words';
+import seedrandom from 'seedrandom';
+import { getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
+import helpers from './testUtil/helpers';
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
-const HARDENED_OFFSET = constants.HARDENED_OFFSET;
 let client = null;
 let numRandom = 20; // Number of random tests to conduct
 const randomTxDataLabels = [];
 const MSG_PAYLOAD_METADATA_SZ = 28; // Metadata that must go in ETH_MSG requests
-let ETH_GAS_PRICE_MAX; // value depends on firmware version
+let ETH_GAS_PRICE_MAX: any; // value depends on firmware version
 let foundError = false;
 
 function randInt(n) {
@@ -43,7 +42,7 @@ function buildRandomMsg(type = 'signPersonal') {
   if (type === 'signPersonal') {
     // A random string will do
     const isHexStr = randInt(2) > 0 ? true : false;
-    const fwConstants = constants.getFwVersionConst(client.fwVersion);
+    const fwConstants = getFwVersionConst(client.fwVersion);
     const L = randInt(fwConstants.ethMaxDataSz - MSG_PAYLOAD_METADATA_SZ);
     if (isHexStr) return `0x${crypto.randomBytes(L).toString('hex')}`;
     // Get L hex bytes (represented with a string with 2*L chars)
@@ -76,7 +75,7 @@ function buildMsgReq(
 
 async function testMsg(req, pass = true) {
   try {
-    const sig = await helpers.execute(client, 'sign', req);
+    const sig: any = await helpers.execute(client, 'sign', req);
     // Validation happens already in the client
     if (pass === true) {
       foundError = sig.sig === null;
@@ -116,7 +115,7 @@ describe('Setup client', () => {
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
     // Set the correct max gas price based on firmware version
-    const fwConstants = constants.getFwVersionConst(client.fwVersion);
+    const fwConstants = getFwVersionConst(client.fwVersion);
     ETH_GAS_PRICE_MAX = fwConstants.ethMaxGasPrice;
   });
 });
@@ -158,7 +157,7 @@ describe('Test ETH personalSign', function () {
 
   it('Msg: sign_personal boundary conditions and auto-rejected requests', async () => {
     const protocol = 'signPersonal';
-    const fwConstants = constants.getFwVersionConst(client.fwVersion);
+    const fwConstants = getFwVersionConst(client.fwVersion);
     const metadataSz = fwConstants.totalExtraEthTxDataSz || 0;
     // `personal_sign` requests have a max size smaller than other requests because a header
     // is displayed in the text region of the screen. The size of this is captured
@@ -184,7 +183,7 @@ describe('Test ETH personalSign', function () {
     // Using a zero length payload should auto-reject
     await testMsg(buildMsgReq(zeroInvalid, protocol), false);
   });
-
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     randomTxDataLabels,
     'Msg: sign_personal #%s',
@@ -1391,7 +1390,7 @@ describe('Test ETH EIP712', function () {
       expect(err).to.equal(null);
     }
   });
-
+  //@ts-expect-error - it.each is not included in @types/mocha
   it.each(
     randomTxDataLabels,
     'Msg: EIP712 #%s',
