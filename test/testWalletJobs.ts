@@ -178,10 +178,10 @@ describe('getAddresses', () => {
     await runTestCase(helpers.gpErrors.GP_EINVAL);
   });
 
-  it('Should get GP_FAILURE for unknown (random) wallet', async () => {
+  it('Should get GP_EWALLET for unknown (random) wallet', async () => {
     const dummyWalletUID = crypto.randomBytes(32);
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
-    await runTestCase(helpers.gpErrors.GP_FAILURE);
+    await runTestCase(helpers.gpErrors.GP_EWALLET);
   });
 
   it('Should get GP_EOVERFLOW if `count` exceeds the max request size', async () => {
@@ -589,13 +589,13 @@ describe('signTx', () => {
     expect(outputPubStr).to.equal(derivedPubStr);
   });
 
-  it('Should get GP_ENODEV for unknown (random) wallet', async () => {
+  it('Should get GP_EWALLET for unknown (random) wallet', async () => {
     const dummyWalletUID = crypto.randomBytes(32);
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
-    await runTestCase(helpers.gpErrors.GP_ENODEV);
+    await runTestCase(helpers.gpErrors.GP_EWALLET);
   });
 
-  it('Should get GP_ENODEV for known wallet that is inactive', async () => {
+  it('Should get GP_EWALLET for known wallet that is inactive', async () => {
     const EMPTY_WALLET_UID = Buffer.alloc(32);
     const wallets = client.activeWallets;
 
@@ -616,7 +616,7 @@ describe('signTx', () => {
       incurrentWalletUID,
       jobData
     );
-    await runTestCase(helpers.gpErrors.GP_ENODEV);
+    await runTestCase(helpers.gpErrors.GP_EWALLET);
   });
 
   it('Should get GP_EINVAL when `numRequests` is 0', async () => {

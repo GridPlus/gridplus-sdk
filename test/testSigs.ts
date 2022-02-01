@@ -158,6 +158,12 @@ describe('Connect', () => {
 });
 
 describe('Test non-exportable seed on SafeCard (if available)', () => {
+  beforeEach(() => {
+    expect(continueTests).to.equal(
+      true,
+      'Unauthorized or critical failure. Aborting'
+    );
+  });
   // This needs to be done before tests that use the `test` API route because
   // there is some sort of bug related to directly submitting wallet jobs
   // and then switching EMV interfaces.
@@ -193,11 +199,21 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     };
     // Validate that tx sigs are non-uniform
     txReq.data.signerPath[2] = HARDENED_OFFSET;
-    const tx1_addr0: any = await helpers.execute(client, 'sign', txReq);
-    const tx2_addr0: any = await helpers.execute(client, 'sign', txReq);
-    const tx3_addr0: any = await helpers.execute(client, 'sign', txReq);
-    const tx4_addr0: any = await helpers.execute(client, 'sign', txReq);
-    const tx5_addr0: any = await helpers.execute(client, 'sign', txReq);
+    let tx1_addr0: any, tx2_addr0: any, tx3_addr0: any, tx4_addr0: any, tx5_addr0: any;
+    try {
+      tx1_addr0 = await helpers.execute(client, 'sign', txReq);
+      tx2_addr0 = await helpers.execute(client, 'sign', txReq);
+      tx3_addr0 = await helpers.execute(client, 'sign', txReq);
+      tx4_addr0 = await helpers.execute(client, 'sign', txReq);
+      tx5_addr0 = await helpers.execute(client, 'sign', txReq);
+    } catch (err) {
+      continueTests = false;
+      expect(err).to.equal(null, err.message);
+    }
+    continueTests = (getSigStr(tx1_addr0.sig) !== getSigStr(tx2_addr0.sig)) &&
+                    (getSigStr(tx1_addr0.sig) !== getSigStr(tx3_addr0.sig)) &&
+                    (getSigStr(tx1_addr0.sig) !== getSigStr(tx4_addr0.sig)) &&
+                    (getSigStr(tx1_addr0.sig) !== getSigStr(tx5_addr0.sig));
     expect(getSigStr(tx1_addr0.sig)).to.not.equal(getSigStr(tx2_addr0.sig));
     expect(getSigStr(tx1_addr0.sig)).to.not.equal(getSigStr(tx3_addr0.sig));
     expect(getSigStr(tx1_addr0.sig)).to.not.equal(getSigStr(tx4_addr0.sig));
@@ -218,9 +234,11 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
     res = await helpers.execute(client, 'sign', req);
     sig = getSigStr(res.sig);
+    continueTests = sig !== jsSig;
     expect(sig).to.not.equal(jsSig, 'Addr0 sig was not random');
     res2 = await helpers.execute(client, 'sign', req);
     sig2 = getSigStr(res2.sig);
+    continueTests = sig !== sig2 && sig2 !== jsSig;
     expect(sig2).to.not.equal(jsSig, 'Addr0 sig was not random');
     expect(sig2).to.not.equal(sig, 'Addr0 sig was not random');
     // Address index 1
@@ -228,9 +246,11 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
     res = await helpers.execute(client, 'sign', req);
     sig = getSigStr(res.sig);
+    continueTests = sig !== jsSig;
     expect(sig).to.not.equal(jsSig, 'Addr1 sig was not random');
     res2 = await helpers.execute(client, 'sign', req);
     sig2 = getSigStr(res2.sig);
+    continueTests = sig !== sig2 && sig2 !== jsSig;
     expect(sig2).to.not.equal(jsSig, 'Addr1 sig was not random');
     expect(sig2).to.not.equal(sig, 'Addr1 sig was not random');
     // Address index 8
@@ -238,11 +258,22 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
     res = await helpers.execute(client, 'sign', req);
     sig = getSigStr(res.sig);
+    continueTests = sig !== jsSig;
     expect(sig).to.not.equal(jsSig, 'Addr8 sig was not random');
     res2 = await helpers.execute(client, 'sign', req);
     sig2 = getSigStr(res2.sig);
+    continueTests = sig !== sig2 && sig2 !== jsSig;
     expect(sig2).to.not.equal(jsSig, 'Addr8 sig was not random');
     expect(sig2).to.not.equal(sig, 'Addr8 sig was not random');
+    
+    // Temporary exit
+    console.log(
+      'NOTE: There is a bug in firmware that does not allow these non-exportable\n' +
+      'seed tests to be run in the same script as the exportable seed tests that\n' +
+      'follow. Aborting now. Please run this script again and answer N to the\n' +
+      'first question to continue running the exportable seed tests.'
+    );
+    process.exit(1);
   });
 });
 
@@ -264,15 +295,6 @@ describe('Setup Test', () => {
     );
     if (result.toLowerCase() !== 'n') {
       skipSeedLoading = true;
-    } else {
-      // TODO: Remove this once firmware is fixed
-      console.log(
-        'WARNING: if you ran the non-exportable seed tests and also are trying ' +
-          'to load a seed here, your tests will fail. This has to do with some ' +
-          'edge case in the firmware test runner and EMV applet. We are looking into ' +
-          'it but for now please do not use this combination. This issue only ' +
-          'affects the test runner which is why it is not higher priority'
-      );
     }
   });
 
@@ -395,6 +417,10 @@ describe('Setup Test', () => {
 
 describe('Test uniformity of Ethereum transaction sigs', () => {
   beforeEach(() => {
+    expect(continueTests).to.equal(
+      true,
+      'Unauthorized or critical failure. Aborting'
+    );
     txReq = {
       currency: 'ETH',
       chainId: 1,
@@ -561,6 +587,10 @@ describe('Test uniformity of Ethereum transaction sigs', () => {
 
 describe('Compare personal_sign signatures vs Ledger vectors (1)', () => {
   beforeEach(() => {
+    expect(continueTests).to.equal(
+      true,
+      'Unauthorized or critical failure. Aborting'
+    );
     msgReq = {
       currency: 'ETH_MSG',
       data: {
@@ -624,6 +654,10 @@ describe('Compare personal_sign signatures vs Ledger vectors (1)', () => {
 
 describe('Compare personal_sign signatures vs Ledger vectors (2)', () => {
   beforeEach(() => {
+    expect(continueTests).to.equal(
+      true,
+      'Unauthorized or critical failure. Aborting'
+    );
     msgReq = {
       currency: 'ETH_MSG',
       data: {
@@ -687,6 +721,10 @@ describe('Compare personal_sign signatures vs Ledger vectors (2)', () => {
 
 describe('Compare personal_sign signatures vs Ledger vectors (3)', () => {
   beforeEach(() => {
+    expect(continueTests).to.equal(
+      true,
+      'Unauthorized or critical failure. Aborting'
+    );
     msgReq = {
       currency: 'ETH_MSG',
       data: {
@@ -750,6 +788,10 @@ describe('Compare personal_sign signatures vs Ledger vectors (3)', () => {
 
 describe('Compare EIP712 signatures vs Ledger vectors (1)', () => {
   beforeEach(() => {
+    expect(continueTests).to.equal(
+      true,
+      'Unauthorized or critical failure. Aborting'
+    );
     msgReq = {
       currency: 'ETH_MSG',
       data: {
@@ -838,6 +880,10 @@ describe('Compare EIP712 signatures vs Ledger vectors (1)', () => {
 
 describe('Compare EIP712 signatures vs Ledger vectors (2)', () => {
   beforeEach(() => {
+    expect(continueTests).to.equal(
+      true,
+      'Unauthorized or critical failure. Aborting'
+    );
     msgReq = {
       currency: 'ETH_MSG',
       data: {
@@ -916,6 +962,10 @@ describe('Compare EIP712 signatures vs Ledger vectors (2)', () => {
 
 describe('Compare EIP712 signatures vs Ledger vectors (3)', () => {
   beforeEach(() => {
+    expect(continueTests).to.equal(
+      true,
+      'Unauthorized or critical failure. Aborting'
+    );
     msgReq = {
       currency: 'ETH_MSG',
       data: {
@@ -993,6 +1043,12 @@ describe('Compare EIP712 signatures vs Ledger vectors (3)', () => {
 });
 
 describe('Test random personal_sign messages against JS signatures', () => {
+  beforeEach(() => {
+    expect(continueTests).to.equal(
+      true,
+      'Unauthorized or critical failure. Aborting'
+    );
+  });
   // By now we know that Ledger signatures match JS signatures
   // so we can generate a bunch of random test vectors and
   // compare Lattice sigs vs the JS implementation.

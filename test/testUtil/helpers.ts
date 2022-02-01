@@ -349,7 +349,8 @@ export const gpErrors = {
   GP_EALREADY: 0xffffffff + 1 - 114, // (4294967153)
   GP_ENODEV: 0xffffffff + 1 - 19, // (4294967058)
   GP_EAGAIN: 0xffffffff + 1 - 11, // (4294967050)
-  GP_FAILURE: 0xffffffff + 1 - 128,
+  GP_FAILURE: 0xffffffff + 1 - 128, // (4294967168)
+  GP_EWALLET: 0xffffffff + 1 - 113, // (4294967183)
 };
 
 //---------------------------------------------------
