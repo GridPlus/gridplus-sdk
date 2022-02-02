@@ -6,32 +6,59 @@ If you have a Lattice1 device that is connected to the internet, you can run the
 npm test
 ```
 
-If you would like to run tests multiple times, you will need to re-pair with a fresh, random key pair using the above command.
-If you instead wish to quickly test non-pairing items, consider the following setup:
+By default, running tests this way will pair with your Lattice device each time you run the tests. 
+
+If you aren't testing the pairing process, you can reuse the pairing key for each test by passing an
+environment variable, `REUSE_KEY`, when pairing like this:
 
 ```bash
-# Pair with a hardcoded, re-usable test key. You only need to do this ONCE!
 env REUSE_KEY=1 npm test
+```
 
-# All subsequent tests will use the re-usable key if you specify your device ID
-# as an env variable
+All subsequent tests will re-use the key if you specify your device ID as an environment variable like this: 
+
+```bash
 env DEVICE_ID='my_device_id' npm test
 ```
 
-> Note: By default, your Lattice will utilize its on-board wallet. If you wish to test against a SafeCard, you will need to insert it and PIN it (i.e. the card needs to be set up). If you reboot your unit, you will need to remove the card and re-insert (and re-authenticate) before testing against it.
+> **Note**: By default, your Lattice will utilize its on-board wallet. If you wish to test against a SafeCard, you will need to insert it and PIN it (i.e. the card needs to be set up). If you reboot your unit, you will need to remove the card and re-insert (and re-authenticate) before testing against it.
 
-## Signing tests
+## Signing
 
-Once you have paired with a device in a re-usable way (i.e. using the commands above ^), you can run more robust tests around signing. If you are testing with a dev Lattice, it is highly recommended that you compile the autosign flag into your firmware (or else you will need to press accept `n` times).
+Once you have paired with a device in a re-usable way (i.e. setting `REUSE_KEY=1` as above), you can run more robust tests around signing. 
 
-### ETH
+> **Note**: If you are testing with a dev Lattice, it is highly recommended that you compile the
+> autosign flag into your firmware (or else you will need to press accept `n` times).
 
-Ethereum tests include both boundary checks on transaction params and randomized test vectors (20 by default). 
+## Test Suites
 
-#### `env` options
+There are a series of test suites that can be used to validate the SDK's behavior. Each can be run independently using the commands as described below. 
 
-- `N=<int>` (default=`3`) - number of random vectors to test
-- `SEED=<string>` (default=`myrandomseed`) - randomness for the pseudorandom number generator that builds deterministic test vectors
+### Test Suite Options 
+
+Some test suites allow for additional options that allow for more versatile testing configurations. These options are passed in as environment variables like this: 
+
+```bash
+env DEVICE_ID='my_device_id' N=25 npm test
+```
+
+See the options area for each test suite for which options are usable with that suite.
+
+- #### `N`
+  - `default=3`
+  - number of inputs per test. Note that if you choose e.g. `N=2` each test will first test one input, then will test two. Must be >0 and <11.
+- #### `SEED` 
+  - `default="myrandomseed"` 
+  - randomness for the pseudorandom number generator that builds deterministic test vectors
+- #### `TESTNET` 
+  - `default=false` 
+  - if set to any value you will test all combinations for both mainnet and testnet transactions (doubles number of tests run)
+
+
+### Ethereum
+
+Ethereum tests include both boundary checks on transaction params and randomized test vectors (20 by
+default). 
 
 Run the suite with:
 
@@ -39,39 +66,54 @@ Run the suite with:
 env DEVICE_ID='my_device_id' npm run test-eth
 ```
 
-If you wish to do more or fewer than 20 random transaction tests, you can specify the `N` param:
+#### Options
 
-### BTC
+- [`N`](#n)
+- [`SEED`](#seed)
+
+### Ethereum Messages
+
+You may test Ethereum messages sent to the Lattice with the following script:
+
+```bash
+env DEVICE_ID='my_device_id' npm run test-eth-msg
+```
+
+#### Options
+
+- [`N`](#n)
+- [`SEED`](#seed)
+
+### Ethereum ABI
+
+You may test functionality around loading Ethereum ABI definitions and displaying calldata in a markdown screen with the following script:
+
+```bash
+env DEVICE_ID='my_device_id' npm run test-eth-abi
+```
+
+#### Options
+
+- [`SEED`](#seed)
+
+## Dev Lattice Tests
+
+The following tests *require* a development Lattice to complete successfully.
+
+### Bitcoin
 
 Bitcoin tests cover legacy, wrapped segwit, and segwit spending to all address types. Vectors are built deterministically using the seed and all permutations are tested.
-
-#### `env` options
-
-- `N=<int>` (default=`3`) - number of inputs per test. Note that if you choose e.g. `N=2` each test will first test one input, then will test two. Must be >0 and <11.
-- `SEED=<string>` (default=`myrandomseed`) - randomness for the pseudorandom number generator that builds deterministic test vectors
-- `TESTNET=<any>` (default=`false`) - if set to any value you will test all combinations for both mainnet and testnet transactions (doubles number of tests run)
-
-Run the tests with:
 
 ```bash
 env DEVICE_ID='my_device_id' npm run test-btc
 ```
 
-## Ethereum ABI Tests
+#### Options
 
-You may test functionality around loading Ethereum ABI definitions and displaying calldata in a markdwon screen with the following script:
+- [`N`](#n)
+- [`SEED`](#seed)
+- [`TESTNET`](#testnet)
 
-```bash
-env DEVICE_ID='my_device_id' N=<numRandomTests> npm run test-eth-abi
-```
-
-> Note that this test uses a random seed to generate data. You may include a `SEED=<mySeed>` if you want to use your own.
-
-## Test Harness
-
-We can test debug firmware builds using the `client.test` function in the SDK. This utilizes the firmware's test harness with an encrypted route. You can run these tests with the same `env DEVICE_ID='my_device_id` flag as some of the other tests.
-
-> NOTE: Since these are encrypted routes, you need to be paired with your Lattice before you can run them (using `env REUSE_KEY=1 npm test` as before -- you still only need to do this once).
 
 ### Wallet Jobs
 
@@ -80,3 +122,22 @@ Lattice firmware uses "wallet jobs" to interact with the SafeCard/Lattice wallet
 ```bash
 env DEVICE_ID='my_device_id' npm run test-wallet-jobs
 ```
+
+### Signatures
+
+Tests signing with and without SafeCards.
+
+```bash
+env DEVICE_ID='my_device_id' npm run test-sigs
+```
+
+#### Options
+
+- [`N`](#n)
+- [`SEED`](#seed)
+
+## Test Harness
+
+We can test debug firmware builds using the `client.test` function in the SDK. This utilizes the firmware's test harness with an encrypted route. You can run these tests with the same `env DEVICE_ID='my_device_id` flag as some of the other tests.
+
+> NOTE: Since these are encrypted routes, you need to be paired with your Lattice before you can run them (using `env REUSE_KEY=1 npm test` as before -- you still only need to do this once).

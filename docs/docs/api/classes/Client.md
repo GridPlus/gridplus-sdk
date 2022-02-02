@@ -30,7 +30,7 @@ custom_edit_url: null
 
 #### Defined in
 
-[client.ts:88](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L88)
+[client.ts:88](https://github.com/GridPlus/gridplus-sdk/blob/f7e52cf/src/client.ts#L88)
 
 ## Properties
 
@@ -42,7 +42,7 @@ Is the Lattice paired with this Client.
 
 #### Defined in
 
-[client.ts:42](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L42)
+[client.ts:42](https://github.com/GridPlus/gridplus-sdk/blob/f7e52cf/src/client.ts#L42)
 
 ___
 
@@ -54,7 +54,7 @@ The time to wait for a response before cancelling.
 
 #### Defined in
 
-[client.ts:44](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L44)
+[client.ts:44](https://github.com/GridPlus/gridplus-sdk/blob/f7e52cf/src/client.ts#L44)
 
 ## Lattice Methods
 
@@ -80,7 +80,7 @@ The decrypted response.
 
 #### Defined in
 
-[client.ts:402](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L402)
+[client.ts:402](https://github.com/GridPlus/gridplus-sdk/blob/f7e52cf/src/client.ts#L402)
 
 ___
 
@@ -106,7 +106,7 @@ A callback with an error or null.
 
 #### Defined in
 
-[client.ts:562](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L562)
+[client.ts:562](https://github.com/GridPlus/gridplus-sdk/blob/f7e52cf/src/client.ts#L562)
 
 ___
 
@@ -130,7 +130,7 @@ payload to send to the Lattice.
 
 #### Defined in
 
-[client.ts:439](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L439)
+[client.ts:439](https://github.com/GridPlus/gridplus-sdk/blob/f7e52cf/src/client.ts#L439)
 
 ___
 
@@ -154,7 +154,7 @@ an ephemeral public key, which is used to pair with the device in a later reques
 
 #### Defined in
 
-[client.ts:157](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L157)
+[client.ts:157](https://github.com/GridPlus/gridplus-sdk/blob/f7e52cf/src/client.ts#L157)
 
 ___
 
@@ -182,7 +182,7 @@ An array of addresses.
 
 #### Defined in
 
-[client.ts:257](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L257)
+[client.ts:257](https://github.com/GridPlus/gridplus-sdk/blob/f7e52cf/src/client.ts#L257)
 
 ___
 
@@ -205,7 +205,7 @@ ___
 
 #### Defined in
 
-[client.ts:488](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L488)
+[client.ts:488](https://github.com/GridPlus/gridplus-sdk/blob/f7e52cf/src/client.ts#L488)
 
 ___
 
@@ -232,7 +232,7 @@ The active wallet object.
 
 #### Defined in
 
-[client.ts:192](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L192)
+[client.ts:192](https://github.com/GridPlus/gridplus-sdk/blob/f7e52cf/src/client.ts#L192)
 
 ___
 
@@ -257,7 +257,7 @@ A callback with an error or null.
 
 #### Defined in
 
-[client.ts:646](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L646)
+[client.ts:646](https://github.com/GridPlus/gridplus-sdk/blob/f7e52cf/src/client.ts#L646)
 
 ___
 
@@ -284,7 +284,7 @@ The response from the device.
 
 #### Defined in
 
-[client.ts:325](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L325)
+[client.ts:325](https://github.com/GridPlus/gridplus-sdk/blob/f7e52cf/src/client.ts#L325)
 
 ___
 
@@ -311,7 +311,7 @@ The active wallet.
 
 #### Defined in
 
-[client.ts:1217](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L1217)
+[client.ts:1217](https://github.com/GridPlus/gridplus-sdk/blob/f7e52cf/src/client.ts#L1217)
 
 ___
 
@@ -338,4 +338,4 @@ The parsed ABI.
 
 #### Defined in
 
-[client.ts:1265](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L1265)
+[client.ts:1265](https://github.com/GridPlus/gridplus-sdk/blob/f7e52cf/src/client.ts#L1265)
