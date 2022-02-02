@@ -7,7 +7,7 @@ const darkCodeTheme = require("prism-react-renderer/themes/palenight");
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: "GridPlus SDK",
-  tagline: "Be the connection",
+  tagline: "The new standard for hardware wallets",
   url: "https://gridplus.io",
   baseUrl: "/",
   onBrokenLinks: "throw",
