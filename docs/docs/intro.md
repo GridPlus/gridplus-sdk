@@ -22,13 +22,13 @@ npm install gridplus-sdk
 You can then import a new client with:
 
 ```js
-import { Client } from 'gridplus-sdk';
+import { Client } from "gridplus-sdk";
 ```
 
 or, for older style syntax:
 
 ```js
-const Sdk = require('gridplus-sdk').Client;
+const Sdk = require("gridplus-sdk").Client;
 ```
 
 ## Instantiating a Client
@@ -36,23 +36,23 @@ const Sdk = require('gridplus-sdk').Client;
 Once imported, you can instantiate your SDK client with a `clientConfig` object, which at minimum requires the name of your app ( `name` ) and a private key with which to sign requests ( `privKey` ). The latter is not meant to e.g. hold onto any cryptocurrencies; it is simply a way of maintaining a secure communication channel between the device and your application.
 
 ```js
-const crypto = require('crypto');
+const crypto = require("crypto");
 const clientConfig = {
-    name: 'MyApp',
+    name: "MyApp",
     crypto: crypto,
-    privKey: crypto.randomBytes(32).toString('hex')
-}
+    privKey: crypto.randomBytes(32).toString("hex"),
+};
 ```
 
 ## Client options
 
-| Param     | Type   | Default                     | Description                                                                                                                                                                                                                        |
-| :-------- | :----- | :-------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`    | string | None                        | Name of the app. This will appear on the Lattice screen for requests. Not required, but strongly  suggested.                                                                                                              |
+| Param     | Type   | Default                     | Description                                                                                                                                                                                                                |
+| :-------- | :----- | :-------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`    | string | None                        | Name of the app. This will appear on the Lattice screen for requests. Not required, but strongly suggested.                                                                                                                |
 | `privKey` | buffer | None                        | Private key buffer used for encryption/decryption of Lattice messages. A random private key will be generated and stored if none is provided. **Note that you will need to persist the private key between SDK sessions!** |
-| `crypto`  | object | None                        | Crypto function package (e.g. `node.js` ' native `crypto` module)                                                                                                                                                                  |
-| `timeout` | number | 60000                       | Number of milliseconds to needed to timeout on a Lattice request                                                                                                                                                                   |
-| `baseUrl` | string | `https://signing.gridpl.us` | Hostname of Lattice request handlerName of the app. You probably don't need to ever change this.                                                                                                                                   |
+| `crypto`  | object | None                        | Crypto function package (e.g. `node.js` ' native `crypto` module)                                                                                                                                                          |
+| `timeout` | number | 60000                       | Number of milliseconds to needed to timeout on a Lattice request                                                                                                                                                           |
+| `baseUrl` | string | `https://signing.gridpl.us` | Hostname of Lattice request handlerName of the app. You probably don't need to ever change this.                                                                                                                           |
 
 ## Connecting to a Lattice
 
@@ -117,7 +117,7 @@ An example request looks like:
 const HARDENED_OFFSET = 0x80000000;
 const req = {
     // -- m/49'/0'/0'/0/0, i.e. first BTC address
-    startPath: [HARDENED_OFFSET+49, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0],
+    startPath: [HARDENED_OFFSET + 49, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0],
     n: 4
 };
 client.addresses(req, (err, res) => {
@@ -140,11 +140,11 @@ Returns an array of address strings (if the user's Lattice is configured to retu
 
 ```js
 res = [
-    '3PKEDaainApM4u5Tqm1nn3txzZWbtFXUQ2',
-    '3He2JrsT33DEnjCgdpPgc6RXD3UogALCNF',
-    '3QybQyM8i9YR9e9Tgb1zLsYHHRXWF1eDAR',
-    '3PNwCSHKNfCjzvcU8XE9N8wp8DRxrUzsyL'
-]
+    "3PKEDaainApM4u5Tqm1nn3txzZWbtFXUQ2",
+    "3He2JrsT33DEnjCgdpPgc6RXD3UogALCNF",
+    "3QybQyM8i9YR9e9Tgb1zLsYHHRXWF1eDAR",
+    "3PNwCSHKNfCjzvcU8XE9N8wp8DRxrUzsyL",
+];
 ```
 
 ## Requesting Signatures
@@ -162,7 +162,7 @@ The following types of requests are currently supported by the Lattice. These co
 
 Ethereum transactions consist of six fields. An example payload looks as follows:
 
-```
+```js
 const data = {
     nonce: '0x01',
     gasLimit: '0x61a8,
@@ -171,7 +171,7 @@ const data = {
     value: 0,
     data: '0x12345678'
     // -- m/44'/60'/0'/0/0
-    signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+60, HARDENED_OFFSET, 0, 0],
+    signerPath: [HARDENED_OFFSET + 44, HARDENED_OFFSET + 60, HARDENED_OFFSET, 0, 0],
     chainId: 'rinkeby',
     useEIP155: false,
 }
@@ -208,15 +208,15 @@ Generally, we recommend **not** using Javascript integers and **never** using th
 ```js
 > new bn(2).pow(64).toString(16)
 '10000000000000000'
-> (2**64).toString(16)
+> (2 ** 64).toString(16)
 '10000000000000000'
-> (2**64-2).toString(16)
+> (2 ** 64 - 2).toString(16)
 '10000000000000000'
-> new bn(2**64).toString(16)
+> new bn(2 ** 64).toString(16)
 '10000000000000180'
-> 2**64
+> 2 ** 64
 18446744073709552000
-> new bn(18446744073709552000-2).toString(16)
+> new bn(18446744073709552000 - 2).toString(16)
 '10000000000000180'
 ```
 
@@ -243,14 +243,20 @@ In addition to transactions, we support signing ETH messages, e.g.:
 
 ```js
 const data = {
-    protocol: 'signPersonal',
-    payload: '0xdeadbeef',
-    signerPath: [HARDENED_OFFSET+44, HARDENED_OFFSET+60, HARDENED_OFFSET, 0, 0],
-}
+    protocol: "signPersonal",
+    payload: "0xdeadbeef",
+    signerPath: [
+        HARDENED_OFFSET + 44,
+        HARDENED_OFFSET + 60,
+        HARDENED_OFFSET,
+        0,
+        0,
+    ],
+};
 const signOpts = {
-    currency: 'ETH_MSG',
+    currency: "ETH_MSG",
     data: data,
-}
+};
 ```
 
 | Param        | Type             | Restrictions                                                                                                                                         |
@@ -269,26 +275,25 @@ Bitcoin transactions are constructed by referencing a set of inputs to spend and
 
 ```js
 const data = {
-    prevOuts: [
-        {
+    prevOuts: [{
             txHash: '08911991c5659349fa507419a20fd398d66d59e823bca1b1b94f8f19e21be44c',
             value: 3469416,
             index: 1,
-            signerPath: [HARDENED_OFFSET+49, HARDENED_OFFSET, HARDENED_OFFSET, 1, 0],
+            signerPath: [HARDENED_OFFSET + 49, HARDENED_OFFSET, HARDENED_OFFSET, 1, 0],
         },
         {
             txHash: '19e7aa056a82b790c478e619153c35195211b58923a8e74d3540f8ff1f25ecef',
             value: 3461572,
             index: 0,
-            signerPath: [HARDENED_OFFSET+49, HARDENED_OFFSET, HARDENED_OFFSET, 0, 5],
+            signerPath: [HARDENED_OFFSET + 49, HARDENED_OFFSET, HARDENED_OFFSET, 0, 5],
         }
     ],
     recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
     value: 1000,
     fee: 1000,
     isSegwit: true,
-    changePath: [HARDENED_OFFSET+49, HARDENED_OFFSET, HARDENED_OFFSET, 1, 1],
-=}
+    changePath: [HARDENED_OFFSET + 49, HARDENED_OFFSET, HARDENED_OFFSET, 1, 1],
+}
 const signOpts = {
     currency: 'BTC',
     data: data,
@@ -312,9 +317,7 @@ const signOpts = {
 Once you build the data needed, you can request a signature using the following pattern:
 
 ```js
-client.sign(signOpts, (err, signedTx) => {
-
-})
+client.sign(signOpts, (err, signedTx) => {});
 ```
 
 **Response**
@@ -362,7 +365,7 @@ When a card is inserted or removed, this will affect the active wallet of the de
 ```js
 client.connect((err) => {
     activeWallet = client.getActiveWallet();
-})
+});
 ```
 
 Note that you may only call `connect` with one argument once a `deviceID` has been saved, i.e. after you've called `connect` once with the device ID as the first argument.
