@@ -6,433 +6,63 @@ sidebar_position: 0
 custom_edit_url: null
 ---
 
+`Client` is a class-based interface for managing a Lattice device.
+
 ## Constructors
 
 ### constructor
 
-• **new Client**(`__namedParameters`)
+• **new Client**(`params`)
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `__namedParameters` | `ClientParams` |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `params` | `Object` | Parameters are passed as an object. |
+| `params.baseUrl?` | `string` | The base URL of the signing server. |
+| `params.crypto` | `string` | The crypto library to use. Currently only 'secp256k1' is supported. |
+| `params.key?` | `string` | The public key of the client. |
+| `params.name` | `string` | The name of the client. |
+| `params.pairingSalt?` | `string` | A random string used to salt the pairing code. |
+| `params.privKey?` | `string` | The private key of the client. |
+| `params.retryCount?` | `number` | Number of times to retry a request if it fails. |
+| `params.timeout?` | `number` | The time to wait for a response before cancelling. |
 
 #### Defined in
 
-[client.ts:75](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L75)
+[client.ts:88](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L88)
 
 ## Properties
-
-### activeWallets
-
-• **activeWallets**: `Object`
-
-#### Type declaration
-
-| Name | Type |
-| :------ | :------ |
-| `external` | `Object` |
-| `external.capabilities` | `any` |
-| `external.external` | `boolean` |
-| `external.name` | `any` |
-| `external.uid` | `Buffer` |
-| `internal` | `Object` |
-| `internal.capabilities` | `any` |
-| `internal.external` | `boolean` |
-| `internal.name` | `any` |
-| `internal.uid` | `Buffer` |
-
-#### Defined in
-
-[client.ts:59](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L59)
-
-___
-
-### baseUrl
-
-• **baseUrl**: `any`
-
-#### Defined in
-
-[client.ts:47](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L47)
-
-___
-
-### crypto
-
-• **crypto**: `any`
-
-#### Defined in
-
-[client.ts:48](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L48)
-
-___
-
-### deviceId
-
-• **deviceId**: `any`
-
-#### Defined in
-
-[client.ts:55](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L55)
-
-___
-
-### ephemeralPub
-
-• **ephemeralPub**: `any`
-
-#### Defined in
-
-[client.ts:52](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L52)
-
-___
-
-### fwVersion
-
-• **fwVersion**: `any`
-
-#### Defined in
-
-[client.ts:58](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L58)
-
-___
 
 ### isPaired
 
 • **isPaired**: `boolean`
 
-#### Defined in
-
-[client.ts:56](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L56)
-
-___
-
-### key
-
-• **key**: `any`
+Is the Lattice paired with this Client.
 
 #### Defined in
 
-[client.ts:51](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L51)
-
-___
-
-### name
-
-• **name**: `any`
-
-#### Defined in
-
-[client.ts:49](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L49)
-
-___
-
-### pairingSalt
-
-• **pairingSalt**: `any`
-
-#### Defined in
-
-[client.ts:73](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L73)
-
-___
-
-### privKey
-
-• **privKey**: `any`
-
-#### Defined in
-
-[client.ts:50](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L50)
-
-___
-
-### retryCount
-
-• **retryCount**: `any`
-
-#### Defined in
-
-[client.ts:57](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L57)
-
-___
-
-### sharedSecret
-
-• **sharedSecret**: `any`
-
-#### Defined in
-
-[client.ts:53](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L53)
+[client.ts:42](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L42)
 
 ___
 
 ### timeout
 
-• **timeout**: `any`
+• **timeout**: `number`
+
+The time to wait for a response before cancelling.
 
 #### Defined in
 
-[client.ts:54](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L54)
+[client.ts:44](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L44)
 
-## Methods
-
-### \_buildEncRequest
-
-▸ **_buildEncRequest**(`enc_request_code`, `payload`): `Buffer`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `enc_request_code` | `any` |
-| `payload` | `any` |
-
-#### Returns
-
-`Buffer`
-
-#### Defined in
-
-[client.ts:653](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L653)
-
-___
-
-### \_buildRequest
-
-▸ **_buildRequest**(`request_code`, `payload`): `Buffer`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `request_code` | `any` |
-| `payload` | `any` |
-
-#### Returns
-
-`Buffer`
-
-#### Defined in
-
-[client.ts:688](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L688)
-
-___
-
-### \_getActiveWallet
-
-▸ **_getActiveWallet**(`cb`, `forceRefresh?`): `any`
-
-#### Parameters
-
-| Name | Type | Default value |
-| :------ | :------ | :------ |
-| `cb` | `any` | `undefined` |
-| `forceRefresh` | `boolean` | `false` |
-
-#### Returns
-
-`any`
-
-#### Defined in
-
-[client.ts:610](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L610)
-
-___
-
-### \_getEphemId
-
-▸ **_getEphemId**(): `any`
-
-#### Returns
-
-`any`
-
-#### Defined in
-
-[client.ts:645](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L645)
-
-___
-
-### \_getSharedSecret
-
-▸ **_getSharedSecret**(): `Buffer`
-
-#### Returns
-
-`Buffer`
-
-#### Defined in
-
-[client.ts:633](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L633)
-
-___
-
-### \_handleConnect
-
-▸ **_handleConnect**(`res`): `boolean`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `res` | `any` |
-
-#### Returns
-
-`boolean`
-
-#### Defined in
-
-[client.ts:800](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L800)
-
-___
-
-### \_handleEncResponse
-
-▸ **_handleEncResponse**(`encRes`, `len`): { `data`: `undefined` = res; `err`: `string`  } \| { `data`: `Buffer` = res; `err`: `any` = null }
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `encRes` | `any` |
-| `len` | `any` |
-
-#### Returns
-
-{ `data`: `undefined` = res; `err`: `string`  } \| { `data`: `Buffer` = res; `err`: `any` = null }
-
-#### Defined in
-
-[client.ts:819](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L819)
-
-___
-
-### \_handleGetAddresses
-
-▸ **_handleGetAddresses**(`encRes`): { `data`: `undefined` = res; `err`: `string`  } \| { `data`: `Buffer` = res; `err`: `any` = null } \| { `data`: `any`[] = addrs; `err`: `any` = null }
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `encRes` | `any` |
-
-#### Returns
-
-{ `data`: `undefined` = res; `err`: `string`  } \| { `data`: `Buffer` = res; `err`: `any` = null } \| { `data`: `any`[] = addrs; `err`: `any` = null }
-
-#### Defined in
-
-[client.ts:861](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L861)
-
-___
-
-### \_handleGetWallets
-
-▸ **_handleGetWallets**(`encRes`): ``"No active wallet."`` \| { `data`: `undefined` = res; `err`: `string`  } \| { `data`: `Buffer` = res; `err`: `any` = null }
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `encRes` | `any` |
-
-#### Returns
-
-``"No active wallet."`` \| { `data`: `undefined` = res; `err`: `string`  } \| { `data`: `Buffer` = res; `err`: `any` = null }
-
-#### Defined in
-
-[client.ts:883](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L883)
-
-___
-
-### \_handlePair
-
-▸ **_handlePair**(`encRes`): `any`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `encRes` | `any` |
-
-#### Returns
-
-`any`
-
-#### Defined in
-
-[client.ts:851](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L851)
-
-___
-
-### \_handleSign
-
-▸ **_handleSign**(`encRes`, `currencyType`, `req?`): { `data`: `any` = null; `err`: `any` = null } \| { `err`: `any` = decrypted.err }
-
-#### Parameters
-
-| Name | Type | Default value |
-| :------ | :------ | :------ |
-| `encRes` | `any` | `undefined` |
-| `currencyType` | `any` | `undefined` |
-| `req` | `any` | `null` |
-
-#### Returns
-
-{ `data`: `any` = null; `err`: `any` = null } \| { `err`: `any` = decrypted.err }
-
-#### Defined in
-
-[client.ts:923](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L923)
-
-___
-
-### \_request
-
-▸ **_request**(`payload`, `encReqCode`, `cb`, `retryCount?`): `any`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `payload` | `any` |
-| `encReqCode` | `any` |
-| `cb` | `any` |
-| `retryCount` | `any` |
-
-#### Returns
-
-`any`
-
-#### Defined in
-
-[client.ts:714](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L714)
-
-___
-
-### \_resetActiveWallets
-
-▸ **_resetActiveWallets**(): `void`
-
-#### Returns
-
-`void`
-
-#### Defined in
-
-[client.ts:1072](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L1072)
-
-___
+## Lattice Methods
 
 ### addAbiDefs
 
 ▸ **addAbiDefs**(`defs`, `cb`, `nextCode?`): `any`
+
+`addAbiDefs` sends a list of ABI definitions to the device in chunks of up to `MAX_ABI_DEFS`.
 
 #### Parameters
 
@@ -446,9 +76,11 @@ ___
 
 `any`
 
+The decrypted response.
+
 #### Defined in
 
-[client.ts:343](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L343)
+[client.ts:402](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L402)
 
 ___
 
@@ -456,6 +88,9 @@ ___
 
 ▸ **addKvRecords**(`opts`, `cb`): `any`
 
+`addKvRecords` takes in a set of key-value records and sends a request to add them to the
+Lattice.
+
 #### Parameters
 
 | Name | Type |
@@ -467,9 +102,11 @@ ___
 
 `any`
 
+A callback with an error or null.
+
 #### Defined in
 
-[client.ts:489](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L489)
+[client.ts:562](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L562)
 
 ___
 
@@ -477,6 +114,9 @@ ___
 
 ▸ **addPermissionV0**(`opts`, `cb`): `any`
 
+`addPermissionV0` takes in a currency, time window, spending limit, and decimals, and builds a
+payload to send to the Lattice.
+
 #### Parameters
 
 | Name | Type |
@@ -490,13 +130,16 @@ ___
 
 #### Defined in
 
-[client.ts:375](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L375)
+[client.ts:439](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L439)
 
 ___
 
 ### connect
 
 ▸ **connect**(`deviceId`, `cb`): `any`
+
+`connect` will attempt to contact a device based on its deviceId. The response should include
+an ephemeral public key, which is used to pair with the device in a later request.
 
 #### Parameters
 
@@ -511,28 +154,7 @@ ___
 
 #### Defined in
 
-[client.ts:125](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L125)
-
-___
-
-### getActiveWallet
-
-▸ **getActiveWallet**(): `Object`
-
-#### Returns
-
-`Object`
-
-| Name | Type |
-| :------ | :------ |
-| `capabilities` | `any` |
-| `external` | `boolean` |
-| `name` | `any` |
-| `uid` | `Buffer` |
-
-#### Defined in
-
-[client.ts:1082](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L1082)
+[client.ts:157](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L157)
 
 ___
 
@@ -540,26 +162,35 @@ ___
 
 ▸ **getAddresses**(`opts`, `cb`): `any`
 
+`getAddresses` takes a starting path and a number to get the addresses associated with the
+active wallet.
+
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
-| `opts` | `any` |
+| `opts` | `Object` |
+| `opts.n` | `UInt4` |
+| `opts.startPath` | `number`[] |
 | `cb` | `any` |
 
 #### Returns
 
 `any`
 
+An array of addresses.
+
 #### Defined in
 
-[client.ts:208](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L208)
+[client.ts:257](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L257)
 
 ___
 
 ### getKvRecords
 
-▸ **getKvRecords**(`opts`, `cb`): `any`
+▸ **getKvRecords**(`opts`, `cb`): `Buffer`
+
+`getKvRecords` fetches a list of key-value records from the Lattice.
 
 #### Parameters
 
@@ -570,31 +201,21 @@ ___
 
 #### Returns
 
-`any`
+`Buffer`
 
 #### Defined in
 
-[client.ts:420](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L420)
-
-___
-
-### hasActiveWallet
-
-▸ **hasActiveWallet**(): `boolean`
-
-#### Returns
-
-`boolean`
-
-#### Defined in
-
-[client.ts:1092](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L1092)
+[client.ts:488](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L488)
 
 ___
 
 ### pair
 
 ▸ **pair**(`pairingSecret`, `cb`): `any`
+
+If a pairing secret is provided, `pair` uses it to sign a hash of the public key, name, and
+pairing secret. It then sends the name and signature to the device. If no pairing secret is
+provided, `pair` sends a zero-length name buffer to the device.
 
 #### Parameters
 
@@ -607,57 +228,19 @@ ___
 
 `any`
 
-#### Defined in
-
-[client.ts:153](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L153)
-
-___
-
-### parseAbi
-
-▸ **parseAbi**(`source`, `data`, `skipErrors?`): `any`
-
-#### Parameters
-
-| Name | Type | Default value |
-| :------ | :------ | :------ |
-| `source` | `any` | `undefined` |
-| `data` | `any` | `undefined` |
-| `skipErrors` | `boolean` | `false` |
-
-#### Returns
-
-`any`
+The active wallet object.
 
 #### Defined in
 
-[client.ts:1114](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L1114)
-
-___
-
-### pubKeyBytes
-
-▸ **pubKeyBytes**(`LE?`): `Buffer`
-
-#### Parameters
-
-| Name | Type | Default value |
-| :------ | :------ | :------ |
-| `LE` | `boolean` | `false` |
-
-#### Returns
-
-`Buffer`
-
-#### Defined in
-
-[client.ts:1098](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L1098)
+[client.ts:192](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L192)
 
 ___
 
 ### removeKvRecords
 
 ▸ **removeKvRecords**(`opts`, `cb`): `any`
+
+`removeKvRecords` takes in an array of ids and sends a request to remove them from the Lattice.
 
 #### Parameters
 
@@ -670,15 +253,19 @@ ___
 
 `any`
 
+A callback with an error or null.
+
 #### Defined in
 
-[client.ts:568](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L568)
+[client.ts:646](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L646)
 
 ___
 
 ### sign
 
 ▸ **sign**(`opts`, `cb`, `cachedData?`, `nextCode?`): `any`
+
+`sign` builds and sends a request for signing to the device.
 
 #### Parameters
 
@@ -693,27 +280,62 @@ ___
 
 `any`
 
+The response from the device.
+
 #### Defined in
 
-[client.ts:271](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L271)
+[client.ts:325](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L325)
 
 ___
 
-### test
+## Other Methods
 
-▸ **test**(`data`, `cb`): `any`
+### getActiveWallet
+
+▸ **getActiveWallet**(): `Object`
+
+Get the active wallet.
+
+#### Returns
+
+`Object`
+
+The active wallet.
+
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `capabilities` | `number` | 4 byte flag |
+| `external` | `boolean` | External or internal wallet |
+| `name` | `Buffer` | 20 char (max) string |
+| `uid` | `Buffer` | 32 byte id |
+
+#### Defined in
+
+[client.ts:1217](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L1217)
+
+___
+
+### parseAbi
+
+▸ **parseAbi**(`source`, `data`, `skipErrors?`): `any`
+
+TODO: Find a better way to export this.
+`parseAbi` takes a source and data as arguments, and returns the parsed ABI.
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `data` | `any` |
-| `cb` | `any` |
+| Name | Type | Default value | Description |
+| :------ | :------ | :------ | :------ |
+| `source` | `any` | `undefined` | The name of the source of the ABI data. |
+| `data` | `any` | `undefined` | The data to parse. |
+| `skipErrors` | `boolean` | `false` | If true, errors will be skipped and the function will return an object with an error property. |
 
 #### Returns
 
 `any`
 
+The parsed ABI.
+
 #### Defined in
 
-[client.ts:192](https://github.com/GridPlus/gridplus-sdk/blob/5eeff82/src/client.ts#L192)
+[client.ts:1265](https://github.com/GridPlus/gridplus-sdk/blob/b758eac/src/client.ts#L1265)
