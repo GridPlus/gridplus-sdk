@@ -72,7 +72,7 @@ const CONNECT_AND_PAIR_LATTICE = (
   //--------------------------------------------------------------------------
   // Connect
   //--------------------------------------------------------------------------
-  client.connect(deviceId, (err, isPaired) => {
+  client.connect(deviceId, (err: any, isPaired: any) => {
     if (err) {
       rej(err)
     } else {
@@ -85,7 +85,7 @@ const CONNECT_AND_PAIR_LATTICE = (
         //--------------------------------------------------------------
         // Pair
         //--------------------------------------------------------------
-        client.pair(pairingCode, (err, isActive) => {
+        client.pair(pairingCode, (err: any, isActive: any) => {
           if (err || !isActive) {
             rej(err || new Error("No active wallet found!"))
           } else {
