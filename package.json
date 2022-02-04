@@ -58,6 +58,7 @@
     "it-each": "^0.4.0",
     "lodash": ">=4.17.21",
     "minimist": ">=0.2.1",
+    "mocha": "^9.2.0",
     "random-words": "^1.1.1",
     "readline-sync": "^1.4.9",
     "rlp": "^2.2.7",
