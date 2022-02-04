@@ -1,11 +1,13 @@
-// Tests for internal Lattice Wallet Jobs
+// Tests for Isolated & Fuzzy SDK testing
 // NOTE: You must run the following BEFORE executing these tests:
 //
 // 1. Connect with the same deviceID you specfied in 1:
 //
-//    env DEVICE_ID='<your_device_id>' npm test
+//    env DEVICE_ID='<your_device_id>' npm run test-chaos-money
 //
-// After you do the above, you can run this test with `env DEVICE_ID='<your_device_id>' npm run test-wallet-jobs`
+// 2. You can optionally specify an `baseUrl`:
+//
+//    env DEVICE_ID='<your_device_id>' baseUrl='<http://local-ip:3000>' npm run test-chaos-money
 //
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)
