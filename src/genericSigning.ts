@@ -21,12 +21,21 @@ export const buildGenericSigningMsgRequest = function(req) {
     genericSigning,
     varAddrPathSzAllowed,
   } = fwConstants;
-  const { curveTypes, hashTypes, maxMsgSz } = genericSigning;
+  const { curveTypes, encodingTypes, hashTypes, maxMsgSz } = genericSigning;
   try {
     const curveIdx = curveTypes.indexOf(curveType.toUpperCase());
     const hashIdx = hashTypes.indexOf(hashType.toUpperCase());
-    const payloadBuf = ensureHexBuffer(payload);
-    if (!genericSigning || !extraDataFrameSz || !extraDataMaxFrames || !prehashAllowed) {
+
+    // If the buffer passed in is a string and is not prefixed with 0x, treat as utf8.
+    // Otherwise treat it as a hex buffer.
+    const isHex = Buffer.isBuffer(payload) || (typeof payload === 'string' && payload.slice(0, 2) === '0x');
+    const payloadBuf = isHex ? ensureHexBuffer(payload) : Buffer.from(payload, 'utf8');
+    const encodingType = isHex ? encodingTypes.indexOf('HEX') : encodingTypes.indexOf('UTF8');
+
+    // Sanity checks
+    if (payloadBuf.length === 0) {
+      throw new Error('Payload could not be handled.')
+    } else if (!genericSigning || !extraDataFrameSz || !extraDataMaxFrames || !prehashAllowed) {
       throw new Error('Unsupported. Please update your Lattice firmware.');
     } else if (curveIdx < 0) {
       throw new Error(`Unsupported curve type. Allowed types: ${JSON.stringify(curveTypes)}`);
@@ -43,6 +52,8 @@ export const buildGenericSigningMsgRequest = function(req) {
     }
     const buf = Buffer.alloc(maxMsgSz);
     let off = 0;
+    buf.writeUint32LE(encodingType);
+    off += 4;
     buf.writeUint8(hashIdx, off);
     off += 1;
     buf.writeUint8(curveIdx, off);

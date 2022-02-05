@@ -353,6 +353,7 @@ function getFwVersionConst(v) {
     c.genericSigning.maxMsgSz = 1550 - 27;
     c.genericSigning.hashTypes = [ 'NONE', 'KECCAK256', 'SHA256' ];
     c.genericSigning.curveTypes = [ 'SECP256K1', 'ED25519' ];
+    c.genericSigning.encodingTypes = [ 'UTF8', 'HEX' ];
   }
 
   // V0.13.0 added native segwit addresses and fixed a bug in exporting
