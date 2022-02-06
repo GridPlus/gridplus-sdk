@@ -56,27 +56,15 @@ async function runTestCase(expectedCode) {
   return parsedRes;
 }
 
-function getPathStr(path) {
-  let pathStr = 'm';
-  path.forEach((idx) => {
-    if (idx >= HARDENED_OFFSET) {
-      pathStr += `/${idx - HARDENED_OFFSET}'`;
-    } else {
-      pathStr += `/${idx}`;
-    }
-  });
-  return pathStr;
-}
-
 function deriveAddress(seed, path) {
   const wallet = bip32.fromSeed(seed);
-  const priv = wallet.derivePath(getPathStr(path)).privateKey;
+  const priv = wallet.derivePath(helpers.getPathStr(path)).privateKey;
   return `0x${privateToAddress(priv).toString('hex')}`;
 }
 
 function signPersonalJS(_msg, path) {
   const wallet = bip32.fromSeed(TEST_SEED);
-  const priv = wallet.derivePath(getPathStr(path)).privateKey;
+  const priv = wallet.derivePath(helpers.getPathStr(path)).privateKey;
   const PERSONAL_SIGN_PREFIX = '\u0019Ethereum Signed Message:\n';
   const msg = PERSONAL_SIGN_PREFIX + String(_msg.length) + _msg;
   const hash: any = new Uint8Array(Buffer.from(keccak256(msg), 'hex'));

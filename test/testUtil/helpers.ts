@@ -3,13 +3,15 @@ import { wordlists } from 'bip39';
 import bitcoin from 'bitcoinjs-lib';
 import { expect as expect } from 'chai';
 import crypto from 'crypto';
-import { ec as EC } from 'elliptic';
-import { privateToAddress } from 'ethereumjs-util';
+import { ec as EC, eddsa as EdDSA } from 'elliptic';
+import { privateToAddress, ecsign } from 'ethereumjs-util';
+import { keccak256 } from 'js-sha3';
 import { ADDR_STR_LEN, BIP_CONSTANTS, ethMsgProtocol, HARDENED_OFFSET } from '../../src/constants';
 import { Client } from '../../src/index';
-import { parseDER } from '../../src/util';
+import { ensureHexBuffer, parseDER } from '../../src/util';
 const SIGHASH_ALL = 0x01;
-const ec = new EC('secp256k1');
+const secp256k1 = new EC('secp256k1');
+const ed25519 = new EdDSA('ed25519');
 
 // NOTE: We use the HARDEN(49) purpose for p2sh(p2wpkh) address derivations.
 //       For p2pkh-derived addresses, we use the legacy 44' purpose
@@ -487,6 +489,19 @@ export const stringifyPath = (parent) => {
   return s;
 };
 
+export const getPathStr = function(path) {
+  let pathStr = 'm';
+  path.forEach((idx) => {
+    if (idx >= HARDENED_OFFSET) {
+      pathStr += `/${idx - HARDENED_OFFSET}'`;
+    } else {
+      pathStr += `/${idx}`;
+    }
+  });
+  return pathStr;
+}
+
+
 //---------------------------------------------------
 // Get Addresses helpers
 //---------------------------------------------------
@@ -654,7 +669,7 @@ export const deserializeSignTxJobResult = function (res) {
     _off += 4;
     o.signerPath.addr = _o.readUInt32LE(_off);
     _off += 4;
-    o.pubkey = ec.keyFromPublic(
+    o.pubkey = secp256k1.keyFromPublic(
       _o.slice(_off, _off + 65).toString('hex'),
       'hex'
     );
@@ -827,6 +842,37 @@ export const buildRandomEip712Object = function (randInt) {
   return msg;
 };
 
+//---------------------------------------------------
+// Generic signing
+//---------------------------------------------------
+export const validateGenericSig = function(seed, sig, data) {
+  const { signerPath, payload, hashType, curveType } = data;
+  const wallet = bip32.fromSeed(seed);
+  const priv = wallet.derivePath(getPathStr(signerPath)).privateKey;
+  const isHex = Buffer.isBuffer(payload) || (typeof payload === 'string' && payload.slice(0, 2) === '0x');
+  const payloadBuf = isHex ? ensureHexBuffer(payload) : Buffer.from(payload, 'utf8');
+  let hash;
+  if (curveType === 'SECP256K1') {
+    if (hashType === 'SHA256') {
+      hash = crypto.createHash('sha256').update(payloadBuf).digest();
+    } else if (hashType === 'KECCAK256') {
+      hash = Buffer.from(keccak256(payloadBuf), 'hex');
+    } else {
+      throw new Error('Bad params');
+    }
+    const key = secp256k1.keyFromPrivate(priv);
+    expect(key.verify(hash, sig)).to.equal(true, 'Signature failed verification.')
+  } else if (curveType === 'ED25519') {
+    if (hash !== 'NONE') {
+      throw new Error('Bad params');
+    }
+    const key = ed25519.keyFromSecret(priv);
+    expect(key.verify(hash, sig)).to.equal(true, 'Signature failed verification.')
+  } else {
+    throw new Error('Bad params')
+  }
+}
+
 export default {
   BTC_PURPOSE_P2WPKH,
   BTC_PURPOSE_P2SH_P2WPKH,
@@ -861,4 +907,5 @@ export default {
   serializeDeleteSeedJobData,
   serializeLoadSeedJobData,
   buildRandomEip712Object,
+  validateGenericSig,
 }

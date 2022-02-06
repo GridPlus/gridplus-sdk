@@ -10,7 +10,7 @@ This payload should be coupled with:
 */
 import { Buffer } from 'buffer/';
 import { signingSchema } from './constants'
-import { buildSignerPathBuf, ensureHexBuffer, splitFrames, parseDER } from './util'
+import { buildSignerPathBuf, ensureHexBuffer, fixLen, splitFrames, parseDER } from './util'
 
 export const buildGenericSigningMsgRequest = function(req) {
   const { signerPath, curveType, hashType, payload, omitPubkey=false, fwConstants } = req;
@@ -31,7 +31,6 @@ export const buildGenericSigningMsgRequest = function(req) {
     const isHex = Buffer.isBuffer(payload) || (typeof payload === 'string' && payload.slice(0, 2) === '0x');
     const payloadBuf = isHex ? ensureHexBuffer(payload) : Buffer.from(payload, 'utf8');
     const encodingType = isHex ? encodingTypes.indexOf('HEX') : encodingTypes.indexOf('UTF8');
-
     // Sanity checks
     if (payloadBuf.length === 0) {
       throw new Error('Payload could not be handled.')
@@ -129,7 +128,7 @@ export const parseGenericSigningResponse = function(res, off, curveType, omitPub
         // Uncompressed key
         parsed.pubkey = Buffer.alloc(65);
         parsed.pubkey.writeUint8(compression, 0);
-        res.slice(off + 1).copy(parsed.pubkey, 1);
+        res.slice(off).copy(parsed.pubkey, 1);
       } else {
         throw new Error('Bad compression byte in signing response.')
       }
@@ -140,6 +139,10 @@ export const parseGenericSigningResponse = function(res, off, curveType, omitPub
     }
     // Handle `GpECDSASig_t`
     parsed.sig = parseDER(res.slice(off, off + 2 + res[off + 1]));
+    // Remove any leading zeros in signature components to ensure
+    // the result is a 64 byte sig
+    parsed.sig.r = fixLen(parsed.sig.r, 32);
+    parsed.sig.s = fixLen(parsed.sig.s, 32);
   } else if (curveType === 'ED25519') {
     if (!omitPubkey) {
       // Handle `GpEdDSAPubkey_t`
@@ -151,6 +154,6 @@ export const parseGenericSigningResponse = function(res, off, curveType, omitPub
     parsed.sig = res.slice(off, off + 64);
   } else {
     throw new Error('Unsupported curve.')
-  }
+  }  
   return { data: parsed };
 }

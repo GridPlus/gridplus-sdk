@@ -9,7 +9,7 @@ import { keccak256 } from 'js-sha3';
 import rlp from 'rlp-browser';
 import secp256k1 from 'secp256k1';
 import { ASCII_REGEX, ethMsgProtocol, HANDLE_LARGER_CHAIN_ID, MAX_CHAIN_ID_BYTES, signingSchema } from './constants';
-import { buildSignerPathBuf, ensureHexBuffer, splitFrames } from './util'
+import { buildSignerPathBuf, ensureHexBuffer, fixLen, splitFrames } from './util'
 
 const buildEthereumMsgRequest = function (input) {
   if (!input.payload || !input.protocol || !input.signerPath)
@@ -463,15 +463,6 @@ const hashTransaction = function (serializedTx) {
 // Returns address string given public key buffer
 function pubToAddrStr(pub) {
   return keccak256(pub).slice(-40);
-}
-
-function fixLen(msg, length) {
-  const buf = Buffer.alloc(length);
-  if (msg.length < length) {
-    msg.copy(buf, length - msg.length);
-    return buf;
-  }
-  return msg.slice(-length);
 }
 
 // Convert a 0/1 `v` into a recovery param:

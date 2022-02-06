@@ -173,6 +173,15 @@ export const ensureHexBuffer = function(x, zeroIsNull = true) {
   }
 }
 
+export const fixLen = function(msg, length) {
+  const buf = Buffer.alloc(length);
+  if (msg.length < length) {
+    msg.copy(buf, length - msg.length);
+    return buf;
+  }
+  return msg.slice(-length);
+}
+
 //--------------------------------------------------
 // CRYPTO UTILS
 //--------------------------------------------------
@@ -192,19 +201,16 @@ export const aes256_decrypt = function(data, key) {
 
 // Decode a DER signature. Returns signature object {r, s } or null if there is an error
 export const parseDER = function(sigBuf) {
-  console.log('sigBuf', sigBuf.toString('hex'))
   if (sigBuf[0] !== 0x30 || sigBuf[2] !== 0x02) return null;
   let off = 3;
   const sig = { r: null, s: null };
   const rLen = sigBuf[off];
-  console.log('rLen', rLen)
   off++;
   sig.r = sigBuf.slice(off, off + rLen);
   off += rLen;
   if (sigBuf[off] !== 0x02) return null;
   off++;
   const sLen = sigBuf[off];
-  console.log('sLen', sLen)
   off++;
   sig.s = sigBuf.slice(off, off + sLen);
   return sig;
