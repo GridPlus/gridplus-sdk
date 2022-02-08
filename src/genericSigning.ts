@@ -9,8 +9,11 @@ This payload should be coupled with:
 * Hash function to use on the message
 */
 import { Buffer } from 'buffer/';
+import { keccak256, sha256 } from 'js-sha3';
 import { signingSchema } from './constants'
-import { buildSignerPathBuf, ensureHexBuffer, fixLen, splitFrames, parseDER } from './util'
+import { 
+  buildSignerPathBuf, ensureHexBuffer, fixLen, isAsciiStr, splitFrames, parseDER 
+} from './util'
 
 export const buildGenericSigningMsgRequest = function(req) {
   const { signerPath, curveType, hashType, payload, omitPubkey=false, fwConstants } = req;
@@ -21,16 +24,26 @@ export const buildGenericSigningMsgRequest = function(req) {
     genericSigning,
     varAddrPathSzAllowed,
   } = fwConstants;
-  const { curveTypes, encodingTypes, hashTypes, maxMsgSz } = genericSigning;
+  const { curveTypes, encodingTypes, hashTypes, baseDataSz, baseReqSz } = genericSigning;
   try {
-    const curveIdx = curveTypes.indexOf(curveType.toUpperCase());
-    const hashIdx = hashTypes.indexOf(hashType.toUpperCase());
+    const HASH_T = hashType.toUpperCase();
+    const CURVE_T = curveType.toUpperCase();
+    const curveIdx = curveTypes.indexOf(CURVE_T);
+    const hashIdx = hashTypes.indexOf(HASH_T);
 
     // If the buffer passed in is a string and is not prefixed with 0x, treat as utf8.
     // Otherwise treat it as a hex buffer.
-    const isHex = Buffer.isBuffer(payload) || (typeof payload === 'string' && payload.slice(0, 2) === '0x');
+    // NOTE: Right now we only support hex and ascii encodings, though we may support stricter
+    // schemes in the future.
+    let isHex = Buffer.isBuffer(payload) || (typeof payload === 'string' && payload.slice(0, 2) === '0x');
+    if (!isHex && !isAsciiStr(payload, true)) {
+      // If this is not '0x' prefixed but is not valid ASCII, convert to hex payload
+      isHex = true;
+      payload = `0x${Buffer.from(payload).toString('hex')}`
+    }
     const payloadBuf = isHex ? ensureHexBuffer(payload) : Buffer.from(payload, 'utf8');
-    const encodingType = isHex ? encodingTypes.indexOf('HEX') : encodingTypes.indexOf('UTF8');
+    const encodingType = isHex ? encodingTypes.indexOf('HEX') : encodingTypes.indexOf('ASCII');
+    
     // Sanity checks
     if (payloadBuf.length === 0) {
       throw new Error('Payload could not be handled.')
@@ -40,16 +53,12 @@ export const buildGenericSigningMsgRequest = function(req) {
       throw new Error(`Unsupported curve type. Allowed types: ${JSON.stringify(curveTypes)}`);
     } else if (hashIdx < 0) {
       throw new Error(`Unsupported hash type. Allowed types: ${JSON.stringify(hashTypes)}`);
-    } else if (payloadBuf.length > maxMsgSz) {
-      throw new Error(`Data too large. Must be <${maxMsgSz} bytes (got ${payloadBuf.length})`);
+    } else if (CURVE_T === 'ED25519' && HASH_T !== 'NONE') {
+      throw new Error('Signing on ed25519 requires unhashed message');
     }
-    const maxExpandedSz = maxMsgSz + (extraDataMaxFrames * extraDataFrameSz);
-    if (payloadBuf.length > maxExpandedSz) {
-      throw new Error(
-        `Payload field too large (got ${payloadBuf.length}; must be <=${maxExpandedSz} bytes)`
-      );
-    }
-    const buf = Buffer.alloc(maxMsgSz);
+    
+    // Build the request buffer with metadata and then the payload to sign.
+    const buf = Buffer.alloc(baseReqSz);
     let off = 0;
     buf.writeUint32LE(encodingType);
     off += 4;
@@ -64,25 +73,30 @@ export const buildGenericSigningMsgRequest = function(req) {
     off += 1;
     buf.writeUint16LE(payloadBuf.length, off);
     off += 2;
-    // Copy the first `maxMsgSz` bytes into the buffer. If there is more data, we will
-    // add it to extraFrames for use in follow up requests.
-    payloadBuf.copy(buf.slice(0, maxMsgSz - off), off);
 
-     // Flow data into extraData requests if applicable
+    // Size of data payload that can be included in the first/base request
+    const maxExpandedSz = baseDataSz + (extraDataMaxFrames * extraDataFrameSz);
+    // Flow data into extraData requests if applicable
     const extraDataPayloads = [];
-    // let prehash = null;
-    if (payloadBuf.length > maxMsgSz) {
-      if (prehashAllowed && totalSz > maxExpandedSz) {
+    let prehash = null;
+
+    if (payloadBuf.length > baseDataSz) {
+      if (prehashAllowed && payloadBuf.length > maxExpandedSz) {
         // If this payload is too large to send, but the Lattice allows a prehashed message, do that
-        // prehash = Buffer.from(
-        //   keccak256(get_rlp_encoded_preimage(rawTx, type)),
-        //   'hex'
-        // );
-        throw new Error('todo')
+        if (HASH_T === 'NONE') {
+          // This cannot be done for ED25519 signing, which must sign the full message
+          throw new Error('Message too large to send and could not be prehashed (hashType=NONE).');
+        } else if (HASH_T === 'KECCAK256') {
+          prehash = Buffer.from(keccak256(payloadBuf), 'hex');
+        } else if (HASH_T === 'SHA256') {
+          prehash = Buffer.from(sha256(payloadBuf), 'hex');          
+        } else {
+          throw new Error('Unsupported hash type.')
+        }
       } else {
         // Split overflow data into extraData frames
         const frames = splitFrames(
-          payloadBuf.slice(maxMsgSz - off),
+          payloadBuf.slice(baseDataSz),
           extraDataFrameSz
         );
         frames.forEach((frame) => {
@@ -91,13 +105,20 @@ export const buildGenericSigningMsgRequest = function(req) {
           extraDataPayloads.push(Buffer.concat([szLE, frame]));
         });
       }
-    } 
+    }
+    
+    // If the message had to be prehashed, we will only copy the hash data into the request.
+    // Otherwise copy as many payload bytes into the request as possible. Follow up data
+    // from `frames` will come in follow up requests.
+    const toCopy = prehash ? prehash : payloadBuf;
+    toCopy.copy(buf, off);
 
+    // Return all the necessary data
     return {
       payload: buf,
       extraDataPayloads,
       schema: signingSchema.GENERAL_SIGNING,
-      curveType,
+      curveType: CURVE_T,
       omitPubkey
     }
   } catch (err) {

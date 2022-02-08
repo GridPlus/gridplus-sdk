@@ -9,7 +9,7 @@ import { keccak256 } from 'js-sha3';
 import rlp from 'rlp-browser';
 import secp256k1 from 'secp256k1';
 import { ASCII_REGEX, ethMsgProtocol, HANDLE_LARGER_CHAIN_ID, MAX_CHAIN_ID_BYTES, signingSchema } from './constants';
-import { buildSignerPathBuf, ensureHexBuffer, fixLen, splitFrames } from './util'
+import { buildSignerPathBuf, ensureHexBuffer, fixLen, isAsciiStr, splitFrames } from './util'
 
 const buildEthereumMsgRequest = function (input) {
   if (!input.payload || !input.protocol || !input.signerPath)
@@ -491,15 +491,6 @@ function getRecoveryParam (v, txData: any = {}) {
   );
 }
 
-// Determine if the Lattice can display a string we give it. Currently, the Lattice can only
-// display ASCII strings, so we will reject other UTF8 codes.
-// In the future we may add a mechanism to display certain UTF8 codes such as popular emojis.
-function latticeCanDisplayStr(str) {
-  for (let i = 0; i < str.length; i++)
-    if (str.charCodeAt(i) < 0x0020 || str.charCodeAt(i) > 0x007f) return false;
-  return true;
-}
-
 const chainIds = {
   mainnet: 1,
   roptsten: 3,
@@ -594,7 +585,7 @@ function buildPersonalSignRequest(req, input) {
           Buffer.from(input.payload.slice(2), 'hex').toString()
         );
     } else {
-      if (false === latticeCanDisplayStr(input.payload))
+      if (false === isAsciiStr(input.payload))
         throw new Error(
           'Currently, the Lattice can only display ASCII strings.'
         );

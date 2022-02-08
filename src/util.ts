@@ -242,3 +242,24 @@ export const buildSignerPathBuf = function(signerPath, varAddrPathSzAllowed) {
   }
   return buf;
 }
+
+//--------------------------------------------------
+// OTHER UTILS
+//--------------------------------------------------
+export const isAsciiStr = function(str, allowFormatChars=false) {
+  if (typeof str !== 'string') {
+    return false;
+  }
+  const extraChars =  allowFormatChars ?
+                      [
+                        0x0020, // Space
+                        0x000a, // New line
+                      ] : [];
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    if (extraChars.indexOf(c) < 0 && (c < 0x0020 || c > 0x007f)) {
+      return false;
+    }
+  }
+  return true;
+}

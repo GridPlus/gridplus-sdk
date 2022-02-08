@@ -349,11 +349,13 @@ function getFwVersionConst(v) {
     if (!c.genericSigning) {
       c.genericSigning = {};
     }
+    // See `sizeof(GenericSigningRequest_t)` in firmware
+    c.genericSigning.baseReqSz = 1552;
     // See `GENERIC_SIGNING_BASE_MSG_SZ` in firmware
-    c.genericSigning.maxMsgSz = 1550 - 27;
+    c.genericSigning.baseDataSz = 1519;
     c.genericSigning.hashTypes = [ 'NONE', 'KECCAK256', 'SHA256' ];
     c.genericSigning.curveTypes = [ 'SECP256K1', 'ED25519' ];
-    c.genericSigning.encodingTypes = [ 'UTF8', 'HEX' ];
+    c.genericSigning.encodingTypes = [ 'ASCII', 'HEX' ];
   }
 
   // V0.13.0 added native segwit addresses and fixed a bug in exporting
