@@ -11,7 +11,7 @@ This payload should be coupled with:
 import { Buffer } from 'buffer/';
 import { keccak256 } from 'js-sha3';
 import { sha256 } from 'hash.js/lib/hash/sha'
-import { signingSchema } from './constants'
+import { HARDENED_OFFSET, signingSchema } from './constants'
 import { 
   buildSignerPathBuf, ensureHexBuffer, fixLen, isAsciiStr, splitFrames, parseDER 
 } from './util'
@@ -55,8 +55,18 @@ export const buildGenericSigningMsgRequest = function(req) {
       throw new Error(`Unsupported curve type. Allowed types: ${JSON.stringify(curveTypes)}`);
     } else if (hashIdx < 0) {
       throw new Error(`Unsupported hash type. Allowed types: ${JSON.stringify(hashTypes)}`);
-    } else if (CURVE_T === 'ED25519' && HASH_T !== 'NONE') {
-      throw new Error('Signing on ed25519 requires unhashed message');
+    }
+
+    // Ed25519 specific sanity checks
+    if (CURVE_T === 'ED25519') {
+      if (HASH_T !== 'NONE') {
+        throw new Error('Signing on ed25519 requires unhashed message');
+      }
+      signerPath.forEach((idx) => {
+        if (idx < HARDENED_OFFSET) {
+          throw new Error('Signing on ed25519 requires all signer path indices be hardened.')
+        }
+      })
     }
     
     // Build the request buffer with metadata and then the payload to sign.
