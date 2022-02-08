@@ -9,14 +9,16 @@ This payload should be coupled with:
 * Hash function to use on the message
 */
 import { Buffer } from 'buffer/';
-import { keccak256, sha256 } from 'js-sha3';
+import { keccak256 } from 'js-sha3';
+import { sha256 } from 'hash.js/lib/hash/sha'
 import { signingSchema } from './constants'
 import { 
   buildSignerPathBuf, ensureHexBuffer, fixLen, isAsciiStr, splitFrames, parseDER 
 } from './util'
 
 export const buildGenericSigningMsgRequest = function(req) {
-  const { signerPath, curveType, hashType, payload, omitPubkey=false, fwConstants } = req;
+  const { signerPath, curveType, hashType, omitPubkey=false, fwConstants } = req;
+  let { payload } = req;
   const {
     extraDataFrameSz,
     extraDataMaxFrames,
@@ -60,18 +62,18 @@ export const buildGenericSigningMsgRequest = function(req) {
     // Build the request buffer with metadata and then the payload to sign.
     const buf = Buffer.alloc(baseReqSz);
     let off = 0;
-    buf.writeUint32LE(encodingType);
+    buf.writeUInt32LE(encodingType, off);
     off += 4;
-    buf.writeUint8(hashIdx, off);
+    buf.writeUInt8(hashIdx, off);
     off += 1;
-    buf.writeUint8(curveIdx, off);
+    buf.writeUInt8(curveIdx, off);
     off += 1;
     const signerPathBuf = buildSignerPathBuf(signerPath, varAddrPathSzAllowed);
     signerPathBuf.copy(buf, off);
     off += signerPathBuf.length;
-    buf.writeUint8(omitPubkey ? 1 : 0, off);
+    buf.writeUInt8(omitPubkey ? 1 : 0, off);
     off += 1;
-    buf.writeUint16LE(payloadBuf.length, off);
+    buf.writeUInt16LE(payloadBuf.length, off);
     off += 2;
 
     // Size of data payload that can be included in the first/base request
@@ -89,7 +91,7 @@ export const buildGenericSigningMsgRequest = function(req) {
         } else if (HASH_T === 'KECCAK256') {
           prehash = Buffer.from(keccak256(payloadBuf), 'hex');
         } else if (HASH_T === 'SHA256') {
-          prehash = Buffer.from(sha256(payloadBuf), 'hex');          
+          prehash = Buffer.from(sha256().update(payloadBuf).digest('hex'), 'hex');
         } else {
           throw new Error('Unsupported hash type.')
         }
@@ -141,12 +143,12 @@ export const parseGenericSigningResponse = function(res, off, curveType, omitPub
       if (compression === 0x02 || compression === 0x03) {
         // Compressed key - only copy x
         parsed.pubkey = Buffer.alloc(33);
-        parsed.pubkey.writeUint8(compression, 0);
+        parsed.pubkey.writeUInt8(compression, 0);
         res.slice(off, off + 32).copy(parsed.pubkey, 1);
       } else if (compression === 0x04) {
         // Uncompressed key
         parsed.pubkey = Buffer.alloc(65);
-        parsed.pubkey.writeUint8(compression, 0);
+        parsed.pubkey.writeUInt8(compression, 0);
         res.slice(off).copy(parsed.pubkey, 1);
       } else {
         throw new Error('Bad compression byte in signing response.')
@@ -177,5 +179,5 @@ export const parseGenericSigningResponse = function(res, off, curveType, omitPub
   } else {
     throw new Error('Unsupported curve.')
   }  
-  return { data: parsed };
+  return parsed;
 }

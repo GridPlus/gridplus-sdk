@@ -97,8 +97,11 @@ describe('Generic signing', () => {
     // Use extraData frames
     req.data.payload = `0x${randomBytes(maxSz).toString('hex')}`;
     await run(req);
-    // Prehash
+    // Prehash (keccak256)
     req.data.payload = `0x${randomBytes(maxSz + 1).toString('hex')}`;
+    await run(req);
+    // Prehash (sha256)
+    req.data.hashType = 'SHA256';
     await run(req);
   })
 

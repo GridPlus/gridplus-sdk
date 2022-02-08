@@ -404,8 +404,7 @@ export class Client {
         // Correct wallet and no errors -- handle the response
         try {
           const parsedRes = this._handleSign(res, currency, req);
-          // @ts-expect-error - TODO: should handle case where parsedRes does not contain data
-          return cb(parsedRes.err, parsedRes.data);
+          return cb(null, parsedRes);
         } catch (err) {
           return cb(err.message)
         }
@@ -1220,8 +1219,6 @@ export class Client {
         changeVersion
       );
     }
-    // Start building return data
-    const returnData = { err: null, data: null };
     const DERLength = 74; // max size of a DER signature -- all Lattice sigs are this long
     const SIGS_OFFSET = 10 * DERLength; // 10 signature slots precede 10 pubkey slots
     const PUBKEYS_OFFSET = PUBKEY_PREFIX_LEN + PKH_PREFIX_LEN + SIGS_OFFSET;
@@ -1307,7 +1304,7 @@ export class Client {
         .toString('hex');
 
       // Add extra data for debugging/lookup purposes
-      returnData.data = {
+      return {
         tx: serializedTx,
         txHash,
         changeRecipient,
@@ -1319,7 +1316,7 @@ export class Client {
       const ethAddr = res.slice(off, off + 20);
       // Determine the `v` param and add it to the sig before returning
       const rawTx = ethereum.buildEthRawTx(req, sig, ethAddr);
-      returnData.data = {
+      return {
         tx: `0x${rawTx}`,
         txHash: `0x${ethereum.hashTransaction(rawTx)}`,
         sig: {
@@ -1337,7 +1334,7 @@ export class Client {
         { signer, sig },
         req
       );
-      returnData.data = {
+      return {
         sig: {
           v: validatedSig.v,
           r: validatedSig.r.toString('hex'),
@@ -1347,11 +1344,10 @@ export class Client {
       };
     } else {
       // Generic signing request
-      returnData = parseGenericSigningResponse(
+      return parseGenericSigningResponse(
         res, off, req.curveType, req.omitPubkey
       );
     }
-    return returnData;
   }
 
   /**

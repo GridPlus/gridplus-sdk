@@ -7,6 +7,7 @@ import { derivePath as deriveEDKey } from 'ed25519-hd-key'
 import { ec as EC, eddsa as EdDSA } from 'elliptic';
 import { privateToAddress } from 'ethereumjs-util';
 import { keccak256 } from 'js-sha3';
+import { sha256 } from 'hash.js/lib/hash/sha'
 import { ADDR_STR_LEN, BIP_CONSTANTS, ethMsgProtocol, HARDENED_OFFSET } from '../../src/constants';
 import { Client } from '../../src/index';
 import { ensureHexBuffer, parseDER } from '../../src/util';
@@ -857,7 +858,7 @@ export const validateGenericSig = function(seed, sig, data) {
   let hash;
   if (curveType === 'SECP256K1') {
     if (hashType === 'SHA256') {
-      hash = crypto.createHash('sha256').update(payloadBuf).digest();
+      hash = Buffer.from(sha256().update(payloadBuf).digest('hex'), 'hex');
     } else if (hashType === 'KECCAK256') {
       hash = Buffer.from(keccak256(payloadBuf), 'hex');
     } else {
