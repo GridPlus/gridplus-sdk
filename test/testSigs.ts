@@ -65,8 +65,7 @@ function deriveAddress(seed, path) {
 function signPersonalJS(_msg, path) {
   const wallet = bip32.fromSeed(TEST_SEED);
   const priv = wallet.derivePath(helpers.getPathStr(path)).privateKey;
-  const PERSONAL_SIGN_PREFIX = '\u0019Ethereum Signed Message:\n';
-  const msg = PERSONAL_SIGN_PREFIX + String(_msg.length) + _msg;
+  const msg = helpers.ethPersonalSignMsg(_msg);
   const hash: any = new Uint8Array(Buffer.from(keccak256(msg), 'hex'));
   const sig = ecsign(hash, priv);
   const v = (sig.v - 27).toString(16).padStart(2, '0');

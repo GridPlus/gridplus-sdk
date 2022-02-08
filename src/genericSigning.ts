@@ -110,8 +110,6 @@ export const parseGenericSigningResponse = function(res, off, curveType, omitPub
     pubkey: null,
     sig: null,
   }
-  // Pubkey data in C struct is 65 bytes
-  const pubkeyFullSz = 65;
   // Parse BIP44 path
   // Parse pubkey and then sig
   if (curveType === 'SECP256K1') {
@@ -135,7 +133,7 @@ export const parseGenericSigningResponse = function(res, off, curveType, omitPub
       off += 64;
     } else {
       // Skip pubkey section
-      off += pubkeyFullSz;
+      off += 65;
     }
     // Handle `GpECDSASig_t`
     parsed.sig = parseDER(res.slice(off, off + 2 + res[off + 1]));
@@ -149,9 +147,12 @@ export const parseGenericSigningResponse = function(res, off, curveType, omitPub
       parsed.pubkey = Buffer.alloc(32);
       res.slice(off, off + 32).copy(parsed.pubkey);
     }
-    off += pubkeyFullSz;
+    off += 32;
     // Handle `GpEdDSASig_t`
-    parsed.sig = res.slice(off, off + 64);
+    parsed.sig = {
+      r: res.slice(off, off + 32),
+      s: res.slice(off + 32, off + 64),
+    };
   } else {
     throw new Error('Unsupported curve.')
   }  

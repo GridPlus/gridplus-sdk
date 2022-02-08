@@ -81,28 +81,73 @@ describe('Test generic signing limits', () => {
       }
     };
   })
-
+/*
   it('Should validate SECP256K1/KECCAK signature against dervied key', async () => {
-    // Make generic signing request
-
-    // TODO: FIGURE OUT HOW TO HANDLE 33 BYTE SIG COMPONENTS
-    // req.data.payload = 'test2'; // PRODUCES 33 BYTE R COMPONENT IN SIG???
-    
+    // ASCII message encoding
     req.data.payload = 'test'
     const resp = await helpers.execute(client, 'sign', req);
     expect(!!resp.err).to.equal(false, resp.err);
     helpers.validateGenericSig(seed, resp.sig, req.data);
-  })
-/*
-  it('Should validate ED25519/NULL signature against dervied key', async () => {
-    // Make generic signing request
-    req.data.payload = 'test';
-    req.data.curveType = 'ED25519';
-    req.data.hashType = 'NONE';
-    const resp = await helpers.execute(client, 'sign', req);
-    console.log(resp)
+    // Hex message encoding
+    req.data.payload = '0x123456'
+    try {
+      const resp = await helpers.execute(client, 'sign', req);
+      expect(!!resp.err).to.equal(false, resp.err);
+      helpers.validateGenericSig(seed, resp.sig, req.data);
+    } catch (err) {
+      continueTests = false;
+      expect(err).to.equal(null, err);
+    }
   })
 */
-  it('Should validate SECP256K1/KECCAK signature against native ETH request');
+  it('Should validate ED25519/NULL signature against dervied key', async () => {
+    // Make generic signing request
+    req.data.payload = '0x123456';
+    req.data.curveType = 'ED25519';
+    req.data.hashType = 'NONE';
+    // ED25519 derivation requires hardened indices
+    req.data.signerPath = [
+      helpers.BTC_PURPOSE_P2PKH,
+      helpers.ETH_COIN,
+      HARDENED_OFFSET,
+    ];
+    try {
+      const resp = await helpers.execute(client, 'sign', req);
+      expect(!!resp.err).to.equal(false, resp.err);
+      helpers.validateGenericSig(seed, resp.sig, req.data);
+    } catch (err) {
+      continueTests = false;
+      expect(err).to.equal(null, err);
+    }
+  })
+
+  it('Should validate SECP256K1/KECCAK signature against ETH_MSG request (legacy)', async () => {
+    // Generic request
+    const msg = 'Testing personal_sign';
+    const psMsg = helpers.ethPersonalSignMsg(msg);
+    req.data.payload = psMsg;
+    // Legacy request
+    const legacyReq = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: req.data.signerPath,
+        payload: msg,
+        protocol: 'signPersonal'
+      }
+    };
+    try {
+      const respGeneric = await helpers.execute(client, 'sign', req);
+      const respLegacy = await helpers.execute(client, 'sign', legacyReq);
+      expect(!!respGeneric.err).to.equal(false, respGeneric.err);
+      expect(!!respLegacy.err).to.equal(false, respLegacy.err);
+      helpers.validateGenericSig(seed, respGeneric.sig, req.data);
+      const genSig = `${respGeneric.sig.r.toString('hex')}${respGeneric.sig.s.toString('hex')}`;
+      const legSig = `${respLegacy.sig.r.toString('hex')}${respLegacy.sig.s.toString('hex')}`;
+      expect(genSig).to.equal(legSig, 'Legacy and generic requests produced different sigs.')
+    } catch (err) {
+      continueTests = false;
+      expect(err).to.equal(null, err);
+    }
+  });
 })
 

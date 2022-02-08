@@ -3,8 +3,9 @@ import { wordlists } from 'bip39';
 import bitcoin from 'bitcoinjs-lib';
 import { expect as expect } from 'chai';
 import crypto from 'crypto';
+import { derivePath as deriveEDKey } from 'ed25519-hd-key'
 import { ec as EC, eddsa as EdDSA } from 'elliptic';
-import { privateToAddress, ecsign } from 'ethereumjs-util';
+import { privateToAddress } from 'ethereumjs-util';
 import { keccak256 } from 'js-sha3';
 import { ADDR_STR_LEN, BIP_CONSTANTS, ethMsgProtocol, HARDENED_OFFSET } from '../../src/constants';
 import { Client } from '../../src/index';
@@ -596,6 +597,10 @@ export const validateETHAddresses = function (resp, jobData, seed) {
   }
 };
 
+export const ethPersonalSignMsg = function(msg) {
+  return '\u0019Ethereum Signed Message:\n' + String(msg.length) + msg;
+}
+
 //---------------------------------------------------
 // Sign Transaction helpers
 //---------------------------------------------------
@@ -847,8 +852,6 @@ export const buildRandomEip712Object = function (randInt) {
 //---------------------------------------------------
 export const validateGenericSig = function(seed, sig, data) {
   const { signerPath, payload, hashType, curveType } = data;
-  const wallet = bip32.fromSeed(seed);
-  const priv = wallet.derivePath(getPathStr(signerPath)).privateKey;
   const isHex = Buffer.isBuffer(payload) || (typeof payload === 'string' && payload.slice(0, 2) === '0x');
   const payloadBuf = isHex ? ensureHexBuffer(payload) : Buffer.from(payload, 'utf8');
   let hash;
@@ -860,14 +863,18 @@ export const validateGenericSig = function(seed, sig, data) {
     } else {
       throw new Error('Bad params');
     }
+    const wallet = bip32.fromSeed(seed);
+    const priv = wallet.derivePath(getPathStr(signerPath)).privateKey;
     const key = secp256k1.keyFromPrivate(priv);
     expect(key.verify(hash, sig)).to.equal(true, 'Signature failed verification.')
   } else if (curveType === 'ED25519') {
-    if (hash !== 'NONE') {
+    if (hashType !== 'NONE') {
       throw new Error('Bad params');
     }
+    const { key: priv } = deriveEDKey(getPathStr(signerPath), seed);
     const key = ed25519.keyFromSecret(priv);
-    expect(key.verify(hash, sig)).to.equal(true, 'Signature failed verification.')
+    const formattedSig = `${sig.r.toString('hex')}${sig.s.toString('hex')}`
+    expect(key.verify(payloadBuf, formattedSig)).to.equal(true, 'Signature failed verification.')
   } else {
     throw new Error('Bad params')
   }
@@ -900,6 +907,7 @@ export default {
   deserializeGetAddressesJobResult,
   validateBTCAddresses,
   validateETHAddresses,
+  ethPersonalSignMsg,
   serializeSignTxJobDataLegacy,
   deserializeSignTxJobResult,
   serializeExportSeedJobData,

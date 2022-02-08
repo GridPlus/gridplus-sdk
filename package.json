@@ -55,6 +55,7 @@
     "bitcoinjs-lib": "4.0.3",
     "chai": "^4.2.0",
     "cli-interact": "^0.1.9",
+    "ed25519-hd-key": "^1.2.0",
     "eslint": "^8.7.0",
     "ethereumjs-util": "^7.1.0",
     "it-each": "^0.4.0",
