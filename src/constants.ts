@@ -18,6 +18,8 @@ const decResLengths = {
   getWallets: 142, // 71 bytes per wallet record (response contains internal and external)
   addAbiDefs: 8,
   getKvRecords: 1395,
+  getAbiRecords: 1215,
+  removeAbiRecords: 1,
   test: 1646, // Max size of test response payload
 };
 
@@ -62,7 +64,9 @@ const encReqCodes = {
   GET_KV_RECORDS: 7,
   ADD_KV_RECORDS: 8,
   REMOVE_KV_RECORDS: 9,
-  TEST: 10,
+  GET_ABI_RECORDS: 10,
+  REMOVE_ABI_RECORDS: 11,
+  TEST: 12,
 };
 
 const messageConstants = {
@@ -328,6 +332,14 @@ function getFwVersionConst(v) {
 
   // EXTRA FIELDS ADDED IN LATER VERSIONS
   //-------------------------------------
+
+  // V0.14.0 added support for a more robust API around ABI definitions
+  if (!legacy && gte(v, [0, 14, 0])) {
+    // Size of `category` buffer. Inclusive of null terminator byte.
+    c.abiCategorySz = 32;
+    c.abiMaxRmv = 200;  // Max number of ABI defs that can be removed with
+                        // a single request
+  }
 
   // V0.13.0 added native segwit addresses and fixed a bug in exporting
   // legacy bitcoin addresses

@@ -4,9 +4,11 @@ import { ETH_ABI_LATTICE_FW_TYPE_MAP } from './constants';
 const NAME_MAX_SZ = 100;
 const HEADER_SZ = 5 + NAME_MAX_SZ; // 4 byte sig + name + 1 byte param count
 const CATEGORY_SZ = 32;
+const PARAM_NAME_SZ = 20;
 const PARAM_SZ = 26; // 20 byte name + 6 byte def
 const MAX_PARAMS = 18;
 export const MAX_ABI_DEFS = 2;
+export const ABI_DEF_SZ = (HEADER_SZ + CATEGORY_SZ + (PARAM_SZ * MAX_PARAMS));
 
 // Build a request to add ABI data
 export const buildAddAbiPayload = function (defs) {
@@ -15,9 +17,7 @@ export const buildAddAbiPayload = function (defs) {
     throw new Error(
       `You may only add ${MAX_ABI_DEFS} ABI definitions per request.`
     );
-  const b = Buffer.alloc(
-    1 + MAX_ABI_DEFS * (HEADER_SZ + CATEGORY_SZ + PARAM_SZ * MAX_PARAMS)
-  );
+  const b = Buffer.alloc(1 + (MAX_ABI_DEFS * ABI_DEF_SZ));
   let off = 0;
   b.writeUInt8(defs.length, off);
   off++;
@@ -65,7 +65,7 @@ export const buildAddAbiPayload = function (defs) {
         'Currently only ABI defintions with <=10 parameters are supported.'
       );
     if (numParams > 0) {
-      // First copy param names (first 20 bytes)
+      // First copy param names
       def.params.forEach((param) => {
         if (
           param.name === undefined ||
@@ -76,11 +76,11 @@ export const buildAddAbiPayload = function (defs) {
           throw new Error(
             'name, latticeTypeIdx, isArray, and arraySz must be defined for all ABI params.'
           );
-        Buffer.from(param.name).slice(0, 20).copy(b, off);
-        off += 20;
+        Buffer.from(param.name).slice(0, PARAM_NAME_SZ).copy(b, off); 
+        off += PARAM_NAME_SZ;
       });
       // Bump offset to account for blank param slots
-      off += 20 * (MAX_PARAMS - numParams);
+      off += PARAM_NAME_SZ * (MAX_PARAMS - numParams);
       // Next copy the definitions
       def.params.forEach((param) => {
         b.writeUInt8(param.latticeTypeIdx, off);
@@ -124,6 +124,58 @@ export const getFuncSig = function (f) {
   canonicalName += ')';
   return keccak256(canonicalName).slice(0, 8);
 };
+
+export const unpackAbiDef = function(_def) {
+  let off = 0;
+  const def = { 
+    header: {
+      sig: '',
+      name: '',
+      numParam: 0,
+    }, 
+    category: '', 
+    params: []
+  };
+  def.header.sig = '0x' + _def.slice(off, off + 4).toString('hex'); off += 4;
+  def.header.name = _def.slice(off, off + NAME_MAX_SZ).toString().split('\x00')[0]; off += NAME_MAX_SZ;
+  def.header.numParam = _def.readUInt8(off); off += 1;
+  def.category = _def.slice(off, off + CATEGORY_SZ).toString().split('\x00')[0]; off += CATEGORY_SZ;
+  // Get param names
+  for (let i = 0; i < MAX_PARAMS; i++) {
+    if (i < def.header.numParam) {
+      const param = {
+        name: '',
+        type: 0,
+        typeName: '',
+        isArray: false,
+        arraySz: 0,
+      }
+      param.name = _def.slice(off, off + PARAM_NAME_SZ).toString().split('\x00')[0];
+      def.params.push(param);
+    }
+    off += PARAM_NAME_SZ;
+  }
+  function reverseFwTypeMap(typeIdx) {
+    let typeName = null;
+    Object.keys(ETH_ABI_LATTICE_FW_TYPE_MAP).forEach((key) => {
+      if (ETH_ABI_LATTICE_FW_TYPE_MAP[key] === typeIdx) {
+        typeName = key;
+      }
+    })
+    return typeName;
+  }
+  // Get param info
+  for (let i = 0; i < MAX_PARAMS; i++) {
+    if (i < def.header.numParam) {
+      def.params[i].type = _def.readUInt8(off); off += 1;
+
+      def.params[i].typeName = reverseFwTypeMap(def.params[i].type);
+      def.params[i].isArray = _def.readUInt8(off); off += 1;
+      def.params[i].arraySz = _def.readUInt32LE(off); off += 4;
+    }
+  }
+  return def;
+}
 
 //--------------------------------------
 // PARSERS

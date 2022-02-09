@@ -19,7 +19,9 @@ import {
   VERSION_BYTE
 } from './constants';
 import ethereum from './ethereum';
-import { abiParsers, buildAddAbiPayload, MAX_ABI_DEFS } from './ethereumAbi';
+import { 
+  buildAddAbiPayload, unpackAbiDef, abiParsers, MAX_ABI_DEFS, ABI_DEF_SZ 
+} from './ethereumAbi';
 import {
   aes256_decrypt,
   aes256_encrypt,
@@ -429,6 +431,142 @@ export class Client {
       // Add the next set
       this.addAbiDefs(defs, cb, nextCode);
     });
+  }
+
+  /**
+   * `getAbiRecords` fetches a set of ABI records saved on the Lattice. You can fetch
+   * sequential records based on a starting index and count.
+   * @category Lattice
+   * @returns The decrypted response.
+   */
+  public getAbiRecords(opts, cb, fetched: {startIdx: number, numRemaining: number, numFetched: number, records: any[]}) {
+    const { n = 1, startIdx = 0, category='' } = opts;
+    const fwConstants = getFwVersionConst(this.fwVersion);
+    if (n < 1) {
+      return cb('Must request at least one record (n=0)');
+    } else if (n < 0 || startIdx < 0) {
+      return cb('Both `n` and `startIdx` must be >=0');
+    } else if (!fwConstants.abiCategorySz) {
+      return cb('Outdated Lattice firmware. Please update.');
+    } else if (category.length >= fwConstants.abiCategorySz) {
+      return cb(`category must be <${fwConstants.abiCategorySz - 1} characters, got ${category.length}`);
+    }
+    if (!fetched) {
+      fetched = {
+        startIdx,
+        numRemaining: null,
+        numFetched: null,
+        records: [],
+      }
+    }
+    const payload = Buffer.alloc(4 + fwConstants.abiCategorySz);
+    payload.writeUInt16LE(startIdx, 0);
+    payload.writeUInt16LE(n, 2);
+    Buffer.from(category).copy(payload, 4);
+    return this._request(payload, 'GET_ABI_RECORDS', (err, res, responseCode) => {
+      if (responseCode === responseCodes.RESP_ERR_WRONG_WALLET) {
+        // If we catch a case where the wallet has changed, try getting the new active wallet
+        // and recursively make the original request.
+        this._getActiveWallet((err) => {
+          if (err) return cb(err)
+          else     return this.getAbiRecords(opts, cb, fetched);
+        })
+      } else if (err) {
+        // If there was another error caught, return it
+        if (err) return cb(err);
+      } else {
+        // Correct wallet and no errors -- handle the response
+        const d = this._handleEncResponse(res, decResLengths.getAbiRecords);
+        if (d.err)
+          return cb(d.err);
+        // Decode the response
+        let off = 65; // Skip 65 byte pubkey prefix
+        const numRemaining = d.data.readUInt32LE(off); off += 4;
+        const numReturned = d.data.readUInt8(off); off += 1;
+        // Start adding data if there is data to add
+        fetched.numRemaining = numRemaining;
+        if (!fetched.records) {
+          fetched.records = [];
+        }
+        for (let i = 0; i < numReturned; i++) {
+          // Parse and add the def
+          const packedDef = d.data.slice(off, off + ABI_DEF_SZ); off += ABI_DEF_SZ;
+          fetched.records.push(unpackAbiDef(packedDef));
+        }
+        // Decrement the total counter
+        opts.n -= numReturned;
+        if (opts.n < 1 || numReturned < 1) {
+          fetched.numFetched = fetched.records.length;
+          return cb(null, fetched);
+        } else {
+          // Recurse if there is more to fetch
+          opts.startIdx += numReturned;
+          return this.getAbiRecords(opts, cb, fetched);
+        }
+      }
+    })
+  }
+
+  /**
+   * `removeAbiRecords` requests removal of ABI records on the device. You can request
+   * removal based on a desired set of function signatures.
+   * @category Lattice
+   * @returns The decrypted response.
+   */
+  public removeAbiRecords(opts, cb, cbData={ numRemoved: 0, numTried: 0 }) {
+    const { sigs } = opts;
+    const fwConstants = getFwVersionConst(this.fwVersion);
+    if (!fwConstants.abiMaxRmv) {
+      return cb('Outdated Lattice firmware. Please update.');
+    } else if (sigs.length === 0) {
+      return cb('At least one signature in `sigs` must be provided.');
+    }
+    const sigsSlice = sigs.slice(cbData.numTried, cbData.numTried + fwConstants.abiMaxRmv);
+    const payload = Buffer.alloc(1 + (4 * fwConstants.abiMaxRmv));
+    let off = 0;
+    payload.writeUInt8(sigsSlice.length, off); 
+    off += 1;
+    sigsSlice.forEach((sig) => {
+      try {
+        const sigBuf = ethereum.ensureHexBuffer(sig);
+        if (sigBuf.length !== 4) {
+          return cb('Signatures must be 4 bytes.')
+        }
+        sigBuf.copy(payload, off);
+        off += 4;
+      } catch (err) {
+        return cb(`Error writing signature: ${err.message}`);
+      }
+    })
+    return this._request(payload, 'REMOVE_ABI_RECORDS', (err, res, responseCode) => {
+      if (responseCode === responseCodes.RESP_ERR_WRONG_WALLET) {
+        // If we catch a case where the wallet has changed, try getting the new active wallet
+        // and recursively make the original request.
+        this._getActiveWallet((err) => {
+          if (err) return cb(err)
+          else     return this.removeAbiRecords(opts, cb, cbData);
+        })
+      } else if (err) {
+        // If there was another error caught, return it
+        if (err) return cb(err);
+      } else {
+        // Correct wallet and no errors -- handle the response
+        const d = this._handleEncResponse(res, decResLengths.removeAbiRecords);
+        if (d.err)
+          return cb(d.err);
+        // Decode the response
+        let off = 65; // Skip 65 byte pubkey prefix
+        const rmv = d.data.readUInt8(off); off += 1;
+        cbData.numRemoved += rmv;
+        cbData.numTried += sigsSlice.length;
+        if (cbData.numTried >= opts.sigs.length) {
+          return cb(null, cbData);
+        } else {
+          // Recurse if there are more to remove
+          return this.removeAbiRecords(opts, cb, cbData);
+        }
+      }
+    }) 
   }
 
   /**
