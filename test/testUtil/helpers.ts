@@ -399,7 +399,7 @@ export const serializeJobData = function (job, walletUID, data) {
       serData = serializeGetAddressesJobData(data);
       break;
     case jobTypes.WALLET_JOB_SIGN_TX:
-      serData = serializeSignTxJobData(data);
+      serData = serializeSignTxJobDataLegacy(data);
       break;
     case jobTypes.WALLET_JOB_EXPORT_SEED:
       serData = serializeExportSeedJobData();
@@ -584,7 +584,11 @@ export const validateETHAddresses = function (resp, jobData, seed) {
 //---------------------------------------------------
 // Sign Transaction helpers
 //---------------------------------------------------
-export const serializeSignTxJobData = function (data) {
+export const serializeSignTxJobDataLegacy = function (data) {
+  // Serialize a signTX request using the legacy option
+  // (see `WalletJobData_SignTx_t` and `SignatureRequest_t`)
+  // in firmware for more info on legacy vs generic (new)
+  // wallet job requests
   const n = data.sigReq.length;
   const req = Buffer.alloc(4 + 56 * n);
   let off = 0;
@@ -666,15 +670,6 @@ export const deserializeSignTxJobResult = function (res) {
   }
 
   return getTxResult;
-};
-
-export const ensureHexBuffer = function (x) {
-  if (x === null || x === 0) return Buffer.alloc(0);
-  else if (Buffer.isBuffer(x)) x = x.toString('hex');
-  if (typeof x === 'number') x = `${x.toString(16)}`;
-  else if (typeof x === 'string' && x.slice(0, 2) === '0x') x = x.slice(2);
-  if (x.length % 2 > 0) x = `0${x}`;
-  return Buffer.from(x, 'hex');
 };
 
 //---------------------------------------------------
@@ -859,9 +854,8 @@ export default {
   deserializeGetAddressesJobResult,
   validateBTCAddresses,
   validateETHAddresses,
-  serializeSignTxJobData,
+  serializeSignTxJobDataLegacy,
   deserializeSignTxJobResult,
-  ensureHexBuffer,
   serializeExportSeedJobData,
   deserializeExportSeedJobResult,
   serializeDeleteSeedJobData,

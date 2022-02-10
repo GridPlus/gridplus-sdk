@@ -20,8 +20,16 @@ import {
 } from './constants';
 import ethereum from './ethereum';
 import { 
-  buildAddAbiPayload, unpackAbiDef, abiParsers, MAX_ABI_DEFS, ABI_DEF_SZ 
+  buildAddAbiPayload, 
+  unpackAbiDef, 
+  abiParsers, 
+  MAX_ABI_DEFS, 
+  ABI_DEF_SZ 
 } from './ethereumAbi';
+import {
+  buildGenericSigningMsgRequest, 
+  parseGenericSigningResponse
+} from './genericSigning';
 import {
   aes256_decrypt,
   aes256_encrypt,
@@ -31,7 +39,6 @@ import {
   isValidAssetPath,
   parseDER,
   parseLattice1Response,
-  signReqResolver,
   toPaddedDER
 } from './util';
 const EMPTY_WALLET_UID = Buffer.alloc(32);
@@ -327,10 +334,8 @@ export class Client {
   public sign (opts, cb, cachedData = null, nextCode = null) {
     const { currency } = opts;
     let { data } = opts;
-    if (currency === undefined || data === undefined) {
-      return cb('Please provide `currency` and `data` options');
-    } else if (signReqResolver[currency] === undefined) {
-      return cb('Unsupported currency');
+    if (!data) {
+      return cb('You must provide `data`');
     }
     // All transaction requests must be put into the same sized buffer.
     // This comes from sizeof(GpTransactionRequest_t), but note we remove
@@ -348,9 +353,17 @@ export class Client {
       schema = signingSchema.EXTRA_DATA;
     } else {
       try {
-        req = signReqResolver[currency](data);
+        if (currency === 'ETH') {
+          req = ethereum.buildEthereumTxRequest(data);
+        } else if (currency == 'ETH_MSG') {
+          req = ethereum.buildEthereumMsgRequest(data);
+        } else if (currency == 'BTC') {
+          req = bitcoin.buildBitcoinTxRequest(data);
+        } else {
+          req = buildGenericSigningMsgRequest(data);
+        }
       } catch (err) {
-        return cb(`Error building BTC transaction request: ${err.message}`);
+        return cb(`Error building signing request: ${err.message}`);
       }
       if (req.err !== undefined) return cb(req.err);
       if (req.payload.length > fwConstants.reqMaxDataSz)
@@ -389,9 +402,13 @@ export class Client {
         return this.sign(opts, cb, cachedData, nextCode);
       } else {
         // Correct wallet and no errors -- handle the response
-        const parsedRes = this._handleSign(res, currency, req);
-        // @ts-expect-error - TODO: should handle case where parsedRes does not contain data
-        return cb(parsedRes.err, parsedRes.data);
+        try {
+          const parsedRes = this._handleSign(res, currency, req);
+          // @ts-expect-error - TODO: should handle case where parsedRes does not contain data
+          return cb(parsedRes.err, parsedRes.data);
+        } catch (err) {
+          return cb(err.message)
+        }
       }
     });
   }
@@ -1328,8 +1345,12 @@ export class Client {
         },
         signer,
       };
+    } else {
+      // Generic signing request
+      returnData = parseGenericSigningResponse(
+        res, off, req.curveType, req.omitPubkey
+      );
     }
-
     return returnData;
   }
 

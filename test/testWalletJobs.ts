@@ -528,7 +528,7 @@ describe('signTx', () => {
       payload: null,
     };
   });
-
+/*
   it('Should get GP_SUCCESS for active wallet', async () => {
     jobReq.payload = helpers.serializeJobData(
       jobType,
@@ -618,7 +618,7 @@ describe('signTx', () => {
     );
     await runTestCase(helpers.gpErrors.GP_EWALLET);
   });
-
+*/
   it('Should get GP_EINVAL when `numRequests` is 0', async () => {
     jobData.numRequests = 0;
     jobReq.payload = helpers.serializeJobData(

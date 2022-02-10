@@ -7,6 +7,7 @@ import randomWords from 'random-words';
 import { question } from 'readline-sync';
 import seedrandom from 'seedrandom';
 import { ETH_ABI_LATTICE_FW_TYPE_MAP, getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
+import { ensureHexBuffer } from '../src/util'
 import abi from './../src/ethereumAbi';
 import helpers from './testUtil/helpers';
 
@@ -233,7 +234,7 @@ function createDef() {
   }
   def._typeNames = getTypeNames(def.params);
   def.sig = buildFuncSelector(def);
-  const data = helpers.ensureHexBuffer(buildEthData(def));
+  const data = ensureHexBuffer(buildEthData(def));
   // Make sure the transaction will fit in the firmware buffer size
   const fwConstants = getFwVersionConst(client.fwVersion);
   const maxDataSz =
@@ -310,7 +311,7 @@ function createTupleDef() {
     fwConstants.ethMaxDataSz +
     fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
   def.sig = buildFuncSelector(def);
-  const data = helpers.ensureHexBuffer(buildEthData(def));
+  const data = ensureHexBuffer(buildEthData(def));
   if (data.length > maxDataSz) return createTupleDef();
   return def;
 }
@@ -753,7 +754,7 @@ describe('Preloaded ABI definitions', () => {
 
     try {
       const approveDef = erc20PreloadedDefs[0];
-      req.data.data = helpers.ensureHexBuffer(buildEthData(approveDef));
+      req.data.data = ensureHexBuffer(buildEthData(approveDef));
       await helpers.execute(client, 'sign', req);
     } catch (err) {
       continueTests = false;
@@ -761,7 +762,7 @@ describe('Preloaded ABI definitions', () => {
     }
     try {
       const transfer = erc20PreloadedDefs[1];
-      req.data.data = helpers.ensureHexBuffer(buildEthData(transfer));
+      req.data.data = ensureHexBuffer(buildEthData(transfer));
       await helpers.execute(client, 'sign', req);
     } catch (err) {
       continueTests = false;
@@ -769,7 +770,7 @@ describe('Preloaded ABI definitions', () => {
     }
     try {
       const transferFrom = erc20PreloadedDefs[2];
-      req.data.data = helpers.ensureHexBuffer(buildEthData(transferFrom));
+      req.data.data = ensureHexBuffer(buildEthData(transferFrom));
       await helpers.execute(client, 'sign', req);
     } catch (err) {
       continueTests = false;
