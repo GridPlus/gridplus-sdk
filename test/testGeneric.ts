@@ -7,8 +7,8 @@ We seek to validate:
 
 You must have `FEATURE_TEST_RUNNER=0` enabled in firmware to run these tests.
  */
+import { Keypair, PublicKey, Signature, SystemProgram, Transaction } from '@solana/web3.js'
 import bip32 from 'bip32';
-import { randomBytes } from 'crypto';
 import { expect } from 'chai';
 import seedrandom from 'seedrandom';
 import helpers from './testUtil/helpers';
@@ -104,10 +104,10 @@ describe('Generic signing', () => {
     try {
       continueTests = false;
       // Use extraData frames
-      req.data.payload = `0x${randomBytes(maxSz).toString('hex')}`;
+      req.data.payload = `0x${helpers.prandomBuf(prng, maxSz, true).toString('hex')}`;
       await run(req);
       // Prehash (keccak256)
-      req.data.payload = `0x${randomBytes(maxSz + 1).toString('hex')}`;
+      req.data.payload = `0x${helpers.prandomBuf(prng, maxSz + 1, true).toString('hex')}`;
       await run(req);
       // Prehash (sha256)
       req.data.hashType = Constants.SIGNING.HASHES.SHA256;
@@ -194,18 +194,91 @@ describe('Generic signing', () => {
     }
   });
 
+  it('Should test and validate a Solana transaction', async () => {
+    // Build a Solana transaction with two signers, each derived from the Lattice's seed.
+    // This will require two separate general signing requests, one per signer.
+
+    // Get the full set of Solana addresses and keys
+    // NOTE: Solana addresses are just base58 encoded public keys. We do not
+    // currently support exporting of Solana addresses in firmware but we can
+    // derive them here using the exported seed.
+    const derivedAPath = [
+      HARDENED_OFFSET + 44, HARDENED_OFFSET + 501, HARDENED_OFFSET, HARDENED_OFFSET
+    ];
+    const derivedBPath = [
+      HARDENED_OFFSET + 44, HARDENED_OFFSET + 501, HARDENED_OFFSET, HARDENED_OFFSET + 1
+    ];
+    const derivedCPath = [
+      HARDENED_OFFSET + 44, HARDENED_OFFSET + 501, HARDENED_OFFSET, HARDENED_OFFSET + 2
+    ];
+    const derivedA = helpers.deriveED25519Key(derivedAPath, seed);
+    const derivedB = helpers.deriveED25519Key(derivedBPath, seed);
+    const derivedC = helpers.deriveED25519Key(derivedCPath, seed);
+    const pubA = new PublicKey(derivedA.pub);
+    const pubB = new PublicKey(derivedB.pub);
+    const pubC = new PublicKey(derivedC.pub);
+
+    // Define transaction instructions
+    const transfer1 = SystemProgram.transfer({
+      fromPubkey: pubA,
+      toPubkey: pubC,
+      lamports: 111,
+    });
+    const transfer2 = SystemProgram.transfer({
+      fromPubkey: pubB,
+      toPubkey: pubC,
+      lamports: 222,
+    });
+
+    // Generate a pseudorandom blockhash, which is just a public key appearently.
+    const randBuf = helpers.prandomBuf(prng, 32, true);
+    const recentBlockhash = Keypair.fromSeed(randBuf).publicKey.toBase58();
+
+    // Build a transaction and sign it using Solana's JS lib
+    const txJs = new Transaction({ recentBlockhash }).add(transfer1, transfer2);
+    txJs.setSigners(pubA, pubB);
+    txJs.sign(Keypair.fromSeed(derivedA.priv), Keypair.fromSeed(derivedB.priv));
+    const serTxJs = txJs.serialize().toString('hex');
+
+    // Build a copy of the transaction and get the serialized payload for signing in firmware.
+    const txFw = new Transaction({ recentBlockhash }).add(transfer1, transfer2);
+    txFw.setSigners(pubA, pubB);
+    // We want to sign the Solana message, not the full transaction
+    const payload = txFw.compileMessage().serialize();
+
+    // Sign payload from Lattice and add signatures to tx object
+    req.data = {
+      curveType: Constants.SIGNING.CURVES.ED25519,
+      hashType: Constants.SIGNING.HASHES.NONE,
+      encodingType: Constants.SIGNING.ENCODINGS.SOLANA,
+      signerPath: derivedAPath,
+      payload: `0x${payload.toString('hex')}`
+    }
+    let resp = await run(req);
+    const sigA = Buffer.from(
+      `${resp.sig.r.toString('hex')}${resp.sig.s.toString('hex')}`,
+      'hex'
+    );
+    req.data.signerPath = derivedBPath;
+    resp = await run(req);
+    const sigB = Buffer.from(
+      `${resp.sig.r.toString('hex')}${resp.sig.s.toString('hex')}`,
+      'hex'
+    );
+    txFw.addSignature(pubA, sigA);
+    txFw.addSignature(pubB, sigB);
+
+    // Validate the signatures from the Lattice match those of the Solana library
+    const serTxFw = txFw.serialize().toString('hex');
+    expect(serTxFw).to.equal(serTxJs, 'Signed tx mismatch');
+  })
+
   it('Should test random payloads', async () => {
     const numRandomReq = process.env.N || 5;
     try {
       continueTests = false;
       for (let i = 0; i < numRandomReq; i++) {
-        // Build a random payload that can fit in the base request
-        const sz = Math.floor(fwConstants.genericSigning.baseDataSz * prng.quick());
-        const buf = Buffer.alloc(sz);
-        for (let i = 0; i < sz; i++) {
-          buf[i] = Math.floor(0xff * prng.quick());
-        }
-        req.data.payload = buf;
+        req.data.payload = helpers.prandomBuf(prng, fwConstants.genericSigning.baseDataSz);
         // 1. Secp256k1/keccak256
         req.data.curveType = Constants.SIGNING.CURVES.SECP256K1;
         req.data.hashType = Constants.SIGNING.HASHES.KECCAK256;

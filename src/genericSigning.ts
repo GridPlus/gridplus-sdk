@@ -205,7 +205,8 @@ export const getEncodedPayload = function(payload, encodingType, allowedEncoding
   }
 
   // Build the request with the specified encoding type
-  if (encoding === Constants.SIGNING.ENCODINGS.HEX) {
+  if (encoding === Constants.SIGNING.ENCODINGS.HEX ||
+      encoding === Constants.SIGNING.ENCODINGS.SOLANA) {
     return {
       payloadBuf: ensureHexBuffer(payload),
       encoding,
