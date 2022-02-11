@@ -94,41 +94,49 @@ describe('Generic signing', () => {
     const { baseDataSz } = genericSigning;
     // Max size that won't be prehashed
     const maxSz = baseDataSz + (extraDataMaxFrames * extraDataFrameSz);
-    // Use extraData frames
-    req.data.payload = `0x${randomBytes(maxSz).toString('hex')}`;
-    await run(req);
-    // Prehash (keccak256)
-    req.data.payload = `0x${randomBytes(maxSz + 1).toString('hex')}`;
-    await run(req);
-    // Prehash (sha256)
-    req.data.hashType = 'SHA256';
-    await run(req);
+    try {
+      continueTests = false;
+      // Use extraData frames
+      req.data.payload = `0x${randomBytes(maxSz).toString('hex')}`;
+      await run(req);
+      // Prehash (keccak256)
+      req.data.payload = `0x${randomBytes(maxSz + 1).toString('hex')}`;
+      await run(req);
+      // Prehash (sha256)
+      req.data.hashType = 'SHA256';
+      await run(req);
+      continueTests = true;
+    } catch (err) {
+      expect(err).to.equal(null, err);
+    }
   })
 
   it('Should test ASCII text formatting', async () => {
+    // Build a payload that uses spaces and newlines
+    req.data.payload = JSON.stringify({ 
+      testPayload: 'json with spaces', 
+      anotherThing: -1 
+    }, null, 2);
     try {
-      // Build a payload that uses spaces and newlines
-      req.data.payload = JSON.stringify({ 
-        testPayload: 'json with spaces', 
-        anotherThing: -1 
-      }, null, 2);
-      await run(req);
-    } catch (err) {
       continueTests = false;
+      await run(req);
+      continueTests = true;
+    } catch (err) {
       expect(err).to.equal(null, err);
     } 
   })
 
   it('Should validate SECP256K1/KECCAK signature against dervied key', async () => {
+    // ASCII message encoding
+    req.data.payload = 'test'
     try {
-      // ASCII message encoding
-      req.data.payload = 'test'
+      continueTests = false;
       await run(req);
       // Hex message encoding
       req.data.payload = '0x123456'
       await run(req);
+      continueTests = true;
     } catch (err) {
-      continueTests = false;
       expect(err).to.equal(null, err);
     }
   })
@@ -141,9 +149,10 @@ describe('Generic signing', () => {
     // ED25519 derivation requires hardened indices
     req.data.signerPath = DEFAULT_SIGNER.slice(0, 3);
     try {
-      await run(req);
-    } catch (err) {
       continueTests = false;
+      await run(req);
+      continueTests = true;
+    } catch (err) {
       expect(err).to.equal(null, err);
     }
   })
@@ -165,41 +174,47 @@ describe('Generic signing', () => {
       }
     };
     try {
+      continueTests = false;
       const respGeneric = await run(req);
       const respLegacy = await helpers.execute(client, 'sign', legacyReq);
       expect(!!respLegacy.err).to.equal(false, respLegacy.err);
       const genSig = `${respGeneric.sig.r.toString('hex')}${respGeneric.sig.s.toString('hex')}`;
       const legSig = `${respLegacy.sig.r.toString('hex')}${respLegacy.sig.s.toString('hex')}`;
       expect(genSig).to.equal(legSig, 'Legacy and generic requests produced different sigs.')
+      continueTests = true;
     } catch (err) {
-      continueTests = false;
       expect(err).to.equal(null, err);
     }
   });
 
   it('Should test random payloads', async () => {
     const numRandomReq = process.env.N || 5;
-    for (let i = 0; i < numRandomReq; i++) {
-      // Build a random payload that can fit in the base request
-      const sz = Math.floor(fwConstants.genericSigning.baseDataSz * prng.quick());
-      const buf = Buffer.alloc(sz);
-      for (let i = 0; i < sz; i++) {
-        buf[i] = Math.floor(0xff * prng.quick());
+    try {
+      continueTests = false;
+      for (let i = 0; i < numRandomReq; i++) {
+        // Build a random payload that can fit in the base request
+        const sz = Math.floor(fwConstants.genericSigning.baseDataSz * prng.quick());
+        const buf = Buffer.alloc(sz);
+        for (let i = 0; i < sz; i++) {
+          buf[i] = Math.floor(0xff * prng.quick());
+        }
+        req.data.payload = buf;
+        // 1. Secp256k1/keccak256
+        req.data.curveType = 'SECP256K1';
+        req.data.hashType = 'KECCAK256';
+        await run(req);
+        // 2. Secp256k1/sha256
+        req.data.hashType = 'SHA256';
+        await run(req);
+        // 3. Ed25519
+        req.data.curveType = 'ED25519';
+        req.data.hashType = 'NONE';
+        req.data.signerPath = DEFAULT_SIGNER.slice(0, 3);
+        await run(req);
       }
-      req.data.payload = buf;
-      // 1. Secp256k1/keccak256
-      req.data.curveType = 'SECP256K1';
-      req.data.hashType = 'KECCAK256';
-      await run(req);
-      // 2. Secp256k1/sha256
-      req.data.hashType = 'SHA256';
-      await run(req);
-      // 3. Ed25519
-      req.data.curveType = 'ED25519';
-      req.data.hashType = 'NONE';
-      req.data.signerPath = DEFAULT_SIGNER.slice(0, 3);
-      await run(req);
+      continueTests = true;
+    } catch (err) {
+      expect(err).to.equal(null, err);
     }
   })
-
 })
