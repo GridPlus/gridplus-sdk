@@ -6,9 +6,6 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: docs
 
     steps:
       - name: Checkout code
@@ -19,17 +16,23 @@ jobs:
         with:
           node-version: 16.x
 
-      - name: Install NPM packages
+      - name: Install NPM packages for SDK
         run: npm ci
+
+      - name: Install NPM packages for Docs
+        run: npm ci
+        working-directory: ./docs
 
       - name: Build project
         run: npm run build
+        working-directory: ./docs
 
       - name: Upload production-ready build files
         uses: actions/upload-artifact@v2
         with:
           name: production-files
           path: ./build
+          working-directory: ./docs
 
   deploy:
     name: Deploy
@@ -43,6 +46,7 @@ jobs:
         with:
           name: production-files
           path: ./build
+          working-directory: ./docs
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3
