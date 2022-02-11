@@ -13,6 +13,7 @@ import {
   VERSION_BYTE
 } from './constants';
 import ethereum from './ethereum';
+import { Signature } from './types/utils';
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
 const ec = new EC('p256');
@@ -152,7 +153,7 @@ function aes256_decrypt(data, key) {
 }
 
 // Decode a DER signature. Returns signature object {r, s } or null if there is an error
-function parseDER(sigBuf) {
+function parseDER(sigBuf): Signature {
   if (sigBuf[0] !== 0x30 || sigBuf[2] !== 0x02) return null;
   let off = 3;
   const sig = { r: null, s: null };
