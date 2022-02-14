@@ -355,9 +355,9 @@ export class Client {
       try {
         if (currency === 'ETH') {
           req = ethereum.buildEthereumTxRequest(data);
-        } else if (currency == 'ETH_MSG') {
+        } else if (currency === 'ETH_MSG') {
           req = ethereum.buildEthereumMsgRequest(data);
-        } else if (currency == 'BTC') {
+        } else if (currency === 'BTC') {
           req = bitcoin.buildBitcoinTxRequest(data);
         } else {
           req = buildGenericSigningMsgRequest(data);
