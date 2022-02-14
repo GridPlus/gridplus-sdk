@@ -310,9 +310,9 @@ export const EXTERNAL = {
       ED25519: 1
     },
     ENCODINGS: {
-      ASCII: 0,
-      HEX: 1,
+      NONE: 1,
       SOLANA: 2,
+      TERRA: 3,
     }
   }
 }

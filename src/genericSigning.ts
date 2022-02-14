@@ -13,10 +13,7 @@ import { keccak256 } from 'js-sha3';
 import { sha256 } from 'hash.js/lib/hash/sha'
 import { HARDENED_OFFSET, signingSchema } from './constants'
 import { Constants } from './index'
-import { 
-  buildSignerPathBuf, ensureHexBuffer, existsIn, fixLen, 
-  isAsciiStr, splitFrames, parseDER
-} from './util'
+import { buildSignerPathBuf, existsIn, fixLen, splitFrames, parseDER } from './util'
 
 export const buildGenericSigningMsgRequest = function(req) {
   const { 
@@ -179,44 +176,23 @@ export const parseGenericSigningResponse = function(res, off, curveType, omitPub
   return parsed;
 }
 
-export const getEncodedPayload = function(payload, encodingType, allowedEncodings) {
-  let encoding = encodingType;
-  if (encoding === null) {
-    // If no encoding type was passed, we will display the payload as either
-    // ASCII or a hex string. Determine which one of the default encodings to use.
-    // If the buffer passed in is a string and is not prefixed with 0x, treat as utf8.
-    // Otherwise treat it as a hex buffer.
-    let isHex = Buffer.isBuffer(payload) || 
-                (typeof payload === 'string' && payload.slice(0, 2) === '0x');
-    if (!isHex && !isAsciiStr(payload, true)) {
-      // If this is not '0x' prefixed but is not valid ASCII, convert to hex payload
-      isHex = true;
-      payload = `0x${Buffer.from(payload).toString('hex')}`
-    }
-    // Set encodingType to real value
-    encoding =  isHex ? 
-                Constants.SIGNING.ENCODINGS.HEX : 
-                Constants.SIGNING.ENCODINGS.ASCII;
+export const getEncodedPayload = function(payload, encoding, allowedEncodings) {
+  if (!encoding) {
+    encoding = Constants.SIGNING.ENCODINGS.NONE;
   }
-
   // Make sure the encoding type specified is supported by firmware
   if (!existsIn(encoding, allowedEncodings)) {
     throw new Error('Encoding type not supported by Lattice firmware.');
   }
-
-  // Build the request with the specified encoding type
-  if (encoding === Constants.SIGNING.ENCODINGS.HEX ||
-      encoding === Constants.SIGNING.ENCODINGS.SOLANA) {
-    return {
-      payloadBuf: ensureHexBuffer(payload),
-      encoding,
-    };
-  } else if (encoding === Constants.SIGNING.ENCODINGS.ASCII) {
-    return {
-      payloadBuf: Buffer.from(payload),
-      encoding,
-    };
+  let payloadBuf;
+  if (typeof payload === 'string' && payload.slice(0, 2) === '0x') {
+    payloadBuf = Buffer.from(payload.slice(2), 'hex');
   } else {
-    throw new Error('Unhandled encoding type.')
+    payloadBuf = Buffer.from(payload);
   }
+  // Build the request with the specified encoding type
+  return {
+    payloadBuf,
+    encoding,
+  };
 }
