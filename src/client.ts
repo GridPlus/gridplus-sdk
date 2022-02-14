@@ -156,7 +156,7 @@ export class Client {
    * an ephemeral public key, which is used to pair with the device in a later request.
    * @category Lattice
    */
-  public connect (deviceId, cb) {
+  public connect (deviceId: string, cb: (err?: string, isPaired?: boolean) => void) {
     // User may "re-connect" if a device ID has previously been stored
     if (typeof deviceId === 'function') {
       if (!this.deviceId)
@@ -191,7 +191,7 @@ export class Client {
    * @category Lattice
    * @returns The active wallet object.
    */
-  public pair (pairingSecret, cb) {
+  public pair (pairingSecret: string, cb: (err?: string, hasActiveWallet?: boolean) => void) {
     // Build the secret hash from the salt
     const pubKey = this.pubKeyBytes();
     const nameBuf = Buffer.alloc(25);
@@ -234,7 +234,7 @@ export class Client {
    * `test` takes a data object with a testID and a payload, and sends them to the device.
    * @category Lattice
    */
-  private test (data: { payload: Buffer, testID: number }, cb: (a, b?) => unknown) {
+  private test (data: { payload: Buffer, testID: number }, cb: (err?: string, data?: unknown) => unknown) {
     if (!data.payload)
       return cb('First argument must contain `testID` and `payload` fields.');
     const TEST_DATA_SZ = 500;
@@ -256,7 +256,7 @@ export class Client {
    * @category Lattice
    * @returns An array of addresses.
    */
-  public getAddresses (opts: { startPath: number[], n: UInt4 }, cb) {
+  public getAddresses (opts: { startPath: number[], n: UInt4 }, cb: (err?: string, data?: unknown )=>void) {
     const SKIP_CACHE_FLAG = 1;
     const MAX_ADDR = 10;
     const { startPath, n } = opts;
@@ -324,7 +324,7 @@ export class Client {
    * @category Lattice
    * @returns The response from the device.
    */
-  public sign (opts, cb, cachedData = null, nextCode = null) {
+  public sign (opts: { data, currency: string }, cb, cachedData = null, nextCode = null) {
     const { currency } = opts;
     let { data } = opts;
     if (currency === undefined || data === undefined) {
@@ -401,7 +401,7 @@ export class Client {
    * @category Lattice
    * @returns The decrypted response.
    */
-  public addAbiDefs (defs, cb, nextCode = null) {
+  public addAbiDefs (defs: ABIRecord[], cb, nextCode = null) {
     const defsToAdd = defs.slice(0, MAX_ABI_DEFS);
     defs = defs.slice(MAX_ABI_DEFS);
     let abiPayload;
@@ -439,7 +439,7 @@ export class Client {
    * @category Lattice
    * @returns The decrypted response.
    */
-  public getAbiRecords(opts, cb, fetched: {startIdx: number, numRemaining: number, numFetched: number, records: ABIRecord[]}) {
+  public getAbiRecords(opts: { n: number, startIdx: number, category: string }, cb, fetched: {startIdx: number, numRemaining: number, numFetched: number, records: ABIRecord[]}) {
     const { n = 1, startIdx = 0, category='' } = opts;
     const fwConstants = getFwVersionConst(this.fwVersion);
     if (n < 1) {
