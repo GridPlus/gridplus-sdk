@@ -20,8 +20,16 @@ import {
 } from './constants';
 import ethereum from './ethereum';
 import { 
-  buildAddAbiPayload, unpackAbiDef, abiParsers, MAX_ABI_DEFS, ABI_DEF_SZ 
+  buildAddAbiPayload, 
+  unpackAbiDef, 
+  abiParsers, 
+  MAX_ABI_DEFS, 
+  ABI_DEF_SZ 
 } from './ethereumAbi';
+import {
+  buildGenericSigningMsgRequest, 
+  parseGenericSigningResponse
+} from './genericSigning';
 import {
   aes256_decrypt,
   aes256_encrypt,
@@ -31,7 +39,6 @@ import {
   isValidAssetPath,
   parseDER,
   parseLattice1Response,
-  signReqResolver,
   toPaddedDER
 } from './util';
 const EMPTY_WALLET_UID = Buffer.alloc(32);
@@ -327,10 +334,8 @@ export class Client {
   public sign (opts, cb, cachedData = null, nextCode = null) {
     const { currency } = opts;
     let { data } = opts;
-    if (currency === undefined || data === undefined) {
-      return cb('Please provide `currency` and `data` options');
-    } else if (signReqResolver[currency] === undefined) {
-      return cb('Unsupported currency');
+    if (!data) {
+      return cb('You must provide `data`');
     }
     // All transaction requests must be put into the same sized buffer.
     // This comes from sizeof(GpTransactionRequest_t), but note we remove
@@ -348,9 +353,17 @@ export class Client {
       schema = signingSchema.EXTRA_DATA;
     } else {
       try {
-        req = signReqResolver[currency](data);
+        if (currency === 'ETH') {
+          req = ethereum.buildEthereumTxRequest(data);
+        } else if (currency === 'ETH_MSG') {
+          req = ethereum.buildEthereumMsgRequest(data);
+        } else if (currency === 'BTC') {
+          req = bitcoin.buildBitcoinTxRequest(data);
+        } else {
+          req = buildGenericSigningMsgRequest(data);
+        }
       } catch (err) {
-        return cb(`Error building BTC transaction request: ${err.message}`);
+        return cb(`Error building signing request: ${err.message}`);
       }
       if (req.err !== undefined) return cb(req.err);
       if (req.payload.length > fwConstants.reqMaxDataSz)
@@ -389,9 +402,12 @@ export class Client {
         return this.sign(opts, cb, cachedData, nextCode);
       } else {
         // Correct wallet and no errors -- handle the response
-        const parsedRes = this._handleSign(res, currency, req);
-        // @ts-expect-error - TODO: should handle case where parsedRes does not contain data
-        return cb(parsedRes.err, parsedRes.data);
+        try {
+          const parsedRes = this._handleSign(res, currency, req);
+          return cb(null, parsedRes);
+        } catch (err) {
+          return cb(err.message)
+        }
       }
     });
   }
@@ -1203,8 +1219,6 @@ export class Client {
         changeVersion
       );
     }
-    // Start building return data
-    const returnData = { err: null, data: null };
     const DERLength = 74; // max size of a DER signature -- all Lattice sigs are this long
     const SIGS_OFFSET = 10 * DERLength; // 10 signature slots precede 10 pubkey slots
     const PUBKEYS_OFFSET = PUBKEY_PREFIX_LEN + PKH_PREFIX_LEN + SIGS_OFFSET;
@@ -1290,7 +1304,7 @@ export class Client {
         .toString('hex');
 
       // Add extra data for debugging/lookup purposes
-      returnData.data = {
+      return {
         tx: serializedTx,
         txHash,
         changeRecipient,
@@ -1302,7 +1316,7 @@ export class Client {
       const ethAddr = res.slice(off, off + 20);
       // Determine the `v` param and add it to the sig before returning
       const rawTx = ethereum.buildEthRawTx(req, sig, ethAddr);
-      returnData.data = {
+      return {
         tx: `0x${rawTx}`,
         txHash: `0x${ethereum.hashTransaction(rawTx)}`,
         sig: {
@@ -1320,7 +1334,7 @@ export class Client {
         { signer, sig },
         req
       );
-      returnData.data = {
+      return {
         sig: {
           v: validatedSig.v,
           r: validatedSig.r.toString('hex'),
@@ -1328,9 +1342,12 @@ export class Client {
         },
         signer,
       };
+    } else {
+      // Generic signing request
+      return parseGenericSigningResponse(
+        res, off, req.curveType, req.omitPubkey
+      );
     }
-
-    return returnData;
   }
 
   /**

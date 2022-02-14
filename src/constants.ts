@@ -126,6 +126,7 @@ const signingSchema = {
   ERC20_TRANSFER: 2,
   ETH_MSG: 3,
   EXTRA_DATA: 4,
+  GENERAL_SIGNING: 5,
 };
 
 const HARDENED_OFFSET = 0x80000000; // Hardened offset
@@ -326,7 +327,12 @@ function getFwVersionConst(v) {
     c.ethMaxGasPrice = 500000000000; // 500 gwei
     c.addrFlagsAllowed = false;
   }
-  // These transformations apply to all versions
+  // These transformations apply to all versions. The subtraction
+  // of 128 bytes accounts for metadata and is for legacy reasons.
+  // For all modern versions, these are 1550 bytes.
+  // NOTE: Non-legacy ETH txs (e.g. EIP1559) will shrink
+  // this number.
+  // See `ETH_BASE_TX_MAX_DATA_SZ` and `ETH_MAX_BASE_MSG_SZ` in firmware
   c.ethMaxDataSz = c.reqMaxDataSz - 128;
   c.ethMaxMsgSz = c.ethMaxDataSz;
 
@@ -334,11 +340,22 @@ function getFwVersionConst(v) {
   //-------------------------------------
 
   // V0.14.0 added support for a more robust API around ABI definitions
+  // and generic signing functionality
   if (!legacy && gte(v, [0, 14, 0])) {
     // Size of `category` buffer. Inclusive of null terminator byte.
     c.abiCategorySz = 32;
     c.abiMaxRmv = 200;  // Max number of ABI defs that can be removed with
                         // a single request
+    if (!c.genericSigning) {
+      c.genericSigning = {};
+    }
+    // See `sizeof(GenericSigningRequest_t)` in firmware
+    c.genericSigning.baseReqSz = 1552;
+    // See `GENERIC_SIGNING_BASE_MSG_SZ` in firmware
+    c.genericSigning.baseDataSz = 1519;
+    c.genericSigning.hashTypes = [ 'NONE', 'KECCAK256', 'SHA256' ];
+    c.genericSigning.curveTypes = [ 'SECP256K1', 'ED25519' ];
+    c.genericSigning.encodingTypes = [ 'ASCII', 'HEX' ];
   }
 
   // V0.13.0 added native segwit addresses and fixed a bug in exporting

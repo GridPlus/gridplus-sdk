@@ -9,6 +9,7 @@ import { keccak256 } from 'js-sha3';
 import rlp from 'rlp-browser';
 import secp256k1 from 'secp256k1';
 import { ASCII_REGEX, ethMsgProtocol, HANDLE_LARGER_CHAIN_ID, MAX_CHAIN_ID_BYTES, signingSchema } from './constants';
+import { buildSignerPathBuf, ensureHexBuffer, fixLen, isAsciiStr, splitFrames } from './util'
 
 const buildEthereumMsgRequest = function (input) {
   if (!input.payload || !input.protocol || !input.signerPath)
@@ -464,15 +465,6 @@ function pubToAddrStr(pub) {
   return keccak256(pub).slice(-40);
 }
 
-function fixLen(msg, length) {
-  const buf = Buffer.alloc(length);
-  if (msg.length < length) {
-    msg.copy(buf, length - msg.length);
-    return buf;
-  }
-  return msg.slice(-length);
-}
-
 // Convert a 0/1 `v` into a recovery param:
 // * For non-EIP155 transactions, return `27 + v`
 // * For EIP155 transactions, return `(CHAIN_ID*2) + 35 + v`
@@ -497,15 +489,6 @@ function getRecoveryParam (v, txData: any = {}) {
   return ensureHexBuffer(
     `0x${chainIdBN.times(2).plus(35).plus(v).toString(16)}`
   );
-}
-
-// Determine if the Lattice can display a string we give it. Currently, the Lattice can only
-// display ASCII strings, so we will reject other UTF8 codes.
-// In the future we may add a mechanism to display certain UTF8 codes such as popular emojis.
-function latticeCanDisplayStr(str) {
-  for (let i = 0; i < str.length; i++)
-    if (str.charCodeAt(i) < 0x0020 || str.charCodeAt(i) > 0x007f) return false;
-  return true;
 }
 
 const chainIds = {
@@ -577,41 +560,6 @@ function useChainIdBuffer(id) {
   return true;
 }
 
-function isBase10NumStr(x) {
-  const bn = new BN(x).toString().split('.').join('');
-  const s = new String(x);
-  // Note that the JS native `String()` loses precision for large numbers, but we only
-  // want to validate the base of the number so we don't care about far out precision.
-  return bn.slice(0, 8) === s.slice(0, 8);
-}
-
-// Ensure a param is represented by a buffer
-function ensureHexBuffer(x, zeroIsNull = true) {
-  try {
-    // For null values, return a 0-sized buffer. For most situations we assume
-    // 0 should be represented with a zero-length buffer (e.g. for RLP-building
-    // txs), but it can also be treated as a 1-byte buffer (`00`) if needed
-    if (x === null || (x === 0 && zeroIsNull === true)) return Buffer.alloc(0);
-    const isNumber = typeof x === 'number' || isBase10NumStr(x);
-    // Otherwise try to get this converted to a hex string
-    if (isNumber) {
-      // If this is a number or a base-10 number string, convert it to hex
-      x = `${new BN(x).toString(16)}`;
-    } else if (typeof x === 'string' && x.slice(0, 2) === '0x') {
-      x = x.slice(2);
-    } else {
-      x = x.toString('hex');
-    }
-    if (x.length % 2 > 0) x = `0${x}`;
-    if (x === '00' && !isNumber) return Buffer.alloc(0);
-    return Buffer.from(x, 'hex');
-  } catch (err) {
-    throw new Error(
-      `Cannot convert ${x.toString()} to hex buffer (${err.toString()})`
-    );
-  }
-}
-
 function buildPersonalSignRequest(req, input) {
   const MAX_BASE_MSG_SZ = input.fwConstants.ethMaxMsgSz;
   const VAR_PATH_SZ = input.fwConstants.varAddrPathSzAllowed;
@@ -637,7 +585,7 @@ function buildPersonalSignRequest(req, input) {
           Buffer.from(input.payload.slice(2), 'hex').toString()
         );
     } else {
-      if (false === latticeCanDisplayStr(input.payload))
+      if (false === isAsciiStr(input.payload))
         throw new Error(
           'Currently, the Lattice can only display ASCII strings.'
         );
@@ -774,25 +722,6 @@ function buildEIP712Request(req, input) {
   }
 }
 
-function buildSignerPathBuf(signerPath, varAddrPathSzAllowed) {
-  const buf = Buffer.alloc(24);
-  let off = 0;
-  if (varAddrPathSzAllowed && signerPath.length > 5)
-    throw new Error('Signer path must be <=5 indices.');
-  if (!varAddrPathSzAllowed && signerPath.length !== 5)
-    throw new Error(
-      'Your Lattice firmware only supports 5-index derivation paths. Please upgrade.'
-    );
-  buf.writeUInt32LE(signerPath.length, off);
-  off += 4;
-  for (let i = 0; i < 5; i++) {
-    if (i < signerPath.length) buf.writeUInt32LE(signerPath[i], off);
-    else buf.writeUInt32LE(0, off);
-    off += 4;
-  }
-  return buf;
-}
-
 function getExtraData(payload, input) {
   const { ethMaxMsgSz, extraDataFrameSz, extraDataMaxFrames } =
     input.fwConstants;
@@ -823,17 +752,6 @@ function getExtraData(payload, input) {
     });
   }
   return extraDataPayloads;
-}
-
-function splitFrames(data, frameSz) {
-  const frames = [];
-  const n = Math.ceil(data.length / frameSz);
-  let off = 0;
-  for (let i = 0; i < n; i++) {
-    frames.push(data.slice(off, off + frameSz));
-    off += frameSz;
-  }
-  return frames;
 }
 
 function parseEIP712Msg(msg, typeName, types, forJSParser = false) {
