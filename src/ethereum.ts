@@ -418,7 +418,7 @@ const buildEthRawTx = function (tx, sig, address) {
       rlpEncodedWithSig,
     ]);
   }
-  return rlpEncodedWithSig.toString('hex');
+  return { rawTx: rlpEncodedWithSig.toString('hex'), sigWithV: newSig }
 };
 
 // Attach a recovery parameter to a signature by brute-forcing ECRecover
