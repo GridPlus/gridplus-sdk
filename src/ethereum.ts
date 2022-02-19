@@ -698,12 +698,18 @@ function buildEIP712Request(req, input) {
     const fwConst = input.fwConstants;
     const maxSzAllowed =
       MAX_BASE_MSG_SZ + fwConst.extraDataMaxFrames * fwConst.extraDataFrameSz;
-    if (fwConst.ethMsgPreHashAllowed && payload.length > maxSzAllowed) {
+    // Determine if we need to prehash
+    let shouldPrehash = payload.length > maxSzAllowed;
+    Object.keys(data.types).forEach((k) => {
+      if (data.types[k].length > 18) {
+        shouldPrehash = true;
+      }
+    })
+    if (fwConst.ethMsgPreHashAllowed && shouldPrehash) {
       // If this payload is too large to send, but the Lattice allows a prehashed message, do that
       req.payload.writeUInt16LE(payload.length, off);
       off += 2;
-      const encoded = TypedDataUtils.hash(req.input.payload);
-      const prehash = Buffer.from(keccak256(encoded), 'hex');
+      const prehash = TypedDataUtils.hash(req.input.payload);
       prehash.copy(req.payload, off);
       req.prehash = prehash;
     } else {
