@@ -28,6 +28,10 @@ export const buildGenericSigningMsgRequest = function(req) {
   } = fwConstants;
   const { curveTypes, encodingTypes, hashTypes, baseDataSz, baseReqSz } = genericSigning;
   try {
+    if (typeof hashType !== 'string' || typeof curveType !== 'string') {
+      throw new Error('hashType and curveType must be included as strings.')
+    }
+
     const HASH_T = hashType.toUpperCase();
     const CURVE_T = curveType.toUpperCase();
     const curveIdx = curveTypes.indexOf(CURVE_T);

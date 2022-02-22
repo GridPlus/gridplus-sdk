@@ -23,7 +23,7 @@ import { ecrecover, privateToAddress, privateToPublic, publicToAddress } from 'e
 import { keccak256 } from 'js-sha3';
 import { decode, encode } from 'rlp';
 import seedrandom from 'seedrandom';
-import { getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
+import { getFwVersionConst, HARDENED_OFFSET, GET_ADDR_FLAGS } from '../src/constants';
 import helpers from './testUtil/helpers';
 let client,
   currentWalletUID,
@@ -159,52 +159,20 @@ describe('getAddresses', () => {
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
   });
 
-  it('Should get GP_EINVAL when `pathDepth` is out of range', async () => {
-    // Parent too large
-    jobData.parent.pathDepth = 5;
-    jobReq.payload = helpers.serializeJobData(
-      jobType,
-      currentWalletUID,
-      jobData
-    );
-    await runTestCase(helpers.gpErrors.GP_EINVAL);
-    // Parent is too small
-    jobData.parent.pathDepth = 0;
-    jobReq.payload = helpers.serializeJobData(
-      jobType,
-      currentWalletUID,
-      jobData
-    );
-    await runTestCase(helpers.gpErrors.GP_EINVAL);
-  });
-
   it('Should get GP_EWALLET for unknown (random) wallet', async () => {
     const dummyWalletUID = crypto.randomBytes(32);
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EWALLET);
   });
 
-  it('Should get GP_EOVERFLOW if `count` exceeds the max request size', async () => {
+  it('Should get GP_EINVAL if `count` exceeds the max request size', async () => {
     jobData.count = 11;
     jobReq.payload = helpers.serializeJobData(
       jobType,
       currentWalletUID,
       jobData
     );
-    await runTestCase(helpers.gpErrors.GP_EOVERFLOW);
-  });
-
-  it('Should validate an ETH address from a different EVM coin type', async () => {
-    jobData.parent.purpose = helpers.BTC_PURPOSE_P2PKH;
-    jobData.parent.coin = HARDENED_OFFSET + 1007; // Fantom coin_type via SLIP44
-    jobReq.payload = helpers.serializeJobData(
-      jobType,
-      currentWalletUID,
-      jobData
-    );
-    const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
-    const res = helpers.deserializeGetAddressesJobResult(_res.result);
-    helpers.validateETHAddresses(res, jobData, origWalletSeed);
+    await runTestCase(helpers.gpErrors.GP_EINVAL);
   });
 
   it('Should validate first ETH', async () => {
@@ -217,7 +185,30 @@ describe('getAddresses', () => {
     );
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeGetAddressesJobResult(_res.result);
-    helpers.validateETHAddresses(res, jobData, origWalletSeed);
+    try {
+      helpers.validateETHAddresses(res, jobData, origWalletSeed);
+    } catch (err) {
+      continueTests = false;
+      expect(err).to.equal(null, err.message);
+    }
+  });
+
+  it('Should validate an ETH address from a different EVM coin type', async () => {
+    jobData.parent.purpose = helpers.BTC_PURPOSE_P2PKH;
+    jobData.parent.coin = HARDENED_OFFSET + 1007; // Fantom coin_type via SLIP44
+    jobReq.payload = helpers.serializeJobData(
+      jobType,
+      currentWalletUID,
+      jobData
+    );
+    const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    const res = helpers.deserializeGetAddressesJobResult(_res.result);
+    try {
+      helpers.validateETHAddresses(res, jobData, origWalletSeed);
+    } catch (err) {
+      continueTests = false;
+      expect(err).to.equal(null, err.message);
+    }
   });
 
   it('Should validate the first BTC address', async () => {
@@ -228,7 +219,12 @@ describe('getAddresses', () => {
     );
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeGetAddressesJobResult(_res.result);
-    helpers.validateBTCAddresses(res, jobData, origWalletSeed);
+    try {
+      helpers.validateBTCAddresses(res, jobData, origWalletSeed);
+    } catch (err) {
+      expect(err).to.equal(null, err.message);
+      continueTests = false;
+    }
   });
 
   it('Should validate first BTC change address', async () => {
@@ -240,7 +236,12 @@ describe('getAddresses', () => {
     );
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeGetAddressesJobResult(_res.result);
-    helpers.validateBTCAddresses(res, jobData, origWalletSeed);
+    try {
+      helpers.validateBTCAddresses(res, jobData, origWalletSeed);
+    } catch (err) {
+      expect(err).to.equal(null, err.message);
+      continueTests = false;
+    }
   });
 
   it('Should validate the first BTC address (testnet)', async () => {
@@ -252,7 +253,12 @@ describe('getAddresses', () => {
     );
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeGetAddressesJobResult(_res.result);
-    helpers.validateBTCAddresses(res, jobData, origWalletSeed, true);
+    try {
+      helpers.validateBTCAddresses(res, jobData, origWalletSeed, true);
+    } catch (err) {
+      continueTests = false
+      expect(err).to.equal(null, err.message);
+    }
   });
 
   it('Should validate first BTC change address (testnet)', async () => {
@@ -265,7 +271,12 @@ describe('getAddresses', () => {
     );
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeGetAddressesJobResult(_res.result);
-    helpers.validateBTCAddresses(res, jobData, origWalletSeed, true);
+    try {
+      helpers.validateBTCAddresses(res, jobData, origWalletSeed, true);
+    } catch (err) {
+      continueTests = false;
+      expect(err).to.equal(null, err.message);
+    }
   });
 
   it('Should fetch a set of BTC addresses', async () => {
@@ -295,7 +306,12 @@ describe('getAddresses', () => {
       count: req.n,
       first: req.startPath[4],
     };
-    helpers.validateBTCAddresses(resp, jobData, origWalletSeed);
+    try {
+      helpers.validateBTCAddresses(resp, jobData, origWalletSeed);
+    } catch (err) {
+      continueTests = false;
+      expect(err).to.equal(null, err.message);
+    }
   });
 
   it('Should fetch a set of BTC addresses (bech32)', async () => {
@@ -325,7 +341,12 @@ describe('getAddresses', () => {
       count: req.n,
       first: req.startPath[4],
     };
-    helpers.validateBTCAddresses(resp, jobData, origWalletSeed);
+    try {
+      helpers.validateBTCAddresses(resp, jobData, origWalletSeed);
+    } catch (err) {
+      continueTests = false;
+      expect(err).to.equal(null, err.message);
+    }
   });
 
   it('Should fetch a set of BTC addresses (legacy)', async () => {
@@ -355,7 +376,12 @@ describe('getAddresses', () => {
       count: req.n,
       first: req.startPath[4],
     };
-    helpers.validateBTCAddresses(resp, jobData, origWalletSeed);
+    try {
+      helpers.validateBTCAddresses(resp, jobData, origWalletSeed);
+    } catch (err) {
+      continueTests = false;
+      expect(err).to.equal(null, err.message);
+    }
   });
 
   it('Should fetch address with nonstandard path', async () => {
@@ -386,7 +412,12 @@ describe('getAddresses', () => {
       first: req.startPath[4],
     };
     // Let the validator know this is a nonstandard purpose
-    helpers.validateBTCAddresses(resp, jobData, origWalletSeed);
+    try {
+      helpers.validateBTCAddresses(resp, jobData, origWalletSeed);
+    } catch (err) {
+      continueTests = false;
+      expect(err).to.equal(null, err.message);
+    }
   });
 
   it('Should fail to fetch from path with an unknown currency type', async () => {
@@ -403,7 +434,8 @@ describe('getAddresses', () => {
     try {
       await helpers.execute(client, 'getAddresses', req);
     } catch (err) {
-      expect(err).to.not.equal(null);
+      continueTests = !!err;
+      expect(!!err).to.equal(true, 'Error expected but not found.');
     }
   });
 
@@ -417,22 +449,27 @@ describe('getAddresses', () => {
       ],
       n: 3,
     };
-    const addrs: any = await helpers.execute(client, 'getAddresses', req);
-    const resp = {
-      count: addrs.length,
-      addresses: addrs,
-    };
-    const jobData = {
-      parent: {
-        pathDepth: 3,
-        purpose: req.startPath[0],
-        coin: req.startPath[1],
-        account: req.startPath[2],
-      },
-      count: req.n,
-      first: req.startPath[3],
-    };
-    helpers.validateETHAddresses(resp, jobData, origWalletSeed);
+    try {
+      const addrs: any = await helpers.execute(client, 'getAddresses', req);
+      const resp = {
+        count: addrs.length,
+        addresses: addrs,
+      };
+      const jobData = {
+        parent: {
+          pathDepth: 3,
+          purpose: req.startPath[0],
+          coin: req.startPath[1],
+          account: req.startPath[2],
+        },
+        count: req.n,
+        first: req.startPath[3],
+      };
+      helpers.validateETHAddresses(resp, jobData, origWalletSeed);
+    } catch (err) {
+      continueTests = false;
+      expect(err).to.equal(null, err.message);
+    }
   });
 
   it('Should validate address with pathDepth=3', async () => {
@@ -440,21 +477,26 @@ describe('getAddresses', () => {
       startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.ETH_COIN, 2532356],
       n: 3,
     };
-    const addrs: any = await helpers.execute(client, 'getAddresses', req);
-    const resp = {
-      count: addrs.length,
-      addresses: addrs,
-    };
-    const jobData = {
-      parent: {
-        pathDepth: 2,
-        purpose: req.startPath[0],
-        coin: req.startPath[1],
-      },
-      count: req.n,
-      first: req.startPath[2],
-    };
-    helpers.validateETHAddresses(resp, jobData, origWalletSeed);
+    try {
+      const addrs: any = await helpers.execute(client, 'getAddresses', req);
+      const resp = {
+        count: addrs.length,
+        addresses: addrs,
+      };
+      const jobData = {
+        parent: {
+          pathDepth: 2,
+          purpose: req.startPath[0],
+          coin: req.startPath[1],
+        },
+        count: req.n,
+        first: req.startPath[2],
+      };
+      helpers.validateETHAddresses(resp, jobData, origWalletSeed);
+    } catch (err) {
+      continueTests = false;
+      expect(err).to.equal(null, err.message);
+    }
   });
 
   it('Should validate random Bitcoin addresses of all types', async () => {
@@ -470,24 +512,29 @@ describe('getAddresses', () => {
         startPath: [purpose, helpers.BTC_COIN, account, 0, addr],
         n: 1,
       };
-      const addrs: any = await helpers.execute(client, 'getAddresses', req);
-      const resp = {
-        count: addrs.length,
-        addresses: addrs,
-      };
-      const jobData = {
-        parent: {
-          pathDepth: 4,
-          purpose: req.startPath[0],
-          coin: req.startPath[1],
-          account: req.startPath[2],
-          change: req.startPath[3],
-        },
-        count: req.n,
-        first: req.startPath[4],
-      };
-      helpers.validateBTCAddresses(resp, jobData, origWalletSeed);
-    }
+      try {
+        const addrs: any = await helpers.execute(client, 'getAddresses', req);
+        const resp = {
+          count: addrs.length,
+          addresses: addrs,
+        };
+        const jobData = {
+          parent: {
+            pathDepth: 4,
+            purpose: req.startPath[0],
+            coin: req.startPath[1],
+            account: req.startPath[2],
+            change: req.startPath[3],
+          },
+          count: req.n,
+          first: req.startPath[4],
+        };
+        helpers.validateBTCAddresses(resp, jobData, origWalletSeed);
+      } catch (err) {
+        continueTests = false;
+        expect(err).to.equal(null, err.message);
+      }
+     }
 
     // Wrapped Segwit (x3)
     await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2WPKH);
@@ -502,6 +549,43 @@ describe('getAddresses', () => {
     await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2WPKH);
     await testRandomBtcAddrs(helpers.BTC_PURPOSE_P2WPKH);
   });
+
+  it('Should test export of SECP256K1 public keys', async () => {
+    const req = {
+      startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+      n: 3,
+      flag: GET_ADDR_FLAGS.SECP256K1_PUB,
+    };
+    continueTests = false;
+    try {
+      // Should fail to export keys from a path with unhardened indices
+      const pubkeys = await helpers.execute(client, 'getAddresses', req);
+      helpers.validateDerivedPublicKeys(pubkeys, req.startPath, origWalletSeed, req.flag);
+      continueTests = true;
+    } catch (err) {
+      continueTests = false;
+    }
+  })
+
+  it('Should test export of ED25519 public keys', async () => {
+    const req = {
+      startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.ETH_COIN, 0],
+      n: 3,
+      flag: GET_ADDR_FLAGS.ED25519_PUB,
+    };
+    continueTests = false;
+    try {
+      // Should fail to export keys from a path with unhardened indices
+      await helpers.execute(client, 'getAddresses', req);
+    } catch (err) {
+      // Convert to all hardened indices and expect success
+      req.startPath[2] = HARDENED_OFFSET;
+      const pubkeys = await helpers.execute(client, 'getAddresses', req);
+      helpers.validateDerivedPublicKeys(pubkeys, req.startPath, origWalletSeed, req.flag);
+      continueTests = true;
+    }
+  })
+
 });
 
 describe('signTx', () => {
