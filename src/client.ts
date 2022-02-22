@@ -3,8 +3,8 @@ import { Byte, UInt4 } from 'bitwise/types';
 import { Buffer } from 'buffer/';
 import superagent from 'superagent';
 import bitcoin from './bitcoin';
+import { Constants } from './index';
 import {
-  GET_ADDR_FLAGS,
   ADDR_STR_LEN,
   ASCII_REGEX,
   BASE_URL,
@@ -264,7 +264,7 @@ export class Client {
    * @category Lattice
    * @returns An array of addresses.
    */
-  public getAddresses (opts: { startPath: number[], n: UInt4, flag: Uint4 }, cb) {
+  public getAddresses (opts: { startPath: number[], n: UInt4, flag: UInt4 }, cb) {
     const MAX_ADDR = 10;
     const { startPath, n, flag = 0 } = opts;
     if (startPath === undefined || n === undefined)
@@ -306,7 +306,7 @@ export class Client {
     // Specify the number of subsequent addresses to request.
     // We also allow the user to skip the cache and request any address related to the asset
     // in the wallet.
-    let val = n, flagVal = 0;
+    let val, flagVal: UInt4 = 0;
     if (fwConstants.addrFlagsAllowed) {
       // A 4-bit flag can be used for non-standard address requests
       // This needs to be combined with `n` as a 4 bit value
@@ -316,6 +316,9 @@ export class Client {
       const flagBits = bitwise.nibble.read(flagVal);
       const countBits = bitwise.nibble.read(n);
       val = bitwise.byte.write(flagBits.concat(countBits) as Byte);
+    } else {
+      // Very old firmware does not support this flag. We can deprecate this soon.
+      val = n;
     }
     payload.writeUInt8(val, off);
     off++;
@@ -1136,17 +1139,18 @@ export class Client {
     // Look for addresses until we reach the end (a 4 byte checksum)
     const addrs = [];
     // Pubkeys are formatted differently in the response
-    const isPubkeySet = flag === GET_ADDR_FLAGS.ED25519_PUB || 
-                        flag === GET_ADDR_FLAGS.SECP256K1_PUB;
-    if (isPubkeySet) {
+    const { ED25519_PUB, SECP256K1_PUB } = Constants.GET_ADDR_FLAGS;
+    const arePubkeys =  flag === ED25519_PUB || 
+                        flag === SECP256K1_PUB;
+    if (arePubkeys) {
       off += 1; // skip uint8 representing pubkey type
     }
     while (off + 4 < decResLengths.getAddresses) {
-      if (isPubkeySet) {
+      if (arePubkeys) {
         // Pubkeys are shorter and are returned as buffers
         const pubBytes = addrData.slice(off, off + 65)
         const isEmpty = pubBytes.every(byte => byte === 0x00);
-        if (!isEmpty && flag === GET_ADDR_FLAGS.ED25519_PUB) {
+        if (!isEmpty && flag === ED25519_PUB) {
           // ED25519 pubkeys are 32 bytes
           addrs.push(pubBytes.slice(0, 32));
         } else if (!isEmpty) {

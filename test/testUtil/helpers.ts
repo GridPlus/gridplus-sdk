@@ -9,10 +9,10 @@ import { privateToAddress } from 'ethereumjs-util';
 import { keccak256 } from 'js-sha3';
 import { sha256 } from 'hash.js/lib/hash/sha'
 import { 
-  ADDR_STR_LEN, BIP_CONSTANTS, ethMsgProtocol, HARDENED_OFFSET, GET_ADDR_FLAGS, 
+  ADDR_STR_LEN, BIP_CONSTANTS, ethMsgProtocol, HARDENED_OFFSET, 
 } from '../../src/constants';
-import { Client } from '../../src/index';
-import { ensureHexBuffer, parseDER } from '../../src/util';
+import { Client, Constants } from '../../src/index';
+import { parseDER } from '../../src/util';
 const SIGHASH_ALL = 0x01;
 const secp256k1 = new EC('secp256k1');
 const ed25519 = new EdDSA('ed25519');
@@ -626,7 +626,7 @@ export const validateDerivedPublicKeys = function(pubKeys, firstPath, seed, flag
   pubKeys.forEach((pub, i) => {
     const path = JSON.parse(JSON.stringify(firstPath));
     path[path.length - 1] += i;
-    if (flag === GET_ADDR_FLAGS.ED25519_PUB) {
+    if (flag === Constants.GET_ADDR_FLAGS.ED25519_PUB) {
       // ED25519 requires its own derivation
       const key = deriveED25519Key(path, seed);
       expect(pub.toString('hex')) 
@@ -897,15 +897,15 @@ export const buildRandomEip712Object = function (randInt) {
 //---------------------------------------------------
 // Generic signing
 //---------------------------------------------------
-export const validateGenericSig = function(seed, sig, data) {
-  const { signerPath, payload, hashType, curveType } = data;
-  const isHex = Buffer.isBuffer(payload) || (typeof payload === 'string' && payload.slice(0, 2) === '0x');
-  const payloadBuf = isHex ? ensureHexBuffer(payload) : Buffer.from(payload, 'utf8');
+export const validateGenericSig = function(seed, sig, payloadBuf, req) {
+  const { signerPath, hashType, curveType } = req;
+  const HASHES = Constants.SIGNING.HASHES;
+  const CURVES = Constants.SIGNING.CURVES;
   let hash;
-  if (curveType === 'SECP256K1') {
-    if (hashType === 'SHA256') {
+  if (curveType === CURVES.SECP256K1) {
+    if (hashType === HASHES.SHA256) {
       hash = Buffer.from(sha256().update(payloadBuf).digest('hex'), 'hex');
-    } else if (hashType === 'KECCAK256') {
+    } else if (hashType === HASHES.KECCAK256) {
       hash = Buffer.from(keccak256(payloadBuf), 'hex');
     } else {
       throw new Error('Bad params');
@@ -914,8 +914,8 @@ export const validateGenericSig = function(seed, sig, data) {
     const priv = wallet.derivePath(getPathStr(signerPath)).privateKey;
     const key = secp256k1.keyFromPrivate(priv);
     expect(key.verify(hash, sig)).to.equal(true, 'Signature failed verification.')
-  } else if (curveType === 'ED25519') {
-    if (hashType !== 'NONE') {
+  } else if (curveType === CURVES.ED25519) {
+    if (hashType !== HASHES.NONE) {
       throw new Error('Bad params');
     }
     const { priv } = deriveED25519Key(signerPath, seed);

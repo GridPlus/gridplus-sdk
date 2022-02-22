@@ -23,7 +23,8 @@ import { ecrecover, privateToAddress, privateToPublic, publicToAddress } from 'e
 import { keccak256 } from 'js-sha3';
 import { decode, encode } from 'rlp';
 import seedrandom from 'seedrandom';
-import { getFwVersionConst, HARDENED_OFFSET, GET_ADDR_FLAGS } from '../src/constants';
+import { getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
+import { Constants } from '../src/index'
 import helpers from './testUtil/helpers';
 let client,
   currentWalletUID,
@@ -554,7 +555,7 @@ describe('getAddresses', () => {
     const req = {
       startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
       n: 3,
-      flag: GET_ADDR_FLAGS.SECP256K1_PUB,
+      flag: Constants.GET_ADDR_FLAGS.SECP256K1_PUB,
     };
     continueTests = false;
     try {
@@ -571,7 +572,7 @@ describe('getAddresses', () => {
     const req = {
       startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.ETH_COIN, 0],
       n: 3,
-      flag: GET_ADDR_FLAGS.ED25519_PUB,
+      flag: Constants.GET_ADDR_FLAGS.ED25519_PUB,
     };
     continueTests = false;
     try {

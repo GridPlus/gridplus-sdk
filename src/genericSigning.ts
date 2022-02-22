@@ -12,58 +12,41 @@ import { Buffer } from 'buffer/';
 import { keccak256 } from 'js-sha3';
 import { sha256 } from 'hash.js/lib/hash/sha'
 import { HARDENED_OFFSET, signingSchema } from './constants'
+import { Constants } from './index'
 import { 
-  buildSignerPathBuf, ensureHexBuffer, fixLen, isAsciiStr, splitFrames, parseDER 
+  buildSignerPathBuf, ensureHexBuffer, existsIn, fixLen, 
+  isAsciiStr, splitFrames, parseDER
 } from './util'
 
 export const buildGenericSigningMsgRequest = function(req) {
-  const { signerPath, curveType, hashType, omitPubkey=false, fwConstants } = req;
-  let { payload } = req;
+  const { 
+    signerPath, curveType, hashType, encodingType=null, 
+    omitPubkey=false, fwConstants 
+  } = req;
   const {
-    extraDataFrameSz,
-    extraDataMaxFrames,
-    prehashAllowed,
-    genericSigning,
-    varAddrPathSzAllowed,
+    extraDataFrameSz, extraDataMaxFrames, prehashAllowed,
+    genericSigning, varAddrPathSzAllowed,
   } = fwConstants;
-  const { curveTypes, encodingTypes, hashTypes, baseDataSz, baseReqSz } = genericSigning;
+  const { 
+    curveTypes, encodingTypes, hashTypes, baseDataSz, baseReqSz 
+  } = genericSigning;
   try {
-    if (typeof hashType !== 'string' || typeof curveType !== 'string') {
-      throw new Error('hashType and curveType must be included as strings.')
-    }
-
-    const HASH_T = hashType.toUpperCase();
-    const CURVE_T = curveType.toUpperCase();
-    const curveIdx = curveTypes.indexOf(CURVE_T);
-    const hashIdx = hashTypes.indexOf(HASH_T);
-
-    // If the buffer passed in is a string and is not prefixed with 0x, treat as utf8.
-    // Otherwise treat it as a hex buffer.
-    // NOTE: Right now we only support hex and ascii encodings, though we may support stricter
-    // schemes in the future.
-    let isHex = Buffer.isBuffer(payload) || (typeof payload === 'string' && payload.slice(0, 2) === '0x');
-    if (!isHex && !isAsciiStr(payload, true)) {
-      // If this is not '0x' prefixed but is not valid ASCII, convert to hex payload
-      isHex = true;
-      payload = `0x${Buffer.from(payload).toString('hex')}`
-    }
-    const payloadBuf = isHex ? ensureHexBuffer(payload) : Buffer.from(payload, 'utf8');
-    const encodingType = isHex ? encodingTypes.indexOf('HEX') : encodingTypes.indexOf('ASCII');
+    const { encoding, payloadBuf } = getEncodedPayload(req.payload, encodingType, encodingTypes);
     
     // Sanity checks
     if (payloadBuf.length === 0) {
       throw new Error('Payload could not be handled.')
     } else if (!genericSigning || !extraDataFrameSz || !extraDataMaxFrames || !prehashAllowed) {
       throw new Error('Unsupported. Please update your Lattice firmware.');
-    } else if (curveIdx < 0) {
-      throw new Error(`Unsupported curve type. Allowed types: ${JSON.stringify(curveTypes)}`);
-    } else if (hashIdx < 0) {
-      throw new Error(`Unsupported hash type. Allowed types: ${JSON.stringify(hashTypes)}`);
+    } else if (!existsIn(curveType, curveTypes)) {
+      throw new Error('Unsupported curve type.');
+    } else if (!existsIn(hashType, hashTypes)) {
+      throw new Error('Unsupported hash type.');
     }
 
     // Ed25519 specific sanity checks
-    if (CURVE_T === 'ED25519') {
-      if (HASH_T !== 'NONE') {
+    if (curveType === curveTypes.ED25519) {
+      if (hashType !== hashTypes.NONE) {
         throw new Error('Signing on ed25519 requires unhashed message');
       }
       signerPath.forEach((idx) => {
@@ -76,11 +59,11 @@ export const buildGenericSigningMsgRequest = function(req) {
     // Build the request buffer with metadata and then the payload to sign.
     const buf = Buffer.alloc(baseReqSz);
     let off = 0;
-    buf.writeUInt32LE(encodingType, off);
+    buf.writeUInt32LE(encoding, off);
     off += 4;
-    buf.writeUInt8(hashIdx, off);
+    buf.writeUInt8(hashType, off);
     off += 1;
-    buf.writeUInt8(curveIdx, off);
+    buf.writeUInt8(curveType, off);
     off += 1;
     const signerPathBuf = buildSignerPathBuf(signerPath, varAddrPathSzAllowed);
     signerPathBuf.copy(buf, off);
@@ -99,12 +82,12 @@ export const buildGenericSigningMsgRequest = function(req) {
     if (payloadBuf.length > baseDataSz) {
       if (prehashAllowed && payloadBuf.length > maxExpandedSz) {
         // If this payload is too large to send, but the Lattice allows a prehashed message, do that
-        if (HASH_T === 'NONE') {
+        if (hashType === hashTypes.NONE) {
           // This cannot be done for ED25519 signing, which must sign the full message
           throw new Error('Message too large to send and could not be prehashed (hashType=NONE).');
-        } else if (HASH_T === 'KECCAK256') {
+        } else if (hashType === hashTypes.KECCAK256) {
           prehash = Buffer.from(keccak256(payloadBuf), 'hex');
-        } else if (HASH_T === 'SHA256') {
+        } else if (hashType === hashTypes.SHA256) {
           prehash = Buffer.from(sha256().update(payloadBuf).digest('hex'), 'hex');
         } else {
           throw new Error('Unsupported hash type.')
@@ -134,7 +117,7 @@ export const buildGenericSigningMsgRequest = function(req) {
       payload: buf,
       extraDataPayloads,
       schema: signingSchema.GENERAL_SIGNING,
-      curveType: CURVE_T,
+      curveType,
       omitPubkey
     }
   } catch (err) {
@@ -149,7 +132,7 @@ export const parseGenericSigningResponse = function(res, off, curveType, omitPub
   }
   // Parse BIP44 path
   // Parse pubkey and then sig
-  if (curveType === 'SECP256K1') {
+  if (curveType === Constants.SIGNING.CURVES.SECP256K1) {
     // Handle `GpEccPubkey256_t`
     if (!omitPubkey) {
       const compression = res.readUint8(off);
@@ -178,7 +161,7 @@ export const parseGenericSigningResponse = function(res, off, curveType, omitPub
     // the result is a 64 byte sig
     parsed.sig.r = fixLen(parsed.sig.r, 32);
     parsed.sig.s = fixLen(parsed.sig.s, 32);
-  } else if (curveType === 'ED25519') {
+  } else if (curveType === Constants.SIGNING.CURVES.ED25519) {
     if (!omitPubkey) {
       // Handle `GpEdDSAPubkey_t`
       parsed.pubkey = Buffer.alloc(32);
@@ -194,4 +177,45 @@ export const parseGenericSigningResponse = function(res, off, curveType, omitPub
     throw new Error('Unsupported curve.')
   }  
   return parsed;
+}
+
+export const getEncodedPayload = function(payload, encodingType, allowedEncodings) {
+  let encoding = encodingType;
+  if (encoding === null) {
+    // If no encoding type was passed, we will display the payload as either
+    // ASCII or a hex string. Determine which one of the default encodings to use.
+    // If the buffer passed in is a string and is not prefixed with 0x, treat as utf8.
+    // Otherwise treat it as a hex buffer.
+    let isHex = Buffer.isBuffer(payload) || 
+                (typeof payload === 'string' && payload.slice(0, 2) === '0x');
+    if (!isHex && !isAsciiStr(payload, true)) {
+      // If this is not '0x' prefixed but is not valid ASCII, convert to hex payload
+      isHex = true;
+      payload = `0x${Buffer.from(payload).toString('hex')}`
+    }
+    // Set encodingType to real value
+    encoding =  isHex ? 
+                Constants.SIGNING.ENCODINGS.HEX : 
+                Constants.SIGNING.ENCODINGS.ASCII;
+  }
+
+  // Make sure the encoding type specified is supported by firmware
+  if (!existsIn(encoding, allowedEncodings)) {
+    throw new Error('Encoding type not supported by Lattice firmware.');
+  }
+
+  // Build the request with the specified encoding type
+  if (encoding === Constants.SIGNING.ENCODINGS.HEX) {
+    return {
+      payloadBuf: ensureHexBuffer(payload),
+      encoding,
+    };
+  } else if (encoding === Constants.SIGNING.ENCODINGS.ASCII) {
+    return {
+      payloadBuf: Buffer.from(payload),
+      encoding,
+    };
+  } else {
+    throw new Error('Unhandled encoding type.')
+  }
 }
