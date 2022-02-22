@@ -335,6 +335,9 @@ function getFwVersionConst(v) {
   // See `ETH_BASE_TX_MAX_DATA_SZ` and `ETH_MAX_BASE_MSG_SZ` in firmware
   c.ethMaxDataSz = c.reqMaxDataSz - 128;
   c.ethMaxMsgSz = c.ethMaxDataSz;
+  // Max number of params in an EIP712 type. This was added to firmware
+  // to avoid blowing stack size.
+  c.eip712MaxTypeParams = 18;
 
   // EXTRA FIELDS ADDED IN LATER VERSIONS
   //-------------------------------------
@@ -356,6 +359,9 @@ function getFwVersionConst(v) {
     c.genericSigning.hashTypes = [ 'NONE', 'KECCAK256', 'SHA256' ];
     c.genericSigning.curveTypes = [ 'SECP256K1', 'ED25519' ];
     c.genericSigning.encodingTypes = [ 'ASCII', 'HEX' ];
+
+    // We updated the max number of params in EIP712 types
+    c.eip712MaxTypeParams = 36;
   }
 
   // V0.13.0 added native segwit addresses and fixed a bug in exporting
