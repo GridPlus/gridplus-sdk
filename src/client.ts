@@ -4,7 +4,7 @@ import { Buffer } from 'buffer/';
 import { KeyPair } from 'elliptic';
 import superagent from 'superagent';
 import bitcoin from './bitcoin';
-import { Crypto, KVRecord, ABIRecord } from './types/client'
+import { Crypto, KVRecord, ABIRecord, SignatureResponse } from './types/client'
 import {
   ADDR_STR_LEN,
   ASCII_REGEX,
@@ -21,15 +21,15 @@ import {
   VERSION_BYTE
 } from './constants';
 import ethereum from './ethereum';
-import { 
-  buildAddAbiPayload, 
-  unpackAbiDef, 
-  abiParsers, 
-  MAX_ABI_DEFS, 
-  ABI_DEF_SZ 
+import {
+  buildAddAbiPayload,
+  unpackAbiDef,
+  abiParsers,
+  MAX_ABI_DEFS,
+  ABI_DEF_SZ
 } from './ethereumAbi';
 import {
-  buildGenericSigningMsgRequest, 
+  buildGenericSigningMsgRequest,
   parseGenericSigningResponse
 } from './genericSigning';
 import {
@@ -265,7 +265,7 @@ export class Client {
    * @category Lattice
    * @returns An array of addresses.
    */
-  public getAddresses (opts: { startPath: number[], n: UInt4 }, cb: (err?: string, data?: unknown )=>void) {
+  public getAddresses (opts: { startPath: number[], n: UInt4 }, cb: (err?: string, data?: unknown) => unknown) {
     const SKIP_CACHE_FLAG = 1;
     const MAX_ADDR = 10;
     const { startPath, n } = opts;
@@ -333,7 +333,7 @@ export class Client {
    * @category Lattice
    * @returns The response from the device.
    */
-  public sign (opts: { data, currency: string }, cb, cachedData = null, nextCode = null) {
+  public sign (opts: { data, currency: string }, cb: (err?: string, data?: unknown) => unknown, cachedData = null, nextCode = null) {
     const { currency } = opts;
     let { data } = opts;
     if (!data) {
@@ -419,7 +419,7 @@ export class Client {
    * @category Lattice
    * @returns The decrypted response.
    */
-  public addAbiDefs (defs: ABIRecord[], cb, nextCode = null) {
+  public addAbiDefs (defs: ABIRecord[], cb: (err?: string, data?: unknown) => unknown, nextCode = null) {
     const defsToAdd = defs.slice(0, MAX_ABI_DEFS);
     defs = defs.slice(MAX_ABI_DEFS);
     let abiPayload;
@@ -457,8 +457,8 @@ export class Client {
    * @category Lattice
    * @returns The decrypted response.
    */
-  public getAbiRecords(opts: { n: number, startIdx: number, category: string }, cb, fetched: {startIdx: number, numRemaining: number, numFetched: number, records: ABIRecord[]}) {
-    const { n = 1, startIdx = 0, category='' } = opts;
+  public getAbiRecords (opts: { n: number, startIdx: number, category: string }, cb: (err?: string, data?: unknown) => unknown, fetched: { startIdx: number, numRemaining: number, numFetched: number, records: ABIRecord[] }) {
+    const { n = 1, startIdx = 0, category = '' } = opts;
     const fwConstants = getFwVersionConst(this.fwVersion);
     if (n < 1) {
       return cb('Must request at least one record (n=0)');
@@ -487,7 +487,7 @@ export class Client {
         // and recursively make the original request.
         this._getActiveWallet((err) => {
           if (err) return cb(err)
-          else     return this.getAbiRecords(opts, cb, fetched);
+          else return this.getAbiRecords(opts, cb, fetched);
         })
       } else if (err) {
         // If there was another error caught, return it
@@ -531,7 +531,7 @@ export class Client {
    * @category Lattice
    * @returns The decrypted response.
    */
-  public removeAbiRecords(opts, cb, cbData={ numRemoved: 0, numTried: 0 }) {
+  public removeAbiRecords (opts: { sigs: (number | string)[] }, cb: (err?: string, data?: unknown) => unknown, cbData = { numRemoved: 0, numTried: 0 }) {
     const { sigs } = opts;
     const fwConstants = getFwVersionConst(this.fwVersion);
     if (!fwConstants.abiMaxRmv) {
@@ -542,7 +542,7 @@ export class Client {
     const sigsSlice = sigs.slice(cbData.numTried, cbData.numTried + fwConstants.abiMaxRmv);
     const payload = Buffer.alloc(1 + (4 * fwConstants.abiMaxRmv));
     let off = 0;
-    payload.writeUInt8(sigsSlice.length, off); 
+    payload.writeUInt8(sigsSlice.length, off);
     off += 1;
     sigsSlice.forEach((sig) => {
       try {
@@ -562,7 +562,7 @@ export class Client {
         // and recursively make the original request.
         this._getActiveWallet((err) => {
           if (err) return cb(err)
-          else     return this.removeAbiRecords(opts, cb, cbData);
+          else return this.removeAbiRecords(opts, cb, cbData);
         })
       } else if (err) {
         // If there was another error caught, return it
@@ -584,7 +584,7 @@ export class Client {
           return this.removeAbiRecords(opts, cb, cbData);
         }
       }
-    }) 
+    })
   }
 
   /**
@@ -592,7 +592,7 @@ export class Client {
    * payload to send to the Lattice.
    * @category Lattice
    */
-  public addPermissionV0 (opts, cb) {
+  public addPermissionV0 (opts: { currency: string, timeWindow: number, limit: number, decimals: number, asset: string }, cb: (err?: string, data?: unknown) => unknown) {
     const { currency, timeWindow, limit, decimals, asset } = opts;
     if (
       !currency ||
@@ -641,7 +641,7 @@ export class Client {
    * `getKvRecords` fetches a list of key-value records from the Lattice.
    * @category Lattice
    */
-  public getKvRecords (opts, cb): Buffer {
+  public getKvRecords (opts: { type?: number, n?: number, start?: number }, cb: (err?: string, data?: unknown) => unknown) {
     const { type = 0, n = 1, start = 0 } = opts;
     const fwConstants = getFwVersionConst(this.fwVersion);
     if (!fwConstants.kvActionsAllowed) {
@@ -715,7 +715,7 @@ export class Client {
    * @category Lattice
    * @returns A callback with an error or null.
    */
-  public addKvRecords (opts, cb) {
+  public addKvRecords (opts: { type: number, records: KVRecord[], caseSensitive: boolean }, cb: (err?: string, data?: unknown) => unknown) {
     const { type = 0, records = {}, caseSensitive = false } = opts;
     const fwConstants = getFwVersionConst(this.fwVersion);
     if (!fwConstants.kvActionsAllowed) {
@@ -799,7 +799,7 @@ export class Client {
    * @category Lattice
    * @returns A callback with an error or null.
    */
-  public removeKvRecords (opts, cb) {
+  public removeKvRecords (opts: { type: number, ids: number[] }, cb: (err?: string, data?: unknown) => unknown) {
     const { type = 0, ids = [] } = opts;
     const fwConstants = getFwVersionConst(this.fwVersion);
     if (!fwConstants.kvActionsAllowed) {
@@ -1202,7 +1202,7 @@ export class Client {
    * @param req - The original request data
    * @returns The transaction data, the transaction hash, and the signature.
    */
-  _handleSign (encRes, currencyType, req = null) {
+  _handleSign (encRes, currencyType, req = null): { err: string } | SignatureResponse {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(encRes, decResLengths.sign);
     if (decrypted.err !== null) return { err: decrypted.err };
