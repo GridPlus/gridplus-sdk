@@ -13,6 +13,9 @@ import { expect } from 'chai';
 import seedrandom from 'seedrandom';
 import helpers from './testUtil/helpers';
 import { getFwVersionConst, HARDENED_OFFSET } from '../src/constants'
+import { Constants } from '../src/index'
+import { getEncodedPayload } from '../src/genericSigning'
+
 const prng = new seedrandom(process.env.SEED || Math.random().toString())
 
 let client, req, seed, fwConstants, continueTests = true;
@@ -27,7 +30,11 @@ const DEFAULT_SIGNER = [
 async function run(req, expectedErr=undefined) {
   const resp = await helpers.execute(client, 'sign', req);
   expect(resp.err).to.equal(expectedErr, resp.err);
-  helpers.validateGenericSig(seed, resp.sig, req.data);
+  // If no encoding type is specified we encode in hex or ascii
+  const encodingType = req.data.encodingType || null; 
+  const allowedEncodings = fwConstants.genericSigning.encodingTypes;
+  const { payloadBuf } = getEncodedPayload(req.data.payload, encodingType, allowedEncodings);
+  helpers.validateGenericSig(seed, resp.sig, payloadBuf, req.data);
   return resp;
 }
 
@@ -82,8 +89,8 @@ describe('Generic signing', () => {
     req = {
       data: {
         signerPath: DEFAULT_SIGNER,
-        curveType: 'SECP256K1',
-        hashType: 'KECCAK256',
+        curveType: Constants.SIGNING.CURVES.SECP256K1,
+        hashType: Constants.SIGNING.HASHES.KECCAK256,
         payload: null,
       }
     };
@@ -103,7 +110,7 @@ describe('Generic signing', () => {
       req.data.payload = `0x${randomBytes(maxSz + 1).toString('hex')}`;
       await run(req);
       // Prehash (sha256)
-      req.data.hashType = 'SHA256';
+      req.data.hashType = Constants.SIGNING.HASHES.SHA256;
       await run(req);
       continueTests = true;
     } catch (err) {
@@ -144,8 +151,8 @@ describe('Generic signing', () => {
   it('Should validate ED25519/NULL signature against dervied key', async () => {
     // Make generic signing request
     req.data.payload = '0x123456';
-    req.data.curveType = 'ED25519';
-    req.data.hashType = 'NONE';
+    req.data.curveType = Constants.SIGNING.CURVES.ED25519;
+    req.data.hashType = Constants.SIGNING.HASHES.NONE;
     // ED25519 derivation requires hardened indices
     req.data.signerPath = DEFAULT_SIGNER.slice(0, 3);
     try {
@@ -200,15 +207,15 @@ describe('Generic signing', () => {
         }
         req.data.payload = buf;
         // 1. Secp256k1/keccak256
-        req.data.curveType = 'SECP256K1';
-        req.data.hashType = 'KECCAK256';
+        req.data.curveType = Constants.SIGNING.CURVES.SECP256K1;
+        req.data.hashType = Constants.SIGNING.HASHES.KECCAK256;
         await run(req);
         // 2. Secp256k1/sha256
-        req.data.hashType = 'SHA256';
+        req.data.hashType = Constants.SIGNING.HASHES.SHA256;
         await run(req);
         // 3. Ed25519
-        req.data.curveType = 'ED25519';
-        req.data.hashType = 'NONE';
+        req.data.curveType = Constants.SIGNING.CURVES.ED25519;
+        req.data.hashType = Constants.SIGNING.HASHES.NONE;
         req.data.signerPath = DEFAULT_SIGNER.slice(0, 3);
         await run(req);
       }

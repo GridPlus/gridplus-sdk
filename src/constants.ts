@@ -289,6 +289,34 @@ const ethMsgProtocol = {
   },
 };
 
+//======================================================
+// EXTERNALLY EXPORTED CONSTANTS
+// These are used for building requests
+//======================================================
+export const EXTERNAL = {
+  // Optional flags for `getAddresses`
+  GET_ADDR_FLAGS: {
+    SECP256K1_PUB: 3,
+    ED25519_PUB: 4,
+  },
+  // Options for building general signing requests
+  SIGNING: {
+    HASHES: {
+      NONE: 0,
+      KECCAK256: 1,
+      SHA256: 2,
+    },
+    CURVES: {
+      SECP256K1: 0,
+      ED25519: 1
+    },
+    ENCODINGS: {
+      ASCII: 0,
+      HEX: 1
+    }
+  }
+}
+
 function getFwVersionConst(v) {
   const c: any = {
     extraDataFrameSz: 0,
@@ -344,7 +372,7 @@ function getFwVersionConst(v) {
 
   // V0.14.0 added support for a more robust API around ABI definitions
   // and generic signing functionality
-  if (!legacy && gte(v, [0, 14, 0])) {
+  if (!legacy && gte(v, [0, 13, 0])) {
     // Size of `category` buffer. Inclusive of null terminator byte.
     c.abiCategorySz = 32;
     c.abiMaxRmv = 200;  // Max number of ABI defs that can be removed with
@@ -356,10 +384,14 @@ function getFwVersionConst(v) {
     c.genericSigning.baseReqSz = 1552;
     // See `GENERIC_SIGNING_BASE_MSG_SZ` in firmware
     c.genericSigning.baseDataSz = 1519;
-    c.genericSigning.hashTypes = [ 'NONE', 'KECCAK256', 'SHA256' ];
-    c.genericSigning.curveTypes = [ 'SECP256K1', 'ED25519' ];
-    c.genericSigning.encodingTypes = [ 'ASCII', 'HEX' ];
-
+    c.genericSigning.hashTypes = EXTERNAL.SIGNING.HASHES;
+    c.genericSigning.curveTypes = EXTERNAL.SIGNING.CURVES;
+    c.genericSigning.encodingTypes = EXTERNAL.SIGNING.ENCODINGS;
+    // Supported flags for `getAddresses`
+    c.getAddressFlags = [ 
+      EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB, 
+      EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB 
+    ];
     // We updated the max number of params in EIP712 types
     c.eip712MaxTypeParams = 36;
   }
