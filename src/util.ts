@@ -263,3 +263,8 @@ export const isAsciiStr = function(str, allowFormatChars=false) {
   }
   return true;
 }
+
+// Check if a value exists in an object. Only checks first level of keys.
+export const existsIn = function(val, obj) {
+  return Object.keys(obj).some(key => obj[key] === val);
+}

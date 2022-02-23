@@ -24,18 +24,12 @@ import helpers from './testUtil/helpers';
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
 let client = null;
 let numRandom = 20; // Number of random tests to conduct
-const randomTxDataLabels = [];
 const MSG_PAYLOAD_METADATA_SZ = 28; // Metadata that must go in ETH_MSG requests
 let ETH_GAS_PRICE_MAX: any; // value depends on firmware version
 let foundError = false;
 
 function randInt(n) {
   return Math.floor(n * prng.quick());
-}
-
-function buildIterLabels() {
-  for (let i = 0; i < numRandom; i++)
-    randomTxDataLabels.push({ label: `${i + 1}/${numRandom}`, number: i });
 }
 
 function buildRandomMsg(type = 'signPersonal') {
@@ -97,8 +91,6 @@ async function testMsg(req, pass = true) {
 
 // Determine the number of random transactions we should build
 if (process.env.N) numRandom = parseInt(process.env.N);
-// Build the labels
-buildIterLabels();
 
 describe('Setup client', () => {
   it('Should setup the test client', () => {
@@ -114,9 +106,6 @@ describe('Setup client', () => {
     expect(connectErr).to.equal(null);
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
-    // Set the correct max gas price based on firmware version
-    const fwConstants = getFwVersionConst(client.fwVersion);
-    ETH_GAS_PRICE_MAX = fwConstants.ethMaxGasPrice;
   });
 });
 
@@ -183,26 +172,12 @@ describe('Test ETH personalSign', function () {
     // Using a zero length payload should auto-reject
     await testMsg(buildMsgReq(zeroInvalid, protocol), false);
   });
-  //@ts-expect-error - it.each is not included in @types/mocha
-  it.each(
-    randomTxDataLabels,
-    'Msg: sign_personal #%s',
-    ['label'],
-    async function (n, next) {
-      const protocol = 'signPersonal';
-      const payload = buildRandomMsg(protocol);
-      try {
-        await testMsg(buildMsgReq(payload, protocol));
-        setTimeout(() => {
-          next();
-        }, 2000);
-      } catch (err) {
-        setTimeout(() => {
-          next(err);
-        }, 2000);
-      }
+
+  it(`Should test ${numRandom} random payloads`, async () => {
+    for (let i = 0; i < numRandom; i++) {
+      await testMsg(buildMsgReq(buildRandomMsg('signPersonal'), 'signPersonal'));
     }
-  );
+  })
 });
 
 describe('Test ETH EIP712', function () {
@@ -234,26 +209,7 @@ describe('Test ETH EIP712', function () {
         onlySignOn: crypto.randomBytes(4000).toString('hex'),
       },
     };
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
 
   it('Should test simple dydx example', async () => {
@@ -280,27 +236,9 @@ describe('Test ETH EIP712', function () {
         onlySignOn: 'https://trade.dydx.exchange',
       },
     };
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
+
 
   it('Should test a Loopring message with non-standard numerical type', async () => {
     const msg = {
@@ -339,53 +277,17 @@ describe('Test ETH EIP712', function () {
         nonce: 0,
       },
     };
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
+
 
   it('Should test a large 1inch transaction', async () => {
     const msg = JSON.parse(
       '{"primaryType":"Order","types":{"EIP712Domain":[{"name":"name","type":"string"},{"name":"version","type":"string"},{"name":"chainId","type":"uint256"},{"name":"verifyingContract","type":"address"}],"Order":[{"name":"salt","type":"uint256"},{"name":"makerAsset","type":"address"},{"name":"takerAsset","type":"address"},{"name":"makerAssetData","type":"bytes"},{"name":"takerAssetData","type":"bytes"},{"name":"getMakerAmount","type":"bytes"},{"name":"getTakerAmount","type":"bytes"},{"name":"predicate","type":"bytes"},{"name":"permit","type":"bytes"},{"name":"interaction","type":"bytes"}]},"domain":{"name":"1inch Limit Order Protocol","version":"1","chainId":137,"verifyingContract":"0xb707d89d29c189421163515c59e42147371d6857"},"message":{"salt":"885135864076","makerAsset":"0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270","takerAsset":"0x8f3cf7ad23cd3cadbd9735aff958023239c6a063","makerAssetData":"0x23b872dd0000000000000000000000003e3e2ccdd7bae6bbd4a64e8d16ca8842061335eb00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000de0b6b3a7640000","takerAssetData":"0x23b872dd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e3e2ccdd7bae6bbd4a64e8d16ca8842061335eb00000000000000000000000000000000000000000000000018fae27693b40000","getMakerAmount":"0xf4a215c30000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000000018fae27693b40000","getTakerAmount":"0x296637bf0000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000000018fae27693b40000","predicate":"0x961d5b1e000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000002000000000000000000000000b707d89d29c189421163515c59e42147371d6857000000000000000000000000b707d89d29c189421163515c59e42147371d68570000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000044cf6fc6e30000000000000000000000003e3e2ccdd7bae6bbd4a64e8d16ca8842061335eb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002463592c2b00000000000000000000000000000000000000000000000000000000613e28e500000000000000000000000000000000000000000000000000000000","permit":"0x","interaction":"0x"}}'
     );
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
+
 
   it('Should test an example with 0 values', async () => {
     const msg = {
@@ -415,27 +317,9 @@ describe('Test ETH EIP712', function () {
         testArray: [],
       },
     };
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
+
 
   it('Should test canonical EIP712 example', async () => {
     const msg = {
@@ -475,27 +359,9 @@ describe('Test ETH EIP712', function () {
         contents: 'foobar',
       },
     };
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
+
 
   it('Should test canonical EIP712 example with 2nd level nesting', async () => {
     const msg = {
@@ -545,27 +411,9 @@ describe('Test ETH EIP712', function () {
         contents: 'foobar',
       },
     };
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
+
 
   it('Should test canonical EIP712 example with 3rd level nesting', async () => {
     const msg = {
@@ -625,27 +473,9 @@ describe('Test ETH EIP712', function () {
         contents: 'foobar',
       },
     };
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
+
 
   it('Should test canonical EIP712 example with 3rd level nesting and params in a different order', async () => {
     const msg = {
@@ -705,27 +535,9 @@ describe('Test ETH EIP712', function () {
         },
       },
     };
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
+
 
   it('Should test a payload with an array type', async () => {
     const msg = {
@@ -775,27 +587,9 @@ describe('Test ETH EIP712', function () {
         ],
       },
     };
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
+
 
   it('Should test multiple array types', async () => {
     const msg = {
@@ -857,27 +651,9 @@ describe('Test ETH EIP712', function () {
         integerArray: [1, 2, 3],
       },
     };
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
+
 
   it('Should test a nested array', async () => {
     const msg = {
@@ -924,27 +700,9 @@ describe('Test ETH EIP712', function () {
         ],
       },
     };
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
+
 
   it('Should test a nested array of custom type', async () => {
     const msg = {
@@ -1021,27 +779,9 @@ describe('Test ETH EIP712', function () {
         ],
       },
     };
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
+
 
   it('Should test a bunch of EIP712 data types', async () => {
     const msg = {
@@ -1116,27 +856,9 @@ describe('Test ETH EIP712', function () {
         ADDRESS: '0x078a8d6eba928e7ea787ed48f71c5936aed4625d',
       },
     };
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
+
 
   it('Should test a payload with a nested type in multiple nesting levels', async () => {
     const msg = {
@@ -1185,28 +907,9 @@ describe('Test ETH EIP712', function () {
         },
       },
     };
-
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
+
 
   it('Should test a payload that requires use of extraData frames', async () => {
     const msg = {
@@ -1267,27 +970,166 @@ describe('Test ETH EIP712', function () {
           'stupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimes',
       },
     };
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
+
+  it('Should test a message with very large types', async () => {
+    const msg = {
+      'types': {
+        'EIP712Domain': [
+          {
+            'name': 'name',
+            'type': 'string'
+          },
+          {
+            'name': 'version',
+            'type': 'string'
+          },
+          {
+            'name': 'chainId',
+            'type': 'uint256'
+          },
+          {
+            'name': 'verifyingContract',
+            'type': 'address'
+          }
+        ],
+        'Order': [
+          {
+            'name': 'exchange',
+            'type': 'address'
+          },
+          {
+            'name': 'maker',
+            'type': 'address'
+          },
+          {
+            'name': 'taker',
+            'type': 'address'
+          },
+          {
+            'name': 'makerRelayerFee',
+            'type': 'uint256'
+          },
+          {
+            'name': 'takerRelayerFee',
+            'type': 'uint256'
+          },
+          {
+            'name': 'makerProtocolFee',
+            'type': 'uint256'
+          },
+          {
+            'name': 'takerProtocolFee',
+            'type': 'uint256'
+          },
+          {
+            'name': 'feeRecipient',
+            'type': 'address'
+          },
+          {
+            'name': 'feeMethod',
+            'type': 'uint8'
+          },
+          {
+            'name': 'side',
+            'type': 'uint8'
+          },
+          {
+            'name': 'saleKind',
+            'type': 'uint8'
+          },
+          {
+            'name': 'target',
+            'type': 'address'
+          },
+          {
+            'name': 'howToCall',
+            'type': 'uint8'
+          },
+          {
+            'name': 'calldata',
+            'type': 'bytes'
+          },
+          {
+            'name': 'replacementPattern',
+            'type': 'bytes'
+          },
+          {
+            'name': 'staticTarget',
+            'type': 'address'
+          },
+          {
+            'name': 'staticExtradata',
+            'type': 'bytes'
+          },
+          {
+            'name': 'paymentToken',
+            'type': 'address'
+          },
+          {
+            'name': 'basePrice',
+            'type': 'uint256'
+          },
+          {
+            'name': 'extra',
+            'type': 'uint256'
+          },
+          {
+            'name': 'listingTime',
+            'type': 'uint256'
+          },
+          {
+            'name': 'expirationTime',
+            'type': 'uint256'
+          },
+          {
+            'name': 'salt',
+            'type': 'uint256'
+          },
+          {
+            'name': 'nonce',
+            'type': 'uint256'
+          }
+        ]
+      },
+      'domain': {
+        'name': 'Wyvern Exchange Contract',
+        'version': '2.3',
+        'chainId': 1,
+        'verifyingContract': '0x7f268357a8c2552623316e2562d90e642bb538e5'
+      },
+      'primaryType': 'Order',
+      'message': {
+        'maker': '0x44fa5d521a02db7ce5a88842a6842496f84009bc',
+        'exchange': '0x7f268357a8c2552623316e2562d90e642bb538e5',
+        'taker': '0x0000000000000000000000000000000000000000',
+        'makerRelayerFee': '750',
+        'takerRelayerFee': '0',
+        'makerProtocolFee': '0',
+        'takerProtocolFee': '0',
+        'feeRecipient': '0x5b3256965e7c3cf26e11fcaf296dfc8807c01073',
+        'feeMethod': 1,
+        'side': 1,
+        'saleKind': 0,
+        'target': '0xbaf2127b49fc93cbca6269fade0f7f31df4c88a7',
+        'howToCall': 1,
+        'calldata': '0xfb16a59500000000000000000000000044fa5d521a02db7ce5a88842a6842496f84009bc000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001a9f037d4cd7da318ab097a47acd4dea3abc083000000000000000000000000000000000000000000000000000000000000028a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000',
+        'replacementPattern': '0x000000000000000000000000000000000000000000000000000000000000000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+        'staticTarget': '0x0000000000000000000000000000000000000000',
+        'staticExtradata': '0x',
+        'paymentToken': '0x0000000000000000000000000000000000000000',
+        'basePrice': '1000000000000000000',
+        'extra': '0',
+        'listingTime': '1645233344',
+        'expirationTime': '1645838240',
+        'salt': '35033335384310326785897317545538185126505283328747281434561962939625063440824',
+        'nonce': 0
+      }
+    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
+  })
+
 
   it('Should test random edge case #1', async () => {
     // This was a randomly generated payload which caused an edge case.
@@ -1369,45 +1211,12 @@ describe('Test ETH EIP712', function () {
         drift_patch_cable_bi: '0xb4',
       },
     };
-    const req = {
-      currency: 'ETH_MSG',
-      data: {
-        signerPath: [
-          helpers.BTC_PURPOSE_P2PKH,
-          helpers.ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        protocol: 'eip712',
-        payload: msg,
-      },
-    };
-    try {
-      await helpers.execute(client, 'sign', req);
-    } catch (err) {
-      foundError = true;
-      expect(err).to.equal(null);
-    }
+    await testMsg(buildMsgReq(msg, 'eip712'));
   });
-  //@ts-expect-error - it.each is not included in @types/mocha
-  it.each(
-    randomTxDataLabels,
-    'Msg: EIP712 #%s',
-    ['label'],
-    async function (n, next) {
-      const protocol = 'eip712';
-      const payload = buildRandomMsg(protocol);
-      try {
-        await testMsg(buildMsgReq(payload, protocol));
-        setTimeout(() => {
-          next();
-        }, 2000);
-      } catch (err) {
-        setTimeout(() => {
-          next(err);
-        }, 2000);
-      }
+
+  it(`Should test ${numRandom} random payloads`, async () => {
+    for (let i = 0; i < numRandom; i++) {
+      await testMsg(buildMsgReq(buildRandomMsg('eip712'), 'eip712'));
     }
-  );
+  })
 });

@@ -642,16 +642,15 @@ function buildPersonalSignRequest(req, input) {
 
 function buildEIP712Request(req, input) {
   try {
-    const MAX_BASE_MSG_SZ = input.fwConstants.ethMaxMsgSz;
-    const VAR_PATH_SZ = input.fwConstants.varAddrPathSzAllowed;
-    const TYPED_DATA = ethMsgProtocol.TYPED_DATA;
-    const L = 24 + MAX_BASE_MSG_SZ + 4;
+    const { ethMaxMsgSz, varAddrPathSzAllowed, eip712MaxTypeParams } = input.fwConstants;
+    const { TYPED_DATA } = ethMsgProtocol;
+    const L = 24 + ethMaxMsgSz + 4;
     let off = 0;
     req.payload = Buffer.alloc(L);
     req.payload.writeUInt8(TYPED_DATA.enumIdx, 0);
     off += 1;
     // Write the signer path
-    const signerPathBuf = buildSignerPathBuf(input.signerPath, VAR_PATH_SZ);
+    const signerPathBuf = buildSignerPathBuf(input.signerPath, varAddrPathSzAllowed);
     signerPathBuf.copy(req.payload, off);
     off += signerPathBuf.length;
     // Parse/clean the EIP712 payload, serialize with CBOR, and write to the payload
@@ -697,13 +696,19 @@ function buildEIP712Request(req, input) {
     const payload = Buffer.from(cbor.encode(data));
     const fwConst = input.fwConstants;
     const maxSzAllowed =
-      MAX_BASE_MSG_SZ + fwConst.extraDataMaxFrames * fwConst.extraDataFrameSz;
-    if (fwConst.ethMsgPreHashAllowed && payload.length > maxSzAllowed) {
+      ethMaxMsgSz + fwConst.extraDataMaxFrames * fwConst.extraDataFrameSz;
+    // Determine if we need to prehash
+    let shouldPrehash = payload.length > maxSzAllowed;
+    Object.keys(data.types).forEach((k) => {
+      if (data.types[k].length > eip712MaxTypeParams) {
+        shouldPrehash = true;
+      }
+    })
+    if (fwConst.ethMsgPreHashAllowed && shouldPrehash) {
       // If this payload is too large to send, but the Lattice allows a prehashed message, do that
       req.payload.writeUInt16LE(payload.length, off);
       off += 2;
-      const encoded = TypedDataUtils.hash(req.input.payload);
-      const prehash = Buffer.from(keccak256(encoded), 'hex');
+      const prehash = TypedDataUtils.hash(req.input.payload);
       prehash.copy(req.payload, off);
       req.prehash = prehash;
     } else {

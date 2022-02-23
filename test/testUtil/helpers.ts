@@ -3,14 +3,16 @@ import { wordlists } from 'bip39';
 import bitcoin from 'bitcoinjs-lib';
 import { expect as expect } from 'chai';
 import crypto from 'crypto';
-import { derivePath as deriveEDKey } from 'ed25519-hd-key'
+import { derivePath as deriveEDKey, getPublicKey as getEDPubkey } from 'ed25519-hd-key'
 import { ec as EC, eddsa as EdDSA } from 'elliptic';
 import { privateToAddress } from 'ethereumjs-util';
 import { keccak256 } from 'js-sha3';
 import { sha256 } from 'hash.js/lib/hash/sha'
-import { ADDR_STR_LEN, BIP_CONSTANTS, ethMsgProtocol, HARDENED_OFFSET } from '../../src/constants';
-import { Client } from '../../src/index';
-import { ensureHexBuffer, parseDER } from '../../src/util';
+import { 
+  ADDR_STR_LEN, BIP_CONSTANTS, ethMsgProtocol, HARDENED_OFFSET, 
+} from '../../src/constants';
+import { Client, Constants } from '../../src/index';
+import { parseDER } from '../../src/util';
 const SIGHASH_ALL = 0x01;
 const secp256k1 = new EC('secp256k1');
 const ed25519 = new EdDSA('ed25519');
@@ -329,6 +331,24 @@ export const harden = (x) => {
   return x + HARDENED_OFFSET;
 };
 
+export const prandomBuf = function(prng, maxSz, forceSize=false) {
+  // Build a random payload that can fit in the base request
+  const sz = forceSize ? maxSz : Math.floor(maxSz * prng.quick());
+  const buf = Buffer.alloc(sz);
+  for (let i = 0; i < sz; i++) {
+    buf[i] = Math.floor(0xff * prng.quick());
+  }
+  return buf;
+}
+
+export const deriveED25519Key = function(path, seed) {
+  const { key } = deriveEDKey(getPathStr(path), seed);
+  const pub = getEDPubkey(key, false); // `false` removes the leading zero byte
+  return {
+    priv: key,
+    pub,
+  }
+}
 
 //============================================================
 // Wallet Job integration test helpers
@@ -527,7 +547,7 @@ export const serializeGetAddressesJobData = function (data) {
   req.writeUInt32LE(data.count, off);
   off += 4;
   // Deprecated skipCache flag. It isn't used by firmware anymore.
-  req.writeUInt8(1, off);
+  req.writeUInt8(data.flag || 0, off);
   return req;
 };
 
@@ -537,8 +557,10 @@ export const deserializeGetAddressesJobResult = function (res) {
     count: null,
     addresses: [],
   };
-  getAddrResult.count = res.readUInt32LE(off);
-  off += 4;
+  getAddrResult.pubOnly = res.readUint8(off);
+  off += 1;
+  getAddrResult.count = res.readUint8(off);
+  off += 3; // Skip a 2-byte empty shim value (for backwards compatibility)
   for (let i = 0; i < getAddrResult.count; i++) {
     const _addr = res.slice(off, off + ADDR_STR_LEN);
     off += ADDR_STR_LEN;
@@ -597,6 +619,30 @@ export const validateETHAddresses = function (resp, jobData, seed) {
     expect(addr).to.equal(resp.addresses[i - jobData.first]);
   }
 };
+
+export const validateDerivedPublicKeys = function(pubKeys, firstPath, seed, flag=null) {
+  const wallet = bip32.fromSeed(seed);
+  // We assume the keys were derived in sequential order
+  pubKeys.forEach((pub, i) => {
+    const path = JSON.parse(JSON.stringify(firstPath));
+    path[path.length - 1] += i;
+    if (flag === Constants.GET_ADDR_FLAGS.ED25519_PUB) {
+      // ED25519 requires its own derivation
+      const key = deriveED25519Key(path, seed);
+      expect(pub.toString('hex')) 
+      .to
+      .equal(key.pub.toString('hex'), 
+            'Exported ED25519 pubkey incorrect');
+    } else {
+      // Otherwise this is a SECP256K1 pubkey
+      const priv = wallet.derivePath(getPathStr(path)).privateKey;
+      expect(pub.toString('hex'))
+      .to
+      .equal( secp256k1.keyFromPrivate(priv).getPublic().encode('hex'),
+              'Exported SECP256K1 pubkey incorrect');
+    }
+  })
+}
 
 export const ethPersonalSignMsg = function(msg) {
   return '\u0019Ethereum Signed Message:\n' + String(msg.length) + msg;
@@ -851,15 +897,15 @@ export const buildRandomEip712Object = function (randInt) {
 //---------------------------------------------------
 // Generic signing
 //---------------------------------------------------
-export const validateGenericSig = function(seed, sig, data) {
-  const { signerPath, payload, hashType, curveType } = data;
-  const isHex = Buffer.isBuffer(payload) || (typeof payload === 'string' && payload.slice(0, 2) === '0x');
-  const payloadBuf = isHex ? ensureHexBuffer(payload) : Buffer.from(payload, 'utf8');
+export const validateGenericSig = function(seed, sig, payloadBuf, req) {
+  const { signerPath, hashType, curveType } = req;
+  const HASHES = Constants.SIGNING.HASHES;
+  const CURVES = Constants.SIGNING.CURVES;
   let hash;
-  if (curveType === 'SECP256K1') {
-    if (hashType === 'SHA256') {
+  if (curveType === CURVES.SECP256K1) {
+    if (hashType === HASHES.SHA256) {
       hash = Buffer.from(sha256().update(payloadBuf).digest('hex'), 'hex');
-    } else if (hashType === 'KECCAK256') {
+    } else if (hashType === HASHES.KECCAK256) {
       hash = Buffer.from(keccak256(payloadBuf), 'hex');
     } else {
       throw new Error('Bad params');
@@ -868,11 +914,11 @@ export const validateGenericSig = function(seed, sig, data) {
     const priv = wallet.derivePath(getPathStr(signerPath)).privateKey;
     const key = secp256k1.keyFromPrivate(priv);
     expect(key.verify(hash, sig)).to.equal(true, 'Signature failed verification.')
-  } else if (curveType === 'ED25519') {
-    if (hashType !== 'NONE') {
+  } else if (curveType === CURVES.ED25519) {
+    if (hashType !== HASHES.NONE) {
       throw new Error('Bad params');
     }
-    const { key: priv } = deriveEDKey(getPathStr(signerPath), seed);
+    const { priv } = deriveED25519Key(signerPath, seed);
     const key = ed25519.keyFromSecret(priv);
     const formattedSig = `${sig.r.toString('hex')}${sig.s.toString('hex')}`
     expect(key.verify(payloadBuf, formattedSig)).to.equal(true, 'Signature failed verification.')
@@ -908,6 +954,7 @@ export default {
   deserializeGetAddressesJobResult,
   validateBTCAddresses,
   validateETHAddresses,
+  validateDerivedPublicKeys,
   ethPersonalSignMsg,
   serializeSignTxJobDataLegacy,
   deserializeSignTxJobResult,
@@ -917,4 +964,6 @@ export default {
   serializeLoadSeedJobData,
   buildRandomEip712Object,
   validateGenericSig,
+  deriveED25519Key,
+  prandomBuf,
 }

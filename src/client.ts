@@ -5,6 +5,7 @@ import { KeyPair } from 'elliptic';
 import superagent from 'superagent';
 import bitcoin from './bitcoin';
 import { Crypto, KVRecord, ABIRecord, SignatureResponse } from './types/client'
+import { Constants } from './index';
 import {
   ADDR_STR_LEN,
   ASCII_REGEX,
@@ -265,10 +266,9 @@ export class Client {
    * @category Lattice
    * @returns An array of addresses.
    */
-  public getAddresses (opts: { startPath: number[], n: UInt4 }, cb: (err?: string, data?: unknown) => unknown) {
-    const SKIP_CACHE_FLAG = 1;
+  public getAddresses (opts: { startPath: number[], n: UInt4, flag: UInt4  }, cb: (err?: string, data?: unknown) => unknown) {
     const MAX_ADDR = 10;
-    const { startPath, n } = opts;
+    const { startPath, n, flag = 0 } = opts;
     if (startPath === undefined || n === undefined)
       return cb('Please provide `startPath` and `n` options');
     if (startPath.length < 2 || startPath.length > 5)
@@ -308,21 +308,25 @@ export class Client {
     // Specify the number of subsequent addresses to request.
     // We also allow the user to skip the cache and request any address related to the asset
     // in the wallet.
-    let val;
-    if (true === fwConstants.addrFlagsAllowed) {
-      // Address caching was removed in 0.13.0 so this flag is now deprecated.
-      // All requests against older devices also use the skipFlag=true now.
-      const flag = bitwise.nibble.read(SKIP_CACHE_FLAG);
-      const count = bitwise.nibble.read(n);
-      val = bitwise.byte.write(flag.concat(count) as Byte);
+    let val, flagVal: UInt4 = 0;
+    if (fwConstants.addrFlagsAllowed) {
+      // A 4-bit flag can be used for non-standard address requests
+      // This needs to be combined with `n` as a 4 bit value
+      flagVal = ( fwConstants.getAddressFlags && 
+                  fwConstants.getAddressFlags.indexOf(flag) > -1)
+                ? flag : 0;
+      const flagBits = bitwise.nibble.read(flagVal);
+      const countBits = bitwise.nibble.read(n);
+      val = bitwise.byte.write(flagBits.concat(countBits) as Byte);
     } else {
+      // Very old firmware does not support this flag. We can deprecate this soon.
       val = n;
     }
     payload.writeUInt8(val, off);
     off++;
     return this._request(payload, 'GET_ADDRESSES', (err, res) => {
       if (err) return cb(err);
-      const parsedRes = this._handleGetAddresses(res);
+      const parsedRes = this._handleGetAddresses(res, flagVal);
       if (parsedRes.err) return cb(parsedRes.err);
       return cb(null, parsedRes.data);
     });
@@ -1124,7 +1128,7 @@ export class Client {
    * @internal
    * @return an array of address strings
    */
-  _handleGetAddresses (encRes) {
+  _handleGetAddresses (encRes, flag) {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(
       encRes,
@@ -1136,12 +1140,38 @@ export class Client {
     let off = 65; // Skip 65 byte pubkey prefix
     // Look for addresses until we reach the end (a 4 byte checksum)
     const addrs = [];
+    // Pubkeys are formatted differently in the response
+    const { ED25519_PUB, SECP256K1_PUB } = Constants.GET_ADDR_FLAGS;
+    const arePubkeys =  flag === ED25519_PUB || 
+                        flag === SECP256K1_PUB;
+    if (arePubkeys) {
+      off += 1; // skip uint8 representing pubkey type
+    }
     while (off + 4 < decResLengths.getAddresses) {
-      const addrBytes = addrData.slice(off, off + ADDR_STR_LEN);
-      off += ADDR_STR_LEN;
-      // Return the UTF-8 representation
-      const len = addrBytes.indexOf(0); // First 0 is the null terminator
-      if (len > 0) addrs.push(addrBytes.slice(0, len).toString());
+      if (arePubkeys) {
+        // Pubkeys are shorter and are returned as buffers
+        const pubBytes = addrData.slice(off, off + 65)
+        const isEmpty = pubBytes.every(byte => byte === 0x00);
+        if (!isEmpty && flag === ED25519_PUB) {
+          // ED25519 pubkeys are 32 bytes
+          addrs.push(pubBytes.slice(0, 32));
+        } else if (!isEmpty) {
+          // Only other returned pubkeys are ECC, or 65 bytes
+          // Note that we return full (uncompressed) ECC pubkeys
+          addrs.push(pubBytes);
+        }
+        off += 65;
+      } else {
+        // Otherwise we are dealing with address strings
+        const addrBytes = addrData.slice(off, off + ADDR_STR_LEN);
+        off += ADDR_STR_LEN;
+        // Return the UTF-8 representation
+        const len = addrBytes.indexOf(0); // First 0 is the null terminator
+        if (len > 0) {
+          addrs.push(addrBytes.slice(0, len).toString());
+        }
+      }
+      
     }
     return { data: addrs, err: null };
   }
