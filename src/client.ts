@@ -4,6 +4,7 @@ import { Buffer } from 'buffer/';
 import { KeyPair } from 'elliptic';
 import superagent from 'superagent';
 import bitcoin from './bitcoin';
+import { Crypto, KVRecord, ABIRecord } from './types/client'
 import {
   ADDR_STR_LEN,
   ASCII_REGEX,
