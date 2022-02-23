@@ -312,7 +312,8 @@ export const EXTERNAL = {
     },
     ENCODINGS: {
       ASCII: 0,
-      HEX: 1
+      HEX: 1,
+      SOLANA: 2,
     }
   }
 }

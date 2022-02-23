@@ -523,7 +523,6 @@ export const getPathStr = function(path) {
   return pathStr;
 }
 
-
 //---------------------------------------------------
 // Get Addresses helpers
 //---------------------------------------------------
