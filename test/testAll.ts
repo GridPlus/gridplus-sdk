@@ -59,7 +59,6 @@ describe('Connect and Pair', () => {
     if (caughtErr === false) {
       const fwConstants = getFwVersionConst(client.fwVersion);
       const addrData = {
-        currency: 'BTC',
         startPath: [
           helpers.BTC_PURPOSE_P2SH_P2WPKH,
           helpers.BTC_COIN,
@@ -87,7 +86,6 @@ describe('Connect and Pair', () => {
       // If firmware supports it, try shorter paths
       if (fwConstants.flexibleAddrPaths) {
         const flexData = {
-          currency: 'ETH',
           startPath: [
             helpers.BTC_PURPOSE_P2PKH,
             helpers.ETH_COIN,

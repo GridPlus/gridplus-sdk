@@ -18,6 +18,8 @@ const decResLengths = {
   getWallets: 142, // 71 bytes per wallet record (response contains internal and external)
   addAbiDefs: 8,
   getKvRecords: 1395,
+  getAbiRecords: 1215,
+  removeAbiRecords: 1,
   test: 1646, // Max size of test response payload
 };
 
@@ -62,7 +64,9 @@ const encReqCodes = {
   GET_KV_RECORDS: 7,
   ADD_KV_RECORDS: 8,
   REMOVE_KV_RECORDS: 9,
-  TEST: 10,
+  GET_ABI_RECORDS: 10,
+  REMOVE_ABI_RECORDS: 11,
+  TEST: 12,
 };
 
 const messageConstants = {
@@ -122,6 +126,7 @@ const signingSchema = {
   ERC20_TRANSFER: 2,
   ETH_MSG: 3,
   EXTRA_DATA: 4,
+  GENERAL_SIGNING: 5,
 };
 
 const HARDENED_OFFSET = 0x80000000; // Hardened offset
@@ -284,6 +289,35 @@ const ethMsgProtocol = {
   },
 };
 
+//======================================================
+// EXTERNALLY EXPORTED CONSTANTS
+// These are used for building requests
+//======================================================
+export const EXTERNAL = {
+  // Optional flags for `getAddresses`
+  GET_ADDR_FLAGS: {
+    SECP256K1_PUB: 3,
+    ED25519_PUB: 4,
+  },
+  // Options for building general signing requests
+  SIGNING: {
+    HASHES: {
+      NONE: 0,
+      KECCAK256: 1,
+      SHA256: 2,
+    },
+    CURVES: {
+      SECP256K1: 0,
+      ED25519: 1
+    },
+    ENCODINGS: {
+      ASCII: 0,
+      HEX: 1,
+      SOLANA: 2,
+    }
+  }
+}
+
 function getFwVersionConst(v) {
   const c: any = {
     extraDataFrameSz: 0,
@@ -322,12 +356,46 @@ function getFwVersionConst(v) {
     c.ethMaxGasPrice = 500000000000; // 500 gwei
     c.addrFlagsAllowed = false;
   }
-  // These transformations apply to all versions
+  // These transformations apply to all versions. The subtraction
+  // of 128 bytes accounts for metadata and is for legacy reasons.
+  // For all modern versions, these are 1550 bytes.
+  // NOTE: Non-legacy ETH txs (e.g. EIP1559) will shrink
+  // this number.
+  // See `ETH_BASE_TX_MAX_DATA_SZ` and `ETH_MAX_BASE_MSG_SZ` in firmware
   c.ethMaxDataSz = c.reqMaxDataSz - 128;
   c.ethMaxMsgSz = c.ethMaxDataSz;
+  // Max number of params in an EIP712 type. This was added to firmware
+  // to avoid blowing stack size.
+  c.eip712MaxTypeParams = 18;
 
   // EXTRA FIELDS ADDED IN LATER VERSIONS
   //-------------------------------------
+
+  // V0.14.0 added support for a more robust API around ABI definitions
+  // and generic signing functionality
+  if (!legacy && gte(v, [0, 13, 0])) {
+    // Size of `category` buffer. Inclusive of null terminator byte.
+    c.abiCategorySz = 32;
+    c.abiMaxRmv = 200;  // Max number of ABI defs that can be removed with
+                        // a single request
+    if (!c.genericSigning) {
+      c.genericSigning = {};
+    }
+    // See `sizeof(GenericSigningRequest_t)` in firmware
+    c.genericSigning.baseReqSz = 1552;
+    // See `GENERIC_SIGNING_BASE_MSG_SZ` in firmware
+    c.genericSigning.baseDataSz = 1519;
+    c.genericSigning.hashTypes = EXTERNAL.SIGNING.HASHES;
+    c.genericSigning.curveTypes = EXTERNAL.SIGNING.CURVES;
+    c.genericSigning.encodingTypes = EXTERNAL.SIGNING.ENCODINGS;
+    // Supported flags for `getAddresses`
+    c.getAddressFlags = [ 
+      EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB, 
+      EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB 
+    ];
+    // We updated the max number of params in EIP712 types
+    c.eip712MaxTypeParams = 36;
+  }
 
   // V0.13.0 added native segwit addresses and fixed a bug in exporting
   // legacy bitcoin addresses

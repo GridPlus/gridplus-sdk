@@ -3,13 +3,19 @@ import { wordlists } from 'bip39';
 import bitcoin from 'bitcoinjs-lib';
 import { expect as expect } from 'chai';
 import crypto from 'crypto';
-import { ec as EC } from 'elliptic';
+import { derivePath as deriveEDKey, getPublicKey as getEDPubkey } from 'ed25519-hd-key'
+import { ec as EC, eddsa as EdDSA } from 'elliptic';
 import { privateToAddress } from 'ethereumjs-util';
-import { ADDR_STR_LEN, BIP_CONSTANTS, ethMsgProtocol, HARDENED_OFFSET } from '../../src/constants';
-import { Client } from '../../src/index';
+import { keccak256 } from 'js-sha3';
+import { sha256 } from 'hash.js/lib/hash/sha'
+import { 
+  ADDR_STR_LEN, BIP_CONSTANTS, ethMsgProtocol, HARDENED_OFFSET, 
+} from '../../src/constants';
+import { Client, Constants } from '../../src/index';
 import { parseDER } from '../../src/util';
 const SIGHASH_ALL = 0x01;
-const ec = new EC('secp256k1');
+const secp256k1 = new EC('secp256k1');
+const ed25519 = new EdDSA('ed25519');
 
 // NOTE: We use the HARDEN(49) purpose for p2sh(p2wpkh) address derivations.
 //       For p2pkh-derived addresses, we use the legacy 44' purpose
@@ -325,6 +331,24 @@ export const harden = (x) => {
   return x + HARDENED_OFFSET;
 };
 
+export const prandomBuf = function(prng, maxSz, forceSize=false) {
+  // Build a random payload that can fit in the base request
+  const sz = forceSize ? maxSz : Math.floor(maxSz * prng.quick());
+  const buf = Buffer.alloc(sz);
+  for (let i = 0; i < sz; i++) {
+    buf[i] = Math.floor(0xff * prng.quick());
+  }
+  return buf;
+}
+
+export const deriveED25519Key = function(path, seed) {
+  const { key } = deriveEDKey(getPathStr(path), seed);
+  const pub = getEDPubkey(key, false); // `false` removes the leading zero byte
+  return {
+    priv: key,
+    pub,
+  }
+}
 
 //============================================================
 // Wallet Job integration test helpers
@@ -399,7 +423,7 @@ export const serializeJobData = function (job, walletUID, data) {
       serData = serializeGetAddressesJobData(data);
       break;
     case jobTypes.WALLET_JOB_SIGN_TX:
-      serData = serializeSignTxJobData(data);
+      serData = serializeSignTxJobDataLegacy(data);
       break;
     case jobTypes.WALLET_JOB_EXPORT_SEED:
       serData = serializeExportSeedJobData();
@@ -487,6 +511,18 @@ export const stringifyPath = (parent) => {
   return s;
 };
 
+export const getPathStr = function(path) {
+  let pathStr = 'm';
+  path.forEach((idx) => {
+    if (idx >= HARDENED_OFFSET) {
+      pathStr += `/${idx - HARDENED_OFFSET}'`;
+    } else {
+      pathStr += `/${idx}`;
+    }
+  });
+  return pathStr;
+}
+
 //---------------------------------------------------
 // Get Addresses helpers
 //---------------------------------------------------
@@ -510,7 +546,7 @@ export const serializeGetAddressesJobData = function (data) {
   req.writeUInt32LE(data.count, off);
   off += 4;
   // Deprecated skipCache flag. It isn't used by firmware anymore.
-  req.writeUInt8(1, off);
+  req.writeUInt8(data.flag || 0, off);
   return req;
 };
 
@@ -520,8 +556,10 @@ export const deserializeGetAddressesJobResult = function (res) {
     count: null,
     addresses: [],
   };
-  getAddrResult.count = res.readUInt32LE(off);
-  off += 4;
+  getAddrResult.pubOnly = res.readUint8(off);
+  off += 1;
+  getAddrResult.count = res.readUint8(off);
+  off += 3; // Skip a 2-byte empty shim value (for backwards compatibility)
   for (let i = 0; i < getAddrResult.count; i++) {
     const _addr = res.slice(off, off + ADDR_STR_LEN);
     off += ADDR_STR_LEN;
@@ -581,10 +619,42 @@ export const validateETHAddresses = function (resp, jobData, seed) {
   }
 };
 
+export const validateDerivedPublicKeys = function(pubKeys, firstPath, seed, flag=null) {
+  const wallet = bip32.fromSeed(seed);
+  // We assume the keys were derived in sequential order
+  pubKeys.forEach((pub, i) => {
+    const path = JSON.parse(JSON.stringify(firstPath));
+    path[path.length - 1] += i;
+    if (flag === Constants.GET_ADDR_FLAGS.ED25519_PUB) {
+      // ED25519 requires its own derivation
+      const key = deriveED25519Key(path, seed);
+      expect(pub.toString('hex')) 
+      .to
+      .equal(key.pub.toString('hex'), 
+            'Exported ED25519 pubkey incorrect');
+    } else {
+      // Otherwise this is a SECP256K1 pubkey
+      const priv = wallet.derivePath(getPathStr(path)).privateKey;
+      expect(pub.toString('hex'))
+      .to
+      .equal( secp256k1.keyFromPrivate(priv).getPublic().encode('hex'),
+              'Exported SECP256K1 pubkey incorrect');
+    }
+  })
+}
+
+export const ethPersonalSignMsg = function(msg) {
+  return '\u0019Ethereum Signed Message:\n' + String(msg.length) + msg;
+}
+
 //---------------------------------------------------
 // Sign Transaction helpers
 //---------------------------------------------------
-export const serializeSignTxJobData = function (data) {
+export const serializeSignTxJobDataLegacy = function (data) {
+  // Serialize a signTX request using the legacy option
+  // (see `WalletJobData_SignTx_t` and `SignatureRequest_t`)
+  // in firmware for more info on legacy vs generic (new)
+  // wallet job requests
   const n = data.sigReq.length;
   const req = Buffer.alloc(4 + 56 * n);
   let off = 0;
@@ -650,7 +720,7 @@ export const deserializeSignTxJobResult = function (res) {
     _off += 4;
     o.signerPath.addr = _o.readUInt32LE(_off);
     _off += 4;
-    o.pubkey = ec.keyFromPublic(
+    o.pubkey = secp256k1.keyFromPublic(
       _o.slice(_off, _off + 65).toString('hex'),
       'hex'
     );
@@ -666,15 +736,6 @@ export const deserializeSignTxJobResult = function (res) {
   }
 
   return getTxResult;
-};
-
-export const ensureHexBuffer = function (x) {
-  if (x === null || x === 0) return Buffer.alloc(0);
-  else if (Buffer.isBuffer(x)) x = x.toString('hex');
-  if (typeof x === 'number') x = `${x.toString(16)}`;
-  else if (typeof x === 'string' && x.slice(0, 2) === '0x') x = x.slice(2);
-  if (x.length % 2 > 0) x = `0${x}`;
-  return Buffer.from(x, 'hex');
 };
 
 //---------------------------------------------------
@@ -832,6 +893,39 @@ export const buildRandomEip712Object = function (randInt) {
   return msg;
 };
 
+//---------------------------------------------------
+// Generic signing
+//---------------------------------------------------
+export const validateGenericSig = function(seed, sig, payloadBuf, req) {
+  const { signerPath, hashType, curveType } = req;
+  const HASHES = Constants.SIGNING.HASHES;
+  const CURVES = Constants.SIGNING.CURVES;
+  let hash;
+  if (curveType === CURVES.SECP256K1) {
+    if (hashType === HASHES.SHA256) {
+      hash = Buffer.from(sha256().update(payloadBuf).digest('hex'), 'hex');
+    } else if (hashType === HASHES.KECCAK256) {
+      hash = Buffer.from(keccak256(payloadBuf), 'hex');
+    } else {
+      throw new Error('Bad params');
+    }
+    const wallet = bip32.fromSeed(seed);
+    const priv = wallet.derivePath(getPathStr(signerPath)).privateKey;
+    const key = secp256k1.keyFromPrivate(priv);
+    expect(key.verify(hash, sig)).to.equal(true, 'Signature failed verification.')
+  } else if (curveType === CURVES.ED25519) {
+    if (hashType !== HASHES.NONE) {
+      throw new Error('Bad params');
+    }
+    const { priv } = deriveED25519Key(signerPath, seed);
+    const key = ed25519.keyFromSecret(priv);
+    const formattedSig = `${sig.r.toString('hex')}${sig.s.toString('hex')}`
+    expect(key.verify(payloadBuf, formattedSig)).to.equal(true, 'Signature failed verification.')
+  } else {
+    throw new Error('Bad params')
+  }
+}
+
 export default {
   BTC_PURPOSE_P2WPKH,
   BTC_PURPOSE_P2SH_P2WPKH,
@@ -859,12 +953,17 @@ export default {
   deserializeGetAddressesJobResult,
   validateBTCAddresses,
   validateETHAddresses,
-  serializeSignTxJobData,
+  validateDerivedPublicKeys,
+  ethPersonalSignMsg,
+  serializeSignTxJobDataLegacy,
   deserializeSignTxJobResult,
-  ensureHexBuffer,
   serializeExportSeedJobData,
   deserializeExportSeedJobResult,
   serializeDeleteSeedJobData,
   serializeLoadSeedJobData,
   buildRandomEip712Object,
+  validateGenericSig,
+  deriveED25519Key,
+  prandomBuf,
+  getPathStr,
 }
