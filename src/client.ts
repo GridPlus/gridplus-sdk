@@ -493,46 +493,37 @@ export class Client {
     payload.writeUInt16LE(startIdx, 0);
     payload.writeUInt16LE(n, 2);
     Buffer.from(category).copy(payload, 4);
-    return this._request(payload, 'GET_ABI_RECORDS', (err, res, responseCode) => {
-      if (responseCode === responseCodes.RESP_ERR_WRONG_WALLET) {
-        // If we catch a case where the wallet has changed, try getting the new active wallet
-        // and recursively make the original request.
-        this._getActiveWallet((err) => {
-          if (err) return cb(err)
-          else return this.getAbiRecords(opts, cb, fetched);
-        })
-      } else if (err) {
-        // If there was another error caught, return it
-        if (err) return cb(err);
+    return this._request(payload, 'GET_ABI_RECORDS', (err, res) => {
+      if (err) {
+        return cb(err);
+      }
+      // Correct wallet and no errors -- handle the response
+      const d = this._handleEncResponse(res, decResLengths.getAbiRecords);
+      if (d.err)
+        return cb(d.err);
+      // Decode the response
+      let off = 65; // Skip 65 byte pubkey prefix
+      const numRemaining = d.data.readUInt32LE(off); off += 4;
+      const numReturned = d.data.readUInt8(off); off += 1;
+      // Start adding data if there is data to add
+      fetched.numRemaining = numRemaining;
+      if (!fetched.records) {
+        fetched.records = [];
+      }
+      for (let i = 0; i < numReturned; i++) {
+        // Parse and add the def
+        const packedDef = d.data.slice(off, off + ABI_DEF_SZ); off += ABI_DEF_SZ;
+        fetched.records.push(unpackAbiDef(packedDef));
+      }
+      // Decrement the total counter
+      opts.n -= numReturned;
+      if (opts.n < 1 || numReturned < 1) {
+        fetched.numFetched = fetched.records.length;
+        return cb(null, fetched);
       } else {
-        // Correct wallet and no errors -- handle the response
-        const d = this._handleEncResponse(res, decResLengths.getAbiRecords);
-        if (d.err)
-          return cb(d.err);
-        // Decode the response
-        let off = 65; // Skip 65 byte pubkey prefix
-        const numRemaining = d.data.readUInt32LE(off); off += 4;
-        const numReturned = d.data.readUInt8(off); off += 1;
-        // Start adding data if there is data to add
-        fetched.numRemaining = numRemaining;
-        if (!fetched.records) {
-          fetched.records = [];
-        }
-        for (let i = 0; i < numReturned; i++) {
-          // Parse and add the def
-          const packedDef = d.data.slice(off, off + ABI_DEF_SZ); off += ABI_DEF_SZ;
-          fetched.records.push(unpackAbiDef(packedDef));
-        }
-        // Decrement the total counter
-        opts.n -= numReturned;
-        if (opts.n < 1 || numReturned < 1) {
-          fetched.numFetched = fetched.records.length;
-          return cb(null, fetched);
-        } else {
-          // Recurse if there is more to fetch
-          opts.startIdx += numReturned;
-          return this.getAbiRecords(opts, cb, fetched);
-        }
+        // Recurse if there is more to fetch
+        opts.startIdx += numReturned;
+        return this.getAbiRecords(opts, cb, fetched);
       }
     })
   }
@@ -571,33 +562,24 @@ export class Client {
         return cb(`Error writing signature: ${err.message}`);
       }
     })
-    return this._request(payload, 'REMOVE_ABI_RECORDS', (err, res, responseCode) => {
-      if (responseCode === responseCodes.RESP_ERR_WRONG_WALLET) {
-        // If we catch a case where the wallet has changed, try getting the new active wallet
-        // and recursively make the original request.
-        this._getActiveWallet((err) => {
-          if (err) return cb(err)
-          else return this.removeAbiRecords(opts, cb, cbData);
-        })
-      } else if (err) {
-        // If there was another error caught, return it
-        if (err) return cb(err);
+    return this._request(payload, 'REMOVE_ABI_RECORDS', (err, res) => {
+      if (err) {
+        return cb(err);
+      }
+      // Correct wallet and no errors -- handle the response
+      const d = this._handleEncResponse(res, decResLengths.removeAbiRecords);
+      if (d.err)
+        return cb(d.err);
+      // Decode the response
+      let off = 65; // Skip 65 byte pubkey prefix
+      const rmv = d.data.readUInt8(off); off += 1;
+      cbData.numRemoved += rmv;
+      cbData.numTried += sigsSlice.length;
+      if (cbData.numTried >= opts.sigs.length) {
+        return cb(null, cbData);
       } else {
-        // Correct wallet and no errors -- handle the response
-        const d = this._handleEncResponse(res, decResLengths.removeAbiRecords);
-        if (d.err)
-          return cb(d.err);
-        // Decode the response
-        let off = 65; // Skip 65 byte pubkey prefix
-        const rmv = d.data.readUInt8(off); off += 1;
-        cbData.numRemoved += rmv;
-        cbData.numTried += sigsSlice.length;
-        if (cbData.numTried >= opts.sigs.length) {
-          return cb(null, cbData);
-        } else {
-          // Recurse if there are more to remove
-          return this.removeAbiRecords(opts, cb, cbData);
-        }
+        // Recurse if there are more to remove
+        return this.removeAbiRecords(opts, cb, cbData);
       }
     })
   }
