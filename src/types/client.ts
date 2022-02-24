@@ -37,7 +37,7 @@ export type KVRecord = {
   val?: string;
 };
 
-export type SignatureResponse = {
+export type SignData = {
   tx?: string;
   txHash?: string;
   changeRecipient?: string;
@@ -48,4 +48,30 @@ export type SignatureResponse = {
   };
   sigs?: Buffer[];
   signer?: Buffer;
+  err?: string;
 };
+
+export type AddAbiDefsData = {
+  records: {
+    id: string;
+    [key: string]: string;
+  }[];
+  fetched: number;
+  total: number
+}
+
+export type GetAbiRecordsData = {
+  startIdx: number;
+  numRemaining: number;
+  numFetched: number;
+  records: ABIRecord[];
+}
+
+export type GetKvRecordsData = {
+  records: {
+    id: string;
+    [key: string]: string;
+  }[];
+  fetched: number;
+  total: number
+}

@@ -4,7 +4,15 @@ import { Buffer } from 'buffer/';
 import { KeyPair } from 'elliptic';
 import superagent from 'superagent';
 import bitcoin from './bitcoin';
-import { Crypto, KVRecord, ABIRecord, SignatureResponse } from './types/client'
+import {
+  Crypto,
+  KVRecord,
+  ABIRecord,
+  SignData,
+  AddAbiDefsData,
+  GetAbiRecordsData,
+  GetKvRecordsData
+} from './types/client'
 import { Constants } from './index';
 import {
   ADDR_STR_LEN,
@@ -244,7 +252,7 @@ export class Client {
    * `test` takes a data object with a testID and a payload, and sends them to the device.
    * @category Lattice
    */
-  private test (data: { payload: Buffer, testID: number }, cb: (err?: string, data?: unknown) => unknown) {
+  private test (data: { payload: Buffer, testID: number }, cb: (err?: string, data?: Buffer) => void) {
     if (!data.payload)
       return cb('First argument must contain `testID` and `payload` fields.');
     const TEST_DATA_SZ = 500;
@@ -266,7 +274,7 @@ export class Client {
    * @category Lattice
    * @returns An array of addresses.
    */
-  public getAddresses (opts: { startPath: number[], n: UInt4, flag: UInt4  }, cb: (err?: string, data?: unknown) => unknown) {
+  public getAddresses (opts: { startPath: number[], n: UInt4, flag: UInt4 }, cb: (err?: string, data?: Buffer | string[]) => void) {
     const MAX_ADDR = 10;
     const { startPath, n, flag = 0 } = opts;
     if (startPath === undefined || n === undefined)
@@ -337,7 +345,7 @@ export class Client {
    * @category Lattice
    * @returns The response from the device.
    */
-  public sign (opts: { data, currency: string }, cb: (err?: string, data?: unknown) => unknown, cachedData = null, nextCode = null) {
+  public sign (opts: { data, currency: string }, cb: (err?: string, data?: SignData) => void, cachedData = null, nextCode = null) {
     const { currency } = opts;
     let { data } = opts;
     if (!data) {
@@ -423,7 +431,7 @@ export class Client {
    * @category Lattice
    * @returns The decrypted response.
    */
-  public addAbiDefs (defs: ABIRecord[], cb: (err?: string, data?: unknown) => unknown, nextCode = null) {
+  public addAbiDefs (defs: ABIRecord[], cb: (err?: string, data?: AddAbiDefsData) => void, nextCode = null) {
     const defsToAdd = defs.slice(0, MAX_ABI_DEFS);
     defs = defs.slice(MAX_ABI_DEFS);
     let abiPayload;
@@ -461,7 +469,7 @@ export class Client {
    * @category Lattice
    * @returns The decrypted response.
    */
-  public getAbiRecords (opts: { n: number, startIdx: number, category: string }, cb: (err?: string, data?: unknown) => unknown, fetched: { startIdx: number, numRemaining: number, numFetched: number, records: ABIRecord[] }) {
+  public getAbiRecords (opts: { n: number, startIdx: number, category: string }, cb: (err?: string, data?: GetAbiRecordsData) => void, fetched?: GetAbiRecordsData) {
     const { n = 1, startIdx = 0, category = '' } = opts;
     const fwConstants = getFwVersionConst(this.fwVersion);
     if (n < 1) {
@@ -535,7 +543,10 @@ export class Client {
    * @category Lattice
    * @returns The decrypted response.
    */
-  public removeAbiRecords (opts: { sigs: (number | string)[] }, cb: (err?: string, data?: unknown) => unknown, cbData = { numRemoved: 0, numTried: 0 }) {
+  public removeAbiRecords (opts: { sigs: (number | string)[] }, cb: (err?: string, data?: {
+    numRemoved: number;
+    numTried: number;
+  }) => void, cbData = { numRemoved: 0, numTried: 0 }) {
     const { sigs } = opts;
     const fwConstants = getFwVersionConst(this.fwVersion);
     if (!fwConstants.abiMaxRmv) {
@@ -596,7 +607,7 @@ export class Client {
    * payload to send to the Lattice.
    * @category Lattice
    */
-  public addPermissionV0 (opts: { currency: string, timeWindow: number, limit: number, decimals: number, asset: string }, cb: (err?: string, data?: unknown) => unknown) {
+  public addPermissionV0 (opts: { currency: string, timeWindow: number, limit: number, decimals: number, asset: string }, cb: (err?: string) => void) {
     const { currency, timeWindow, limit, decimals, asset } = opts;
     if (
       !currency ||
@@ -645,7 +656,7 @@ export class Client {
    * `getKvRecords` fetches a list of key-value records from the Lattice.
    * @category Lattice
    */
-  public getKvRecords (opts: { type?: number, n?: number, start?: number }, cb: (err?: string, data?: unknown) => unknown) {
+  public getKvRecords (opts: { type?: number, n?: number, start?: number }, cb: (err?: string, data?: GetKvRecordsData) => void) {
     const { type = 0, n = 1, start = 0 } = opts;
     const fwConstants = getFwVersionConst(this.fwVersion);
     if (!fwConstants.kvActionsAllowed) {
@@ -719,7 +730,7 @@ export class Client {
    * @category Lattice
    * @returns A callback with an error or null.
    */
-  public addKvRecords (opts: { type: number, records: KVRecord[], caseSensitive: boolean }, cb: (err?: string, data?: unknown) => unknown) {
+  public addKvRecords (opts: { type?: number, records: KVRecord[], caseSensitive: boolean }, cb: (err?: string) => void) {
     const { type = 0, records = {}, caseSensitive = false } = opts;
     const fwConstants = getFwVersionConst(this.fwVersion);
     if (!fwConstants.kvActionsAllowed) {
@@ -803,7 +814,7 @@ export class Client {
    * @category Lattice
    * @returns A callback with an error or null.
    */
-  public removeKvRecords (opts: { type: number, ids: number[] }, cb: (err?: string, data?: unknown) => unknown) {
+  public removeKvRecords (opts: { type: number, ids: number[] }, cb: (err?: string) => void) {
     const { type = 0, ids = [] } = opts;
     const fwConstants = getFwVersionConst(this.fwVersion);
     if (!fwConstants.kvActionsAllowed) {
@@ -1232,7 +1243,7 @@ export class Client {
    * @param req - The original request data
    * @returns The transaction data, the transaction hash, and the signature.
    */
-  _handleSign (encRes, currencyType, req = null): { err: string } | SignatureResponse {
+  _handleSign (encRes, currencyType, req = null): { err: string } | SignData {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(encRes, decResLengths.sign);
     if (decrypted.err !== null) return { err: decrypted.err };
