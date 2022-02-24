@@ -965,4 +965,5 @@ export default {
   validateGenericSig,
   deriveED25519Key,
   prandomBuf,
+  getPathStr,
 }

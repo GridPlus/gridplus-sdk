@@ -51,8 +51,10 @@ for (let i = 0; i < numIter; i++) {
 async function runTestCase(expectedCode) {
   const res: any = await helpers.execute(client, 'test', jobReq);
   const parsedRes = helpers.parseWalletJobResp(res, client.fwVersion);
-  expect(parsedRes.resultStatus).to.equal(expectedCode);
-  if (parsedRes.resultStatus !== expectedCode) continueTests = false;
+  if (parsedRes.resultStatus !== expectedCode) {
+    continueTests = false;
+  }
+  expect(parsedRes.resultStatus).to.equal(expectedCode, 'Incorrect response');
   return parsedRes;
 }
 
@@ -167,7 +169,7 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
       skipNonExportableSeed = true;
     }
   });
-  it('Should validate non-exportable seed sigs all differ (from each other and from deterministic sigs)', async () => {
+  it('Should validate non-exportable seed sigs all differ and validate', async () => {
     if (skipNonExportableSeed) return;
     txReq = {
       currency: 'ETH',
@@ -205,7 +207,6 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     expect(getSigStr(tx1_addr0.sig)).to.not.equal(getSigStr(tx3_addr0.sig));
     expect(getSigStr(tx1_addr0.sig)).to.not.equal(getSigStr(tx4_addr0.sig));
     expect(getSigStr(tx1_addr0.sig)).to.not.equal(getSigStr(tx5_addr0.sig));
-
     // Validate that signPersonal message sigs are non-uniform and do not match deterministic ones
     let res, res2, jsSig, sig, sig2;
     const req = {
@@ -266,6 +267,14 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
 
 describe('Setup Test', () => {
   beforeEach(() => {
+    if (!skipNonExportableSeed) {
+      continueTests = false;
+    }
+    expect(skipNonExportableSeed).to.equal(
+      true,
+      'Non-exportable seed tests were run. ' +
+      'Please re-run and enter `N` to continue.'
+    );
     expect(continueTests).to.equal(
       true,
       'Unauthorized or critical failure. Aborting'
