@@ -841,7 +841,7 @@ export class Client {
    * @internal
    * @returns callback
    */
-  _getActiveWallet (cb, forceRefresh = false) {
+  private _getActiveWallet (cb, forceRefresh = false) {
     if (
       forceRefresh !== true &&
       (this.hasActiveWallet() === true || this.isPaired !== true)
@@ -866,7 +866,7 @@ export class Client {
    * @internal
    * @returns Buffer
    */
-  _getSharedSecret () {
+  private _getSharedSecret () {
     // Once every ~256 attempts, we will get a key that starts with a `00` byte, which
     // can lead to problems initializing AES if we don't force a 32 byte BE buffer.
     return Buffer.from(
@@ -880,7 +880,7 @@ export class Client {
    * @internal
    * @returns Buffer
    */
-  _getEphemId () {
+  private _getEphemId () {
     if (this.ephemeralPub === null) return null;
     // EphemId is the first 4 bytes of the hash of the shared secret
     const secret = this._getSharedSecret();
@@ -892,7 +892,7 @@ export class Client {
    * Builds an encrypted request
    * @internal
    */
-  _buildEncRequest (enc_request_code, payload) {
+  private _buildEncRequest (enc_request_code, payload) {
     // Get the ephemeral id - all encrypted requests require there to be an
     // epehemeral public key in order to send
     const ephemId = parseInt(this._getEphemId().toString('hex'), 16);
@@ -930,7 +930,7 @@ export class Client {
    * @param payload {buffer} - serialized payload
    * @returns {buffer}
    */
-  _buildRequest (request_code, payload) {
+  private _buildRequest (request_code, payload) {
     // Length of payload;
     // we add 1 to the payload length to account for the request_code byte
     let L = payload && Buffer.isBuffer(payload) ? payload.length + 1 : 1;
@@ -961,7 +961,7 @@ export class Client {
    * @internal
    * @returns The response code.
    */
-  _request (payload, encReqCode, cb, retryCount = this.retryCount) {
+  private _request (payload, encReqCode, cb, retryCount = this.retryCount) {
     if (!this.deviceId) {
       return cb('Device ID is not set. Please set it and try again.');
     } else if (encReqCode && encReqCodes[encReqCode] === undefined) {
@@ -993,35 +993,44 @@ export class Client {
           parsed.responseCode === responseCodes.RESP_ERR_WRONG_WALLET;
         const invalidEphemId =
           parsed.responseCode === responseCodes.RESP_ERR_INVALID_EPHEM_ID;
+        const success = 
+          parsed.responseCode === responseCodes.RESP_SUCCESS && 
+          !parsed.err;
         const canRetry = retryCount > 0;
-        // Clean up state if needed
-        if (wrongWallet) {
-          // If we got a `wrongWallet` error, we should clear our wallet state, reconnect,
-          // and get the current active wallet before retrying the original request.
-          this._resetActiveWallets();
-        }
         // Re-connect and/or retry request if needed
-        if (deviceBusy && canRetry) {
+        if (canRetry && deviceBusy) {
           // Wait a few seconds and retry
           setTimeout(() => {
             this._request(payload, encReqCode, cb, retryCount - 1);
           }, 3000);
-        } else if ((wrongWallet || invalidEphemId) && canRetry) {
+        } else if (canRetry && (wrongWallet || invalidEphemId)) {
+          if (wrongWallet) {
+            // If we got a `wrongWallet` error, clear our wallet state, reconnect,
+            // and get the current active wallet before retrying the original request.
+            this._resetActiveWallets();
+          }
           // Reconnect and retry
           this.connect(this.deviceId, (err, isPaired) => {
             if (err) {
               // Abort on connection error
-              cb(err);
+              return cb(err);
             } else if (!isPaired) {
               // Abort if we are not paired
-              cb('Not paired to device.');
-            } else {
-              // Retry the original request
-              this._request(payload, encReqCode, cb, retryCount - 1);
+              return cb('Not paired to device.');
+            } 
+            // Retry the original request. 
+            // We may need to modify it to include the new wallet UID.
+            payload = this._replaceWalletUID(encReqCode, payload);
+            if (!payload) {
+              // Something is out of sync -- there is no wallet
+              return cb('Failed to retry request. Try reconnecting.');
             }
+            this._request(payload, encReqCode, cb, retryCount - 1);
           });
-        } else if (parsed.err) {
-          // If there was an error in the response, return it
+        } else if (!success) {
+          if (!parsed.err) {
+            return cb('Unknown error. Try reconnecting or updating your firmware.');
+          }
           cb(parsed.err);
         } else {
           // All good
@@ -1049,7 +1058,7 @@ export class Client {
   * @internal
   * @returns true if we are paired to the device already
   */
-  _handleConnect (res) {
+  private _handleConnect (res) {
     let off = 0;
     const pairingStatus = res.readUInt8(off);
     off++;
@@ -1072,7 +1081,7 @@ export class Client {
    * @category Device Response
    * @internal
    */
-  _handleEncResponse (encRes, len) {
+  private _handleEncResponse (encRes, len) {
     // Decrypt response
     const secret = this._getSharedSecret();
     const encData = encRes.slice(0, ENC_MSG_LEN);
@@ -1107,7 +1116,7 @@ export class Client {
    * @internal
    * @returns error (or null)
    */
-  _handlePair (encRes) {
+  private _handlePair (encRes) {
     const d = this._handleEncResponse(encRes, decResLengths.empty);
     if (d.err) return d.err;
     // Remove the pairing salt - we're paired!
@@ -1121,7 +1130,7 @@ export class Client {
    * @internal
    * @return an array of address strings
    */
-  _handleGetAddresses (encRes, flag) {
+  private _handleGetAddresses (encRes, flag) {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(
       encRes,
@@ -1175,7 +1184,7 @@ export class Client {
    * @internal
    * @param encRes - The encrypted response from the device.
    */
-  _handleGetWallets (encRes) {
+  private _handleGetWallets (encRes) {
     const decrypted = this._handleEncResponse(encRes, decResLengths.getWallets);
     if (decrypted.err !== null) return decrypted;
     const res = decrypted.data;
@@ -1225,7 +1234,7 @@ export class Client {
    * @param req - The original request data
    * @returns The transaction data, the transaction hash, and the signature.
    */
-  _handleSign (encRes, currencyType, req = null): { err: string } | SignData {
+  private _handleSign (encRes, currencyType, req = null): { err: string } | SignData {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(encRes, decResLengths.sign);
     if (decrypted.err !== null) return { err: decrypted.err };
@@ -1373,7 +1382,7 @@ export class Client {
    * @category Device Response
    * @internal
    */
-  _resetActiveWallets () {
+  private _resetActiveWallets () {
     this.activeWallets.internal.uid = EMPTY_WALLET_UID;
     this.activeWallets.internal.name = null;
     this.activeWallets.internal.capabilities = null;
@@ -1381,6 +1390,30 @@ export class Client {
     this.activeWallets.external.name = null;
     this.activeWallets.external.capabilities = null;
     return;
+  }
+
+  /**
+   * Update the payload with the current wallet UID.
+   * Some (not all) requests require the active wallet UID
+   * in order for Lattice firmware to accept them. If we get
+   * a "wrong wallet" error, the SDK will automatically request
+   * the current wallet UID from the device and retry the request,
+   * but the original request payload may need to be modified. 
+   */
+  private _replaceWalletUID (encReqCode, payload) {
+    const wallet = this.getActiveWallet();
+    if (!wallet) {
+      return null;
+    }
+    // Only certain request types need an updated wallet UID
+    if (encReqCode === 'GET_ADDRESSES') {
+      // Wallet UID is the first 32 bytes
+      wallet.uid.copy(payload, 0);
+    } else if (encReqCode === 'SIGN_TRANSACTION') {
+      // Wallet UID is bytes 2-34
+      wallet.uid.copy(payload, 2);
+    }
+    return payload;
   }
 
   /**
