@@ -26,6 +26,7 @@ import {
   messageConstants,
   REQUEST_TYPE_BYTE,
   responseCodes,
+  responseMsgs,
   signingSchema,
   VERSION_BYTE
 } from './constants';
@@ -993,9 +994,6 @@ export class Client {
           parsed.responseCode === responseCodes.RESP_ERR_WRONG_WALLET;
         const invalidEphemId =
           parsed.responseCode === responseCodes.RESP_ERR_INVALID_EPHEM_ID;
-        const success = 
-          parsed.responseCode === responseCodes.RESP_SUCCESS && 
-          !parsed.err;
         const canRetry = retryCount > 0;
         // Re-connect and/or retry request if needed
         if (canRetry && deviceBusy) {
@@ -1003,7 +1001,7 @@ export class Client {
           setTimeout(() => {
             this._request(payload, encReqCode, cb, retryCount - 1);
           }, 3000);
-        } else if (canRetry && (wrongWallet || invalidEphemId)) {
+        } else if (canRetry && ((wrongWallet && this._canReplaceWalletUID(encReqCode)) || invalidEphemId)) {
           if (wrongWallet) {
             // If we got a `wrongWallet` error, clear our wallet state, reconnect,
             // and get the current active wallet before retrying the original request.
@@ -1017,7 +1015,7 @@ export class Client {
             } else if (!isPaired) {
               // Abort if we are not paired
               return cb('Not paired to device.');
-            } 
+            }
             // Retry the original request. 
             // We may need to modify it to include the new wallet UID.
             payload = this._replaceWalletUID(encReqCode, payload);
@@ -1027,11 +1025,11 @@ export class Client {
             }
             this._request(payload, encReqCode, cb, retryCount - 1);
           });
-        } else if (!success) {
-          if (!parsed.err) {
-            return cb('Unknown error. Try reconnecting or updating your firmware.');
+        } else if (parsed.responseCode || parsed.err) {
+          if (parsed.err) {
+            return cb(parsed.err);
           }
-          cb(parsed.err);
+          cb(responseMsgs[parsed.responseCode] || 'Unknown request failure');
         } else {
           // All good
           cb(null, parsed.data, parsed.responseCode);
@@ -1406,14 +1404,22 @@ export class Client {
       return null;
     }
     // Only certain request types need an updated wallet UID
+    if (!this._canReplaceWalletUID(encReqCode)) {
+      return payload;
+    }
     if (encReqCode === 'GET_ADDRESSES') {
       // Wallet UID is the first 32 bytes
       wallet.uid.copy(payload, 0);
-    } else if (encReqCode === 'SIGN_TRANSACTION') {
-      // Wallet UID is bytes 2-34
-      wallet.uid.copy(payload, 2);
     }
     return payload;
+  }
+
+  /**
+   * Only certain types of requests can be retried in the event
+   * of a "wrong wallet" error.
+   */
+  private _canReplaceWalletUID (encReqCode) {
+    return encReqCode === 'GET_ADDRESSES';
   }
 
   /**
