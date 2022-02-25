@@ -841,7 +841,7 @@ export class Client {
    * @internal
    * @returns callback
    */
-  private _getActiveWallet (cb, forceRefresh = false) {
+  _getActiveWallet (cb, forceRefresh = false) {
     if (
       forceRefresh !== true &&
       (this.hasActiveWallet() === true || this.isPaired !== true)
@@ -866,7 +866,7 @@ export class Client {
    * @internal
    * @returns Buffer
    */
-  private _getSharedSecret () {
+  _getSharedSecret () {
     // Once every ~256 attempts, we will get a key that starts with a `00` byte, which
     // can lead to problems initializing AES if we don't force a 32 byte BE buffer.
     return Buffer.from(
@@ -880,7 +880,7 @@ export class Client {
    * @internal
    * @returns Buffer
    */
-  private _getEphemId () {
+  _getEphemId () {
     if (this.ephemeralPub === null) return null;
     // EphemId is the first 4 bytes of the hash of the shared secret
     const secret = this._getSharedSecret();
@@ -892,7 +892,7 @@ export class Client {
    * Builds an encrypted request
    * @internal
    */
-  private _buildEncRequest (enc_request_code, payload) {
+  _buildEncRequest (enc_request_code, payload) {
     // Get the ephemeral id - all encrypted requests require there to be an
     // epehemeral public key in order to send
     const ephemId = parseInt(this._getEphemId().toString('hex'), 16);
@@ -930,7 +930,7 @@ export class Client {
    * @param payload {buffer} - serialized payload
    * @returns {buffer}
    */
-  private _buildRequest (request_code, payload) {
+  _buildRequest (request_code, payload) {
     // Length of payload;
     // we add 1 to the payload length to account for the request_code byte
     let L = payload && Buffer.isBuffer(payload) ? payload.length + 1 : 1;
@@ -961,7 +961,7 @@ export class Client {
    * @internal
    * @returns The response code.
    */
-  private _request (payload, encReqCode, cb, retryCount = this.retryCount) {
+  _request (payload, encReqCode, cb, retryCount = this.retryCount) {
     if (!this.deviceId) {
       return cb('Device ID is not set. Please set it and try again.');
     } else if (encReqCode && encReqCodes[encReqCode] === undefined) {
@@ -1049,7 +1049,7 @@ export class Client {
   * @internal
   * @returns true if we are paired to the device already
   */
-  private _handleConnect (res) {
+  _handleConnect (res) {
     let off = 0;
     const pairingStatus = res.readUInt8(off);
     off++;
@@ -1072,7 +1072,7 @@ export class Client {
    * @category Device Response
    * @internal
    */
-  private _handleEncResponse (encRes, len) {
+  _handleEncResponse (encRes, len) {
     // Decrypt response
     const secret = this._getSharedSecret();
     const encData = encRes.slice(0, ENC_MSG_LEN);
@@ -1107,7 +1107,7 @@ export class Client {
    * @internal
    * @returns error (or null)
    */
-  private _handlePair (encRes) {
+  _handlePair (encRes) {
     const d = this._handleEncResponse(encRes, decResLengths.empty);
     if (d.err) return d.err;
     // Remove the pairing salt - we're paired!
@@ -1121,7 +1121,7 @@ export class Client {
    * @internal
    * @return an array of address strings
    */
-  private _handleGetAddresses (encRes, flag) {
+  _handleGetAddresses (encRes, flag) {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(
       encRes,
@@ -1175,7 +1175,7 @@ export class Client {
    * @internal
    * @param encRes - The encrypted response from the device.
    */
-  private _handleGetWallets (encRes) {
+  _handleGetWallets (encRes) {
     const decrypted = this._handleEncResponse(encRes, decResLengths.getWallets);
     if (decrypted.err !== null) return decrypted;
     const res = decrypted.data;
@@ -1225,7 +1225,7 @@ export class Client {
    * @param req - The original request data
    * @returns The transaction data, the transaction hash, and the signature.
    */
-  private _handleSign (encRes, currencyType, req = null): { err: string } | SignData {
+  _handleSign (encRes, currencyType, req = null): { err: string } | SignData {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(encRes, decResLengths.sign);
     if (decrypted.err !== null) return { err: decrypted.err };
@@ -1373,7 +1373,7 @@ export class Client {
    * @category Device Response
    * @internal
    */
-  private _resetActiveWallets () {
+  _resetActiveWallets () {
     this.activeWallets.internal.uid = EMPTY_WALLET_UID;
     this.activeWallets.internal.name = null;
     this.activeWallets.internal.capabilities = null;
