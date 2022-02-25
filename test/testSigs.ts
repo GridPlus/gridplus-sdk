@@ -253,9 +253,7 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     continueTests = sig !== sig2 && sig2 !== jsSig;
     expect(sig2).to.not.equal(jsSig, 'Addr8 sig was not random');
     expect(sig2).to.not.equal(sig, 'Addr8 sig was not random');
-  });
-
-  it('Should exit', async () => {
+    
     // Temporary exit
     console.log(
       'NOTE: There is a bug in firmware that does not allow these non-exportable\n' +
@@ -264,7 +262,7 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
       'first question to continue running the exportable seed tests.'
     );
     process.exit(1);
-  })
+  });
 });
 
 describe('Setup Test', () => {
