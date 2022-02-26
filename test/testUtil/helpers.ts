@@ -467,15 +467,6 @@ export const copyBuffer = (x) => {
   return Buffer.from(x.toString('hex'), 'hex');
 };
 
-export const getPubStr = (key) => {
-  const _pub = key.getPublic();
-  const pub = Buffer.alloc(65);
-  pub.writeUInt8(0x04, 0);
-  _pub.getX().toBuffer().copy(pub, 1);
-  _pub.getY().toBuffer().copy(pub, 33);
-  return pub.toString('hex');
-};
-
 // Convert a set of indices to a human readable bip32 path
 export const stringifyPath = (parent) => {
   const convert = (parent) => {
@@ -945,7 +936,6 @@ export default {
   setupTestClient,
   jobResErrCode,
   copyBuffer,
-  getPubStr,
   stringifyPath,
   stripDER,
   serializeGetAddressesJobData,
