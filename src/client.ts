@@ -106,7 +106,7 @@ export class Client {
   /**
    * @param params - Parameters are passed as an object.
    */
-  constructor({ baseUrl, crypto, name, privKey, timeout, retryCount }: {
+  constructor({ baseUrl, crypto, name, privKey, stateData, timeout, retryCount }: {
     /** The base URL of the signing server. */
     baseUrl?: string;
     /** The crypto library to use. Currently only 'secp256k1' is supported. */
@@ -123,6 +123,8 @@ export class Client {
     retryCount?: number;
     /** The time to wait for a response before cancelling. */
     timeout?: number;
+    /** User can pass in previous state data to rehydrate connected session */
+    stateData?: string;
   }) {
     // Definitions
     // if (!baseUrl) throw new Error('baseUrl is required');
@@ -164,6 +166,19 @@ export class Client {
         external: true,
       },
     };
+
+    // The user may pass in state data to rehydrate a session that was previously cached
+    if (stateData) {
+      this._unpackAndApplyStateData(stateData);
+    }
+  }
+
+  /**
+   * Get a JSON string containing state data that can be used to rehydrate a session.
+   * Pass the contents of this to the constructor as `stateData` to rehydrate.
+   */
+  public getStateData() {
+    return this._packStateData();
   }
 
   //=======================================================================
@@ -1421,6 +1436,62 @@ export class Client {
     }
     // Not allowed to retry
     return null;
+  }
+
+  /**
+   * Return JSON-stringified version of state data. Can be used to 
+   * rehydrate an SDK session without reconnecting to the target Lattice.
+   */
+  private _packStateData () {
+    const data = {
+      activeWallets: {
+        internal: {
+          uid: this.activeWallets.internal.uid.toString('hex'),
+          name: this.activeWallets.internal.name.toString(),
+          capabilities: this.activeWallets.internal.capabilities,
+        },
+        external: {
+          uid: this.activeWallets.external.uid.toString('hex'),
+          name: this.activeWallets.external.name.toString(),
+          capabilities: this.activeWallets.external.capabilities,
+        }
+      },
+      ephemeralPub: this.ephemeralPub ? 
+                    this.ephemeralPub.getPublic().toString('hex') :
+                    null,
+    };
+    return JSON.stringify(data);
+  }
+
+  /**
+   * Unpack a JSON-stringified version of state data and apply it to state.
+   * This will allow us to rehydrate an old session.
+   */
+  private _unpackAndApplyStateData(data) {
+    try {
+      const unpacked = JSON.parse(data);
+      const internalWallet = {
+        uid: Buffer.from(unpacked.activeWallets.internal.uid, 'hex'),
+        name: Buffer.from(unpacked.activeWallets.internal.name),
+        capabilities: unpacked.activeWallets.internal.capabilities,
+        external: false,
+      };
+      const externalWallet = {
+        uid: Buffer.from(unpacked.activeWallets.external.uid, 'hex'),
+        name: Buffer.from(unpacked.activeWallets.external.name),
+        capabilities: unpacked.activeWallets.external.capabilities,
+        external: true,
+      };
+      this.activeWallets.internal = internalWallet;
+      this.activeWallets.external = externalWallet;
+      if (unpacked.ephemeralPub) {
+        this.ephemeralPub = getP256KeyPairFromPub(
+          Buffer.from(unpacked.ephemeralPub, 'hex')
+        );
+      }
+    } catch (err) {
+      console.warn('Could not apply state data.')
+    }
   }
 
   /**

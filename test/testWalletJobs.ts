@@ -626,7 +626,7 @@ describe('signTx', () => {
     expect(res.numOutputs).to.equal(jobData.numRequests);
     // Ensure signatures validate against provided pubkey
     const outputKey = res.outputs[0].pubkey;
-    const outputPubStr = helpers.getPubStr(outputKey);
+    const outputPubStr = outputKey.getPublic().toString('hex');
     expect(
       outputKey.verify(jobData.sigReq[0].data, res.outputs[0].sig)
     ).to.equal(true);
@@ -660,7 +660,7 @@ describe('signTx', () => {
     expect(res.numOutputs).to.equal(jobData.numRequests);
     // Ensure signatures validate against provided pubkey
     const outputKey = res.outputs[0].pubkey;
-    const outputPubStr = helpers.getPubStr(outputKey);
+    const outputPubStr = outputKey.getPublic().toString('hex');
     expect(
       outputKey.verify(jobData.sigReq[0].data, res.outputs[0].sig)
     ).to.equal(true);
