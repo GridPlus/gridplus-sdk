@@ -1001,13 +1001,8 @@ export class Client {
           setTimeout(() => {
             this._request(payload, encReqCode, cb, retryCount - 1);
           }, 3000);
-        } else if (canRetry && ((wrongWallet && this._canReplaceWalletUID(encReqCode)) || invalidEphemId)) {
-          if (wrongWallet) {
-            // If we got a `wrongWallet` error, clear our wallet state, reconnect,
-            // and get the current active wallet before retrying the original request.
-            this._resetActiveWallets();
-          }
-          // Reconnect and retry
+        } else if (canRetry && invalidEphemId) {
+          // Encrypted channel got out of sync. Reconnect and retry.
           this.connect(this.deviceId, (err, isPaired) => {
             if (err) {
               // Abort on connection error
@@ -1016,12 +1011,25 @@ export class Client {
               // Abort if we are not paired
               return cb('Not paired to device.');
             }
-            // Retry the original request. 
-            // We may need to modify it to include the new wallet UID.
+            this._request(payload, encReqCode, cb, retryCount - 1);
+          });
+        } else if (canRetry && wrongWallet) {
+          // Incorrect wallet being requested. Clear wallet state.
+          this._resetActiveWallets();
+          // Reconnect, update wallet UID, and retry
+          this.connect(this.deviceId, (err, isPaired) => {
+            if (err) {
+              // Abort on connection error
+              return cb(err);
+            } else if (!isPaired) {
+              // Abort if we are not paired
+              return cb('Not paired to device.');
+            }
+            // Include the new wallet UID in the payload and retry
             payload = this._replaceWalletUID(encReqCode, payload);
             if (!payload) {
-              // Something is out of sync -- there is no wallet
-              return cb('Failed to retry request. Try reconnecting.');
+              // Not allowed to retry. Exit here.
+              return cb('Wrong wallet. Failed to switch. Please reconnect.');
             }
             this._request(payload, encReqCode, cb, retryCount - 1);
           });
@@ -1395,31 +1403,24 @@ export class Client {
    * Some (not all) requests require the active wallet UID
    * in order for Lattice firmware to accept them. If we get
    * a "wrong wallet" error, the SDK will automatically request
-   * the current wallet UID from the device and retry the request,
-   * but the original request payload may need to be modified. 
+   * the current wallet UID from the device and may retry the 
+   * request, but the original request payload must be modified. 
    */
   private _replaceWalletUID (encReqCode, payload) {
     const wallet = this.getActiveWallet();
     if (!wallet) {
       return null;
     }
-    // Only certain request types need an updated wallet UID
-    if (!this._canReplaceWalletUID(encReqCode)) {
+    // See if we can modify the payload and retry
+    if (encReqCode === 'GET_ADDRESSES') {
+      wallet.uid.copy(payload, 0);
+      return payload;
+    } else if (encReqCode === 'SIGN_TRANSACTION') {
+      wallet.uid.copy(payload, 2);
       return payload;
     }
-    if (encReqCode === 'GET_ADDRESSES') {
-      // Wallet UID is the first 32 bytes
-      wallet.uid.copy(payload, 0);
-    }
-    return payload;
-  }
-
-  /**
-   * Only certain types of requests can be retried in the event
-   * of a "wrong wallet" error.
-   */
-  private _canReplaceWalletUID (encReqCode) {
-    return encReqCode === 'GET_ADDRESSES';
+    // Not allowed to retry
+    return null;
   }
 
   /**
