@@ -170,7 +170,9 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     }
   });
   it('Should validate non-exportable seed sigs all differ and validate', async () => {
-    if (skipNonExportableSeed) return;
+    if (skipNonExportableSeed) {
+      return;
+    }
     txReq = {
       currency: 'ETH',
       chainId: 1,
@@ -256,6 +258,9 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
   });
 
   it('Should exit', async () => {
+    if (skipNonExportableSeed) {
+      return;
+    }
     // Temporary exit
     console.log(
       'NOTE: There is a bug in firmware that does not allow these non-exportable\n' +

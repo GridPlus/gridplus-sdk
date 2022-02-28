@@ -56,9 +56,9 @@ export const parseLattice1Response = function(r) {
   // Get response code
   const responseCode = payload.readUInt8(0);
   if (responseCode !== responseCodes.RESP_SUCCESS) {
-    parsed.err = `Error from device: ${
+    parsed.err = `${
       responseMsgs[responseCode] ? responseMsgs[responseCode] : 'Unknown Error'
-    }`;
+    } (Lattice)`;
     parsed.responseCode = responseCode;
     return parsed;
   } else {
