@@ -1,4 +1,3 @@
-require('it-each')({ testPerIteration: true });
 import { AbiCoder } from '@ethersproject/abi';
 import { expect } from 'chai';
 import crypto from 'crypto';
@@ -23,19 +22,12 @@ const uintTypes = ['uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256'];
 let client = null;
 let continueTests = true;
 let NUM_DEFS_SAVED = 0;
-
-// Definitions and indices (the latter are used with it.each and must be defined at the
-// top of the file).
 // Boundary conditions are tested with `boundaryAbiDefs` and random definitions are
 // filled into `abiDefs`.
 const boundaryAbiDefs = [];
-const boundaryIndices = [];
 createBoundaryDefs();
 const abiDefs = [];
 const tupleAbiDefs = [];
-const indices = [];
-for (let i = 0; i < boundaryAbiDefs.length; i++) boundaryIndices.push({ i });
-for (let i = 0; i < numIter; i++) indices.push({ i });
 
 // Transaction params
 const txData = {
@@ -570,7 +562,7 @@ describe('Setup client', () => {
   it('Should setup the test client', () => {
     client = helpers.setupTestClient(process.env);
     expect(client).to.not.equal(null);
-  });
+  })
 
   it('Should connect to a Lattice and make sure it is already paired.', async () => {
     // Again, we assume that if an `id` has already been set, we are paired
@@ -580,8 +572,8 @@ describe('Setup client', () => {
     expect(connectErr).to.equal(null);
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
-  });
-});
+  })
+})
 
 describe('Test ABI fetch, create, delete', () => {
   const TEST_DEF = {
@@ -747,7 +739,7 @@ describe('Preloaded ABI definitions', () => {
         _vals: ['0x39b657f4d86119e11de818e477a31c13feeb618c', 1234],
       },
     ];
-    erc20PreloadedDefs.forEach((def: any) => {
+    erc20PreloadedDefs.forEach((def) => {
       def._typeNames = getTypeNames(def.params);
       def.sig = buildFuncSelector(def);
     });
@@ -776,19 +768,19 @@ describe('Preloaded ABI definitions', () => {
       continueTests = false;
       expect(err).to.equal(null, err.message);
     }
-  });
-});
+  })
+})
 
 describe('Add ABI definitions', () => {
   let defsToLoad = [];
   beforeEach(() => {
     expect(continueTests).to.equal(true, 'Prior test failed. Aborting.');
-  });
+  })
 
   it(`Should generate and add ${numIter} ABI definitions to the Lattice`, async () => {
     try {
       for (let iter = 0; iter < numIter; iter++) {
-        const def: any = createDef();
+        const def = createDef();
         abiDefs.push(def);
         defsToLoad.push(def);
       }
@@ -796,12 +788,12 @@ describe('Add ABI definitions', () => {
       continueTests = false;
       expect(err).to.equal(null, err);
     }
-  });
+  })
 
   it(`Should generate and add ${numIter} tuple-based ABI defintions to the Lattice`, async () => {
     try {
       for (let iter = 0; iter < numIter; iter++) {
-        const def: any = createTupleDef();
+        const def = createTupleDef();
         tupleAbiDefs.push(def);
         defsToLoad.push(def);
       }
@@ -809,7 +801,7 @@ describe('Add ABI definitions', () => {
       continueTests = false;
       expect(err).to.equal(null, err);
     }
-  });
+  })
 
   it('Should test parsing of a 0x V2 ABI via Etherscan', async () => {
     const funcDef = {
@@ -909,7 +901,7 @@ describe('Add ABI definitions', () => {
     }
     const newDefs = abi.abiParsers.etherscan([funcDef]);
     defsToLoad = defsToLoad.concat(newDefs);
-  });
+  })
 
   it('Should add the ABI definitions', async () => {
     try {
@@ -923,21 +915,21 @@ describe('Add ABI definitions', () => {
       continueTests = false;
       expect(err).to.equal(null, err);
     }
-  });
-});
+  })
+})
 
 describe('Test ABI Markdown', () => {
   beforeEach(() => {
     expect(continueTests).to.equal(true, 'Prior test failed. Aborting.');
     req.data.data = null;
-  });
+  })
 
   it('Should inform the user what to do', async () => {
     question(
       'Please APPROVE all ABI-decoded payloads and REJECT all unformatted ones. Make sure the type matches the function name! Press enter.'
     );
     expect(true).to.equal(true);
-  });
+  })
 
   it('Should pass when variable arraySz is 0', async () => {
     const bytesDef = _.cloneDeep(boundaryAbiDefs[9]);
@@ -949,7 +941,7 @@ describe('Test ABI Markdown', () => {
       continueTests = false;
       expect(err).to.not.equal(null, err);
     }
-  });
+  })
 
   it('Should pass when dynamic param has size 0', async () => {
     const bytesDef = _.cloneDeep(boundaryAbiDefs[9]);
@@ -962,80 +954,56 @@ describe('Test ABI Markdown', () => {
       continueTests = false;
       expect(err).to.not.equal(null, err);
     }
-  });
+  })
 
-  //@ts-expect-error - it.each is not included in @types/mocha
-  it.each(
-    boundaryIndices,
-    'Test ABI markdown of boundary conditions #%s',
-    ['i'],
-    async (n, next) => {
-      const def: any = boundaryAbiDefs[n.i];
-      req.data.data = buildEthData(def);
-      try {
-        const sigResp: any = await helpers.execute(client, 'sign', req);
+  it('Should test ABI markdown of boundary contitions', async () => {
+    try {
+      continueTests = false;
+      for (let i = 0; i < boundaryAbiDefs.length; i++) {
+        const def = boundaryAbiDefs[i];
+        req.data.data = buildEthData(def);
+        const sigResp = await helpers.execute(client, 'sign', req);
         expect(sigResp.tx).to.not.equal(null);
         expect(sigResp.txHash).to.not.equal(null);
-        setTimeout(() => {
-          next();
-        }, 1000);
-      } catch (err) {
-        continueTests = false;
-        setTimeout(() => {
-          next(err);
-        }, 1000);
       }
+      continueTests = true;
+    } catch (err) {
+      expect(err).to.equal(null, err);
     }
-  );
+  })
 
-  //@ts-expect-error - it.each is not included in @types/mocha
-  it.each(
-    indices,
-    'Test ABI markdown of payload #%s (non-tuple)',
-    ['i'],
-    async (n, next) => {
-      const def: any = abiDefs[n.i];
-      req.data.data = buildEthData(def);
-      try {
-        const sigResp: any = await helpers.execute(client, 'sign', req);
+  it('Should test ABI markdown of random payloads (non-tuple)', async () => {
+    try {
+      continueTests = false;
+      for (let i = 0; i < abiDefs.length; i++) {
+        const def = abiDefs[n.i];
+        req.data.data = buildEthData(def);
+        const sigResp = await helpers.execute(client, 'sign', req);
         expect(sigResp.tx).to.not.equal(null);
         expect(sigResp.txHash).to.not.equal(null);
-        setTimeout(() => {
-          next();
-        }, 1000);
-      } catch (err) {
-        continueTests = false;
-        setTimeout(() => {
-          next(err);
-        }, 1000);
-      }
+      } 
+      continueTests = true;
+    } catch (err) {
+      expect(err).to.equal(null, err);
     }
-  );
+  })
 
-  //@ts-expect-error - it.each is not included in @types/mocha
-  it.each(
-    indices,
-    'Test ABI markdown of payload #%s (tuple)',
-    ['i'],
-    async (n, next) => {
-      const def: any = tupleAbiDefs[n.i];
-      req.data.data = buildEthData(def);
-      try {
-        const sigResp: any = await helpers.execute(client, 'sign', req);
+  it('Should test ABI markdown of random payloads (tuple)', async () => {
+    try {
+      continueTests = false;
+      for (let i = 0; i < tupleAbiDefs.length; i++) {
+        const def = tupleAbiDefs[n.i];
+        req.data.data = buildEthData(def);
+        const sigResp = await helpers.execute(client, 'sign', req);
         expect(sigResp.tx).to.not.equal(null);
         expect(sigResp.txHash).to.not.equal(null);
-        setTimeout(() => {
-          next();
-        }, 1000);
-      } catch (err) {
-        continueTests = false;
-        setTimeout(() => {
-          next(err);
-        }, 1000);
       }
+      continueTests = true;
+    } catch (err) {
+      expect(err).to.equal(null, err);
     }
-  );
-});
+  })
+})
 
 describe('Cleanup', () => {
   let records;

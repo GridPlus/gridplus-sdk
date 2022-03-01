@@ -14,7 +14,6 @@
 //
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)
-require('it-each')({ testPerIteration: true });
 import { expect } from 'chai';
 import crypto from 'crypto';
 import randomWords from 'random-words';
@@ -25,7 +24,6 @@ const prng = new seedrandom(process.env.SEED || 'myrandomseed');
 let client = null;
 let numRandom = 20; // Number of random tests to conduct
 const MSG_PAYLOAD_METADATA_SZ = 28; // Metadata that must go in ETH_MSG requests
-let ETH_GAS_PRICE_MAX: any; // value depends on firmware version
 let foundError = false;
 
 function randInt(n) {

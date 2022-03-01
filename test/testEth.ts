@@ -14,7 +14,6 @@
 //
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)
-require('it-each')({ testPerIteration: true });
 import { serialize } from '@ethersproject/transactions';
 import BN from 'bignumber.js';
 import { expect } from 'chai';
@@ -26,7 +25,6 @@ const prng = new seedrandom(process.env.SEED || 'myrandomseed');
 let client = null;
 let numRandom = process.env.N || 20; // Number of random tests to conduct
 const randomTxData = [];
-const randomTxDataLabels = [];
 let ETH_GAS_PRICE_MAX; // value depends on firmware version
 const ETH_GAS_LIMIT_MIN = 22000; // Ether transfer (smallest op) is 22k gas
 const ETH_GAS_LIMIT_MAX = 12500000; // 10M is bigger than the block size
@@ -41,11 +39,6 @@ const defaultTxData = {
 
 function randInt(n) {
   return Math.floor(n * prng.quick());
-}
-
-function buildIterLabels() {
-  for (let i = 0; i < numRandom; i++)
-    randomTxDataLabels.push({ label: `${i + 1}/${numRandom}`, number: i });
 }
 
 // Test boundaries for chainId sizes. We allow chainIds up to MAX_UINT64, but
@@ -162,8 +155,6 @@ async function testTxFail(req) {
 
 // Determine the number of random transactions we should build
 if (process.env.N) numRandom = parseInt(process.env.N);
-// Build the labels
-buildIterLabels();
 
 describe('Setup client', () => {
   it('Should setup the test client', () => {
@@ -551,23 +542,17 @@ describe('Test random transaction data', function () {
   beforeEach(() => {
     expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
   });
-  //@ts-expect-error - it.each is not included in @types/mocha
-  it.each(
-    randomTxDataLabels,
-    'Random transactions %s',
-    ['label'],
-    async function (n, next) {
-      const txData = randomTxData[n.number];
-      try {
+
+  it('Should test random transactions', async () => {
+    try {
+      continueTests = false;
+      for (let i = 0; i < randomTxData.length; i++) {
+        const txData = randomTxData[i];
         await testTxPass(buildTxReq(txData, txData._network));
-        setTimeout(() => {
-          next();
-        }, 2500);
-      } catch (err) {
-        setTimeout(() => {
-          next(err);
-        }, 2500);
       }
+      continueTests = true;
+    } catch (err) {
+      expect(err).to.equal(null, err);
     }
-  );
-});
+  })
+})

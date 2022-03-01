@@ -1,5 +1,4 @@
 // You must have `FEATURE_TEST_RUNNER=0` enabled in firmware to run these tests.
-require('it-each')({ testPerIteration: true });
 import bip32 from 'bip32';
 import { expect } from 'chai';
 import seedrandom from 'seedrandom';
@@ -18,7 +17,6 @@ function rand32Bit() {
   return Math.floor(prng.quick() * 2 ** 32);
 }
 const inputs = [];
-const numInputs = [];
 const count = process.env.N ? process.env.N : 3;
 for (let i = 0; i < count; i++) {
   const hash = Buffer.alloc(32);
@@ -30,11 +28,10 @@ for (let i = 0; i < count; i++) {
   const signerIdx = Math.floor(prng.quick() * 19); // Random signer (keep it inside initial cache of 20)
   const idx = Math.floor(prng.quick() * 25); // Random previous output index (keep it small)
   inputs.push({ hash: hash.toString('hex'), value, signerIdx, idx });
-  numInputs.push({ label: `${i + 1}`, number: i + 1 });
 }
 
 async function testSign(req, signingKeys, sigHashes) {
-  const tx: any = await helpers.execute(client, 'sign', req);
+  const tx = await helpers.execute(client, 'sign', req);
   expect(tx.sigs.length).to.equal(signingKeys.length);
   expect(tx.sigs.length).to.equal(sigHashes.length);
   for (let i = 0; i < tx.sigs.length; i++) {
@@ -154,151 +151,178 @@ describe('Test segwit spender (p2wpkh)', function () {
   beforeEach(() => {
     expect(continueTests).to.equal(true, 'Previous test failed. Aborting');
   });
-  //@ts-expect-error - it.each is not included in @types/mocha
-  it.each(
-    numInputs,
-    '%s inputs (p2wpkh->p2pkh)',
-    ['label'],
-    async function (n, next) {
-      expect(wallet).to.not.equal(null, 'Wallet not available');
-      const inputsSlice = inputs.slice(0, n.number);
-      const opts = {
-        spenderPurpose: helpers.BTC_PURPOSE_P2WPKH,
-        recipientPurpose: helpers.BTC_PURPOSE_P2PKH,
-      };
-      await runTestSet(opts, wallet, inputsSlice, next);
+
+  it('Should test p2wpkh->p2pkh', async () => {
+    try {
+      continueTests = false;
+      for (let i = 0; i < inputs.length; i++) {
+        expect(wallet).to.not.equal(null, 'Wallet not available');
+        const inputsSlice = inputs.slice(0, i + 1);
+        const opts = {
+          spenderPurpose: helpers.BTC_PURPOSE_P2WPKH,
+          recipientPurpose: helpers.BTC_PURPOSE_P2PKH,
+        };
+        await runTestSet(opts, wallet, inputsSlice, next);
+        continueTests = true;
+      }
+    } catch (err) {
+      expect(err).to.equal(null, err);
     }
-  );
-  //@ts-expect-error - it.each is not included in @types/mocha
-  it.each(
-    numInputs,
-    '%s inputs (p2wpkh->p2sh-p2wpkh)',
-    ['label'],
-    async function (n, next) {
-      expect(wallet).to.not.equal(null, 'Wallet not available');
-      const inputsSlice = inputs.slice(0, n.number);
-      const opts = {
-        spenderPurpose: helpers.BTC_PURPOSE_P2WPKH,
-        recipientPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
-      };
-      await runTestSet(opts, wallet, inputsSlice, next);
+  })
+
+  it('Should test p2wpkh->p2sh-p2wpkh', async () => {
+    try {
+      continueTests = false;
+      for (let i = 0; i < inputs.length; i++) {
+        expect(wallet).to.not.equal(null, 'Wallet not available');
+        const inputsSlice = inputs.slice(0, i + 1);
+        const opts = {
+          spenderPurpose: helpers.BTC_PURPOSE_P2WPKH,
+          recipientPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
+        };
+        await runTestSet(opts, wallet, inputsSlice, next);
+        continueTests = true;
+      }
+    } catch (err) {
+      expect(err).to.equal(null, err);
     }
-  );
-  //@ts-expect-error - it.each is not included in @types/mocha
-  it.each(
-    numInputs,
-    '%s inputs (p2wpkh->p2wpkh)',
-    ['label'],
-    async function (n, next) {
-      expect(wallet).to.not.equal(null, 'Wallet not available');
-      const inputsSlice = inputs.slice(0, n.number);
-      const opts = {
-        spenderPurpose: helpers.BTC_PURPOSE_P2WPKH,
-        recipientPurpose: helpers.BTC_PURPOSE_P2WPKH,
-      };
-      await runTestSet(opts, wallet, inputsSlice, next);
+  })
+
+  it('Should test p2wpkh->p2wpkh', async () => {
+    try {
+      continueTests = false;
+      for (let i = 0; i < inputs.length; i++) {
+        expect(wallet).to.not.equal(null, 'Wallet not available');
+        const inputsSlice = inputs.slice(0, i + 1);
+        const opts = {
+          spenderPurpose: helpers.BTC_PURPOSE_P2WPKH,
+          recipientPurpose: helpers.BTC_PURPOSE_P2WPKH,
+        };
+        await runTestSet(opts, wallet, inputsSlice, next);
+        continueTests = true;
+      }
+    } catch (err) {
+      expect(err).to.equal(null, err);
     }
-  );
-});
+  })
+})
 
 describe('Test wrapped segwit spender (p2sh-p2wpkh)', function () {
   beforeEach(() => {
     expect(continueTests).to.equal(true, 'Previous test failed. Aborting');
   });
-  //@ts-expect-error - it.each is not included in @types/mocha
-  it.each(
-    numInputs,
-    '%s inputs (p2sh-p2wpkh->p2pkh)',
-    ['label'],
-    async function (n, next) {
-      expect(wallet).to.not.equal(null, 'Wallet not available');
-      const inputsSlice = inputs.slice(0, n.number);
-      const opts = {
-        spenderPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
-        recipientPurpose: helpers.BTC_PURPOSE_P2PKH,
-      };
-      await runTestSet(opts, wallet, inputsSlice, next);
+
+  it('Should test p2sh-p2wpkh->p2pkh', async () => {
+    try {
+      continueTests = false;
+      for (let i = 0; i < inputs.length; i++) {
+        expect(wallet).to.not.equal(null, 'Wallet not available');
+        const inputsSlice = inputs.slice(0, i + 1);
+        const opts = {
+          spenderPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
+          recipientPurpose: helpers.BTC_PURPOSE_P2PKH,
+        };
+        await runTestSet(opts, wallet, inputsSlice, next);
+        continueTests = true;
+      }
+    } catch (err) {
+      expect(err).to.equal(null, err);
     }
-  );
-  //@ts-expect-error - it.each is not included in @types/mocha
-  it.each(
-    numInputs,
-    '%s inputs (p2sh-p2wpkh->p2sh-p2wpkh)',
-    ['label'],
-    async function (n, next) {
-      expect(wallet).to.not.equal(null, 'Wallet not available');
-      const inputsSlice = inputs.slice(0, n.number);
-      const opts = {
-        spenderPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
-        recipientPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
-      };
-      await runTestSet(opts, wallet, inputsSlice, next);
+  })
+
+  it('Should test p2sh-p2wpkh->p2sh-p2wpkh', async () => {
+    try {
+      continueTests = false;
+      for (let i = 0; i < inputs.length; i++) {
+        expect(wallet).to.not.equal(null, 'Wallet not available');
+        const inputsSlice = inputs.slice(0, i + 1);
+        const opts = {
+          spenderPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
+          recipientPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
+        };
+        await runTestSet(opts, wallet, inputsSlice, next);
+        continueTests = true;
+      }
+    } catch (err) {
+      expect(err).to.equal(null, err);
     }
-  );
-  //@ts-expect-error - it.each is not included in @types/mocha
-  it.each(
-    numInputs,
-    '%s inputs (p2sh-p2wpkh->p2wpkh)',
-    ['label'],
-    async function (n, next) {
-      expect(wallet).to.not.equal(null, 'Wallet not available');
-      const inputsSlice = inputs.slice(0, n.number);
-      const opts = {
-        spenderPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
-        recipientPurpose: helpers.BTC_PURPOSE_P2WPKH,
-      };
-      await runTestSet(opts, wallet, inputsSlice, next);
+  })
+
+  it('Should test p2sh-p2wpkh->p2wpkh', async () => {
+    try {
+      continueTests = false;
+      for (let i = 0; i < inputs.length; i++) {
+        expect(wallet).to.not.equal(null, 'Wallet not available');
+        const inputsSlice = inputs.slice(0, i + 1);
+        const opts = {
+          spenderPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
+          recipientPurpose: helpers.BTC_PURPOSE_P2WPKH,
+        };
+        await runTestSet(opts, wallet, inputsSlice, next);
+        continueTests = true;
+      }
+    } catch (err) {
+      expect(err).to.equal(null, err);
     }
-  );
-});
+  })
+})
 
 describe('Test legacy spender (p2pkh)', function () {
   beforeEach(() => {
     expect(continueTests).to.equal(true, 'Previous test failed. Aborting');
   });
-  //@ts-expect-error - it.each is not included in @types/mocha
-  it.each(
-    numInputs,
-    '%s inputs (p2pkh->p2pkh)',
-    ['label'],
-    async function (n, next) {
-      expect(wallet).to.not.equal(null, 'Wallet not available');
-      const inputsSlice = inputs.slice(0, n.number);
-      const opts = {
-        spenderPurpose: helpers.BTC_PURPOSE_P2PKH,
-        recipientPurpose: helpers.BTC_PURPOSE_P2PKH,
-      };
-      await runTestSet(opts, wallet, inputsSlice, next);
+
+  it('Should test p2pkh->p2pkh', async () => {
+    try {
+      continueTests = false;
+      for (let i = 0; i < inputs.length; i++) {
+        expect(wallet).to.not.equal(null, 'Wallet not available');
+        const inputsSlice = inputs.slice(0, i + 1);
+        const opts = {
+          spenderPurpose: helpers.BTC_PURPOSE_P2PKH,
+          recipientPurpose: helpers.BTC_PURPOSE_P2PKH,
+        };
+        await runTestSet(opts, wallet, inputsSlice, next);
+        continueTests = true;
+      }
+    } catch (err) {
+      expect(err).to.equal(null, err);
     }
-  );
-  //@ts-expect-error - it.each is not included in @types/mocha
-  it.each(
-    numInputs,
-    '%s inputs (p2pkh->p2sh-p2wpkh)',
-    ['label'],
-    async function (n, next) {
-      expect(wallet).to.not.equal(null, 'Wallet not available');
-      const inputsSlice = inputs.slice(0, n.number);
-      const opts = {
-        spenderPurpose: helpers.BTC_PURPOSE_P2PKH,
-        recipientPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
-      };
-      await runTestSet(opts, wallet, inputsSlice, next);
+  })
+
+  it('Should test p2pkh->p2sh-p2wpkh', async () => {
+    try {
+      continueTests = false;
+      for (let i = 0; i < inputs.length; i++) {
+        expect(wallet).to.not.equal(null, 'Wallet not available');
+        const inputsSlice = inputs.slice(0, i + 1);
+        const opts = {
+          spenderPurpose: helpers.BTC_PURPOSE_P2PKH,
+          recipientPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
+        };
+        await runTestSet(opts, wallet, inputsSlice, next);
+        continueTests = true;
+      }
+    } catch (err) {
+      expect(err).to.equal(null, err);
     }
-  );
-  //@ts-expect-error - it.each is not included in @types/mocha
-  it.each(
-    numInputs,
-    '%s inputs (p2pkh->p2wpkh)',
-    ['label'],
-    async function (n, next) {
-      expect(wallet).to.not.equal(null, 'Wallet not available');
-      const inputsSlice = inputs.slice(0, n.number);
-      const opts = {
-        spenderPurpose: helpers.BTC_PURPOSE_P2PKH,
-        recipientPurpose: helpers.BTC_PURPOSE_P2WPKH,
-      };
-      await runTestSet(opts, wallet, inputsSlice, next);
+  })
+
+  it('Should test p2pkh->p2wpkh', async () => {
+    try {
+      continueTests = false;
+      for (let i = 0; i < inputs.length; i++) {
+        expect(wallet).to.not.equal(null, 'Wallet not available');
+        const inputsSlice = inputs.slice(0, i + 1);
+        const opts = {
+          spenderPurpose: helpers.BTC_PURPOSE_P2PKH,
+          recipientPurpose: helpers.BTC_PURPOSE_P2WPKH,
+        };
+        await runTestSet(opts, wallet, inputsSlice, next);
+        continueTests = true;
+      }
+    } catch (err) {
+      expect(err).to.equal(null, err);
     }
-  );
-});
+  })
+})
