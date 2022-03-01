@@ -24,7 +24,7 @@ const prng = new seedrandom(process.env.SEED || 'myrandomseed');
 let client = null;
 let numRandom = 20; // Number of random tests to conduct
 const MSG_PAYLOAD_METADATA_SZ = 28; // Metadata that must go in ETH_MSG requests
-let foundError = false;
+let continueTests = true;
 
 function randInt(n) {
   return Math.floor(n * prng.quick());
@@ -65,24 +65,19 @@ function buildMsgReq(
   };
 }
 
-async function testMsg(req, pass = true) {
+async function testMsg(req, expectPass = true) {
+  continueTests = false;
   try {
-    const sig: any = await helpers.execute(client, 'sign', req);
+    const sig = await helpers.execute(client, 'sign', req);
     // Validation happens already in the client
-    if (pass === true) {
-      foundError = sig.sig === null;
+    if (expectPass) {
       expect(sig.sig).to.not.equal(null);
-    } else {
-      foundError = true;
-      expect(sig.sig).to.equal(null);
+      continueTests = true;
     }
   } catch (err) {
-    if (pass === true) {
-      foundError = true;
-      expect(err).to.equal(null);
-    } else {
-      foundError = err === null;
-      expect(err).to.not.equal(null);
+    if (!expectPass) {
+      expect(err).to.not.equal(null, 'Expected failure but got pass');
+      continueTests = true;
     }
   }
 }
@@ -97,19 +92,25 @@ describe('Setup client', () => {
   });
 
   it('Should connect to a Lattice and make sure it is already paired.', async () => {
-    // Again, we assume that if an `id` has already been set, we are paired
-    // with the hardcoded privkey above.
-    expect(process.env.DEVICE_ID).to.not.equal(null);
-    const connectErr = await helpers.connect(client, process.env.DEVICE_ID);
-    expect(connectErr).to.equal(null);
-    expect(client.isPaired).to.equal(true);
-    expect(client.hasActiveWallet()).to.equal(true);
+    try {
+      continueTests = false;
+      // Again, we assume that if an `id` has already been set, we are paired
+      // with the hardcoded privkey above.
+      expect(process.env.DEVICE_ID).to.not.equal(null);
+      const connectErr = await helpers.connect(client, process.env.DEVICE_ID);
+      expect(connectErr).to.equal(null);
+      expect(client.isPaired).to.equal(true);
+      expect(client.hasActiveWallet()).to.equal(true);
+      continueTests = true;
+    } catch (err) {
+      expect(err).to.equal(null, err);
+    }
   });
 });
 
 describe('Test ETH personalSign', function () {
   beforeEach(() => {
-    expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
+    expect(continueTests).to.equal(true, 'Error found in prior test. Aborting.');
   });
 
   it('Should throw error when message contains non-ASCII characters', async () => {
@@ -121,25 +122,16 @@ describe('Test ETH personalSign', function () {
   });
 
   it('Should test ASCII buffers', async () => {
-    await testMsg(
-      buildMsgReq(Buffer.from('i am an ascii buffer'), 'signPersonal'),
-      true
-    );
-    await testMsg(
-      buildMsgReq(Buffer.from('{\n\ttest: foo\n}'), 'signPersonal'),
-      false
-    );
+    await testMsg(buildMsgReq(Buffer.from('i am an ascii buffer'), 'signPersonal'));
+    await testMsg(buildMsgReq(Buffer.from('{\n\ttest: foo\n}'), 'signPersonal'));
   });
 
   it('Should test hex buffers', async () => {
-    await testMsg(
-      buildMsgReq(Buffer.from('abcdef', 'hex'), 'signPersonal'),
-      true
-    );
+    await testMsg(buildMsgReq(Buffer.from('abcdef', 'hex'), 'signPersonal'));
   });
 
   it('Should test a message that needs to be prehashed', async () => {
-    await testMsg(buildMsgReq(crypto.randomBytes(4000), 'signPersonal'), true);
+    await testMsg(buildMsgReq(crypto.randomBytes(4000), 'signPersonal'));
   });
 
   it('Msg: sign_personal boundary conditions and auto-rejected requests', async () => {
@@ -165,8 +157,8 @@ describe('Test ETH personalSign', function () {
     // I guess all this tests is that the first one is shown in plaintext while the second
     // one (which is too large) gets prehashed.
     const largeSignPath = [x, HARDENED_OFFSET + 60, x, x, x];
-    await testMsg(buildMsgReq(maxValid, protocol, largeSignPath), true);
-    await testMsg(buildMsgReq(minInvalid, protocol, largeSignPath), true);
+    await testMsg(buildMsgReq(maxValid, protocol, largeSignPath));
+    await testMsg(buildMsgReq(minInvalid, protocol, largeSignPath));
     // Using a zero length payload should auto-reject
     await testMsg(buildMsgReq(zeroInvalid, protocol), false);
   });
@@ -180,7 +172,7 @@ describe('Test ETH personalSign', function () {
 
 describe('Test ETH EIP712', function () {
   beforeEach(() => {
-    expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
+    expect(continueTests).to.equal(true, 'Error found in prior test. Aborting.');
   });
 
   it('Should test a message that needs to be prehashed', async () => {

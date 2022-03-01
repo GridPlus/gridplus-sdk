@@ -19,10 +19,12 @@ import BN from 'bignumber.js';
 import { expect } from 'chai';
 import crypto from 'crypto';
 import seedrandom from 'seedrandom';
+import { question } from 'readline-sync';
 import { getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
 import helpers from './testUtil/helpers';
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
 let client = null;
+let continueTests = true;
 let numRandom = process.env.N || 20; // Number of random tests to conduct
 const randomTxData = [];
 let ETH_GAS_PRICE_MAX; // value depends on firmware version
@@ -53,7 +55,7 @@ function buildRandomTxData(fwConstants) {
     fwConstants.ethMaxDataSz +
     fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
   for (let i = 0; i < numRandom; i++) {
-    const tx: any = {
+    const tx = {
       nonce: `0x${new BN(randInt(16000)).toString(16)}`,
       gasPrice: `0x${new BN(randInt(ETH_GAS_PRICE_MAX)).toString(16)}`,
       gasLimit: `0x${new BN(
@@ -91,17 +93,15 @@ function buildTxReq(
   };
 }
 
-let foundError = false;
-
 async function testTxPass(req) {
-  const tx: any = await helpers.execute(client, 'sign', req);
+  continueTests = false;
+  const tx = await helpers.execute(client, 'sign', req);
   // Make sure there is transaction data returned
   // (this is ready for broadcast)
   const txIsNull = tx.tx === null;
-  if (txIsNull === true) foundError = true;
   expect(txIsNull).to.equal(false);
   // Check the transaction data against a reference implementation
-  const txData: any = {
+  const txData = {
     type: req.data.type || null,
     nonce: req.data.nonce,
     to: req.data.to,
@@ -131,26 +131,20 @@ async function testTxPass(req) {
   // There is one test where we submit an address without the prefix
   if (txData.to.slice(0, 2) !== '0x') txData.to = `0x${txData.to}`;
   const expectedTx = serialize(txData, sigData);
-  if (tx.tx !== expectedTx) {
-    foundError = true;
-  }
   expect(tx.tx).to.equal(expectedTx);
+  continueTests = true;
   return tx;
 }
 
 async function testTxFail(req) {
-  let tx;
+  continueTests = false;
   try {
-    tx = await helpers.execute(client, 'sign', req);
+    await helpers.execute(client, 'sign', req);
+    continueTests = false;
   } catch (err) {
-    expect(err).to.not.equal(null);
-    return;
+    expect(err).to.not.equal(null, 'Expected failure, but got pass');
+    continueTests = true;
   }
-  const txIsNull = tx.tx === null;
-  expect(txIsNull).to.equal(
-    true,
-    'Transaction successful but failure was expected.'
-  );
 }
 
 // Determine the number of random transactions we should build
@@ -179,6 +173,10 @@ describe('Setup client', () => {
 });
 
 describe('Test new transaction types', () => {
+  beforeEach(() => {
+    expect(continueTests).to.equal(true, 'Error found in prior test. Aborting.');
+  })
+
   it('Should test eip1559 params', async () => {
     const txData = {
       type: 2,
@@ -191,7 +189,7 @@ describe('Test new transaction types', () => {
       data: '0xdeadbeef',
     };
     await testTxPass(buildTxReq(txData));
-  });
+  })
 
   it('Should test eip1559 on a non-EIP155 network', async () => {
     const txData = {
@@ -206,7 +204,7 @@ describe('Test new transaction types', () => {
       data: '0xdeadbeef',
     };
     await testTxPass(buildTxReq(txData));
-  });
+  })
 
   it('Should test eip1559 with no access list', async () => {
     const txData = {
@@ -221,7 +219,7 @@ describe('Test new transaction types', () => {
       data: '0xdeadbeef',
     };
     await testTxPass(buildTxReq(txData));
-  });
+  })
 
   it('Should test eip1559 with an access list (should pre-hash)', async () => {
     const txData = {
@@ -248,7 +246,7 @@ describe('Test new transaction types', () => {
       ],
     };
     await testTxPass(buildTxReq(txData));
-  });
+  })
 
   it('Should test eip2930 with no access list', async () => {
     const txData = {
@@ -261,7 +259,7 @@ describe('Test new transaction types', () => {
       data: '0xdeadbeef',
     };
     await testTxPass(buildTxReq(txData));
-  });
+  })
 
   it('Should test eip2930 with an access list (should pre-hash)', async () => {
     const txData = {
@@ -286,18 +284,14 @@ describe('Test new transaction types', () => {
       ],
     };
     await testTxPass(buildTxReq(txData));
-  });
-});
+  })
+})
 
 if (!process.env.skip) {
   describe('Test ETH Tx Params', () => {
     beforeEach(() => {
-      expect(foundError).to.equal(
-        false,
-        'Error found in prior test. Aborting.'
-      );
-      setTimeout(() => { return undefined }, 5000);
-    });
+      expect(continueTests).to.equal(true, 'Error found in prior test. Aborting.');
+    })
 
     it('Should test and validate signatures from shorter derivation paths', async () => {
       if (getFwVersionConst(client.fwVersion).varAddrPathSzAllowed) {
@@ -314,13 +308,14 @@ if (!process.env.skip) {
         await testTxPass(buildTxReq(txData, 1, path.slice(0, 2)));
         await testTxFail(buildTxReq(txData, 1, path.slice(0, 1)));
       }
-    });
+    })
+
     it('Should test named units', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
       await testTxPass(buildTxReq(txData, `0x${(137).toString(16)}`));
       await testTxPass(buildTxReq(txData, `0x${(56).toString(16)}`));
       await testTxPass(buildTxReq(txData, `0x${(43114).toString(16)}`));
-    });
+    })
 
     it('Should test range of chainId sizes and EIP155 tag', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
@@ -377,17 +372,15 @@ if (!process.env.skip) {
       const numChainId = 10000;
       chainId = `0x${numChainId.toString(16)}`; // 0x2710
       await testTxPass(buildTxReq(txData, chainId));
-    });
+    })
 
     it('Should test dataSz + chainId length boundaries', async () => {
       // Instruct the user to reject pre-hashed payloads
-      const t =
-        '\n\nPlease REJECT pre-hashed transactions in this test. Press Y to continue.';
-      const continueTests = require('cli-interact').getYesNo(t);
-      expect(continueTests).to.equal(true);
-
+      question(
+        'Please REJECT pre-hashed transactions in this test. Press enter to continue.'
+      );
       const txData = JSON.parse(JSON.stringify(defaultTxData));
-      let chainId: any = 1;
+      let chainId = 1;
 
       // Test boundary of new dataSz
       chainId = getChainId(51, 0); // 8 byte id
@@ -418,7 +411,7 @@ if (!process.env.skip) {
         .randomBytes(maxDataSz - chainIdSz + 1)
         .toString('hex')}`;
       await testTxFail(buildTxReq(txData, chainId));
-    });
+    })
 
     it('Should test range of `value`', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
@@ -435,19 +428,9 @@ if (!process.env.skip) {
       txData.value =
         '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
       await testTxPass(buildTxReq(txData));
-    });
+    })
 
     it('Should test the range of `data`', async () => {
-      const txData = JSON.parse(JSON.stringify(defaultTxData));
-
-      // Expected passes
-      txData.data = null;
-      await testTxPass(buildTxReq(txData));
-      txData.data = '0x';
-      await testTxPass(buildTxReq(txData));
-      txData.data = '0x12345678';
-      await testTxPass(buildTxReq(txData));
-
       // Check upper limit
       function buildDataStr(x, n) {
         x = x < 256 ? x : 0;
@@ -457,6 +440,15 @@ if (!process.env.skip) {
         for (let i = 0; i < n; i++) s += xs;
         return s;
       }
+      const txData = JSON.parse(JSON.stringify(defaultTxData));
+
+      // Expected passes
+      txData.data = null;
+      await testTxPass(buildTxReq(txData));
+      txData.data = '0x';
+      await testTxPass(buildTxReq(txData));
+      txData.data = '0x12345678';
+      await testTxPass(buildTxReq(txData));
       const fwConstants = getFwVersionConst(client.fwVersion);
       const maxDataSz =
         fwConstants.ethMaxDataSz +
@@ -467,15 +459,14 @@ if (!process.env.skip) {
       txData.data = buildDataStr(2, maxDataSz);
       await testTxPass(buildTxReq(txData));
 
-      const t =
-        '\n\nPlease REJECT the following tx if it is pre-hashed. Press Y to continue.';
-      const continueTests = require('cli-interact').getYesNo(t);
-      expect(continueTests).to.equal(true);
+      question(
+        'Please REJECT the following tx if it is pre-hashed. Press enter to continue.'
+      );
 
       // Expected failures
       txData.data = buildDataStr(3, maxDataSz + 1);
       await testTxFail(buildTxReq(txData));
-    });
+    })
 
     it('Should test the range of `gasPrice`', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
@@ -501,7 +492,7 @@ if (!process.env.skip) {
       await testTxPass(buildTxReq(txData));
       txData.to = '01e242e54155b1abc71fc118065270cecaaf8b7768';
       await testTxFail(buildTxReq(txData));
-    });
+    })
 
     it('Should test the range of `nonce`', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
@@ -526,7 +517,7 @@ if (!process.env.skip) {
       // expect a result that does not include EIP155 in the payload.
       txData.eip155 = false;
       const numChainId = 10000;
-      const chainId: any = `0x${numChainId.toString(16)}`; // 0x2710
+      const chainId = `0x${numChainId.toString(16)}`; // 0x2710
       await testTxPass(buildTxReq(txData, chainId));
       const res = await testTxPass(buildTxReq(txData, chainId));
       // For non-EIP155 transactions, we expect `v` to be 27 or 28
@@ -534,25 +525,19 @@ if (!process.env.skip) {
         (27).toString(16),
         (28).toString(16),
       ]);
-    });
-  });
+    })
+  })
 }
 
 describe('Test random transaction data', function () {
   beforeEach(() => {
-    expect(foundError).to.equal(false, 'Error found in prior test. Aborting.');
-  });
+    expect(continueTests).to.equal(true, 'Error found in prior test. Aborting.');
+  })
 
   it('Should test random transactions', async () => {
-    try {
-      continueTests = false;
-      for (let i = 0; i < randomTxData.length; i++) {
-        const txData = randomTxData[i];
-        await testTxPass(buildTxReq(txData, txData._network));
-      }
-      continueTests = true;
-    } catch (err) {
-      expect(err).to.equal(null, err);
+    for (let i = 0; i < randomTxData.length; i++) {
+      const txData = randomTxData[i];
+      await testTxPass(buildTxReq(txData, txData._network));
     }
   })
 })

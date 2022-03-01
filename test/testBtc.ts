@@ -81,7 +81,7 @@ async function run(p) {
   await testSign(p.txReq, p.signingKeys, p.sigHashes);
 }
 
-async function runTestSet(opts, wallet, inputsSlice, next) {
+async function runTestSet(opts, wallet, inputsSlice) {
   if (TEST_TESTNET) {
     // Testnet + change
     try {
@@ -96,7 +96,6 @@ async function runTestSet(opts, wallet, inputsSlice, next) {
         `Failed in (testnet, change): ${err.message()}`
       );
       continueTests = false;
-      next(err);
     }
     // Testnet + no change
     try {
@@ -111,7 +110,6 @@ async function runTestSet(opts, wallet, inputsSlice, next) {
         `Failed in (testnet, !change): ${err.message()}`
       );
       continueTests = false;
-      next(err);
     }
   }
   // Mainnet + change
@@ -127,7 +125,6 @@ async function runTestSet(opts, wallet, inputsSlice, next) {
       `Failed in (!testnet, change): ${err.message()}`
     );
     continueTests = false;
-    next(err);
   }
   // Mainnet + no change
   try {
@@ -142,9 +139,7 @@ async function runTestSet(opts, wallet, inputsSlice, next) {
       `Failed in (!testnet, !change): ${err.message()}`
     );
     continueTests = false;
-    next(err);
   }
-  next();
 }
 
 describe('Test segwit spender (p2wpkh)', function () {
@@ -162,7 +157,7 @@ describe('Test segwit spender (p2wpkh)', function () {
           spenderPurpose: helpers.BTC_PURPOSE_P2WPKH,
           recipientPurpose: helpers.BTC_PURPOSE_P2PKH,
         };
-        await runTestSet(opts, wallet, inputsSlice, next);
+        await runTestSet(opts, wallet, inputsSlice);
         continueTests = true;
       }
     } catch (err) {
@@ -180,7 +175,7 @@ describe('Test segwit spender (p2wpkh)', function () {
           spenderPurpose: helpers.BTC_PURPOSE_P2WPKH,
           recipientPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
         };
-        await runTestSet(opts, wallet, inputsSlice, next);
+        await runTestSet(opts, wallet, inputsSlice);
         continueTests = true;
       }
     } catch (err) {
@@ -198,7 +193,7 @@ describe('Test segwit spender (p2wpkh)', function () {
           spenderPurpose: helpers.BTC_PURPOSE_P2WPKH,
           recipientPurpose: helpers.BTC_PURPOSE_P2WPKH,
         };
-        await runTestSet(opts, wallet, inputsSlice, next);
+        await runTestSet(opts, wallet, inputsSlice);
         continueTests = true;
       }
     } catch (err) {
@@ -222,7 +217,7 @@ describe('Test wrapped segwit spender (p2sh-p2wpkh)', function () {
           spenderPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
           recipientPurpose: helpers.BTC_PURPOSE_P2PKH,
         };
-        await runTestSet(opts, wallet, inputsSlice, next);
+        await runTestSet(opts, wallet, inputsSlice);
         continueTests = true;
       }
     } catch (err) {
@@ -240,7 +235,7 @@ describe('Test wrapped segwit spender (p2sh-p2wpkh)', function () {
           spenderPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
           recipientPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
         };
-        await runTestSet(opts, wallet, inputsSlice, next);
+        await runTestSet(opts, wallet, inputsSlice);
         continueTests = true;
       }
     } catch (err) {
@@ -258,7 +253,7 @@ describe('Test wrapped segwit spender (p2sh-p2wpkh)', function () {
           spenderPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
           recipientPurpose: helpers.BTC_PURPOSE_P2WPKH,
         };
-        await runTestSet(opts, wallet, inputsSlice, next);
+        await runTestSet(opts, wallet, inputsSlice);
         continueTests = true;
       }
     } catch (err) {
@@ -282,7 +277,7 @@ describe('Test legacy spender (p2pkh)', function () {
           spenderPurpose: helpers.BTC_PURPOSE_P2PKH,
           recipientPurpose: helpers.BTC_PURPOSE_P2PKH,
         };
-        await runTestSet(opts, wallet, inputsSlice, next);
+        await runTestSet(opts, wallet, inputsSlice);
         continueTests = true;
       }
     } catch (err) {
@@ -300,7 +295,7 @@ describe('Test legacy spender (p2pkh)', function () {
           spenderPurpose: helpers.BTC_PURPOSE_P2PKH,
           recipientPurpose: helpers.BTC_PURPOSE_P2SH_P2WPKH,
         };
-        await runTestSet(opts, wallet, inputsSlice, next);
+        await runTestSet(opts, wallet, inputsSlice);
         continueTests = true;
       }
     } catch (err) {
@@ -318,7 +313,7 @@ describe('Test legacy spender (p2pkh)', function () {
           spenderPurpose: helpers.BTC_PURPOSE_P2PKH,
           recipientPurpose: helpers.BTC_PURPOSE_P2WPKH,
         };
-        await runTestSet(opts, wallet, inputsSlice, next);
+        await runTestSet(opts, wallet, inputsSlice);
         continueTests = true;
       }
     } catch (err) {

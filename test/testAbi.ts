@@ -976,7 +976,7 @@ describe('Test ABI Markdown', () => {
     try {
       continueTests = false;
       for (let i = 0; i < abiDefs.length; i++) {
-        const def = abiDefs[n.i];
+        const def = abiDefs[i];
         req.data.data = buildEthData(def);
         const sigResp = await helpers.execute(client, 'sign', req);
         expect(sigResp.tx).to.not.equal(null);
@@ -992,7 +992,7 @@ describe('Test ABI Markdown', () => {
     try {
       continueTests = false;
       for (let i = 0; i < tupleAbiDefs.length; i++) {
-        const def = tupleAbiDefs[n.i];
+        const def = tupleAbiDefs[i];
         req.data.data = buildEthData(def);
         const sigResp = await helpers.execute(client, 'sign', req);
         expect(sigResp.tx).to.not.equal(null);
