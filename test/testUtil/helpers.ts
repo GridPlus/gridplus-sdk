@@ -27,7 +27,10 @@ export const BTC_COIN = BIP_CONSTANTS.COINS.BTC;
 export const BTC_TESTNET_COIN = BIP_CONSTANTS.COINS.BTC_TESTNET;
 export const ETH_COIN = BIP_CONSTANTS.COINS.ETH;
 
-function setupTestClient(env) {
+function setupTestClient(env, stateData=null) {
+  if (stateData) {
+    return new Client({stateData});
+  }
   const setup: any = {
     name: env.name || 'SDK Test',
     baseUrl: env.baseUrl || 'https://signing.gridpl.us',

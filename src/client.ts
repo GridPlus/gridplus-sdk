@@ -108,7 +108,7 @@ export class Client {
     /** The base URL of the signing server. */
     baseUrl?: string;
     /** The name of the client. */
-    name: string;
+    name?: string;
     /** The private key of the client.*/
     privKey?: Buffer;
     /** Number of times to retry a request if it fails. */
@@ -118,27 +118,11 @@ export class Client {
     /** User can pass in previous state data to rehydrate connected session */
     stateData?: string;
   }) {
-    // Definitions
-    // if (!baseUrl) throw new Error('baseUrl is required');
-    if (name && (name.length < 5 || name.length > 24)) {
-      throw new Error('`name` must be 5-24 characters');
-    }
-    this.baseUrl = baseUrl || BASE_URL;
-    this.name = name || 'Unknown';
-
-    // Derive an ECDSA keypair using the p256 curve. The public key will
-    // be used as an identifier
-    this.privKey = privKey || randomBytes(32);
-    this.key = getP256KeyPair(this.privKey);
-
-    // Stateful params
+    // Default state params
+    // -----
     this.ephemeralPub = null;
-    this.timeout = timeout || 60000;
     this.deviceId = null;
     this.isPaired = false;
-    this.retryCount = retryCount || 3;
-
-    // Information about the current wallet. Should be null unless we know a wallet is present
     this.activeWallets = {
       internal: {
         uid: EMPTY_WALLET_UID, // 32 byte id
@@ -155,9 +139,31 @@ export class Client {
     };
 
     // The user may pass in state data to rehydrate a session that was previously cached
+    // -----
     if (stateData) {
       this._unpackAndApplyStateData(stateData);
+      return;
     }
+
+    // Other params to check if `stateData` is not included
+    // -----
+    // `baseUrl` describes where to send HTTP requests
+    this.baseUrl = baseUrl || BASE_URL;
+    // `name` is a human readable string associated with this app on the Lattice
+    if (name && (name.length < 5 || name.length > 24)) {
+      throw new Error('`name` must be 5-24 characters');
+    }
+    this.name = name || 'Unknown';
+    // `privKey` is used to generate a keypair, which is used for maintaining
+    // an encrypted messaging channel with the target Lattice
+    this.privKey = privKey || randomBytes(32);
+    this.key = getP256KeyPair(this.privKey);
+    // `retryCount` defines the number of automatic retries for asynchronous requests.
+    // Retries only happen for certain device errors which indicate retrying is allowed.
+    this.retryCount = retryCount || 3;
+    // `timeout` is the number of milliseconds allowed before terminating
+    // asynchronous requests if no response is returned in time
+    this.timeout = timeout || 60000;
   }
 
   /**
@@ -1472,6 +1478,11 @@ export class Client {
         ephemeralPub: this.ephemeralPub.getPublic().encode('hex'),
         fwVersion: this.fwVersion.toString('hex'),
         deviceId: this.deviceId,
+        name: this.name,
+        baseUrl: this.baseUrl,
+        privKey: this.privKey.toString('hex'),
+        retryCount: this.retryCount,
+        timeout: this.timeout,
       };
       return JSON.stringify(data);
     } catch (err) {
@@ -1502,12 +1513,19 @@ export class Client {
       };
       const ephemeralPubBytes = Buffer.from(unpacked.ephemeralPub, 'hex');
       const fwVersionBytes = Buffer.from(unpacked.fwVersion, 'hex');
-      // Apply the parsed data
+      const privKeyBytes = Buffer.from(unpacked.privKey, 'hex');
+      // Apply unpacked params
       this.activeWallets.internal = internalWallet;
       this.activeWallets.external = externalWallet;
       this.ephemeralPub = getP256KeyPairFromPub(ephemeralPubBytes);
       this.fwVersion = fwVersionBytes;
       this.deviceId = unpacked.deviceId;
+      this.name = unpacked.name;
+      this.baseUrl = unpacked.baseUrl;
+      this.privKey = privKeyBytes;
+      this.key = getP256KeyPair(this.privKey);
+      this.retryCount = unpacked.retryCount;
+      this.timeout = unpacked.timeout;
     } catch (err) {
       console.warn('Could not apply state data.');
     }
