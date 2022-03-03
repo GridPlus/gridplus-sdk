@@ -6,7 +6,6 @@ import { randomBytes } from '../src/util'
 import helpers from './testUtil/helpers';
 
 let client, id;
-let caughtErr = false;
 let continueTests = true;
 
 describe('Connect and Pair', () => {
@@ -32,7 +31,6 @@ describe('Connect and Pair', () => {
         const _id = question('Please enter the ID of your test device: ');
         id = _id;
         const connectErr = await helpers.connect(client, id);
-        caughtErr = connectErr !== null;
         expect(connectErr).to.equal(null);
         expect(client.isPaired).to.equal(false);
         expect(client.hasActiveWallet()).to.equal(false);
@@ -71,105 +69,130 @@ describe('Connect and Pair', () => {
     }
   });
 
+  it('Should test SDK dehydration/rehydration', async () => {
+    try {
+      continueTests = false;
+      const addrData = {
+        startPath: [
+          helpers.BTC_PURPOSE_P2SH_P2WPKH,
+          helpers.BTC_COIN,
+          HARDENED_OFFSET,
+          0,
+          0,
+        ],
+        n: 1,
+      };
+      const addrs1 = await helpers.execute(client, 'getAddresses', addrData);
+      // Test a second client
+      const stateData = client.getStateData();
+      const clientTwo = helpers.setupTestClient(null, stateData);
+      const addrs2 = await helpers.execute(clientTwo, 'getAddresses', addrData);
+      expect(JSON.stringify(addrs1)).to.equal(
+        JSON.stringify(addrs2), 
+        'Client not rehydrated properly'
+      );
+      continueTests = true;
+    } catch (err) {
+      expect(err).to.equal(null, err);
+    }
+  })
+
   it('Should get addresses', async () => {
     try {
       continueTests = false;
-      expect(caughtErr).to.equal(false);
-      if (caughtErr === false) {
-        const fwConstants = getFwVersionConst(client.fwVersion);
-        const addrData = {
+      const fwConstants = getFwVersionConst(client.fwVersion);
+      const addrData = {
+        startPath: [
+          helpers.BTC_PURPOSE_P2SH_P2WPKH,
+          helpers.BTC_COIN,
+          HARDENED_OFFSET,
+          0,
+          0,
+        ],
+        n: 5,
+      };
+      // Bitcoin addresses
+      // NOTE: The format of address will be based on the user's Lattice settings
+      //       By default, this will be P2SH(P2WPKH), i.e. addresses that start with `3`
+      let addrs;
+      addrs = await helpers.execute(client, 'getAddresses', addrData);
+      expect(addrs.length).to.equal(5);
+      expect(addrs[0][0]).to.equal('3');
+
+      // Ethereum addresses
+      addrData.startPath[0] = helpers.BTC_PURPOSE_P2PKH;
+      addrData.startPath[1] = helpers.ETH_COIN;
+      addrData.n = 1;
+      addrs = await helpers.execute(client, 'getAddresses', addrData);
+      expect(addrs.length).to.equal(1);
+      expect(addrs[0].slice(0, 2)).to.equal('0x');
+      // If firmware supports it, try shorter paths
+      if (fwConstants.flexibleAddrPaths) {
+        const flexData = {
           startPath: [
-            helpers.BTC_PURPOSE_P2SH_P2WPKH,
-            helpers.BTC_COIN,
+            helpers.BTC_PURPOSE_P2PKH,
+            helpers.ETH_COIN,
             HARDENED_OFFSET,
             0,
-            0,
           ],
-          n: 5,
+          n: 1,
         };
-        // Bitcoin addresses
-        // NOTE: The format of address will be based on the user's Lattice settings
-        //       By default, this will be P2SH(P2WPKH), i.e. addresses that start with `3`
-        let addrs;
-        addrs = await helpers.execute(client, 'getAddresses', addrData);
-        expect(addrs.length).to.equal(5);
-        expect(addrs[0][0]).to.equal('3');
-
-        // Ethereum addresses
-        addrData.startPath[0] = helpers.BTC_PURPOSE_P2PKH;
-        addrData.startPath[1] = helpers.ETH_COIN;
-        addrData.n = 1;
-        addrs = await helpers.execute(client, 'getAddresses', addrData);
+        addrs = await helpers.execute(client, 'getAddresses', flexData);
         expect(addrs.length).to.equal(1);
         expect(addrs[0].slice(0, 2)).to.equal('0x');
-        // If firmware supports it, try shorter paths
-        if (fwConstants.flexibleAddrPaths) {
-          const flexData = {
-            startPath: [
-              helpers.BTC_PURPOSE_P2PKH,
-              helpers.ETH_COIN,
-              HARDENED_OFFSET,
-              0,
-            ],
-            n: 1,
-          };
-          addrs = await helpers.execute(client, 'getAddresses', flexData);
-          expect(addrs.length).to.equal(1);
-          expect(addrs[0].slice(0, 2)).to.equal('0x');
-        }
+      }
 
-        // Bitcoin testnet
-        addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
-        addrData.startPath[1] = helpers.BTC_TESTNET_COIN;
-        addrData.n = 1;
+      // Bitcoin testnet
+      addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
+      addrData.startPath[1] = helpers.BTC_TESTNET_COIN;
+      addrData.n = 1;
+      addrs = await helpers.execute(client, 'getAddresses', addrData);
+      expect(addrs.length).to.equal(1);
+      expect(addrs[0][0]).to.be.oneOf(['n', 'm', '2']);
+      addrData.startPath[1] = helpers.BTC_COIN;
+
+      // Bech32
+      addrData.startPath[0] = helpers.BTC_PURPOSE_P2WPKH;
+      addrData.n = 1;
+      addrs = await helpers.execute(client, 'getAddresses', addrData);
+      expect(addrs.length).to.equal(1);
+      expect(addrs[0].slice(0, 3)).to.be.oneOf(['bc1']);
+      addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
+      addrData.n = 5;
+
+      addrData.startPath[4] = 1000000;
+      addrData.n = 3;
+      addrs = await helpers.execute(client, 'getAddresses', addrData);
+      expect(addrs.length).to.equal(addrData.n);
+      addrData.startPath[4] = 0;
+      addrData.n = 1;
+
+      // Unsupported purpose (m/<purpose>/)
+      addrData.startPath[0] = 0; // Purpose 0 -- undefined
+      try {
         addrs = await helpers.execute(client, 'getAddresses', addrData);
-        expect(addrs.length).to.equal(1);
-        expect(addrs[0][0]).to.be.oneOf(['n', 'm', '2']);
-        addrData.startPath[1] = helpers.BTC_COIN;
+        expect(addrs).to.equal(null);
+      } catch (err) {
+        expect(err).to.not.equal(null);
+      }
+      addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
 
-        // Bech32
-        addrData.startPath[0] = helpers.BTC_PURPOSE_P2WPKH;
-        addrData.n = 1;
+      // Unsupported currency
+      addrData.startPath[1] = HARDENED_OFFSET + 5; // 5' currency - aka unknown
+      try {
         addrs = await helpers.execute(client, 'getAddresses', addrData);
-        expect(addrs.length).to.equal(1);
-        expect(addrs[0].slice(0, 3)).to.be.oneOf(['bc1']);
-        addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
-        addrData.n = 5;
-
-        addrData.startPath[4] = 1000000;
-        addrData.n = 3;
+        expect(addrs).to.equal(null);
+      } catch (err) {
+        expect(err).to.not.equal(null);
+      }
+      addrData.startPath[1] = helpers.BTC_COIN;
+      // Too many addresses (n>10)
+      addrData.n = 11;
+      try {
         addrs = await helpers.execute(client, 'getAddresses', addrData);
-        expect(addrs.length).to.equal(addrData.n);
-        addrData.startPath[4] = 0;
-        addrData.n = 1;
-
-        // Unsupported purpose (m/<purpose>/)
-        addrData.startPath[0] = 0; // Purpose 0 -- undefined
-        try {
-          addrs = await helpers.execute(client, 'getAddresses', addrData);
-          expect(addrs).to.equal(null);
-        } catch (err) {
-          expect(err).to.not.equal(null);
-        }
-        addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
-
-        // Unsupported currency
-        addrData.startPath[1] = HARDENED_OFFSET + 5; // 5' currency - aka unknown
-        try {
-          addrs = await helpers.execute(client, 'getAddresses', addrData);
-          expect(addrs).to.equal(null);
-        } catch (err) {
-          expect(err).to.not.equal(null);
-        }
-        addrData.startPath[1] = helpers.BTC_COIN;
-        // Too many addresses (n>10)
-        addrData.n = 11;
-        try {
-          addrs = await helpers.execute(client, 'getAddresses', addrData);
-          expect(addrs).to.equal(null);
-        } catch (err) {
-          expect(err).to.not.equal(null);
-        }
+        expect(addrs).to.equal(null);
+      } catch (err) {
+        expect(err).to.not.equal(null);
       }
       continueTests = true;
     } catch (err) {
