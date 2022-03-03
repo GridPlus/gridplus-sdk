@@ -9,7 +9,7 @@ const config = {
   title: "GridPlus SDK",
   tagline: "The new standard for hardware wallets",
   url: "https://gridplus.io",
-  baseUrl: "/",
+  baseUrl: "/gridplus-sdk/",
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
   favicon: "img/logo.jpeg",
