@@ -268,3 +268,15 @@ export const isAsciiStr = function(str, allowFormatChars=false) {
 export const existsIn = function(val, obj) {
   return Object.keys(obj).some(key => obj[key] === val);
 }
+
+/**
+ * `promisifyCb` accepts `resolve` and `reject` from a `Promise` and an optional callback. 
+ * It returns that callback if it exists, otherwise it resolves or rejects as a `Promise`
+ */
+export const promisifyCb = (resolve, reject, cb: (err: string, ...cbParams) => void) => {
+  return (err, ...params) => {
+    if (cb && typeof cb === 'function') return cb(err, ...params)
+    if (err && typeof err === 'string') return reject(err)
+    return resolve(...params)
+  }
+}
