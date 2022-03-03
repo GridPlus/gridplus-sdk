@@ -2,7 +2,6 @@ import bip32 from 'bip32';
 import { wordlists } from 'bip39';
 import bitcoin from 'bitcoinjs-lib';
 import { expect as expect } from 'chai';
-import crypto from 'crypto';
 import { derivePath as deriveEDKey, getPublicKey as getEDPubkey } from 'ed25519-hd-key'
 import { ec as EC, eddsa as EdDSA } from 'elliptic';
 import { privateToAddress } from 'ethereumjs-util';
@@ -12,7 +11,7 @@ import {
   ADDR_STR_LEN, BIP_CONSTANTS, ethMsgProtocol, HARDENED_OFFSET, 
 } from '../../src/constants';
 import { Client, Constants } from '../../src/index';
-import { parseDER } from '../../src/util';
+import { parseDER, randomBytes } from '../../src/util';
 const SIGHASH_ALL = 0x01;
 const secp256k1 = new EC('secp256k1');
 const ed25519 = new EdDSA('ed25519');
@@ -28,11 +27,13 @@ export const BTC_COIN = BIP_CONSTANTS.COINS.BTC;
 export const BTC_TESTNET_COIN = BIP_CONSTANTS.COINS.BTC_TESTNET;
 export const ETH_COIN = BIP_CONSTANTS.COINS.ETH;
 
-function setupTestClient(env) {
+function setupTestClient(env, stateData=null) {
+  if (stateData) {
+    return new Client({stateData});
+  }
   const setup: any = {
     name: env.name || 'SDK Test',
     baseUrl: env.baseUrl || 'https://signing.gridpl.us',
-    crypto,
     timeout: 120000,
   };
   const REUSABLE_KEY =
@@ -51,31 +52,6 @@ function setupTestClient(env) {
   // Initialize a global SDK client
   const client = new Client(setup);
   return client;
-}
-
-function connect(client, id) {
-  return new Promise((resolve) => {
-    client.connect(id, (err) => {
-      return resolve(err);
-    });
-  });
-}
-
-function pair(client, secret) {
-  return new Promise((resolve) => {
-    client.pair(secret, (err) => {
-      return resolve(err);
-    });
-  });
-}
-
-function execute(client, func, opts) {
-  return new Promise((resolve, reject) => {
-    client[func](opts, (err, res) => {
-      if (err) return reject(err);
-      return resolve(res);
-    });
-  });
 }
 
 const unharden = (x) => {
@@ -789,23 +765,23 @@ export const buildRandomEip712Object = function (randInt) {
   }
   function getRandomEIP712Val(type) {
     if (type !== 'bytes' && type.slice(0, 5) === 'bytes') {
-      return `0x${crypto.randomBytes(parseInt(type.slice(5))).toString('hex')}`;
+      return `0x${randomBytes(parseInt(type.slice(5))).toString('hex')}`;
     } else if (type === 'uint' || type === 'int') {
-      return `0x${crypto.randomBytes(32).toString('hex')}`;
+      return `0x${randomBytes(32).toString('hex')}`;
     } else if (type.indexOf('uint') > -1) {
-      return `0x${crypto.randomBytes(parseInt(type.slice(4)))}`;
+      return `0x${randomBytes(parseInt(type.slice(4)))}`;
     } else if (type.indexOf('int') > -1) {
-      return `0x${crypto.randomBytes(parseInt(type.slice(3)))}`;
+      return `0x${randomBytes(parseInt(type.slice(3)))}`;
     }
     switch (type) {
       case 'bytes':
-        return `0x${crypto.randomBytes(1 + randInt(50)).toString('hex')}`;
+        return `0x${randomBytes(1 + randInt(50)).toString('hex')}`;
       case 'string':
         return randStr(100);
       case 'bool':
         return randInt(1) > 0 ? true : false;
       case 'address':
-        return `0x${crypto.randomBytes(20).toString('hex')}`;
+        return `0x${randomBytes(20).toString('hex')}`;
       default:
         throw new Error('unsupported eip712 type');
     }
@@ -838,7 +814,7 @@ export const buildRandomEip712Object = function (randInt) {
       name: `Domain_${getRandomName(true)}`,
       version: '1',
       chainId: `0x${(1 + randInt(15000)).toString(16)}`,
-      verifyingContract: `0x${crypto.randomBytes(20).toString('hex')}`,
+      verifyingContract: `0x${randomBytes(20).toString('hex')}`,
     },
     message: {},
   };
@@ -925,9 +901,6 @@ export default {
   BTC_TESTNET_COIN,
   ETH_COIN,
   harden,
-  connect,
-  pair,
-  execute,
   jobTypes,
   gpErrors,
   getCodeMsg,

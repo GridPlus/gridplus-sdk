@@ -1,14 +1,13 @@
 // You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
-require('it-each')({ testPerIteration: true });
 import bip32 from 'bip32';
 import { mnemonicToSeedSync } from 'bip39';
 import { expect } from 'chai';
-import crypto from 'crypto';
 import { ecsign, privateToAddress } from 'ethereumjs-util';
 import { keccak256 } from 'js-sha3';
 import { question } from 'readline-sync';
 import seedrandom from 'seedrandom';
 import { HARDENED_OFFSET } from '../src/constants';
+import { randomBytes } from '../src/util'
 import helpers from './testUtil/helpers';
 
 //---------
@@ -39,17 +38,15 @@ const PRNG = new seedrandom(process.env.SEED || 'myrandomseed');
 
 // Generate a bunch of random test vectors using the PRNG
 const RANDOM_VEC = [];
-const RANDOM_VEC_LABELS = [];
 for (let i = 0; i < numIter; i++) {
   RANDOM_VEC.push(Math.floor(1000000000 * PRNG.quick()).toString(16));
-  RANDOM_VEC_LABELS.push({ label: `${i + 1}/${numIter}`, number: i });
 }
 
 //---------
 // Helpers
 //---------
 async function runTestCase(expectedCode) {
-  const res: any = await helpers.execute(client, 'test', jobReq);
+  const res = await client.test(jobReq);
   const parsedRes = helpers.parseWalletJobResp(res, client.fwVersion);
   if (parsedRes.resultStatus !== expectedCode) {
     continueTests = false;
@@ -68,7 +65,7 @@ function signPersonalJS(_msg, path) {
   const wallet = bip32.fromSeed(TEST_SEED);
   const priv = wallet.derivePath(helpers.getPathStr(path)).privateKey;
   const msg = helpers.ethPersonalSignMsg(_msg);
-  const hash: any = new Uint8Array(Buffer.from(keccak256(msg), 'hex'));
+  const hash = new Uint8Array(Buffer.from(keccak256(msg), 'hex'));
   const sig = ecsign(hash, priv);
   const v = (sig.v - 27).toString(16).padStart(2, '0');
   return `${sig.r.toString('hex')}${sig.s.toString('hex')}${v}`;
@@ -81,7 +78,7 @@ function getSigStr(sig) {
   return `${sig.r}${sig.s}${v}`;
 }
 
-function _setupJob (type, opts: any = {}) {
+function _setupJob (type, opts = {}) {
   if (type === helpers.jobTypes.WALLET_JOB_EXPORT_SEED) {
     jobType = type;
     jobData = {};
@@ -135,16 +132,18 @@ describe('Connect', () => {
   before(() => {
     // Setup the SDK client
     client = helpers.setupTestClient(process.env);
-  });
+  })
 
   it('Should connect to a Lattice and make sure it is already paired.', async () => {
+    continueTests = false;
     expect(process.env.DEVICE_ID).to.not.equal(null);
-    await helpers.connect(client, process.env.DEVICE_ID);
+    await client.connect(process.env.DEVICE_ID);
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
     activeWalletUID = helpers.copyBuffer(client.getActiveWallet().uid);
-  });
-});
+    continueTests = true;
+  })
+})
 
 describe('Test non-exportable seed on SafeCard (if available)', () => {
   beforeEach(() => {
@@ -152,7 +151,8 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
       true,
       'Unauthorized or critical failure. Aborting'
     );
-  });
+  })
+
   // This needs to be done before tests that use the `test` API route because
   // there is some sort of bug related to directly submitting wallet jobs
   // and then switching EMV interfaces.
@@ -168,7 +168,8 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     if (result.toLowerCase() !== 'y') {
       skipNonExportableSeed = true;
     }
-  });
+  })
+
   it('Should validate non-exportable seed sigs all differ and validate', async () => {
     if (skipNonExportableSeed) {
       return;
@@ -190,13 +191,13 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     };
     // Validate that tx sigs are non-uniform
     txReq.data.signerPath[2] = HARDENED_OFFSET;
-    let tx1_addr0: any, tx2_addr0: any, tx3_addr0: any, tx4_addr0: any, tx5_addr0: any;
+    let tx1_addr0, tx2_addr0, tx3_addr0, tx4_addr0, tx5_addr0;
     try {
-      tx1_addr0 = await helpers.execute(client, 'sign', txReq);
-      tx2_addr0 = await helpers.execute(client, 'sign', txReq);
-      tx3_addr0 = await helpers.execute(client, 'sign', txReq);
-      tx4_addr0 = await helpers.execute(client, 'sign', txReq);
-      tx5_addr0 = await helpers.execute(client, 'sign', txReq);
+      tx1_addr0 = await client.sign(txReq);
+      tx2_addr0 = await client.sign(txReq);
+      tx3_addr0 = await client.sign(txReq);
+      tx4_addr0 = await client.sign(txReq);
+      tx5_addr0 = await client.sign(txReq);
     } catch (err) {
       continueTests = false;
       expect(err).to.equal(null, err.message);
@@ -222,11 +223,11 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     // Address index 0
     req.data.signerPath[2] = HARDENED_OFFSET;
     jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
-    res = await helpers.execute(client, 'sign', req);
+    res = await client.sign(req);
     sig = getSigStr(res.sig);
     continueTests = sig !== jsSig;
     expect(sig).to.not.equal(jsSig, 'Addr0 sig was not random');
-    res2 = await helpers.execute(client, 'sign', req);
+    res2 = await client.sign(req);
     sig2 = getSigStr(res2.sig);
     continueTests = sig !== sig2 && sig2 !== jsSig;
     expect(sig2).to.not.equal(jsSig, 'Addr0 sig was not random');
@@ -234,11 +235,11 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     // Address index 1
     req.data.signerPath[2] = HARDENED_OFFSET + 1;
     jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
-    res = await helpers.execute(client, 'sign', req);
+    res = await client.sign(req);
     sig = getSigStr(res.sig);
     continueTests = sig !== jsSig;
     expect(sig).to.not.equal(jsSig, 'Addr1 sig was not random');
-    res2 = await helpers.execute(client, 'sign', req);
+    res2 = await client.sign(req);
     sig2 = getSigStr(res2.sig);
     continueTests = sig !== sig2 && sig2 !== jsSig;
     expect(sig2).to.not.equal(jsSig, 'Addr1 sig was not random');
@@ -246,11 +247,11 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     // Address index 8
     req.data.signerPath[2] = HARDENED_OFFSET + 8;
     jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
-    res = await helpers.execute(client, 'sign', req);
+    res = await client.sign(req);
     sig = getSigStr(res.sig);
     continueTests = sig !== jsSig;
     expect(sig).to.not.equal(jsSig, 'Addr8 sig was not random');
-    res2 = await helpers.execute(client, 'sign', req);
+    res2 = await client.sign(req);
     sig2 = getSigStr(res2.sig);
     continueTests = sig !== sig2 && sig2 !== jsSig;
     expect(sig2).to.not.equal(jsSig, 'Addr8 sig was not random');
@@ -270,7 +271,7 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     );
     process.exit(1);
   })
-});
+})
 
 describe('Setup Test', () => {
   beforeEach(() => {
@@ -286,7 +287,7 @@ describe('Setup Test', () => {
       true,
       'Unauthorized or critical failure. Aborting'
     );
-  });
+  })
 
   it('Should find out if we need to load the seed', async () => {
     // Determine if we should skip the process of loading the test seed.
@@ -299,7 +300,7 @@ describe('Setup Test', () => {
     if (result.toLowerCase() !== 'n') {
       skipSeedLoading = true;
     }
-  });
+  })
 
   it('Should fetch the seed', async () => {
     if (skipSeedLoading) return;
@@ -307,19 +308,19 @@ describe('Setup Test', () => {
     const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
     const res = helpers.deserializeExportSeedJobResult(_res.result);
     latticeSeed = helpers.copyBuffer(res.seed);
-  });
+  })
 
   it('Should remove the seed', async () => {
     if (skipSeedLoading) return;
     _setupJob(helpers.jobTypes.WALLET_JOB_DELETE_SEED);
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
-  });
+  })
 
   it('Should load the known test seed', async () => {
     if (skipSeedLoading) return;
     _setupJob(helpers.jobTypes.WALLET_JOB_LOAD_SEED, { seed: TEST_SEED });
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
-  });
+  })
 
   it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
     if (skipSeedLoading) return;
@@ -327,15 +328,15 @@ describe('Setup Test', () => {
       '\nPlease remove, re-insert, and unlock your SafeCard.\n' +
         'Press enter to continue after addresses have fully synced.'
     );
-  });
+  })
 
   it('Should re-connect to the Lattice and update the walletUID.', async () => {
     expect(process.env.DEVICE_ID).to.not.equal(null);
-    await helpers.connect(client, process.env.DEVICE_ID);
+    await client.connect(process.env.DEVICE_ID);
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
     activeWalletUID = helpers.copyBuffer(client.getActiveWallet().uid);
-  });
+  })
 
   it('Should ensure export seed matches the test seed', async () => {
     _setupJob(helpers.jobTypes.WALLET_JOB_EXPORT_SEED);
@@ -349,7 +350,7 @@ describe('Setup Test', () => {
     // Abort if this fails
     if (exportedSeed.toString('hex') !== TEST_SEED.toString('hex'))
       continueTests = false;
-  });
+  })
 
   it('Should validate some Ledger addresses derived from the test seed', async () => {
     // These addresses were all fetched using MetaMask with a real ledger loaded with TEST_MNEOMNIC
@@ -398,25 +399,25 @@ describe('Setup Test', () => {
       startPath: path0,
       n: 1,
     };
-    const latAddr0 = await helpers.execute(client, 'getAddresses', req);
+    const latAddr0 = await client.getAddresses(req);
     expect(latAddr0[0].toLowerCase()).to.equal(
       addr0.toLowerCase(),
       'Incorrect address 0 fetched.'
     );
     req.startPath = path1;
-    const latAddr1 = await helpers.execute(client, 'getAddresses', req);
+    const latAddr1 = await client.getAddresses(req);
     expect(latAddr1[0].toLowerCase()).to.equal(
       addr1.toLowerCase(),
       'Incorrect address 1 fetched.'
     );
     req.startPath = path8;
-    const latAddr8 = await helpers.execute(client, 'getAddresses', req);
+    const latAddr8 = await client.getAddresses(req);
     expect(latAddr8[0].toLowerCase()).to.equal(
       addr8.toLowerCase(),
       'Incorrect address 8 fetched.'
     );
-  });
-});
+  })
+})
 
 describe('Test uniformity of Ethereum transaction sigs', () => {
   beforeEach(() => {
@@ -439,16 +440,16 @@ describe('Test uniformity of Ethereum transaction sigs', () => {
         data: '0xdeadbeef',
       },
     };
-  });
+  })
 
   it('Should validate uniformity of 5 consecutive tx signatures', async () => {
     try {
       txReq.data.signerPath[2] = HARDENED_OFFSET;
-      const tx1_addr0: any = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr0: any = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr0: any = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr0: any = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr0: any = await helpers.execute(client, 'sign', txReq);
+      const tx1_addr0 = await client.sign(txReq);
+      const tx2_addr0 = await client.sign(txReq);
+      const tx3_addr0 = await client.sign(txReq);
+      const tx4_addr0 = await client.sign(txReq);
+      const tx5_addr0 = await client.sign(txReq);
       expect(getSigStr(tx1_addr0.sig)).to.equal(
         getSigStr(tx2_addr0.sig),
         'Txs not uniform:'
@@ -466,11 +467,11 @@ describe('Test uniformity of Ethereum transaction sigs', () => {
         'Txs not uniform:'
       );
       txReq.data.signerPath[2] = HARDENED_OFFSET + 1;
-      const tx1_addr1: any = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr1: any = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr1: any = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr1: any = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr1: any = await helpers.execute(client, 'sign', txReq);
+      const tx1_addr1 = await client.sign(txReq);
+      const tx2_addr1 = await client.sign(txReq);
+      const tx3_addr1 = await client.sign(txReq);
+      const tx4_addr1 = await client.sign(txReq);
+      const tx5_addr1 = await client.sign(txReq);
       expect(getSigStr(tx1_addr1.sig)).to.equal(
         getSigStr(tx2_addr1.sig),
         'Txs not uniform:'
@@ -488,11 +489,11 @@ describe('Test uniformity of Ethereum transaction sigs', () => {
         'Txs not uniform:'
       );
       txReq.data.signerPath[2] = HARDENED_OFFSET + 8;
-      const tx1_addr8: any = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr8: any = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr8: any = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr8: any = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr8: any = await helpers.execute(client, 'sign', txReq);
+      const tx1_addr8 = await client.sign(txReq);
+      const tx2_addr8 = await client.sign(txReq);
+      const tx3_addr8 = await client.sign(txReq);
+      const tx4_addr8 = await client.sign(txReq);
+      const tx5_addr8 = await client.sign(txReq);
       expect(getSigStr(tx1_addr8.sig)).to.equal(
         getSigStr(tx2_addr8.sig),
         'Txs not uniform:'
@@ -511,17 +512,17 @@ describe('Test uniformity of Ethereum transaction sigs', () => {
     } catch (err) {
       expect(err.message).to.equal(null, 'Caught error: ');
     }
-  });
+  })
 
   it('Should validate uniformity of 5 consecutive tx signatures (with oversized data)', async () => {
     try {
-      txReq.data.data = `0x${crypto.randomBytes(4000).toString('hex')}`;
+      txReq.data.data = `0x${randomBytes(4000).toString('hex')}`;
       txReq.data.signerPath[2] = HARDENED_OFFSET;
-      const tx1_addr0: any = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr0: any = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr0: any = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr0: any = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr0: any = await helpers.execute(client, 'sign', txReq);
+      const tx1_addr0 = await client.sign(txReq);
+      const tx2_addr0 = await client.sign(txReq);
+      const tx3_addr0 = await client.sign(txReq);
+      const tx4_addr0 = await client.sign(txReq);
+      const tx5_addr0 = await client.sign(txReq);
       expect(getSigStr(tx1_addr0.sig)).to.equal(
         getSigStr(tx2_addr0.sig),
         'Txs not uniform:'
@@ -539,11 +540,11 @@ describe('Test uniformity of Ethereum transaction sigs', () => {
         'Txs not uniform:'
       );
       txReq.data.signerPath[2] = HARDENED_OFFSET + 1;
-      const tx1_addr1: any = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr1: any = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr1: any = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr1: any = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr1: any = await helpers.execute(client, 'sign', txReq);
+      const tx1_addr1 = await client.sign(txReq);
+      const tx2_addr1 = await client.sign(txReq);
+      const tx3_addr1 = await client.sign(txReq);
+      const tx4_addr1 = await client.sign(txReq);
+      const tx5_addr1 = await client.sign(txReq);
       expect(getSigStr(tx1_addr1.sig)).to.equal(
         getSigStr(tx2_addr1.sig),
         'Txs not uniform:'
@@ -561,11 +562,11 @@ describe('Test uniformity of Ethereum transaction sigs', () => {
         'Txs not uniform:'
       );
       txReq.data.signerPath[2] = HARDENED_OFFSET + 8;
-      const tx1_addr8: any = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr8: any = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr8: any = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr8: any = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr8: any = await helpers.execute(client, 'sign', txReq);
+      const tx1_addr8 = await client.sign(txReq);
+      const tx2_addr8 = await client.sign(txReq);
+      const tx3_addr8 = await client.sign(txReq);
+      const tx4_addr8 = await client.sign(txReq);
+      const tx5_addr8 = await client.sign(txReq);
       expect(getSigStr(tx1_addr8.sig)).to.equal(
         getSigStr(tx2_addr8.sig),
         'Txs not uniform:'
@@ -585,8 +586,8 @@ describe('Test uniformity of Ethereum transaction sigs', () => {
     } catch (err) {
       expect(err.message).to.equal(null, 'Caught error: ');
     }
-  });
-});
+  })
+})
 
 describe('Compare personal_sign signatures vs Ledger vectors (1)', () => {
   beforeEach(() => {
@@ -602,7 +603,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (1)', () => {
         payload: 'hello ethereum',
       },
     };
-  });
+  })
 
   it('Should validate signature from addr0', async () => {
     const expected =
@@ -611,7 +612,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (1)', () => {
       '01'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -619,7 +620,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (1)', () => {
     } catch (err) {
       expect(err).to.equal(null, err.message);
     }
-  });
+  })
 
   it('Should validate signature from addr1', async () => {
     const expected =
@@ -628,7 +629,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (1)', () => {
       '01'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 1;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -636,7 +637,8 @@ describe('Compare personal_sign signatures vs Ledger vectors (1)', () => {
     } catch (err) {
       expect(err).to.equal(null, err.message);
     }
-  });
+  })
+
   it('Should validate signature from addr8', async () => {
     const expected =
       '60cadafdbb7cba590a37eeff854d2598af71904077312875ef7b4f525d4dcb52' + // r
@@ -644,7 +646,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (1)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 8;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -652,8 +654,8 @@ describe('Compare personal_sign signatures vs Ledger vectors (1)', () => {
     } catch (err) {
       expect(err).to.equal(null, err.message);
     }
-  });
-});
+  })
+})
 
 describe('Compare personal_sign signatures vs Ledger vectors (2)', () => {
   beforeEach(() => {
@@ -669,7 +671,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (2)', () => {
         payload: 'hello ethereum this is another message',
       },
     };
-  });
+  })
 
   it('Should validate signature from addr0', async () => {
     const expected =
@@ -678,7 +680,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (2)', () => {
       '01'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -686,7 +688,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (2)', () => {
     } catch (err) {
       expect(err).to.equal(null, err.message);
     }
-  });
+  })
 
   it('Should validate signature from addr1', async () => {
     const expected =
@@ -695,7 +697,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (2)', () => {
       '01'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 1;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -703,7 +705,8 @@ describe('Compare personal_sign signatures vs Ledger vectors (2)', () => {
     } catch (err) {
       expect(err).to.equal(null, err.message);
     }
-  });
+  })
+
   it('Should validate signature from addr8', async () => {
     const expected =
       'c748f3fbf9f517fbd33462a858b40615ab6747295c27b4a46568d7d08c1d9d32' + // r
@@ -711,7 +714,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (2)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 8;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -719,8 +722,8 @@ describe('Compare personal_sign signatures vs Ledger vectors (2)', () => {
     } catch (err) {
       expect(err).to.equal(null, err.message);
     }
-  });
-});
+  })
+})
 
 describe('Compare personal_sign signatures vs Ledger vectors (3)', () => {
   beforeEach(() => {
@@ -736,7 +739,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (3)', () => {
         payload: 'third vector yo',
       },
     };
-  });
+  })
 
   it('Should validate signature from addr0', async () => {
     const expected =
@@ -745,7 +748,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (3)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -753,7 +756,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (3)', () => {
     } catch (err) {
       expect(err).to.equal(null, err.message);
     }
-  });
+  })
 
   it('Should validate signature from addr1', async () => {
     const expected =
@@ -762,7 +765,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (3)', () => {
       '01'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 1;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -770,7 +773,8 @@ describe('Compare personal_sign signatures vs Ledger vectors (3)', () => {
     } catch (err) {
       expect(err).to.equal(null, err.message);
     }
-  });
+  })
+
   it('Should validate signature from addr8', async () => {
     const expected =
       '3e55dbb101880960cb32c17237d3ceb9d5846cf2f68c5c4c504cb827ea6a2e73' + // r
@@ -778,7 +782,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (3)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 8;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -786,8 +790,8 @@ describe('Compare personal_sign signatures vs Ledger vectors (3)', () => {
     } catch (err) {
       expect(err).to.equal(null, err.message);
     }
-  });
-});
+  })
+})
 
 describe('Compare EIP712 signatures vs Ledger vectors (1)', () => {
   beforeEach(() => {
@@ -835,7 +839,7 @@ describe('Compare EIP712 signatures vs Ledger vectors (1)', () => {
         },
       },
     };
-  });
+  })
 
   it('Should validate signature from addr0', async () => {
     const expected =
@@ -844,13 +848,14 @@ describe('Compare EIP712 signatures vs Ledger vectors (1)', () => {
       '01'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
       expect(err).to.equal(null, err.message);
     }
-  });
+  })
+
   it('Should validate signature from addr1', async () => {
     const expected =
       '9e784c6388f6f938f94239c67dc764909b86f34ec29312f4c623138fd7192115' + // r
@@ -858,13 +863,14 @@ describe('Compare EIP712 signatures vs Ledger vectors (1)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 1;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
       expect(err).to.equal(null, err.message);
     }
-  });
+  })
+  
   it('Should validate signature from addr8', async () => {
     const expected =
       '6e7e9bfc4773291713bb5cdc483057d43a95a5082920bdd1dd3470caf6f11155' + // r
@@ -872,14 +878,14 @@ describe('Compare EIP712 signatures vs Ledger vectors (1)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 8;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
       expect(err).to.equal(null, err.message);
     }
   });
-});
+})
 
 describe('Compare EIP712 signatures vs Ledger vectors (2)', () => {
   beforeEach(() => {
@@ -917,7 +923,7 @@ describe('Compare EIP712 signatures vs Ledger vectors (2)', () => {
         },
       },
     };
-  });
+  })
 
   it('Should validate signature from addr0', async () => {
     const expected =
@@ -926,13 +932,14 @@ describe('Compare EIP712 signatures vs Ledger vectors (2)', () => {
       '01'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
       expect(err).to.equal(null, err.message);
     }
-  });
+  })
+
   it('Should validate signature from addr1', async () => {
     const expected =
       'f5284359479eb32eefe88bd24de59e4fd656d82238c7752e7a576b7a875eb5ae' + // r
@@ -940,13 +947,14 @@ describe('Compare EIP712 signatures vs Ledger vectors (2)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 1;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
       expect(err).to.equal(null, err.message);
     }
-  });
+  })
+
   it('Should validate signature from addr8', async () => {
     const expected =
       'f7a94b7ba7e0fbab88472cb77c5c255ba36e60e9f90bf4073960082bb5ef17cf' + // r
@@ -954,14 +962,14 @@ describe('Compare EIP712 signatures vs Ledger vectors (2)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 8;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
       expect(err).to.equal(null, err.message);
     }
-  });
-});
+  })
+})
 
 describe('Compare EIP712 signatures vs Ledger vectors (3)', () => {
   beforeEach(() => {
@@ -999,7 +1007,7 @@ describe('Compare EIP712 signatures vs Ledger vectors (3)', () => {
         },
       },
     };
-  });
+  })
 
   it('Should validate signature from addr0', async () => {
     const expected =
@@ -1008,7 +1016,7 @@ describe('Compare EIP712 signatures vs Ledger vectors (3)', () => {
       '01'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
@@ -1022,7 +1030,7 @@ describe('Compare EIP712 signatures vs Ledger vectors (3)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 1;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
@@ -1036,14 +1044,14 @@ describe('Compare EIP712 signatures vs Ledger vectors (3)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 8;
     try {
-      const res: any = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
       expect(err).to.equal(null, err.message);
     }
-  });
-});
+  })
+})
 
 describe('Test random personal_sign messages against JS signatures', () => {
   beforeEach(() => {
@@ -1051,55 +1059,46 @@ describe('Test random personal_sign messages against JS signatures', () => {
       true,
       'Unauthorized or critical failure. Aborting'
     );
-  });
-  // By now we know that Ledger signatures match JS signatures
-  // so we can generate a bunch of random test vectors and
-  // compare Lattice sigs vs the JS implementation.
-  //@ts-expect-error - it.each is not included in @types/mocha
-  it.each(
-    RANDOM_VEC_LABELS,
-    'Random sign_personal vector',
-    ['label'],
-    async (n, next) => {
-      try {
+  })
+
+  it('Should test random vectors', async () => {
+    try {
+      continueTests = false;
+      for (let i = 0; i < RANDOM_VEC.length; i++) {
         let res, jsSig, sig;
         const req = {
           currency: 'ETH_MSG',
           data: {
             signerPath: LEDGER_ROOT_PATH,
             protocol: 'signPersonal',
-            payload: RANDOM_VEC[n.number],
+            payload: RANDOM_VEC[i],
           },
         };
         // Address index 0
         req.data.signerPath[2] = HARDENED_OFFSET;
         jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
-        res = await helpers.execute(client, 'sign', req);
+        res = await client.sign(req);
         sig = getSigStr(res.sig);
         expect(sig).to.equal(jsSig, 'Addr0 sig failed');
         // Address index 1
         req.data.signerPath[2] = HARDENED_OFFSET + 1;
         jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
-        res = await helpers.execute(client, 'sign', req);
+        res = await client.sign(req);
         sig = getSigStr(res.sig);
         expect(sig).to.equal(jsSig, 'Addr1 sig failed');
         // Address index 8
         req.data.signerPath[2] = HARDENED_OFFSET + 8;
         jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
-        res = await helpers.execute(client, 'sign', req);
+        res = await client.sign(req);
         sig = getSigStr(res.sig);
         expect(sig).to.equal(jsSig, 'Addr8 sig failed');
-        setTimeout(() => {
-          next();
-        }, 1000);
-      } catch (err) {
-        setTimeout(() => {
-          next(err);
-        }, 1000);
       }
+      continueTests = true;
+    } catch (err) {
+      expect(err).to.equal(null, err);
     }
-  );
-});
+  })
+})
 
 describe('Teardown Test', () => {
   beforeEach(() => {
@@ -1161,7 +1160,7 @@ describe('Teardown Test', () => {
   it('Should re-connect to the Lattice and update the walletUID.', async () => {
     if (skipSeedRestore) return;
     expect(process.env.DEVICE_ID).to.not.equal(null);
-    await helpers.connect(client, process.env.DEVICE_ID);
+    await client.connect(process.env.DEVICE_ID);
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
     activeWalletUID = helpers.copyBuffer(client.getActiveWallet().uid);

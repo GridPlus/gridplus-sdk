@@ -15,10 +15,10 @@
 
 import { Byte } from "bitwise/types";
 import { signingSchema } from "../src/constants";
+import { sha256 } from 'hash.js/lib/hash/sha'
 
 const { expect } = require('chai');
 const Sdk = require('../src/index');
-const crypto = require('crypto');
 const question = require('readline-sync').question;
 import helpers from './testUtil/helpers';
 
@@ -53,10 +53,7 @@ const CONNECT_AND_PAIR_LATTICE = (
         Buffer.from(appName)
       ]
     )
-    return crypto
-      .createHash('sha256')
-      .update(privKeyPreImage)
-      .digest()
+    return Buffer.from(sha256().update(privKeyPreImage).digest('hex'), 'hex');
   })()
 
   //--------------------------------------------------------------------------
@@ -65,7 +62,6 @@ const CONNECT_AND_PAIR_LATTICE = (
   const clientOpts = {
     name: appName,
     baseUrl: baseUrl,
-    crypto,
     timeout: 180000,
     privKey: privateKey
   }
