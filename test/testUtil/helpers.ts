@@ -54,31 +54,6 @@ function setupTestClient(env, stateData=null) {
   return client;
 }
 
-function connect(client, id) {
-  return new Promise((resolve) => {
-    client.connect(id, (err) => {
-      return resolve(err);
-    });
-  });
-}
-
-function pair(client, secret) {
-  return new Promise((resolve) => {
-    client.pair(secret, (err) => {
-      return resolve(err);
-    });
-  });
-}
-
-function execute(client, func, opts) {
-  return new Promise((resolve, reject) => {
-    client[func](opts, (err, res) => {
-      if (err) return reject(err);
-      return resolve(res);
-    });
-  });
-}
-
 const unharden = (x) => {
   return x >= HARDENED_OFFSET ? x - HARDENED_OFFSET : x;
 };
@@ -926,9 +901,6 @@ export default {
   BTC_TESTNET_COIN,
   ETH_COIN,
   harden,
-  connect,
-  pair,
-  execute,
   jobTypes,
   gpErrors,
   getCodeMsg,

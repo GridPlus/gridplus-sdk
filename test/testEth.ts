@@ -95,7 +95,7 @@ function buildTxReq(
 
 async function testTxPass(req) {
   continueTests = false;
-  const tx = await helpers.execute(client, 'sign', req);
+  const tx = await client.sign(req);
   // Make sure there is transaction data returned
   // (this is ready for broadcast)
   const txIsNull = tx.tx === null;
@@ -139,7 +139,7 @@ async function testTxPass(req) {
 async function testTxFail(req) {
   continueTests = false;
   try {
-    await helpers.execute(client, 'sign', req);
+    await client.sign(req);
     continueTests = false;
   } catch (err) {
     expect(err).to.not.equal(null, 'Expected failure, but got pass');
@@ -159,9 +159,10 @@ describe('Setup client', () => {
   it('Should connect to a Lattice and make sure it is already paired.', async () => {
     // Again, we assume that if an `id` has already been set, we are paired
     // with the hardcoded privkey above.
+    continueTests = false;
     expect(process.env.DEVICE_ID).to.not.equal(null);
-    const connectErr = await helpers.connect(client, process.env.DEVICE_ID);
-    expect(connectErr).to.equal(null);
+    const isPaired = await client.connect(process.env.DEVICE_ID);
+    expect(isPaired).to.equal(true);
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
     // Set the correct max gas price based on firmware version
@@ -169,6 +170,7 @@ describe('Setup client', () => {
     ETH_GAS_PRICE_MAX = fwConstants.ethMaxGasPrice;
     // Build the random transactions
     buildRandomTxData(fwConstants);
+    continueTests = true;
   });
 });
 
@@ -356,15 +358,11 @@ if (!process.env.skip) {
       // >UINT64_MAX will fail internal checks.
       let res;
       chainId = getChainId(64, -1); // UINT64_MAX should pass
-      res = await helpers.execute(client, 'sign', buildTxReq(txData, chainId));
+      res = await client.sign(buildTxReq(txData, chainId));
       expect(res.tx).to.not.equal(null);
       chainId = getChainId(64, 0); // UINT64_MAX+1 should fail
       try {
-        res = await helpers.execute(
-          client,
-          'sign',
-          buildTxReq(txData, chainId)
-        );
+        res = await client.sign(buildTxReq(txData, chainId));
       } catch (err) {
         expect(typeof err).to.equal('string');
       }

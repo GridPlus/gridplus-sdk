@@ -17,7 +17,7 @@ import bip32 from 'bip32';
 import { mnemonicToSeedSync } from 'bip39';
 import ethjsBN from 'bn.js';
 import { expect } from 'chai';
-import cli from 'cli-interact';
+import { question } from 'readline-sync';
 import { ecrecover, privateToAddress, privateToPublic, publicToAddress } from 'ethereumjs-util';
 import { keccak256 } from 'js-sha3';
 import { decode, encode } from 'rlp';
@@ -44,13 +44,15 @@ const BTC_PARENT_PATH = {
 };
 
 async function runTestCase(expectedCode) {
-  const res = await helpers.execute(client, 'test', jobReq);
+  continueTests = false;
+  const res = await client.test(jobReq);
   const parsedRes = helpers.parseWalletJobResp(res, client.fwVersion);
   continueTests = parsedRes.resultStatus === expectedCode;
   expect(parsedRes.resultStatus).to.equal(
     expectedCode,
     helpers.getCodeMsg(parsedRes.resultStatus, expectedCode)
   );
+  continueTests = true;
   return parsedRes;
 }
 
@@ -67,9 +69,14 @@ describe('Test Wallet Jobs', () => {
     );
   });
 
+  beforeEach(() => {
+    expect(continueTests).to.equal(true, 'Error in previous test. Aborting.');
+  })
+
   it('Should connect to a Lattice and make sure it is already paired.', async () => {
+    continueTests = false;
     expect(process.env.DEVICE_ID).to.not.equal(null);
-    await helpers.connect(client, process.env.DEVICE_ID);
+    await client.connect(process.env.DEVICE_ID);
     expect(client.isPaired).to.equal(true);
     const EMPTY_WALLET_UID = Buffer.alloc(32);
     const internalUID = client.activeWallets.internal.uid;
@@ -97,6 +104,7 @@ describe('Test Wallet Jobs', () => {
         ? helpers.BTC_PURPOSE_P2WPKH
         : helpers.BTC_PURPOSE_P2SH_P2WPKH;
     }
+    continueTests = true;
   });
 });
 
@@ -126,7 +134,9 @@ describe('exportSeed', () => {
   });
 
   it('Should get GP_ENODEV for unknown (random) wallet', async () => {
-    const dummyWalletUID = randomBytes(32);
+    // Note: `randomBytes` returns a buffer from the `buffer/` module,
+    // which fails on node's Buffer.isBuffer, so recast here
+    const dummyWalletUID = Buffer.from(randomBytes(32));
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_ENODEV);
   });
@@ -161,7 +171,7 @@ describe('getAddresses', () => {
   });
 
   it('Should get GP_EWALLET for unknown (random) wallet', async () => {
-    const dummyWalletUID = randomBytes(32);
+    const dummyWalletUID = Buffer.from(randomBytes(32));
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EWALLET);
   });
@@ -291,7 +301,7 @@ describe('getAddresses', () => {
       ],
       n: 3,
     };
-    const addrs: any = await helpers.execute(client, 'getAddresses', req);
+    const addrs = await client.getAddresses(req);
     const resp = {
       count: addrs.length,
       addresses: addrs,
@@ -326,7 +336,7 @@ describe('getAddresses', () => {
       ],
       n: 3,
     };
-    const addrs: any = await helpers.execute(client, 'getAddresses', req);
+    const addrs = await client.getAddresses(req);
     const resp = {
       count: addrs.length,
       addresses: addrs,
@@ -361,7 +371,7 @@ describe('getAddresses', () => {
       ],
       n: 3,
     };
-    const addrs: any = await helpers.execute(client, 'getAddresses', req);
+    const addrs = await client.getAddresses(req);
     const resp = {
       count: addrs.length,
       addresses: addrs,
@@ -396,7 +406,7 @@ describe('getAddresses', () => {
       ],
       n: 3,
     };
-    const addrs: any = await helpers.execute(client, 'getAddresses', req);
+    const addrs: any = await client.getAddresses(req);
     const resp = {
       count: addrs.length,
       addresses: addrs,
@@ -433,7 +443,7 @@ describe('getAddresses', () => {
       n: 3,
     };
     try {
-      await helpers.execute(client, 'getAddresses', req);
+      await client.getAddresses(req);
     } catch (err) {
       continueTests = !!err;
       expect(!!err).to.equal(true, 'Error expected but not found.');
@@ -451,7 +461,7 @@ describe('getAddresses', () => {
       n: 3,
     };
     try {
-      const addrs: any = await helpers.execute(client, 'getAddresses', req);
+      const addrs: any = await client.getAddresses(req);
       const resp = {
         count: addrs.length,
         addresses: addrs,
@@ -479,7 +489,7 @@ describe('getAddresses', () => {
       n: 3,
     };
     try {
-      const addrs: any = await helpers.execute(client, 'getAddresses', req);
+      const addrs: any = await client.getAddresses(req);
       const resp = {
         count: addrs.length,
         addresses: addrs,
@@ -514,7 +524,7 @@ describe('getAddresses', () => {
         n: 1,
       };
       try {
-        const addrs: any = await helpers.execute(client, 'getAddresses', req);
+        const addrs: any = await client.getAddresses(req);
         const resp = {
           count: addrs.length,
           addresses: addrs,
@@ -560,7 +570,7 @@ describe('getAddresses', () => {
     continueTests = false;
     try {
       // Should fail to export keys from a path with unhardened indices
-      const pubkeys = await helpers.execute(client, 'getAddresses', req);
+      const pubkeys = await client.getAddresses(req);
       helpers.validateDerivedPublicKeys(pubkeys, req.startPath, origWalletSeed, req.flag);
       continueTests = true;
     } catch (err) {
@@ -577,16 +587,15 @@ describe('getAddresses', () => {
     continueTests = false;
     try {
       // Should fail to export keys from a path with unhardened indices
-      await helpers.execute(client, 'getAddresses', req);
+      await client.getAddresses(req);
     } catch (err) {
       // Convert to all hardened indices and expect success
       req.startPath[2] = HARDENED_OFFSET;
-      const pubkeys = await helpers.execute(client, 'getAddresses', req);
+      const pubkeys = await client.getAddresses(req);
       helpers.validateDerivedPublicKeys(pubkeys, req.startPath, origWalletSeed, req.flag);
       continueTests = true;
     }
   })
-
 });
 
 describe('signTx', () => {
@@ -603,7 +612,7 @@ describe('signTx', () => {
       numRequests: 1,
       sigReq: [
         {
-          data: randomBytes(32),
+          data: Buffer.from(randomBytes(32)),
           signerPath: path,
         },
       ],
@@ -675,7 +684,7 @@ describe('signTx', () => {
   });
 
   it('Should get GP_EWALLET for unknown (random) wallet', async () => {
-    const dummyWalletUID = randomBytes(32);
+    const dummyWalletUID = Buffer.from(randomBytes(32));
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EWALLET);
   });
@@ -760,21 +769,24 @@ describe('signTx', () => {
 });
 
 describe('Get delete permission', () => {
+  beforeEach(() => {
+    expect(continueTests).to.equal(true, 'Error in previous test. Aborting.');
+  })
+
   it('Should get permission to remove seed.', () => {
-    expect(continueTests).to.equal(
-      true,
-      'Unauthorized or critical failure. Aborting'
-    );
-    const t =
-      '\n\nThe following tests will remove your seed.\n' +
+    question(
+      '\nThe following tests will remove your seed.\n' +
       'It should be added back in a later test, but these tests could fail!\n' +
-      'Do you want to proceed?';
-    continueTests = cli.getYesNo(t);
-    expect(continueTests).to.equal(true);
+      'Press enter to continue.'
+    );
   });
 });
 
 describe('Test leading zeros', () => {
+  beforeEach(() => {
+    expect(continueTests).to.equal(true, 'Error in previous test. Aborting.');
+  })
+
   // Use a known seed to derive private keys with leading zeros to test firmware derivation
   const mnemonic =
     'erosion loan violin drip laundry harsh social mercy leaf original habit buffalo';
@@ -814,7 +826,7 @@ describe('Test leading zeros', () => {
       .toLowerCase()}`;
     addrReq.startPath[addrReq.startPath.length - 1] = idx;
     txReq.data.signerPath[txReq.data.signerPath.length - 1] = idx;
-    const addrs: any = await helpers.execute(client, 'getAddresses', addrReq);
+    const addrs: any = await client.getAddresses(addrReq);
     if (addrs[0].toLowerCase() !== ref) {
       continueTests = false;
       expect(addrs[0].toLowerCase()).to.equal(
@@ -823,7 +835,7 @@ describe('Test leading zeros', () => {
       );
     }
     // Validate the signer coming back from the sign request
-    const tx: any = await helpers.execute(client, 'sign', txReq);
+    const tx: any = await client.sign(txReq);
     if (`0x${tx.signer.toString('hex').toLowerCase()}` !== ref) {
       continueTests = false;
       expect(addrs[0].toLowerCase()).to.equal(
@@ -921,19 +933,14 @@ describe('Test leading zeros', () => {
   });
 
   it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
-    const newQ = cli.getYesNo;
-    const t =
-      '\n\nPlease remove your SafeCard, then re-insert and unlock it.\n' +
-      'Press Y when the card is re-inserted and its wallet has finished syncing.';
-    continueTests = newQ(t);
-    expect(continueTests).to.equal(
-      true,
-      'You must remove, re-insert, and unlock your SafeCard to run this test.'
+    question(
+      '\nPlease remove your SafeCard, then re-insert and unlock it.\n' +
+      'Press enter to continue.'
     );
   });
 
   it('Should reconnect to update the wallet UIDs', async () => {
-    await helpers.connect(client, process.env.DEVICE_ID);
+    await client.connect(process.env.DEVICE_ID);
     currentWalletUID = getCurrentWalletUID();
   });
 
@@ -941,7 +948,7 @@ describe('Test leading zeros', () => {
     const ref = `0x${privateToAddress(wallet.derivePath(`${parentPathStr}/0`).privateKey)
       .toString('hex')
       .toLowerCase()}`;
-    const addrs: any = await helpers.execute(client, 'getAddresses', addrReq);
+    const addrs: any = await client.getAddresses(addrReq);
     if (addrs[0].toLowerCase() !== ref) {
       continueTests = false;
       expect(addrs[0].toLowerCase()).to.equal(
@@ -1041,7 +1048,7 @@ describe('deleteSeed', () => {
   });
 
   it('Should get GP_EINVAL for unknown (random) wallet', async () => {
-    const dummyWalletUID = randomBytes(32);
+    const dummyWalletUID = Buffer.from(randomBytes(32));
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EINVAL);
   });
@@ -1095,19 +1102,14 @@ describe('Load Original Seed Back', () => {
   });
 
   it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
-    const newQ = cli.getYesNo;
-    const t =
+    question(
       '\n\nPlease remove your SafeCard, then re-insert and unlock it.\n' +
-      'Press Y when the card is re-inserted and the wallet has finished syncing.';
-    continueTests = newQ(t);
-    expect(continueTests).to.equal(
-      true,
-      'You must remove, re-insert, and unlock your SafeCard to run this test.'
-    );
+      'Press enter to continue.'
+    )
   });
 
   it('Should reconnect to update the wallet UIDs', async () => {
-    await helpers.connect(client, process.env.DEVICE_ID);
+    await client.connect(process.env.DEVICE_ID);
     currentWalletUID = getCurrentWalletUID();
   });
 
@@ -1143,13 +1145,9 @@ describe('Load Original Seed Back', () => {
 
   // Wait for user to remove safecard
   it('Should get GP_EAGAIN when trying to load seed into SafeCard when none exists', async () => {
-    const newQ = cli.getYesNo;
-    continueTests = newQ(
-      'Please remove your SafeCard to run this test. Press Y when you have done so.'
-    );
-    expect(continueTests).to.equal(
-      true,
-      'You must remove your SafeCard when prompted to complete this test.'
+    question(
+      'Please remove your SafeCard to run this test.\n' +
+      'Press enter to continue.'
     );
     jobReq.payload = helpers.serializeJobData(
       jobType,
@@ -1160,13 +1158,9 @@ describe('Load Original Seed Back', () => {
   });
 
   it('Should wait for the card to be re-inserted', async () => {
-    const newQ = cli.getYesNo;
-    continueTests = newQ(
-      '\n\nPlease re-insert and unlock your SafeCard to continue.\nWait for wallet to sync.\nPress Y when you have done so.'
-    );
-    expect(continueTests).to.equal(
-      true,
-      'You must re-insert and unlock your SafeCard when prompted to complete this test.'
+    question(
+      '\nPlease re-insert and unlock your SafeCard to continue.\n' +
+      'Press enter to continue.'
     );
     jobType = helpers.jobTypes.WALLET_JOB_EXPORT_SEED;
     jobData = {};

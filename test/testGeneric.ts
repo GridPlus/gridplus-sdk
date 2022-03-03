@@ -7,8 +7,7 @@ We seek to validate:
 
 You must have `FEATURE_TEST_RUNNER=0` enabled in firmware to run these tests.
  */
-import { Keypair, PublicKey, Signature, SystemProgram, Transaction } from '@solana/web3.js'
-import bip32 from 'bip32';
+import { Keypair, PublicKey, SystemProgram, Transaction } from '@solana/web3.js'
 import { expect } from 'chai';
 import seedrandom from 'seedrandom';
 import helpers from './testUtil/helpers';
@@ -28,7 +27,7 @@ const DEFAULT_SIGNER = [
 ];
 
 async function run(req, expectedErr=undefined) {
-  const resp = await helpers.execute(client, 'sign', req);
+  const resp = await client.sign(req);
   expect(resp.err).to.equal(expectedErr, resp.err);
   // If no encoding type is specified we encode in hex or ascii
   const encodingType = req.data.encodingType || null; 
@@ -47,9 +46,10 @@ describe('Setup client', () => {
   it('Should connect to a Lattice and make sure it is already paired.', async () => {
     // Again, we assume that if an `id` has already been set, we are paired
     // with the hardcoded privkey above.
+    continueTests = false;
     expect(process.env.DEVICE_ID).to.not.equal(null);
-    const connectErr = await helpers.connect(client, process.env.DEVICE_ID);
-    expect(connectErr).to.equal(null);
+    const isPaired = await client.connect(process.env.DEVICE_ID);
+    expect(isPaired).to.equal(true);
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
     // Set the correct max gas price based on firmware version
@@ -58,6 +58,7 @@ describe('Setup client', () => {
       continueTests = false;
       expect(true).to.equal(false, 'Firmware must be updated to run this test.')
     }
+    continueTests = true;
   });
 });
 
@@ -74,7 +75,7 @@ describe('Export seed', () => {
       testID: 0, // wallet_job test ID
       payload: helpers.serializeJobData(jobType, activeWalletUID, jobData),
     };
-    const res = await helpers.execute(client, 'test', jobReq);
+    const res = await client.test(jobReq);
     const _res = helpers.parseWalletJobResp(res, client.fwVersion);
     continueTests = _res.resultStatus === 0;
     expect(_res.resultStatus).to.equal(0);
@@ -183,7 +184,7 @@ describe('Generic signing', () => {
     try {
       continueTests = false;
       const respGeneric = await run(req);
-      const respLegacy = await helpers.execute(client, 'sign', legacyReq);
+      const respLegacy = await client.sign(legacyReq);
       expect(!!respLegacy.err).to.equal(false, respLegacy.err);
       const genSig = `${respGeneric.sig.r.toString('hex')}${respGeneric.sig.s.toString('hex')}`;
       const legSig = `${respLegacy.sig.r.toString('hex')}${respLegacy.sig.s.toString('hex')}`;

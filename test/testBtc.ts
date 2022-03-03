@@ -31,7 +31,7 @@ for (let i = 0; i < count; i++) {
 }
 
 async function testSign(req, signingKeys, sigHashes) {
-  const tx = await helpers.execute(client, 'sign', req);
+  const tx = await client.sign(req);
   expect(tx.sigs.length).to.equal(signingKeys.length);
   expect(tx.sigs.length).to.equal(sigHashes.length);
   for (let i = 0; i < tx.sigs.length; i++) {
@@ -50,11 +50,13 @@ describe('Fetch wallet seed', () => {
   });
 
   it('Should connect to a Lattice and make sure it is already paired.', async () => {
+    continueTests = false;
     expect(process.env.DEVICE_ID).to.not.equal(null);
-    await helpers.connect(client, process.env.DEVICE_ID);
+    await client.connect(process.env.DEVICE_ID);
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
     activeWalletUID = helpers.copyBuffer(client.getActiveWallet().uid);
+    continueTests = true;
   });
 });
 
@@ -68,7 +70,7 @@ describe('exportSeed', () => {
       payload: helpers.serializeJobData(jobType, activeWalletUID, jobData),
     };
 
-    const res = await helpers.execute(client, 'test', jobReq);
+    const res = await client.test(jobReq);
     const _res = helpers.parseWalletJobResp(res, client.fwVersion);
     expect(_res.resultStatus).to.equal(0);
     const data = helpers.deserializeExportSeedJobResult(_res.result);

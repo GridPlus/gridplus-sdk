@@ -46,7 +46,7 @@ for (let i = 0; i < numIter; i++) {
 // Helpers
 //---------
 async function runTestCase(expectedCode) {
-  const res = await helpers.execute(client, 'test', jobReq);
+  const res = await client.test(jobReq);
   const parsedRes = helpers.parseWalletJobResp(res, client.fwVersion);
   if (parsedRes.resultStatus !== expectedCode) {
     continueTests = false;
@@ -135,11 +135,13 @@ describe('Connect', () => {
   })
 
   it('Should connect to a Lattice and make sure it is already paired.', async () => {
+    continueTests = false;
     expect(process.env.DEVICE_ID).to.not.equal(null);
-    await helpers.connect(client, process.env.DEVICE_ID);
+    await client.connect(process.env.DEVICE_ID);
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
     activeWalletUID = helpers.copyBuffer(client.getActiveWallet().uid);
+    continueTests = true;
   })
 })
 
@@ -191,11 +193,11 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     txReq.data.signerPath[2] = HARDENED_OFFSET;
     let tx1_addr0, tx2_addr0, tx3_addr0, tx4_addr0, tx5_addr0;
     try {
-      tx1_addr0 = await helpers.execute(client, 'sign', txReq);
-      tx2_addr0 = await helpers.execute(client, 'sign', txReq);
-      tx3_addr0 = await helpers.execute(client, 'sign', txReq);
-      tx4_addr0 = await helpers.execute(client, 'sign', txReq);
-      tx5_addr0 = await helpers.execute(client, 'sign', txReq);
+      tx1_addr0 = await client.sign(txReq);
+      tx2_addr0 = await client.sign(txReq);
+      tx3_addr0 = await client.sign(txReq);
+      tx4_addr0 = await client.sign(txReq);
+      tx5_addr0 = await client.sign(txReq);
     } catch (err) {
       continueTests = false;
       expect(err).to.equal(null, err.message);
@@ -221,11 +223,11 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     // Address index 0
     req.data.signerPath[2] = HARDENED_OFFSET;
     jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
-    res = await helpers.execute(client, 'sign', req);
+    res = await client.sign(req);
     sig = getSigStr(res.sig);
     continueTests = sig !== jsSig;
     expect(sig).to.not.equal(jsSig, 'Addr0 sig was not random');
-    res2 = await helpers.execute(client, 'sign', req);
+    res2 = await client.sign(req);
     sig2 = getSigStr(res2.sig);
     continueTests = sig !== sig2 && sig2 !== jsSig;
     expect(sig2).to.not.equal(jsSig, 'Addr0 sig was not random');
@@ -233,11 +235,11 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     // Address index 1
     req.data.signerPath[2] = HARDENED_OFFSET + 1;
     jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
-    res = await helpers.execute(client, 'sign', req);
+    res = await client.sign(req);
     sig = getSigStr(res.sig);
     continueTests = sig !== jsSig;
     expect(sig).to.not.equal(jsSig, 'Addr1 sig was not random');
-    res2 = await helpers.execute(client, 'sign', req);
+    res2 = await client.sign(req);
     sig2 = getSigStr(res2.sig);
     continueTests = sig !== sig2 && sig2 !== jsSig;
     expect(sig2).to.not.equal(jsSig, 'Addr1 sig was not random');
@@ -245,11 +247,11 @@ describe('Test non-exportable seed on SafeCard (if available)', () => {
     // Address index 8
     req.data.signerPath[2] = HARDENED_OFFSET + 8;
     jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
-    res = await helpers.execute(client, 'sign', req);
+    res = await client.sign(req);
     sig = getSigStr(res.sig);
     continueTests = sig !== jsSig;
     expect(sig).to.not.equal(jsSig, 'Addr8 sig was not random');
-    res2 = await helpers.execute(client, 'sign', req);
+    res2 = await client.sign(req);
     sig2 = getSigStr(res2.sig);
     continueTests = sig !== sig2 && sig2 !== jsSig;
     expect(sig2).to.not.equal(jsSig, 'Addr8 sig was not random');
@@ -330,7 +332,7 @@ describe('Setup Test', () => {
 
   it('Should re-connect to the Lattice and update the walletUID.', async () => {
     expect(process.env.DEVICE_ID).to.not.equal(null);
-    await helpers.connect(client, process.env.DEVICE_ID);
+    await client.connect(process.env.DEVICE_ID);
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
     activeWalletUID = helpers.copyBuffer(client.getActiveWallet().uid);
@@ -397,19 +399,19 @@ describe('Setup Test', () => {
       startPath: path0,
       n: 1,
     };
-    const latAddr0 = await helpers.execute(client, 'getAddresses', req);
+    const latAddr0 = await client.getAddresses(req);
     expect(latAddr0[0].toLowerCase()).to.equal(
       addr0.toLowerCase(),
       'Incorrect address 0 fetched.'
     );
     req.startPath = path1;
-    const latAddr1 = await helpers.execute(client, 'getAddresses', req);
+    const latAddr1 = await client.getAddresses(req);
     expect(latAddr1[0].toLowerCase()).to.equal(
       addr1.toLowerCase(),
       'Incorrect address 1 fetched.'
     );
     req.startPath = path8;
-    const latAddr8 = await helpers.execute(client, 'getAddresses', req);
+    const latAddr8 = await client.getAddresses(req);
     expect(latAddr8[0].toLowerCase()).to.equal(
       addr8.toLowerCase(),
       'Incorrect address 8 fetched.'
@@ -443,11 +445,11 @@ describe('Test uniformity of Ethereum transaction sigs', () => {
   it('Should validate uniformity of 5 consecutive tx signatures', async () => {
     try {
       txReq.data.signerPath[2] = HARDENED_OFFSET;
-      const tx1_addr0 = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr0 = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr0 = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr0 = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr0 = await helpers.execute(client, 'sign', txReq);
+      const tx1_addr0 = await client.sign(txReq);
+      const tx2_addr0 = await client.sign(txReq);
+      const tx3_addr0 = await client.sign(txReq);
+      const tx4_addr0 = await client.sign(txReq);
+      const tx5_addr0 = await client.sign(txReq);
       expect(getSigStr(tx1_addr0.sig)).to.equal(
         getSigStr(tx2_addr0.sig),
         'Txs not uniform:'
@@ -465,11 +467,11 @@ describe('Test uniformity of Ethereum transaction sigs', () => {
         'Txs not uniform:'
       );
       txReq.data.signerPath[2] = HARDENED_OFFSET + 1;
-      const tx1_addr1 = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr1 = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr1 = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr1 = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr1 = await helpers.execute(client, 'sign', txReq);
+      const tx1_addr1 = await client.sign(txReq);
+      const tx2_addr1 = await client.sign(txReq);
+      const tx3_addr1 = await client.sign(txReq);
+      const tx4_addr1 = await client.sign(txReq);
+      const tx5_addr1 = await client.sign(txReq);
       expect(getSigStr(tx1_addr1.sig)).to.equal(
         getSigStr(tx2_addr1.sig),
         'Txs not uniform:'
@@ -487,11 +489,11 @@ describe('Test uniformity of Ethereum transaction sigs', () => {
         'Txs not uniform:'
       );
       txReq.data.signerPath[2] = HARDENED_OFFSET + 8;
-      const tx1_addr8 = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr8 = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr8 = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr8 = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr8 = await helpers.execute(client, 'sign', txReq);
+      const tx1_addr8 = await client.sign(txReq);
+      const tx2_addr8 = await client.sign(txReq);
+      const tx3_addr8 = await client.sign(txReq);
+      const tx4_addr8 = await client.sign(txReq);
+      const tx5_addr8 = await client.sign(txReq);
       expect(getSigStr(tx1_addr8.sig)).to.equal(
         getSigStr(tx2_addr8.sig),
         'Txs not uniform:'
@@ -516,11 +518,11 @@ describe('Test uniformity of Ethereum transaction sigs', () => {
     try {
       txReq.data.data = `0x${randomBytes(4000).toString('hex')}`;
       txReq.data.signerPath[2] = HARDENED_OFFSET;
-      const tx1_addr0 = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr0 = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr0 = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr0 = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr0 = await helpers.execute(client, 'sign', txReq);
+      const tx1_addr0 = await client.sign(txReq);
+      const tx2_addr0 = await client.sign(txReq);
+      const tx3_addr0 = await client.sign(txReq);
+      const tx4_addr0 = await client.sign(txReq);
+      const tx5_addr0 = await client.sign(txReq);
       expect(getSigStr(tx1_addr0.sig)).to.equal(
         getSigStr(tx2_addr0.sig),
         'Txs not uniform:'
@@ -538,11 +540,11 @@ describe('Test uniformity of Ethereum transaction sigs', () => {
         'Txs not uniform:'
       );
       txReq.data.signerPath[2] = HARDENED_OFFSET + 1;
-      const tx1_addr1 = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr1 = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr1 = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr1 = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr1 = await helpers.execute(client, 'sign', txReq);
+      const tx1_addr1 = await client.sign(txReq);
+      const tx2_addr1 = await client.sign(txReq);
+      const tx3_addr1 = await client.sign(txReq);
+      const tx4_addr1 = await client.sign(txReq);
+      const tx5_addr1 = await client.sign(txReq);
       expect(getSigStr(tx1_addr1.sig)).to.equal(
         getSigStr(tx2_addr1.sig),
         'Txs not uniform:'
@@ -560,11 +562,11 @@ describe('Test uniformity of Ethereum transaction sigs', () => {
         'Txs not uniform:'
       );
       txReq.data.signerPath[2] = HARDENED_OFFSET + 8;
-      const tx1_addr8 = await helpers.execute(client, 'sign', txReq);
-      const tx2_addr8 = await helpers.execute(client, 'sign', txReq);
-      const tx3_addr8 = await helpers.execute(client, 'sign', txReq);
-      const tx4_addr8 = await helpers.execute(client, 'sign', txReq);
-      const tx5_addr8 = await helpers.execute(client, 'sign', txReq);
+      const tx1_addr8 = await client.sign(txReq);
+      const tx2_addr8 = await client.sign(txReq);
+      const tx3_addr8 = await client.sign(txReq);
+      const tx4_addr8 = await client.sign(txReq);
+      const tx5_addr8 = await client.sign(txReq);
       expect(getSigStr(tx1_addr8.sig)).to.equal(
         getSigStr(tx2_addr8.sig),
         'Txs not uniform:'
@@ -610,7 +612,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (1)', () => {
       '01'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -627,7 +629,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (1)', () => {
       '01'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 1;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -644,7 +646,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (1)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 8;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -678,7 +680,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (2)', () => {
       '01'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -695,7 +697,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (2)', () => {
       '01'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 1;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -712,7 +714,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (2)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 8;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -746,7 +748,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (3)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -763,7 +765,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (3)', () => {
       '01'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 1;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -780,7 +782,7 @@ describe('Compare personal_sign signatures vs Ledger vectors (3)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 8;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected, 'Lattice sig does not match');
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
@@ -846,7 +848,7 @@ describe('Compare EIP712 signatures vs Ledger vectors (1)', () => {
       '01'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
@@ -861,7 +863,7 @@ describe('Compare EIP712 signatures vs Ledger vectors (1)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 1;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
@@ -876,7 +878,7 @@ describe('Compare EIP712 signatures vs Ledger vectors (1)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 8;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
@@ -930,7 +932,7 @@ describe('Compare EIP712 signatures vs Ledger vectors (2)', () => {
       '01'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
@@ -945,7 +947,7 @@ describe('Compare EIP712 signatures vs Ledger vectors (2)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 1;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
@@ -960,7 +962,7 @@ describe('Compare EIP712 signatures vs Ledger vectors (2)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 8;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
@@ -1014,7 +1016,7 @@ describe('Compare EIP712 signatures vs Ledger vectors (3)', () => {
       '01'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
@@ -1028,7 +1030,7 @@ describe('Compare EIP712 signatures vs Ledger vectors (3)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 1;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
@@ -1042,7 +1044,7 @@ describe('Compare EIP712 signatures vs Ledger vectors (3)', () => {
       '00'; // v
     msgReq.data.signerPath[2] = HARDENED_OFFSET + 8;
     try {
-      const res = await helpers.execute(client, 'sign', msgReq);
+      const res = await client.sign(msgReq);
       const sig = getSigStr(res.sig);
       expect(sig).to.equal(expected);
     } catch (err) {
@@ -1075,19 +1077,19 @@ describe('Test random personal_sign messages against JS signatures', () => {
         // Address index 0
         req.data.signerPath[2] = HARDENED_OFFSET;
         jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
-        res = await helpers.execute(client, 'sign', req);
+        res = await client.sign(req);
         sig = getSigStr(res.sig);
         expect(sig).to.equal(jsSig, 'Addr0 sig failed');
         // Address index 1
         req.data.signerPath[2] = HARDENED_OFFSET + 1;
         jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
-        res = await helpers.execute(client, 'sign', req);
+        res = await client.sign(req);
         sig = getSigStr(res.sig);
         expect(sig).to.equal(jsSig, 'Addr1 sig failed');
         // Address index 8
         req.data.signerPath[2] = HARDENED_OFFSET + 8;
         jsSig = signPersonalJS(req.data.payload, req.data.signerPath);
-        res = await helpers.execute(client, 'sign', req);
+        res = await client.sign(req);
         sig = getSigStr(res.sig);
         expect(sig).to.equal(jsSig, 'Addr8 sig failed');
       }
@@ -1158,7 +1160,7 @@ describe('Teardown Test', () => {
   it('Should re-connect to the Lattice and update the walletUID.', async () => {
     if (skipSeedRestore) return;
     expect(process.env.DEVICE_ID).to.not.equal(null);
-    await helpers.connect(client, process.env.DEVICE_ID);
+    await client.connect(process.env.DEVICE_ID);
     expect(client.isPaired).to.equal(true);
     expect(client.hasActiveWallet()).to.equal(true);
     activeWalletUID = helpers.copyBuffer(client.getActiveWallet().uid);
