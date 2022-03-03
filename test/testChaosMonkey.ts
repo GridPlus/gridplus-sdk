@@ -13,14 +13,11 @@
 //        root CMakeLists.txt file (for dev units)
 // To run these tests you will need a dev Lattice with: `FEATURE_TEST_RUNNER=1`
 
-import { Byte } from "bitwise/types";
-import { signingSchema } from "../src/constants";
 import { sha256 } from 'hash.js/lib/hash/sha'
 
 const { expect } = require('chai');
 const Sdk = require('../src/index');
 const question = require('readline-sync').question;
-import helpers from './testUtil/helpers';
 
 const REUSABLE_KEY = '3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca';
 
@@ -149,8 +146,6 @@ const GET_ADDRESSES = (): Promise<string[]> => {
 
 describe("Chaos Monkey", () => {
   it("Should 1", async () => {
-    const signing   = async () => await SIGN_MESSAGE("This is a message")
-    const addresses = async () => await GET_ADDRESSES()
     const answer = question(
       `
       ~ Run which test? (Timeout in 10 seconds)
@@ -159,9 +154,19 @@ describe("Chaos Monkey", () => {
       ~  3. Quit
       `
     )
-    switch(answer) {
-      case "1": { await signing().then((res) => console.log(`${JSON.stringify(res, null, 2)}`)); return }
-      case "2": { await addresses().then((res) => console.log(JSON.stringify(res, null, 2))); return }
+    switch (answer) {
+      case "1": {
+        await SIGN_MESSAGE("This is a message")
+          .catch(console.error)
+          .then((res) => console.log(`${JSON.stringify(res, null, 2)}`));
+        return;
+      }
+      case "2": {
+        await GET_ADDRESSES()
+          .catch(console.error)
+          .then((res) => console.log(JSON.stringify(res, null, 2)));
+        return;
+      }
       default:
     }
   });

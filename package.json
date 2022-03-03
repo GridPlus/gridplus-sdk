@@ -19,7 +19,7 @@
     "test-kv": "ts-mocha --timeout 180000 -R spec test/testKv.ts --recursive --exit",
     "test-wallet-jobs": "ts-mocha --timeout 300000 -R spec test/testWalletJobs.ts --recursive --exit",
     "test-sigs": "ts-mocha --timeout 300000 -R spec test/testSigs.ts --recursive --exit",
-    "test-chaos-monkey": "ts-mocha -R spec test/testChaosMonkey.ts --recursive --exit"
+    "test-chaos-monkey": "ts-mocha --timeout 300000 -R spec test/testChaosMonkey.ts --recursive --exit"
   },
   "main": "./dist/index.js",
   "repository": {
