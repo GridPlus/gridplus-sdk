@@ -208,7 +208,7 @@ export class Client {
             return cb(err, this.isPaired);
           }, true);
         } else {
-          return cb(null);
+          return cb(null, false);
         }
       });
     })
@@ -267,20 +267,23 @@ export class Client {
    * `test` takes a data object with a testID and a payload, and sends them to the device.
    * @category Lattice
    */
-  private test (data: { payload: Buffer, testID: number }, cb: (err?: string, data?: Buffer) => void) {
-    if (!data.payload)
-      return cb('First argument must contain `testID` and `payload` fields.');
-    const TEST_DATA_SZ = 500;
-    const payload = Buffer.alloc(TEST_DATA_SZ + 6);
-    payload.writeUInt32BE(data.testID, 0);
-    payload.writeUInt16BE(data.payload.length, 4);
-    data.payload.copy(payload, 6);
-    this._request(payload, 'TEST', (err, res) => {
-      if (err) return cb(err);
-      const decrypted = this._handleEncResponse(res, decResLengths.test);
-      if (decrypted.err !== null) return cb(decrypted.err);
-      return cb(null, decrypted.data.slice(65)); // remove ephem pub
-    });
+  private test (data: { payload: Buffer, testID: number }, _cb?: (err?: string, data?: Buffer) => void) {
+    return new Promise((resolve, reject) => {
+      const cb = promisifyCb(resolve, reject, _cb);
+      if (!data.payload)
+        return cb('First argument must contain `testID` and `payload` fields.');
+      const TEST_DATA_SZ = 500;
+      const payload = Buffer.alloc(TEST_DATA_SZ + 6);
+      payload.writeUInt32BE(data.testID, 0);
+      payload.writeUInt16BE(data.payload.length, 4);
+      data.payload.copy(payload, 6);
+      this._request(payload, 'TEST', (err, res) => {
+        if (err) return cb(err);
+        const decrypted = this._handleEncResponse(res, decResLengths.test);
+        if (decrypted.err !== null) return cb(decrypted.err);
+        return cb(null, decrypted.data.slice(65)); // remove ephem pub
+      });
+    })
   }
 
   /**

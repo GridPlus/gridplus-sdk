@@ -30,8 +30,8 @@ describe('Connect and Pair', () => {
       if (!process.env.DEVICE_ID) {
         const _id = question('Please enter the ID of your test device: ');
         id = _id;
-        const connectErr = await helpers.connect(client, id);
-        expect(connectErr).to.equal(null);
+        const isPaired = await client.connect(id);
+        expect(isPaired).to.equal(false);
         expect(client.isPaired).to.equal(false);
         expect(client.hasActiveWallet()).to.equal(false);
       }
@@ -46,7 +46,7 @@ describe('Connect and Pair', () => {
       continueTests = false;
       if (!process.env.DEVICE_ID) {
         const secret = question('Please enter the pairing secret: ');
-        const pairErr = await helpers.pair(client, secret);
+        const pairErr = await client.pair(secret);
         expect(pairErr).to.equal(null);
         expect(client.hasActiveWallet()).to.equal(true);
       }
@@ -59,8 +59,8 @@ describe('Connect and Pair', () => {
   it('Should try to connect again but recognize the pairing already exists', async () => {
     try {
       continueTests = false;
-      const connectErr = await helpers.connect(client, id);
-      expect(connectErr).to.equal(null);
+      const isPaired = await client.connect(id);
+      expect(isPaired).to.equal(true);
       expect(client.isPaired).to.equal(true);
       expect(client.hasActiveWallet()).to.equal(true);
       continueTests = true;
@@ -82,11 +82,11 @@ describe('Connect and Pair', () => {
         ],
         n: 1,
       };
-      const addrs1 = await helpers.execute(client, 'getAddresses', addrData);
+      const addrs1 = await client.getAddresses(addrData);
       // Test a second client
       const stateData = client.getStateData();
       const clientTwo = helpers.setupTestClient(null, stateData);
-      const addrs2 = await helpers.execute(clientTwo, 'getAddresses', addrData);
+      const addrs2 = await clientTwo.getAddresses(addrData);
       expect(JSON.stringify(addrs1)).to.equal(
         JSON.stringify(addrs2), 
         'Client not rehydrated properly'
@@ -115,7 +115,7 @@ describe('Connect and Pair', () => {
       // NOTE: The format of address will be based on the user's Lattice settings
       //       By default, this will be P2SH(P2WPKH), i.e. addresses that start with `3`
       let addrs;
-      addrs = await helpers.execute(client, 'getAddresses', addrData);
+      addrs = await client.getAddresses(addrData);
       expect(addrs.length).to.equal(5);
       expect(addrs[0][0]).to.equal('3');
 
@@ -123,7 +123,7 @@ describe('Connect and Pair', () => {
       addrData.startPath[0] = helpers.BTC_PURPOSE_P2PKH;
       addrData.startPath[1] = helpers.ETH_COIN;
       addrData.n = 1;
-      addrs = await helpers.execute(client, 'getAddresses', addrData);
+      addrs = await client.getAddresses(addrData);
       expect(addrs.length).to.equal(1);
       expect(addrs[0].slice(0, 2)).to.equal('0x');
       // If firmware supports it, try shorter paths
@@ -137,7 +137,7 @@ describe('Connect and Pair', () => {
           ],
           n: 1,
         };
-        addrs = await helpers.execute(client, 'getAddresses', flexData);
+        addrs = await client.getAddresses(flexData);
         expect(addrs.length).to.equal(1);
         expect(addrs[0].slice(0, 2)).to.equal('0x');
       }
@@ -146,7 +146,7 @@ describe('Connect and Pair', () => {
       addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
       addrData.startPath[1] = helpers.BTC_TESTNET_COIN;
       addrData.n = 1;
-      addrs = await helpers.execute(client, 'getAddresses', addrData);
+      addrs = await client.getAddresses(addrData);
       expect(addrs.length).to.equal(1);
       expect(addrs[0][0]).to.be.oneOf(['n', 'm', '2']);
       addrData.startPath[1] = helpers.BTC_COIN;
@@ -154,7 +154,7 @@ describe('Connect and Pair', () => {
       // Bech32
       addrData.startPath[0] = helpers.BTC_PURPOSE_P2WPKH;
       addrData.n = 1;
-      addrs = await helpers.execute(client, 'getAddresses', addrData);
+      addrs = await client.getAddresses(addrData);
       expect(addrs.length).to.equal(1);
       expect(addrs[0].slice(0, 3)).to.be.oneOf(['bc1']);
       addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
@@ -162,7 +162,7 @@ describe('Connect and Pair', () => {
 
       addrData.startPath[4] = 1000000;
       addrData.n = 3;
-      addrs = await helpers.execute(client, 'getAddresses', addrData);
+      addrs = await client.getAddresses(addrData);
       expect(addrs.length).to.equal(addrData.n);
       addrData.startPath[4] = 0;
       addrData.n = 1;
@@ -170,7 +170,7 @@ describe('Connect and Pair', () => {
       // Unsupported purpose (m/<purpose>/)
       addrData.startPath[0] = 0; // Purpose 0 -- undefined
       try {
-        addrs = await helpers.execute(client, 'getAddresses', addrData);
+        addrs = await client.getAddresses(addrData);
         expect(addrs).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -180,7 +180,7 @@ describe('Connect and Pair', () => {
       // Unsupported currency
       addrData.startPath[1] = HARDENED_OFFSET + 5; // 5' currency - aka unknown
       try {
-        addrs = await helpers.execute(client, 'getAddresses', addrData);
+        addrs = await client.getAddresses(addrData);
         expect(addrs).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -189,7 +189,7 @@ describe('Connect and Pair', () => {
       // Too many addresses (n>10)
       addrData.n = 11;
       try {
-        addrs = await helpers.execute(client, 'getAddresses', addrData);
+        addrs = await client.getAddresses(addrData);
         expect(addrs).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -233,24 +233,24 @@ describe('Connect and Pair', () => {
       };
       // Sign a tx that does not use EIP155 (no EIP155 on rinkeby for some reason)
       let tx;
-      tx = await helpers.execute(client, 'sign', req);
+      tx = await client.sign(req);
       expect(tx.tx).to.not.equal(null);
 
       // Sign a tx with EIP155
       req.data.chainId = 'mainnet';
-      tx = await helpers.execute(client, 'sign', req);
+      tx = await client.sign(req);
       expect(tx.tx).to.not.equal(null);
       req.data.chainId = 'rinkeby';
 
       req.data.data = randomBytes(fwConstants.ethMaxDataSz).toString('hex');
-      tx = await helpers.execute(client, 'sign', req);
+      tx = await client.sign(req);
       expect(tx.tx).to.not.equal(null);
       req.data.data = null;
 
       // Invalid chainId
       req.data.chainId = 'notachain';
       try {
-        tx = await helpers.execute(client, 'sign', req);
+        tx = await client.sign(req);
         expect(tx.tx).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -260,7 +260,7 @@ describe('Connect and Pair', () => {
       // Nonce too large (>u16)
       req.data.nonce = 0xffff + 1;
       try {
-        tx = await helpers.execute(client, 'sign', req);
+        tx = await client.sign(req);
         expect(tx.tx).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -271,7 +271,7 @@ describe('Connect and Pair', () => {
       // GasLimit too low
       req.data.gasLimit = GAS_LIMIT_MIN - 1;
       try {
-        tx = await helpers.execute(client, 'sign', req);
+        tx = await client.sign(req);
         expect(tx.tx).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -280,7 +280,7 @@ describe('Connect and Pair', () => {
       // GasLimit too high (>u32)
       req.data.gasLimit = GAS_LIMIT_MAX + 1;
       try {
-        tx = await helpers.execute(client, 'sign', req);
+        tx = await client.sign(req);
         expect(tx.tx).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -291,7 +291,7 @@ describe('Connect and Pair', () => {
       // GasPrice too high
       req.data.gasPrice = GAS_PRICE_MAX + 1;
       try {
-        tx = await helpers.execute(client, 'sign', req);
+        tx = await client.sign(req);
         expect(tx.tx).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -302,7 +302,7 @@ describe('Connect and Pair', () => {
       // `to` wrong size
       req.data.to = '0xe242e54155b1abc71fc118065270cecaaf8b77';
       try {
-        tx = await helpers.execute(client, 'sign', req);
+        tx = await client.sign(req);
         expect(tx.tx).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -313,7 +313,7 @@ describe('Connect and Pair', () => {
       // Value too high
       req.data.value = 2 ** 256;
       try {
-        tx = await helpers.execute(client, 'sign', req);
+        tx = await client.sign(req);
         expect(tx.tx).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
@@ -326,25 +326,25 @@ describe('Connect and Pair', () => {
         fwConstants.ethMaxDataSz +
         fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
       req.data.data = randomBytes(maxDataSz).toString('hex');
-      tx = await helpers.execute(client, 'sign', req);
+      tx = await client.sign(req);
       expect(tx.tx).to.not.equal(null);
       question(
         'Please ACCEPT the following transaction only if the warning screen displays. Press enter to continue.'
       );
       req.data.data = randomBytes(maxDataSz + 1).toString('hex');
-      tx = await helpers.execute(client, 'sign', req);
+      tx = await client.sign(req);
       expect(tx.tx).to.not.equal(null);
       req.data.data = randomBytes(fwConstants.ethMaxDataSz).toString('hex');
-      tx = await helpers.execute(client, 'sign', req);
+      tx = await client.sign(req);
       expect(tx.tx).to.not.equal(null);
       req.data.data = randomBytes(maxDataSz).toString('hex');
-      tx = await helpers.execute(client, 'sign', req);
+      tx = await client.sign(req);
       expect(tx.tx).to.not.equal(null);
 
       // Test non-ETH EVM coin_type
       req.data.signerPath[1] = HARDENED_OFFSET + 1007;
       req.data.data = null;
-      tx = await helpers.execute(client, 'sign', req);
+      tx = await client.sign(req);
       expect(tx.tx).to.not.equal(null);
       continueTests = true;
     } catch (err) {
@@ -389,7 +389,7 @@ describe('Connect and Pair', () => {
       };
 
       // Sign a legit tx
-      const sigResp = await helpers.execute(client, 'sign', req);
+      const sigResp = await client.sign(req);
       expect(sigResp.tx).to.not.equal(null);
       expect(sigResp.txHash).to.not.equal(null);
       continueTests = true;
@@ -433,7 +433,7 @@ describe('Connect and Pair', () => {
         data: txData,
       };
       // Sign a legit tx
-      const sigResp = await helpers.execute(client, 'sign', req);
+      const sigResp = await client.sign(req);
       expect(sigResp.tx).to.not.equal(null);
       expect(sigResp.txHash).to.not.equal(null);
       continueTests = true;
@@ -477,7 +477,7 @@ describe('Connect and Pair', () => {
         data: txData,
       };
       // Sign a legit tx
-      const sigResp = await helpers.execute(client, 'sign', req);
+      const sigResp = await client.sign(req);
       expect(sigResp.tx).to.not.equal(null);
       expect(sigResp.txHash).to.not.equal(null);
       continueTests = true;
@@ -522,7 +522,7 @@ describe('Connect and Pair', () => {
         data: txData,
       };
       // Sign a legit tx
-      const sigResp = await helpers.execute(client, 'sign', req);
+      const sigResp = await client.sign(req);
       expect(sigResp.tx).to.not.equal(null);
       expect(sigResp.txHash).to.not.equal(null);
       expect(sigResp.changeRecipient.slice(0, 2)).to.equal('tb');
@@ -544,24 +544,24 @@ describe('Connect and Pair', () => {
         asset: null,
       };
       try {
-        await helpers.execute(client, 'addPermissionV0', opts);
+        await client.addPermissionV0(opts);
       } catch (err) {
         expect(err).to.equal('Time window and spending limit must be positive.');
       }
       try {
         opts.timeWindow = 300;
         opts.limit = 0;
-        await helpers.execute(client, 'addPermissionV0', opts);
+        await client.addPermissionV0(opts);
       } catch (err) {
         expect(err).to.equal('Time window and spending limit must be positive.');
       }
       // Add a 5-minute permission allowing 5 wei to be spent
       opts.timeWindow = 300;
       opts.limit = 5;
-      await helpers.execute(client, 'addPermissionV0', opts);
+      await client.addPermissionV0(opts);
       // Fail to add the same permission again
       try {
-        await helpers.execute(client, 'addPermissionV0', opts);
+        await client.addPermissionV0(opts);
       } catch (err) {
         const expectedCode = responseCodes.RESP_ERR_ALREADY;
         expect(
@@ -593,17 +593,17 @@ describe('Connect and Pair', () => {
       };
       // Test the spending limit. The first two requests should auto-sign.
       // Spend once -> 3 wei left
-      let signResp = await helpers.execute(client, 'sign', req);
+      let signResp = await client.sign(req);
       expect(signResp.tx).to.not.equal(null);
       // Spend again -> 1 wei left
-      signResp = await helpers.execute(client, 'sign', req);
+      signResp = await client.sign(req);
       expect(signResp.tx).to.not.equal(null);
       // Spend again. This time it should fail to load the permission
       question(
         'Please REJECT the following transaction request. Press enter to continue.'
       );
       try {
-        signResp = await helpers.execute(client, 'sign', req);
+        signResp = await client.sign(req);
         expect(signResp.tx).to.equal(null);
       } catch (err) {
         const expectedCode = responseCodes.RESP_ERR_USER_DECLINED;
@@ -613,7 +613,7 @@ describe('Connect and Pair', () => {
       }
       // Spend 1 wei this time. This should be allowed by the permission.
       req.data.value = 1;
-      signResp = await helpers.execute(client, 'sign', req);
+      signResp = await client.sign(req);
       expect(signResp.tx).to.not.equal(null);
       continueTests = true;
     } catch (err) {

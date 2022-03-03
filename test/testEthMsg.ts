@@ -68,7 +68,7 @@ function buildMsgReq(
 async function testMsg(req, expectPass = true) {
   continueTests = false;
   try {
-    const sig = await helpers.execute(client, 'sign', req);
+    const sig = await client.sign(req);
     // Validation happens already in the client
     if (expectPass) {
       expect(sig.sig).to.not.equal(null);
@@ -97,8 +97,8 @@ describe('Setup client', () => {
       // Again, we assume that if an `id` has already been set, we are paired
       // with the hardcoded privkey above.
       expect(process.env.DEVICE_ID).to.not.equal(null);
-      const connectErr = await helpers.connect(client, process.env.DEVICE_ID);
-      expect(connectErr).to.equal(null);
+      const isPaired = await client.connect(process.env.DEVICE_ID);
+      expect(isPaired).to.equal(true);
       expect(client.isPaired).to.equal(true);
       expect(client.hasActiveWallet()).to.equal(true);
       continueTests = true;
