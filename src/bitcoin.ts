@@ -2,6 +2,8 @@
 import { bech32 } from 'bech32';
 import bs58check from 'bs58check';
 import { Buffer } from 'buffer/';
+import { ripemd160 } from 'hash.js/lib/hash/ripemd';
+import { sha256 } from 'hash.js/lib/hash/sha';
 import { BIP_CONSTANTS, signingSchema } from './constants';
 const DEFAULT_SEQUENCE = 0xffffffff;
 const DEFAULT_SIGHASH_BUFFER = Buffer.from('01', 'hex'); // SIGHASH_ALL = 0x01
@@ -132,7 +134,7 @@ const buildBitcoinTxRequest = function (data) {
 //                    (NOTE: either ALL are being spent, or none are)
 // -- lockTime = Will probably always be 0
 const serializeTx = function (data) {
-  const { inputs, outputs, lockTime = 0, crypto } = data;
+  const { inputs, outputs, lockTime = 0 } = data;
   let payload = Buffer.alloc(4);
   let off = 0;
   // Always use version 2
@@ -158,7 +160,7 @@ const serializeTx = function (data) {
     // Build the sigScript. Note that p2wpkh does not have a scriptSig.
     if (scriptType === BTC_SCRIPT_TYPE_P2SH_P2WPKH) {
       // Build a vector (varSlice of varSlice) containing the redeemScript
-      const redeemScript = buildRedeemScript(input.pubkey, crypto);
+      const redeemScript = buildRedeemScript(input.pubkey);
       const redeemScriptLen = getVarInt(redeemScript.length);
       const slice = Buffer.concat([redeemScriptLen, redeemScript]);
       const sliceLen = getVarInt(slice.length);
@@ -237,10 +239,10 @@ const getBitcoinAddress = function (pubkeyhash, version) {
 
 // Builder utils
 //-----------------------
-function buildRedeemScript(pubkey, crypto) {
+function buildRedeemScript(pubkey) {
   const redeemScript = Buffer.alloc(22);
-  const shaHash = crypto.createHash('sha256').update(pubkey).digest();
-  const pubkeyhash = crypto.createHash('rmd160').update(shaHash).digest();
+  const shaHash = Buffer.from(sha256().update(pubkey).digest('hex'), 'hex');
+  const pubkeyhash = Buffer.from(ripemd160().update(shaHash).digest('hex'), 'hex');
   redeemScript.writeUInt8(OP.ZERO, 0);
   redeemScript.writeUInt8(pubkeyhash.length, 1);
   pubkeyhash.copy(redeemScript, 2);

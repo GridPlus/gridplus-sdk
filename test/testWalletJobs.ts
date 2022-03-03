@@ -18,12 +18,12 @@ import { mnemonicToSeedSync } from 'bip39';
 import ethjsBN from 'bn.js';
 import { expect } from 'chai';
 import cli from 'cli-interact';
-import crypto from 'crypto';
 import { ecrecover, privateToAddress, privateToPublic, publicToAddress } from 'ethereumjs-util';
 import { keccak256 } from 'js-sha3';
 import { decode, encode } from 'rlp';
 import seedrandom from 'seedrandom';
 import { getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
+import { randomBytes } from '../src/util'
 import { Constants } from '../src/index'
 import helpers from './testUtil/helpers';
 let client,
@@ -126,7 +126,7 @@ describe('exportSeed', () => {
   });
 
   it('Should get GP_ENODEV for unknown (random) wallet', async () => {
-    const dummyWalletUID = crypto.randomBytes(32);
+    const dummyWalletUID = randomBytes(32);
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_ENODEV);
   });
@@ -161,7 +161,7 @@ describe('getAddresses', () => {
   });
 
   it('Should get GP_EWALLET for unknown (random) wallet', async () => {
-    const dummyWalletUID = crypto.randomBytes(32);
+    const dummyWalletUID = randomBytes(32);
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EWALLET);
   });
@@ -603,7 +603,7 @@ describe('signTx', () => {
       numRequests: 1,
       sigReq: [
         {
-          data: crypto.randomBytes(32),
+          data: randomBytes(32),
           signerPath: path,
         },
       ],
@@ -675,7 +675,7 @@ describe('signTx', () => {
   });
 
   it('Should get GP_EWALLET for unknown (random) wallet', async () => {
-    const dummyWalletUID = crypto.randomBytes(32);
+    const dummyWalletUID = randomBytes(32);
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EWALLET);
   });
@@ -1041,7 +1041,7 @@ describe('deleteSeed', () => {
   });
 
   it('Should get GP_EINVAL for unknown (random) wallet', async () => {
-    const dummyWalletUID = crypto.randomBytes(32);
+    const dummyWalletUID = randomBytes(32);
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EINVAL);
   });

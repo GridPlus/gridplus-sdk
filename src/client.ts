@@ -4,8 +4,8 @@ import { Buffer } from 'buffer/';
 import { KeyPair } from 'elliptic';
 import superagent from 'superagent';
 import bitcoin from './bitcoin';
+import { sha256 } from 'hash.js/lib/hash/sha'
 import {
-  Crypto,
   KVRecord,
   ABIRecord,
   SignData,
@@ -52,7 +52,8 @@ import {
   parseDER,
   parseLattice1Response,
   promisifyCb,
-  toPaddedDER
+  toPaddedDER,
+  randomBytes,
 } from './util';
 const EMPTY_WALLET_UID = Buffer.alloc(32);
 
@@ -66,7 +67,6 @@ export class Client {
   public timeout: number;
 
   private baseUrl: string;
-  private crypto: Crypto;
   private name: string;
   private key: KeyPair;
   private privKey: Buffer;
@@ -104,17 +104,13 @@ export class Client {
   /**
    * @param params - Parameters are passed as an object.
    */
-  constructor({ baseUrl, crypto, name, privKey, stateData, timeout, retryCount }: {
+  constructor({ baseUrl, name, privKey, stateData, timeout, retryCount }: {
     /** The base URL of the signing server. */
     baseUrl?: string;
-    /** The crypto library to use. Currently only 'secp256k1' is supported. */
-    crypto: Crypto;
     /** The name of the client. */
     name: string;
     /** The private key of the client.*/
     privKey?: Buffer;
-    /** The public key of the client. */
-    key?: KeyPair;
     /** Number of times to retry a request if it fails. */
     retryCount?: number;
     /** The time to wait for a response before cancelling. */
@@ -127,16 +123,12 @@ export class Client {
     if (name && (name.length < 5 || name.length > 24)) {
       throw new Error('`name` must be 5-24 characters');
     }
-    if (!crypto) {
-      throw new Error('crypto provider is required');
-    }
     this.baseUrl = baseUrl || BASE_URL;
-    this.crypto = crypto;
     this.name = name || 'Unknown';
 
     // Derive an ECDSA keypair using the p256 curve. The public key will
     // be used as an identifier
-    this.privKey = privKey || this.crypto.randomBytes(32);
+    this.privKey = privKey || randomBytes(32);
     this.key = getP256KeyPair(this.privKey);
 
     // Stateful params
@@ -245,7 +237,7 @@ export class Client {
         nameBuf,
         Buffer.from(pairingSecret),
       ]);
-      const hash = this.crypto.createHash('sha256').update(preImage).digest();
+      const hash = Buffer.from(sha256().update(preImage).digest('hex'), 'hex');
       const sig = this.key.sign(hash); // returns an array, not a buffer
       const derSig = toPaddedDER(sig);
       const payload = Buffer.concat([nameBuf, derSig]);
@@ -930,7 +922,7 @@ export class Client {
     if (this.ephemeralPub === null) return null;
     // EphemId is the first 4 bytes of the hash of the shared secret
     const secret = this._getSharedSecret();
-    const hash = this.crypto.createHash('sha256').update(secret).digest();
+    const hash = Buffer.from(sha256().update(secret).digest('hex'), 'hex');
     return hash.slice(0, 4);
   }
 
@@ -988,7 +980,7 @@ export class Client {
     // Build the header
     i = preReq.writeUInt8(VERSION_BYTE, i);
     i = preReq.writeUInt8(REQUEST_TYPE_BYTE, i);
-    const id = this.crypto.randomBytes(4);
+    const id = randomBytes(4);
     i = preReq.writeUInt32BE(parseInt(`0x${id.toString('hex')}`), i);
     i = preReq.writeUInt16BE(L, i);
     // Build the payload
@@ -1337,7 +1329,6 @@ export class Client {
       const preSerializedData = {
         inputs: [],
         outputs: [],
-        crypto: this.crypto,
       };
 
       // First output comes from request dta
@@ -1368,21 +1359,14 @@ export class Client {
       const serializedTx = bitcoin.serializeTx(preSerializedData);
       // Generate the transaction hash so the user can look this transaction up later
       const preImageTxHash = serializedTx;
-      let txHash: Buffer | string = this.crypto
-        .createHash('sha256')
-        .update(Buffer.from(preImageTxHash, 'hex'))
-        .digest();
-      txHash = this.crypto
-        .createHash('sha256')
-        .update(txHash)
-        .digest()
-        .reverse()
-        .toString('hex');
-
+      const txHashPre: Buffer = Buffer.from(
+        sha256().update(Buffer.from(preImageTxHash, 'hex')).digest('hex'),
+        'hex'
+      );
       // Add extra data for debugging/lookup purposes
       return {
         tx: serializedTx,
-        txHash,
+        txHash: sha256().update(txHashPre).digest('hex'),
         changeRecipient,
         sigs,
       };
