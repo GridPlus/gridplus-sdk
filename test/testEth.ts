@@ -17,10 +17,10 @@
 import { serialize } from '@ethersproject/transactions';
 import BN from 'bignumber.js';
 import { expect } from 'chai';
-import crypto from 'crypto';
 import seedrandom from 'seedrandom';
 import { question } from 'readline-sync';
 import { getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
+import { randomBytes } from '../src/util'
 import helpers from './testUtil/helpers';
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
 let client = null;
@@ -62,8 +62,8 @@ function buildRandomTxData(fwConstants) {
         ETH_GAS_LIMIT_MIN + randInt(ETH_GAS_LIMIT_MAX - ETH_GAS_LIMIT_MIN)
       ).toString(16)}`,
       value: `0x${new BN(randInt(10 ** randInt(30))).toString(16)}`,
-      to: `0x${crypto.randomBytes(20).toString('hex')}`,
-      data: `0x${crypto.randomBytes(randInt(maxDataSz)).toString('hex')}`,
+      to: `0x${randomBytes(20).toString('hex')}`,
+      data: `0x${randomBytes(randInt(maxDataSz)).toString('hex')}`,
       eip155: randInt(2) > 0 ? true : false,
       // 51 is the max bit size that we can validate with our bignum lib (see chainID section)
       _network: getChainId(randInt(52), 0),
@@ -320,7 +320,7 @@ if (!process.env.skip) {
     it('Should test range of chainId sizes and EIP155 tag', async () => {
       const txData = JSON.parse(JSON.stringify(defaultTxData));
       // Add some random data for good measure, since this will interact with the data buffer
-      txData.data = `0x${crypto.randomBytes(randInt(100)).toString('hex')}`;
+      txData.data = `0x${randomBytes(randInt(100)).toString('hex')}`;
 
       let chainId: any = 1;
       // This one can fit in the normal chainID u8
@@ -392,24 +392,16 @@ if (!process.env.skip) {
         fwConstants.ethMaxDataSz -
         metadataSz +
         fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
-      txData.data = `0x${crypto
-        .randomBytes(maxDataSz - chainIdSz)
-        .toString('hex')}`;
+      txData.data = `0x${randomBytes(maxDataSz - chainIdSz).toString('hex')}`;
       await testTxPass(buildTxReq(txData, chainId));
-      txData.data = `0x${crypto
-        .randomBytes(maxDataSz - chainIdSz + 1)
-        .toString('hex')}`;
+      txData.data = `0x${randomBytes(maxDataSz - chainIdSz + 1).toString('hex')}`;
       await testTxFail(buildTxReq(txData, chainId));
       // Also test smaller sizes
       chainId = getChainId(16, -1);
       chainIdSz = 3;
-      txData.data = `0x${crypto
-        .randomBytes(maxDataSz - chainIdSz)
-        .toString('hex')}`;
+      txData.data = `0x${randomBytes(maxDataSz - chainIdSz).toString('hex')}`;
       await testTxPass(buildTxReq(txData, chainId));
-      txData.data = `0x${crypto
-        .randomBytes(maxDataSz - chainIdSz + 1)
-        .toString('hex')}`;
+      txData.data = `0x${randomBytes(maxDataSz - chainIdSz + 1).toString('hex')}`;
       await testTxFail(buildTxReq(txData, chainId));
     })
 

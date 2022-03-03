@@ -15,10 +15,10 @@
 // NOTE: It is highly suggested that you set `AUTO_SIGN_DEV_ONLY=1` in the firmware
 //        root CMakeLists.txt file (for dev units)
 import { expect } from 'chai';
-import crypto from 'crypto';
 import randomWords from 'random-words';
 import seedrandom from 'seedrandom';
 import { getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
+import { randomBytes } from '../src/util'
 import helpers from './testUtil/helpers';
 const prng = new seedrandom(process.env.SEED || 'myrandomseed');
 let client = null;
@@ -36,7 +36,7 @@ function buildRandomMsg(type = 'signPersonal') {
     const isHexStr = randInt(2) > 0 ? true : false;
     const fwConstants = getFwVersionConst(client.fwVersion);
     const L = randInt(fwConstants.ethMaxDataSz - MSG_PAYLOAD_METADATA_SZ);
-    if (isHexStr) return `0x${crypto.randomBytes(L).toString('hex')}`;
+    if (isHexStr) return `0x${randomBytes(L).toString('hex')}`;
     // Get L hex bytes (represented with a string with 2*L chars)
     else return randomWords({ exactly: L, join: ' ' }).slice(0, L); // Get L ASCII characters (bytes)
   } else if (type === 'eip712') {
@@ -131,7 +131,7 @@ describe('Test ETH personalSign', function () {
   });
 
   it('Should test a message that needs to be prehashed', async () => {
-    await testMsg(buildMsgReq(crypto.randomBytes(4000), 'signPersonal'));
+    await testMsg(buildMsgReq(randomBytes(4000), 'signPersonal'));
   });
 
   it('Msg: sign_personal boundary conditions and auto-rejected requests', async () => {
@@ -146,8 +146,8 @@ describe('Test ETH personalSign', function () {
       metadataSz -
       fwConstants.personalSignHeaderSz +
       fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
-    const maxValid = `0x${crypto.randomBytes(maxMsgSz).toString('hex')}`;
-    const minInvalid = `0x${crypto.randomBytes(maxMsgSz + 1).toString('hex')}`;
+    const maxValid = `0x${randomBytes(maxMsgSz).toString('hex')}`;
+    const minInvalid = `0x${randomBytes(maxMsgSz + 1).toString('hex')}`;
     const zeroInvalid = '0x';
     // The largest non-hardened index which will take the most chars to print
     const x = HARDENED_OFFSET - 1;
@@ -196,7 +196,7 @@ describe('Test ETH EIP712', function () {
       primaryType: 'dYdX',
       message: {
         action: 'dYdX STARK Key',
-        onlySignOn: crypto.randomBytes(4000).toString('hex'),
+        onlySignOn: randomBytes(4000).toString('hex'),
       },
     };
     await testMsg(buildMsgReq(msg, 'eip712'));

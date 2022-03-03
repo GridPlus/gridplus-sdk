@@ -1,12 +1,11 @@
 import { AbiCoder } from '@ethersproject/abi';
 import { expect } from 'chai';
-import crypto from 'crypto';
 import _ from 'lodash';
 import randomWords from 'random-words';
 import { question } from 'readline-sync';
 import seedrandom from 'seedrandom';
 import { ETH_ABI_LATTICE_FW_TYPE_MAP, getFwVersionConst, HARDENED_OFFSET } from '../src/constants';
-import { ensureHexBuffer } from '../src/util'
+import { ensureHexBuffer, randomBytes } from '../src/util'
 import abi from './../src/ethereumAbi';
 import helpers from './testUtil/helpers';
 
@@ -72,19 +71,19 @@ function isNumType(type) {
 function randNumVal(type) {
   switch (type) {
     case 'uint8':
-      return '0x' + crypto.randomBytes(1).toString('hex');
+      return '0x' + randomBytes(1).toString('hex');
     case 'uint16':
-      return '0x' + crypto.randomBytes(1 + randInt(1)).toString('hex');
+      return '0x' + randomBytes(1 + randInt(1)).toString('hex');
     case 'uint24':
-      return '0x' + crypto.randomBytes(1 + randInt(2)).toString('hex');
+      return '0x' + randomBytes(1 + randInt(2)).toString('hex');
     case 'uint32':
-      return '0x' + crypto.randomBytes(1 + randInt(3)).toString('hex');
+      return '0x' + randomBytes(1 + randInt(3)).toString('hex');
     case 'uint64':
-      return '0x' + crypto.randomBytes(1 + randInt(7)).toString('hex');
+      return '0x' + randomBytes(1 + randInt(7)).toString('hex');
     case 'uint128':
-      return '0x' + crypto.randomBytes(1 + randInt(15)).toString('hex');
+      return '0x' + randomBytes(1 + randInt(15)).toString('hex');
     case 'uint256':
-      return '0x' + crypto.randomBytes(1 + randInt(31)).toString('hex');
+      return '0x' + randomBytes(1 + randInt(31)).toString('hex');
     default:
       throw new Error(`Unsupported type: ${type}`);
   }
@@ -95,15 +94,15 @@ function randBool() {
 }
 
 function randAddress() {
-  return `0x${crypto.randomBytes(20).toString('hex')}`;
+  return `0x${randomBytes(20).toString('hex')}`;
 }
 
 function randBytes(type) {
   const fixedSz = parseInt(type.slice(5));
   if (isNaN(fixedSz)) {
-    return crypto.randomBytes(1 + randInt(99)); // up to 100 bytes of random data
+    return randomBytes(1 + randInt(99)); // up to 100 bytes of random data
   } else {
-    return crypto.randomBytes(fixedSz); // Fixed number of bytes
+    return randomBytes(fixedSz); // Fixed number of bytes
   }
 }
 
@@ -589,7 +588,7 @@ describe('Test ABI fetch, create, delete', () => {
       },
     ],
     _typeNames: [ 'address' ],
-    _vals: [ `0x${crypto.randomBytes(20)} `]
+    _vals: [ `0x${randomBytes(20)} `]
   }
   TEST_DEF.sig = buildFuncSelector(TEST_DEF);
   beforeEach(() => {

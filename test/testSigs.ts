@@ -2,12 +2,12 @@
 import bip32 from 'bip32';
 import { mnemonicToSeedSync } from 'bip39';
 import { expect } from 'chai';
-import crypto from 'crypto';
 import { ecsign, privateToAddress } from 'ethereumjs-util';
 import { keccak256 } from 'js-sha3';
 import { question } from 'readline-sync';
 import seedrandom from 'seedrandom';
 import { HARDENED_OFFSET } from '../src/constants';
+import { randomBytes } from '../src/util'
 import helpers from './testUtil/helpers';
 
 //---------
@@ -514,7 +514,7 @@ describe('Test uniformity of Ethereum transaction sigs', () => {
 
   it('Should validate uniformity of 5 consecutive tx signatures (with oversized data)', async () => {
     try {
-      txReq.data.data = `0x${crypto.randomBytes(4000).toString('hex')}`;
+      txReq.data.data = `0x${randomBytes(4000).toString('hex')}`;
       txReq.data.signerPath[2] = HARDENED_OFFSET;
       const tx1_addr0 = await helpers.execute(client, 'sign', txReq);
       const tx2_addr0 = await helpers.execute(client, 'sign', txReq);

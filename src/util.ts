@@ -280,3 +280,12 @@ export const promisifyCb = (resolve, reject, cb: (err: string, ...cbParams) => v
     return resolve(...params)
   }
 }
+
+// Create a buffer of size `n` and fill it with random data
+export const randomBytes = function(n) {
+  const buf = Buffer.alloc(n);
+  for (let i = 0; i < n; i++) {
+    buf[i] = Math.round(Math.random() * 255);
+  }
+  return buf;
+}

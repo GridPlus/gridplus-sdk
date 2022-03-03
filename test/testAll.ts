@@ -2,6 +2,7 @@
 import { expect } from 'chai';
 import { question } from 'readline-sync';
 import { getFwVersionConst, HARDENED_OFFSET, responseCodes, responseMsgs } from '../src/constants';
+import { randomBytes } from '../src/util'
 import helpers from './testUtil/helpers';
 
 let client, id;
@@ -218,9 +219,7 @@ describe('Connect and Pair', () => {
       expect(tx.tx).to.not.equal(null);
       req.data.chainId = 'rinkeby';
 
-      req.data.data = client.crypto
-        .randomBytes(fwConstants.ethMaxDataSz)
-        .toString('hex');
+      req.data.data = randomBytes(fwConstants.ethMaxDataSz).toString('hex');
       tx = await helpers.execute(client, 'sign', req);
       expect(tx.tx).to.not.equal(null);
       req.data.data = null;
@@ -303,21 +302,19 @@ describe('Connect and Pair', () => {
       const maxDataSz =
         fwConstants.ethMaxDataSz +
         fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
-      req.data.data = client.crypto.randomBytes(maxDataSz).toString('hex');
+      req.data.data = randomBytes(maxDataSz).toString('hex');
       tx = await helpers.execute(client, 'sign', req);
       expect(tx.tx).to.not.equal(null);
       question(
         'Please ACCEPT the following transaction only if the warning screen displays. Press enter to continue.'
       );
-      req.data.data = client.crypto.randomBytes(maxDataSz + 1).toString('hex');
+      req.data.data = randomBytes(maxDataSz + 1).toString('hex');
       tx = await helpers.execute(client, 'sign', req);
       expect(tx.tx).to.not.equal(null);
-      req.data.data = client.crypto
-        .randomBytes(fwConstants.ethMaxDataSz)
-        .toString('hex');
+      req.data.data = randomBytes(fwConstants.ethMaxDataSz).toString('hex');
       tx = await helpers.execute(client, 'sign', req);
       expect(tx.tx).to.not.equal(null);
-      req.data.data = client.crypto.randomBytes(maxDataSz).toString('hex');
+      req.data.data = randomBytes(maxDataSz).toString('hex');
       tx = await helpers.execute(client, 'sign', req);
       expect(tx.tx).to.not.equal(null);
 
