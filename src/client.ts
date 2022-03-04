@@ -176,16 +176,17 @@ export class Client {
 
   /**
    * `getFwVersion` gets the firmware version of the paired device.
-   * @returns Either an object with semver properties (fix, minor, and major) or undefined.
+   * @returns Either an object with semver properties (fix, minor, and major) or `null`.
    */
-  public getFwVersion (): { fix: number, minor: number, major: number } | undefined {
-    if (this.fwVersion && this.fwVersion.length >= 3)
+  public getFwVersion (): { fix: number, minor: number, major: number } | null {
+    if (this.fwVersion && this.fwVersion.length >= 3) {
       return {
         fix: this.fwVersion[0],
         minor: this.fwVersion[1],
         major: this.fwVersion[2],
       }
-    return undefined
+    }
+    return null
   }
 
   //=======================================================================
