@@ -46,8 +46,8 @@ describe('Connect and Pair', () => {
       continueTests = false;
       if (!process.env.DEVICE_ID) {
         const secret = question('Please enter the pairing secret: ');
-        const pairErr = await client.pair(secret);
-        expect(pairErr).to.equal(null);
+        const hasActiveWallet = await client.pair(secret);
+        expect(hasActiveWallet).to.equal(true);
         expect(client.hasActiveWallet()).to.equal(true);
       }
       continueTests = true;
