@@ -170,7 +170,7 @@ export class Client {
    * Get a JSON string containing state data that can be used to rehydrate a session.
    * Pass the contents of this to the constructor as `stateData` to rehydrate.
    */
-  public getStateData() {
+  public getStateData () {
     return this._packStateData();
   }
 
@@ -198,7 +198,7 @@ export class Client {
    * an ephemeral public key, which is used to pair with the device in a later request.
    * @category Lattice
    */
-  public connect (deviceId: string, _cb?: (err?: string, isPaired?: boolean) => void) {
+  public connect (deviceId: string, _cb?: (err?: string, isPaired?: boolean) => void): Promise<{ err?: string, isPaired?: boolean }> {
     return new Promise((resolve, reject) => {
       let cb = promisifyCb(resolve, reject, _cb)
       // User may "re-connect" if a device ID has previously been stored
@@ -236,7 +236,7 @@ export class Client {
    * @category Lattice
    * @returns The active wallet object.
    */
-  public pair (pairingSecret: string, _cb?: (err?: string, hasActiveWallet?: boolean) => void) {
+  public pair (pairingSecret: string, _cb?: (err?: string, hasActiveWallet?: boolean) => void): Promise<{ err?: string, hasActiveWallet?: boolean }> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb)
       // Build the secret hash from the salt
@@ -307,7 +307,7 @@ export class Client {
    * @category Lattice
    * @returns An array of addresses.
    */
-  public getAddresses (opts: { startPath: number[], n: UInt4, flag: UInt4 }, _cb?: (err?: string, data?: Buffer | string[]) => void) {
+  public getAddresses (opts: { startPath: number[], n: UInt4, flag: UInt4 }, _cb?: (err?: string, data?: Buffer | string[]) => void): Promise<{ err?: string, data?: Buffer | string[] }> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb)
       const MAX_ADDR = 10;
@@ -381,7 +381,7 @@ export class Client {
    * @category Lattice
    * @returns The response from the device.
    */
-  public sign (opts: { data, currency: string }, _cb?: (err?: string, data?: SignData) => void, cachedData = null, nextCode = null) {
+  public sign (opts: { data, currency: string }, _cb?: (err?: string, data?: SignData) => void, cachedData = null, nextCode = null): Promise<{ err?: string, data?: SignData }> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb)
       const { currency } = opts;
@@ -470,7 +470,7 @@ export class Client {
    * @category Lattice
    * @returns The decrypted response.
    */
-  public addAbiDefs (defs: ABIRecord[], _cb?: (err?: string, data?: AddAbiDefsData) => void, nextCode = null) {
+  public addAbiDefs (defs: ABIRecord[], _cb?: (err?: string, data?: AddAbiDefsData) => void, nextCode = null): Promise<{ err?: string, data?: AddAbiDefsData }> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb)
       const defsToAdd = defs.slice(0, MAX_ABI_DEFS);
@@ -511,7 +511,7 @@ export class Client {
    * @category Lattice
    * @returns The decrypted response.
    */
-  public getAbiRecords (opts: { n: number, startIdx: number, category: string }, _cb?: (err?: string, data?: GetAbiRecordsData) => void, fetched?: GetAbiRecordsData) {
+  public getAbiRecords (opts: { n: number, startIdx: number, category: string }, _cb?: (err?: string, data?: GetAbiRecordsData) => void, fetched?: GetAbiRecordsData): Promise<{ err?: string, data?: GetAbiRecordsData }> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb)
       const { n = 1, startIdx = 0, category = '' } = opts;
@@ -582,7 +582,12 @@ export class Client {
   public removeAbiRecords (opts: { sigs: (number | string)[] }, _cb?: (err?: string, data?: {
     numRemoved: number;
     numTried: number;
-  }) => void, cbData = { numRemoved: 0, numTried: 0 }) {
+  }) => void, cbData = { numRemoved: 0, numTried: 0 }): Promise<{
+    err?: string, data?: {
+      numRemoved: number;
+      numTried: number;
+    }
+  }> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb)
       const { sigs } = opts;
@@ -637,7 +642,7 @@ export class Client {
    * payload to send to the Lattice.
    * @category Lattice
    */
-  public addPermissionV0 (opts: { currency: string, timeWindow: number, limit: number, decimals: number, asset: string }, _cb?: (err?: string) => void) {
+  public addPermissionV0 (opts: { currency: string, timeWindow: number, limit: number, decimals: number, asset: string }, _cb?: (err?: string) => void): Promise<{ err?: string }> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb)
       const { currency, timeWindow, limit, decimals, asset } = opts;
@@ -689,7 +694,7 @@ export class Client {
    * `getKvRecords` fetches a list of key-value records from the Lattice.
    * @category Lattice
    */
-  public getKvRecords (opts: { type?: number, n?: number, start?: number }, _cb?: (err?: string, data?: GetKvRecordsData) => void) {
+  public getKvRecords (opts: { type?: number, n?: number, start?: number }, _cb?: (err?: string, data?: GetKvRecordsData) => void): Promise<{ err?: string, data?: GetKvRecordsData }> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb)
       const { type = 0, n = 1, start = 0 } = opts;
@@ -767,7 +772,7 @@ export class Client {
    * @category Lattice
    * @returns A callback with an error or null.
    */
-  public addKvRecords (opts: { type?: number, records: KVRecord[], caseSensitive: boolean }, _cb?: (err?: string) => void) {
+  public addKvRecords (opts: { type?: number, records: KVRecord[], caseSensitive: boolean }, _cb?: (err?: string) => void): Promise<{ err?: string }> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb)
       const { type = 0, records = {}, caseSensitive = false } = opts;
@@ -854,7 +859,7 @@ export class Client {
    * @category Lattice
    * @returns A callback with an error or null.
    */
-  public removeKvRecords (opts: { type: number, ids: number[] }, _cb?: (err?: string) => void) {
+  public removeKvRecords (opts: { type: number, ids: number[] }, _cb?: (err?: string) => void): Promise<{ err?: string }> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb)
       const { type = 0, ids = [] } = opts;
