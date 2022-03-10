@@ -259,10 +259,10 @@ describe('Solana Decoder', () => {
     // NOTE: Solana addresses are just base58 encoded public keys. We do not
     // currently support exporting of Solana addresses in firmware but we can
     // derive them here using the exported seed.
-    const derivedAPath = DEFAULT_SOLANA_SIGNER;
-    const derivedBPath = DEFAULT_SOLANA_SIGNER;
+    const derivedAPath = JSON.parse(JSON.stringify(DEFAULT_SOLANA_SIGNER));
+    const derivedBPath = JSON.parse(JSON.stringify(DEFAULT_SOLANA_SIGNER));
     derivedBPath[3] += 1;
-    const derivedCPath = DEFAULT_SOLANA_SIGNER;
+    const derivedCPath = JSON.parse(JSON.stringify(DEFAULT_SOLANA_SIGNER));
     derivedCPath[3] += 2;
     const derivedA = helpers.deriveED25519Key(derivedAPath, seed);
     const derivedB = helpers.deriveED25519Key(derivedBPath, seed);
@@ -270,7 +270,7 @@ describe('Solana Decoder', () => {
     const pubA = new SolanaPublicKey(derivedA.pub);
     const pubB = new SolanaPublicKey(derivedB.pub);
     const pubC = new SolanaPublicKey(derivedC.pub);
-
+        
     // Define transaction instructions
     const transfer1 = SolanaSystemProgram.transfer({
       fromPubkey: pubA,
