@@ -15,6 +15,7 @@ import {
 } from './types/client'
 import { Constants } from './index';
 import {
+  EXTERNAL,
   ADDR_STR_LEN,
   ASCII_REGEX,
   BASE_URL,
@@ -384,8 +385,7 @@ export class Client {
   public sign (opts: { data, currency: string }, _cb?: (err?: string, data?: SignData) => void, cachedData = null, nextCode = null): Promise<{ err?: string, data?: SignData }> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb)
-      const { currency } = opts;
-      let { data } = opts;
+      let { currency, data } = opts;
       if (!data) {
         return cb('You must provide `data`');
       }
@@ -405,7 +405,35 @@ export class Client {
         schema = signingSchema.EXTRA_DATA;
       } else {
         try {
+          const useEthDecoder = (
+            this.fwVersion[2] >= 0 && this.fwVersion[1] >= 15 && this.fwVersion[0] >= 0
+          );
+          // TEMPORARY BRIDGE -- DEPRECATE ME
+          if (currency === 'ETH' && useEthDecoder) {
+            console.warn(
+              'Using the legacy ETH signing path. This will soon be deprecated. ' +
+              'Please switch to general signing request.'
+            );
+            let payload;
+            try {
+              payload = ethereum.ethConvertLegacyToGenericReq(data);
+            } catch (err) {
+              console.log(err)
+              return cb(`Please update Lattice firmware. Request failed. ${err.message}`);
+            }
+            data = {
+              fwConstants,
+              encodingType: EXTERNAL.SIGNING.ENCODINGS.EVM,
+              curveType: EXTERNAL.SIGNING.CURVES.SECP256K1,
+              hashType: EXTERNAL.SIGNING.HASHES.KECCAK256,
+              signerPath: data.signerPath,
+              payload,
+            }
+            currency = null;
+          }
+
           if (currency === 'ETH') {
+            // Legacy signing pathway -- should deprecate in the future
             req = ethereum.buildEthereumTxRequest(data);
           } else if (currency === 'ETH_MSG') {
             req = ethereum.buildEthereumMsgRequest(data);

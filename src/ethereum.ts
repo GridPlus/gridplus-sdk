@@ -6,10 +6,13 @@ import { Buffer } from 'buffer/';
 //@ts-expect-error - This third-party package is not typed properly
 import { TypedDataUtils } from 'eth-eip712-util-browser';
 import { keccak256 } from 'js-sha3';
-import rlp from 'rlp-browser';
+import rlp from 'rlp-browser'; // [TODO: Deprecate]
+import { encode as rlpEncode } from 'rlp';
 import secp256k1 from 'secp256k1';
 import { ASCII_REGEX, ethMsgProtocol, HANDLE_LARGER_CHAIN_ID, MAX_CHAIN_ID_BYTES, signingSchema } from './constants';
 import { buildSignerPathBuf, ensureHexBuffer, fixLen, isAsciiStr, splitFrames } from './util'
+import Common, { Chain, Hardfork } from '@ethereumjs/common'
+import { TransactionFactory } from '@ethereumjs/tx'
 
 const buildEthereumMsgRequest = function (input) {
   if (!input.payload || !input.protocol || !input.signerPath)
@@ -163,8 +166,6 @@ const buildEthereumTxRequest = function (data) {
         throw new Error(
           'EIP1559 transactions must include `maxPriorityFeePerGas`'
         );
-      if (!data.maxPriorityFeePerGas)
-        throw new Error('EIP1559 transactions must include `maxFeePerGas`');
       maxPriorityFeePerGasBytes = ensureHexBuffer(data.maxPriorityFeePerGas);
       rawTx.push(maxPriorityFeePerGasBytes);
       maxFeePerGasBytes = ensureHexBuffer(data.maxFeePerGas);
@@ -919,6 +920,58 @@ function get_rlp_encoded_preimage(rawTx, txType) {
   }
 }
 
+// ======
+// TEMPORARY BRIDGE
+// We are migrating from all legacy signing paths to a single generic
+// signing route. If users are attempting a legacy transaction request
+// against a Lattice on firmware v0.15.0 and above, we need to convert
+// that to a generic signing request.
+//
+// NOTE: Once we deprecate, we will remove this entire file
+// ======
+const ethConvertLegacyToGenericReq = function(req) {
+  let common, txData;
+  if (!req.chainId || ensureHexBuffer(req.chainId).toString('hex') === '01') {
+    common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.Shanghai });
+  } else {
+    common = Common.custom({ chainId: req.chainId });
+  }
+  // Newer transaction types
+  if (req.type === 1) {
+    // These basically never got used and there is a bug in `buildEthereumTxRequest`
+    // which throws an error `if (!data.maxPriorityFeePerGas)`, which this type does
+    // not contain. So I'll just throw an error here.
+    throw new Error('');
+  } else if (req.type === 2) {
+    const { 
+      maxFeePerGas, maxPriorityFeePerGas, nonce, gasLimit, to, value, data
+    } = req;
+    txData = {
+      type: 2, maxFeePerGas, maxPriorityFeePerGas, nonce, gasLimit, to, value, data,
+    };
+    const tx = TransactionFactory.fromTxData(txData, { common });
+    return tx.getMessageToSign(false);
+  }
+  // Legacy transaction type(s)
+  // Decide if we should use eip155. In practice, basically every transaction will use it
+  let useEIP155 = chainUsesEIP155(req.chainId);
+  if (req.eip155 !== null && typeof req.eip155 === 'boolean') {
+    useEIP155 = req.eip155;
+  }
+  if (!useEIP155) {
+    // These transactions are exceedingly rare so no need to support them here
+    throw new Error('');
+  }
+  const { 
+    gasPrice, nonce, gasLimit, to, value, data
+  } = req;
+  txData = {
+    gasPrice, nonce, gasLimit, to, value, data
+  };
+  const tx = TransactionFactory.fromTxData(txData, { common });
+  return Buffer.from(rlpEncode(tx.getMessageToSign(false)));
+}
+
 export default {
   buildEthereumMsgRequest,
   validateEthereumMsgResponse,
@@ -927,4 +980,6 @@ export default {
   hashTransaction,
   chainIds,
   ensureHexBuffer,
+
+  ethConvertLegacyToGenericReq,
 }

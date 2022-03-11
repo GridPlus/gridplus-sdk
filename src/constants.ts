@@ -313,6 +313,7 @@ export const EXTERNAL = {
       NONE: 1,
       SOLANA: 2,
       TERRA: 3,
+      EVM: 4,
     }
   }
 }
@@ -464,6 +465,12 @@ function getFwVersionConst(v) {
   // V0.14.1 Added the Terra decoder
   if (!legacy && gte(v, [0, 14, 1])) {
       c.genericSigning.encodingTypes.TERRA = EXTERNAL.SIGNING.ENCODINGS.TERRA;
+  }
+
+  // --- V0.15.X ---
+  // V0.15.0 added an EVM decoder and removed the legacy ETH signing pathway
+  if (!legacy && gte(v, [0, 15, 0])) {
+      c.genericSigning.encodingTypes.EVM = EXTERNAL.SIGNING.ENCODINGS.EVM;
   }
 
   return c;
