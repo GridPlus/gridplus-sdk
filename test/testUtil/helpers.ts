@@ -326,6 +326,15 @@ export const deriveED25519Key = function(path, seed) {
   }
 }
 
+export const deriveSECP256K1Key = function(path, seed) {
+  const wallet = bip32.fromSeed(seed);
+  const key = wallet.derivePath(getPathStr(path));
+  return {
+    priv: key.privateKey,
+    pub: key.publicKey
+  }
+}
+
 //============================================================
 // Wallet Job integration test helpers
 // We test "wallet jobs" using a test harness for debug builds
@@ -927,6 +936,7 @@ export default {
   buildRandomEip712Object,
   validateGenericSig,
   deriveED25519Key,
+  deriveSECP256K1Key,
   prandomBuf,
   getPathStr,
 }

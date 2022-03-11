@@ -263,9 +263,9 @@ const encodings = Constants.SIGNING.ENCODINGS
 
 | Encoding | Description |
 |:---------|:------------|
-| `ASCII` | Default encoding for ASCII messages. Can be specified to force display of ASCII characters on the Lattice, though non-ASCII characters may be displayed with specifial characters |
-| `HEX` | Default encoding for non-ASCII messages. Can be specified to force display of a hex string on the Lattice |
+| `NONE` | Can also use `null` or not specify the `encodingType`. Lattice will display either an ASCII or a hex string depending on the payload. |
 | `SOLANA` | Used to decode a Solana transaction. Transactions that cannot be decoded will be rejected. See `test/testGeneric.ts` for an example. |
+| `TERRA` | Used to decode a Terra transaction. Only `MsgSend`, `MsgMultiSend`, and `MsgExecuteContract` are supported, but any transaction with unsupported message types will still decode -- the message type and calldata will be displayed raw. |
 
 If you do not wish to specify a decoder, you can leave this field empty and the message will display either as ASCII or a hex string on the device.
 
