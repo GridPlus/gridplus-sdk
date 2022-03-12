@@ -182,7 +182,9 @@ export const getEncodedPayload = function(payload, encoding, allowedEncodings) {
   }
   // Make sure the encoding type specified is supported by firmware
   if (!existsIn(encoding, allowedEncodings)) {
-    throw new Error('Encoding type not supported by Lattice firmware.');
+    throw new Error(
+      'Encoding not supported by Lattice firmware. You may want to update.'
+    );
   }
   let payloadBuf;
   if (typeof payload === 'string' && payload.slice(0, 2) === '0x') {
