@@ -29,7 +29,6 @@ export const buildGenericSigningMsgRequest = function(req) {
   } = genericSigning;
   try {
     const { encoding, payloadBuf } = getEncodedPayload(req.payload, encodingType, encodingTypes);
-    
     // Sanity checks
     if (payloadBuf.length === 0) {
       throw new Error('Payload could not be handled.')
