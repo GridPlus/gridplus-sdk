@@ -27,97 +27,93 @@ export const buildGenericSigningMsgRequest = function(req) {
   const { 
     curveTypes, encodingTypes, hashTypes, baseDataSz, baseReqSz 
   } = genericSigning;
-  try {
-    const { encoding, payloadBuf } = getEncodedPayload(req.payload, encodingType, encodingTypes);
-    // Sanity checks
-    if (payloadBuf.length === 0) {
-      throw new Error('Payload could not be handled.')
-    } else if (!genericSigning || !extraDataFrameSz || !extraDataMaxFrames || !prehashAllowed) {
-      throw new Error('Unsupported. Please update your Lattice firmware.');
-    } else if (!existsIn(curveType, curveTypes)) {
-      throw new Error('Unsupported curve type.');
-    } else if (!existsIn(hashType, hashTypes)) {
-      throw new Error('Unsupported hash type.');
-    }
+  const { encoding, payloadBuf } = getEncodedPayload(req.payload, encodingType, encodingTypes);
+  // Sanity checks
+  if (payloadBuf.length === 0) {
+    throw new Error('Payload could not be handled.')
+  } else if (!genericSigning || !extraDataFrameSz || !extraDataMaxFrames || !prehashAllowed) {
+    throw new Error('Unsupported. Please update your Lattice firmware.');
+  } else if (!existsIn(curveType, curveTypes)) {
+    throw new Error('Unsupported curve type.');
+  } else if (!existsIn(hashType, hashTypes)) {
+    throw new Error('Unsupported hash type.');
+  }
 
-    // Ed25519 specific sanity checks
-    if (curveType === curveTypes.ED25519) {
-      if (hashType !== hashTypes.NONE) {
-        throw new Error('Signing on ed25519 requires unhashed message');
+  // Ed25519 specific sanity checks
+  if (curveType === curveTypes.ED25519) {
+    if (hashType !== hashTypes.NONE) {
+      throw new Error('Signing on ed25519 requires unhashed message');
+    }
+    signerPath.forEach((idx) => {
+      if (idx < HARDENED_OFFSET) {
+        throw new Error('Signing on ed25519 requires all signer path indices be hardened.')
       }
-      signerPath.forEach((idx) => {
-        if (idx < HARDENED_OFFSET) {
-          throw new Error('Signing on ed25519 requires all signer path indices be hardened.')
-        }
-      })
-    }
-    
-    // Build the request buffer with metadata and then the payload to sign.
-    const buf = Buffer.alloc(baseReqSz);
-    let off = 0;
-    buf.writeUInt32LE(encoding, off);
-    off += 4;
-    buf.writeUInt8(hashType, off);
-    off += 1;
-    buf.writeUInt8(curveType, off);
-    off += 1;
-    const signerPathBuf = buildSignerPathBuf(signerPath, varAddrPathSzAllowed);
-    signerPathBuf.copy(buf, off);
-    off += signerPathBuf.length;
-    buf.writeUInt8(omitPubkey ? 1 : 0, off);
-    off += 1;
-    buf.writeUInt16LE(payloadBuf.length, off);
-    off += 2;
+    })
+  }
+  
+  // Build the request buffer with metadata and then the payload to sign.
+  const buf = Buffer.alloc(baseReqSz);
+  let off = 0;
+  buf.writeUInt32LE(encoding, off);
+  off += 4;
+  buf.writeUInt8(hashType, off);
+  off += 1;
+  buf.writeUInt8(curveType, off);
+  off += 1;
+  const signerPathBuf = buildSignerPathBuf(signerPath, varAddrPathSzAllowed);
+  signerPathBuf.copy(buf, off);
+  off += signerPathBuf.length;
+  buf.writeUInt8(omitPubkey ? 1 : 0, off);
+  off += 1;
+  buf.writeUInt16LE(payloadBuf.length, off);
+  off += 2;
 
-    // Size of data payload that can be included in the first/base request
-    const maxExpandedSz = baseDataSz + (extraDataMaxFrames * extraDataFrameSz);
-    // Flow data into extraData requests if applicable
-    const extraDataPayloads = [];
-    let prehash = null;
+  // Size of data payload that can be included in the first/base request
+  const maxExpandedSz = baseDataSz + (extraDataMaxFrames * extraDataFrameSz);
+  // Flow data into extraData requests if applicable
+  const extraDataPayloads = [];
+  let prehash = null;
 
-    if (payloadBuf.length > baseDataSz) {
-      if (prehashAllowed && payloadBuf.length > maxExpandedSz) {
-        // If this payload is too large to send, but the Lattice allows a prehashed message, do that
-        if (hashType === hashTypes.NONE) {
-          // This cannot be done for ED25519 signing, which must sign the full message
-          throw new Error('Message too large to send and could not be prehashed (hashType=NONE).');
-        } else if (hashType === hashTypes.KECCAK256) {
-          prehash = Buffer.from(keccak256(payloadBuf), 'hex');
-        } else if (hashType === hashTypes.SHA256) {
-          prehash = Buffer.from(sha256().update(payloadBuf).digest('hex'), 'hex');
-        } else {
-          throw new Error('Unsupported hash type.')
-        }
+  if (payloadBuf.length > baseDataSz) {
+    if (prehashAllowed && payloadBuf.length > maxExpandedSz) {
+      // If this payload is too large to send, but the Lattice allows a prehashed message, do that
+      if (hashType === hashTypes.NONE) {
+        // This cannot be done for ED25519 signing, which must sign the full message
+        throw new Error('Message too large to send and could not be prehashed (hashType=NONE).');
+      } else if (hashType === hashTypes.KECCAK256) {
+        prehash = Buffer.from(keccak256(payloadBuf), 'hex');
+      } else if (hashType === hashTypes.SHA256) {
+        prehash = Buffer.from(sha256().update(payloadBuf).digest('hex'), 'hex');
       } else {
-        // Split overflow data into extraData frames
-        const frames = splitFrames(
-          payloadBuf.slice(baseDataSz),
-          extraDataFrameSz
-        );
-        frames.forEach((frame) => {
-          const szLE = Buffer.alloc(4);
-          szLE.writeUInt32LE(frame.length, 0);
-          extraDataPayloads.push(Buffer.concat([szLE, frame]));
-        });
+        throw new Error('Unsupported hash type.')
       }
+    } else {
+      // Split overflow data into extraData frames
+      const frames = splitFrames(
+        payloadBuf.slice(baseDataSz),
+        extraDataFrameSz
+      );
+      frames.forEach((frame) => {
+        const szLE = Buffer.alloc(4);
+        szLE.writeUInt32LE(frame.length, 0);
+        extraDataPayloads.push(Buffer.concat([szLE, frame]));
+      });
     }
-    
-    // If the message had to be prehashed, we will only copy the hash data into the request.
-    // Otherwise copy as many payload bytes into the request as possible. Follow up data
-    // from `frames` will come in follow up requests.
-    const toCopy = prehash ? prehash : payloadBuf;
-    toCopy.copy(buf, off);
+  }
+  
+  // If the message had to be prehashed, we will only copy the hash data into the request.
+  // Otherwise copy as many payload bytes into the request as possible. Follow up data
+  // from `frames` will come in follow up requests.
+  const toCopy = prehash ? prehash : payloadBuf;
+  toCopy.copy(buf, off);
 
-    // Return all the necessary data
-    return {
-      payload: buf,
-      extraDataPayloads,
-      schema: signingSchema.GENERAL_SIGNING,
-      curveType,
-      omitPubkey
-    }
-  } catch (err) {
-    return { err: err.message };
+  // Return all the necessary data
+  return {
+    payload: buf,
+    extraDataPayloads,
+    schema: signingSchema.GENERAL_SIGNING,
+    curveType,
+    omitPubkey
   }
 }
 
