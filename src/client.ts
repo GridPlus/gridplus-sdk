@@ -405,11 +405,16 @@ export class Client {
         schema = signingSchema.EXTRA_DATA;
       } else {
         try {
-          const useEthDecoder = (
-            this.fwVersion[2] >= 0 && this.fwVersion[1] >= 15 && this.fwVersion[0] >= 0
-          );
           // TEMPORARY BRIDGE -- DEPRECATE ME
-          if (currency === 'ETH' && useEthDecoder) {
+          // In v0.15.0 Lattice firmware removed the legacy ETH signing path, so
+          // we need to convert such requests to general signing requests using
+          // the EVM decoder.
+          const useEVMDecoder = (
+            fwConstants.genericSigning &&
+            fwConstants.genericSigning.encodingTypes &&
+            fwConstants.genericSigning.encodingTypes.EVM
+          );
+          if (currency === 'ETH' && useEVMDecoder) {
             console.warn(
               'Using the legacy ETH signing path. This will soon be deprecated. ' +
               'Please switch to general signing request.'
