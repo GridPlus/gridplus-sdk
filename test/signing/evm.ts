@@ -12,13 +12,15 @@ import {
   TransactionFactory as EthTxFactory,
   Capability as EthTxCapability,
 } from '@ethereumjs/tx';
+import { AbiCoder, Interface } from '@ethersproject/abi';
 import { BN } from 'bn.js';
-import { encode as rlpEncode } from 'rlp';
+import request from 'request-promise';
+import { encode as rlpEncode, decode as rlpDecode } from 'rlp';
 import secp256k1 from 'secp256k1';
-import { HARDENED_OFFSET } from '../../src/constants'
-import { Constants } from '../../src/index'
-import { randomBytes } from '../../src/util'
-import { getEncodedPayload } from '../../src/genericSigning'
+import { HARDENED_OFFSET } from '../../src/constants';
+import { Calldata, Constants } from '../../src/index';
+import { randomBytes } from '../../src/util';
+import { getEncodedPayload } from '../../src/genericSigning';
 let test;
 
 //---------------------------------------
@@ -50,6 +52,7 @@ describe('Start EVM signing tests',  () => {
 })
 
 describe('[EVM]', () => {
+/*
   describe('EIP1559', () => {
     beforeEach(() => {
       test.expect(test.continue).to.equal(true, 'Error in previous test.');
@@ -364,7 +367,103 @@ describe('[EVM]', () => {
       await run(req, null, null, true);
     });
   })
+*/
+  describe('Test ABI decoders', () => {
+    beforeEach(() => {
+      test.expect(test.continue).to.equal(true, 'Error in previous test.');
+      req.data.payload = null;
+      req.data.signerPath = DEFAULT_SIGNER;
+      req.txData = {
+        gasPrice: 1200000000,
+        nonce: 0,
+        gasLimit: 50000,
+        to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+        value: 100,
+        data: null,
+      };
+    })
+
+    it('Should test an ABI decoder with Etherscan txs', async () => {
+      const txHashes = [
+        // Basic params
+        //  1. swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] path, 
+        //  address to, uint256 deadline)
+        // '0xeee0752109c6d31038bab6c2b0a3e3857e8bffb9c229de71f0196fda6fb28a5e',
+        //  2. remove_liquidity_one_coin(uint256 _token_amount, int128 i, uint256 _min_amount)
+        // '0xa6173b4890303e12ca1b195ea4a04d8891b0d83768b734d2ecdb9c6dd9d828c4',
+
+        // Multi-frame, basic params with some fixed size arrays
+        //  1. atomicMatch_(address[14],uint256[18],uint8[8],bytes,bytes,bytes,bytes,bytes,bytes,
+        //  uint8[2],bytes32[5])
+// this one is too large for 1 frame       '0x92c82aad37a925e3aabe3d603109a5e65993aa2615c4b2278c3d355d9d433dff',
+
+        // 1D tuple
+        //  1. exactInput((bytes,address,uint256,uint256,uint256))
+        // '0xee9710119c13dba6fe2de240ef1e24a2489e98d9c7dd5881e2901056764ee234',
+        //  1. exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))
+        // '0xc33308ca105630b99a0c24ddde4f4506aa4115ec6f1a25f1138f3bd8cfa32b49',
+
+        // 1D tuple array
+        //  1. proveAndClaimWithResolver(bytes,(bytes,bytes)[],bytes,address,address)
+        '0xe15e6205c6696d444fc426468defdf08e89a0f5b3b8a17c68428f7aeefd53ca1',
+        // 2D tuple
+        // Multidimensional array (fixed dimension sizes)
+        // Multidimensional array (variable dimension sizes)
+      ]
+      const getTxBase = 'https://api.etherscan.io/api?module=proxy&action=eth_getTransactionByHash&txhash='
+      const getAbiBase = 'https://api.etherscan.io/api?module=contract&action=getabi&address=';
+      let resp;
+      for (let i = 0; i < txHashes.length; i++) {
+        let getTxUrl = `${getTxBase}${txHashes[i]}`;
+        if (test.etherscanKey) {
+          getTxUrl += `&apiKey=${test.etherscanKey}`;
+        }
+        resp = await request(getTxUrl);
+        const tx = JSON.parse(resp).result;
+        if (!test.etherscanKey) {
+          // Need a timeout between requests if we don't have a key
+          console.warn(
+            'WARNING: No env.ETHERSCAN_KEY provided. Waiting 5s between requests...'
+          )
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+        let getAbiUrl = `${getAbiBase}${tx.to}`;
+        if (test.etherscanKey) {
+          getAbiUrl += `&apiKey=${test.etherscanKey}`;
+        }
+        resp = await request(getAbiUrl);
+        const funcSig = tx.input.slice(2, 10);
+        const def = Calldata.searchEtherscanAbiDef(funcSig, resp);
+        if (!def) {
+          console.error(
+            `ERROR: Failed to decode ABI definition (${txHashes[i]}). Skipping.`
+          )
+          continue;
+        }
+        // Check that ethers can decode this
+        const funcName = rlpDecode(def)[0];
+        if (ethersCanDecode(tx.input, resp, funcName.toString())) {
+          // Send the request
+          req.txData.data = tx.input;
+          req.data.decoder = def
+          await run(req);
+        } else {
+          console.error(
+            `ERROR: ethers.js failed to decode abi for tx ${txHashes[i]}. Skipping.` 
+          );
+          continue;
+        }
+      }
+    })
+
+    // TODO: Construct ABIs and calldata for types that we can't find in the wild
+    // * Multidimensional arrays (fixed dimensions)
+    // * Multidimensional arrays (dynamic dimensions)
+    // * Nested tuples
+    it('Should test more exotic types');
+  })
 })
+
 
 //---------------------------------------
 // INTERNAL HELPERS
@@ -501,4 +600,17 @@ async function run(req, shouldFail=false, bypassSetPayload=false, useLegacySigni
     test.expect(err).to.equal(null, err);
   }
   test.continue = !shouldFail;
+}
+
+// Determine if ethers.js can decode calldata using an ABI def
+function ethersCanDecode(calldata, etherscanResp, funcName) {
+  try {
+    const abi = JSON.parse(etherscanResp).result;
+    const iface = new Interface(JSON.parse(abi));
+    const decoded = iface.decodeFunctionData(funcName, calldata);
+    // console.log(decoded)
+    return true;
+  } catch (err) {
+    return false;
+  }
 }

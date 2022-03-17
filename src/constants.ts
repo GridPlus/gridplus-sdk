@@ -471,6 +471,11 @@ function getFwVersionConst(v) {
   // V0.15.0 added an EVM decoder and removed the legacy ETH signing pathway
   if (!legacy && gte(v, [0, 15, 0])) {
       c.genericSigning.encodingTypes.EVM = EXTERNAL.SIGNING.ENCODINGS.EVM;
+      // Code used to write a calldata decoder
+      c.genericSigning.calldataDecoding = {
+        reserved: 2895728,
+        maxSz: 1024,
+      };
   }
 
   return c;

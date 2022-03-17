@@ -45,6 +45,7 @@ describe('Test General Signing', () => {
       runGeneric,
       prng: new seedrandom(process.env.SEED || Math.random().toString()),
       numIter: process.env.N || 5,
+      etherscanKey: process.env.ETHERSCAN_KEY,
     };
     expect(global.test.client).to.not.equal(null);
   })
@@ -82,19 +83,19 @@ describe('Test General Signing', () => {
     const data = helpers.deserializeExportSeedJobResult(_res.result);
     global.test.seed = helpers.copyBuffer(data.seed);
   })
+/*
+  it('Should load unformatted Tests', async () => {
+    require('./unformatted');
+  })
 
-  // it('Should load unformatted Tests', async () => {
-  //   require('./unformatted');
-  // })
-
-  // it('Should load Solana Tests', async () => {
-  //   require('./solana');
-  // })
+  it('Should load Solana Tests', async () => {
+    require('./solana');
+  })
 
   it('Should load Terra Tests' , async () => {
     require('./terra');
   })
-
+*/
   it('Should load EVM Tests' , async () => {
     require('./evm');
   })
