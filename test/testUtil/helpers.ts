@@ -326,6 +326,15 @@ export const deriveED25519Key = function(path, seed) {
   }
 }
 
+export const deriveSECP256K1Key = function(path, seed) {
+  const wallet = bip32.fromSeed(seed);
+  const key = wallet.derivePath(getPathStr(path));
+  return {
+    priv: key.privateKey,
+    pub: key.publicKey
+  }
+}
+
 //============================================================
 // Wallet Job integration test helpers
 // We test "wallet jobs" using a test harness for debug builds
@@ -876,8 +885,7 @@ export const validateGenericSig = function(seed, sig, payloadBuf, req) {
     } else {
       throw new Error('Bad params');
     }
-    const wallet = bip32.fromSeed(seed);
-    const priv = wallet.derivePath(getPathStr(signerPath)).privateKey;
+    const { priv } = deriveSECP256K1Key(signerPath, seed);
     const key = secp256k1.keyFromPrivate(priv);
     expect(key.verify(hash, sig)).to.equal(true, 'Signature failed verification.')
   } else if (curveType === CURVES.ED25519) {
@@ -927,6 +935,7 @@ export default {
   buildRandomEip712Object,
   validateGenericSig,
   deriveED25519Key,
+  deriveSECP256K1Key,
   prandomBuf,
   getPathStr,
 }

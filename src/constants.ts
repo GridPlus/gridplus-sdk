@@ -310,9 +310,10 @@ export const EXTERNAL = {
       ED25519: 1
     },
     ENCODINGS: {
-      ASCII: 0,
-      HEX: 1,
+      NONE: 1,
       SOLANA: 2,
+      TERRA: 3,
+      EVM: 4,
     }
   }
 }
@@ -321,6 +322,7 @@ function getFwVersionConst(v) {
   const c: any = {
     extraDataFrameSz: 0,
     extraDataMaxFrames: 0,
+    genericSigning: {},
   };
   function gte(v, exp) {
     // Note that `v` fields come in as [fix|minor|major]
@@ -367,43 +369,53 @@ function getFwVersionConst(v) {
   // to avoid blowing stack size.
   c.eip712MaxTypeParams = 18;
 
-  // EXTRA FIELDS ADDED IN LATER VERSIONS
-  //-------------------------------------
+  // -----
+  // EXTRA FIELDS ADDED IN LATER FIRMWARE VERSIONS
+  // -----
 
-  // V0.14.0 added support for a more robust API around ABI definitions
-  // and generic signing functionality
-  if (!legacy && gte(v, [0, 13, 0])) {
-    // Size of `category` buffer. Inclusive of null terminator byte.
-    c.abiCategorySz = 32;
-    c.abiMaxRmv = 200;  // Max number of ABI defs that can be removed with
-                        // a single request
-    if (!c.genericSigning) {
-      c.genericSigning = {};
-    }
-    // See `sizeof(GenericSigningRequest_t)` in firmware
-    c.genericSigning.baseReqSz = 1552;
-    // See `GENERIC_SIGNING_BASE_MSG_SZ` in firmware
-    c.genericSigning.baseDataSz = 1519;
-    c.genericSigning.hashTypes = EXTERNAL.SIGNING.HASHES;
-    c.genericSigning.curveTypes = EXTERNAL.SIGNING.CURVES;
-    c.genericSigning.encodingTypes = EXTERNAL.SIGNING.ENCODINGS;
-    // Supported flags for `getAddresses`
-    c.getAddressFlags = [ 
-      EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB, 
-      EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB 
+  // --- V0.10.X ---
+  // V0.10.4 introduced the ability to send signing requests over multiple
+  // data frames (i.e. in multiple requests)
+  if (!legacy && gte(v, [0, 10, 4])) {
+    c.extraDataFrameSz = 1500; // 1500 bytes per frame of extraData allowed
+    c.extraDataMaxFrames = 1; // 1 frame of extraData allowed
+  }
+  // V0.10.5 added the ability to use flexible address path sizes, which
+  // changes the `getAddress` API. It also added support for EIP712
+  if (!legacy && gte(v, [0, 10, 5])) {
+    c.varAddrPathSzAllowed = true;
+    c.eip712Supported = true;
+  }
+  // V0.10.8 allows a user to sign a prehashed transaction if the payload
+  // is too big
+  if (!legacy && gte(v, [0, 10, 8])) {
+    c.prehashAllowed = true;
+  }
+  // V0.10.10 allows a user to sign a prehashed ETH message if payload too big
+  if (!legacy && gte(v, [0, 10, 10])) {
+    c.ethMsgPreHashAllowed = true;
+  }
+
+  // --- 0.11.X ---
+  // V0.11.0 allows new ETH transaction types
+  if (!legacy && gte(v, [0, 11, 0])) {
+    c.allowedEthTxTypesVersion = 1;
+    c.allowedEthTxTypes = [
+      1, // eip2930
+      2, // eip1559
     ];
-    // We updated the max number of params in EIP712 types
-    c.eip712MaxTypeParams = 36;
+    c.totalExtraEthTxDataSz = 10;
+  }
+  // V0.11.2 changed how messages are displayed. For personal_sign messages
+  // we now write the header (`Signer: <path>`) into the main body of the screen.
+  // This means personal sign message max size is slightly smaller than for
+  // EIP712 messages because in the latter case there is no header
+  // Note that `<path>` has max size of 62 bytes (`m/X/X/...`)
+  if (!legacy && gte(v, [0, 11, 2])) {
+    c.personalSignHeaderSz = 72;
   }
 
-  // V0.13.0 added native segwit addresses and fixed a bug in exporting
-  // legacy bitcoin addresses
-  if (!legacy && gte(v, [0, 13, 0])) {
-    c.allowBtcLegacyAndSegwitAddrs = true;
-    // Random address to be used when trying to deploy a contract
-    c.contractDeployKey = '0x08002e0fec8e6acf00835f43c9764f7364fa3f42';
-  }
-
+  // --- V0.12.X ---
   // V0.12.0 added an API for creating, removing, and fetching key-val file
   // records. For the purposes of this SDK, we only hook into one type of kv
   // file: address names.
@@ -415,46 +427,50 @@ function getFwVersionConst(v) {
     c.kvRemoveMaxNum = 100;
   }
 
-  // V0.11.2 changed how messages are displayed. For personal_sign messages
-  // we now write the header (`Signer: <path>`) into the main body of the screen.
-  // This means personal sign message max size is slightly smaller than for
-  // EIP712 messages because in the latter case there is no header
-  // Note that `<path>` has max size of 62 bytes (`m/X/X/...`)
-  if (!legacy && gte(v, [0, 11, 2])) {
-    c.personalSignHeaderSz = 72;
+  // --- V0.13.X ---
+  // V0.13.0 added native segwit addresses and fixed a bug in exporting
+  // legacy bitcoin addresses
+  if (!legacy && gte(v, [0, 13, 0])) {
+    c.allowBtcLegacyAndSegwitAddrs = true;
+    // Random address to be used when trying to deploy a contract
+    c.contractDeployKey = '0x08002e0fec8e6acf00835f43c9764f7364fa3f42';
   }
 
-  // V0.11.0 allows new ETH transaction types
-  if (!legacy && gte(v, [0, 11, 0])) {
-    c.allowedEthTxTypesVersion = 1;
-    c.allowedEthTxTypes = [
-      1, // eip2930
-      2, // eip1559
+  // --- V0.14.X ---
+  // V0.14.0 added support for a more robust API around ABI definitions
+  // and generic signing functionality
+  if (!legacy && gte(v, [0, 14, 0])) {
+    // Size of `category` buffer. Inclusive of null terminator byte.
+    c.abiCategorySz = 32;
+    c.abiMaxRmv = 200;  // Max number of ABI defs that can be removed with
+                        // a single request
+    // See `sizeof(GenericSigningRequest_t)` in firmware
+    c.genericSigning.baseReqSz = 1552;
+    // See `GENERIC_SIGNING_BASE_MSG_SZ` in firmware
+    c.genericSigning.baseDataSz = 1519;
+    c.genericSigning.hashTypes = EXTERNAL.SIGNING.HASHES;
+    c.genericSigning.curveTypes = EXTERNAL.SIGNING.CURVES;
+    c.genericSigning.encodingTypes = {
+      NONE: EXTERNAL.SIGNING.ENCODINGS.NONE,
+      SOLANA: EXTERNAL.SIGNING.ENCODINGS.SOLANA,
+    }
+    // Supported flags for `getAddresses`
+    c.getAddressFlags = [ 
+      EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB, 
+      EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB 
     ];
-    c.totalExtraEthTxDataSz = 10;
+    // We updated the max number of params in EIP712 types
+    c.eip712MaxTypeParams = 36;
+  }
+  // V0.14.1 Added the Terra decoder
+  if (!legacy && gte(v, [0, 14, 1])) {
+      c.genericSigning.encodingTypes.TERRA = EXTERNAL.SIGNING.ENCODINGS.TERRA;
   }
 
-  // V0.10.10 allows a user to sign a prehashed ETH message if payload too big
-  if (!legacy && gte(v, [0, 10, 10])) {
-    c.ethMsgPreHashAllowed = true;
-  }
-
-  // V0.10.8 allows a user to sign a prehashed transaction if the payload
-  // is too big
-  if (!legacy && gte(v, [0, 10, 8])) {
-    c.prehashAllowed = true;
-  }
-  // V0.10.5 added the ability to use flexible address path sizes, which
-  // changes the `getAddress` API. It also added support for EIP712
-  if (!legacy && gte(v, [0, 10, 5])) {
-    c.varAddrPathSzAllowed = true;
-    c.eip712Supported = true;
-  }
-  // V0.10.4 introduced the ability to send signing requests over multiple
-  // data frames (i.e. in multiple requests)
-  if (!legacy && gte(v, [0, 10, 4])) {
-    c.extraDataFrameSz = 1500; // 1500 bytes per frame of extraData allowed
-    c.extraDataMaxFrames = 1; // 1 frame of extraData allowed
+  // --- V0.15.X ---
+  // V0.15.0 added an EVM decoder and removed the legacy ETH signing pathway
+  if (!legacy && gte(v, [0, 15, 0])) {
+      c.genericSigning.encodingTypes.EVM = EXTERNAL.SIGNING.ENCODINGS.EVM;
   }
 
   return c;
