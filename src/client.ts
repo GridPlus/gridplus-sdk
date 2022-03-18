@@ -222,7 +222,7 @@ export class Client {
         if (this.isPaired) {
           this.fetchActiveWallet((err) => {
             return cb(err, this.isPaired);
-          }, true);
+          });
         } else {
           return cb(null, false);
         }
@@ -274,7 +274,7 @@ export class Client {
         this.fetchActiveWallet((err) => {
           if (err) return cb(err);
           return cb(null, this.hasActiveWallet());
-        }, true);
+        });
       });
     })
   }
@@ -929,19 +929,12 @@ export class Client {
   }
 
   /**
-   * Get the active wallet in the device. If we already have one recorded, we don't need to do
-   * anything
-   * @returns callback
+   * Fetch the active wallet in the device.
+   * @returns callback with an error or null
    */
-   public fetchActiveWallet (cb, forceRefresh = false) {
-    if (
-      forceRefresh !== true &&
-      (this.hasActiveWallet() === true || this.isPaired !== true)
-    ) {
-      // If the active wallet already exists, or if we are not paired, skip the request
-      return cb(null);
-    } else {
-      // No active wallet? Get it from the device
+  public fetchActiveWallet (_cb?: (err?: string, wallet?: Buffer) => void) {
+    return new Promise((resolve, reject) => {
+      const cb = promisifyCb(resolve, reject, _cb)
       const payload = Buffer.alloc(0);
       return this._request(payload, 'GET_WALLETS', (err, res) => {
         if (err) {
@@ -950,7 +943,7 @@ export class Client {
         }
         return cb(this._handleGetWallets(res));
       });
-    }
+    })
   }
 
   //=======================================================================
@@ -1112,25 +1105,20 @@ export class Client {
             this._request(payload, encReqCode, cb, retryCount - 1);
           });
         } else if (canRetry && wrongWallet) {
-          // Incorrect wallet being requested. Clear wallet state.
+          // Incorrect wallet being requested. Clear wallet state and refetch.
           this._resetActiveWallets();
-          // Reconnect, update wallet UID, and retry
-          this.connect(this.deviceId, (err, isPaired) => {
-            if (err) {
-              // Abort on connection error
-              return cb(err);
-            } else if (!isPaired) {
-              // Abort if we are not paired
-              return cb('Not paired to device.');
-            }
-            // Include the new wallet UID in the payload and retry
-            payload = this._replaceWalletUID(encReqCode, payload);
-            if (!payload) {
-              // Not allowed to retry. Exit here.
-              return cb('Wrong wallet. Failed to switch. Please reconnect.');
-            }
-            this._request(payload, encReqCode, cb, retryCount - 1);
-          });
+
+          this.fetchActiveWallet()
+            .then(() => {
+              payload = this._replaceWalletUID(encReqCode, payload);
+              if (!payload) {
+                // Not allowed to retry. Exit here.
+                return cb('Wrong wallet. Failed to switch. Please reconnect.');
+              }
+              this._request(payload, encReqCode, cb, retryCount - 1);
+            }).catch(err => {
+              return cb(err)
+            })
         } else if (parsed.responseCode || parsed.err) {
           if (parsed.err) {
             return cb(parsed.err);
