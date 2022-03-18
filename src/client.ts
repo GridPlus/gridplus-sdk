@@ -220,7 +220,7 @@ export class Client {
         this.isPaired = this._handleConnect(res) || false;
         // Check for an active wallet. This will get bypassed if we are not paired.
         if (this.isPaired) {
-          this._getActiveWallet((err) => {
+          this.fetchActiveWallet((err) => {
             return cb(err, this.isPaired);
           }, true);
         } else {
@@ -271,7 +271,7 @@ export class Client {
         const errStr = this._handlePair(res);
         if (errStr) return cb(errStr);
         // Try to get the active wallet once pairing is successful
-        this._getActiveWallet((err) => {
+        this.fetchActiveWallet((err) => {
           if (err) return cb(err);
           return cb(null, this.hasActiveWallet());
         }, true);
@@ -928,20 +928,12 @@ export class Client {
 
   }
 
-  //=======================================================================
-  // INTERNAL FUNCTIONS
-  // These handle the logic around building requests and consuming
-  // responses. They take into account the Lattice's serialization scheme
-  // among other protocols.
-  //=======================================================================
-
   /**
    * Get the active wallet in the device. If we already have one recorded, we don't need to do
    * anything
-   * @internal
    * @returns callback
    */
-  private _getActiveWallet (cb, forceRefresh = false) {
+   public fetchActiveWallet (cb, forceRefresh = false) {
     if (
       forceRefresh !== true &&
       (this.hasActiveWallet() === true || this.isPaired !== true)
@@ -960,6 +952,13 @@ export class Client {
       });
     }
   }
+
+  //=======================================================================
+  // INTERNAL FUNCTIONS
+  // These handle the logic around building requests and consuming
+  // responses. They take into account the Lattice's serialization scheme
+  // among other protocols.
+  //=======================================================================
 
   /**
    * Get the shared secret, derived via ECDH from the local private key and the ephemeral public key
