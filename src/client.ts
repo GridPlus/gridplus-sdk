@@ -940,7 +940,7 @@ export class Client {
    * @internal
    * @returns callback
    */
-  private _getActiveWallet (cb, forceRefresh = false) {
+  public _getActiveWallet (cb, forceRefresh = false) {
     if (
       forceRefresh !== true &&
       (this.hasActiveWallet() === true || this.isPaired !== true)

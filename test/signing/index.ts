@@ -83,7 +83,8 @@ describe('Test General Signing', () => {
     const data = helpers.deserializeExportSeedJobResult(_res.result);
     global.test.seed = helpers.copyBuffer(data.seed);
   })
-/*
+
+  /*
   it('Should load unformatted Tests', async () => {
     require('./unformatted');
   })

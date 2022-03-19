@@ -4,4 +4,4 @@
 * is packed into the request, it is used to decode the calldata
 * in the request. It is optional.
 */
-export { searchEtherscanAbiDef } from './evm';
+export { parseSolidityJSONABI, parseCanonicalName } from './evm';

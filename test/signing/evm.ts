@@ -14,6 +14,9 @@ import {
 } from '@ethereumjs/tx';
 import { AbiCoder, Interface } from '@ethersproject/abi';
 import { BN } from 'bn.js';
+import { readFileSync } from 'fs';
+import { keccak256 } from 'js-sha3';
+import { jsonc } from 'jsonc';
 import request from 'request-promise';
 import { encode as rlpEncode, decode as rlpDecode } from 'rlp';
 import secp256k1 from 'secp256k1';
@@ -22,11 +25,13 @@ import { Calldata, Constants } from '../../src/index';
 import { randomBytes } from '../../src/util';
 import { getEncodedPayload } from '../../src/genericSigning';
 let test;
+const coder = new AbiCoder();
+
 
 //---------------------------------------
 // STATE DATA
 //---------------------------------------
-let DEFAULT_SIGNER;
+let DEFAULT_SIGNER, vectors;
 const req = {
   data: {
     curveType: Constants.SIGNING.CURVES.SECP256K1,
@@ -49,6 +54,10 @@ describe('Start EVM signing tests',  () => {
     0,
   ];
   req.data.signerPath = DEFAULT_SIGNER;
+  const globalVectors = jsonc.parse(readFileSync(
+    `${process.cwd()}/test/signing/vectors.jsonc`
+  ).toString());
+  vectors = globalVectors.evm.calldata;
 })
 
 describe('[EVM]', () => {
@@ -383,91 +392,255 @@ describe('[EVM]', () => {
       };
     })
 
-    it('Should test an ABI decoder with Etherscan txs', async () => {
-      const txHashes = [
-        // Basic params
-        //  1. swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] path, 
-        //  address to, uint256 deadline)
-        // '0xeee0752109c6d31038bab6c2b0a3e3857e8bffb9c229de71f0196fda6fb28a5e',
-        //  2. remove_liquidity_one_coin(uint256 _token_amount, int128 i, uint256 _min_amount)
-        // '0xa6173b4890303e12ca1b195ea4a04d8891b0d83768b734d2ecdb9c6dd9d828c4',
-
-        // Multi-frame, basic params with some fixed size arrays
-        //  1. atomicMatch_(address[14],uint256[18],uint8[8],bytes,bytes,bytes,bytes,bytes,bytes,
-        //  uint8[2],bytes32[5])
-// this one is too large for 1 frame       '0x92c82aad37a925e3aabe3d603109a5e65993aa2615c4b2278c3d355d9d433dff',
-
-        // 1D tuple
-        //  1. exactInput((bytes,address,uint256,uint256,uint256))
-        // '0xee9710119c13dba6fe2de240ef1e24a2489e98d9c7dd5881e2901056764ee234',
-        //  1. exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))
-        // '0xc33308ca105630b99a0c24ddde4f4506aa4115ec6f1a25f1138f3bd8cfa32b49',
-
-        // 1D tuple array
-        //  1. proveAndClaimWithResolver(bytes,(bytes,bytes)[],bytes,address,address)
-        '0xe15e6205c6696d444fc426468defdf08e89a0f5b3b8a17c68428f7aeefd53ca1',
-        // 2D tuple
-        // Multidimensional array (fixed dimension sizes)
-        // Multidimensional array (variable dimension sizes)
-      ]
-      const getTxBase = 'https://api.etherscan.io/api?module=proxy&action=eth_getTransactionByHash&txhash='
-      const getAbiBase = 'https://api.etherscan.io/api?module=contract&action=getabi&address=';
-      let resp;
-      for (let i = 0; i < txHashes.length; i++) {
-        let getTxUrl = `${getTxBase}${txHashes[i]}`;
-        if (test.etherscanKey) {
-          getTxUrl += `&apiKey=${test.etherscanKey}`;
-        }
-        resp = await request(getTxUrl);
-        const tx = JSON.parse(resp).result;
-        if (!test.etherscanKey) {
-          // Need a timeout between requests if we don't have a key
-          console.warn(
-            'WARNING: No env.ETHERSCAN_KEY provided. Waiting 5s between requests...'
-          )
-          await new Promise(resolve => setTimeout(resolve, 5000));
-        }
-        let getAbiUrl = `${getAbiBase}${tx.to}`;
-        if (test.etherscanKey) {
-          getAbiUrl += `&apiKey=${test.etherscanKey}`;
-        }
-        resp = await request(getAbiUrl);
-        const funcSig = tx.input.slice(2, 10);
-        const def = Calldata.searchEtherscanAbiDef(funcSig, resp);
-        if (!def) {
-          console.error(
-            `ERROR: Failed to decode ABI definition (${txHashes[i]}). Skipping.`
-          )
-          continue;
-        }
-        // Check that ethers can decode this
-        const funcName = rlpDecode(def)[0];
-        if (ethersCanDecode(tx.input, resp, funcName.toString())) {
-          // Send the request
-          req.txData.data = tx.input;
-          req.data.decoder = def
+    // Test live vectors. Validate that we can decode using Etherscan ABI info 
+    // as well as 4byte canonical names.
+    for (let i = 0; i < vectors.etherscanTxHashes.length; i++) {
+      it(`(Etherscan + 4byte #${i}) ${vectors.etherscanTxHashes[i]}`, async () => {
+        // Hashes on ETH mainnet that we will use to fetch full tx and ABI data with
+        const getTxBase = 'https://api.etherscan.io/api?module=proxy&action=eth_getTransactionByHash&txhash='
+        const getAbiBase = 'https://api.etherscan.io/api?module=contract&action=getabi&address=';
+        const fourByteBase = 'https://www.4byte.directory/api/v1/signatures?hex_signature=';
+        let resp;
+        for (let i = 0; i < vectors.etherscanTxHashes.length; i++) {
+          // 1. First fetch the transaction details from etherscan. This is just to get
+          // the calldata, so it would not be needed in a production environment
+          // (since we already have the calldata).
+          let getTxUrl = `${getTxBase}${vectors.etherscanTxHashes[i]}`;
+          if (test.etherscanKey) {
+            getTxUrl += `&apiKey=${test.etherscanKey}`;
+          }
+          resp = await request(getTxUrl);
+          const tx = JSON.parse(resp).result;
+          if (!test.etherscanKey) {
+            // Need a timeout between requests if we don't have a key
+            console.warn(
+              'WARNING: No env.ETHERSCAN_KEY provided. Waiting 5s between requests...'
+            )
+            await new Promise(resolve => setTimeout(resolve, 5000));
+          }
+          // 2. Fetch the full ABI of the contract that the transaction interacted with.
+          let getAbiUrl = `${getAbiBase}${tx.to}`;
+          if (test.etherscanKey) {
+            getAbiUrl += `&apiKey=${test.etherscanKey}`;
+          }
+          resp = await request(getAbiUrl);
+          const funcSig = tx.input.slice(0, 10);
+          const abi = JSON.parse(JSON.parse(resp).result);
+          const def = Calldata.parseSolidityJSONABI(funcSig, abi);
+          if (!def) {
+            console.error(
+              `ERROR: Failed to decode ABI definition (${vectors.etherscanTxHashes[i]}). Skipping.`
+            )
+            continue;
+          }
+          // 3. Test decoding using Etherscan ABI info
+          // Check that ethers can decode this
+          const funcName = rlpDecode(def)[0];
+          if (ethersCanDecode(tx.input, resp, funcName.toString())) {
+            // Send the request
+            req.txData.data = tx.input;
+            req.data.decoder = def
+            // await run(req);
+          } else {
+            console.error(
+              `ERROR: ethers.js failed to decode abi for tx ${vectors.etherscanTxHashes[i]}. Skipping.` 
+            );
+            continue;
+          }
+          // 4. Get the canonical name from 4byte
+          resp = await request(`${fourByteBase}${funcSig}`);
+          const fourByteResults = JSON.parse(resp).results;
+          if (fourByteResults.length > 0) {
+            console.warn('WARNING: There are multiple results. Using the first one.');
+          }
+          const canonicalName = fourByteResults[0].text_signature;
+          // 5. Convert the decoder data and make a request to the Lattice
+          req.data.decoder = Calldata.parseCanonicalName(funcSig, canonicalName);
           await run(req);
-        } else {
-          console.error(
-            `ERROR: ethers.js failed to decode abi for tx ${txHashes[i]}. Skipping.` 
-          );
-          continue;
         }
-      }
-    })
-
-    // TODO: Construct ABIs and calldata for types that we can't find in the wild
-    // * Multidimensional arrays (fixed dimensions)
-    // * Multidimensional arrays (dynamic dimensions)
-    // * Nested tuples
-    it('Should test more exotic types');
+      })
+    }
+    
+    for (let i = 0; i < vectors.canonicalNames.length; i++) {
+      it(`(Canonical #${i}) ${vectors.canonicalNames[i]}`, async () => {
+        const name = vectors.canonicalNames[i];
+        const selector = `0x${keccak256(name).slice(0, 8)}`;
+        const encDef = Calldata.parseCanonicalName(selector, name);
+        const { types, data } = convertDecoderToEthers(rlpDecode(encDef).slice(1));
+        const calldata = coder.encode(types, data);
+        req.txData.data = `${selector}${calldata.slice(2)}`;
+        req.data.decoder = encDef;
+        // The following prints are helpful for debugging.
+        // If you are testing changes to the ABI decoder in firmware, you
+        // should uncomment these prints and validate that the `data` matches
+        // what you see on the screen for each case. Please scroll through
+        // ALL the data on the Lattice to confirm each param has properly decoded.
+        // console.log('types', types)
+        // console.log('params', JSON.stringify(data))
+        // for (let cd = 2; cd < calldata.length; cd += 64) {
+        //   console.log(calldata.slice(cd, cd + 64));
+        // }
+        await run(req);
+      })
+    }
   })
 })
-
 
 //---------------------------------------
 // INTERNAL HELPERS
 //---------------------------------------
+// Determine if ethers.js can decode calldata using an ABI def
+function ethersCanDecode(calldata, etherscanResp, funcName) {
+  try {
+    const abi = JSON.parse(etherscanResp).result;
+    const iface = new Interface(JSON.parse(abi));
+    iface.decodeFunctionData(funcName, calldata);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+// Convert a decoder definition to something ethers can consume
+function convertDecoderToEthers(def) {
+  const converted = getConvertedDef(def);
+  const types = [], data = [];
+  converted.forEach((i) => {
+    types.push(i.type);
+    data.push(i.data);
+  })
+  return { types, data };
+}
+
+// Convert an encoded def into a combination of ethers-compatable 
+// type names and data fields. The data should be random but it
+// doesn't matter much for these tests, which mainly just test
+// structure of the definitions
+function getConvertedDef(def) {
+  const converted = [];
+  def.forEach((param) => {
+    const arrSzs = param[3];
+    const evmType = EVM_TYPES[parseInt(param[1].toString('hex'), 16)];
+    let type = evmType;
+    const numBytes = parseInt(param[2].toString('hex'), 16);
+    if (numBytes > 0) {
+      type = `${type}${numBytes * 8}`;
+    }
+    // Handle tuples by recursively generating data
+    let tupleData;
+    if (evmType === 'tuple') {
+      tupleData = [];
+      type = `${type}(`
+      const tupleDef = getConvertedDef(param[4]);
+      tupleDef.forEach((tupleParam) => {
+        type = `${type}${tupleParam.type}, `
+        tupleData.push(tupleParam.data);
+      });
+      type = type.slice(0, type.length - 2);
+      type = `${type})`;
+    }
+    // Get the data of a single function (i.e. excluding arrays)
+    const funcData = tupleData ? tupleData : genParamData(param);
+    // Apply the data to arrays
+    for (let i = 0; i < arrSzs.length; i++) {
+      let sz = parseInt(arrSzs[i].toString('hex'));
+      if (isNaN(sz)) {
+        // This is a 0 size, which means we need to
+        // define a size to generate data
+        type = `${type}[]`;
+      } else {
+        type = `${type}[${sz}]`;
+      }
+    }
+    // If this param is a tuple we need to copy base data
+    // across all dimensions. The individual params are already
+    // arraified this way, but not the tuple type
+    if (tupleData) {
+      converted.push({ type, data: getArrayData(param, funcData) });
+    } else {
+      converted.push({ type, data: funcData });
+    }
+  })
+  return converted;
+}
+
+function genTupleData(tupleParam) {
+  const nestedData = [];
+  tupleParam.forEach((nestedParam) => {
+    nestedData.push(
+      genData(
+        EVM_TYPES[parseInt(nestedParam[1].toString('hex'), 16)],
+        nestedParam
+      )
+    )
+  })
+  return nestedData;
+}
+
+function genParamData(param) {
+  const evmType = EVM_TYPES[parseInt(param[1].toString('hex'), 16)];
+  const baseData = genData(evmType, param);
+  return getArrayData(param, baseData);
+}
+
+function getArrayData(param, baseData) {
+  let arrayData, data;
+  const arrSzs = param[3];
+  for (let i = 0; i < arrSzs.length; i++) {
+    let sz = parseInt(arrSzs[i].toString('hex'));
+    const dimData = [];
+    let sz = parseInt(param[3][i].toString('hex'));
+    if (isNaN(sz)) {
+      sz = 2 //1;
+    }
+    if (!arrayData) {
+      arrayData = [];
+    }
+    const lastDimData = JSON.parse(JSON.stringify(arrayData));
+    for (let j = 0; j < sz; j++) {
+      if (i === 0) {
+        dimData.push(baseData);
+      } else {
+        dimData.push(lastDimData);
+      }
+    }
+    arrayData = dimData;
+  }
+  if (!data) {
+    data = arrayData ? arrayData : baseData;
+  }
+  return data;
+}
+
+function genData(type, param) {
+  switch (type) {
+    case 'address':
+      return '0xdead00000000000000000000000000000000beef';
+    case 'bool':
+      return true;
+    case 'uint':
+      return 9;
+    case 'int':
+      return -9;
+    case 'bytes':
+      return '0xdeadbeef';
+    case 'string':
+      return 'string';
+    case 'tuple':
+      if (!param || param.length < 4) {
+        throw new Error('Invalid tuple data');
+      }
+      return genTupleData(param[4]);
+    default:
+      throw new Error('Unrecognized type');
+  }
+}
+
+// Copied from calldata/evm.ts (not exported there)
+const EVM_TYPES = [ 
+  null, 'address', 'bool', 'uint', 'int', 'bytes', 'string', 'tuple' 
+];
+
 // Various methods for fetching a chainID from different @ethereumjs/tx objects
 function getTxChainId (tx) {
   if (tx.common && typeof tx.common.chainIdBN === 'function') {
@@ -569,12 +742,20 @@ async function run(req, shouldFail=false, bypassSetPayload=false, useLegacySigni
     const latticeR = Buffer.from(resp.sig.r);
     const latticeS = Buffer.from(resp.sig.s);
     const latticeV = getV(tx, resp);
+    // Strip off leading zeros to do an exact componenet check.
+    // We will still validate the original lattice sig in a tx.
+    const rToCheck =  latticeR.length !== refR.length ?
+                      latticeR.slice(latticeR.length - refR.length) :
+                      latticeR;
+    const sToCheck =  latticeS.length !== refS.length ?
+                      latticeS.slice(latticeS.length - refS.length) :
+                      latticeS;
     // Validate the signature
-    test.expect(latticeR.equals(refR)).to.equal(
+    test.expect(rToCheck.equals(refR)).to.equal(
       true, 
       'Signature R component does not match reference'
     );
-    test.expect(latticeS.equals(refS)).to.equal(
+    test.expect(sToCheck.equals(refS)).to.equal(
       true, 
       'Signature S component does not match reference'
     );
@@ -600,17 +781,4 @@ async function run(req, shouldFail=false, bypassSetPayload=false, useLegacySigni
     test.expect(err).to.equal(null, err);
   }
   test.continue = !shouldFail;
-}
-
-// Determine if ethers.js can decode calldata using an ABI def
-function ethersCanDecode(calldata, etherscanResp, funcName) {
-  try {
-    const abi = JSON.parse(etherscanResp).result;
-    const iface = new Interface(JSON.parse(abi));
-    const decoded = iface.decodeFunctionData(funcName, calldata);
-    // console.log(decoded)
-    return true;
-  } catch (err) {
-    return false;
-  }
 }
