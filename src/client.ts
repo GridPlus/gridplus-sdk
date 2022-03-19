@@ -423,8 +423,9 @@ export class Client {
             try {
               payload = ethereum.ethConvertLegacyToGenericReq(data);
             } catch (err) {
-              console.log(err)
-              return cb(`Please update Lattice firmware. Request failed. ${err.message}`);
+              return cb(
+                `Please update Lattice firmware. Request failed. ${err.message}`
+              );
             }
             data = {
               fwConstants,
