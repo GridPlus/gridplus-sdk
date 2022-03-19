@@ -476,6 +476,13 @@ function getFwVersionConst(v) {
     // Note that we have NOT removed the ETH_MSG type so we should
     // not change ethMaxMsgSz
     c.ethMaxDataSz = 1550 - 31;
+    // Max buffer size for get/add decoder requests
+    c.maxDecoderBufSz = 1600;
+    // Code used to write a calldata decoder
+    c.genericSigning.calldataDecoding = {
+      reserved: 2895728,
+      maxSz: 1024,
+    };
   }
 
   return c;
