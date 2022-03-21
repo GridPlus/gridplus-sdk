@@ -1105,9 +1105,9 @@ export class Client {
             this._request(payload, encReqCode, cb, retryCount - 1);
           });
         } else if (canRetry && wrongWallet) {
-          // Incorrect wallet being requested. Clear wallet state and refetch.
+          // Incorrect wallet being requested. Clear wallet state.
           this._resetActiveWallets();
-
+          // Refetch the active wallet.
           this.fetchActiveWallet()
             .then(() => {
               payload = this._replaceWalletUID(encReqCode, payload);
@@ -1115,7 +1115,7 @@ export class Client {
                 // Not allowed to retry. Exit here.
                 return cb('Wrong wallet. Failed to switch. Please reconnect.');
               }
-              this._request(payload, encReqCode, cb, retryCount - 1);
+              this._request(payload, encReqCode, cb, 0);
             }).catch(err => {
               return cb(err)
             })
