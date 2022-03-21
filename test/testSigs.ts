@@ -6,7 +6,7 @@ import { ecsign, privateToAddress } from 'ethereumjs-util';
 import { keccak256 } from 'js-sha3';
 import { question } from 'readline-sync';
 import seedrandom from 'seedrandom';
-import { HARDENED_OFFSET } from '../src/constants';
+import { HARDENED_OFFSET, responseCodes, responseMsgs } from '../src/constants';
 import { randomBytes } from '../src/util'
 import helpers from './testUtil/helpers';
 
@@ -416,6 +416,39 @@ describe('Setup Test', () => {
       addr8.toLowerCase(),
       'Incorrect address 8 fetched.'
     );
+  })
+
+  it('Should test that wrongWallet retry works', async () => {
+    continueTests = false;
+    question(
+      'Please switch to a different SafeCard. Press enter to continue.'
+    );
+    try {
+      // Should get wrong wallet on the first attempt
+      await client.sign(txReq);
+    } catch (err) {
+      expect(err).to.equal(
+        responseMsgs[responseCodes.RESP_ERR_WRONG_WALLET],
+        'Wrong wallet expected.'
+      );
+      // Make another request. This one should pass because the wallet
+      // has not changed relative to the last request
+      await client.sign(txReq);
+      // Now ask the user to switch back and clean up
+      question(
+        'Please switch back to your original SafeCard. Press enter to continue.'
+      );
+      try {
+        await client.sign(txReq);
+      } catch (err) {
+        expect(err).to.equal(
+          responseMsgs[responseCodes.RESP_ERR_WRONG_WALLET],
+          'Wrong wallet expected.'
+        );
+        await client.sign(txReq);
+        continueTests = true;
+      }
+    }
   })
 })
 
