@@ -240,7 +240,7 @@ General signing allows you to request a signature on any message from a private 
 ```
 const msg = "I am the message to sign"
 const req = {
-  startPath: [
+  signerPath: [
     0x80000000 + 44,
     0x80000000 + 60,
     0x80000000,
@@ -274,7 +274,7 @@ If you do not wish to specify a decoder, you can leave this field empty and the 
 ```
 const msg = solTx.compileMessage().serialize()
 const req = {
-  startPath: [   // Derivation path of the first requested pubkey
+  signerPath: [   // Derivation path of the first requested pubkey
     0x80000000 + 44,
     0x80000000 + 60,
     0x80000000,
