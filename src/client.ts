@@ -409,6 +409,9 @@ export class Client {
           // In v0.15.0 Lattice firmware removed the legacy ETH signing path, so
           // we need to convert such requests to general signing requests using
           // the EVM decoder.
+          // NOTE: Not every request can be converted, so users should switch
+          // to using general signing requests for newer firmware versions.
+          // EIP1559 and EIP155 legacy requests will convert, but others may not.
           const useEVMDecoder = (
             fwConstants.genericSigning &&
             fwConstants.genericSigning.encodingTypes &&
@@ -424,7 +427,8 @@ export class Client {
               payload = ethereum.ethConvertLegacyToGenericReq(data);
             } catch (err) {
               return cb(
-                `Please update Lattice firmware. Request failed. ${err.message}`
+                'Could not convert legacy request. Please switch to a general signing ' +
+                'request. See gridplus-sdk docs for more information.'
               );
             }
             data = {
