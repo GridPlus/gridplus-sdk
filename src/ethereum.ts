@@ -934,7 +934,11 @@ const ethConvertLegacyToGenericReq = function(req) {
   if (!req.chainId || ensureHexBuffer(req.chainId).toString('hex') === '01') {
     common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.Shanghai });
   } else {
-    common = Common.custom({ chainId: req.chainId });
+    // Not every network will support EIP1559 but we will allow it here.
+    common = Common.custom(
+      { chainId: req.chainId }, 
+      { hardfork: Hardfork.Shanghai, eips: [1559]}
+    );
   }
   // Newer transaction types
   if (req.type === 1) {
