@@ -225,13 +225,14 @@ export class Client {
       this._request(param, null, (err, res) => {
         if (err) return cb(err);
         this.isPaired = this._handleConnect(res) || false;
-        // Check for an active wallet. This will get bypassed if we are not paired.
-        if (this.isPaired) {
+        // If we are paired and are on older firmware (<0.14.1), we need a follow up request
+        // to sync wallet state.
+        if (this.isPaired && !this._fwVersionGTE(0, 14, 1)) {
           this.fetchActiveWallet((err) => {
             return cb(err, this.isPaired);
           });
         } else {
-          return cb(null, false);
+          return cb(err, this.isPaired);
         }
       });
     })
@@ -1164,7 +1165,7 @@ export class Client {
   */
   private _handleConnect (res) {
     let off = 0;
-    const pairingStatus = res.readUInt8(off);
+    const isPaired = res.readUInt8(off) === messageConstants.PAIRED;
     off++;
     // If we are already paired, we get the next ephemeral key
     const pub = res.slice(off, off + 65).toString('hex');
@@ -1172,10 +1173,29 @@ export class Client {
     // Grab the firmware version (will be 0-length for older fw versions)
     // It is of format |fix|minor|major|reserved|
     this.fwVersion = res.slice(off, off + 4);
+    off += 4;
     // Set the public key
     this.ephemeralPub = getP256KeyPairFromPub(pub);
+    // If we are already paired, the response will include some
+    // encrypted data about the current wallets
+    // This data was added in Lattice firmware v0.14.1
+    if (isPaired && this._fwVersionGTE(0, 14, 1)) {
+      // Later versions of firmware added wallet info
+      const encWalletData = res.slice(off, off + 160);
+      off += 160;
+      const sharedSecret = this._getSharedSecret();
+      const decWalletData = aes256_decrypt(encWalletData, sharedSecret);
+      // Sanity check to make sure the last part of the decrypted
+      // data is empty. The last 2 bytes are AES padding
+      if (decWalletData[decWalletData.length - 2] !== 0 || 
+          decWalletData[decWalletData.length - 1] !== 0)
+      {
+        throw new Error('Failed to connect to Lattice.')
+      } 
+      this._parseAndAddWallets(decWalletData);
+    }
     // return the state of our pairing
-    return pairingStatus === messageConstants.PAIRED;
+    return isPaired;
   }
 
   /**
@@ -1288,42 +1308,46 @@ export class Client {
    */
   private _handleGetWallets (encRes) {
     const decrypted = this._handleEncResponse(encRes, decResLengths.getWallets);
-    if (decrypted.err !== null) return decrypted;
+    if (decrypted.err !== null) {
+      return decrypted;
+    }
     const res = decrypted.data;
-    let walletUID;
+    // Skip 65byte pubkey prefix. WalletDescriptor contains 32byte id + 4byte flag + 35byte name
+    this._parseAndAddWallets(res.slice(65));
+    if (this.activeWallets.internal.uid.equals(EMPTY_WALLET_UID) &&
+        this.activeWallets.external.uid.equals(EMPTY_WALLET_UID)) 
+    {
+      return 'No active wallet.';
+    }
+    return null;
+  }
+
+  // Given a set of wallet data, which contains two wallet descriptors, parse
+  // the data and save it to memory
+  private _parseAndAddWallets (walletData) {
     // Read the external wallet data first. If it is non-null, the external wallet will
     // be the active wallet of the device and we should save it.
     // If the external wallet is blank, it means there is no card present and we should
     // save and use the interal wallet.
     // If both wallets are empty, it means the device still needs to be set up.
     const walletDescriptorLen = 71;
-    // Skip 65byte pubkey prefix. WalletDescriptor contains 32byte id + 4byte flag + 35byte name
-    let off = 65;
     // Internal first
-    let hasActiveWallet = false;
-    walletUID = res.slice(off, off + 32);
-    this.activeWallets.internal.uid = walletUID;
-    this.activeWallets.internal.capabilities = res.readUInt32BE(off + 32);
-    this.activeWallets.internal.name = res.slice(
+    let off = 0;
+    this.activeWallets.internal.uid = walletData.slice(off, off + 32);
+    this.activeWallets.internal.capabilities = walletData.readUInt32BE(off + 32);
+    this.activeWallets.internal.name = walletData.slice(
       off + 36,
       off + walletDescriptorLen
     );
-    if (!walletUID.equals(EMPTY_WALLET_UID)) hasActiveWallet = true;
-
     // Offset the first item
     off += walletDescriptorLen;
-
     // External
-    walletUID = res.slice(off, off + 32);
-    this.activeWallets.external.uid = walletUID;
-    this.activeWallets.external.capabilities = res.readUInt32BE(off + 32);
-    this.activeWallets.external.name = res.slice(
+    this.activeWallets.external.uid = walletData.slice(off, off + 32);
+    this.activeWallets.external.capabilities = walletData.readUInt32BE(off + 32);
+    this.activeWallets.external.name = walletData.slice(
       off + 36,
       off + walletDescriptorLen
     );
-    if (!walletUID.equals(EMPTY_WALLET_UID)) hasActiveWallet = true;
-    if (hasActiveWallet === true) return null;
-    else return 'No active wallet.';
   }
 
   /**
@@ -1584,6 +1608,15 @@ export class Client {
     } catch (err) {
       console.warn('Could not apply state data.');
     }
+  }
+
+  // Determine if a provided firmware version matches or exceeds
+  // the current firmware version
+  private _fwVersionGTE(_major: number, _minor: number, _fix: number): boolean {
+    const { major, minor, fix } = this.getFwVersion();
+    return major > _major ||
+          (major >= _major && minor > _minor) ||
+          (major >= _major && minor >= _minor && fix >= _fix); 
   }
 
   /**
