@@ -137,11 +137,13 @@ describe('Test ETH personalSign', function () {
   it('Msg: sign_personal boundary conditions and auto-rejected requests', async () => {
     const protocol = 'signPersonal';
     const fwConstants = getFwVersionConst(client.fwVersion);
+    const metadataSz = fwConstants.totalExtraEthTxDataSz || 0;
     // `personal_sign` requests have a max size smaller than other requests because a header
     // is displayed in the text region of the screen. The size of this is captured
     // by `fwConstants.personalSignHeaderSz`.
     const maxMsgSz =
-      fwConstants.ethMaxMsgSz +
+      fwConstants.ethMaxMsgSz -
+      metadataSz -
       fwConstants.personalSignHeaderSz +
       fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
     const maxValid = `0x${randomBytes(maxMsgSz).toString('hex')}`;

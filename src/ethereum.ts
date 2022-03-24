@@ -83,7 +83,7 @@ const buildEthereumTxRequest = function (data) {
       prehashAllowed,
     } = fwConstants;
     const EXTRA_DATA_ALLOWED = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
-    const MAX_BASE_DATA_SZ = fwConstants.ethMaxDataSz;
+    let MAX_BASE_DATA_SZ = fwConstants.ethMaxDataSz;
     const VAR_PATH_SZ = fwConstants.varAddrPathSzAllowed;
     // Sanity checks:
     // There are a handful of named chains we allow the user to reference (`chainIds`)
@@ -91,9 +91,8 @@ const buildEthereumTxRequest = function (data) {
     if (
       typeof chainId !== 'number' &&
       isValidChainIdHexNumStr(chainId) === false
-    ) {
+    )
       chainId = chainIds[chainId];
-    }
     // If this was not a custom chainID and we cannot find the name of it, exit
     if (!chainId) throw new Error('Unsupported chain ID or name');
     // Sanity check on signePath
@@ -209,6 +208,13 @@ const buildEthereumTxRequest = function (data) {
     // 2. BUILD THE LATTICE REQUEST PAYLOAD
     //--------------
     const ETH_TX_NON_DATA_SZ = 122; // Accounts for metadata and non-data params
+    let ETH_TX_EXTRA_FIELDS_SZ = 0; // Accounts for newer ETH tx types (e.g. eip1559)
+    if (fwConstants.allowedEthTxTypesVersion === 1) {
+      // eip1559 and eip2930
+      // Add extra params and shrink the data region (extraData blocks are unaffected)
+      ETH_TX_EXTRA_FIELDS_SZ = fwConstants.totalExtraEthTxDataSz;
+      MAX_BASE_DATA_SZ -= ETH_TX_EXTRA_FIELDS_SZ;
+    }
     const txReqPayload = Buffer.alloc(MAX_BASE_DATA_SZ + ETH_TX_NON_DATA_SZ);
     let off = 0;
     // 1. EIP155 switch and chainID
@@ -261,7 +267,8 @@ const buildEthereumTxRequest = function (data) {
 
     // Extra Tx data comes before `data` in the struct
     let PREHASH_UNSUPPORTED = false;
-    if (fwConstants.allowedEthTxTypes) {
+    if (fwConstants.allowedEthTxTypesVersion === 1) {
+      const extraEthTxDataSz = fwConstants.totalExtraEthTxDataSz || 0;
       // Some types may not be supported by firmware, so we will need to prehash
       if (PREHASH_FROM_ACCESS_LIST) {
         PREHASH_UNSUPPORTED = true;
@@ -278,13 +285,13 @@ const buildEthereumTxRequest = function (data) {
           txReqPayload,
           off + (8 - maxPriorityFeePerGasBytes.length)
         );
-        off += 8; // Skip EIP1559 params
+        off += 8;
       } else if (isEip2930) {
         txReqPayload.writeUInt8(1, off);
         off += 1; // Eip2930 type enum value
-        off += 8; // Skip EIP1559 params
+        off += extraEthTxDataSz - 2; // Skip EIP1559 params
       } else {
-        off += 9; // Skip EIP1559 and EIP2930 params
+        off += extraEthTxDataSz - 1; // Skip EIP1559 and EIP2930 params
       }
     }
 

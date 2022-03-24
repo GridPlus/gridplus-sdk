@@ -385,8 +385,10 @@ if (!process.env.skip) {
       // 8 bytes for the id itself and 1 byte for chainIdSz. This data is serialized into the request payload.
       let chainIdSz = 9;
       const fwConstants = getFwVersionConst(client.fwVersion);
+      const metadataSz = fwConstants.totalExtraEthTxDataSz || 0;
       const maxDataSz =
-        fwConstants.ethMaxDataSz +
+        fwConstants.ethMaxDataSz -
+        metadataSz +
         fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
       txData.data = `0x${randomBytes(maxDataSz - chainIdSz).toString('hex')}`;
       await testTxPass(buildTxReq(txData, chainId));
