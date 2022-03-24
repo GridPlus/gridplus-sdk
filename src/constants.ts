@@ -399,12 +399,13 @@ function getFwVersionConst(v) {
   // --- 0.11.X ---
   // V0.11.0 allows new ETH transaction types
   if (!legacy && gte(v, [0, 11, 0])) {
-    c.allowedEthTxTypesVersion = 1;
     c.allowedEthTxTypes = [
       1, // eip2930
       2, // eip1559
     ];
-    c.totalExtraEthTxDataSz = 10;
+    // This version added extra data fields to the ETH tx
+    c.ethMaxDataSz -= 10;
+    c.ethMaxMsgSz = c.ethMaxDataSz;
   }
   // V0.11.2 changed how messages are displayed. For personal_sign messages
   // we now write the header (`Signer: <path>`) into the main body of the screen.
