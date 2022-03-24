@@ -399,12 +399,13 @@ function getFwVersionConst(v) {
   // --- 0.11.X ---
   // V0.11.0 allows new ETH transaction types
   if (!legacy && gte(v, [0, 11, 0])) {
-    c.allowedEthTxTypesVersion = 1;
     c.allowedEthTxTypes = [
       1, // eip2930
       2, // eip1559
     ];
-    c.totalExtraEthTxDataSz = 10;
+    // This version added extra data fields to the ETH tx
+    c.ethMaxDataSz -= 10;
+    c.ethMaxMsgSz = c.ethMaxDataSz;
   }
   // V0.11.2 changed how messages are displayed. For personal_sign messages
   // we now write the header (`Signer: <path>`) into the main body of the screen.
@@ -464,13 +465,17 @@ function getFwVersionConst(v) {
   }
   // V0.14.1 Added the Terra decoder
   if (!legacy && gte(v, [0, 14, 1])) {
-      c.genericSigning.encodingTypes.TERRA = EXTERNAL.SIGNING.ENCODINGS.TERRA;
+    c.genericSigning.encodingTypes.TERRA = EXTERNAL.SIGNING.ENCODINGS.TERRA;
   }
 
   // --- V0.15.X ---
   // V0.15.0 added an EVM decoder and removed the legacy ETH signing pathway
   if (!legacy && gte(v, [0, 15, 0])) {
-      c.genericSigning.encodingTypes.EVM = EXTERNAL.SIGNING.ENCODINGS.EVM;
+    c.genericSigning.encodingTypes.EVM = EXTERNAL.SIGNING.ENCODINGS.EVM;
+    // We now use the general signing data field as the base
+    // Note that we have NOT removed the ETH_MSG type so we should
+    // not change ethMaxMsgSz
+    c.ethMaxDataSz = 1550 - 31;
   }
 
   return c;

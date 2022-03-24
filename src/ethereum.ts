@@ -83,7 +83,7 @@ const buildEthereumTxRequest = function (data) {
       prehashAllowed,
     } = fwConstants;
     const EXTRA_DATA_ALLOWED = extraDataFrameSz > 0 && extraDataMaxFrames > 0;
-    let MAX_BASE_DATA_SZ = fwConstants.ethMaxDataSz;
+    const MAX_BASE_DATA_SZ = fwConstants.ethMaxDataSz;
     const VAR_PATH_SZ = fwConstants.varAddrPathSzAllowed;
     // Sanity checks:
     // There are a handful of named chains we allow the user to reference (`chainIds`)
@@ -91,8 +91,9 @@ const buildEthereumTxRequest = function (data) {
     if (
       typeof chainId !== 'number' &&
       isValidChainIdHexNumStr(chainId) === false
-    )
+    ) {
       chainId = chainIds[chainId];
+    }
     // If this was not a custom chainID and we cannot find the name of it, exit
     if (!chainId) throw new Error('Unsupported chain ID or name');
     // Sanity check on signePath
@@ -208,13 +209,6 @@ const buildEthereumTxRequest = function (data) {
     // 2. BUILD THE LATTICE REQUEST PAYLOAD
     //--------------
     const ETH_TX_NON_DATA_SZ = 122; // Accounts for metadata and non-data params
-    let ETH_TX_EXTRA_FIELDS_SZ = 0; // Accounts for newer ETH tx types (e.g. eip1559)
-    if (fwConstants.allowedEthTxTypesVersion === 1) {
-      // eip1559 and eip2930
-      // Add extra params and shrink the data region (extraData blocks are unaffected)
-      ETH_TX_EXTRA_FIELDS_SZ = fwConstants.totalExtraEthTxDataSz;
-      MAX_BASE_DATA_SZ -= ETH_TX_EXTRA_FIELDS_SZ;
-    }
     const txReqPayload = Buffer.alloc(MAX_BASE_DATA_SZ + ETH_TX_NON_DATA_SZ);
     let off = 0;
     // 1. EIP155 switch and chainID
@@ -267,8 +261,7 @@ const buildEthereumTxRequest = function (data) {
 
     // Extra Tx data comes before `data` in the struct
     let PREHASH_UNSUPPORTED = false;
-    if (fwConstants.allowedEthTxTypesVersion === 1) {
-      const extraEthTxDataSz = fwConstants.totalExtraEthTxDataSz || 0;
+    if (fwConstants.allowedEthTxTypes) {
       // Some types may not be supported by firmware, so we will need to prehash
       if (PREHASH_FROM_ACCESS_LIST) {
         PREHASH_UNSUPPORTED = true;
@@ -285,13 +278,13 @@ const buildEthereumTxRequest = function (data) {
           txReqPayload,
           off + (8 - maxPriorityFeePerGasBytes.length)
         );
-        off += 8;
+        off += 8; // Skip EIP1559 params
       } else if (isEip2930) {
         txReqPayload.writeUInt8(1, off);
         off += 1; // Eip2930 type enum value
-        off += extraEthTxDataSz - 2; // Skip EIP1559 params
+        off += 8; // Skip EIP1559 params
       } else {
-        off += extraEthTxDataSz - 1; // Skip EIP1559 and EIP2930 params
+        off += 9; // Skip EIP1559 and EIP2930 params
       }
     }
 
@@ -930,50 +923,28 @@ function get_rlp_encoded_preimage(rawTx, txType) {
 // NOTE: Once we deprecate, we will remove this entire file
 // ======
 const ethConvertLegacyToGenericReq = function(req) {
-  let common, txData;
+  let common;
   if (!req.chainId || ensureHexBuffer(req.chainId).toString('hex') === '01') {
-    common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.Shanghai });
+    common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London });
   } else {
-    // Not every network will support EIP1559 but we will allow it here.
+    // Not every network will support these EIPs but we will allow
+    // signing of transactions using them
     common = Common.custom(
       { chainId: req.chainId }, 
-      { hardfork: Hardfork.Shanghai, eips: [1559]}
+      { hardfork: Hardfork.London, eips: [1559, 2930]}
     );
   }
-  // Newer transaction types
-  if (req.type === 1) {
-    // These basically never got used and there is a bug in `buildEthereumTxRequest`
-    // which throws an error `if (!data.maxPriorityFeePerGas)`, which this type does
-    // not contain. So I'll just throw an error here.
-    throw new Error('');
-  } else if (req.type === 2) {
-    const { 
-      maxFeePerGas, maxPriorityFeePerGas, nonce, gasLimit, to, value, data
-    } = req;
-    txData = {
-      type: 2, maxFeePerGas, maxPriorityFeePerGas, nonce, gasLimit, to, value, data,
-    };
-    const tx = TransactionFactory.fromTxData(txData, { common });
+  const tx = TransactionFactory.fromTxData(req, { common });
+  // Get the raw transaction payload to be hashed and signed.
+  // Different `@ethereumjs/tx` Transaction object types have
+  // slightly different APIs around this.
+  if (req.type) {
+    // Newer transaction types
     return tx.getMessageToSign(false);
+  } else {
+    // Legacy transaction type
+    return Buffer.from(rlpEncode(tx.getMessageToSign(false))); 
   }
-  // Legacy transaction type(s)
-  // Decide if we should use eip155. In practice, basically every transaction will use it
-  let useEIP155 = chainUsesEIP155(req.chainId);
-  if (req.eip155 !== null && typeof req.eip155 === 'boolean') {
-    useEIP155 = req.eip155;
-  }
-  if (!useEIP155) {
-    // These transactions are exceedingly rare so no need to support them here
-    throw new Error('');
-  }
-  const { 
-    gasPrice, nonce, gasLimit, to, value, data
-  } = req;
-  txData = {
-    gasPrice, nonce, gasLimit, to, value, data
-  };
-  const tx = TransactionFactory.fromTxData(txData, { common });
-  return Buffer.from(rlpEncode(tx.getMessageToSign(false)));
 }
 
 export default {
