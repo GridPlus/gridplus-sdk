@@ -1,7 +1,9 @@
 // Basic tests for atomic SDK functionality
 import { expect } from 'chai';
 import { question } from 'readline-sync';
-import { getFwVersionConst, HARDENED_OFFSET, responseCodes, responseMsgs } from '../src/constants';
+import { 
+  getFwVersionConst, HARDENED_OFFSET, responseCodes, responseMsgs 
+} from '../src/constants';
 import { randomBytes } from '../src/util'
 import helpers from './testUtil/helpers';
 
@@ -205,10 +207,6 @@ describe('Connect and Pair', () => {
       continueTests = false;
       // Constants from firmware
       const fwConstants = getFwVersionConst(client.fwVersion);
-      const GAS_PRICE_MAX = fwConstants.ethMaxGasPrice;
-      const GAS_LIMIT_MIN = 22000;
-      const GAS_LIMIT_MAX = 12500000;
-
       const txData = {
         nonce: '0x02',
         gasPrice: '0x1fe5d61a00',
@@ -228,124 +226,113 @@ describe('Connect and Pair', () => {
             0,
           ],
           ...txData,
-          chainId: 'rinkeby', // Can also be an integer
+          chainId: 4
         },
       };
+  
       // Sign a tx that does not use EIP155 (no EIP155 on rinkeby for some reason)
-      let tx;
-      tx = await client.sign(req);
-      expect(tx.tx).to.not.equal(null);
-
+      await client.sign(req);
       // Sign a tx with EIP155
-      req.data.chainId = 'mainnet';
-      tx = await client.sign(req);
-      expect(tx.tx).to.not.equal(null);
-      req.data.chainId = 'rinkeby';
-
-      req.data.data = randomBytes(fwConstants.ethMaxDataSz).toString('hex');
-      tx = await client.sign(req);
-      expect(tx.tx).to.not.equal(null);
+      req.data.chainId = 1;
+      await client.sign(req);
+      req.data.chainId = 4;
+      // Large single frame
+      req.data.data = randomBytes(fwConstants.ethMaxDataSz);
+      // await client.sign(req);
       req.data.data = null;
-
       // Invalid chainId
       req.data.chainId = 'notachain';
       try {
-        tx = await client.sign(req);
-        expect(tx.tx).to.equal(null);
+        await client.sign(req);
       } catch (err) {
         expect(err).to.not.equal(null);
       }
-      req.data.chainId = 'rinkeby';
-
-      // Nonce too large (>u16)
-      req.data.nonce = 0xffff + 1;
-      try {
-        tx = await client.sign(req);
-        expect(tx.tx).to.equal(null);
-      } catch (err) {
-        expect(err).to.not.equal(null);
-      }
-      // Reset to valid param
-      req.data.nonce = 5;
-
-      // GasLimit too low
-      req.data.gasLimit = GAS_LIMIT_MIN - 1;
-      try {
-        tx = await client.sign(req);
-        expect(tx.tx).to.equal(null);
-      } catch (err) {
-        expect(err).to.not.equal(null);
-      }
-
-      // GasLimit too high (>u32)
-      req.data.gasLimit = GAS_LIMIT_MAX + 1;
-      try {
-        tx = await client.sign(req);
-        expect(tx.tx).to.equal(null);
-      } catch (err) {
-        expect(err).to.not.equal(null);
-      }
-      // Reset to valid param
-      req.data.gasLimit = 122000;
-
-      // GasPrice too high
-      req.data.gasPrice = GAS_PRICE_MAX + 1;
-      try {
-        tx = await client.sign(req);
-        expect(tx.tx).to.equal(null);
-      } catch (err) {
-        expect(err).to.not.equal(null);
-      }
-      // Reset to valid param
-      req.data.gasPrice = 1200000000;
-
+      req.data.chainId = 4;
       // `to` wrong size
       req.data.to = '0xe242e54155b1abc71fc118065270cecaaf8b77';
       try {
-        tx = await client.sign(req);
+        await client.sign(req);
         expect(tx.tx).to.equal(null);
       } catch (err) {
         expect(err).to.not.equal(null);
       }
       // Reset to valid param
       req.data.to = '0xe242e54155b1abc71fc118065270cecaaf8b7768';
-
+      
       // Value too high
       req.data.value = 2 ** 256;
       try {
-        tx = await client.sign(req);
-        expect(tx.tx).to.equal(null);
+        await client.sign(req);
       } catch (err) {
         expect(err).to.not.equal(null);
       }
+
       // Reset to valid param
-      req.data.value = 0.3 * 10 ** 18;
-
+      req.data.value = '0x01cba1761f7ab9870c';
       // Test data range
-      const maxDataSz =
-        fwConstants.ethMaxDataSz +
-        fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
-      req.data.data = randomBytes(maxDataSz).toString('hex');
-      tx = await client.sign(req);
-      expect(tx.tx).to.not.equal(null);
+      const maxDataSz = fwConstants.ethMaxDataSz +
+                        (fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz);
+      // NOTE: This will display a prehashed payload for bridged general signing
+      // requests because `ethMaxDataSz` represents the `data` field for legacy
+      // requests, but it represents the entire payload for general signing requests.
+      req.data.data = randomBytes(maxDataSz);
+      await client.sign(req);
       question(
-        'Please ACCEPT the following transaction only if the warning screen displays. Press enter to continue.'
+        'Please REJECT the next request if the warning screen displays. Press enter to continue.'
       );
-      req.data.data = randomBytes(maxDataSz + 1).toString('hex');
-      tx = await client.sign(req);
-      expect(tx.tx).to.not.equal(null);
-      req.data.data = randomBytes(fwConstants.ethMaxDataSz).toString('hex');
-      tx = await client.sign(req);
-      expect(tx.tx).to.not.equal(null);
-      req.data.data = randomBytes(maxDataSz).toString('hex');
-      tx = await client.sign(req);
-      expect(tx.tx).to.not.equal(null);
-
+      req.data.data = randomBytes(maxDataSz + 1);
+      let rejected = false;
+      try {
+        await client.sign(req);
+      } catch (err) {
+        rejected = err.indexOf(
+          responseMsgs[responseCodes.RESP_ERR_USER_DECLINED]
+        ) > -1;
+      } finally {
+        expect(rejected).to.equal(true);
+      }
+      req.data.data = randomBytes(fwConstants.ethMaxDataSz);
+      await client.sign(req);
+      req.data.data = randomBytes(maxDataSz);
+      await client.sign(req);
+      
       // Test non-ETH EVM coin_type
       req.data.signerPath[1] = HARDENED_OFFSET + 1007;
       req.data.data = null;
-      tx = await client.sign(req);
-      expect(tx.tx).to.not.equal(null);
+      await client.sign(req);
+      
+      req.data.signerPath[1] = HARDENED_OFFSET + 60;
+      // EIP1559
+      req.data = {
+        ...req.data,
+        type: 2,
+        maxFeePerGas: 1200000000,
+        maxPriorityFeePerGas: 1200000000,
+        nonce: 0,
+        gasLimit: 50000,
+        to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+        value: 100,
+        data: '0xdeadbeef',
+      };
+      await client.sign(req);
+      // EIP1559 with access list
+      req.data.accessList = [
+        {
+          address: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+          storageKeys: [
+            '0x7154f8b310ad6ce97ce3b15e3419d9863865dfe2d8635802f7f4a52a206255a6',
+          ],
+        },
+        {
+          address: '0xe0f8ff08ef0242c461da688b8b85e438db724860',
+          storageKeys: [],
+        },
+      ],
+      await client.sign(req);
+      // EIP2930
+      req.data.type = 1;
+      await client.sign(req);
+
       continueTests = true;
     } catch (err) {
       expect(err).to.equal(null, err);
@@ -532,6 +519,10 @@ describe('Connect and Pair', () => {
     }
   });
 
+  /*
+  This feature does not work with general signing requests and will
+  need to be deprecated in its current form and replaced with handlers
+  in decoder utils
   it('Should test permission limits', async () => {
     try {
       continueTests = false;
@@ -588,7 +579,7 @@ describe('Connect and Pair', () => {
             0,
           ],
           ...txData,
-          chainId: 'rinkeby', // Can also be an integer
+          chainId: 4,
         },
       };
       // Test the spending limit. The first two requests should auto-sign.
@@ -620,4 +611,5 @@ describe('Connect and Pair', () => {
       expect(err).to.equal(null, err);
     }
   });
+  */
 });
