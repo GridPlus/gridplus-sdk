@@ -393,7 +393,7 @@ export class Client {
   public sign (opts: { data, currency: string }, _cb?: (err?: string, data?: SignData) => void, cachedData = null, nextCode = null): Promise<{ err?: string, data?: SignData }> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb)
-      let { currency, data } = opts;
+      let { data } = opts;
       if (!data) {
         return cb('You must provide `data`');
       }
@@ -405,13 +405,14 @@ export class Client {
       // Build the signing request payload to send to the device. If we catch
       // bad params, return an error instead
       data = { fwConstants, ...data };
-      let req, reqPayload;
-      let schema;
+      let req, reqPayload, schema;
+      let currency = null;
       if (cachedData !== null && nextCode !== null) {
         req = cachedData;
         reqPayload = Buffer.concat([nextCode, req.extraDataPayloads.shift()]);
         schema = signingSchema.EXTRA_DATA;
       } else {
+        currency = opts.currency;
         try {
           // TEMPORARY BRIDGE -- DEPRECATE ME
           // In v0.15.0 Lattice firmware removed the legacy ETH signing path, so
