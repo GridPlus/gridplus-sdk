@@ -83,13 +83,13 @@ describe('Test General Signing', () => {
     global.test.seed = helpers.copyBuffer(data.seed);
   })
 
-  // it('Should load unformatted Tests', async () => {
-  //   require('./unformatted');
-  // })
+  it('Should load unformatted Tests', async () => {
+    require('./unformatted');
+  })
 
-  // it('Should load Solana Tests', async () => {
-  //   require('./solana');
-  // })
+  it('Should load Solana Tests', async () => {
+    require('./solana');
+  })
 
   it('Should load Terra Tests' , async () => {
     require('./terra');
