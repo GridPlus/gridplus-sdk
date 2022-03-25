@@ -563,7 +563,9 @@ describe('getAddresses', () => {
 
   it('Should test export of SECP256K1 public keys', async () => {
     const req = {
-      startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0],
+      // Test with random coin_type to ensure we can export pubkeys for
+      // any derivation path
+      startPath: [helpers.BTC_PURPOSE_P2SH_P2WPKH, 19497, HARDENED_OFFSET, 0, 0],
       n: 3,
       flag: Constants.GET_ADDR_FLAGS.SECP256K1_PUB,
     };
