@@ -50,6 +50,7 @@ describe('Start EVM signing tests',  () => {
 })
 
 describe('[EVM]', () => {
+
   describe('EIP1559', () => {
     beforeEach(() => {
       test.expect(test.continue).to.equal(true, 'Error in previous test.');
@@ -64,7 +65,7 @@ describe('[EVM]', () => {
         value: 100,
         data: '0xdeadbeef',
       };
-      req.common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.Shanghai })
+      req.common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London })
     })
 
     it('Should test a basic transaction', async () => {
@@ -72,7 +73,7 @@ describe('[EVM]', () => {
     })
 
     it('Should test a Rinkeby transaction', async () => {
-      req.common = new Common({ chain: Chain.Rinkeby, hardfork: Hardfork.Shanghai })
+      req.common = new Common({ chain: Chain.Rinkeby, hardfork: Hardfork.London })
       await run(req)
     })
 
@@ -106,7 +107,7 @@ describe('[EVM]', () => {
         value: 100,
         data: '0xdeadbeef',
       };
-      req.common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.Shanghai })
+      req.common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London })
     })
 
     it('Should test a basic transaction', async () => {
@@ -114,7 +115,7 @@ describe('[EVM]', () => {
     })
 
     it('Should test a Rinkeby transaction', async () => {
-      req.common = new Common({ chain: Chain.Rinkeby, hardfork: Hardfork.Shanghai })
+      req.common = new Common({ chain: Chain.Rinkeby, hardfork: Hardfork.London })
       await run(req);
     })
 
@@ -169,7 +170,7 @@ describe('[EVM]', () => {
         value: 100,
         data: '0xdeadbeef',
       };
-      req.common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.Shanghai })
+      req.common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London })
     })
 
     it('Should test shorter derivation paths', async () => {
@@ -335,7 +336,7 @@ describe('[EVM]', () => {
         data: '0xdeadbeef',
       };
       req.common = new Common({ 
-        chain: Chain.Mainnet, hardfork: Hardfork.Shanghai 
+        chain: Chain.Mainnet, hardfork: Hardfork.London 
       });
     })
 
