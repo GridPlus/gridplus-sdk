@@ -329,8 +329,24 @@ export class Client {
         return cb(`You may only request ${MAX_ADDR} addresses at once.`);
 
       const fwConstants = getFwVersionConst(this.fwVersion);
-      if (!isValidAssetPath(startPath, fwConstants))
+      const flags = fwConstants.getAddressFlags || [];
+      const isPubkeyOnly = flags.indexOf(flag) > -1 &&
+        (
+          flag === EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB ||
+          flag === EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB
+        )
+      if (
+        flags.indexOf(flag) > -1 && 
+        (
+          flag === EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB || 
+          flag === EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB
+        )
+      ) {
+        isPubkeyOnly = true;
+      }
+      if (!isPubkeyOnly && !isValidAssetPath(startPath, fwConstants)) {
         return cb('Parent derivation path is not supported');
+      }
 
       let sz = 32 + 20 + 1; // walletUID + 5 u32 indices + count/flag
       if (fwConstants.varAddrPathSzAllowed) {
