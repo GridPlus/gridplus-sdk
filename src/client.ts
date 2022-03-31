@@ -330,7 +330,11 @@ export class Client {
 
       const fwConstants = getFwVersionConst(this.fwVersion);
       const flags = fwConstants.getAddressFlags || [];
-      let isPubkeyOnly = false;
+      const isPubkeyOnly = flags.indexOf(flag) > -1 &&
+        (
+          flag === EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB ||
+          flag === EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB
+        )
       if (
         flags.indexOf(flag) > -1 && 
         (
