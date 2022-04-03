@@ -533,14 +533,16 @@ export class Client {
       if (!fwConstants.maxDecoderBufSz) {
         return cb('Please update Lattice firmware.');
       }
-      const payload = Buffer.alloc(5 + fwConstants.maxDecoderBufSz);
+      const payload = Buffer.alloc(3 + fwConstants.maxDecoderBufSz);
+      console.log('encoding', decoders)
       const encDecoders = Buffer.from(rlpEncode(decoders));
+      console.log('encoded', encDecoders.toString('hex'))
       if (encDecoders.length > fwConstants.maxDecoderBufSz) {
         return cb('Too much data to make request. Please remove some decoders.');
       }
       payload.writeUInt8(decoderType, 0);
-      payload.writeUInt32LE(encDecoders.length, 1);
-      encDecoders.copy(payload, 4);
+      payload.writeUInt16LE(encDecoders.length, 1);
+      encDecoders.copy(payload, 3);
       return this._request(payload, 'ADD_DECODERS', (err, res, responseCode) => {
         if (responseCode && responseCode !== responseCodes.RESP_SUCCESS) {
           return cb('Error making request.');
@@ -559,7 +561,7 @@ export class Client {
    * @returns The decrypted response.
    */
   public getDecoders (opts: { decoderType: number, n?: number, startIdx?: number }, 
-    _cb?: (err?: string, data?: Buffer[]) => void): Promise<{ err?: string, data?: Buffer[] }> 
+    _cb?: (err?: string, data?: { decoders: Buffer[], total: number }) => void): Promise<{ err?: string, data?: Buffer[] }> 
   {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb)
@@ -590,12 +592,13 @@ export class Client {
         const decoders = [];
         let off = 65; // Skip 65 byte pubkey prefix
         const numFetched = d.data.readUInt32LE(off); off += 4;
+        const total = d.data.readUInt32LE(off); off += 4;
         for (let i = 0; i < numFetched; i++) {
           const sz = d.data.readUInt32LE(off); off += 4;
           decoders.push(d.data.slice(off, off + sz));
           off += sz;
         }
-        return cb(null, decoders);
+        return cb(null, { decoders, total });
       })
     })
   }
@@ -606,25 +609,32 @@ export class Client {
    * @category Lattice
    * @returns The decrypted response.
    */
-  public removeDecoders (opts: { decoderType: number, decoders: Buffer[] },
+  public removeDecoders (opts: { decoderType: number, decoders?: Buffer[], rmAll?: boolean },
     _cb?: (err?: string, data?: number) => void): Promise<{ err?: string, data?: number }> 
   {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb);
-      const { decoders, decoderType } = opts;
+      const { decoders, decoderType, rmAll=false } = opts;
       const fwConstants = getFwVersionConst(this.fwVersion);
       if (!fwConstants.maxDecoderBufSz) {
         return cb('Please update Lattice firmware.');
+      } else if ((!decoders || !decoders.length) && !rmAll) {
+        return cb('At least one decoder must be provided unless using `rmAll`.');
       }
-      const payload = Buffer.alloc(5 + fwConstants.maxDecoderBufSz);
-      const encDecoders = Buffer.from(rlpEncode(decoders));
-      if (encDecoders.length > fwConstants.maxDecoderBufSz) {
-        return cb('Too much data to make request. Please remove some decoders.');
+      const payload = Buffer.alloc(3 + fwConstants.maxDecoderBufSz);
+      let encDecoders = Buffer.alloc(0);
+      if (decoders) {
+        encDecoders = Buffer.from(rlpEncode(decoders));
+        if (encDecoders.length > fwConstants.maxDecoderBufSz) {
+          return cb('Too much data to make request. Please remove some decoders.');
+        }
       }
+      const sz = rmAll ? 0 : encDecoders.length;
       payload.writeUInt8(decoderType, 0);
-      payload.writeUInt32LE(encDecoders.length, 1);
-      encDecoders.copy(payload, 4);
-      return this._request(payload, 'ADD_DECODERS', (err, res, responseCode) => {
+      payload.writeUInt16LE(sz, 1);
+      encDecoders.copy(payload, 3);
+      console.log('payload?', payload)
+      return this._request(payload, 'REMOVE_DECODERS', (err, res, responseCode) => {
         if (responseCode && responseCode !== responseCodes.RESP_SUCCESS) {
           return cb('Error making request.');
         } else if (err) {

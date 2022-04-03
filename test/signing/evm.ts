@@ -12,25 +12,28 @@ import {
   TransactionFactory as EthTxFactory,
   Capability as EthTxCapability,
 } from '@ethereumjs/tx';
+import { AbiCoder } from '@ethersproject/abi';
 import { BN } from 'bn.js';
 import { readFileSync } from 'fs';
 import { keccak256 } from 'js-sha3';
 import { jsonc } from 'jsonc';
+import { question } from 'readline-sync';
 import request from 'request-promise';
 import { encode as rlpEncode, decode as rlpDecode } from 'rlp';
 import secp256k1 from 'secp256k1';
 import { HARDENED_OFFSET } from '../../src/constants'
-import { Constants } from '../../src/index'
+import { Constants, Decoders } from '../../src/index'
 import { randomBytes } from '../../src/util'
 import { getEncodedPayload } from '../../src/genericSigning'
 let test;
 const coder = new AbiCoder();
+const EVMDecoder = Decoders.EVM;
 
 
 //---------------------------------------
 // STATE DATA
 //---------------------------------------
-let DEFAULT_SIGNER, vectors;
+let DEFAULT_SIGNER, EVM_TYPES, vectors;
 const req = {
   data: {
     curveType: Constants.SIGNING.CURVES.SECP256K1,
@@ -39,6 +42,8 @@ const req = {
     payload: null,
   }
 };
+let numDefsInitial = 0;
+const encDefs = [], encDefsCalldata = [];
 
 //---------------------------------------
 // TESTS
@@ -57,10 +62,24 @@ describe('Start EVM signing tests',  () => {
     `${process.cwd()}/test/signing/vectors.jsonc`
   ).toString());
   vectors = globalVectors.evm.calldata;
+  // Copied from calldata/evm.ts (not exported there)
+  EVM_TYPES = [ 
+    null, 'address', 'bool', 'uint', 'int', 'bytes', 'string', 'tuple' 
+  ];
+  // Build data for next test sets
+  for (let i = 0; i < vectors.canonicalNames.length; i++) {
+    const name = vectors.canonicalNames[i];
+    const selector = `0x${keccak256(name).slice(0, 8)}`;
+    const encDef = EVMDecoder.parsers.parseCanonicalName(selector, name);
+    encDefs.push(encDef);
+    const { types, data } = convertDecoderToEthers(rlpDecode(encDef).slice(1));
+    const calldata = coder.encode(types, data);
+    encDefsCalldata.push(`${selector}${calldata.slice(2)}`);
+  }
 })
 
 describe('[EVM]', () => {
-
+/*
   describe('EIP1559', () => {
     beforeEach(() => {
       test.expect(test.continue).to.equal(true, 'Error in previous test.');
@@ -375,8 +394,8 @@ describe('[EVM]', () => {
       await run(req, null, null, true);
     });
   })
-
-  describe('Test ABI decoders', () => {
+*/
+  describe('Test ABI decoder vectors', () => {
     beforeEach(() => {
       test.expect(test.continue).to.equal(true, 'Error in previous test.');
       req.data.payload = null;
@@ -389,10 +408,10 @@ describe('[EVM]', () => {
         value: 100,
         data: null,
       };
+      test.continue = false;
     })
-
-    // Test live vectors. Validate that we can decode using Etherscan ABI info 
-    // as well as 4byte canonical names.
+/*
+    // Validate that we can decode using Etherscan ABI info as well as 4byte canonical names.
     for (let i = 0; i < vectors.etherscanTxHashes.length; i++) {
       it(`(Etherscan + 4byte #${i}) ${vectors.etherscanTxHashes[i]}`, async () => {
         // Hashes on ETH mainnet that we will use to fetch full tx and ABI data with
@@ -425,7 +444,7 @@ describe('[EVM]', () => {
           resp = await request(getAbiUrl);
           const funcSig = tx.input.slice(0, 10);
           const abi = JSON.parse(JSON.parse(resp).result);
-          const def = Calldata.parseSolidityJSONABI(funcSig, abi);
+          const def = EVMDecoder.parsers.parseSolidityJSONABI(funcSig, abi);
           if (!def) {
             console.error(
               `ERROR: Failed to decode ABI definition (${vectors.etherscanTxHashes[i]}). Skipping.`
@@ -454,21 +473,18 @@ describe('[EVM]', () => {
           }
           const canonicalName = fourByteResults[0].text_signature;
           // 5. Convert the decoder data and make a request to the Lattice
-          req.data.decoder = Calldata.parseCanonicalName(funcSig, canonicalName);
+          req.data.decoder = EVMDecoder.parsers.parseCanonicalName(funcSig, canonicalName);
           await run(req);
         }
       })
     }
-    
+*/  
+/*
+    // Validate a series of canonical definitions
     for (let i = 0; i < vectors.canonicalNames.length; i++) {
       it(`(Canonical #${i}) ${vectors.canonicalNames[i]}`, async () => {
-        const name = vectors.canonicalNames[i];
-        const selector = `0x${keccak256(name).slice(0, 8)}`;
-        const encDef = Calldata.parseCanonicalName(selector, name);
-        const { types, data } = convertDecoderToEthers(rlpDecode(encDef).slice(1));
-        const calldata = coder.encode(types, data);
-        req.txData.data = `${selector}${calldata.slice(2)}`;
-        req.data.decoder = encDef;
+        req.txData.data = encDefsCalldata[i];
+        req.data.decoder = encDefs[i];
         // The following prints are helpful for debugging.
         // If you are testing changes to the ABI decoder in firmware, you
         // should uncomment these prints and validate that the `data` matches
@@ -482,6 +498,84 @@ describe('[EVM]', () => {
         await run(req);
       })
     }
+*/
+    // Test committing decoder data
+    it('Should save the first 10 defs', async () => {
+      const decoderType = Decoders.EVM.type;
+      const rm = question(
+        'Do you want to remove all previously saved definitions? (Y/N) '
+      );
+      if (rm.toUpperCase() === 'Y') {
+        await test.client.removeDecoders({ decoderType, rmAll: true })
+      }
+      // First determine how many defs there are already
+      let saved = await test.client.getDecoders({ decoderType });
+      numDefsInitial = saved.total;
+  console.log('inital total', numDefsInitial)
+      await test.client.addDecoders({ decoderType, decoders: encDefs.slice(0, 10) });
+      saved = await test.client.getDecoders({ decoderType });
+      test.expect(saved.total).to.equal(numDefsInitial + 10);
+      await test.client.addDecoders({ decoderType, decoders: encDefs.slice(0, 10) });
+      saved = await test.client.getDecoders({ decoderType });
+      test.expect(saved.total).to.equal(numDefsInitial + 10);
+      test.continue = true;
+    })
+
+
+    it('Should decode saved defs with check marks', async () => {
+      question(
+        'Please REJECT if decoded params do not show check marks. Press ENT to continue.'
+      );
+      // Test expected passes
+      req.txData.data = encDefsCalldata[0];
+      req.data.decoder = encDefs[0];
+      console.log('data?', encDefsCalldata[0])
+      console.log('decoder', encDefs[0])
+      await run(req);
+      req.txData.data = encDefsCalldata[9];
+      req.data.decoder = encDefs[9];
+      await run(req);
+      // Test expected failure
+      req.txData.data = encDefsCalldata[10];
+      req.data.decoder = encDefs[10];
+      await run(req, true);
+      test.continue = true;
+    })
+
+    it('Should fetch the first 10 defs', async () => {
+      const decoderType = Decoders.EVM.type;
+      const { total, decoders } = await test.client.getDecoders({ 
+        decoderType, startIdx: numDefsInitial, n: 10 
+      });
+      test.expect(total).to.equal(numDefsInitial + 10);
+      test.expect(decoders.length).to.equal(10);
+      for (let i = 0; i < decoders.length; i++) {
+        test.expect(decoders[i].toString('hex')).to.equal(encDefs[i].toString('hex'));
+      }
+      test.continue = true;
+    })
+
+    it('Should remove the saved defs', async () => {
+      const decoderType = Decoders.EVM.type;
+      // Remove the defs
+      await test.client.removeDecoders({ decoderType, decoders: encDefs })
+      const { total, decoders } = await test.client.getDecoders({ 
+        decoderType, startIdx: numDefsInitial, n: 10 
+      });
+      // Make sure they are gone
+      test.expect(total).to.equal(numDefsInitial);
+      test.expect(decoders.length).to.equal(0);
+      // Test to make sure the check marks do not appear
+      question(
+        'Please REJECT if decoded params do not show check marks. Press ENT to continue.'
+      );
+      req.txData.data = encDefsCalldata[0];
+      req.data.decoder = encDefs[0];
+      await run(req, true);
+      req.txData.data = encDefsCalldata[9];
+      req.data.decoder = encDefs[9];
+      await run(req, true);
+    })
   })
 })
 
@@ -634,11 +728,6 @@ function genData(type, param) {
       throw new Error('Unrecognized type');
   }
 }
-
-// Copied from calldata/evm.ts (not exported there)
-const EVM_TYPES = [ 
-  null, 'address', 'bool', 'uint', 'int', 'bytes', 'string', 'tuple' 
-];
 
 // Various methods for fetching a chainID from different @ethereumjs/tx objects
 function getTxChainId (tx) {

@@ -17,7 +17,7 @@ const decResLengths = {
   sign: 1090, // 1 DER signature for ETH, 10 for BTC + change pubkeyhash
   getWallets: 142, // 71 bytes per wallet record (response contains internal and external)
   getKvRecords: 1395,
-  getDecoders: 1604,
+  getDecoders: 1608,
   removeDecoders: 4,
   test: 1646, // Max size of test response payload
 };
@@ -64,7 +64,7 @@ const encReqCodes = {
   ADD_KV_RECORDS: 8,
   REMOVE_KV_RECORDS: 9,
   GET_DECODERS: 10,
-  REMOVE_ABI_RECORDS: 11,
+  REMOVE_DECODERS: 11,
   TEST: 12,
 };
 
