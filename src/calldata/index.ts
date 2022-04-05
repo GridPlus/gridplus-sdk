@@ -4,4 +4,14 @@
 * is packed into the request, it is used to decode the calldata
 * in the request. It is optional.
 */
-export { parseSolidityJSONABI, parseCanonicalName } from './evm';
+import { parseSolidityJSONABI, parseCanonicalName } from './evm';
+
+export const DECODERS = {
+  EVM: {
+    type: 1,
+    parsers: {
+      parseSolidityJSONABI,
+      parseCanonicalName
+    }
+  }
+}

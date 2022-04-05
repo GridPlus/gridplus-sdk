@@ -2,15 +2,13 @@ import bitwise from 'bitwise';
 import { Byte, UInt4 } from 'bitwise/types';
 import { Buffer } from 'buffer/';
 import { KeyPair } from 'elliptic';
+import { encode as rlpEncode } from 'rlp';
 import superagent from 'superagent';
 import bitcoin from './bitcoin';
 import { sha256 } from 'hash.js/lib/hash/sha'
 import {
   KVRecord,
-  ABIRecord,
   SignData,
-  AddAbiDefsData,
-  GetAbiRecordsData,
   GetKvRecordsData
 } from './types/client'
 import { Constants } from './index';
@@ -32,13 +30,6 @@ import {
   VERSION_BYTE
 } from './constants';
 import ethereum from './ethereum';
-import {
-  buildAddAbiPayload,
-  unpackAbiDef,
-  abiParsers,
-  MAX_ABI_DEFS,
-  ABI_DEF_SZ
-} from './ethereumAbi';
 import {
   buildGenericSigningMsgRequest,
   parseGenericSigningResponse
@@ -525,109 +516,86 @@ export class Client {
   }
 
   /**
-   * `addAbiDefs` sends a list of ABI definitions to the device in chunks of up to `MAX_ABI_DEFS`.
+   * `addDecoders` sends an RLP-encoded list of decoders to the Lattice. A "decoder" is a piece of
+   * data that can be used to decode some data in the future. The best example of this is the
+   * ABI defintion of a contract function. This definition is used to deserialize EVM calldata
+   * for future requests that call the specified function (as determined by the function selector).
    * @category Lattice
    * @returns The decrypted response.
    */
-  public addAbiDefs (defs: ABIRecord[], _cb?: (err?: string, data?: AddAbiDefsData) => void, nextCode = null): Promise<{ err?: string, data?: AddAbiDefsData }> {
+  public addDecoders (opts: { decoderType: number, decoders: Buffer[] }, 
+    _cb?: (err?: string) => void): Promise<{ err?: string }> 
+  {
     return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb)
-      const defsToAdd = defs.slice(0, MAX_ABI_DEFS);
-      defs = defs.slice(MAX_ABI_DEFS);
-      let abiPayload;
-      try {
-        abiPayload = buildAddAbiPayload(defsToAdd);
-      } catch (err) {
-        return cb(err);
+      const cb = promisifyCb(resolve, reject, _cb);
+      const { decoders, decoderType } = opts;
+      const fwConstants = getFwVersionConst(this.fwVersion);
+      if (!fwConstants.maxDecoderBufSz) {
+        return cb('Please update Lattice firmware.');
       }
-      const payload = Buffer.alloc(abiPayload.length + 10);
-      // Let the firmware know how many defs are remaining *after this one*.
-      // If this is a positive number, firmware will send us a temporary code
-      // to bypass user authorization if the user has configured easy ABI loading.
-      payload.writeUInt16LE(defs.length, 0);
-      // If this is a follow-up request, we don't need to ask for user authorization
-      // if we use the correct temporary u64
-      if (nextCode !== null) nextCode.copy(payload, 2);
-      abiPayload.copy(payload, 10);
-      return this._request(payload, 'ADD_ABI_DEFS', (err, res, responseCode) => {
-        if (responseCode && responseCode !== responseCodes.RESP_SUCCESS)
+      const payload = Buffer.alloc(5 + fwConstants.maxDecoderBufSz);
+      const encDecoders = Buffer.from(rlpEncode(decoders));
+      if (encDecoders.length > fwConstants.maxDecoderBufSz) {
+        return cb('Too much data to make request. Please remove some decoders.');
+      }
+      payload.writeUInt8(decoderType, 0);
+      payload.writeUInt32LE(encDecoders.length, 1);
+      encDecoders.copy(payload, 4);
+      return this._request(payload, 'ADD_DECODERS', (err, res, responseCode) => {
+        if (responseCode && responseCode !== responseCodes.RESP_SUCCESS) {
           return cb('Error making request.');
-        else if (err) return cb(err);
-        const decrypted = this._handleEncResponse(res, decResLengths.addAbiDefs);
-        // Grab the 8 byte code to fast track our next request, if needed
-        nextCode = decrypted.data.slice(65, 73);
-        // No defs left? Return success
-        if (defs.length === 0) return cb(null);
-        // Add the next set
-        this.addAbiDefs(defs, cb, nextCode);
+        } else if (err) {
+          return cb(err);
+        }
+        this._handleEncResponse(res, decResLengths.empty);
+        return cb(null);
       });
     })
   }
 
   /**
-   * `getAbiRecords` fetches a set of ABI records saved on the Lattice. You can fetch
-   * sequential records based on a starting index and count.
+   * `getDecoders` fetches a set of decoders saved on the target Lattice.
    * @category Lattice
    * @returns The decrypted response.
    */
-  public getAbiRecords (opts: { n: number, startIdx: number, category: string }, _cb?: (err?: string, data?: GetAbiRecordsData) => void, fetched?: GetAbiRecordsData): Promise<{ err?: string, data?: GetAbiRecordsData }> {
+  public getDecoders (opts: { decoderType: number, n?: number, startIdx?: number }, 
+    _cb?: (err?: string, data?: Buffer[]) => void): Promise<{ err?: string, data?: Buffer[] }> 
+  {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb)
-      const { n = 1, startIdx = 0, category = '' } = opts;
+      const { n = 1, startIdx = 0, decoderType } = opts;
       const fwConstants = getFwVersionConst(this.fwVersion);
+      if (!fwConstants.maxDecoderBufSz) {
+        return cb('Please update Lattice firmware.');
+      }
       if (n < 1) {
         return cb('Must request at least one record (n=0)');
       } else if (n < 0 || startIdx < 0) {
         return cb('Both `n` and `startIdx` must be >=0');
-      } else if (!fwConstants.abiCategorySz) {
-        return cb('Outdated Lattice firmware. Please update.');
-      } else if (category.length >= fwConstants.abiCategorySz) {
-        return cb(`category must be <${fwConstants.abiCategorySz - 1} characters, got ${category.length}`);
       }
-      if (!fetched) {
-        fetched = {
-          startIdx,
-          numRemaining: null,
-          numFetched: null,
-          records: [],
-        }
-      }
-      const payload = Buffer.alloc(4 + fwConstants.abiCategorySz);
-      payload.writeUInt16LE(startIdx, 0);
-      payload.writeUInt16LE(n, 2);
-      Buffer.from(category).copy(payload, 4);
-      return this._request(payload, 'GET_ABI_RECORDS', (err, res) => {
+      const payload = Buffer.alloc(9);
+      payload.writeUInt8(decoderType, 0);
+      payload.writeUInt32LE(startIdx, 1);
+      payload.writeUInt32LE(n, 5);
+      return this._request(payload, 'GET_DECODERS', (err, res) => {
         if (err) {
           return cb(err);
         }
         // Correct wallet and no errors -- handle the response
-        const d = this._handleEncResponse(res, decResLengths.getAbiRecords);
-        if (d.err)
+        const d = this._handleEncResponse(res, decResLengths.getDecoders);
+        if (d.err) {
           return cb(d.err);
+        }
         // Decode the response
+        const decoders = [];
         let off = 65; // Skip 65 byte pubkey prefix
-        const numRemaining = d.data.readUInt32LE(off); off += 4;
-        const numReturned = d.data.readUInt8(off); off += 1;
-        // Start adding data if there is data to add
-        fetched.numRemaining = numRemaining;
-        if (!fetched.records) {
-          fetched.records = [];
+        const numFetched = d.data.readUInt32LE(off); off += 4;
+        for (let i = 0; i < numFetched; i++) {
+          const sz = d.data.readUInt32LE(off); off += 4;
+          decoders.push(d.data.slice(off, off + sz));
+          off += sz;
         }
-        for (let i = 0; i < numReturned; i++) {
-          // Parse and add the def
-          const packedDef = d.data.slice(off, off + ABI_DEF_SZ); off += ABI_DEF_SZ;
-          fetched.records.push(unpackAbiDef(packedDef));
-        }
-        // Decrement the total counter
-        opts.n -= numReturned;
-        if (opts.n < 1 || numReturned < 1) {
-          fetched.numFetched = fetched.records.length;
-          return cb(null, fetched);
-        } else {
-          // Recurse if there is more to fetch
-          opts.startIdx += numReturned;
-          return this.getAbiRecords(opts, cb, fetched);
-        }
+        return cb(null, decoders);
       })
     })
   }
@@ -638,61 +606,39 @@ export class Client {
    * @category Lattice
    * @returns The decrypted response.
    */
-  public removeAbiRecords (opts: { sigs: (number | string)[] }, _cb?: (err?: string, data?: {
-    numRemoved: number;
-    numTried: number;
-  }) => void, cbData = { numRemoved: 0, numTried: 0 }): Promise<{
-    err?: string, data?: {
-      numRemoved: number;
-      numTried: number;
-    }
-  }> {
+  public removeDecoders (opts: { decoderType: number, decoders: Buffer[] },
+    _cb?: (err?: string, data?: number) => void): Promise<{ err?: string, data?: number }> 
+  {
     return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb)
-      const { sigs } = opts;
+      const cb = promisifyCb(resolve, reject, _cb);
+      const { decoders, decoderType } = opts;
       const fwConstants = getFwVersionConst(this.fwVersion);
-      if (!fwConstants.abiMaxRmv) {
-        return cb('Outdated Lattice firmware. Please update.');
-      } else if (sigs.length === 0) {
-        return cb('At least one signature in `sigs` must be provided.');
+      if (!fwConstants.maxDecoderBufSz) {
+        return cb('Please update Lattice firmware.');
       }
-      const sigsSlice = sigs.slice(cbData.numTried, cbData.numTried + fwConstants.abiMaxRmv);
-      const payload = Buffer.alloc(1 + (4 * fwConstants.abiMaxRmv));
-      let off = 0;
-      payload.writeUInt8(sigsSlice.length, off);
-      off += 1;
-      sigsSlice.forEach((sig) => {
-        try {
-          const sigBuf = ethereum.ensureHexBuffer(sig);
-          if (sigBuf.length !== 4) {
-            return cb('Signatures must be 4 bytes.')
-          }
-          sigBuf.copy(payload, off);
-          off += 4;
-        } catch (err) {
-          return cb(`Error writing signature: ${err.message}`);
-        }
-      })
-      return this._request(payload, 'REMOVE_ABI_RECORDS', (err, res) => {
-        if (err) {
+      const payload = Buffer.alloc(5 + fwConstants.maxDecoderBufSz);
+      const encDecoders = Buffer.from(rlpEncode(decoders));
+      if (encDecoders.length > fwConstants.maxDecoderBufSz) {
+        return cb('Too much data to make request. Please remove some decoders.');
+      }
+      payload.writeUInt8(decoderType, 0);
+      payload.writeUInt32LE(encDecoders.length, 1);
+      encDecoders.copy(payload, 4);
+      return this._request(payload, 'ADD_DECODERS', (err, res, responseCode) => {
+        if (responseCode && responseCode !== responseCodes.RESP_SUCCESS) {
+          return cb('Error making request.');
+        } else if (err) {
           return cb(err);
         }
-        // Correct wallet and no errors -- handle the response
-        const d = this._handleEncResponse(res, decResLengths.removeAbiRecords);
-        if (d.err)
+        const d = this._handleEncResponse(res, decResLengths.removeDecoders);
+        if (d.err) {
           return cb(d.err);
+        }
         // Decode the response
         let off = 65; // Skip 65 byte pubkey prefix
-        const rmv = d.data.readUInt8(off); off += 1;
-        cbData.numRemoved += rmv;
-        cbData.numTried += sigsSlice.length;
-        if (cbData.numTried >= opts.sigs.length) {
-          return cb(null, cbData);
-        } else {
-          // Recurse if there are more to remove
-          return this.removeAbiRecords(opts, cb, cbData);
-        }
-      })
+        const numRemoved = d.data.readUInt32LE(off); off += 4;
+        return cb(null, numRemoved);
+      });
     })
   }
 
@@ -1672,24 +1618,6 @@ export class Client {
       return Buffer.concat([pb[0], x, y]);
     } else {
       return pb;
-    }
-  }
-
-  /**
-   * TODO: Find a better way to export this.
-   * `parseAbi` takes a source and data as arguments, and returns the parsed ABI.
-   * @param source - The name of the source of the ABI data.
-   * @param data - The data to parse.
-   * @param skipErrors - If true, errors will be skipped and the function will return an object with
-   * an error property.
-   * @returns The parsed ABI.
-   */
-  public parseAbi (source, data, skipErrors = false) {
-    switch (source) {
-      case 'etherscan':
-        return abiParsers[source](data, skipErrors);
-      default:
-        return { err: `No ${source} parser available.` };
     }
   }
 }
