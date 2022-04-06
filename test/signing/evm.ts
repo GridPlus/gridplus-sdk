@@ -12,7 +12,7 @@ import {
   TransactionFactory as EthTxFactory,
   Capability as EthTxCapability,
 } from '@ethereumjs/tx';
-import { AbiCoder } from '@ethersproject/abi';
+import { AbiCoder, Interface } from '@ethersproject/abi';
 import { BN } from 'bn.js';
 import { readFileSync } from 'fs';
 import { keccak256 } from 'js-sha3';
@@ -78,8 +78,7 @@ describe('Start EVM signing tests',  () => {
   }
 })
 
-describe('[EVM]', () => {
-/*
+describe('[EVM] Test transactions', () => {
   describe('EIP1559', () => {
     beforeEach(() => {
       test.expect(test.continue).to.equal(true, 'Error in previous test.');
@@ -394,7 +393,9 @@ describe('[EVM]', () => {
       await run(req, null, null, true);
     });
   })
-*/
+})
+
+describe('[EVM] Test decoders', () => {
   describe('Test ABI decoder vectors', () => {
     beforeEach(() => {
       test.expect(test.continue).to.equal(true, 'Error in previous test.');
@@ -410,7 +411,7 @@ describe('[EVM]', () => {
       };
       test.continue = false;
     })
-/*
+
     // Validate that we can decode using Etherscan ABI info as well as 4byte canonical names.
     for (let i = 0; i < vectors.etherscanTxHashes.length; i++) {
       it(`(Etherscan + 4byte #${i}) ${vectors.etherscanTxHashes[i]}`, async () => {
@@ -419,67 +420,62 @@ describe('[EVM]', () => {
         const getAbiBase = 'https://api.etherscan.io/api?module=contract&action=getabi&address=';
         const fourByteBase = 'https://www.4byte.directory/api/v1/signatures?hex_signature=';
         let resp;
-        for (let i = 0; i < vectors.etherscanTxHashes.length; i++) {
-          // 1. First fetch the transaction details from etherscan. This is just to get
-          // the calldata, so it would not be needed in a production environment
-          // (since we already have the calldata).
-          let getTxUrl = `${getTxBase}${vectors.etherscanTxHashes[i]}`;
-          if (test.etherscanKey) {
-            getTxUrl += `&apiKey=${test.etherscanKey}`;
-          }
-          resp = await request(getTxUrl);
-          const tx = JSON.parse(resp).result;
-          if (!test.etherscanKey) {
-            // Need a timeout between requests if we don't have a key
-            console.warn(
-              'WARNING: No env.ETHERSCAN_KEY provided. Waiting 5s between requests...'
-            )
-            await new Promise(resolve => setTimeout(resolve, 5000));
-          }
-          // 2. Fetch the full ABI of the contract that the transaction interacted with.
-          let getAbiUrl = `${getAbiBase}${tx.to}`;
-          if (test.etherscanKey) {
-            getAbiUrl += `&apiKey=${test.etherscanKey}`;
-          }
-          resp = await request(getAbiUrl);
-          const funcSig = tx.input.slice(0, 10);
-          const abi = JSON.parse(JSON.parse(resp).result);
-          const def = EVMDecoder.parsers.parseSolidityJSONABI(funcSig, abi);
-          if (!def) {
-            console.error(
-              `ERROR: Failed to decode ABI definition (${vectors.etherscanTxHashes[i]}). Skipping.`
-            )
-            continue;
-          }
-          // 3. Test decoding using Etherscan ABI info
-          // Check that ethers can decode this
-          const funcName = rlpDecode(def)[0];
-          if (ethersCanDecode(tx.input, resp, funcName.toString())) {
-            // Send the request
-            req.txData.data = tx.input;
-            req.data.decoder = def
-            // await run(req);
-          } else {
-            console.error(
-              `ERROR: ethers.js failed to decode abi for tx ${vectors.etherscanTxHashes[i]}. Skipping.` 
-            );
-            continue;
-          }
-          // 4. Get the canonical name from 4byte
-          resp = await request(`${fourByteBase}${funcSig}`);
-          const fourByteResults = JSON.parse(resp).results;
-          if (fourByteResults.length > 0) {
-            console.warn('WARNING: There are multiple results. Using the first one.');
-          }
-          const canonicalName = fourByteResults[0].text_signature;
-          // 5. Convert the decoder data and make a request to the Lattice
-          req.data.decoder = EVMDecoder.parsers.parseCanonicalName(funcSig, canonicalName);
-          await run(req);
+        // 1. First fetch the transaction details from etherscan. This is just to get
+        // the calldata, so it would not be needed in a production environment
+        // (since we already have the calldata).
+        let getTxUrl = `${getTxBase}${vectors.etherscanTxHashes[i]}`;
+        if (test.etherscanKey) {
+          getTxUrl += `&apiKey=${test.etherscanKey}`;
         }
+        resp = await request(getTxUrl);
+        const tx = JSON.parse(resp).result;
+        if (!test.etherscanKey) {
+          // Need a timeout between requests if we don't have a key
+          console.warn(
+            'WARNING: No env.ETHERSCAN_KEY provided. Waiting 5s between requests...'
+          )
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+        // 2. Fetch the full ABI of the contract that the transaction interacted with.
+        let getAbiUrl = `${getAbiBase}${tx.to}`;
+        if (test.etherscanKey) {
+          getAbiUrl += `&apiKey=${test.etherscanKey}`;
+        }
+        resp = await request(getAbiUrl);
+        const funcSig = tx.input.slice(0, 10);
+        const abi = JSON.parse(JSON.parse(resp).result);
+        const def = EVMDecoder.parsers.parseSolidityJSONABI(funcSig, abi);
+        if (!def) {
+          throw new Error(
+            `ERROR: Failed to decode ABI definition (${vectors.etherscanTxHashes[i]}). Skipping.`
+          )
+        }
+        // 3. Test decoding using Etherscan ABI info
+        // Check that ethers can decode this
+        const funcName = rlpDecode(def)[0];
+        if (ethersCanDecode(tx.input, resp, funcName.toString())) {
+          // Send the request
+          req.txData.data = tx.input;
+          req.data.decoder = def
+          await run(req);
+        } else {
+          throw new Error(
+            `ERROR: ethers.js failed to decode abi for tx ${vectors.etherscanTxHashes[i]}. Skipping.` 
+          );
+        }
+        // 4. Get the canonical name from 4byte
+        resp = await request(`${fourByteBase}${funcSig}`);
+        const fourByteResults = JSON.parse(resp).results;
+        if (fourByteResults.length > 0) {
+          console.warn('WARNING: There are multiple results. Using the first one.');
+        }
+        const canonicalName = fourByteResults[0].text_signature;
+        // 5. Convert the decoder data and make a request to the Lattice
+        req.data.decoder = EVMDecoder.parsers.parseCanonicalName(funcSig, canonicalName);
+        await run(req);
       })
     }
-*/  
-/*
+
     // Validate a series of canonical definitions
     for (let i = 0; i < vectors.canonicalNames.length; i++) {
       it(`(Canonical #${i}) ${vectors.canonicalNames[i]}`, async () => {
@@ -490,15 +486,16 @@ describe('[EVM]', () => {
         // should uncomment these prints and validate that the `data` matches
         // what you see on the screen for each case. Please scroll through
         // ALL the data on the Lattice to confirm each param has properly decoded.
-        // console.log('types', types)
-        // console.log('params', JSON.stringify(data))
+        const { types, data } = convertDecoderToEthers(rlpDecode(req.data.decoder).slice(1));
+        console.log('types', types)
+        console.log('params', JSON.stringify(data))
         // for (let cd = 2; cd < calldata.length; cd += 64) {
         //   console.log(calldata.slice(cd, cd + 64));
         // }
         await run(req);
       })
     }
-*/
+
     // Test committing decoder data
     it('Should save the first 10 defs', async () => {
       const decoderType = Decoders.EVM.type;
@@ -511,16 +508,20 @@ describe('[EVM]', () => {
       // First determine how many defs there are already
       let saved = await test.client.getDecoders({ decoderType });
       numDefsInitial = saved.total;
-  console.log('inital total', numDefsInitial)
       await test.client.addDecoders({ decoderType, decoders: encDefs.slice(0, 10) });
-      saved = await test.client.getDecoders({ decoderType });
+      saved = await test.client.getDecoders({ decoderType, n: 10 });
       test.expect(saved.total).to.equal(numDefsInitial + 10);
+      for (let i = 0; i < saved.decoders.length; i++) {
+        test.expect(saved.decoders[i].toString('hex')).to.equal(encDefs[i].toString('hex'));
+      }
       await test.client.addDecoders({ decoderType, decoders: encDefs.slice(0, 10) });
-      saved = await test.client.getDecoders({ decoderType });
+      saved = await test.client.getDecoders({ decoderType, n: 10 });
       test.expect(saved.total).to.equal(numDefsInitial + 10);
+      for (let i = 0; i < saved.decoders.length; i++) {
+        test.expect(saved.decoders[i].toString('hex')).to.equal(encDefs[i].toString('hex'));
+      }
       test.continue = true;
     })
-
 
     it('Should decode saved defs with check marks', async () => {
       question(
@@ -529,8 +530,6 @@ describe('[EVM]', () => {
       // Test expected passes
       req.txData.data = encDefsCalldata[0];
       req.data.decoder = encDefs[0];
-      console.log('data?', encDefsCalldata[0])
-      console.log('decoder', encDefs[0])
       await run(req);
       req.txData.data = encDefsCalldata[9];
       req.data.decoder = encDefs[9];
@@ -541,7 +540,6 @@ describe('[EVM]', () => {
       await run(req, true);
       test.continue = true;
     })
-
     it('Should fetch the first 10 defs', async () => {
       const decoderType = Decoders.EVM.type;
       const { total, decoders } = await test.client.getDecoders({ 
@@ -557,12 +555,20 @@ describe('[EVM]', () => {
 
     it('Should remove the saved defs', async () => {
       const decoderType = Decoders.EVM.type;
-      // Remove the defs
-      await test.client.removeDecoders({ decoderType, decoders: encDefs })
+      // Remove the first 5 defs
+      await test.client.removeDecoders({ decoderType, decoders: encDefs.slice(0, 5) })
+      // There should be 5 defs remaining
       const { total, decoders } = await test.client.getDecoders({ 
         decoderType, startIdx: numDefsInitial, n: 10 
       });
-      // Make sure they are gone
+      test.expect(total).to.equal(numDefsInitial + 5);
+      test.expect(decoders.length).to.equal(5);
+      // Remove the latter 5
+      await test.client.removeDecoders({ decoderType, decoders: encDefs.slice(5, 10) })
+      const { total, decoders } = await test.client.getDecoders({ 
+        decoderType, startIdx: numDefsInitial, n: 10 
+      });
+      // There should be no more new defs
       test.expect(total).to.equal(numDefsInitial);
       test.expect(decoders.length).to.equal(0);
       // Test to make sure the check marks do not appear
@@ -576,6 +582,7 @@ describe('[EVM]', () => {
       req.data.decoder = encDefs[9];
       await run(req, true);
     })
+
   })
 })
 

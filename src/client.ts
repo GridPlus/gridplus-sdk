@@ -420,12 +420,12 @@ export class Client {
           // NOTE: Not every request can be converted, so users should switch
           // to using general signing requests for newer firmware versions.
           // EIP1559 and EIP155 legacy requests will convert, but others may not.
-          const useEVMDecoder = (
+          const useEVMLegacyConverter = (
             fwConstants.genericSigning &&
             fwConstants.genericSigning.encodingTypes &&
             fwConstants.genericSigning.encodingTypes.EVM
           );
-          if (currency === 'ETH' && useEVMDecoder) {
+          if (currency === 'ETH' && useEVMLegacyConverter) {
             console.warn(
               'Using the legacy ETH signing path. This will soon be deprecated. ' +
               'Please switch to general signing request.'
@@ -534,9 +534,7 @@ export class Client {
         return cb('Please update Lattice firmware.');
       }
       const payload = Buffer.alloc(3 + fwConstants.maxDecoderBufSz);
-      console.log('encoding', decoders)
       const encDecoders = Buffer.from(rlpEncode(decoders));
-      console.log('encoded', encDecoders.toString('hex'))
       if (encDecoders.length > fwConstants.maxDecoderBufSz) {
         return cb('Too much data to make request. Please remove some decoders.');
       }
@@ -560,12 +558,12 @@ export class Client {
    * @category Lattice
    * @returns The decrypted response.
    */
-  public getDecoders (opts: { decoderType: number, n?: number, startIdx?: number }, 
+  public getDecoders (opts: { decoderType: number, n?: number, startIdx?: number, skipTotal?: boolean }, 
     _cb?: (err?: string, data?: { decoders: Buffer[], total: number }) => void): Promise<{ err?: string, data?: Buffer[] }> 
   {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb)
-      const { n = 1, startIdx = 0, decoderType } = opts;
+      const { n = 1, startIdx = 0, skipTotal = false, decoderType } = opts;
       const fwConstants = getFwVersionConst(this.fwVersion);
       if (!fwConstants.maxDecoderBufSz) {
         return cb('Please update Lattice firmware.');
@@ -575,10 +573,11 @@ export class Client {
       } else if (n < 0 || startIdx < 0) {
         return cb('Both `n` and `startIdx` must be >=0');
       }
-      const payload = Buffer.alloc(9);
+      const payload = Buffer.alloc(10);
       payload.writeUInt8(decoderType, 0);
-      payload.writeUInt32LE(startIdx, 1);
-      payload.writeUInt32LE(n, 5);
+      payload.writeUInt8(skipTotal ? 1 : 0, 1);
+      payload.writeUInt32LE(startIdx, 2);
+      payload.writeUInt32LE(n, 6);
       return this._request(payload, 'GET_DECODERS', (err, res) => {
         if (err) {
           return cb(err);
@@ -633,7 +632,6 @@ export class Client {
       payload.writeUInt8(decoderType, 0);
       payload.writeUInt16LE(sz, 1);
       encDecoders.copy(payload, 3);
-      console.log('payload?', payload)
       return this._request(payload, 'REMOVE_DECODERS', (err, res, responseCode) => {
         if (responseCode && responseCode !== responseCodes.RESP_SUCCESS) {
           return cb('Error making request.');

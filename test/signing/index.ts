@@ -45,6 +45,7 @@ describe('Test General Signing', () => {
       runGeneric,
       prng: new seedrandom(process.env.SEED || Math.random().toString()),
       numIter: process.env.N || 5,
+      etherscanKey: process.env.ETHERSCAN_KEY,
     };
     expect(global.test.client).to.not.equal(null);
   })
