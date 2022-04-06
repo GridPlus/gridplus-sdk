@@ -6,7 +6,7 @@
 */
 import { parseSolidityJSONABI, parseCanonicalName } from './evm';
 
-export const DECODERS = {
+export const CALLDATA = {
   EVM: {
     type: 1,
     parsers: {

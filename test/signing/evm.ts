@@ -22,12 +22,12 @@ import request from 'request-promise';
 import { encode as rlpEncode, decode as rlpDecode } from 'rlp';
 import secp256k1 from 'secp256k1';
 import { HARDENED_OFFSET } from '../../src/constants'
-import { Constants, Decoders } from '../../src/index'
+import { Constants, Calldata } from '../../src/index'
 import { randomBytes } from '../../src/util'
 import { getEncodedPayload } from '../../src/genericSigning'
 let test;
 const coder = new AbiCoder();
-const EVMDecoder = Decoders.EVM;
+const EVMCalldata = Calldata.EVM;
 
 
 //---------------------------------------
@@ -70,7 +70,7 @@ describe('Start EVM signing tests',  () => {
   for (let i = 0; i < vectors.canonicalNames.length; i++) {
     const name = vectors.canonicalNames[i];
     const selector = `0x${keccak256(name).slice(0, 8)}`;
-    const encDef = EVMDecoder.parsers.parseCanonicalName(selector, name);
+    const encDef = EVMCalldata.parsers.parseCanonicalName(selector, name);
     encDefs.push(encDef);
     const { types, data } = convertDecoderToEthers(rlpDecode(encDef).slice(1));
     const calldata = coder.encode(types, data);
@@ -444,7 +444,7 @@ describe('[EVM] Test decoders', () => {
         resp = await request(getAbiUrl);
         const funcSig = tx.input.slice(0, 10);
         const abi = JSON.parse(JSON.parse(resp).result);
-        const def = EVMDecoder.parsers.parseSolidityJSONABI(funcSig, abi);
+        const def = EVMCalldata.parsers.parseSolidityJSONABI(funcSig, abi);
         if (!def) {
           throw new Error(
             `ERROR: Failed to decode ABI definition (${vectors.etherscanTxHashes[i]}). Skipping.`
@@ -471,7 +471,7 @@ describe('[EVM] Test decoders', () => {
         }
         const canonicalName = fourByteResults[0].text_signature;
         // 5. Convert the decoder data and make a request to the Lattice
-        req.data.decoder = EVMDecoder.parsers.parseCanonicalName(funcSig, canonicalName);
+        req.data.decoder = EVMCalldata.parsers.parseCanonicalName(funcSig, canonicalName);
         await run(req);
       })
     }
@@ -486,9 +486,9 @@ describe('[EVM] Test decoders', () => {
         // should uncomment these prints and validate that the `data` matches
         // what you see on the screen for each case. Please scroll through
         // ALL the data on the Lattice to confirm each param has properly decoded.
-        const { types, data } = convertDecoderToEthers(rlpDecode(req.data.decoder).slice(1));
-        console.log('types', types)
-        console.log('params', JSON.stringify(data))
+        // const { types, data } = convertDecoderToEthers(rlpDecode(req.data.decoder).slice(1));
+        // console.log('types', types)
+        // console.log('params', JSON.stringify(data))
         // for (let cd = 2; cd < calldata.length; cd += 64) {
         //   console.log(calldata.slice(cd, cd + 64));
         // }
