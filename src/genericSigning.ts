@@ -17,7 +17,7 @@ import { buildSignerPathBuf, existsIn, fixLen, splitFrames, parseDER } from './u
 
 export const buildGenericSigningMsgRequest = function(req) {
   const { 
-    signerPath, curveType, hashType, encodingType=null, 
+    signerPath, curveType, hashType, encodingType=null, decoder=null,
     omitPubkey=false, fwConstants 
   } = req;
   const {
@@ -25,11 +25,14 @@ export const buildGenericSigningMsgRequest = function(req) {
     genericSigning, varAddrPathSzAllowed,
   } = fwConstants;
   const { 
-    curveTypes, encodingTypes, hashTypes, baseDataSz, baseReqSz 
+    curveTypes, encodingTypes, hashTypes, baseDataSz, baseReqSz, calldataDecoding
   } = genericSigning;
-  const { encoding, payloadBuf } = getEncodedPayload(req.payload, encodingType, encodingTypes);
+  const encodedPayload = getEncodedPayload(req.payload, encodingType, encodingTypes);
+  const { encoding } = encodedPayload;
+  let { payloadBuf } = encodedPayload;
+  const payloadDataSz = payloadBuf.length;
   // Sanity checks
-  if (payloadBuf.length === 0) {
+  if (!payloadDataSz) {
     throw new Error('Payload could not be handled.')
   } else if (!genericSigning || !extraDataFrameSz || !extraDataMaxFrames || !prehashAllowed) {
     throw new Error('Unsupported. Please update your Lattice firmware.');
@@ -37,6 +40,18 @@ export const buildGenericSigningMsgRequest = function(req) {
     throw new Error('Unsupported curve type.');
   } else if (!existsIn(hashType, hashTypes)) {
     throw new Error('Unsupported hash type.');
+  }
+
+  // If there is a decoder attached to our payload, add it to
+  // the data field of the request.
+  if (decoder && calldataDecoding && decoder.length <= calldataDecoding.maxSz) {
+    const decoderBuf = Buffer.alloc(8 + decoder.length);
+    // First write th reserved word
+    decoderBuf.writeUInt32LE(calldataDecoding.reserved, 0);
+    // Then write size, then the data
+    decoderBuf.writeUInt32LE(decoder.length, 4);
+    Buffer.from(decoder).copy(decoderBuf, 8);
+    payloadBuf = Buffer.concat([payloadBuf, decoderBuf]);
   }
 
   // Ed25519 specific sanity checks
@@ -65,8 +80,6 @@ export const buildGenericSigningMsgRequest = function(req) {
   off += signerPathBuf.length;
   buf.writeUInt8(omitPubkey ? 1 : 0, off);
   off += 1;
-  buf.writeUInt16LE(payloadBuf.length, off);
-  off += 2;
 
   // Size of data payload that can be included in the first/base request
   const maxExpandedSz = baseDataSz + (extraDataMaxFrames * extraDataFrameSz);
@@ -74,16 +87,25 @@ export const buildGenericSigningMsgRequest = function(req) {
   const extraDataPayloads = [];
   let prehash = null;
 
+  let didPrehash = false
   if (payloadBuf.length > baseDataSz) {
     if (prehashAllowed && payloadBuf.length > maxExpandedSz) {
+      // If we prehash, we need to provide the full payload size, including
+      // any calldata decoder bytes.
+      buf.writeUInt16LE(payloadBuf.length, off);
+      off += 2;
+      didPrehash = true;
+      // If we have to prehash, only hash the actual payload data, i.e. exclude
+      // any optional calldata decoder data.
+      const payloadData = payloadBuf.slice(0, payloadDataSz);
       // If this payload is too large to send, but the Lattice allows a prehashed message, do that
       if (hashType === hashTypes.NONE) {
         // This cannot be done for ED25519 signing, which must sign the full message
         throw new Error('Message too large to send and could not be prehashed (hashType=NONE).');
       } else if (hashType === hashTypes.KECCAK256) {
-        prehash = Buffer.from(keccak256(payloadBuf), 'hex');
+        prehash = Buffer.from(keccak256(payloadData), 'hex');
       } else if (hashType === hashTypes.SHA256) {
-        prehash = Buffer.from(sha256().update(payloadBuf).digest('hex'), 'hex');
+        prehash = Buffer.from(sha256().update(payloadData).digest('hex'), 'hex');
       } else {
         throw new Error('Unsupported hash type.')
       }
@@ -99,6 +121,14 @@ export const buildGenericSigningMsgRequest = function(req) {
         extraDataPayloads.push(Buffer.concat([szLE, frame]));
       });
     }
+  }
+
+  // If we didn't prehash, we know the full request (including calldata info) fits.
+  // Set the payload size to only include message data. This will inform firmware
+  // where to slice off calldata info.
+  if (!didPrehash) {
+    buf.writeUInt16LE(payloadDataSz, off);
+    off += 2;
   }
   
   // If the message had to be prehashed, we will only copy the hash data into the request.

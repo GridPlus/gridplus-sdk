@@ -288,6 +288,78 @@ const req = {
 const sig = await client.sign(req)
 ```
 
+### 💾 Calldata Decoding
+
+> NOTE: all available calldata decoding options will be documented in this section. More may be added as time goes on.
+
+Certain transaction decoder types may support calldata decoding for request data. You can use this feature by including "calldata decoder data" (explained shortly) in a general signing request using the `decoder` request param:
+
+```
+req.decoder = <calldata decoder data>
+await client.sign(req);
+```
+
+If you include a valid calldata decoder, the appearance of the transaction's data on the user's Lattice should transform from a raw hex string to a markdown-style version which displays the function name, parameter names, and values.
+
+**Storing Calldata Decoders**
+
+Although not necessary, in certain situations it may be advantageous to pre-save decoders to the Lattice. One advantage is that if the decoder is saved, you do not need to include it in the transaction request, which frees up some space. Additionally, pre-saving data may unlock certain security features depending on the decoder type.
+
+You can use the following API:
+
+> Please see API docs for all options. Also see tests in `test/signing/evm.ts` for examples on usage.
+
+* `addDecoders`: Allows the user to add a series of calldata decoders for a specific decoder type (e.g. EVM). This will prompt the user to approve these decoders on the target Lattice before returning success.
+* `getDecoders`: Fetch `n` consecutive decoders for a specific type, starting a specific index.
+* `removeDecoders`: Remove a set of included decoders for a specific type. You can also set a flag to remove all decoders for a specific type.
+
+#### 1️⃣  EVM
+
+EVM transactions serialize calldata according to the [Ethereum ABI specification](https://docs.soliditylang.org/en/latest/abi-spec.html). The first four bytes of a transaction's `data` represent the "function selector", which is (sort of) a unique identifier for a given function. You can build the calldata decoder data by either parsing a [Solidity JSON ABI](https://docs.ethers.io/v5/api/utils/abi/formats/#abi-formats--solidity) object (which you can fetch from [Etherscan](https://etherscan.io)) or by parsing an ABI canonical name (you can get this from [4byte](https://www.4byte.directory)). *Using the Solidity JSON ABI is recommended*.
+
+> Note: We do not support 100% of all edge cases in the ABI specification, but we do support the vast majority of types.  Please open a pull request or an issue if your request fails to decode on a Lattice.
+
+Example Usage (see `test/signing/evm.ts` for more examples):
+
+```
+import { Calldata } from 'gridplus-sdk';
+const EVMCalldata = Calldata.EVM;
+
+const tx = {an @ethereumjs/tx object}
+const selector = tx.data.slice(0, 4).toString('hex'); // must be a hex string
+
+// 1. Test JSON ABI object
+
+// First get the decoder data
+const abi = {a Solidity JSON ABI object fetched from Etherscan}
+// Add the decoder to the request and the transaction should get marked down
+const req = {
+  signerPath,
+  curveType: Constants.SIGNING.CURVES.SECP256K1,
+  hashType: Constants.SIGNING.HASHES.KECCAK256,
+  encodingType: Constants.SIGNING.ENCODINGS.EVM,
+  payload: tx.getMessageToSign(false), // will serialize the transaction
+  decoder: EVMCalldata.parsers.parseSolidityJSONABI(selector, abi)
+};
+const sig = await client.sign(req)
+
+// 2. Test canonical name type
+
+const canonicalName = 'myFunction(bytes,uint256)'; // assume this is the function being used
+req.decoder = EVMCalldata.parsers.parseCanonicalName(selector, canonicalName);
+const sig = await client.sign(req)
+```
+
+**Param Names**
+
+There are two things to note about parameter names in EVM calldata decoding:
+
+* The canonical name alone validates the function name and the parameter types, but it does *not* validate the parameter names (look at any canonical name and you will not find parameter names defined). This means that while we can send calldata decoder info in a request, a user cannot validate the *parameter* names unless the decoder has been pre-saved to the device. If a decoder was pre-saved, its param names will show a ✔️ icon on the decoder screen.
+* Using `parseCanonicalName` will result in your decoder's param names being numerical values (#1, #2, etc) instead of the parameter names. This is because, again, the canonical name does not include parameter names. Therefore we do not recommend using `parseCanonicalName` if you have a Solidity JSON ABI object available and we definitely do not recommend *saving* decoders parsed from canonical names.
+
+
+
+
 ## 📜 Legacy Signing
 
 Prior to general signing, request data was sent to the Lattice in preformatted ways and was used to build the transaction in firmware. We are phasing out this mechanism, but for now it is how you request Ethereum, Bitcoin, and Ethereum-Message signatures. These signing methods are accessed using the `currency` flag in the request data.

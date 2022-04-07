@@ -16,10 +16,9 @@ const decResLengths = {
   getAddresses: 10 * ADDR_STR_LEN, // 10x 129 byte strings (128 bytes + null terminator)
   sign: 1090, // 1 DER signature for ETH, 10 for BTC + change pubkeyhash
   getWallets: 142, // 71 bytes per wallet record (response contains internal and external)
-  addAbiDefs: 8,
   getKvRecords: 1395,
-  getAbiRecords: 1215,
-  removeAbiRecords: 1,
+  getDecoders: 1608,
+  removeDecoders: 4,
   test: 1646, // Max size of test response payload
 };
 
@@ -60,12 +59,12 @@ const encReqCodes = {
   SIGN_TRANSACTION: 3,
   GET_WALLETS: 4,
   ADD_PERMISSION_V0: 5,
-  ADD_ABI_DEFS: 6,
+  ADD_DECODERS: 6,
   GET_KV_RECORDS: 7,
   ADD_KV_RECORDS: 8,
   REMOVE_KV_RECORDS: 9,
-  GET_ABI_RECORDS: 10,
-  REMOVE_ABI_RECORDS: 11,
+  GET_DECODERS: 10,
+  REMOVE_DECODERS: 11,
   TEST: 12,
 };
 
@@ -476,6 +475,13 @@ function getFwVersionConst(v) {
     // Note that we have NOT removed the ETH_MSG type so we should
     // not change ethMaxMsgSz
     c.ethMaxDataSz = 1550 - 31;
+    // Max buffer size for get/add decoder requests
+    c.maxDecoderBufSz = 1600;
+    // Code used to write a calldata decoder
+    c.genericSigning.calldataDecoding = {
+      reserved: 2895728,
+      maxSz: 1024,
+    };
   }
 
   return c;
