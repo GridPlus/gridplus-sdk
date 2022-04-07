@@ -524,7 +524,8 @@ export class Client {
    * @returns The decrypted response.
    */
   public addDecoders (opts: { decoderType: number, decoders: Buffer[] }, 
-    _cb?: (err?: string) => void): Promise<{ err?: string }> 
+    _cb?: (err?: string) => void): 
+    Promise<{ err?: string }> 
   {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb);
@@ -559,7 +560,8 @@ export class Client {
    * @returns The decrypted response.
    */
   public getDecoders (opts: { decoderType: number, n?: number, startIdx?: number, skipTotal?: boolean }, 
-    _cb?: (err?: string, data?: { decoders: Buffer[], total: number }) => void): Promise<{ err?: string, data?: Buffer[] }> 
+    _cb?: (err?: string, data?: { decoders: Buffer[], total: number }) => void): 
+    Promise<{ err?: string, data?: { decoders: Buffer[], total: number } }> 
   {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb)
@@ -590,10 +592,13 @@ export class Client {
         // Decode the response
         const decoders = [];
         let off = 65; // Skip 65 byte pubkey prefix
-        const numFetched = d.data.readUInt32LE(off); off += 4;
-        const total = d.data.readUInt32LE(off); off += 4;
+        const numFetched = d.data.readUInt32LE(off); 
+        off += 4;
+        const total = d.data.readUInt32LE(off); 
+        off += 4;
         for (let i = 0; i < numFetched; i++) {
-          const sz = d.data.readUInt32LE(off); off += 4;
+          const sz = d.data.readUInt32LE(off); 
+          off += 4;
           decoders.push(d.data.slice(off, off + sz));
           off += sz;
         }
@@ -603,13 +608,13 @@ export class Client {
   }
 
   /**
-   * `removeAbiRecords` requests removal of ABI records on the device. You can request
-   * removal based on a desired set of function signatures.
+   * `removeDecoders` requests removal of a set of decoders on the target Lattice.
    * @category Lattice
    * @returns The decrypted response.
    */
   public removeDecoders (opts: { decoderType: number, decoders?: Buffer[], rmAll?: boolean },
-    _cb?: (err?: string, data?: number) => void): Promise<{ err?: string, data?: number }> 
+    _cb?: (err?: string, data?: number) => void): 
+    Promise<{ err?: string, data?: number }> 
   {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb);

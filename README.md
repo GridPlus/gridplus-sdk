@@ -309,15 +309,15 @@ You can use the following API:
 
 > Please see API docs for all options. Also see tests in `test/signing/evm.ts` for examples on usage.
 
-* `addDecoders`: Allows the user to add a series of calldata decoders for a specific decoder type (e.g. EVM). This will draw a screen on the user's Lattice which will require approval before returning success.
-* `getDecoders`: Fetch `n` consecutive decoders for a specific type, starting a specific index. Does not draw a screen.
-* `removeDecoders`: Remove a set of included decoders for a specific type. Does not draw a screen. You can also set a flag to remove all decoders for a specific type.
+* `addDecoders`: Allows the user to add a series of calldata decoders for a specific decoder type (e.g. EVM). This will prompt the user to approve these decoders on the target Lattice before returning success.
+* `getDecoders`: Fetch `n` consecutive decoders for a specific type, starting a specific index.
+* `removeDecoders`: Remove a set of included decoders for a specific type. You can also set a flag to remove all decoders for a specific type.
 
 #### 1️⃣  EVM
 
 EVM transactions serialize calldata according to the [Ethereum ABI specification](https://docs.soliditylang.org/en/latest/abi-spec.html). The first four bytes of a transaction's `data` represent the "function selector", which is (sort of) a unique identifier for a given function. You can build the calldata decoder data by either parsing a [Solidity JSON ABI](https://docs.ethers.io/v5/api/utils/abi/formats/#abi-formats--solidity) object (which you can fetch from [Etherscan](https://etherscan.io)) or by parsing an ABI canonical name (you can get this from [4byte](https://www.4byte.directory)). *Using the Solidity JSON ABI is recommended*.
 
-> Note: We do not support 100% of all edge cases in the ABI specification, but we do support the vast majority of types
+> Note: We do not support 100% of all edge cases in the ABI specification, but we do support the vast majority of types.  Please open a pull request or an issue if your request fails to decode on a Lattice.
 
 Example Usage (see `test/signing/evm.ts` for more examples):
 

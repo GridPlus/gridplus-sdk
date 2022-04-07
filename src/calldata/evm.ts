@@ -13,20 +13,19 @@ import { encode } from 'rlp';
 */ 
 export const parseSolidityJSONABI = function(sig: string, abi: any[]): Buffer {
   sig = coerceSig(sig);
-  let match = null;
-  abi.forEach((item) => {
+  // Find the first match in the ABI
+  const match = abi.find((item) => {
     if (item.type === 'function') {
       const def = parseDef(item);
-      if (def) {
-        // If this matches the function selector (sig) we can return it
-        if (def && getFuncSig(def.canonicalName) === sig) {
-          match = def.def;
-        }
+      // If this matches the function selector (sig) we can return it
+      if (getFuncSig(def.canonicalName) === sig) {
+        return item;
       }
     }
   })
   if (match) {
-    return Buffer.from(encode(match));
+    const def = parseDef(match).def;
+    return Buffer.from(encode(def));
   }
   return null;
 }
@@ -63,12 +62,16 @@ export const parseCanonicalName = function(sig: string, name: string): Buffer {
   return Buffer.from(encode(def.concat(parsedParamDef)));
 }
 
-// Convert a canonical name to a function selector (a.k.a. "sig")
+/**
+ * Convert a canonical name to a function selector (a.k.a. "sig")
+ */
 function getFuncSig(canonicalName: string): string {
   return `0x${keccak256(canonicalName).slice(0, 8)}`
 }
 
-// Ensure the sig is properly formatted
+/**
+ * Ensure the sig is properly formatted 
+ */ 
 function coerceSig(sig: string): string {
   if (typeof sig !== 'string' || (sig.length !== 10 && sig.length !== 8)) {
     throw new Error('`sig` must be a hex string with 4 bytes of data.')
@@ -79,9 +82,11 @@ function coerceSig(sig: string): string {
   return sig;
 }
 
-// Take the next type from a canonical definition string.
-// Note that the string can be that of a tuple.
-// NOTE: The string should start at the index after the leading '('
+/**
+ * Take the next type from a canonical definition string.
+ * Note that the string can be that of a tuple.
+ * NOTE: The string should start at the index after the leading '('
+ */
 function popTypeStrFromCanonical(subName: string): string {
   if (isTuple(subName)) {
     return getTupleName(subName);
@@ -95,9 +100,11 @@ function popTypeStrFromCanonical(subName: string): string {
   throw new Error(BAD_CANONICAL_ERR);
 }
 
-// Parse a type string, e.g. 'uint256'. Converts the string
-// to an array of EVMParamInfo, which may have nested structure
-// if there are tuples.
+/**
+ * Parse a type string, e.g. 'uint256'. Converts the string
+ * to an array of EVMParamInfo, which may have nested structure
+ * if there are tuples.
+ */
 function parseTypeStr(typeStr: string): any[] {
   // Non-tuples can be decoded without worrying about recursion
   if (!isTuple(typeStr)) {
@@ -129,8 +136,9 @@ function parseTypeStr(typeStr: string): any[] {
   return [ param, paramArr ]
 }
 
-// Convert a basic type (e.g. 'uint256') from a string to
-// EVMParamInfo type.
+/**
+ * Convert a basic type (e.g. 'uint256') from a string to EVMParamInfo type.
+ */
 function parseBasicTypeStr(typeStr: string): EVMParamInfo {
   const param: EVMParamInfo = {
     szBytes: 0,
@@ -161,9 +169,11 @@ function parseBasicTypeStr(typeStr: string): EVMParamInfo {
   return param;
 }
 
-// Parse an Etherscan definition into a calldata structure that the 
-// Lattice EVM decoder can handle (EVMDef).
-// This function may recurse if there are tuple types.
+/**
+ * Parse an Etherscan definition into a calldata structure that the 
+ * Lattice EVM decoder can handle (EVMDef).
+ * This function may recurse if there are tuple types.
+ */
 function parseDef(item, canonicalName='', def=[], recursed=false): EVMDef {
   // Function name. Can be an empty string.
   if (!recursed) {
@@ -204,10 +214,12 @@ function parseDef(item, canonicalName='', def=[], recursed=false): EVMDef {
   return { def, canonicalName };
 }
 
-// Convert a set of EVMParamInfo objects into an array that can
-// be serialized into decoder info that can be passed with the
-// signing request.
-// NOTE: We do not know parameter names, so we just number them
+/**
+ * Convert a set of EVMParamInfo objects into an array that can
+ * be serialized into decoder info that can be passed with the
+ * signing request.
+ * NOTE: We do not know parameter names, so we just number them
+ */
 function parseParamDef(def: any[], prefix = ''): any[] {
   const parsedDef = [];
   let numTuples = 0;
@@ -215,7 +227,7 @@ function parseParamDef(def: any[], prefix = ''): any[] {
     if (Array.isArray(param)) {
       // Arrays indicate nested params inside a tuple and always come
       // after the initial tuple type info.
-      // Recurse to parste nested tuple params and append them
+      // Recurse to parse nested tuple params and append them
       // to the most recent.
       parsedDef[parsedDef.length - 1].push(parseParamDef(param, `${i}-`));
     } else {
@@ -235,8 +247,10 @@ function parseParamDef(def: any[], prefix = ''): any[] {
   return parsedDef;
 }
 
-// Convert a param into an EVMParamInfo object before flattening
-// its data into an array.
+/**
+ * Convert a param into an EVMParamInfo object before flattening
+ * its data into an array.
+ */
 function getFlatParam(input): any[] {
   if (!input.type) {
     throw new Error('No type in input');
@@ -249,15 +263,17 @@ function getFlatParam(input): any[] {
   return param;
 }
 
-// Convert a param type string into an EVMParamInfo object with:
-// * paramName - name of the parameter. This piece of data is unverified,
-//   so it will display differently if the user has the function saved
-//   in secure storage.
-// * paramType - basic type of param. Firmware has an enum with 7 values.
-// * paramSzBytes - number of bytes representing this param. Only certain
-//   types can have nonzero value for this. For example, a `uint` with 
-//   a 4 in this slot would be uint32 (8*4 = 32). Maximum number of bytes
-//   is always 32 because these types can only be used in single 32 byte words.
+/**
+ * Convert a param type string into an EVMParamInfo object with attributes:
+ * 1. paramName -     name of the parameter. This piece of data is unverified,
+ *                    so it will display differently if the user has the function 
+ *                    saved in secure storage.
+ * 2. paramType -     basic type of param. Firmware has an enum with 7 values.
+ * 3. paramSzBytes -  number of bytes representing this param. Only certain
+ *                    types can have nonzero value for this. For example, a `uint` with 
+ *                    a 4 in this slot would be uint32 (8*4 = 32). Maximum number of bytes
+ *                    is always 32 because these types can only be used in single 32 byte words.
+ */
 function getParamTypeInfo(type: string): EVMParamInfo {
   const param: EVMParamInfo = {
     szBytes: 0,
@@ -293,9 +309,11 @@ function getParamTypeInfo(type: string): EVMParamInfo {
   return param;
 }
 
-// Determine the dimensions of an array type. These dimensions can
-// be either fixed or variable size. Returns an array of sizes.
-// Ex: uint256[][] -> [0, 0], uint256[1][3] -> [1, 3], uint256 -> []
+/**
+ * Determine the dimensions of an array type. These dimensions can
+ * be either fixed or variable size. Returns an array of sizes.
+ * Ex: uint256[][] -> [0, 0], uint256[1][3] -> [1, 3], uint256 -> []
+ */
 function getArraySzs(type: string): number[] {
   if (typeof type !== 'string') {
     throw new Error('Invalid type')
