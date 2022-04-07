@@ -498,7 +498,7 @@ describe('[EVM] Test decoders', () => {
 
     // Test committing decoder data
     it('Should save the first 10 defs', async () => {
-      const decoderType = Decoders.EVM.type;
+      const decoderType = Calldata.EVM.type;
       const rm = question(
         'Do you want to remove all previously saved definitions? (Y/N) '
       );
@@ -529,10 +529,8 @@ describe('[EVM] Test decoders', () => {
       );
       // Test expected passes
       req.txData.data = encDefsCalldata[0];
-      req.data.decoder = encDefs[0];
       await run(req);
       req.txData.data = encDefsCalldata[9];
-      req.data.decoder = encDefs[9];
       await run(req);
       // Test expected failure
       req.txData.data = encDefsCalldata[10];
@@ -540,8 +538,21 @@ describe('[EVM] Test decoders', () => {
       await run(req, true);
       test.continue = true;
     })
+
+    it('Should test decoding priority levels', async () => {
+      question(
+        'Please REJECT if the data does not decode. Press ENT to continue.'
+      );
+      req.txData.data = encDefsCalldata[10];
+      req.data.decoder = encDefs[10];
+      await run(req);
+      req.data.decoder = null;
+      await run(req, true);
+      test.continue = true;
+    })
+
     it('Should fetch the first 10 defs', async () => {
-      const decoderType = Decoders.EVM.type;
+      const decoderType = Calldata.EVM.type;
       const { total, decoders } = await test.client.getDecoders({ 
         decoderType, startIdx: numDefsInitial, n: 10 
       });
@@ -554,7 +565,7 @@ describe('[EVM] Test decoders', () => {
     })
 
     it('Should remove the saved defs', async () => {
-      const decoderType = Decoders.EVM.type;
+      const decoderType = Calldata.EVM.type;
       // Remove the first 5 defs
       await test.client.removeDecoders({ decoderType, decoders: encDefs.slice(0, 5) })
       // There should be 5 defs remaining

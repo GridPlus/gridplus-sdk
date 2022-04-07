@@ -303,7 +303,9 @@ If you include a valid calldata decoder, the appearance of the transaction's dat
 
 **Storing Calldata Decoders**
 
-Although not necessary, in certain situations it may be advantageous to pre-save decoders to the Lattice. You can use the following API:
+Although not necessary, in certain situations it may be advantageous to pre-save decoders to the Lattice. One advantage is that if the decoder is saved, you do not need to include it in the transaction request, which frees up some space. Additionally, pre-saving data may unlock certain security features depending on the decoder type.
+
+You can use the following API:
 
 > Please see API docs for all options. Also see tests in `test/signing/evm.ts` for examples on usage.
 
@@ -352,7 +354,7 @@ const sig = await client.sign(req)
 
 There are two things to note about parameter names in EVM calldata decoding:
 
-* The canonical name alone validates the function name and the parameter types, but it does *not* validate the parameter names (look at any canonical name and you will not find parameter names defined). This means that while we can send calldata decoder info in a request, a user cannot validate the *parameter* names unless the decoder has been pre-saved to the device. If a decoder was pre-saved, its param names will show a ✔️ icon on the decoder screen. Note that you still need to include the `decoder` param in the signing request regardless of whether it is saved on the device.
+* The canonical name alone validates the function name and the parameter types, but it does *not* validate the parameter names (look at any canonical name and you will not find parameter names defined). This means that while we can send calldata decoder info in a request, a user cannot validate the *parameter* names unless the decoder has been pre-saved to the device. If a decoder was pre-saved, its param names will show a ✔️ icon on the decoder screen.
 * Using `parseCanonicalName` will result in your decoder's param names being numerical values (#1, #2, etc) instead of the parameter names. This is because, again, the canonical name does not include parameter names. Therefore we do not recommend using `parseCanonicalName` if you have a Solidity JSON ABI object available and we definitely do not recommend *saving* decoders parsed from canonical names.
 
 
