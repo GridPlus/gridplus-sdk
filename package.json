@@ -14,12 +14,10 @@
     "test": "ts-mocha --timeout 120000 -R spec test/testAll.ts --recursive --exit",
     "test-btc": "ts-mocha --timeout 180000 -R spec test/testBtc.ts --recursive --exit",
     "test-abi": "ts-mocha --timeout 360000 -R spec test/testAbi.ts --recursive --exit",
-    "test-eth": "ts-mocha --timeout 180000 -R spec test/testEth.ts --recursive --exit",
     "test-eth-msg": "ts-mocha --timeout 180000 -R spec test/testEthMsg.ts --recursive --exit",
-    "test-generic-signing": "ts-mocha --timeout 180000 -R spec test/testGeneric.ts --recursive --exit",
     "test-kv": "ts-mocha --timeout 180000 -R spec test/testKv.ts --recursive --exit",
     "test-wallet-jobs": "ts-mocha --timeout 300000 -R spec test/testWalletJobs.ts --recursive --exit",
-    "test-sigs": "ts-mocha --timeout 300000 -R spec test/testSigs.ts --recursive --exit",
+    "test-non-exportable": "ts-mocha --timeout 300000 -R spec test/testNonExportable.ts --recursive --exit",
     "test-chaos-monkey": "ts-mocha --timeout 300000 -R spec test/testChaosMonkey.ts --recursive --exit"
   },
   "main": "./dist/index.js",
@@ -70,6 +68,7 @@
     "mocha": "^9.2.0",
     "random-words": "^1.1.1",
     "readline-sync": "^1.4.9",
+    "request-promise": "^4.2.6",
     "seedrandom": "^3.0.5",
     "ts-mocha": "^9.0.2",
     "typescript": "^4.5.4"

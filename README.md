@@ -564,14 +564,12 @@ See table in the next section.
 
 This section gives an overview of each test and which options can be passed for the specific test (in addition to global options)
 
-| Test | Description | Uses Test Runner | `env` Options |
+| Test | Description | Uses Test Runner | Additional `env` Options |
 |:-----|:------------|:-----------------|:--------------|
 | `npm run test` | Sets up test connection. Tests `getAddresses` and `sign`. | No | N/A |
-| `npm run test-abi` | Tests Ethereum ABI routes and markdown of requests. | No | `N` (number of random vectors to populate)<br/>`seed` (random string to seed a random number generator) |
-| `npm run test-btc` | Tests spending different types of BTC inputs. Signatures validated against `bitcoinjs-lib` using seed exported by test harness. | Yes | `N` (number of random vectors to populate)<br/>`seed` (random string to seed a random number generator)<br/>`testnet` (if true, testnet addresses and transactions will also be tested) |
-| `npm run test-eth` | Tests Ethereum transactions, specifically boundary conditions of tx params and new tx types like EIP1559. | No | `N` (number of random vectors to populate)<br/>`seed` (random string to seed a random number generator)<br/>`skip` (if true, skip param boundary tests and only test random vectors) |
-| `npm run test-eth-msg` | Tests Ethereum message requests `signPersonal` and `signTypedData`. Tests boundary conditions of EIP712 messages. | No | `N` (number of random vectors to populate)<br/>`seed` (random string to seed a random number generator) |
-| `npm run test-generic-signing`| Tests different curves and hash types. Signatures validated using seed exported by test harness. Also tests decoders. | Yes | `N` (number of random vectors to populate)<br/>`seed` (random string to seed a random number generator) |
+| `npm run test-signing` | Tests various aspects of the message signing path as well as all known decoders. | Yes | `SEED` (random string to seed a random number generator)<br/>`ETHERSCAN_KEY` (API key for making Etherscan requests. Used in EVM tests.) |
+| `npm run test-btc` | *(Legacy pathway)* Tests spending different types of BTC inputs. Signatures validated against `bitcoinjs-lib` using seed exported by test harness. | Yes | `N` (number of random vectors to populate)<br/>`SEED` (random string to seed a random number generator)<br/>`testnet` (if true, testnet addresses and transactions will also be tested) |
+| `npm run test-eth-msg` | *(Legacy pathway)* Tests Ethereum message requests `signPersonal` and `signTypedData`. Tests boundary conditions of EIP712 messages. | No | `N` (number of random vectors to populate)<br/>`SEED` (random string to seed a random number generator) |
 | `npm run test-kv` | Tests loading and using kv (key-value) files. These are used for address tags. | No | N/A |
-| `npm run test-sigs` | Tests determinism of signatures and validates derived signatures against reference vectors. Seed is exported by test harness for derivations + validations. | Yes | `N` (number of random vectors to populate)<br/>`seed` (random string to seed a random number generator) |
+| `npm run test-non-exportable` | Tests to validate signatures from a SafeCards with a non-exportable seed (legacy) | No | N/A |
 | `npm run test-wallet-jobs` | Tests exported addresses and public keys against those from reference libraries using seed exported by test harness. | Yes | N/A |

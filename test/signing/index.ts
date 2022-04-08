@@ -34,7 +34,7 @@ async function runGeneric(req, test, expectedErr=undefined) {
 }
 
 describe('Test General Signing', () => {
-  it('Should setup the test client', () => {
+  before(() => {
     global.test = {
       continue: true,
       client: helpers.setupTestClient(process.env),
@@ -48,6 +48,11 @@ describe('Test General Signing', () => {
       etherscanKey: process.env.ETHERSCAN_KEY,
     };
     expect(global.test.client).to.not.equal(null);
+  })
+
+  beforeEach(() => {
+    expect(global.test.continue).to.equal(true, 'Error in previous test.');
+    global.test.continue = false;
   })
 
   it('Should connect to a Lattice and make sure it is already paired.', async () => {
@@ -82,21 +87,32 @@ describe('Test General Signing', () => {
     expect(_res.resultStatus).to.equal(0);
     const data = helpers.deserializeExportSeedJobResult(_res.result);
     global.test.seed = helpers.copyBuffer(data.seed);
+    global.test.activeWalletUID = activeWalletUID;
+    global.test.continue = true;
   })
 
-  it('Should load unformatted Tests', async () => {
+  it('Should load determinism tests', async () => {
+    require('./determinism');
+    global.test.continue = true;
+  })
+
+  it('Should load unformatted tests', async () => {
     require('./unformatted');
+    global.test.continue = true;
   })
 
-  it('Should load Solana Tests', async () => {
+  it('Should load Solana tests', async () => {
     require('./solana');
+    global.test.continue = true;
   })
 
-  it('Should load Terra Tests' , async () => {
+  it('Should load Terra tests' , async () => {
     require('./terra');
+    global.test.continue = true;
   })
 
-  it('Should load EVM Tests' , async () => {
+  it('Should load EVM tests' , async () => {
     require('./evm');
+    global.test.continue = true;
   })
 })
