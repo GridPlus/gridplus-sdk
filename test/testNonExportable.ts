@@ -15,7 +15,9 @@
 import Common, { Chain, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { expect } from 'chai';
+import { keccak256 } from 'js-sha3';
 import { question } from 'readline-sync';
+import { ecdsaRecover } from 'secp256k1';
 import { Constants } from '../src/index'
 import { HARDENED_OFFSET} from '../src/constants';
 import helpers from './testUtil/helpers';
@@ -96,10 +98,15 @@ describe('Test non-exportable seed on SafeCard', () => {
     };
     // Validate that tx sigs are non-uniform
     const tx1Resp = await client.sign(txReq);
+    validateSig(tx1Resp, tx.getMessageToSign(true));
     const tx2Resp = await client.sign(txReq);
+    validateSig(tx2Resp, tx.getMessageToSign(true));
     const tx3Resp = await client.sign(txReq);
+    validateSig(tx3Resp, tx.getMessageToSign(true));
     const tx4Resp = await client.sign(txReq);
+    validateSig(tx4Resp, tx.getMessageToSign(true));
     const tx5Resp = await client.sign(txReq);
+    validateSig(tx5Resp, tx.getMessageToSign(true));
     // Check sig 1
     expect(helpers.getSigStr(tx1Resp, tx)).to.not.equal(helpers.getSigStr(tx2Resp, tx));
     expect(helpers.getSigStr(tx1Resp, tx)).to.not.equal(helpers.getSigStr(tx3Resp, tx));
@@ -138,6 +145,8 @@ describe('Test non-exportable seed on SafeCard', () => {
         payload: 'test message',
       },
     };
+    // NOTE: This uses the legacy signing pathway, which validates the signature
+    // Once we move this to generic signing, we will need to validate these.
     const msg1Resp = await client.sign(msgReq);
     const msg2Resp = await client.sign(msgReq);
     const msg3Resp = await client.sign(msgReq);
@@ -171,3 +180,12 @@ describe('Test non-exportable seed on SafeCard', () => {
     continueTests = true;
   });
 })
+
+function validateSig(resp, hash) {
+  const rs = new Uint8Array(Buffer.concat([ resp.sig.r, resp.sig.s ]));
+  const pubkeyA = Buffer.from(ecdsaRecover(rs, 0, hash, false)).toString('hex');
+  const pubkeyB = Buffer.from(ecdsaRecover(rs, 1, hash, false)).toString('hex');
+  if (resp.pubkey.toString('hex') !== pubkeyA && resp.pubkey.toString('hex') !== pubkeyB) {
+    throw new Error('Signature did not validate.');
+  }
+}

@@ -48,6 +48,9 @@ describe('Test General Signing', () => {
       etherscanKey: process.env.ETHERSCAN_KEY,
     };
     expect(global.test.client).to.not.equal(null);
+    if (global.test.client.fwVersion.major === 0 && global.test.client.fwVersion.minor < 15) {
+      throw new Error('Please update Lattice firmware.');
+    }
   })
 
   beforeEach(() => {

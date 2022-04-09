@@ -566,7 +566,7 @@ This section gives an overview of each test and which options can be passed for 
 
 | Test | Description | Uses Test Runner | Additional `env` Options |
 |:-----|:------------|:-----------------|:--------------|
-| `npm run test` | Sets up test connection. Tests `getAddresses` and `sign`. | No | N/A |
+| `npm run test` | Sets up test connection and tests basic functionality like `getAddresses` and `sign`. You need to run this with `REUSE_KEY=1` and pair before running any other tests. | No | N/A |
 | `npm run test-signing` | Tests various aspects of the message signing path as well as all known decoders. | Yes | `SEED` (random string to seed a random number generator)<br/>`ETHERSCAN_KEY` (API key for making Etherscan requests. Used in EVM tests.) |
 | `npm run test-btc` | *(Legacy pathway)* Tests spending different types of BTC inputs. Signatures validated against `bitcoinjs-lib` using seed exported by test harness. | Yes | `N` (number of random vectors to populate)<br/>`SEED` (random string to seed a random number generator)<br/>`testnet` (if true, testnet addresses and transactions will also be tested) |
 | `npm run test-eth-msg` | *(Legacy pathway)* Tests Ethereum message requests `signPersonal` and `signTypedData`. Tests boundary conditions of EIP712 messages. | No | `N` (number of random vectors to populate)<br/>`SEED` (random string to seed a random number generator) |

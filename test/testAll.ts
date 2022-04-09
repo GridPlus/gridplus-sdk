@@ -77,7 +77,7 @@ describe('Connect and Pair', () => {
     expect(client.hasActiveWallet()).to.equal(true);
     continueTests = true;
   });
-/*
+
   it('Should test SDK dehydration/rehydration', async () => {
     const addrData = {
       startPath: [
@@ -100,7 +100,7 @@ describe('Connect and Pair', () => {
     );
     continueTests = true;
   })
-*/
+
   it('Should get addresses', async () => {
     const fwConstants = getFwVersionConst(client.fwVersion);
     const addrData = {
