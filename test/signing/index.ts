@@ -16,8 +16,9 @@ import { getEncodedPayload } from '../../src/genericSigning'
 
 async function runGeneric(req, test, expectedErr=undefined) {
   test.continue = false;
+  let resp;
   try {
-    const resp = await test.client.sign(req);
+    resp = await test.client.sign(req);
     // If no encoding type is specified we encode in hex or ascii
     const encodingType = req.data.encodingType || null; 
     const allowedEncodings = test.fwConstants.genericSigning.encodingTypes;
@@ -48,9 +49,6 @@ describe('Test General Signing', () => {
       etherscanKey: process.env.ETHERSCAN_KEY,
     };
     expect(global.test.client).to.not.equal(null);
-    if (global.test.client.fwVersion.major === 0 && global.test.client.fwVersion.minor < 15) {
-      throw new Error('Please update Lattice firmware.');
-    }
   })
 
   beforeEach(() => {
@@ -72,6 +70,9 @@ describe('Test General Signing', () => {
     if (!global.test.fwConstants.genericSigning) {
       global.test.continue = false;
       expect(true).to.equal(false, 'Firmware must be updated to run this test.')
+    }
+    if (global.test.client.fwVersion.major === 0 && global.test.client.fwVersion.minor < 15) {
+      throw new Error('Please update Lattice firmware.');
     }
     global.test.continue = true;
   })
