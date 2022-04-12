@@ -5,7 +5,7 @@ We seek to validate:
 2. Signature on data representing ETH tx matches the ETH route itself
 3. Many random signatures can be validated
 
-You must have `FEATURE_TEST_RUNNER=0` enabled in firmware to run these tests.
+You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
  */
 import Common, { Chain, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
