@@ -1,4 +1,5 @@
 import bip32 from 'bip32';
+import { BN } from 'bn.js';
 import { wordlists } from 'bip39';
 import bitcoin from 'bitcoinjs-lib';
 import { expect as expect } from 'chai';
@@ -7,6 +8,7 @@ import { ec as EC, eddsa as EdDSA } from 'elliptic';
 import { privateToAddress } from 'ethereumjs-util';
 import { keccak256 } from 'js-sha3';
 import { sha256 } from 'hash.js/lib/hash/sha'
+import { ecdsaRecover } from 'secp256k1';
 import { 
   ADDR_STR_LEN, BIP_CONSTANTS, ethMsgProtocol, HARDENED_OFFSET, 
 } from '../../src/constants';
@@ -901,6 +903,75 @@ export const validateGenericSig = function(seed, sig, payloadBuf, req) {
   }
 }
 
+/**
+ * Generic signing does not return a `v` value like legacy ETH signing requests did.
+ * Get the `v` component of the signature as well as an `initV`
+ * parameter, which is what you need to use to re-create an @ethereumjs/tx
+ * object. There is a lot of tech debt in @ethereumjs/tx which also
+ * inherits the tech debt of ethereumjs-util.
+ * 1.  The legacy `Transaction` type can call `_processSignature` with the regular
+ *     `v` value.
+ * 2.  Newer transaction types such as `FeeMarketEIP1559Transaction` will subtract
+ *     27 from the `v` that gets passed in, so we need to add `27` to create `initV`
+ * @param tx - An @ethereumjs/tx Transaction object
+ * @param resp - response from Lattice. Can be either legacy or generic signing variety
+*/
+export const getV = function(tx, resp) {
+  const hash = tx.getMessageToSign(true);
+  const rs = new Uint8Array(Buffer.concat([ resp.sig.r, resp.sig.s ]))
+  const pubkey = new Uint8Array(resp.pubkey);
+  const recovery0 = ecdsaRecover(rs, 0, hash, false);
+  const recovery1 = ecdsaRecover(rs, 1, hash, false);
+  const pubkeyStr = Buffer.from(pubkey).toString('hex');
+  const recovery0Str = Buffer.from(recovery0).toString('hex');
+  const recovery1Str = Buffer.from(recovery1).toString('hex');
+  let recovery;
+  if (pubkeyStr === recovery0Str) {
+    recovery = 0
+  } else if (pubkeyStr === recovery1Str) {
+    recovery = 1;
+  } else {
+    return null;
+  }
+  // Newer transaction types just use the [0, 1] value
+  if (tx._type) {
+    return new BN(recovery);
+  }
+  // Legacy transactions should check for EIP155 support.
+  // In practice, virtually every transaction should have EIP155
+  // support since that hardfork happened in 2016...
+  // Various methods for fetching a chainID from different @ethereumjs/tx objects
+  let chainId = null;
+  if (tx.common && typeof tx.common.chainIdBN === 'function') {
+    chainId = tx.common.chainIdBN();
+  } else if (tx.chainId) {
+    chainId = new BN(tx.chainId);
+  }
+  if (!chainId || !tx.supports(EthTxCapability.EIP155ReplayProtection)) {
+    return new BN(recovery).addn(27);
+  }
+  // EIP155 replay protection is included in the `v` param
+  // and uses the chainId value.
+  return chainId.muln(2).addn(35).addn(recovery);
+}
+
+/**
+ * Get a RSV formatted signature string
+ * @param resp - response from Lattice. Can be either legacy or generic signing variety
+ * @param tx - optional, an @ethereumjs/tx Transaction object
+ */
+export const getSigStr = function(resp, tx=null) {
+  let v;
+  if (resp.sig.v !== undefined) {
+    v = (parseInt(resp.sig.v.toString('hex'), 16) - 27).toString(16).padStart(2, '0');
+  } else if (tx) {
+    v = getV(tx, resp);  
+  } else {
+    throw new Error('Could not build sig string')
+  }
+  return `${resp.sig.r}${resp.sig.s}${v}`;
+}
+
 export default {
   BTC_PURPOSE_P2WPKH,
   BTC_PURPOSE_P2SH_P2WPKH,
@@ -938,4 +1009,6 @@ export default {
   deriveSECP256K1Key,
   prandomBuf,
   getPathStr,
+  getV,
+  getSigStr,
 }
