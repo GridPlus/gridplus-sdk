@@ -1,4 +1,4 @@
-// You must have `FEATURE_TEST_RUNNER=0` enabled in firmware to run these tests.
+// You must have `FEATURE_TEST_RUNNER10` enabled in firmware to run these tests.
 import bip32 from 'bip32';
 import { expect } from 'chai';
 import seedrandom from 'seedrandom';

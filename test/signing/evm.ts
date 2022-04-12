@@ -5,13 +5,10 @@ We seek to validate:
 2. Signature on data representing ETH tx matches the ETH route itself
 3. Many random signatures can be validated
 
-You must have `FEATURE_TEST_RUNNER=0` enabled in firmware to run these tests.
+You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
  */
 import Common, { Chain, Hardfork } from '@ethereumjs/common';
-import { 
-  TransactionFactory as EthTxFactory,
-  Capability as EthTxCapability,
-} from '@ethereumjs/tx';
+import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { AbiCoder, Interface } from '@ethersproject/abi';
 import { BN } from 'bn.js';
 import { readFileSync } from 'fs';
@@ -20,7 +17,6 @@ import { jsonc } from 'jsonc';
 import { question } from 'readline-sync';
 import request from 'request-promise';
 import { encode as rlpEncode, decode as rlpDecode } from 'rlp';
-import secp256k1 from 'secp256k1';
 import { HARDENED_OFFSET } from '../../src/constants'
 import { Constants, Calldata } from '../../src/index'
 import { randomBytes } from '../../src/util'
@@ -747,58 +743,6 @@ function genData(type, param) {
   }
 }
 
-// Various methods for fetching a chainID from different @ethereumjs/tx objects
-function getTxChainId (tx) {
-  if (tx.common && typeof tx.common.chainIdBN === 'function') {
-    return tx.common.chainIdBN();
-  } else if (tx.chainId) {
-    return new BN(tx.chainId);
-  }
-  // No chain id
-  return null;
-}
-
-// Get the `v` component of the signature as well as an `initV`
-// parameter, which is what you need to use to re-create an @ethereumjs/tx
-// object. There is a lot of tech debt in @ethereumjs/tx which also
-// inherits the tech debt of ethereumjs-util.
-// *  The legacy `Transaction` type can call `_processSignature` with the regular
-//    `v` value.
-// *  Newer transaction types such as `FeeMarketEIP1559Transaction` will subtract
-//    27 from the `v` that gets passed in, so we need to add `27` to create `initV`
-function getV(tx, resp) {
-  const hash = tx.getMessageToSign(true);
-  const rs = new Uint8Array(Buffer.concat([ resp.sig.r, resp.sig.s ]))
-  const pubkey = new Uint8Array(resp.pubkey);
-  const recovery0 = secp256k1.ecdsaRecover(rs, 0, hash, false);
-  const recovery1 = secp256k1.ecdsaRecover(rs, 1, hash, false);
-  const pubkeyStr = Buffer.from(pubkey).toString('hex');
-  const recovery0Str = Buffer.from(recovery0).toString('hex');
-  const recovery1Str = Buffer.from(recovery1).toString('hex');
-  let recovery;
-  if (pubkeyStr === recovery0Str) {
-    recovery = 0
-  } else if (pubkeyStr === recovery1Str) {
-    recovery = 1;
-  } else {
-    return null;
-  }
-  // Newer transaction types just use the [0, 1] value
-  if (tx._type) {
-    return new BN(recovery);
-  }
-  // Legacy transactions should check for EIP155 support.
-  // In practice, virtually every transaction should have EIP155
-  // support since that hardfork happened in 2016...
-  const chainId = getTxChainId(tx);
-  if (!chainId || !tx.supports(EthTxCapability.EIP155ReplayProtection)) {
-    return new BN(recovery).addn(27);
-  }
-  // EIP155 replay protection is included in the `v` param
-  // and uses the chainId value.
-  return chainId.muln(2).addn(35).addn(recovery);
-}
-
 async function run(req, shouldFail=false, bypassSetPayload=false, useLegacySigning=false) {
   test.continue = false;
   try {
@@ -847,7 +791,7 @@ async function run(req, shouldFail=false, bypassSetPayload=false, useLegacySigni
     // Get params from Lattice sig
     const latticeR = Buffer.from(resp.sig.r);
     const latticeS = Buffer.from(resp.sig.s);
-    const latticeV = getV(tx, resp);
+    const latticeV = test.helpers.getV(tx, resp);
     // Strip off leading zeros to do an exact componenet check.
     // We will still validate the original lattice sig in a tx.
     const rToCheck =  latticeR.length !== refR.length ?
