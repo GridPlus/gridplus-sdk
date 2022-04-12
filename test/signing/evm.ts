@@ -5,26 +5,31 @@ We seek to validate:
 2. Signature on data representing ETH tx matches the ETH route itself
 3. Many random signatures can be validated
 
-You must have `FEATURE_TEST_RUNNER=0` enabled in firmware to run these tests.
+You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
  */
 import Common, { Chain, Hardfork } from '@ethereumjs/common';
-import { 
-  TransactionFactory as EthTxFactory,
-  Capability as EthTxCapability,
-} from '@ethereumjs/tx';
+import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
+import { AbiCoder, Interface } from '@ethersproject/abi';
 import { BN } from 'bn.js';
-import { encode as rlpEncode } from 'rlp';
-import secp256k1 from 'secp256k1';
+import { readFileSync } from 'fs';
+import { keccak256 } from 'js-sha3';
+import { jsonc } from 'jsonc';
+import { question } from 'readline-sync';
+import request from 'request-promise';
+import { encode as rlpEncode, decode as rlpDecode } from 'rlp';
 import { HARDENED_OFFSET } from '../../src/constants'
-import { Constants } from '../../src/index'
+import { Constants, Calldata } from '../../src/index'
 import { randomBytes } from '../../src/util'
 import { getEncodedPayload } from '../../src/genericSigning'
 let test;
+const coder = new AbiCoder();
+const EVMCalldata = Calldata.EVM;
+
 
 //---------------------------------------
 // STATE DATA
 //---------------------------------------
-let DEFAULT_SIGNER;
+let DEFAULT_SIGNER, EVM_TYPES, vectors;
 const req = {
   data: {
     curveType: Constants.SIGNING.CURVES.SECP256K1,
@@ -33,6 +38,8 @@ const req = {
     payload: null,
   }
 };
+let numDefsInitial = 0;
+const encDefs = [], encDefsCalldata = [];
 
 //---------------------------------------
 // TESTS
@@ -47,9 +54,27 @@ describe('Start EVM signing tests',  () => {
     0,
   ];
   req.data.signerPath = DEFAULT_SIGNER;
+  const globalVectors = jsonc.parse(readFileSync(
+    `${process.cwd()}/test/signing/vectors.jsonc`
+  ).toString());
+  vectors = globalVectors.evm.calldata;
+  // Copied from calldata/evm.ts (not exported there)
+  EVM_TYPES = [ 
+    null, 'address', 'bool', 'uint', 'int', 'bytes', 'string', 'tuple' 
+  ];
+  // Build data for next test sets
+  for (let i = 0; i < vectors.canonicalNames.length; i++) {
+    const name = vectors.canonicalNames[i];
+    const selector = `0x${keccak256(name).slice(0, 8)}`;
+    const encDef = EVMCalldata.parsers.parseCanonicalName(selector, name);
+    encDefs.push(encDef);
+    const { types, data } = convertDecoderToEthers(rlpDecode(encDef).slice(1));
+    const calldata = coder.encode(types, data);
+    encDefsCalldata.push(`${selector}${calldata.slice(2)}`);
+  }
 })
 
-describe('[EVM]', () => {
+describe('[EVM] Test transactions', () => {
   describe('EIP1559', () => {
     beforeEach(() => {
       test.expect(test.continue).to.equal(true, 'Error in previous test.');
@@ -64,7 +89,7 @@ describe('[EVM]', () => {
         value: 100,
         data: '0xdeadbeef',
       };
-      req.common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.Shanghai })
+      req.common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London })
     })
 
     it('Should test a basic transaction', async () => {
@@ -72,7 +97,7 @@ describe('[EVM]', () => {
     })
 
     it('Should test a Rinkeby transaction', async () => {
-      req.common = new Common({ chain: Chain.Rinkeby, hardfork: Hardfork.Shanghai })
+      req.common = new Common({ chain: Chain.Rinkeby, hardfork: Hardfork.London })
       await run(req)
     })
 
@@ -106,7 +131,7 @@ describe('[EVM]', () => {
         value: 100,
         data: '0xdeadbeef',
       };
-      req.common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.Shanghai })
+      req.common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London })
     })
 
     it('Should test a basic transaction', async () => {
@@ -114,7 +139,7 @@ describe('[EVM]', () => {
     })
 
     it('Should test a Rinkeby transaction', async () => {
-      req.common = new Common({ chain: Chain.Rinkeby, hardfork: Hardfork.Shanghai })
+      req.common = new Common({ chain: Chain.Rinkeby, hardfork: Hardfork.London })
       await run(req);
     })
 
@@ -169,7 +194,7 @@ describe('[EVM]', () => {
         value: 100,
         data: '0xdeadbeef',
       };
-      req.common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.Shanghai })
+      req.common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London })
     })
 
     it('Should test shorter derivation paths', async () => {
@@ -335,7 +360,7 @@ describe('[EVM]', () => {
         data: '0xdeadbeef',
       };
       req.common = new Common({ 
-        chain: Chain.Mainnet, hardfork: Hardfork.Shanghai 
+        chain: Chain.Mainnet, hardfork: Hardfork.London 
       });
     })
 
@@ -366,59 +391,356 @@ describe('[EVM]', () => {
   })
 })
 
+describe('[EVM] Test decoders', () => {
+  describe('Test ABI decoder vectors', () => {
+    beforeEach(() => {
+      test.expect(test.continue).to.equal(true, 'Error in previous test.');
+      req.data.payload = null;
+      req.data.signerPath = DEFAULT_SIGNER;
+      req.txData = {
+        gasPrice: 1200000000,
+        nonce: 0,
+        gasLimit: 50000,
+        to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+        value: 100,
+        data: null,
+      };
+      test.continue = false;
+    })
+
+    // Validate that we can decode using Etherscan ABI info as well as 4byte canonical names.
+    for (let i = 0; i < vectors.etherscanTxHashes.length; i++) {
+      it(`(Etherscan + 4byte #${i}) ${vectors.etherscanTxHashes[i]}`, async () => {
+        // Hashes on ETH mainnet that we will use to fetch full tx and ABI data with
+        const getTxBase = 'https://api.etherscan.io/api?module=proxy&action=eth_getTransactionByHash&txhash='
+        const getAbiBase = 'https://api.etherscan.io/api?module=contract&action=getabi&address=';
+        const fourByteBase = 'https://www.4byte.directory/api/v1/signatures?hex_signature=';
+        let resp;
+        // 1. First fetch the transaction details from etherscan. This is just to get
+        // the calldata, so it would not be needed in a production environment
+        // (since we already have the calldata).
+        let getTxUrl = `${getTxBase}${vectors.etherscanTxHashes[i]}`;
+        if (test.etherscanKey) {
+          getTxUrl += `&apiKey=${test.etherscanKey}`;
+        }
+        resp = await request(getTxUrl);
+        const tx = JSON.parse(resp).result;
+        if (!test.etherscanKey) {
+          // Need a timeout between requests if we don't have a key
+          console.warn(
+            'WARNING: No env.ETHERSCAN_KEY provided. Waiting 5s between requests...'
+          )
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+        // 2. Fetch the full ABI of the contract that the transaction interacted with.
+        let getAbiUrl = `${getAbiBase}${tx.to}`;
+        if (test.etherscanKey) {
+          getAbiUrl += `&apiKey=${test.etherscanKey}`;
+        }
+        resp = await request(getAbiUrl);
+        const funcSig = tx.input.slice(0, 10);
+        const abi = JSON.parse(JSON.parse(resp).result);
+        const def = EVMCalldata.parsers.parseSolidityJSONABI(funcSig, abi);
+        if (!def) {
+          throw new Error(
+            `ERROR: Failed to decode ABI definition (${vectors.etherscanTxHashes[i]}). Skipping.`
+          )
+        }
+        // 3. Test decoding using Etherscan ABI info
+        // Check that ethers can decode this
+        const funcName = rlpDecode(def)[0];
+        if (ethersCanDecode(tx.input, resp, funcName.toString())) {
+          // Send the request
+          req.txData.data = tx.input;
+          req.data.decoder = def
+          await run(req);
+        } else {
+          throw new Error(
+            `ERROR: ethers.js failed to decode abi for tx ${vectors.etherscanTxHashes[i]}. Skipping.` 
+          );
+        }
+        // 4. Get the canonical name from 4byte
+        resp = await request(`${fourByteBase}${funcSig}`);
+        const fourByteResults = JSON.parse(resp).results;
+        if (fourByteResults.length > 0) {
+          console.warn('WARNING: There are multiple results. Using the first one.');
+        }
+        const canonicalName = fourByteResults[0].text_signature;
+        // 5. Convert the decoder data and make a request to the Lattice
+        req.data.decoder = EVMCalldata.parsers.parseCanonicalName(funcSig, canonicalName);
+        await run(req);
+      })
+    }
+
+    // Validate a series of canonical definitions
+    for (let i = 0; i < vectors.canonicalNames.length; i++) {
+      it(`(Canonical #${i}) ${vectors.canonicalNames[i]}`, async () => {
+        req.txData.data = encDefsCalldata[i];
+        req.data.decoder = encDefs[i];
+        // The following prints are helpful for debugging.
+        // If you are testing changes to the ABI decoder in firmware, you
+        // should uncomment these prints and validate that the `data` matches
+        // what you see on the screen for each case. Please scroll through
+        // ALL the data on the Lattice to confirm each param has properly decoded.
+        // const { types, data } = convertDecoderToEthers(rlpDecode(req.data.decoder).slice(1));
+        // console.log('types', types)
+        // console.log('params', JSON.stringify(data))
+        // for (let cd = 2; cd < calldata.length; cd += 64) {
+        //   console.log(calldata.slice(cd, cd + 64));
+        // }
+        await run(req);
+      })
+    }
+
+    // Test committing decoder data
+    it('Should save the first 10 defs', async () => {
+      const decoderType = Calldata.EVM.type;
+      const rm = question(
+        'Do you want to remove all previously saved definitions? (Y/N) '
+      );
+      if (rm.toUpperCase() === 'Y') {
+        await test.client.removeDecoders({ decoderType, rmAll: true })
+      }
+      // First determine how many defs there are already
+      let saved = await test.client.getDecoders({ decoderType });
+      numDefsInitial = saved.total;
+      await test.client.addDecoders({ decoderType, decoders: encDefs.slice(0, 10) });
+      saved = await test.client.getDecoders({ decoderType, n: 10 });
+      test.expect(saved.total).to.equal(numDefsInitial + 10);
+      for (let i = 0; i < saved.decoders.length; i++) {
+        test.expect(saved.decoders[i].toString('hex')).to.equal(encDefs[i].toString('hex'));
+      }
+      await test.client.addDecoders({ decoderType, decoders: encDefs.slice(0, 10) });
+      saved = await test.client.getDecoders({ decoderType, n: 10 });
+      test.expect(saved.total).to.equal(numDefsInitial + 10);
+      for (let i = 0; i < saved.decoders.length; i++) {
+        test.expect(saved.decoders[i].toString('hex')).to.equal(encDefs[i].toString('hex'));
+      }
+      test.continue = true;
+    })
+
+    it('Should decode saved defs with check marks', async () => {
+      question(
+        'Please REJECT if decoded params do not show check marks. Press ENT to continue.'
+      );
+      // Test expected passes
+      req.txData.data = encDefsCalldata[0];
+      await run(req);
+      req.txData.data = encDefsCalldata[9];
+      await run(req);
+      // Test expected failure
+      req.txData.data = encDefsCalldata[10];
+      req.data.decoder = encDefs[10];
+      await run(req, true);
+      test.continue = true;
+    })
+
+    it('Should test decoding priority levels', async () => {
+      question(
+        'Please REJECT if the data does not decode. Press ENT to continue.'
+      );
+      req.txData.data = encDefsCalldata[10];
+      req.data.decoder = encDefs[10];
+      await run(req);
+      req.data.decoder = null;
+      await run(req, true);
+      test.continue = true;
+    })
+
+    it('Should fetch the first 10 defs', async () => {
+      const decoderType = Calldata.EVM.type;
+      const { total, decoders } = await test.client.getDecoders({ 
+        decoderType, startIdx: numDefsInitial, n: 10 
+      });
+      test.expect(total).to.equal(numDefsInitial + 10);
+      test.expect(decoders.length).to.equal(10);
+      for (let i = 0; i < decoders.length; i++) {
+        test.expect(decoders[i].toString('hex')).to.equal(encDefs[i].toString('hex'));
+      }
+      test.continue = true;
+    })
+
+    it('Should remove the saved defs', async () => {
+      const decoderType = Calldata.EVM.type;
+      // Remove the first 5 defs
+      await test.client.removeDecoders({ decoderType, decoders: encDefs.slice(0, 5) })
+      // There should be 5 defs remaining
+      const { total, decoders } = await test.client.getDecoders({ 
+        decoderType, startIdx: numDefsInitial, n: 10 
+      });
+      test.expect(total).to.equal(numDefsInitial + 5);
+      test.expect(decoders.length).to.equal(5);
+      // Remove the latter 5
+      await test.client.removeDecoders({ decoderType, decoders: encDefs.slice(5, 10) })
+      const { total, decoders } = await test.client.getDecoders({ 
+        decoderType, startIdx: numDefsInitial, n: 10 
+      });
+      // There should be no more new defs
+      test.expect(total).to.equal(numDefsInitial);
+      test.expect(decoders.length).to.equal(0);
+      // Test to make sure the check marks do not appear
+      question(
+        'Please REJECT if decoded params do not show check marks. Press ENT to continue.'
+      );
+      req.txData.data = encDefsCalldata[0];
+      req.data.decoder = encDefs[0];
+      await run(req, true);
+      req.txData.data = encDefsCalldata[9];
+      req.data.decoder = encDefs[9];
+      await run(req, true);
+    })
+
+  })
+})
+
 //---------------------------------------
 // INTERNAL HELPERS
 //---------------------------------------
-// Various methods for fetching a chainID from different @ethereumjs/tx objects
-function getTxChainId (tx) {
-  if (tx.common && typeof tx.common.chainIdBN === 'function') {
-    return tx.common.chainIdBN();
-  } else if (tx.chainId) {
-    return new BN(tx.chainId);
+// Determine if ethers.js can decode calldata using an ABI def
+function ethersCanDecode(calldata, etherscanResp, funcName) {
+  try {
+    const abi = JSON.parse(etherscanResp).result;
+    const iface = new Interface(JSON.parse(abi));
+    iface.decodeFunctionData(funcName, calldata);
+    return true;
+  } catch (err) {
+    return false;
   }
-  // No chain id
-  return null;
 }
 
-// Get the `v` component of the signature as well as an `initV`
-// parameter, which is what you need to use to re-create an @ethereumjs/tx
-// object. There is a lot of tech debt in @ethereumjs/tx which also
-// inherits the tech debt of ethereumjs-util.
-// *  The legacy `Transaction` type can call `_processSignature` with the regular
-//    `v` value.
-// *  Newer transaction types such as `FeeMarketEIP1559Transaction` will subtract
-//    27 from the `v` that gets passed in, so we need to add `27` to create `initV`
-function getV(tx, resp) {
-  const hash = tx.getMessageToSign(true);
-  const rs = new Uint8Array(Buffer.concat([ resp.sig.r, resp.sig.s ]))
-  const pubkey = new Uint8Array(resp.pubkey);
-  const recovery0 = secp256k1.ecdsaRecover(rs, 0, hash, false);
-  const recovery1 = secp256k1.ecdsaRecover(rs, 1, hash, false);
-  const pubkeyStr = Buffer.from(pubkey).toString('hex');
-  const recovery0Str = Buffer.from(recovery0).toString('hex');
-  const recovery1Str = Buffer.from(recovery1).toString('hex');
-  let recovery;
-  if (pubkeyStr === recovery0Str) {
-    recovery = 0
-  } else if (pubkeyStr === recovery1Str) {
-    recovery = 1;
-  } else {
-    return null;
+// Convert a decoder definition to something ethers can consume
+function convertDecoderToEthers(def) {
+  const converted = getConvertedDef(def);
+  const types = [], data = [];
+  converted.forEach((i) => {
+    types.push(i.type);
+    data.push(i.data);
+  })
+  return { types, data };
+}
+
+// Convert an encoded def into a combination of ethers-compatable 
+// type names and data fields. The data should be random but it
+// doesn't matter much for these tests, which mainly just test
+// structure of the definitions
+function getConvertedDef(def) {
+  const converted = [];
+  def.forEach((param) => {
+    const arrSzs = param[3];
+    const evmType = EVM_TYPES[parseInt(param[1].toString('hex'), 16)];
+    let type = evmType;
+    const numBytes = parseInt(param[2].toString('hex'), 16);
+    if (numBytes > 0) {
+      type = `${type}${numBytes * 8}`;
+    }
+    // Handle tuples by recursively generating data
+    let tupleData;
+    if (evmType === 'tuple') {
+      tupleData = [];
+      type = `${type}(`
+      const tupleDef = getConvertedDef(param[4]);
+      tupleDef.forEach((tupleParam) => {
+        type = `${type}${tupleParam.type}, `
+        tupleData.push(tupleParam.data);
+      });
+      type = type.slice(0, type.length - 2);
+      type = `${type})`;
+    }
+    // Get the data of a single function (i.e. excluding arrays)
+    const funcData = tupleData ? tupleData : genParamData(param);
+    // Apply the data to arrays
+    for (let i = 0; i < arrSzs.length; i++) {
+      let sz = parseInt(arrSzs[i].toString('hex'));
+      if (isNaN(sz)) {
+        // This is a 0 size, which means we need to
+        // define a size to generate data
+        type = `${type}[]`;
+      } else {
+        type = `${type}[${sz}]`;
+      }
+    }
+    // If this param is a tuple we need to copy base data
+    // across all dimensions. The individual params are already
+    // arraified this way, but not the tuple type
+    if (tupleData) {
+      converted.push({ type, data: getArrayData(param, funcData) });
+    } else {
+      converted.push({ type, data: funcData });
+    }
+  })
+  return converted;
+}
+
+function genTupleData(tupleParam) {
+  const nestedData = [];
+  tupleParam.forEach((nestedParam) => {
+    nestedData.push(
+      genData(
+        EVM_TYPES[parseInt(nestedParam[1].toString('hex'), 16)],
+        nestedParam
+      )
+    )
+  })
+  return nestedData;
+}
+
+function genParamData(param) {
+  const evmType = EVM_TYPES[parseInt(param[1].toString('hex'), 16)];
+  const baseData = genData(evmType, param);
+  return getArrayData(param, baseData);
+}
+
+function getArrayData(param, baseData) {
+  let arrayData, data;
+  const arrSzs = param[3];
+  for (let i = 0; i < arrSzs.length; i++) {
+    let sz = parseInt(arrSzs[i].toString('hex'));
+    const dimData = [];
+    let sz = parseInt(param[3][i].toString('hex'));
+    if (isNaN(sz)) {
+      sz = 2 //1;
+    }
+    if (!arrayData) {
+      arrayData = [];
+    }
+    const lastDimData = JSON.parse(JSON.stringify(arrayData));
+    for (let j = 0; j < sz; j++) {
+      if (i === 0) {
+        dimData.push(baseData);
+      } else {
+        dimData.push(lastDimData);
+      }
+    }
+    arrayData = dimData;
   }
-  // Newer transaction types just use the [0, 1] value
-  if (tx._type) {
-    return new BN(recovery);
+  if (!data) {
+    data = arrayData ? arrayData : baseData;
   }
-  // Legacy transactions should check for EIP155 support.
-  // In practice, virtually every transaction should have EIP155
-  // support since that hardfork happened in 2016...
-  const chainId = getTxChainId(tx);
-  if (!chainId || !tx.supports(EthTxCapability.EIP155ReplayProtection)) {
-    return new BN(recovery).addn(27);
+  return data;
+}
+
+function genData(type, param) {
+  switch (type) {
+    case 'address':
+      return '0xdead00000000000000000000000000000000beef';
+    case 'bool':
+      return true;
+    case 'uint':
+      return 9;
+    case 'int':
+      return -9;
+    case 'bytes':
+      return '0xdeadbeef';
+    case 'string':
+      return 'string';
+    case 'tuple':
+      if (!param || param.length < 4) {
+        throw new Error('Invalid tuple data');
+      }
+      return genTupleData(param[4]);
+    default:
+      throw new Error('Unrecognized type');
   }
-  // EIP155 replay protection is included in the `v` param
-  // and uses the chainId value.
-  return chainId.muln(2).addn(35).addn(recovery);
 }
 
 async function run(req, shouldFail=false, bypassSetPayload=false, useLegacySigning=false) {
@@ -469,13 +791,21 @@ async function run(req, shouldFail=false, bypassSetPayload=false, useLegacySigni
     // Get params from Lattice sig
     const latticeR = Buffer.from(resp.sig.r);
     const latticeS = Buffer.from(resp.sig.s);
-    const latticeV = getV(tx, resp);
+    const latticeV = test.helpers.getV(tx, resp);
+    // Strip off leading zeros to do an exact componenet check.
+    // We will still validate the original lattice sig in a tx.
+    const rToCheck =  latticeR.length !== refR.length ?
+                      latticeR.slice(latticeR.length - refR.length) :
+                      latticeR;
+    const sToCheck =  latticeS.length !== refS.length ?
+                      latticeS.slice(latticeS.length - refS.length) :
+                      latticeS;
     // Validate the signature
-    test.expect(latticeR.equals(refR)).to.equal(
+    test.expect(rToCheck.equals(refR)).to.equal(
       true, 
       'Signature R component does not match reference'
     );
-    test.expect(latticeS.equals(refS)).to.equal(
+    test.expect(sToCheck.equals(refS)).to.equal(
       true, 
       'Signature S component does not match reference'
     );

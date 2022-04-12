@@ -16,8 +16,9 @@ import { getEncodedPayload } from '../../src/genericSigning'
 
 async function runGeneric(req, test, expectedErr=undefined) {
   test.continue = false;
+  let resp;
   try {
-    const resp = await test.client.sign(req);
+    resp = await test.client.sign(req);
     // If no encoding type is specified we encode in hex or ascii
     const encodingType = req.data.encodingType || null; 
     const allowedEncodings = test.fwConstants.genericSigning.encodingTypes;
@@ -34,7 +35,7 @@ async function runGeneric(req, test, expectedErr=undefined) {
 }
 
 describe('Test General Signing', () => {
-  it('Should setup the test client', () => {
+  before(() => {
     global.test = {
       continue: true,
       client: helpers.setupTestClient(process.env),
@@ -45,8 +46,14 @@ describe('Test General Signing', () => {
       runGeneric,
       prng: new seedrandom(process.env.SEED || Math.random().toString()),
       numIter: process.env.N || 5,
+      etherscanKey: process.env.ETHERSCAN_KEY,
     };
     expect(global.test.client).to.not.equal(null);
+  })
+
+  beforeEach(() => {
+    expect(global.test.continue).to.equal(true, 'Error in previous test.');
+    global.test.continue = false;
   })
 
   it('Should connect to a Lattice and make sure it is already paired.', async () => {
@@ -63,6 +70,9 @@ describe('Test General Signing', () => {
     if (!global.test.fwConstants.genericSigning) {
       global.test.continue = false;
       expect(true).to.equal(false, 'Firmware must be updated to run this test.')
+    }
+    if (global.test.client.fwVersion.major === 0 && global.test.client.fwVersion.minor < 15) {
+      throw new Error('Please update Lattice firmware.');
     }
     global.test.continue = true;
   })
@@ -81,21 +91,32 @@ describe('Test General Signing', () => {
     expect(_res.resultStatus).to.equal(0);
     const data = helpers.deserializeExportSeedJobResult(_res.result);
     global.test.seed = helpers.copyBuffer(data.seed);
+    global.test.activeWalletUID = activeWalletUID;
+    global.test.continue = true;
   })
 
-  // it('Should load unformatted Tests', async () => {
-  //   require('./unformatted');
-  // })
+  it('Should load determinism tests', async () => {
+    require('./determinism');
+    global.test.continue = true;
+  })
 
-  // it('Should load Solana Tests', async () => {
-  //   require('./solana');
-  // })
+  it('Should load unformatted tests', async () => {
+    require('./unformatted');
+    global.test.continue = true;
+  })
 
-  it('Should load Terra Tests' , async () => {
+  it('Should load Solana tests', async () => {
+    require('./solana');
+    global.test.continue = true;
+  })
+
+  it('Should load Terra tests' , async () => {
     require('./terra');
+    global.test.continue = true;
   })
 
-  it('Should load EVM Tests' , async () => {
+  it('Should load EVM tests' , async () => {
     require('./evm');
+    global.test.continue = true;
   })
 })

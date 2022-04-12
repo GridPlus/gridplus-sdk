@@ -1,0 +1,132 @@
+// Vectors for signing tests
+{
+  "evm": {
+    // We use these vectors to test just-in-type calldata decoding for EVM transactions.
+    // The relevant protocol is Ethereum ABI serdes: https://docs.soliditylang.org/en/develop/abi-spec.html
+    "calldata": {
+      // ETH Mainnet transactions interacting with contracts. We use these
+      // to simulate a production environment of fetching ABI data and adding
+      // decoding info to the request.
+      "etherscanTxHashes": [
+        //  swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] path, 
+        //  address to, uint256 deadline)
+        "0xeee0752109c6d31038bab6c2b0a3e3857e8bffb9c229de71f0196fda6fb28a5e",
+        //  remove_liquidity_one_coin(uint256 _token_amount, int128 i, uint256 _min_amount)
+        "0xa6173b4890303e12ca1b195ea4a04d8891b0d83768b734d2ecdb9c6dd9d828c4",
+        //  atomicMatch_(address[14],uint256[18],uint8[8],bytes,bytes,bytes,bytes,bytes,bytes,
+        //  uint8[2],bytes32[5])
+        // this one is too large for 1 frame       
+        // "0x92c82aad37a925e3aabe3d603109a5e65993aa2615c4b2278c3d355d9d433dff",
+        //  exactInput((bytes,address,uint256,uint256,uint256))
+        "0xee9710119c13dba6fe2de240ef1e24a2489e98d9c7dd5881e2901056764ee234",
+        //  exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))
+        "0xc33308ca105630b99a0c24ddde4f4506aa4115ec6f1a25f1138f3bd8cfa32b49",
+        //  proveAndClaimWithResolver(bytes,(bytes,bytes)[],bytes,address,address)
+        "0xe15e6205c6696d444fc426468defdf08e89a0f5b3b8a17c68428f7aeefd53ca1"
+      ],
+      // These are canonical ABI definitions that we use to test more unusual function types.
+      // The names are parsed and dummy data is filled in (see helpers in ./evm.ts).
+      // The accompanying tests also have some helpful print lines which are commented out
+      // by default but are useful for debugging.
+      // The purpose of these is to ensure all (most) ABI structures can be decoded.
+      // A few of these towards the end are not supported but they are such edge cases that
+      // it's not worth worrying about them for now.
+      "canonicalNames": [
+        // ---
+        // Test a few vectors we alredy checked with Etherscan
+        // ---
+        "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
+        "proveAndClaimWithResolver((bytes,bytes)[])",
+        "proveAndClaimWithResolver(bytes,(bytes,bytes)[])",
+        "proveAndClaimWithResolver(bytes,(bytes,bytes)[],bytes,address,address)",
+        "remove_liquidity_one_coin(uint256,int128,uint256)",
+        // ---
+        // Made up vectors that should all decode
+        // ---
+        "multidimArr(uint256[][],bool)",
+        "multidimArr(uint256[2][])",
+        "multidimArr(uint256[][2])",
+        "multidimArr(uint256[2],bool)",
+        "multidimArr(uint256[2][2],bool)",
+        "multidimArr(uint256[2][2][2],bool)",
+        "multidimArr(uint256[2][2],bool)",
+        "multidimArr(uint256[][][],bool)",
+        "multidimArr(bool,uint256[],bool)",
+        "multidimArr(bytes,uint256[][],bool)",
+        "singleTup((uint256,uint256))",
+        "singleTup((uint256[]))",
+        "singleTup((uint256[],bool))",
+        "singleTup((bool,bool,uint[],uint256))",
+        "singleTup((uint256[1],uint256[]))",
+        "singleTup((bytes,uint256))",
+        "singleTup((bytes,uint256)[])",
+        "singleTup((uint256,uint256)[])",
+        "singleTup((uint256,uint256)[2])",
+        "singleTup((uint256[2],uint256))",
+        "singleTup((uint256,uint256)[2])",
+        "singleTup((uint256,uint256)[],bytes)",
+        "singleTup((uint256,uint256)[][],bytes)",
+        "singleTup((uint256,uint256)[2][],bytes)",
+        "singleTup((uint256,uint256)[][2],bytes)",
+        "singleTup((uint256,uint256)[2],bytes)",
+        "singleTup(bytes[],(uint256,uint256)[2],bytes)",
+        "singleTup(bytes[2],(uint256,uint256)[2],bytes)",
+        "singleTup((uint256,uint256)[2],bytes)",
+        "singleTup((uint256,uint256)[2][2],bytes)",
+        "singleTup((uint256,uint256)[2][2][2],bytes)",
+        "singleTup((uint256),bool)",
+        "singleTup(bytes,(bytes),bool)",
+        "singleTup((uint256,bool),bool)",
+        "singleTup((uint256,bool),bytes)",
+        "singleTup(bytes,(uint256),bool)",
+        "singleTup(bytes,(bytes),bool)",
+        "singleTup(bool,(uint256,bytes),bytes)",
+        "singleTup((uint256,uint256)[],bool)",
+        "singleTup((bytes)[],bool)",
+        "singleTup((bytes)[1],bool)",
+        "multiTup((uint256,uint256)[],(bool))",
+        "multiTup((uint256,uint256)[2],(bool))",
+        "multiTup((uint256)[2],(bool)[])",
+        "multiTup((uint256)[2],(bool)[2])",
+        "multiTup((uint256)[],(bool))",
+        "multiTup((uint256)[],(bool)[2])",
+        "multiTup((uint256,uint256)[],(bool)[])",
+        "multiTup((uint256,uint256)[2],(bool)[])",
+        "multiTup((uint256)[2][2],(bool)[2][2])",
+        "multiTup((uint256)[2][],(bool)[2][])",
+        "multiTup((uint256)[2][],(bool)[][])",
+        "multiTup((uint256)[][],(bool)[2][])",
+        "multiTup((uint256)[][],(bool)[][])",
+        "multiTup((uint256)[][],(bool)[2][2])",
+        "multiTup((uint256)[2][2],(bool)[][])",
+        "nestedTup(uint256,(bytes)[1],bool)",
+        "nestedTup((uint256,(bool,address),bool))",
+        "nestedTup((uint256,(bool,bytes),bool))",
+        "nestedTup(bool,(uint256,(bool,bytes),bool))",
+        "nestedTup(bytes,(uint256,(bool,bytes),bool))",
+        "nestedTup(bytes,(uint256,(bool,bytes)[],bool))",
+        "nestedTup(bool,(uint256,(bool,bytes),bool)[])",
+        "nestedTup(bytes,(uint256,(bool,bytes)[][],bool)[])",
+        "nestedTup(bytes,(uint256,(bool)[2],bool))",
+        "nestedTup((uint256,(bytes[])[2],uint256))",
+        "nestedTup((uint256,(bytes[2])[2],uint256))",
+        "nestedTup((uint256,(bytes[2])[],uint256))",
+        "nestedTup((uint256,(bytes[])[],uint256))",
+        "nestedTup((uint256,(bytes)[2],bool))",
+        "nestedTup((bytes,(bytes)[2],bool))",
+        "nestedTup(bytes,(uint256,(bool)[2],bool))",
+        "nestedTup(bytes,(uint256,(bytes)[2],bool))"
+        // ---
+        // Extreme edge cases that do not currently decode
+        // ---
+        // "nestedTup(((bytes)[1],bool))", // does not decode
+        // "nestedTup(((bytes)[2],bool))", // does not decode
+        // "nestedTup(bytes,(uint256,(bool,bytes)[2],bool))", // does not decode
+        // "nestedTup(bytes,(uint256,(bool,bytes)[2],bool))", // does not decode
+        // "nestedTup(bytes,(uint256,(bool,bytes)[2],bool)[])", // does not decode
+        // "nestedTup(bytes,(uint256,(bool,bytes)[2],bool)[2])", // does not decode
+        // "nestedTup(bytes,(uint256,(bool,bytes)[][],bool)[2][])", // too large
+      ]
+    }
+  }
+}

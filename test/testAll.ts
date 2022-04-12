@@ -1,9 +1,29 @@
-// Basic tests for atomic SDK functionality
+/**
+ * Tests for establishing a connection to a target Lattice and validating
+ * basic functionality.
+ * 
+ * This test suite serves two purposes:
+ * 
+ * 1. You need to run this before you can run any other tests. Run it with `REUSE_KEY=1`
+ *    as an `env` param. This will ask you for a device ID and will attempt a pairing
+ *    with the target Lattice. Note that the Lattice cannot already be paired so you may
+ *    need to remove the SDK permission before proceeding to re-pair. After you pair,
+ *    the connection will be cached locally and you can run subsequent tests with
+ *    `DEVICE_ID=<yourDeviceId>` as an `env` param. This includes *any* test, including
+ *    this one.
+ * 
+ * 2. You can run this to just validate basic connectivity. If you don't need to cache
+ *    the connection you can run this without any `env` params and it will attempt to
+ *    pair with a target Lattice.
+ */
+import Common, { Chain, Hardfork } from '@ethereumjs/common';
+import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { expect } from 'chai';
 import { question } from 'readline-sync';
 import { 
   getFwVersionConst, HARDENED_OFFSET, responseCodes, responseMsgs 
 } from '../src/constants';
+import { Constants } from '../src/index'
 import { randomBytes } from '../src/util'
 import helpers from './testUtil/helpers';
 
@@ -13,510 +33,400 @@ let continueTests = true;
 describe('Connect and Pair', () => {
   before(() => {
     client = helpers.setupTestClient(process.env);
-    if (process.env.DEVICE_ID) id = process.env.DEVICE_ID;
+    if (process.env.DEVICE_ID) {
+      id = process.env.DEVICE_ID;
+    }
   });
 
   beforeEach(() => {
     expect(continueTests).to.equal(true, 'Error found in prior test. Aborting.');
+    continueTests = false;
   })
-
 
   //-------------------------------------------
   // TESTS
   //-------------------------------------------
   it('Should connect to a Lattice', async () => {
-    try {
-      continueTests = false;
-      // Again, we assume that if an `id` has already been set, we are paired
-      // with the hardcoded privkey above.
-      if (!process.env.DEVICE_ID) {
-        const _id = question('Please enter the ID of your test device: ');
-        id = _id;
-        const isPaired = await client.connect(id);
-        expect(isPaired).to.equal(false);
-        expect(client.isPaired).to.equal(false);
-        expect(client.hasActiveWallet()).to.equal(false);
-      }
-      continueTests = true;
-    } catch (err) {
-      expect(err).to.equal(null, err);
+    // Again, we assume that if an `id` has already been set, we are paired
+    // with the hardcoded privkey above.
+    if (!process.env.DEVICE_ID) {
+      const _id = question('Please enter the ID of your test device: ');
+      id = _id;
+      const isPaired = await client.connect(id);
+      expect(isPaired).to.equal(false);
+      expect(client.isPaired).to.equal(false);
+      expect(client.hasActiveWallet()).to.equal(false);
     }
+    continueTests = true;
   });
 
   it('Should attempt to pair with pairing secret', async () => {
-    try {
-      continueTests = false;
-      if (!process.env.DEVICE_ID) {
-        const secret = question('Please enter the pairing secret: ');
-        const hasActiveWallet = await client.pair(secret);
-        expect(hasActiveWallet).to.equal(true);
-        expect(client.hasActiveWallet()).to.equal(true);
-      }
-      continueTests = true;
-    } catch (err) {
-      expect(err).to.equal(null, err);
+    if (!process.env.DEVICE_ID) {
+      const secret = question('Please enter the pairing secret: ');
+      const hasActiveWallet = await client.pair(secret);
+      expect(hasActiveWallet).to.equal(true);
+      expect(client.hasActiveWallet()).to.equal(true);
     }
+    continueTests = true;
   });
 
   it('Should try to connect again but recognize the pairing already exists', async () => {
-    try {
-      continueTests = false;
-      const isPaired = await client.connect(id);
-      expect(isPaired).to.equal(true);
-      expect(client.isPaired).to.equal(true);
-      expect(client.hasActiveWallet()).to.equal(true);
-      continueTests = true;
-    } catch (err) {
-      expect(err).to.equal(null, err);
-    }
+    const isPaired = await client.connect(id);
+    expect(isPaired).to.equal(true);
+    expect(client.isPaired).to.equal(true);
+    expect(client.hasActiveWallet()).to.equal(true);
+    continueTests = true;
   });
 
   it('Should test SDK dehydration/rehydration', async () => {
-    try {
-      continueTests = false;
-      const addrData = {
+    const addrData = {
+      startPath: [
+        helpers.BTC_PURPOSE_P2SH_P2WPKH,
+        helpers.BTC_COIN,
+        HARDENED_OFFSET,
+        0,
+        0,
+      ],
+      n: 1,
+    };
+    const addrs1 = await client.getAddresses(addrData);
+    // Test a second client
+    const stateData = client.getStateData();
+    const clientTwo = helpers.setupTestClient(null, stateData);
+    const addrs2 = await clientTwo.getAddresses(addrData);
+    expect(JSON.stringify(addrs1)).to.equal(
+      JSON.stringify(addrs2), 
+      'Client not rehydrated properly'
+    );
+    continueTests = true;
+  })
+
+  it('Should get addresses', async () => {
+    const fwConstants = getFwVersionConst(client.fwVersion);
+    const addrData = {
+      startPath: [
+        helpers.BTC_PURPOSE_P2SH_P2WPKH,
+        helpers.BTC_COIN,
+        HARDENED_OFFSET,
+        0,
+        0,
+      ],
+      n: 5,
+    };
+    // Bitcoin addresses
+    // NOTE: The format of address will be based on the user's Lattice settings
+    //       By default, this will be P2SH(P2WPKH), i.e. addresses that start with `3`
+    let addrs;
+    addrs = await client.getAddresses(addrData);
+    expect(addrs.length).to.equal(5);
+    expect(addrs[0][0]).to.equal('3');
+
+    // Ethereum addresses
+    addrData.startPath[0] = helpers.BTC_PURPOSE_P2PKH;
+    addrData.startPath[1] = helpers.ETH_COIN;
+    addrData.n = 1;
+    addrs = await client.getAddresses(addrData);
+    expect(addrs.length).to.equal(1);
+    expect(addrs[0].slice(0, 2)).to.equal('0x');
+    // If firmware supports it, try shorter paths
+    if (fwConstants.flexibleAddrPaths) {
+      const flexData = {
         startPath: [
-          helpers.BTC_PURPOSE_P2SH_P2WPKH,
-          helpers.BTC_COIN,
+          helpers.BTC_PURPOSE_P2PKH,
+          helpers.ETH_COIN,
           HARDENED_OFFSET,
-          0,
           0,
         ],
         n: 1,
       };
-      const addrs1 = await client.getAddresses(addrData);
-      // Test a second client
-      const stateData = client.getStateData();
-      const clientTwo = helpers.setupTestClient(null, stateData);
-      const addrs2 = await clientTwo.getAddresses(addrData);
-      expect(JSON.stringify(addrs1)).to.equal(
-        JSON.stringify(addrs2), 
-        'Client not rehydrated properly'
-      );
-      continueTests = true;
-    } catch (err) {
-      expect(err).to.equal(null, err);
-    }
-  })
-
-  it('Should get addresses', async () => {
-    try {
-      continueTests = false;
-      const fwConstants = getFwVersionConst(client.fwVersion);
-      const addrData = {
-        startPath: [
-          helpers.BTC_PURPOSE_P2SH_P2WPKH,
-          helpers.BTC_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
-        n: 5,
-      };
-      // Bitcoin addresses
-      // NOTE: The format of address will be based on the user's Lattice settings
-      //       By default, this will be P2SH(P2WPKH), i.e. addresses that start with `3`
-      let addrs;
-      addrs = await client.getAddresses(addrData);
-      expect(addrs.length).to.equal(5);
-      expect(addrs[0][0]).to.equal('3');
-
-      // Ethereum addresses
-      addrData.startPath[0] = helpers.BTC_PURPOSE_P2PKH;
-      addrData.startPath[1] = helpers.ETH_COIN;
-      addrData.n = 1;
-      addrs = await client.getAddresses(addrData);
+      addrs = await client.getAddresses(flexData);
       expect(addrs.length).to.equal(1);
       expect(addrs[0].slice(0, 2)).to.equal('0x');
-      // If firmware supports it, try shorter paths
-      if (fwConstants.flexibleAddrPaths) {
-        const flexData = {
-          startPath: [
-            helpers.BTC_PURPOSE_P2PKH,
-            helpers.ETH_COIN,
-            HARDENED_OFFSET,
-            0,
-          ],
-          n: 1,
-        };
-        addrs = await client.getAddresses(flexData);
-        expect(addrs.length).to.equal(1);
-        expect(addrs[0].slice(0, 2)).to.equal('0x');
-      }
-
-      // Bitcoin testnet
-      addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
-      addrData.startPath[1] = helpers.BTC_TESTNET_COIN;
-      addrData.n = 1;
-      addrs = await client.getAddresses(addrData);
-      expect(addrs.length).to.equal(1);
-      expect(addrs[0][0]).to.be.oneOf(['n', 'm', '2']);
-      addrData.startPath[1] = helpers.BTC_COIN;
-
-      // Bech32
-      addrData.startPath[0] = helpers.BTC_PURPOSE_P2WPKH;
-      addrData.n = 1;
-      addrs = await client.getAddresses(addrData);
-      expect(addrs.length).to.equal(1);
-      expect(addrs[0].slice(0, 3)).to.be.oneOf(['bc1']);
-      addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
-      addrData.n = 5;
-
-      addrData.startPath[4] = 1000000;
-      addrData.n = 3;
-      addrs = await client.getAddresses(addrData);
-      expect(addrs.length).to.equal(addrData.n);
-      addrData.startPath[4] = 0;
-      addrData.n = 1;
-
-      // Unsupported purpose (m/<purpose>/)
-      addrData.startPath[0] = 0; // Purpose 0 -- undefined
-      try {
-        addrs = await client.getAddresses(addrData);
-        expect(addrs).to.equal(null);
-      } catch (err) {
-        expect(err).to.not.equal(null);
-      }
-      addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
-
-      // Unsupported currency
-      addrData.startPath[1] = HARDENED_OFFSET + 5; // 5' currency - aka unknown
-      try {
-        addrs = await client.getAddresses(addrData);
-        expect(addrs).to.equal(null);
-      } catch (err) {
-        expect(err).to.not.equal(null);
-      }
-      addrData.startPath[1] = helpers.BTC_COIN;
-      // Too many addresses (n>10)
-      addrData.n = 11;
-      try {
-        addrs = await client.getAddresses(addrData);
-        expect(addrs).to.equal(null);
-      } catch (err) {
-        expect(err).to.not.equal(null);
-      }
-      continueTests = true;
-    } catch (err) {
-      expect(err).to.equal(null, err);
     }
+    // Should fail for non-EVM purpose and non-matching coin_type
+    addrData.startPath[0] = helpers.BTC_PURPOSE_P2WPKH;
+    addrData.n = 1;
+    try {
+      await client.getAddresses(addrData);
+      throw new Error('Expected failure')
+    } catch (err) {
+      // Switch to BTC coin. Should work now.
+      addrData.startPath[1] = helpers.BTC_COIN;
+    }
+    // Bech32
+    addrs = await client.getAddresses(addrData);
+    expect(addrs.length).to.equal(1);
+    expect(addrs[0].slice(0, 3)).to.be.oneOf(['bc1']);
+    addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
+    addrData.n = 5;
+
+    addrData.startPath[4] = 1000000;
+    addrData.n = 3;
+    addrs = await client.getAddresses(addrData);
+    expect(addrs.length).to.equal(addrData.n);
+    addrData.startPath[4] = 0;
+    addrData.n = 1;
+
+    // Unsupported purpose (m/<purpose>/)
+    addrData.startPath[0] = 0; // Purpose 0 -- undefined
+    try {
+      addrs = await client.getAddresses(addrData);
+      throw new Error('Expected failure but got success.');
+    } catch (err) {
+      expect(err).to.not.equal(null);
+    }
+    addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
+
+    // Unsupported currency
+    addrData.startPath[1] = HARDENED_OFFSET + 5; // 5' currency - aka unknown
+    try {
+      addrs = await client.getAddresses(addrData);
+      throw new Error('Expected failure but got success.');
+    } catch (err) {
+      expect(err).to.not.equal(null);
+    }
+    addrData.startPath[1] = helpers.BTC_COIN;
+    // Too many addresses (n>10)
+    addrData.n = 11;
+    try {
+      addrs = await client.getAddresses(addrData);
+      throw new Error('Expected failure but got success.');
+    } catch (err) {
+      expect(err).to.not.equal(null);
+    }
+    continueTests = true;
   });
 
   it('Should sign Ethereum transactions', async () => {
+    if (client.fwVersion.major === 0 && client.fwVersion.minor < 15) {
+      console.warn('Please update firmware. Skipping ETH signing tests.');
+      continueTests = true;
+      return;
+    }
+    const fwConstants = getFwVersionConst(client.fwVersion);
+    const signerPath = [ helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0 ];
+    const common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London })
+    let txData = {
+      type: 1,
+      gasPrice: 1200000000,
+      nonce: 0,
+      gasLimit: 50000,
+      to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+      value: 1000000000000,
+      data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
+    };
+    let tx = EthTxFactory.fromTxData(txData, { common });
+    const req = {
+      data: {
+        signerPath,
+        payload: tx.getMessageToSign(false),
+        curveType: Constants.SIGNING.CURVES.SECP256K1,
+        hashType: Constants.SIGNING.HASHES.KECCAK256,
+        encodingType: Constants.SIGNING.ENCODINGS.EVM,
+      }
+    };
+
+    // Legacy transaction
+    await client.sign(req);
+
+    // Switch to newer type
+    txData = {
+      type: 2,
+      maxFeePerGas: 1200000000,
+      maxPriorityFeePerGas: 1200000000,
+      nonce: 0,
+      gasLimit: 50000,
+      to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+      value: 1000000000000,
+      data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
+    };
+
+    // Test data range
+    const maxDataSz = fwConstants.ethMaxDataSz +
+                      (fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz);
+    // NOTE: This will display a prehashed payload for bridged general signing
+    // requests because `ethMaxDataSz` represents the `data` field for legacy
+    // requests, but it represents the entire payload for general signing requests.
+    txData.data = randomBytes(maxDataSz);
+    tx = EthTxFactory.fromTxData(txData, { common });
+    req.data.payload = tx.getMessageToSign(false);
+    await client.sign(req);
+    question(
+      'Please REJECT the next request if the warning screen displays. Press enter to continue.'
+    );
+    req.data.data = randomBytes(maxDataSz + 1);
+    tx = EthTxFactory.fromTxData(txData, { common });
+    req.data.payload = tx.getMessageToSign(false);
+    let rejected = false;
     try {
-      continueTests = false;
-      // Constants from firmware
-      const fwConstants = getFwVersionConst(client.fwVersion);
-      const txData = {
-        nonce: '0x02',
-        gasPrice: '0x1fe5d61a00',
-        gasLimit: '0x034e97',
-        to: '0x1af768c0a217804cfe1a0fb739230b546a566cd6',
-        value: '0x01cba1761f7ab9870c',
-        data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
-      };
-      const req: any = {
-        currency: 'ETH',
-        data: {
+      await client.sign(req);
+    } catch (err) {
+      rejected = err.indexOf(
+        responseMsgs[responseCodes.RESP_ERR_USER_DECLINED]
+      ) > -1;
+    } finally {
+      expect(rejected).to.equal(true);
+    }
+    continueTests = true;
+  });
+
+  it('Should sign legacy Bitcoin inputs', async () => {
+    const txData = {
+      prevOuts: [
+        {
+          txHash:
+            '6e78493091f80d89a92ae3152df7fbfbdc44df09cf01a9b76c5113c02eaf2e0f',
+          value: 10000,
+          index: 1,
           signerPath: [
-            helpers.BTC_PURPOSE_P2PKH,
-            helpers.ETH_COIN,
+            helpers.BTC_PURPOSE_P2SH_P2WPKH,
+            helpers.BTC_TESTNET_COIN,
             HARDENED_OFFSET,
             0,
             0,
           ],
-          ...txData,
-          chainId: 4
-        },
-      };
-  
-      // Sign a tx that does not use EIP155 (no EIP155 on rinkeby for some reason)
-      await client.sign(req);
-      // Sign a tx with EIP155
-      req.data.chainId = 1;
-      await client.sign(req);
-      req.data.chainId = 4;
-      // Large single frame
-      req.data.data = randomBytes(fwConstants.ethMaxDataSz);
-      // await client.sign(req);
-      req.data.data = null;
-      // Invalid chainId
-      req.data.chainId = 'notachain';
-      try {
-        await client.sign(req);
-      } catch (err) {
-        expect(err).to.not.equal(null);
-      }
-      req.data.chainId = 4;
-      // `to` wrong size
-      req.data.to = '0xe242e54155b1abc71fc118065270cecaaf8b77';
-      try {
-        await client.sign(req);
-        expect(tx.tx).to.equal(null);
-      } catch (err) {
-        expect(err).to.not.equal(null);
-      }
-      // Reset to valid param
-      req.data.to = '0xe242e54155b1abc71fc118065270cecaaf8b7768';
-      
-      // Value too high
-      req.data.value = 2 ** 256;
-      try {
-        await client.sign(req);
-      } catch (err) {
-        expect(err).to.not.equal(null);
-      }
-
-      // Reset to valid param
-      req.data.value = '0x01cba1761f7ab9870c';
-      // Test data range
-      const maxDataSz = fwConstants.ethMaxDataSz +
-                        (fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz);
-      // NOTE: This will display a prehashed payload for bridged general signing
-      // requests because `ethMaxDataSz` represents the `data` field for legacy
-      // requests, but it represents the entire payload for general signing requests.
-      req.data.data = randomBytes(maxDataSz);
-      await client.sign(req);
-      question(
-        'Please REJECT the next request if the warning screen displays. Press enter to continue.'
-      );
-      req.data.data = randomBytes(maxDataSz + 1);
-      let rejected = false;
-      try {
-        await client.sign(req);
-      } catch (err) {
-        rejected = err.indexOf(
-          responseMsgs[responseCodes.RESP_ERR_USER_DECLINED]
-        ) > -1;
-      } finally {
-        expect(rejected).to.equal(true);
-      }
-      req.data.data = randomBytes(fwConstants.ethMaxDataSz);
-      await client.sign(req);
-      req.data.data = randomBytes(maxDataSz);
-      await client.sign(req);
-      
-      // Test non-ETH EVM coin_type
-      req.data.signerPath[1] = HARDENED_OFFSET + 1007;
-      req.data.data = null;
-      await client.sign(req);
-      
-      req.data.signerPath[1] = HARDENED_OFFSET + 60;
-      // EIP1559
-      req.data = {
-        ...req.data,
-        type: 2,
-        maxFeePerGas: 1200000000,
-        maxPriorityFeePerGas: 1200000000,
-        nonce: 0,
-        gasLimit: 50000,
-        to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-        value: 100,
-        data: '0xdeadbeef',
-      };
-      await client.sign(req);
-      // EIP1559 with access list
-      req.data.accessList = [
-        {
-          address: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-          storageKeys: [
-            '0x7154f8b310ad6ce97ce3b15e3419d9863865dfe2d8635802f7f4a52a206255a6',
-          ],
-        },
-        {
-          address: '0xe0f8ff08ef0242c461da688b8b85e438db724860',
-          storageKeys: [],
         },
       ],
-      await client.sign(req);
-      // EIP2930
-      req.data.type = 1;
-      await client.sign(req);
+      recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
+      value: 1000,
+      fee: 1000,
+      // isSegwit: false, // old encoding
+      changePath: [
+        helpers.BTC_PURPOSE_P2SH_P2WPKH,
+        helpers.BTC_TESTNET_COIN,
+        HARDENED_OFFSET,
+        1,
+        0,
+      ],
+    };
+    const req = {
+      currency: 'BTC',
+      data: txData,
+    };
 
-      continueTests = true;
-    } catch (err) {
-      expect(err).to.equal(null, err);
-    }
-  });
-
-  it('Should sign legacy Bitcoin inputs', async () => {
-    try {
-      continueTests = false;
-      const txData = {
-        prevOuts: [
-          {
-            txHash:
-              '6e78493091f80d89a92ae3152df7fbfbdc44df09cf01a9b76c5113c02eaf2e0f',
-            value: 10000,
-            index: 1,
-            signerPath: [
-              helpers.BTC_PURPOSE_P2SH_P2WPKH,
-              helpers.BTC_TESTNET_COIN,
-              HARDENED_OFFSET,
-              0,
-              0,
-            ],
-          },
-        ],
-        recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
-        value: 1000,
-        fee: 1000,
-        // isSegwit: false, // old encoding
-        changePath: [
-          helpers.BTC_PURPOSE_P2SH_P2WPKH,
-          helpers.BTC_TESTNET_COIN,
-          HARDENED_OFFSET,
-          1,
-          0,
-        ],
-      };
-      const req = {
-        currency: 'BTC',
-        data: txData,
-      };
-
-      // Sign a legit tx
-      const sigResp = await client.sign(req);
-      expect(sigResp.tx).to.not.equal(null);
-      expect(sigResp.txHash).to.not.equal(null);
-      continueTests = true;
-    } catch (err) {
-      expect(err).to.equal(null, err);
-    }
+    // Sign a legit tx
+    const sigResp = await client.sign(req);
+    expect(sigResp.tx).to.not.equal(null);
+    expect(sigResp.txHash).to.not.equal(null);
+    continueTests = true;
   });
 
   it('Should sign wrapped segwit Bitcoin inputs', async () => {
-    try {
-      continueTests = false;
-      const txData = {
-        prevOuts: [
-          {
-            txHash:
-              'ab8288ef207f11186af98db115aa7120aa36ceb783e8792fb7b2f39c88109a99',
-            value: 10000,
-            index: 1,
-            signerPath: [
-              helpers.BTC_PURPOSE_P2SH_P2WPKH,
-              helpers.BTC_TESTNET_COIN,
-              HARDENED_OFFSET,
-              0,
-              0,
-            ],
-          },
-        ],
-        recipient: '2NGZrVvZG92qGYqzTLjCAewvPZ7JE8S8VxE',
-        value: 1000,
-        fee: 1000,
-        changePath: [
-          helpers.BTC_PURPOSE_P2SH_P2WPKH,
-          helpers.BTC_TESTNET_COIN,
-          HARDENED_OFFSET,
-          1,
-          0,
-        ],
-      };
-      const req = {
-        currency: 'BTC',
-        data: txData,
-      };
-      // Sign a legit tx
-      const sigResp = await client.sign(req);
-      expect(sigResp.tx).to.not.equal(null);
-      expect(sigResp.txHash).to.not.equal(null);
-      continueTests = true;
-    } catch (err) {
-      expect(err).to.equal(null, err);
-    }
+    const txData = {
+      prevOuts: [
+        {
+          txHash:
+            'ab8288ef207f11186af98db115aa7120aa36ceb783e8792fb7b2f39c88109a99',
+          value: 10000,
+          index: 1,
+          signerPath: [
+            helpers.BTC_PURPOSE_P2SH_P2WPKH,
+            helpers.BTC_TESTNET_COIN,
+            HARDENED_OFFSET,
+            0,
+            0,
+          ],
+        },
+      ],
+      recipient: '2NGZrVvZG92qGYqzTLjCAewvPZ7JE8S8VxE',
+      value: 1000,
+      fee: 1000,
+      changePath: [
+        helpers.BTC_PURPOSE_P2SH_P2WPKH,
+        helpers.BTC_TESTNET_COIN,
+        HARDENED_OFFSET,
+        1,
+        0,
+      ],
+    };
+    const req = {
+      currency: 'BTC',
+      data: txData,
+    };
+    // Sign a legit tx
+    const sigResp = await client.sign(req);
+    expect(sigResp.tx).to.not.equal(null);
+    expect(sigResp.txHash).to.not.equal(null);
+    continueTests = true;
   });
 
   it('Should sign wrapped segwit Bitcoin inputs to a bech32 address', async () => {
-    try {
-      continueTests = false;
-      const txData = {
-        prevOuts: [
-          {
-            txHash:
-              'f93d0a77f58b4274d84f427d647f1f27e38b4db79fd975691e15109fde7ea06e',
-            value: 1802440,
-            index: 1,
-            signerPath: [
-              helpers.BTC_PURPOSE_P2SH_P2WPKH,
-              helpers.BTC_TESTNET_COIN,
-              HARDENED_OFFSET,
-              1,
-              0,
-            ],
-          },
-        ],
-        recipient: 'tb1qym0z2a939lefrgw67ep5flhf43dvpg3h4s96tn',
-        value: 1000,
-        fee: 1000,
-        changePath: [
-          helpers.BTC_PURPOSE_P2SH_P2WPKH,
-          helpers.BTC_TESTNET_COIN,
-          HARDENED_OFFSET,
-          1,
-          0,
-        ],
-      };
-      const req = {
-        currency: 'BTC',
-        data: txData,
-      };
-      // Sign a legit tx
-      const sigResp = await client.sign(req);
-      expect(sigResp.tx).to.not.equal(null);
-      expect(sigResp.txHash).to.not.equal(null);
-      continueTests = true;
-    } catch (err) {
-      expect(err).to.equal(null, err);
-    }
+    const txData = {
+      prevOuts: [
+        {
+          txHash:
+            'f93d0a77f58b4274d84f427d647f1f27e38b4db79fd975691e15109fde7ea06e',
+          value: 1802440,
+          index: 1,
+          signerPath: [
+            helpers.BTC_PURPOSE_P2SH_P2WPKH,
+            helpers.BTC_TESTNET_COIN,
+            HARDENED_OFFSET,
+            1,
+            0,
+          ],
+        },
+      ],
+      recipient: 'tb1qym0z2a939lefrgw67ep5flhf43dvpg3h4s96tn',
+      value: 1000,
+      fee: 1000,
+      changePath: [
+        helpers.BTC_PURPOSE_P2SH_P2WPKH,
+        helpers.BTC_TESTNET_COIN,
+        HARDENED_OFFSET,
+        1,
+        0,
+      ],
+    };
+    const req = {
+      currency: 'BTC',
+      data: txData,
+    };
+    // Sign a legit tx
+    const sigResp = await client.sign(req);
+    expect(sigResp.tx).to.not.equal(null);
+    expect(sigResp.txHash).to.not.equal(null);
+    continueTests = true;
   });
 
   it('Should sign an input from a native segwit account', async () => {
-    try {
-      continueTests = false;
-      const txData = {
-        prevOuts: [
-          {
-            txHash:
-              'b2efdbdd3340d2bc547671ce3993a6f05d70343c07578f9d7f5626fdfc06fa35',
-            value: 76800,
-            index: 0,
-            signerPath: [
-              helpers.BTC_PURPOSE_P2WPKH,
-              helpers.BTC_TESTNET_COIN,
-              HARDENED_OFFSET,
-              0,
-              0,
-            ],
-          },
-        ],
-        recipient: '2N4gqWT4oqWL2gz9ps92z9fm2Bg3FUkqG7Q',
-        value: 70000,
-        fee: 4380,
-        isSegwit: true,
-        changePath: [
-          helpers.BTC_PURPOSE_P2WPKH,
-          helpers.BTC_TESTNET_COIN,
-          HARDENED_OFFSET,
-          1,
-          0,
-        ],
-      };
-      const req = {
-        currency: 'BTC',
-        data: txData,
-      };
-      // Sign a legit tx
-      const sigResp = await client.sign(req);
-      expect(sigResp.tx).to.not.equal(null);
-      expect(sigResp.txHash).to.not.equal(null);
-      expect(sigResp.changeRecipient.slice(0, 2)).to.equal('tb');
-      continueTests = true;
-    } catch (err) {
-      expect(err).to.equal(null, err);
-    }
+    const txData = {
+      prevOuts: [
+        {
+          txHash:
+            'b2efdbdd3340d2bc547671ce3993a6f05d70343c07578f9d7f5626fdfc06fa35',
+          value: 76800,
+          index: 0,
+          signerPath: [
+            helpers.BTC_PURPOSE_P2WPKH,
+            helpers.BTC_TESTNET_COIN,
+            HARDENED_OFFSET,
+            0,
+            0,
+          ],
+        },
+      ],
+      recipient: '2N4gqWT4oqWL2gz9ps92z9fm2Bg3FUkqG7Q',
+      value: 70000,
+      fee: 4380,
+      isSegwit: true,
+      changePath: [
+        helpers.BTC_PURPOSE_P2WPKH,
+        helpers.BTC_TESTNET_COIN,
+        HARDENED_OFFSET,
+        1,
+        0,
+      ],
+    };
+    const req = {
+      currency: 'BTC',
+      data: txData,
+    };
+    // Sign a legit tx
+    const sigResp = await client.sign(req);
+    expect(sigResp.tx).to.not.equal(null);
+    expect(sigResp.txHash).to.not.equal(null);
+    expect(sigResp.changeRecipient.slice(0, 2)).to.equal('tb');
   });
 
   /*

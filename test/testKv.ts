@@ -1,4 +1,8 @@
-// Basic tests for atomic SDK functionality
+/**
+ * Test kv (key-value) file functionality. These types of files are simple mappings
+ * between a 64 byte key and a 64 byte value of any type. The main use case for these
+ * at the time of writing is address tags.
+ */
 import { expect } from 'chai';
 import { question } from 'readline-sync';
 import { HARDENED_OFFSET } from '../src/constants';

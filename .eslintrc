@@ -1,56 +1,43 @@
 {
-  "env": {
-    "es6": false,
-    "mocha": true,
-    "node": true
-  },
-  "extends": [
-    "eslint:recommended",
-    "plugin:@typescript-eslint/recommended"
-  ],
-  "parser": "@typescript-eslint/parser",
-  "plugins": [
-    "@typescript-eslint"
-  ],
-  "root": true,
-  "parserOptions": {
-    "ecmaFeatures": {
-      "experimentalObjectRestSpread": true,
-      "jsx": true,
-      "impliedStrict": true
+    "env": {
+        "es6": false,
+        "mocha": true,
+        "node": true
     },
-    "sourceType": "module"
-  },
-  "globals":{
-    "expect":true,
-    "shallow":true,
-    "render":true,
-    "mount":true,
-    "beforeAll":true,
-    "cy":true
-  },
-  "rules": {
-    "eqeqeq": [
-      "error"
-    ],
-    "no-var": [
-      "warn"
-    ],
-    "no-duplicate-imports": [
-      "error"
-    ],
-    "prefer-const": [
-      "error"
-    ],
-    "prefer-spread": [
-      "error"
-    ],
-    "no-console": [
-      "off"
-    ],
-    "quotes": [
-      "error", "single"
-    ],
-    "react/react-in-jsx-scope": "off"
-  }
+    "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
+    "parser": "@typescript-eslint/parser",
+    "plugins": ["@typescript-eslint"],
+    "root": true,
+    "globals": {
+        "expect": true,
+        "shallow": true,
+        "render": true,
+        "mount": true,
+        "beforeAll": true,
+        "cy": true
+    },
+    "rules": {
+        "eqeqeq": ["error"],
+        "no-var": ["warn"],
+        "no-duplicate-imports": ["error"],
+        "prefer-const": ["error"],
+        "prefer-spread": ["error"],
+        "no-console": ["off"],
+        "quotes": ["error", "single"],
+        "react/react-in-jsx-scope": "off",
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/member-delimiter-style": [
+            "warn",
+            {
+                "multiline": {
+                    "delimiter": "semi",
+                    "requireLast": true
+                },
+                "singleline": {
+                    "delimiter": "comma",
+                    "requireLast": false
+                }
+            }
+        ]
+    }
 }
