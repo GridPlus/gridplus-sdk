@@ -17,14 +17,13 @@ import { jsonc } from 'jsonc';
 import { question } from 'readline-sync';
 import request from 'request-promise';
 import { encode as rlpEncode, decode as rlpDecode } from 'rlp';
-import { HARDENED_OFFSET } from '../../src/constants'
-import { Constants, Calldata } from '../../src/index'
-import { randomBytes } from '../../src/util'
-import { getEncodedPayload } from '../../src/genericSigning'
+import { HARDENED_OFFSET } from '../../src/constants';
+import { Constants, Calldata } from '../../src/index';
+import { randomBytes } from '../../src/util';
+import { getEncodedPayload } from '../../src/genericSigning';
 let test;
 const coder = new AbiCoder();
 const EVMCalldata = Calldata.EVM;
-
 
 //---------------------------------------
 // STATE DATA
@@ -36,15 +35,16 @@ const req = {
     hashType: Constants.SIGNING.HASHES.KECCAK256,
     encodingType: Constants.SIGNING.ENCODINGS.EVM,
     payload: null,
-  }
+  },
 };
 let numDefsInitial = 0;
-const encDefs = [], encDefsCalldata = [];
+const encDefs = [],
+  encDefsCalldata = [];
 
 //---------------------------------------
 // TESTS
 //---------------------------------------
-describe('Start EVM signing tests',  () => {
+describe('Start EVM signing tests', () => {
   test = global.test;
   DEFAULT_SIGNER = [
     test.helpers.BTC_PURPOSE_P2PKH,
@@ -54,13 +54,20 @@ describe('Start EVM signing tests',  () => {
     0,
   ];
   req.data.signerPath = DEFAULT_SIGNER;
-  const globalVectors = jsonc.parse(readFileSync(
-    `${process.cwd()}/test/signing/vectors.jsonc`
-  ).toString());
+  const globalVectors = jsonc.parse(
+    readFileSync(`${process.cwd()}/test/signing/vectors.jsonc`).toString(),
+  );
   vectors = globalVectors.evm.calldata;
   // Copied from calldata/evm.ts (not exported there)
-  EVM_TYPES = [ 
-    null, 'address', 'bool', 'uint', 'int', 'bytes', 'string', 'tuple' 
+  EVM_TYPES = [
+    null,
+    'address',
+    'bool',
+    'uint',
+    'int',
+    'bytes',
+    'string',
+    'tuple',
   ];
   // Build data for next test sets
   for (let i = 0; i < vectors.canonicalNames.length; i++) {
@@ -72,7 +79,7 @@ describe('Start EVM signing tests',  () => {
     const calldata = coder.encode(types, data);
     encDefsCalldata.push(`${selector}${calldata.slice(2)}`);
   }
-})
+});
 
 describe('[EVM] Test transactions', () => {
   describe('EIP1559', () => {
@@ -89,17 +96,23 @@ describe('[EVM] Test transactions', () => {
         value: 100,
         data: '0xdeadbeef',
       };
-      req.common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London })
-    })
+      req.common = new Common({
+        chain: Chain.Mainnet,
+        hardfork: Hardfork.London,
+      });
+    });
 
     it('Should test a basic transaction', async () => {
-      await run(req)
-    })
+      await run(req);
+    });
 
     it('Should test a Rinkeby transaction', async () => {
-      req.common = new Common({ chain: Chain.Rinkeby, hardfork: Hardfork.London })
-      await run(req)
-    })
+      req.common = new Common({
+        chain: Chain.Rinkeby,
+        hardfork: Hardfork.London,
+      });
+      await run(req);
+    });
 
     it('Should test a transaction with an access list', async () => {
       req.txData.accessList = [
@@ -114,9 +127,9 @@ describe('[EVM] Test transactions', () => {
           storageKeys: [],
         },
       ];
-      await run(req)
-    })
-  })
+      await run(req);
+    });
+  });
 
   describe('EIP2930', () => {
     beforeEach(() => {
@@ -131,17 +144,23 @@ describe('[EVM] Test transactions', () => {
         value: 100,
         data: '0xdeadbeef',
       };
-      req.common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London })
-    })
+      req.common = new Common({
+        chain: Chain.Mainnet,
+        hardfork: Hardfork.London,
+      });
+    });
 
     it('Should test a basic transaction', async () => {
       await run(req);
-    })
+    });
 
     it('Should test a Rinkeby transaction', async () => {
-      req.common = new Common({ chain: Chain.Rinkeby, hardfork: Hardfork.London })
+      req.common = new Common({
+        chain: Chain.Rinkeby,
+        hardfork: Hardfork.London,
+      });
       await run(req);
-    })
+    });
 
     it('Should test a transaction with an access list', async () => {
       req.txData.accessList = [
@@ -157,8 +176,8 @@ describe('[EVM] Test transactions', () => {
         },
       ];
       await run(req);
-    })
-  })
+    });
+  });
 
   describe('Legacy (Non-EIP155)', () => {
     beforeEach(() => {
@@ -173,13 +192,16 @@ describe('[EVM] Test transactions', () => {
         value: 100,
         data: '0xdeadbeef',
       };
-      req.common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.Homestead })
-    })
+      req.common = new Common({
+        chain: Chain.Mainnet,
+        hardfork: Hardfork.Homestead,
+      });
+    });
 
     it('Should test a transaction that does not use EIP155', async () => {
       await run(req);
     });
-  })
+  });
 
   describe('Boundary tests', () => {
     beforeEach(() => {
@@ -194,8 +216,11 @@ describe('[EVM] Test transactions', () => {
         value: 100,
         data: '0xdeadbeef',
       };
-      req.common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London })
-    })
+      req.common = new Common({
+        chain: Chain.Mainnet,
+        hardfork: Hardfork.London,
+      });
+    });
 
     it('Should test shorter derivation paths', async () => {
       req.data.signerPath = DEFAULT_SIGNER.slice(0, 3);
@@ -206,7 +231,7 @@ describe('[EVM] Test transactions', () => {
       await run(req);
       req.data.signerPath = [];
       await run(req, true);
-    })
+    });
 
     it('Should test other chains', async () => {
       // Polygon
@@ -222,31 +247,35 @@ describe('[EVM] Test transactions', () => {
       req.common = Common.custom({ chainId: 11297108109 });
       await run(req);
       // Unknown chain
-      req.common = Common.custom({ chainId: 9999});
+      req.common = Common.custom({ chainId: 9999 });
       await run(req);
       // Unknown chain (max chainID, i.e. UINT64_MAX - 1)
-      req.common = Common.custom({ chainId: '18446744073709551615' })
+      req.common = Common.custom({ chainId: '18446744073709551615' });
       await run(req);
       // Unknown chain (chainID too large)
-      req.common = Common.custom({ chainId: '18446744073709551616' })
+      req.common = Common.custom({ chainId: '18446744073709551616' });
       await run(req, true);
-    })
+    });
 
     it('Should test range of `value`', async () => {
       req.txData.value = 1;
       await run(req);
-      req.txData.value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+      req.txData.value =
+        '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
       await run(req);
-    })
+    });
 
     it('Should test range of `data` size', async () => {
-      const { extraDataFrameSz, extraDataMaxFrames, genericSigning } = test.fwConstants;
+      const { extraDataFrameSz, extraDataMaxFrames, genericSigning } =
+        test.fwConstants;
       const { baseDataSz } = genericSigning;
       // Max size of total payload
-      const maxSz = baseDataSz + (extraDataMaxFrames * extraDataFrameSz);
+      const maxSz = baseDataSz + extraDataMaxFrames * extraDataFrameSz;
       // Infer the max `data` size
       req.txData.data = null;
-      const dummyTx = EthTxFactory.fromTxData(req.txData, { common: req.common });
+      const dummyTx = EthTxFactory.fromTxData(req.txData, {
+        common: req.common,
+      });
       const dummyTxSz = rlpEncode(dummyTx.getMessageToSign(false)).length;
       const rlpPrefixSz = 4; // 1 byte for descriptor, 1 byte for llength, 2 bytes for length
       const maxDataSz = maxSz - dummyTxSz - rlpPrefixSz;
@@ -260,13 +289,13 @@ describe('[EVM] Test transactions', () => {
       // Min prehash size
       req.txData.data = `0x${randomBytes(maxDataSz + 1).toString('hex')}`;
       await run(req);
-    })
+    });
 
     it('Should test contract deployment', async () => {
       req.txData.to = null;
       req.txData.data = `0x${randomBytes(96).toString('hex')}`;
-      await run(req)
-    })
+      await run(req);
+    });
 
     it('Should test direct RLP-encoded payoads with bad params', async () => {
       const tx = EthTxFactory.fromTxData(req.txData, { common: req.common });
@@ -274,7 +303,7 @@ describe('[EVM] Test transactions', () => {
 
       const oversizedInt = Buffer.from(
         'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff01',
-        'hex'
+        'hex',
       );
       // Test numerical values >32 bytes
       // ---
@@ -304,27 +333,27 @@ describe('[EVM] Test transactions', () => {
       req.data.payload = rlpEncode(params);
       await run(req, true, true);
       params = tx.getMessageToSign(false);
-      params[3] = Buffer.from('e242e54155b1abc71fc118065270cecaaf8b770102', 'hex');
+      params[3] = Buffer.from(
+        'e242e54155b1abc71fc118065270cecaaf8b770102',
+        'hex',
+      );
       req.data.payload = rlpEncode(params);
       await run(req, true, true);
       params = tx.getMessageToSign(false);
-    })
-  })
+    });
+  });
 
   describe('Random Transactions', () => {
     beforeEach(() => {
       test.expect(test.continue).to.equal(true, 'Error in previous test.');
       req.data.payload = null;
       req.data.signerPath = DEFAULT_SIGNER;
-    })
+    });
 
     it('Should test random transactions', async () => {
-      const randInt = ((n) => Math.floor(Math.random() * n));
-      const randIntStr = (
-        (nBytes, type) => new BN(
-          randomBytes(randInt(nBytes)).toString('hex'), 16
-        ).toString(type)
-      );
+      const randInt = (n) => Math.floor(Math.random() * n);
+      const randIntStr = (nBytes, type) =>
+        new BN(randomBytes(randInt(nBytes)).toString('hex'), 16).toString(type);
       for (let i = 0; i < test.numIter; i++) {
         req.txData = {
           nonce: `0x${randIntStr(4, 'hex')}`,
@@ -340,7 +369,7 @@ describe('[EVM] Test transactions', () => {
         await run(req);
       }
     });
-  })
+  });
 
   describe('[TODO: deprecate] Test Legacy Pathway (while it still exists)', () => {
     beforeEach(() => {
@@ -349,7 +378,7 @@ describe('[EVM] Test transactions', () => {
       req.data = {
         payload: null,
         signerPath: DEFAULT_SIGNER,
-      }
+      };
       req.txData = {
         chainId: 1,
         gasPrice: 1200000000,
@@ -359,14 +388,15 @@ describe('[EVM] Test transactions', () => {
         value: 100,
         data: '0xdeadbeef',
       };
-      req.common = new Common({ 
-        chain: Chain.Mainnet, hardfork: Hardfork.London 
+      req.common = new Common({
+        chain: Chain.Mainnet,
+        hardfork: Hardfork.London,
       });
-    })
+    });
 
     it('Should test legacy signing for legacy EIP155 transaction', async () => {
       await run(req, null, null, true);
-    })
+    });
 
     it('Should test legacy signing for EIP1559', async () => {
       req.txData = {
@@ -381,15 +411,15 @@ describe('[EVM] Test transactions', () => {
         data: '0xdeadbeef',
       };
       await run(req, null, null, true);
-    })
+    });
 
     it('Should test a Polygon transaction (chainId=137)', async () => {
       req.txData.chainId = 137;
       req.common = Common.custom({ chainId: req.txData.chainId });
       await run(req, null, null, true);
     });
-  })
-})
+  });
+});
 
 describe('[EVM] Test decoders', () => {
   describe('Test ABI decoder vectors', () => {
@@ -406,15 +436,18 @@ describe('[EVM] Test decoders', () => {
         data: null,
       };
       test.continue = false;
-    })
+    });
 
     // Validate that we can decode using Etherscan ABI info as well as 4byte canonical names.
     for (let i = 0; i < vectors.etherscanTxHashes.length; i++) {
       it(`(Etherscan + 4byte #${i}) ${vectors.etherscanTxHashes[i]}`, async () => {
         // Hashes on ETH mainnet that we will use to fetch full tx and ABI data with
-        const getTxBase = 'https://api.etherscan.io/api?module=proxy&action=eth_getTransactionByHash&txhash='
-        const getAbiBase = 'https://api.etherscan.io/api?module=contract&action=getabi&address=';
-        const fourByteBase = 'https://www.4byte.directory/api/v1/signatures?hex_signature=';
+        const getTxBase =
+          'https://api.etherscan.io/api?module=proxy&action=eth_getTransactionByHash&txhash=';
+        const getAbiBase =
+          'https://api.etherscan.io/api?module=contract&action=getabi&address=';
+        const fourByteBase =
+          'https://www.4byte.directory/api/v1/signatures?hex_signature=';
         let resp;
         // 1. First fetch the transaction details from etherscan. This is just to get
         // the calldata, so it would not be needed in a production environment
@@ -428,9 +461,9 @@ describe('[EVM] Test decoders', () => {
         if (!test.etherscanKey) {
           // Need a timeout between requests if we don't have a key
           console.warn(
-            'WARNING: No env.ETHERSCAN_KEY provided. Waiting 5s between requests...'
-          )
-          await new Promise(resolve => setTimeout(resolve, 5000));
+            'WARNING: No env.ETHERSCAN_KEY provided. Waiting 5s between requests...',
+          );
+          await new Promise((resolve) => setTimeout(resolve, 5000));
         }
         // 2. Fetch the full ABI of the contract that the transaction interacted with.
         let getAbiUrl = `${getAbiBase}${tx.to}`;
@@ -443,8 +476,8 @@ describe('[EVM] Test decoders', () => {
         const def = EVMCalldata.parsers.parseSolidityJSONABI(funcSig, abi);
         if (!def) {
           throw new Error(
-            `ERROR: Failed to decode ABI definition (${vectors.etherscanTxHashes[i]}). Skipping.`
-          )
+            `ERROR: Failed to decode ABI definition (${vectors.etherscanTxHashes[i]}). Skipping.`,
+          );
         }
         // 3. Test decoding using Etherscan ABI info
         // Check that ethers can decode this
@@ -452,24 +485,29 @@ describe('[EVM] Test decoders', () => {
         if (ethersCanDecode(tx.input, resp, funcName.toString())) {
           // Send the request
           req.txData.data = tx.input;
-          req.data.decoder = def
+          req.data.decoder = def;
           await run(req);
         } else {
           throw new Error(
-            `ERROR: ethers.js failed to decode abi for tx ${vectors.etherscanTxHashes[i]}. Skipping.` 
+            `ERROR: ethers.js failed to decode abi for tx ${vectors.etherscanTxHashes[i]}. Skipping.`,
           );
         }
         // 4. Get the canonical name from 4byte
         resp = await request(`${fourByteBase}${funcSig}`);
         const fourByteResults = JSON.parse(resp).results;
         if (fourByteResults.length > 0) {
-          console.warn('WARNING: There are multiple results. Using the first one.');
+          console.warn(
+            'WARNING: There are multiple results. Using the first one.',
+          );
         }
         const canonicalName = fourByteResults[0].text_signature;
         // 5. Convert the decoder data and make a request to the Lattice
-        req.data.decoder = EVMCalldata.parsers.parseCanonicalName(funcSig, canonicalName);
+        req.data.decoder = EVMCalldata.parsers.parseCanonicalName(
+          funcSig,
+          canonicalName,
+        );
         await run(req);
-      })
+      });
     }
 
     // Validate a series of canonical definitions
@@ -489,39 +527,49 @@ describe('[EVM] Test decoders', () => {
         //   console.log(calldata.slice(cd, cd + 64));
         // }
         await run(req);
-      })
+      });
     }
 
     // Test committing decoder data
     it('Should save the first 10 defs', async () => {
       const decoderType = Calldata.EVM.type;
       const rm = question(
-        'Do you want to remove all previously saved definitions? (Y/N) '
+        'Do you want to remove all previously saved definitions? (Y/N) ',
       );
       if (rm.toUpperCase() === 'Y') {
-        await test.client.removeDecoders({ decoderType, rmAll: true })
+        await test.client.removeDecoders({ decoderType, rmAll: true });
       }
       // First determine how many defs there are already
       let saved = await test.client.getDecoders({ decoderType });
       numDefsInitial = saved.total;
-      await test.client.addDecoders({ decoderType, decoders: encDefs.slice(0, 10) });
+      await test.client.addDecoders({
+        decoderType,
+        decoders: encDefs.slice(0, 10),
+      });
       saved = await test.client.getDecoders({ decoderType, n: 10 });
       test.expect(saved.total).to.equal(numDefsInitial + 10);
       for (let i = 0; i < saved.decoders.length; i++) {
-        test.expect(saved.decoders[i].toString('hex')).to.equal(encDefs[i].toString('hex'));
+        test
+          .expect(saved.decoders[i].toString('hex'))
+          .to.equal(encDefs[i].toString('hex'));
       }
-      await test.client.addDecoders({ decoderType, decoders: encDefs.slice(0, 10) });
+      await test.client.addDecoders({
+        decoderType,
+        decoders: encDefs.slice(0, 10),
+      });
       saved = await test.client.getDecoders({ decoderType, n: 10 });
       test.expect(saved.total).to.equal(numDefsInitial + 10);
       for (let i = 0; i < saved.decoders.length; i++) {
-        test.expect(saved.decoders[i].toString('hex')).to.equal(encDefs[i].toString('hex'));
+        test
+          .expect(saved.decoders[i].toString('hex'))
+          .to.equal(encDefs[i].toString('hex'));
       }
       test.continue = true;
-    })
+    });
 
     it('Should decode saved defs with check marks', async () => {
       question(
-        'Please REJECT if decoded params do not show check marks. Press ENT to continue.'
+        'Please REJECT if decoded params do not show check marks. Press ENT to continue.',
       );
       // Test expected passes
       req.txData.data = encDefsCalldata[0];
@@ -533,11 +581,11 @@ describe('[EVM] Test decoders', () => {
       req.data.decoder = encDefs[10];
       await run(req, true);
       test.continue = true;
-    })
+    });
 
     it('Should test decoding priority levels', async () => {
       question(
-        'Please REJECT if the data does not decode. Press ENT to continue.'
+        'Please REJECT if the data does not decode. Press ENT to continue.',
       );
       req.txData.data = encDefsCalldata[10];
       req.data.decoder = encDefs[10];
@@ -545,42 +593,56 @@ describe('[EVM] Test decoders', () => {
       req.data.decoder = null;
       await run(req, true);
       test.continue = true;
-    })
+    });
 
     it('Should fetch the first 10 defs', async () => {
       const decoderType = Calldata.EVM.type;
-      const { total, decoders } = await test.client.getDecoders({ 
-        decoderType, startIdx: numDefsInitial, n: 10 
+      const { total, decoders } = await test.client.getDecoders({
+        decoderType,
+        startIdx: numDefsInitial,
+        n: 10,
       });
       test.expect(total).to.equal(numDefsInitial + 10);
       test.expect(decoders.length).to.equal(10);
       for (let i = 0; i < decoders.length; i++) {
-        test.expect(decoders[i].toString('hex')).to.equal(encDefs[i].toString('hex'));
+        test
+          .expect(decoders[i].toString('hex'))
+          .to.equal(encDefs[i].toString('hex'));
       }
       test.continue = true;
-    })
+    });
 
     it('Should remove the saved defs', async () => {
       const decoderType = Calldata.EVM.type;
       // Remove the first 5 defs
-      await test.client.removeDecoders({ decoderType, decoders: encDefs.slice(0, 5) })
+      await test.client.removeDecoders({
+        decoderType,
+        decoders: encDefs.slice(0, 5),
+      });
       // There should be 5 defs remaining
-      const { total, decoders } = await test.client.getDecoders({ 
-        decoderType, startIdx: numDefsInitial, n: 10 
+      const { total, decoders } = await test.client.getDecoders({
+        decoderType,
+        startIdx: numDefsInitial,
+        n: 10,
       });
       test.expect(total).to.equal(numDefsInitial + 5);
       test.expect(decoders.length).to.equal(5);
       // Remove the latter 5
-      await test.client.removeDecoders({ decoderType, decoders: encDefs.slice(5, 10) })
-      const { total, decoders } = await test.client.getDecoders({ 
-        decoderType, startIdx: numDefsInitial, n: 10 
+      await test.client.removeDecoders({
+        decoderType,
+        decoders: encDefs.slice(5, 10),
+      });
+      const { total, decoders } = await test.client.getDecoders({
+        decoderType,
+        startIdx: numDefsInitial,
+        n: 10,
       });
       // There should be no more new defs
       test.expect(total).to.equal(numDefsInitial);
       test.expect(decoders.length).to.equal(0);
       // Test to make sure the check marks do not appear
       question(
-        'Please REJECT if decoded params do not show check marks. Press ENT to continue.'
+        'Please REJECT if decoded params do not show check marks. Press ENT to continue.',
       );
       req.txData.data = encDefsCalldata[0];
       req.data.decoder = encDefs[0];
@@ -588,10 +650,9 @@ describe('[EVM] Test decoders', () => {
       req.txData.data = encDefsCalldata[9];
       req.data.decoder = encDefs[9];
       await run(req, true);
-    })
-
-  })
-})
+    });
+  });
+});
 
 //---------------------------------------
 // INTERNAL HELPERS
@@ -611,15 +672,16 @@ function ethersCanDecode(calldata, etherscanResp, funcName) {
 // Convert a decoder definition to something ethers can consume
 function convertDecoderToEthers(def) {
   const converted = getConvertedDef(def);
-  const types = [], data = [];
+  const types = [],
+    data = [];
   converted.forEach((i) => {
     types.push(i.type);
     data.push(i.data);
-  })
+  });
   return { types, data };
 }
 
-// Convert an encoded def into a combination of ethers-compatable 
+// Convert an encoded def into a combination of ethers-compatable
 // type names and data fields. The data should be random but it
 // doesn't matter much for these tests, which mainly just test
 // structure of the definitions
@@ -637,10 +699,10 @@ function getConvertedDef(def) {
     let tupleData;
     if (evmType === 'tuple') {
       tupleData = [];
-      type = `${type}(`
+      type = `${type}(`;
       const tupleDef = getConvertedDef(param[4]);
       tupleDef.forEach((tupleParam) => {
-        type = `${type}${tupleParam.type}, `
+        type = `${type}${tupleParam.type}, `;
         tupleData.push(tupleParam.data);
       });
       type = type.slice(0, type.length - 2);
@@ -650,7 +712,7 @@ function getConvertedDef(def) {
     const funcData = tupleData ? tupleData : genParamData(param);
     // Apply the data to arrays
     for (let i = 0; i < arrSzs.length; i++) {
-      let sz = parseInt(arrSzs[i].toString('hex'));
+      const sz = parseInt(arrSzs[i].toString('hex'));
       if (isNaN(sz)) {
         // This is a 0 size, which means we need to
         // define a size to generate data
@@ -667,7 +729,7 @@ function getConvertedDef(def) {
     } else {
       converted.push({ type, data: funcData });
     }
-  })
+  });
   return converted;
 }
 
@@ -677,10 +739,10 @@ function genTupleData(tupleParam) {
     nestedData.push(
       genData(
         EVM_TYPES[parseInt(nestedParam[1].toString('hex'), 16)],
-        nestedParam
-      )
-    )
-  })
+        nestedParam,
+      ),
+    );
+  });
   return nestedData;
 }
 
@@ -698,7 +760,7 @@ function getArrayData(param, baseData) {
     const dimData = [];
     let sz = parseInt(param[3][i].toString('hex'));
     if (isNaN(sz)) {
-      sz = 2 //1;
+      sz = 2; //1;
     }
     if (!arrayData) {
       arrayData = [];
@@ -743,7 +805,12 @@ function genData(type, param) {
   }
 }
 
-async function run(req, shouldFail=false, bypassSetPayload=false, useLegacySigning=false) {
+async function run (
+  req,
+  shouldFail = false,
+  bypassSetPayload = false,
+  useLegacySigning = false,
+) {
   test.continue = false;
   try {
     // Construct an @ethereumjs/tx object with data
@@ -754,12 +821,12 @@ async function run(req, shouldFail=false, bypassSetPayload=false, useLegacySigni
       req.data = {
         ...req.data,
         ...req.txData,
-      }
+      };
     }
     if (tx._type === 0 && !bypassSetPayload) {
       // The @ethereumjs/tx Transaction APIs differ here
       // Legacy transaction
-      req.data.payload = rlpEncode(tx.getMessageToSign(false))
+      req.data.payload = rlpEncode(tx.getMessageToSign(false));
     } else if (!bypassSetPayload) {
       // Newer transaction type
       req.data.payload = tx.getMessageToSign(false);
@@ -771,9 +838,13 @@ async function run(req, shouldFail=false, bypassSetPayload=false, useLegacySigni
       // the Lattice did not throw an error when we expected it to do so.
       return;
     }
-    const encodingType = req.data.encodingType || null; 
+    const encodingType = req.data.encodingType || null;
     const allowedEncodings = test.fwConstants.genericSigning.encodingTypes;
-    const { payloadBuf } = getEncodedPayload(req.data.payload, encodingType, allowedEncodings);
+    const { payloadBuf } = getEncodedPayload(
+      req.data.payload,
+      encodingType,
+      allowedEncodings,
+    );
     if (useLegacySigning) {
       // [TODO: Deprecate]
       req.data.curveType = Constants.SIGNING.CURVES.SECP256K1;
@@ -782,9 +853,14 @@ async function run(req, shouldFail=false, bypassSetPayload=false, useLegacySigni
     }
     test.helpers.validateGenericSig(test.seed, resp.sig, payloadBuf, req.data);
     // Sign the original tx and compare
-    const { priv } = test.helpers.deriveSECP256K1Key(req.data.signerPath, test.seed);
+    const { priv } = test.helpers.deriveSECP256K1Key(
+      req.data.signerPath,
+      test.seed,
+    );
     const signedTx = tx.sign(priv);
-    test.expect(signedTx.verifySignature()).to.equal(true, 'Signature failed to verify');
+    test
+      .expect(signedTx.verifySignature())
+      .to.equal(true, 'Signature failed to verify');
     const refR = Buffer.from(signedTx.r.toBuffer());
     const refS = Buffer.from(signedTx.s.toBuffer());
     const refV = signedTx.v;
@@ -794,35 +870,38 @@ async function run(req, shouldFail=false, bypassSetPayload=false, useLegacySigni
     const latticeV = test.helpers.getV(tx, resp);
     // Strip off leading zeros to do an exact componenet check.
     // We will still validate the original lattice sig in a tx.
-    const rToCheck =  latticeR.length !== refR.length ?
-                      latticeR.slice(latticeR.length - refR.length) :
-                      latticeR;
-    const sToCheck =  latticeS.length !== refS.length ?
-                      latticeS.slice(latticeS.length - refS.length) :
-                      latticeS;
+    const rToCheck =
+      latticeR.length !== refR.length
+        ? latticeR.slice(latticeR.length - refR.length)
+        : latticeR;
+    const sToCheck =
+      latticeS.length !== refS.length
+        ? latticeS.slice(latticeS.length - refS.length)
+        : latticeS;
     // Validate the signature
-    test.expect(rToCheck.equals(refR)).to.equal(
-      true, 
-      'Signature R component does not match reference'
-    );
-    test.expect(sToCheck.equals(refS)).to.equal(
-      true, 
-      'Signature S component does not match reference'
-    );
-    test.expect(new BN(latticeV).eq(refV)).to.equal(
-      true,
-      'Signature V component does not match reference'
-    );
+    test
+      .expect(rToCheck.equals(refR))
+      .to.equal(true, 'Signature R component does not match reference');
+    test
+      .expect(sToCheck.equals(refS))
+      .to.equal(true, 'Signature S component does not match reference');
+    test
+      .expect(new BN(latticeV).eq(refV))
+      .to.equal(true, 'Signature V component does not match reference');
     // One more check -- create a new tx with the signatre params and verify it
     const signedTxData = JSON.parse(JSON.stringify(txData));
     signedTxData.v = latticeV;
     signedTxData.r = latticeR;
     signedTxData.s = latticeS;
-    const verifTx = EthTxFactory.fromTxData(signedTxData, { common: req.common });
-    test.expect(verifTx.verifySignature()).to.equal(
-      true,
-      'Signature did not validate in recreated @ethereumjs/tx object'
-    );
+    const verifTx = EthTxFactory.fromTxData(signedTxData, {
+      common: req.common,
+    });
+    test
+      .expect(verifTx.verifySignature())
+      .to.equal(
+        true,
+        'Signature did not validate in recreated @ethereumjs/tx object',
+      );
   } catch (err) {
     if (shouldFail) {
       test.continue = true;

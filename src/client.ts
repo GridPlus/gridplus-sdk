@@ -5,12 +5,8 @@ import { KeyPair } from 'elliptic';
 import { encode as rlpEncode } from 'rlp';
 import superagent from 'superagent';
 import bitcoin from './bitcoin';
-import { sha256 } from 'hash.js/lib/hash/sha'
-import {
-  KVRecord,
-  SignData,
-  GetKvRecordsData
-} from './types/client'
+import { sha256 } from 'hash.js/lib/hash/sha';
+import { KVRecord, SignData, GetKvRecordsData } from './types/client';
 import { Constants } from './index';
 import {
   EXTERNAL,
@@ -27,12 +23,12 @@ import {
   responseCodes,
   responseMsgs,
   signingSchema,
-  VERSION_BYTE
+  VERSION_BYTE,
 } from './constants';
 import ethereum from './ethereum';
 import {
   buildGenericSigningMsgRequest,
-  parseGenericSigningResponse
+  parseGenericSigningResponse,
 } from './genericSigning';
 import {
   aes256_decrypt,
@@ -76,46 +72,51 @@ export class Client {
       /** 32 byte id */
       uid: Buffer;
       /** 20 char (max) string */
-      name: Buffer; // 
+      name: Buffer;
       /** 4 byte flag */
       capabilities: number;
       /** External or internal wallet */
       external: boolean;
-    },
+    };
     external: {
       /** 32 byte id */
       uid: Buffer;
       /** 20 char (max) string */
-      name: Buffer; // 
+      name: Buffer;
       /** 4 byte flag */
       capabilities: number;
       /** External or internal wallet */
       external: boolean;
-    }
+    };
   };
 
   /**
    * @param params - Parameters are passed as an object.
    */
-  constructor({ 
-      baseUrl, name, privKey, stateData, timeout, retryCount, skipRetryOnWrongWallet 
-    }: {
-      /** The base URL of the signing server. */
-      baseUrl?: string;
-      /** The name of the client. */
-      name?: string;
-      /** The private key of the client.*/
-      privKey?: Buffer;
-      /** Number of times to retry a request if it fails. */
-      retryCount?: number;
-      /** The time to wait for a response before cancelling. */
-      timeout?: number;
-      /** User can pass in previous state data to rehydrate connected session */
-      stateData?: string;
-      /** If true we will not retry if we get a wrong wallet error code */
-      skipRetryOnWrongWallet: boolean;
-    }
-  ) {
+  constructor({
+    baseUrl,
+    name,
+    privKey,
+    stateData,
+    timeout,
+    retryCount,
+    skipRetryOnWrongWallet,
+  }: {
+    /** The base URL of the signing server. */
+    baseUrl?: string;
+    /** The name of the client. */
+    name?: string;
+    /** The private key of the client.*/
+    privKey?: Buffer;
+    /** Number of times to retry a request if it fails. */
+    retryCount?: number;
+    /** The time to wait for a response before cancelling. */
+    timeout?: number;
+    /** User can pass in previous state data to rehydrate connected session */
+    stateData?: string;
+    /** If true we will not retry if we get a wrong wallet error code */
+    skipRetryOnWrongWallet: boolean;
+    }) {
     // Default state params
     // -----
     this.ephemeralPub = null;
@@ -153,21 +154,21 @@ export class Client {
       throw new Error('`name` must be 5-24 characters');
     }
     this.name = name || 'Unknown';
-    // `privKey` is used to generate a keypair, which is used for maintaining
-    // an encrypted messaging channel with the target Lattice
+    // `privKey` is used to generate a keypair, which is used for maintaining an encrypted messaging
+    // channel with the target Lattice
     this.privKey = privKey || randomBytes(32);
     this.key = getP256KeyPair(this.privKey);
-    // `retryCount` defines the number of automatic retries for asynchronous requests.
-    // Retries only happen for certain device errors which indicate retrying is allowed.
+    // `retryCount` defines the number of automatic retries for asynchronous requests. Retries only
+    // happen for certain device errors which indicate retrying is allowed.
     this.retryCount = retryCount || 3;
-    // `timeout` is the number of milliseconds allowed before terminating
-    // asynchronous requests if no response is returned in time
+    // `timeout` is the number of milliseconds allowed before terminating asynchronous requests if
+    // no response is returned in time
     this.timeout = timeout || 60000;
   }
 
   /**
-   * Get a JSON string containing state data that can be used to rehydrate a session.
-   * Pass the contents of this to the constructor as `stateData` to rehydrate.
+   * Get a JSON string containing state data that can be used to rehydrate a session. Pass the
+   * contents of this to the constructor as `stateData` to rehydrate.
    */
   public getStateData () {
     return this._packStateData();
@@ -177,15 +178,19 @@ export class Client {
    * `getFwVersion` gets the firmware version of the paired device.
    * @returns Either an object with semver properties (fix, minor, and major) or `null`.
    */
-  public getFwVersion (): { fix: number, minor: number, major: number } | null {
+  public getFwVersion (): {
+    fix: number;
+    minor: number;
+    major: number;
+  } | null {
     if (this.fwVersion && this.fwVersion.length >= 3) {
       return {
         fix: this.fwVersion[0],
         minor: this.fwVersion[1],
         major: this.fwVersion[2],
-      }
+      };
     }
-    return null
+    return null;
   }
 
   //=======================================================================
@@ -197,27 +202,30 @@ export class Client {
    * an ephemeral public key, which is used to pair with the device in a later request.
    * @category Lattice
    */
-  public connect (deviceId: string, _cb?: (err?: string, isPaired?: boolean) => void): Promise<boolean> {
+  public connect (
+    deviceId: string,
+    _cb?: (err?: string, isPaired?: boolean) => void,
+  ): Promise<boolean> {
     return new Promise((resolve, reject) => {
-      let cb = promisifyCb(resolve, reject, _cb)
+      let cb = promisifyCb(resolve, reject, _cb);
       // User may "re-connect" if a device ID has previously been stored
       if (typeof deviceId === 'function') {
         if (!this.deviceId)
           return cb(
-            'No device ID has been stored. Please connect with your device ID first.'
+            'No device ID has been stored. Please connect with your device ID first.',
           );
         cb = deviceId;
       } else {
-        // If the user passes in a device ID, connect to that device and save
-        // the new ID for future use.
+        // If the user passes in a device ID, connect to that device and save the new ID for future
+        // use.
         this.deviceId = deviceId;
       }
       const param = this._buildRequest(deviceCodes.CONNECT, this.pubKeyBytes());
       this._request(param, null, (err, res) => {
         if (err) return cb(err);
         this.isPaired = this._handleConnect(res) || false;
-        // If we are paired and are on older firmware (<0.14.1), we need a follow up request
-        // to sync wallet state.
+        // If we are paired and are on older firmware (<0.14.1), we need a follow up request to sync
+        // wallet state.
         if (this.isPaired && !this._fwVersionGTE(0, 14, 1)) {
           this.fetchActiveWallet((err) => {
             return cb(err, this.isPaired);
@@ -226,7 +234,7 @@ export class Client {
           return cb(err, this.isPaired);
         }
       });
-    })
+    });
   }
 
   /**
@@ -236,9 +244,12 @@ export class Client {
    * @category Lattice
    * @returns The active wallet object.
    */
-  public pair (pairingSecret: string, _cb?: (err?: string, hasActiveWallet?: boolean) => void): Promise<boolean> {
+  public pair (
+    pairingSecret: string,
+    _cb?: (err?: string, hasActiveWallet?: boolean) => void,
+  ): Promise<boolean> {
     return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb)
+      const cb = promisifyCb(resolve, reject, _cb);
       // Build the secret hash from the salt
       const pubKey = this.pubKeyBytes();
       const nameBuf = Buffer.alloc(25);
@@ -246,10 +257,10 @@ export class Client {
         return cb('Invalid length for name provided. Must be 5-24 characters.');
       }
       if (pairingSecret.length > 0) {
-        // If a pairing secret of zero length is passed in, it usually indicates
-        // we want to cancel the pairing attempt. In this case we pass a zero-length
-        // name buffer so the firmware can know not to draw the error screen.
-        // Note that we still expect an error to come back (RESP_ERR_PAIR_FAIL)
+        // If a pairing secret of zero length is passed in, it usually indicates we want to cancel
+        // the pairing attempt. In this case we pass a zero-length name buffer so the firmware can
+        // know not to draw the error screen. Note that we still expect an error to come back
+        // (RESP_ERR_PAIR_FAIL)
         nameBuf.write(this.name);
       }
       // Make sure we add a null termination byte to the pairing secret
@@ -275,14 +286,17 @@ export class Client {
           return cb(null, this.hasActiveWallet());
         });
       });
-    })
+    });
   }
 
   /**
    * `test` takes a data object with a testID and a payload, and sends them to the device.
    * @category Lattice
    */
-  private test (data: { payload: Buffer, testID: number }, _cb?: (err?: string, data?: Buffer) => void) {
+  private test (
+    data: { payload: Buffer, testID: number },
+    _cb?: (err?: string, data?: Buffer) => void,
+  ) {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb);
       if (!data.payload)
@@ -298,7 +312,7 @@ export class Client {
         if (decrypted.err !== null) return cb(decrypted.err);
         return cb(null, decrypted.data.slice(65)); // remove ephem pub
       });
-    })
+    });
   }
 
   /**
@@ -307,9 +321,12 @@ export class Client {
    * @category Lattice
    * @returns An array of addresses.
    */
-  public getAddresses (opts: { startPath: number[], n: UInt4, flag: UInt4 }, _cb?: (err?: string, data?: Buffer | string[]) => void): Promise<Buffer | string[]> {
+  public getAddresses (
+    opts: { startPath: number[], n: UInt4, flag: UInt4 },
+    _cb?: (err?: string, data?: Buffer | string[]) => void,
+  ): Promise<Buffer | string[]> {
     return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb)
+      const cb = promisifyCb(resolve, reject, _cb);
       const MAX_ADDR = 10;
       const { startPath, n, flag = 0 } = opts;
       if (startPath === undefined || n === undefined)
@@ -321,11 +338,10 @@ export class Client {
 
       const fwConstants = getFwVersionConst(this.fwVersion);
       const flags = fwConstants.getAddressFlags || [];
-      const isPubkeyOnly = flags.indexOf(flag) > -1 &&
-        (
-          flag === EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB ||
-          flag === EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB
-        )
+      const isPubkeyOnly =
+        flags.indexOf(flag) > -1 &&
+        (flag === EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB ||
+          flag === EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB);
       if (!isPubkeyOnly && !isValidAssetPath(startPath, fwConstants)) {
         return cb('Parent derivation path is not supported');
       }
@@ -335,7 +351,7 @@ export class Client {
         sz += 1; // pathDepth
       } else if (startPath.length !== 5) {
         return cb(
-          'Your Lattice firmware only supports derivation paths with 5 indices. Please upgrade.'
+          'Your Lattice firmware only supports derivation paths with 5 indices. Please upgrade.',
         );
       }
       const payload = Buffer.alloc(sz);
@@ -355,16 +371,18 @@ export class Client {
         if (i <= startPath.length) payload.writeUInt32BE(startPath[i], off);
         off += 4;
       }
-      // Specify the number of subsequent addresses to request.
-      // We also allow the user to skip the cache and request any address related to the asset
-      // in the wallet.
-      let val, flagVal: UInt4 = 0;
+      // Specify the number of subsequent addresses to request. We also allow the user to skip the
+      // cache and request any address related to the asset in the wallet.
+      let val,
+        flagVal: UInt4 = 0;
       if (fwConstants.addrFlagsAllowed) {
-        // A 4-bit flag can be used for non-standard address requests
-        // This needs to be combined with `n` as a 4 bit value
-        flagVal = (fwConstants.getAddressFlags &&
-          fwConstants.getAddressFlags.indexOf(flag) > -1)
-          ? flag : 0;
+        // A 4-bit flag can be used for non-standard address requests This needs to be combined with
+        // `n` as a 4 bit value
+        flagVal =
+          fwConstants.getAddressFlags &&
+            fwConstants.getAddressFlags.indexOf(flag) > -1
+            ? flag
+            : 0;
         const flagBits = bitwise.nibble.read(flagVal);
         const countBits = bitwise.nibble.read(n);
         val = bitwise.byte.write(flagBits.concat(countBits) as Byte);
@@ -380,7 +398,7 @@ export class Client {
         if (parsedRes.err) return cb(parsedRes.err);
         return cb(null, parsedRes.data);
       });
-    })
+    });
   }
 
   /**
@@ -388,20 +406,25 @@ export class Client {
    * @category Lattice
    * @returns The response from the device.
    */
-  public sign (opts: { data, currency: string }, _cb?: (err?: string, data?: SignData) => void, cachedData = null, nextCode = null): Promise<SignData> {
+  public sign (
+    opts: { data, currency: string },
+    _cb?: (err?: string, data?: SignData) => void,
+    cachedData = null,
+    nextCode = null,
+  ): Promise<SignData> {
     return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb)
+      const cb = promisifyCb(resolve, reject, _cb);
       let { data } = opts;
       if (!data) {
         return cb('You must provide `data`');
       }
-      // All transaction requests must be put into the same sized buffer.
-      // This comes from sizeof(GpTransactionRequest_t), but note we remove
-      // the 2-byte schemaId since it is not returned from our resolver.
-      // Note that different firmware versions may have different data sizes.
+      // All transaction requests must be put into the same sized buffer. This comes from
+      // sizeof(GpTransactionRequest_t), but note we remove the 2-byte schemaId since it is not
+      // returned from our resolver. Note that different firmware versions may have different data
+      // sizes.
       const fwConstants = getFwVersionConst(this.fwVersion);
-      // Build the signing request payload to send to the device. If we catch
-      // bad params, return an error instead
+      // Build the signing request payload to send to the device. If we catch bad params, return an
+      // error instead
       data = { fwConstants, ...data };
       let req, reqPayload, schema;
       let currency = null;
@@ -413,22 +436,19 @@ export class Client {
       } else {
         currency = opts.currency;
         try {
-          // TEMPORARY BRIDGE -- DEPRECATE ME
-          // In v0.15.0 Lattice firmware removed the legacy ETH signing path, so
-          // we need to convert such requests to general signing requests using
-          // the EVM decoder.
-          // NOTE: Not every request can be converted, so users should switch
-          // to using general signing requests for newer firmware versions.
-          // EIP1559 and EIP155 legacy requests will convert, but others may not.
-          const useEVMLegacyConverter = (
+          // TEMPORARY BRIDGE -- DEPRECATE ME In v0.15.0 Lattice firmware removed the legacy ETH
+          // signing path, so we need to convert such requests to general signing requests using the
+          // EVM decoder. NOTE: Not every request can be converted, so users should switch to using
+          // general signing requests for newer firmware versions. EIP1559 and EIP155 legacy
+          // requests will convert, but others may not.
+          const useEVMLegacyConverter =
             fwConstants.genericSigning &&
             fwConstants.genericSigning.encodingTypes &&
-            fwConstants.genericSigning.encodingTypes.EVM
-          );
+            fwConstants.genericSigning.encodingTypes.EVM;
           if (currency === 'ETH' && useEVMLegacyConverter) {
             console.warn(
               'Using the legacy ETH signing path. This will soon be deprecated. ' +
-              'Please switch to general signing request.'
+              'Please switch to general signing request.',
             );
             let payload;
             try {
@@ -436,7 +456,7 @@ export class Client {
             } catch (err) {
               return cb(
                 'Could not convert legacy request. Please switch to a general signing ' +
-                'request. See gridplus-sdk docs for more information.'
+                'request. See gridplus-sdk docs for more information.',
               );
             }
             data = {
@@ -446,7 +466,7 @@ export class Client {
               hashType: EXTERNAL.SIGNING.HASHES.KECCAK256,
               signerPath: data.signerPath,
               payload,
-            }
+            };
             currency = null;
           }
 
@@ -485,8 +505,7 @@ export class Client {
       if (wallet === null) return cb('No active wallet.');
       wallet.uid.copy(payload, off);
       off += wallet.uid.length;
-      // Build data based on the type of request
-      // Copy the payload of the request
+      // Build data based on the type of request Copy the payload of the request
       reqPayload.copy(payload, off);
       // Construct the encrypted request and send it
       return this._request(payload, 'SIGN_TRANSACTION', (err, res) => {
@@ -508,24 +527,25 @@ export class Client {
             const parsedRes = this._handleSign(res, currency, req);
             return cb(null, parsedRes);
           } catch (err) {
-            return cb(err.message)
+            return cb(err.message);
           }
         }
       });
-    })
+    });
   }
 
   /**
    * `addDecoders` sends an RLP-encoded list of decoders to the Lattice. A "decoder" is a piece of
-   * data that can be used to decode some data in the future. The best example of this is the
-   * ABI defintion of a contract function. This definition is used to deserialize EVM calldata
-   * for future requests that call the specified function (as determined by the function selector).
+   * data that can be used to decode some data in the future. The best example of this is the ABI
+   * defintion of a contract function. This definition is used to deserialize EVM calldata for
+   * future requests that call the specified function (as determined by the function selector).
    * @category Lattice
    * @returns The decrypted response.
    */
-  public addDecoders (opts: { decoderType: number, decoders: Buffer[] },
-    _cb?: (err?: string) => void):
-    Promise<void> {
+  public addDecoders (
+    opts: { decoderType: number, decoders: Buffer[] },
+    _cb?: (err?: string) => void,
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb);
       const { decoders, decoderType } = opts;
@@ -536,21 +556,27 @@ export class Client {
       const payload = Buffer.alloc(3 + fwConstants.maxDecoderBufSz);
       const encDecoders = Buffer.from(rlpEncode(decoders));
       if (encDecoders.length > fwConstants.maxDecoderBufSz) {
-        return cb('Too much data to make request. Please remove some decoders.');
+        return cb(
+          'Too much data to make request. Please remove some decoders.',
+        );
       }
       payload.writeUInt8(decoderType, 0);
       payload.writeUInt16LE(encDecoders.length, 1);
       encDecoders.copy(payload, 3);
-      return this._request(payload, 'ADD_DECODERS', (err, res, responseCode) => {
-        if (responseCode && responseCode !== responseCodes.RESP_SUCCESS) {
-          return cb('Error making request.');
-        } else if (err) {
-          return cb(err);
-        }
-        this._handleEncResponse(res, decResLengths.empty);
-        return cb(null);
-      });
-    })
+      return this._request(
+        payload,
+        'ADD_DECODERS',
+        (err, res, responseCode) => {
+          if (responseCode && responseCode !== responseCodes.RESP_SUCCESS) {
+            return cb('Error making request.');
+          } else if (err) {
+            return cb(err);
+          }
+          this._handleEncResponse(res, decResLengths.empty);
+          return cb(null);
+        },
+      );
+    });
   }
 
   /**
@@ -558,11 +584,17 @@ export class Client {
    * @category Lattice
    * @returns The decrypted response.
    */
-  public getDecoders (opts: { decoderType: number, n?: number, startIdx?: number, skipTotal?: boolean },
-    _cb?: (err?: string, data?: { decoders: Buffer[], total: number }) => void):
-    Promise<{ decoders: Buffer[], total: number }> {
+  public getDecoders (
+    opts: {
+      decoderType: number;
+      n?: number;
+      startIdx?: number;
+      skipTotal?: boolean;
+    },
+    _cb?: (err?: string, data?: { decoders: Buffer[], total: number }) => void,
+  ): Promise<{ decoders: Buffer[], total: number }> {
     return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb)
+      const cb = promisifyCb(resolve, reject, _cb);
       const { n = 1, startIdx = 0, skipTotal = false, decoderType } = opts;
       const fwConstants = getFwVersionConst(this.fwVersion);
       if (!fwConstants.maxDecoderBufSz) {
@@ -590,19 +622,19 @@ export class Client {
         // Decode the response
         const decoders = [];
         let off = 65; // Skip 65 byte pubkey prefix
-        const numFetched = d.data.readUInt32LE(off); 
+        const numFetched = d.data.readUInt32LE(off);
         off += 4;
-        const total = d.data.readUInt32LE(off); 
+        const total = d.data.readUInt32LE(off);
         off += 4;
         for (let i = 0; i < numFetched; i++) {
-          const sz = d.data.readUInt32LE(off); 
+          const sz = d.data.readUInt32LE(off);
           off += 4;
           decoders.push(d.data.slice(off, off + sz));
           off += sz;
         }
         return cb(null, { decoders, total });
-      })
-    })
+      });
+    });
   }
 
   /**
@@ -610,46 +642,56 @@ export class Client {
    * @category Lattice
    * @returns The decrypted response.
    */
-  public removeDecoders (opts: { decoderType: number, decoders?: Buffer[], rmAll?: boolean },
-    _cb?: (err?: string, data?: number) => void):
-    Promise<number> {
+  public removeDecoders (
+    opts: { decoderType: number, decoders?: Buffer[], rmAll?: boolean },
+    _cb?: (err?: string, data?: number) => void,
+  ): Promise<number> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb);
-      const { decoders, decoderType, rmAll=false } = opts;
+      const { decoders, decoderType, rmAll = false } = opts;
       const fwConstants = getFwVersionConst(this.fwVersion);
       if (!fwConstants.maxDecoderBufSz) {
         return cb('Please update Lattice firmware.');
       } else if ((!decoders || !decoders.length) && !rmAll) {
-        return cb('At least one decoder must be provided unless using `rmAll`.');
+        return cb(
+          'At least one decoder must be provided unless using `rmAll`.',
+        );
       }
       const payload = Buffer.alloc(3 + fwConstants.maxDecoderBufSz);
       let encDecoders = Buffer.alloc(0);
       if (decoders) {
         encDecoders = Buffer.from(rlpEncode(decoders));
         if (encDecoders.length > fwConstants.maxDecoderBufSz) {
-          return cb('Too much data to make request. Please remove some decoders.');
+          return cb(
+            'Too much data to make request. Please remove some decoders.',
+          );
         }
       }
       const sz = rmAll ? 0 : encDecoders.length;
       payload.writeUInt8(decoderType, 0);
       payload.writeUInt16LE(sz, 1);
       encDecoders.copy(payload, 3);
-      return this._request(payload, 'REMOVE_DECODERS', (err, res, responseCode) => {
-        if (responseCode && responseCode !== responseCodes.RESP_SUCCESS) {
-          return cb('Error making request.');
-        } else if (err) {
-          return cb(err);
-        }
-        const d = this._handleEncResponse(res, decResLengths.removeDecoders);
-        if (d.err) {
-          return cb(d.err);
-        }
-        // Decode the response
-        let off = 65; // Skip 65 byte pubkey prefix
-        const numRemoved = d.data.readUInt32LE(off); off += 4;
-        return cb(null, numRemoved);
-      });
-    })
+      return this._request(
+        payload,
+        'REMOVE_DECODERS',
+        (err, res, responseCode) => {
+          if (responseCode && responseCode !== responseCodes.RESP_SUCCESS) {
+            return cb('Error making request.');
+          } else if (err) {
+            return cb(err);
+          }
+          const d = this._handleEncResponse(res, decResLengths.removeDecoders);
+          if (d.err) {
+            return cb(d.err);
+          }
+          // Decode the response
+          let off = 65; // Skip 65 byte pubkey prefix
+          const numRemoved = d.data.readUInt32LE(off);
+          off += 4;
+          return cb(null, numRemoved);
+        },
+      );
+    });
   }
 
   /**
@@ -657,9 +699,18 @@ export class Client {
    * payload to send to the Lattice.
    * @category Lattice
    */
-  public addPermissionV0 (opts: { currency: string, timeWindow: number, limit: number, decimals: number, asset: string }, _cb?: (err?: string) => void): Promise<void> {
+  public addPermissionV0 (
+    opts: {
+      currency: string;
+      timeWindow: number;
+      limit: number;
+      decimals: number;
+      asset: string;
+    },
+    _cb?: (err?: string) => void,
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb)
+      const cb = promisifyCb(resolve, reject, _cb);
       const { currency, timeWindow, limit, decimals, asset } = opts;
       if (
         !currency ||
@@ -671,7 +722,7 @@ export class Client {
         decimals === null
       )
         return cb(
-          'currency, timeWindow, decimals, and limit are all required options.'
+          'currency, timeWindow, decimals, and limit are all required options.',
         );
       else if (timeWindow === 0 || limit === 0)
         return cb('Time window and spending limit must be positive.');
@@ -702,16 +753,19 @@ export class Client {
           return cb(null);
         }
       });
-    })
+    });
   }
 
   /**
    * `getKvRecords` fetches a list of key-value records from the Lattice.
    * @category Lattice
    */
-  public getKvRecords (opts: { type?: number, n?: number, start?: number }, _cb?: (err?: string, data?: GetKvRecordsData) => void): Promise<GetKvRecordsData> {
+  public getKvRecords (
+    opts: { type?: number, n?: number, start?: number },
+    _cb?: (err?: string, data?: GetKvRecordsData) => void,
+  ): Promise<GetKvRecordsData> {
     return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb)
+      const cb = promisifyCb(resolve, reject, _cb);
       const { type = 0, n = 1, start = 0 } = opts;
       const fwConstants = getFwVersionConst(this.fwVersion);
       if (!fwConstants.kvActionsAllowed) {
@@ -720,7 +774,7 @@ export class Client {
         return cb('You must request at least one record.');
       } else if (n > fwConstants.kvActionMaxNum) {
         return cb(
-          `You may only request up to ${fwConstants.kvActionMaxNum} records at once.`
+          `You may only request up to ${fwConstants.kvActionMaxNum} records at once.`,
         );
       }
       const payload = Buffer.alloc(9);
@@ -738,11 +792,14 @@ export class Client {
           if (d.err) return cb(d.err);
           // Decode the response
           let off = 65; // Skip 65 byte pubkey prefix
-          const nTotal = parseInt(d.data.slice(off, off + 4).toString('hex'), 16);
+          const nTotal = parseInt(
+            d.data.slice(off, off + 4).toString('hex'),
+            16,
+          );
           off += 4;
           const nFetched = parseInt(
             d.data.slice(off, off + 1).toString('hex'),
-            16
+            16,
           );
           off += 1;
           if (nFetched > fwConstants.kvActionMaxNum)
@@ -761,24 +818,28 @@ export class Client {
             off += 1;
             const keySz = parseInt(
               d.data.slice(off, off + 1).toString('hex'),
-              16
+              16,
             );
             off += 1;
             r.key = d.data.slice(off, off + keySz - 1).toString();
             off += fwConstants.kvKeyMaxStrSz + 1;
             const valSz = parseInt(
               d.data.slice(off, off + 1).toString('hex'),
-              16
+              16,
             );
             off += 1;
             r.val = d.data.slice(off, off + valSz - 1).toString();
             off += fwConstants.kvValMaxStrSz + 1;
             records.push(r);
           }
-          return cb(null, { records, total: nTotal, fetched: nFetched });
+          return cb(null, {
+            records,
+            total: nTotal,
+            fetched: nFetched,
+          });
         }
       });
-    })
+    });
   }
 
   /**
@@ -787,9 +848,12 @@ export class Client {
    * @category Lattice
    * @returns A callback with an error or null.
    */
-  public addKvRecords (opts: { type?: number, records: KVRecord[], caseSensitive: boolean }, _cb?: (err?: string) => void): Promise<void> {
+  public addKvRecords (
+    opts: { type?: number, records: KVRecord[], caseSensitive: boolean },
+    _cb?: (err?: string) => void,
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb)
+      const cb = promisifyCb(resolve, reject, _cb);
       const { type = 0, records = {}, caseSensitive = false } = opts;
       const fwConstants = getFwVersionConst(this.fwVersion);
       if (!fwConstants.kvActionsAllowed) {
@@ -799,11 +863,11 @@ export class Client {
         Object.keys(records).length === 0
       ) {
         return cb(
-          'One or more key-value mapping must be provided in `records` param.'
+          'One or more key-value mapping must be provided in `records` param.',
         );
       } else if (Object.keys(records).length > fwConstants.kvActionMaxNum) {
         return cb(
-          `Too many keys provided. Please only provide up to ${fwConstants.kvActionMaxNum}.`
+          `Too many keys provided. Please only provide up to ${fwConstants.kvActionMaxNum}.`,
         );
       } else if (Object.keys(records).length < 1) {
         return cb('You must provide at least one key to add.');
@@ -818,21 +882,24 @@ export class Client {
             String(key).length > fwConstants.kvKeyMaxStrSz
           ) {
             throw new Error(
-              `Key ${key} too large. Must be <=${fwConstants.kvKeyMaxStrSz} characters.`
+              `Key ${key} too large. Must be <=${fwConstants.kvKeyMaxStrSz} characters.`,
             );
           } else if (
             typeof records[key] !== 'string' ||
             String(records[key]).length > fwConstants.kvValMaxStrSz
           ) {
             throw new Error(
-              `Value ${records[key]} too large. Must be <=${fwConstants.kvValMaxStrSz} characters.`
+              `Value ${records[key]} too large. Must be <=${fwConstants.kvValMaxStrSz} characters.`,
             );
           } else if (
             String(key).length === 0 ||
             String(records[key]).length === 0
           ) {
             throw new Error('Keys and values must be >0 characters.');
-          } else if (!ASCII_REGEX.test(key) || !ASCII_REGEX.test(records[key])) {
+          } else if (
+            !ASCII_REGEX.test(key) ||
+            !ASCII_REGEX.test(records[key])
+          ) {
             throw new Error('Unicode characters are not supported.');
           }
           // Skip the ID portion. This will get added by firmware.
@@ -866,7 +933,7 @@ export class Client {
           return cb(null);
         }
       });
-    })
+    });
   }
 
   /**
@@ -874,9 +941,12 @@ export class Client {
    * @category Lattice
    * @returns A callback with an error or null.
    */
-  public removeKvRecords (opts: { type: number, ids: number[] }, _cb?: (err?: string) => void): Promise<void> {
+  public removeKvRecords (
+    opts: { type: number, ids: number[] },
+    _cb?: (err?: string) => void,
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb)
+      const cb = promisifyCb(resolve, reject, _cb);
       const { type = 0, ids = [] } = opts;
       const fwConstants = getFwVersionConst(this.fwVersion);
       if (!fwConstants.kvActionsAllowed) {
@@ -885,7 +955,7 @@ export class Client {
         return cb('You must include one or more `ids` to removed.');
       } else if (ids.length > fwConstants.kvRemoveMaxNum) {
         return cb(
-          `Only up to ${fwConstants.kvRemoveMaxNum} records may be removed at once.`
+          `Only up to ${fwConstants.kvRemoveMaxNum} records may be removed at once.`,
         );
       }
       const payload = Buffer.alloc(5 + 4 * fwConstants.kvRemoveMaxNum);
@@ -906,8 +976,7 @@ export class Client {
           return cb(null);
         }
       });
-    })
-
+    });
   }
 
   /**
@@ -916,7 +985,7 @@ export class Client {
    */
   public fetchActiveWallet (_cb?: (err?: string, wallet?: Buffer) => void) {
     return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb)
+      const cb = promisifyCb(resolve, reject, _cb);
       const payload = Buffer.alloc(0);
       return this._request(payload, 'GET_WALLETS', (err, res) => {
         if (err) {
@@ -925,14 +994,12 @@ export class Client {
         }
         return cb(this._handleGetWallets(res));
       });
-    })
+    });
   }
 
   //=======================================================================
-  // INTERNAL FUNCTIONS
-  // These handle the logic around building requests and consuming
-  // responses. They take into account the Lattice's serialization scheme
-  // among other protocols.
+  // INTERNAL FUNCTIONS These handle the logic around building requests and consuming responses.
+  // They take into account the Lattice's serialization scheme among other protocols.
   //=======================================================================
 
   /**
@@ -941,10 +1008,10 @@ export class Client {
    * @returns Buffer
    */
   private _getSharedSecret () {
-    // Once every ~256 attempts, we will get a key that starts with a `00` byte, which
-    // can lead to problems initializing AES if we don't force a 32 byte BE buffer.
+    // Once every ~256 attempts, we will get a key that starts with a `00` byte, which can lead to
+    // problems initializing AES if we don't force a 32 byte BE buffer.
     return Buffer.from(
-      this.key.derive(this.ephemeralPub.getPublic()).toArray('be', 32)
+      this.key.derive(this.ephemeralPub.getPublic()).toArray('be', 32),
     );
   }
 
@@ -967,8 +1034,8 @@ export class Client {
    * @internal
    */
   private _buildEncRequest (enc_request_code, payload) {
-    // Get the ephemeral id - all encrypted requests require there to be an
-    // epehemeral public key in order to send
+    // Get the ephemeral id - all encrypted requests require there to be an epehemeral public key in
+    // order to send
     const ephemId = parseInt(this._getEphemId().toString('hex'), 16);
     // Build the payload and checksum
     const payloadPreCs = Buffer.concat([
@@ -985,9 +1052,8 @@ export class Client {
     const secret = this._getSharedSecret();
     const newEncPayload = aes256_encrypt(payloadBuf, secret);
 
-    // Write to the overall payload. We must use the same length
-    // for every encrypted request and must include a 32-bit ephemId
-    // along with the encrypted data
+    // Write to the overall payload. We must use the same length for every encrypted request and
+    // must include a 32-bit ephemId along with the encrypted data
     const newPayload = Buffer.alloc(ENC_MSG_LEN + 4);
     // First 4 bytes are the ephemeral id (in little endian)
     newPayload.writeUInt32LE(ephemId, 0);
@@ -1005,8 +1071,7 @@ export class Client {
    * @returns {buffer}
    */
   private _buildRequest (request_code, payload) {
-    // Length of payload;
-    // we add 1 to the payload length to account for the request_code byte
+    // Length of payload; we add 1 to the payload length to account for the request_code byte
     let L = payload && Buffer.isBuffer(payload) ? payload.length + 1 : 1;
     if (request_code === deviceCodes.ENCRYPTED_REQUEST) {
       L = 1 + payload.length;
@@ -1041,8 +1106,8 @@ export class Client {
     } else if (encReqCode && encReqCodes[encReqCode] === undefined) {
       return cb('Unknown encrypted request code.');
     }
-    // Encrypt the data if appropriate. Most requests are end-to-end encrypted,
-    // but some (e.g. CONNNECT) are not encrypted.
+    // Encrypt the data if appropriate. Most requests are end-to-end encrypted, but some (e.g.
+    // CONNNECT) are not encrypted.
     const data = encReqCode
       ? this._buildEncRequest(encReqCodes[encReqCode], payload)
       : payload;
@@ -1098,9 +1163,10 @@ export class Client {
                 return cb('Wrong wallet. Failed to switch. Please reconnect.');
               }
               this._request(payload, encReqCode, cb, 0);
-            }).catch(err => {
-              return cb(err)
             })
+            .catch((err) => {
+              return cb(err);
+            });
         } else if (parsed.responseCode || parsed.err) {
           if (parsed.err) {
             return cb(parsed.err);
@@ -1115,7 +1181,7 @@ export class Client {
         const isTimeout = err.code === 'ECONNABORTED' && err.errno === 'ETIME';
         if (isTimeout)
           return cb(
-            'Timeout waiting for device. Please ensure it is connected to the internet and try again in a minute.'
+            'Timeout waiting for device. Please ensure it is connected to the internet and try again in a minute.',
           );
         else return cb(`Failed to make request to device: ${err.message}`);
       });
@@ -1124,14 +1190,15 @@ export class Client {
   // ----- Device response -----
 
   /**
-  * `_handleConnect` will call `StartPairingMode` on the device, which gives the user 60 seconds to finalize
-  * the pairing. This will return an ephemeral public key, which is needed for the next request. 
-  * - If the device is already paired, this ephemPub is simply used to encrypt the next request. 
-  * - If the device is not paired, it is needed to pair the device within 60 seconds.
-  * @category Device Response
-  * @internal
-  * @returns true if we are paired to the device already
-  */
+   * `_handleConnect` will call `StartPairingMode` on the device, which gives the user 60 seconds to
+   * finalize the pairing. This will return an ephemeral public key, which is needed for the next
+   * request.
+   * - If the device is already paired, this ephemPub is simply used to encrypt the next request.
+   * - If the device is not paired, it is needed to pair the device within 60 seconds.
+   * @category Device Response
+   * @internal
+   * @returns true if we are paired to the device already
+   */
   private _handleConnect (res) {
     let off = 0;
     const isPaired = res.readUInt8(off) === messageConstants.PAIRED;
@@ -1139,28 +1206,28 @@ export class Client {
     // If we are already paired, we get the next ephemeral key
     const pub = res.slice(off, off + 65).toString('hex');
     off += 65;
-    // Grab the firmware version (will be 0-length for older fw versions)
-    // It is of format |fix|minor|major|reserved|
+    // Grab the firmware version (will be 0-length for older fw versions) It is of format
+    // |fix|minor|major|reserved|
     this.fwVersion = res.slice(off, off + 4);
     off += 4;
     // Set the public key
     this.ephemeralPub = getP256KeyPairFromPub(pub);
-    // If we are already paired, the response will include some
-    // encrypted data about the current wallets
-    // This data was added in Lattice firmware v0.14.1
+    // If we are already paired, the response will include some encrypted data about the current
+    // wallets This data was added in Lattice firmware v0.14.1
     if (isPaired && this._fwVersionGTE(0, 14, 1)) {
       // Later versions of firmware added wallet info
       const encWalletData = res.slice(off, off + 160);
       off += 160;
       const sharedSecret = this._getSharedSecret();
       const decWalletData = aes256_decrypt(encWalletData, sharedSecret);
-      // Sanity check to make sure the last part of the decrypted
-      // data is empty. The last 2 bytes are AES padding
-      if (decWalletData[decWalletData.length - 2] !== 0 || 
-          decWalletData[decWalletData.length - 1] !== 0)
-      {
-        throw new Error('Failed to connect to Lattice.')
-      } 
+      // Sanity check to make sure the last part of the decrypted data is empty. The last 2 bytes
+      // are AES padding
+      if (
+        decWalletData[decWalletData.length - 2] !== 0 ||
+        decWalletData[decWalletData.length - 1] !== 0
+      ) {
+        throw new Error('Failed to connect to Lattice.');
+      }
       this._parseAndAddWallets(decWalletData);
     }
     // return the state of our pairing
@@ -1181,8 +1248,8 @@ export class Client {
     const res = aes256_decrypt(encData, secret);
     // len does not include a 65-byte pubkey that prefies each encResponse
     len += 65;
-    // Validate checksum. It will be the last 4 bytes of the decrypted payload.
-    // The length of the decrypted payload will be fixed for each given message type.
+    // Validate checksum. It will be the last 4 bytes of the decrypted payload. The length of the
+    // decrypted payload will be fixed for each given message type.
     const toCheck = res.slice(0, len);
     const cs = parseInt(`0x${res.slice(len, len + 4).toString('hex')}`);
     const csCheck = checksum(toCheck);
@@ -1197,7 +1264,9 @@ export class Client {
       this.ephemeralPub = getP256KeyPairFromPub(pub);
       return { err: null, data: res };
     } catch (e) {
-      return { err: `Error handling getAddresses response: ${e.toString()}` };
+      return {
+        err: `Error handling getAddresses response: ${e.toString()}`,
+      };
     }
   }
 
@@ -1225,7 +1294,7 @@ export class Client {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(
       encRes,
-      decResLengths.getAddresses
+      decResLengths.getAddresses,
     );
     if (decrypted.err !== null) return decrypted;
 
@@ -1235,22 +1304,21 @@ export class Client {
     const addrs = [];
     // Pubkeys are formatted differently in the response
     const { ED25519_PUB, SECP256K1_PUB } = Constants.GET_ADDR_FLAGS;
-    const arePubkeys = flag === ED25519_PUB ||
-      flag === SECP256K1_PUB;
+    const arePubkeys = flag === ED25519_PUB || flag === SECP256K1_PUB;
     if (arePubkeys) {
       off += 1; // skip uint8 representing pubkey type
     }
     while (off + 4 < decResLengths.getAddresses) {
       if (arePubkeys) {
         // Pubkeys are shorter and are returned as buffers
-        const pubBytes = addrData.slice(off, off + 65)
-        const isEmpty = pubBytes.every(byte => byte === 0x00);
+        const pubBytes = addrData.slice(off, off + 65);
+        const isEmpty = pubBytes.every((byte) => byte === 0x00);
         if (!isEmpty && flag === ED25519_PUB) {
           // ED25519 pubkeys are 32 bytes
           addrs.push(pubBytes.slice(0, 32));
         } else if (!isEmpty) {
-          // Only other returned pubkeys are ECC, or 65 bytes
-          // Note that we return full (uncompressed) ECC pubkeys
+          // Only other returned pubkeys are ECC, or 65 bytes Note that we return full
+          // (uncompressed) ECC pubkeys
           addrs.push(pubBytes);
         }
         off += 65;
@@ -1264,7 +1332,6 @@ export class Client {
           addrs.push(addrBytes.slice(0, len).toString());
         }
       }
-
     }
     return { data: addrs, err: null };
   }
@@ -1283,39 +1350,43 @@ export class Client {
     const res = decrypted.data;
     // Skip 65byte pubkey prefix. WalletDescriptor contains 32byte id + 4byte flag + 35byte name
     this._parseAndAddWallets(res.slice(65));
-    if (this.activeWallets.internal.uid.equals(EMPTY_WALLET_UID) &&
-        this.activeWallets.external.uid.equals(EMPTY_WALLET_UID)) 
-    {
+    if (
+      this.activeWallets.internal.uid.equals(EMPTY_WALLET_UID) &&
+      this.activeWallets.external.uid.equals(EMPTY_WALLET_UID)
+    ) {
       return 'No active wallet.';
     }
     return null;
   }
 
-  // Given a set of wallet data, which contains two wallet descriptors, parse
-  // the data and save it to memory
+  // Given a set of wallet data, which contains two wallet descriptors, parse the data and save it
+  // to memory
   private _parseAndAddWallets (walletData) {
-    // Read the external wallet data first. If it is non-null, the external wallet will
-    // be the active wallet of the device and we should save it.
-    // If the external wallet is blank, it means there is no card present and we should
-    // save and use the interal wallet.
-    // If both wallets are empty, it means the device still needs to be set up.
+    // Read the external wallet data first. If it is non-null, the external wallet will be the
+    // active wallet of the device and we should save it. If the external wallet is blank, it means
+    // there is no card present and we should save and use the interal wallet. If both wallets are
+    // empty, it means the device still needs to be set up.
     const walletDescriptorLen = 71;
     // Internal first
     let off = 0;
     this.activeWallets.internal.uid = walletData.slice(off, off + 32);
-    this.activeWallets.internal.capabilities = walletData.readUInt32BE(off + 32);
+    this.activeWallets.internal.capabilities = walletData.readUInt32BE(
+      off + 32,
+    );
     this.activeWallets.internal.name = walletData.slice(
       off + 36,
-      off + walletDescriptorLen
+      off + walletDescriptorLen,
     );
     // Offset the first item
     off += walletDescriptorLen;
     // External
     this.activeWallets.external.uid = walletData.slice(off, off + 32);
-    this.activeWallets.external.capabilities = walletData.readUInt32BE(off + 32);
+    this.activeWallets.external.capabilities = walletData.readUInt32BE(
+      off + 32,
+    );
     this.activeWallets.external.name = walletData.slice(
       off + 36,
-      off + walletDescriptorLen
+      off + walletDescriptorLen,
     );
   }
 
@@ -1329,7 +1400,11 @@ export class Client {
    * @param req - The original request data
    * @returns The transaction data, the transaction hash, and the signature.
    */
-  private _handleSign (encRes, currencyType, req = null): { err: string } | SignData {
+  private _handleSign (
+    encRes,
+    currencyType,
+    req = null,
+  ): { err: string } | SignData {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(encRes, decResLengths.sign);
     if (decrypted.err !== null) return { err: decrypted.err };
@@ -1345,7 +1420,7 @@ export class Client {
       off += PKH_PREFIX_LEN;
       changeRecipient = bitcoin.getBitcoinAddress(
         changePubkeyhash,
-        changeVersion
+        changeVersion,
       );
     }
     const DERLength = 74; // max size of a DER signature -- all Lattice sigs are this long
@@ -1357,21 +1432,19 @@ export class Client {
       const pubkeys = [];
       const sigs = [];
       let n = 0;
-      // Parse the signature for each output -- they are returned
-      // in the serialized payload in form [pubkey, sig]
-      // There is one signature per output
+      // Parse the signature for each output -- they are returned in the serialized payload in form
+      // [pubkey, sig] There is one signature per output
       while (off < res.length) {
         // Exit out if we have seen all the returned sigs and pubkeys
         if (res[off] !== 0x30) break;
-        // Otherwise grab another set
-        // Note that all DER sigs returned fill the maximum 74 byte buffer, but also
-        // contain a length at off+1, which we use to parse the non-zero data.
+        // Otherwise grab another set Note that all DER sigs returned fill the maximum 74 byte
+        // buffer, but also contain a length at off+1, which we use to parse the non-zero data.
         // First get the signature from its slot
         const sigStart = off;
         const sigEnd = off + 2 + res[off + 1];
         sigs.push(res.slice(sigStart, sigEnd));
-        // Next, shift by the full set of signatures to hit the respective pubkey
-        // NOTE: The data returned is: [<sig0>, <sig1>, ... <sig9>][<pubkey0>, <pubkey1>, ... <pubkey9>]
+        // Next, shift by the full set of signatures to hit the respective pubkey NOTE: The data
+        // returned is: [<sig0>, <sig1>, ... <sig9>][<pubkey0>, <pubkey1>, ... <pubkey9>]
         const pubStart = n * compressedPubLength + PUBKEYS_OFFSET;
         const pubEnd = (n + 1) * compressedPubLength + PUBKEYS_OFFSET;
         pubkeys.push(res.slice(pubStart, pubEnd));
@@ -1415,7 +1488,7 @@ export class Client {
       const preImageTxHash = serializedTx;
       const txHashPre: Buffer = Buffer.from(
         sha256().update(Buffer.from(preImageTxHash, 'hex')).digest('hex'),
-        'hex'
+        'hex',
       );
       // Add extra data for debugging/lookup purposes
       return {
@@ -1446,7 +1519,7 @@ export class Client {
       const signer = res.slice(off, off + 20);
       const validatedSig = ethereum.validateEthereumMsgResponse(
         { signer, sig },
-        req
+        req,
       );
       return {
         sig: {
@@ -1459,7 +1532,10 @@ export class Client {
     } else {
       // Generic signing request
       return parseGenericSigningResponse(
-        res, off, req.curveType, req.omitPubkey
+        res,
+        off,
+        req.curveType,
+        req.omitPubkey,
       );
     }
   }
@@ -1480,12 +1556,10 @@ export class Client {
   }
 
   /**
-   * Update the payload with the current wallet UID.
-   * Some (not all) requests require the active wallet UID
-   * in order for Lattice firmware to accept them. If we get
-   * a "wrong wallet" error, the SDK will automatically request
-   * the current wallet UID from the device and may retry the 
-   * request, but the original request payload must be modified. 
+   * Update the payload with the current wallet UID. Some (not all) requests require the active
+   * wallet UID in order for Lattice firmware to accept them. If we get a "wrong wallet" error, the
+   * SDK will automatically request the current wallet UID from the device and may retry the
+   * request, but the original request payload must be modified.
    */
   private _replaceWalletUID (encReqCode, payload) {
     const wallet = this.getActiveWallet();
@@ -1505,8 +1579,8 @@ export class Client {
   }
 
   /**
-   * Return JSON-stringified version of state data. Can be used to 
-   * rehydrate an SDK session without reconnecting to the target Lattice.
+   * Return JSON-stringified version of state data. Can be used to rehydrate an SDK session without
+   * reconnecting to the target Lattice.
    */
   private _packStateData () {
     try {
@@ -1521,7 +1595,7 @@ export class Client {
             uid: this.activeWallets.external.uid.toString('hex'),
             name: this.activeWallets.external.name.toString(),
             capabilities: this.activeWallets.external.capabilities,
-          }
+          },
         },
         ephemeralPub: this.ephemeralPub.getPublic().encode('hex'),
         fwVersion: this.fwVersion.toString('hex'),
@@ -1534,14 +1608,14 @@ export class Client {
       };
       return JSON.stringify(data);
     } catch (err) {
-      console.warn('Could not pack state data.')
+      console.warn('Could not pack state data.');
       return null;
     }
   }
 
   /**
-   * Unpack a JSON-stringified version of state data and apply it to state.
-   * This will allow us to rehydrate an old session.
+   * Unpack a JSON-stringified version of state data and apply it to state. This will allow us to
+   * rehydrate an old session.
    */
   private _unpackAndApplyStateData (data) {
     try {
@@ -1579,13 +1653,14 @@ export class Client {
     }
   }
 
-  // Determine if a provided firmware version matches or exceeds
-  // the current firmware version
+  // Determine if a provided firmware version matches or exceeds the current firmware version
   private _fwVersionGTE(_major: number, _minor: number, _fix: number): boolean {
     const { major, minor, fix } = this.getFwVersion();
-    return major > _major ||
-          (major >= _major && minor > _minor) ||
-          (major >= _major && minor >= _minor && fix >= _fix); 
+    return (
+      major > _major ||
+      (major >= _major && minor > _minor) ||
+      (major >= _major && minor >= _minor && fix >= _fix)
+    );
   }
 
   /**
@@ -1611,8 +1686,8 @@ export class Client {
   }
 
   /**
-   * Get 64 bytes representing the public key
-   * This is the uncompressed key without the leading 04 byte
+   * Get 64 bytes representing the public key This is the uncompressed key without the leading 04
+   * byte
    * @param LE - Whether to return the public key in little endian format.
    * @returns A Buffer containing the public key.
    */
@@ -1631,4 +1706,3 @@ export class Client {
     }
   }
 }
-

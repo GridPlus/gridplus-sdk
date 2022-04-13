@@ -9,32 +9,60 @@ This payload should be coupled with:
 * Hash function to use on the message
 */
 import { Buffer } from 'buffer/';
+import { sha256 } from 'hash.js/lib/hash/sha';
 import { keccak256 } from 'js-sha3';
-import { sha256 } from 'hash.js/lib/hash/sha'
-import { HARDENED_OFFSET, signingSchema } from './constants'
-import { Constants } from './index'
-import { buildSignerPathBuf, existsIn, fixLen, splitFrames, parseDER } from './util'
+import { HARDENED_OFFSET, signingSchema } from './constants';
+import { Constants } from './index';
+import {
+  buildSignerPathBuf,
+  existsIn,
+  fixLen,
+  parseDER,
+  splitFrames,
+} from './util';
 
-export const buildGenericSigningMsgRequest = function(req) {
-  const { 
-    signerPath, curveType, hashType, encodingType=null, decoder=null,
-    omitPubkey=false, fwConstants 
+export const buildGenericSigningMsgRequest = function (req) {
+  const {
+    signerPath,
+    curveType,
+    hashType,
+    encodingType = null,
+    decoder = null,
+    omitPubkey = false,
+    fwConstants,
   } = req;
   const {
-    extraDataFrameSz, extraDataMaxFrames, prehashAllowed,
-    genericSigning, varAddrPathSzAllowed,
+    extraDataFrameSz,
+    extraDataMaxFrames,
+    prehashAllowed,
+    genericSigning,
+    varAddrPathSzAllowed,
   } = fwConstants;
-  const { 
-    curveTypes, encodingTypes, hashTypes, baseDataSz, baseReqSz, calldataDecoding
+  const {
+    curveTypes,
+    encodingTypes,
+    hashTypes,
+    baseDataSz,
+    baseReqSz,
+    calldataDecoding,
   } = genericSigning;
-  const encodedPayload = getEncodedPayload(req.payload, encodingType, encodingTypes);
+  const encodedPayload = getEncodedPayload(
+    req.payload,
+    encodingType,
+    encodingTypes,
+  );
   const { encoding } = encodedPayload;
   let { payloadBuf } = encodedPayload;
   const payloadDataSz = payloadBuf.length;
   // Sanity checks
   if (!payloadDataSz) {
-    throw new Error('Payload could not be handled.')
-  } else if (!genericSigning || !extraDataFrameSz || !extraDataMaxFrames || !prehashAllowed) {
+    throw new Error('Payload could not be handled.');
+  } else if (
+    !genericSigning ||
+    !extraDataFrameSz ||
+    !extraDataMaxFrames ||
+    !prehashAllowed
+  ) {
     throw new Error('Unsupported. Please update your Lattice firmware.');
   } else if (!existsIn(curveType, curveTypes)) {
     throw new Error('Unsupported curve type.');
@@ -61,11 +89,13 @@ export const buildGenericSigningMsgRequest = function(req) {
     }
     signerPath.forEach((idx) => {
       if (idx < HARDENED_OFFSET) {
-        throw new Error('Signing on ed25519 requires all signer path indices be hardened.')
+        throw new Error(
+          'Signing on ed25519 requires all signer path indices be hardened.',
+        );
       }
-    })
+    });
   }
-  
+
   // Build the request buffer with metadata and then the payload to sign.
   const buf = Buffer.alloc(baseReqSz);
   let off = 0;
@@ -82,12 +112,12 @@ export const buildGenericSigningMsgRequest = function(req) {
   off += 1;
 
   // Size of data payload that can be included in the first/base request
-  const maxExpandedSz = baseDataSz + (extraDataMaxFrames * extraDataFrameSz);
+  const maxExpandedSz = baseDataSz + extraDataMaxFrames * extraDataFrameSz;
   // Flow data into extraData requests if applicable
   const extraDataPayloads = [];
   let prehash = null;
 
-  let didPrehash = false
+  let didPrehash = false;
   if (payloadBuf.length > baseDataSz) {
     if (prehashAllowed && payloadBuf.length > maxExpandedSz) {
       // If we prehash, we need to provide the full payload size, including
@@ -101,19 +131,24 @@ export const buildGenericSigningMsgRequest = function(req) {
       // If this payload is too large to send, but the Lattice allows a prehashed message, do that
       if (hashType === hashTypes.NONE) {
         // This cannot be done for ED25519 signing, which must sign the full message
-        throw new Error('Message too large to send and could not be prehashed (hashType=NONE).');
+        throw new Error(
+          'Message too large to send and could not be prehashed (hashType=NONE).',
+        );
       } else if (hashType === hashTypes.KECCAK256) {
         prehash = Buffer.from(keccak256(payloadData), 'hex');
       } else if (hashType === hashTypes.SHA256) {
-        prehash = Buffer.from(sha256().update(payloadData).digest('hex'), 'hex');
+        prehash = Buffer.from(
+          sha256().update(payloadData).digest('hex'),
+          'hex',
+        );
       } else {
-        throw new Error('Unsupported hash type.')
+        throw new Error('Unsupported hash type.');
       }
     } else {
       // Split overflow data into extraData frames
       const frames = splitFrames(
         payloadBuf.slice(baseDataSz),
-        extraDataFrameSz
+        extraDataFrameSz,
       );
       frames.forEach((frame) => {
         const szLE = Buffer.alloc(4);
@@ -130,7 +165,7 @@ export const buildGenericSigningMsgRequest = function(req) {
     buf.writeUInt16LE(payloadDataSz, off);
     off += 2;
   }
-  
+
   // If the message had to be prehashed, we will only copy the hash data into the request.
   // Otherwise copy as many payload bytes into the request as possible. Follow up data
   // from `frames` will come in follow up requests.
@@ -143,15 +178,20 @@ export const buildGenericSigningMsgRequest = function(req) {
     extraDataPayloads,
     schema: signingSchema.GENERAL_SIGNING,
     curveType,
-    omitPubkey
-  }
-}
+    omitPubkey,
+  };
+};
 
-export const parseGenericSigningResponse = function(res, off, curveType, omitPubkey) {
+export const parseGenericSigningResponse = function (
+  res,
+  off,
+  curveType,
+  omitPubkey,
+) {
   const parsed = {
     pubkey: null,
     sig: null,
-  }
+  };
   // Parse BIP44 path
   // Parse pubkey and then sig
   if (curveType === Constants.SIGNING.CURVES.SECP256K1) {
@@ -170,7 +210,7 @@ export const parseGenericSigningResponse = function(res, off, curveType, omitPub
         parsed.pubkey.writeUInt8(compression, 0);
         res.slice(off).copy(parsed.pubkey, 1);
       } else {
-        throw new Error('Bad compression byte in signing response.')
+        throw new Error('Bad compression byte in signing response.');
       }
       off += 64;
     } else {
@@ -196,19 +236,23 @@ export const parseGenericSigningResponse = function(res, off, curveType, omitPub
       s: res.slice(off + 32, off + 64),
     };
   } else {
-    throw new Error('Unsupported curve.')
-  }  
+    throw new Error('Unsupported curve.');
+  }
   return parsed;
-}
+};
 
-export const getEncodedPayload = function(payload, encoding, allowedEncodings) {
+export const getEncodedPayload = function (
+  payload,
+  encoding,
+  allowedEncodings,
+) {
   if (!encoding) {
     encoding = Constants.SIGNING.ENCODINGS.NONE;
   }
   // Make sure the encoding type specified is supported by firmware
   if (!existsIn(encoding, allowedEncodings)) {
     throw new Error(
-      'Encoding not supported by Lattice firmware. You may want to update.'
+      'Encoding not supported by Lattice firmware. You may want to update.',
     );
   }
   let payloadBuf;
@@ -222,4 +266,4 @@ export const getEncodedPayload = function(payload, encoding, allowedEncodings) {
     payloadBuf,
     encoding,
   };
-}
+};

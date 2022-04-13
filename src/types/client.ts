@@ -29,5 +29,5 @@ export type GetKvRecordsData = {
     [key: string]: string;
   }[];
   fetched: number;
-  total: number
-}
+  total: number;
+};

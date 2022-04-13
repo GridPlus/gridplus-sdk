@@ -3,7 +3,7 @@
  * have exportable seeds should produce deterministic signatures for all message types.
  * These tests validate that the signatures are deterministic and also match those
  * produced by the same seed on a Ledger device.
- * 
+ *
  * You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
  */
 import Common, { Chain, Hardfork } from '@ethereumjs/common';
@@ -15,9 +15,13 @@ import { ecsign, privateToAddress } from 'ethereumjs-util';
 import { keccak256 } from 'js-sha3';
 import { question } from 'readline-sync';
 import seedrandom from 'seedrandom';
-import { HARDENED_OFFSET, responseCodes, responseMsgs } from '../../src/constants';
-import { Constants } from '../../src/index'
-import { randomBytes } from '../../src/util'
+import {
+  HARDENED_OFFSET,
+  responseCodes,
+  responseMsgs,
+} from '../../src/constants';
+import { Constants } from '../../src/index';
+import { randomBytes } from '../../src/util';
 import helpers from '../testUtil/helpers';
 
 //---------
@@ -30,7 +34,8 @@ const TEST_MNEMONIC =
   'pyramid dash split announce trend grain';
 const TEST_SEED = mnemonicToSeedSync(TEST_MNEMONIC);
 let jobType, jobData, jobReq, txReq, msgReq;
-let skipSeedLoading = false, skipSeedRestore = false;
+let skipSeedLoading = false,
+  skipSeedRestore = false;
 
 let numIter = 20;
 if (process.env.N) numIter = parseInt(process.env.N);
@@ -57,18 +62,21 @@ describe('[Determinism]', () => {
     0,
   ];
   activeWalletUID = test.activeWalletUID;
-  tx = EthTxFactory.fromTxData({
-    type: 2,
-    maxFeePerGas: 1200000000,
-    maxPriorityFeePerGas: 1200000000,
-    nonce: 0,
-    gasLimit: 50000,
-    to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-    value: 100,
-    data: '0xdeadbeef',
-  }, { 
-    common: new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London })
-  })
+  tx = EthTxFactory.fromTxData(
+    {
+      type: 2,
+      maxFeePerGas: 1200000000,
+      maxPriorityFeePerGas: 1200000000,
+      nonce: 0,
+      gasLimit: 50000,
+      to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+      value: 100,
+      data: '0xdeadbeef',
+    },
+    {
+      common: new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London }),
+    },
+  );
   txReq = {
     data: {
       signerPath: DEFAULT_SIGNER,
@@ -76,32 +84,32 @@ describe('[Determinism]', () => {
       curveType: Constants.SIGNING.CURVES.SECP256K1,
       hashType: Constants.SIGNING.HASHES.KECCAK256,
       encodingType: Constants.SIGNING.ENCODINGS.EVM,
-    }
+    },
   };
 
   describe('Setup and validate seed', () => {
     beforeEach(() => {
       expect(test.continue).to.equal(
         true,
-        'Unauthorized or critical failure. Aborting'
+        'Unauthorized or critical failure. Aborting',
       );
       test.continue = false;
-    })
-  
+    });
+
     it('Should find out if we need to load the seed', async () => {
       // Determine if we should skip the process of loading the test seed.
       // This should only be selected if the user has previously chosen not
       // to re-load the original seed at the end of this test script.
       const result = question(
         'Please insert and unlock a normal SafeCard (with an exportable seed).' +
-          '\nDo you have the test seed loaded on this card already? (Y/N) '
+        '\nDo you have the test seed loaded on this card already? (Y/N) ',
       );
       if (result.toLowerCase() !== 'n') {
         skipSeedLoading = true;
       }
       test.continue = true;
-    })
-  
+    });
+
     it('Should remove the seed', async () => {
       // Make sure a seed was exported
       if (!test.seed) {
@@ -114,8 +122,8 @@ describe('[Determinism]', () => {
       _setupJob(helpers.jobTypes.WALLET_JOB_DELETE_SEED);
       await runTestCase(helpers.gpErrors.GP_SUCCESS);
       test.continue = true;
-    })
-  
+    });
+
     it('Should load the known test seed', async () => {
       if (skipSeedLoading) {
         test.continue = true;
@@ -124,8 +132,8 @@ describe('[Determinism]', () => {
       _setupJob(helpers.jobTypes.WALLET_JOB_LOAD_SEED, { seed: TEST_SEED });
       await runTestCase(helpers.gpErrors.GP_SUCCESS);
       test.continue = true;
-    })
-  
+    });
+
     it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
       if (skipSeedLoading) {
         test.continue = true;
@@ -133,11 +141,11 @@ describe('[Determinism]', () => {
       }
       question(
         '\nPlease remove, re-insert, and unlock your SafeCard.\n' +
-          'Press enter to continue after addresses have fully synced.'
+        'Press enter to continue after addresses have fully synced.',
       );
       test.continue = true;
-    })
-  
+    });
+
     it('Should re-connect to the Lattice and update the walletUID.', async () => {
       expect(process.env.DEVICE_ID).to.not.equal(null);
       await test.client.connect(process.env.DEVICE_ID);
@@ -145,8 +153,8 @@ describe('[Determinism]', () => {
       expect(test.client.hasActiveWallet()).to.equal(true);
       activeWalletUID = helpers.copyBuffer(test.client.getActiveWallet().uid);
       test.continue = true;
-    })
-  
+    });
+
     it('Should ensure export seed matches the test seed', async () => {
       _setupJob(helpers.jobTypes.WALLET_JOB_EXPORT_SEED);
       const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
@@ -154,11 +162,11 @@ describe('[Determinism]', () => {
       const exportedSeed = helpers.copyBuffer(res.seed);
       expect(exportedSeed.toString('hex')).to.equal(
         TEST_SEED.toString('hex'),
-        'Seeds did not match'
+        'Seeds did not match',
       );
       test.continue = true;
-    })
-  
+    });
+
     it('Should validate some Ledger addresses derived from the test seed', async () => {
       // These addresses were all fetched using MetaMask with a real ledger loaded with TEST_MNEOMNIC
       // NOTE: These are 0-indexed indices whereas MetaMask shows 1-indexed (addr0 -> metamask1)
@@ -189,18 +197,18 @@ describe('[Determinism]', () => {
       // Derive these from the seed as a sanity check
       expect(deriveAddress(TEST_SEED, path0).toLowerCase()).to.equal(
         addr0.toLowerCase(),
-        'Incorrect address 0 derived.'
+        'Incorrect address 0 derived.',
       );
       expect(deriveAddress(TEST_SEED, path1).toLowerCase()).to.equal(
         addr1.toLowerCase(),
-        'Incorrect address 1 derived.'
+        'Incorrect address 1 derived.',
       );
       expect(deriveAddress(TEST_SEED, path8).toLowerCase()).to.equal(
         addr8.toLowerCase(),
-        'Incorrect address 8 derived.'
+        'Incorrect address 8 derived.',
       );
       // Fetch these addresses from the Lattice and validate
-  
+
       const req = {
         currency: 'ETH',
         startPath: path0,
@@ -209,26 +217,26 @@ describe('[Determinism]', () => {
       const latAddr0 = await test.client.getAddresses(req);
       expect(latAddr0[0].toLowerCase()).to.equal(
         addr0.toLowerCase(),
-        'Incorrect address 0 fetched.'
+        'Incorrect address 0 fetched.',
       );
       req.startPath = path1;
       const latAddr1 = await test.client.getAddresses(req);
       expect(latAddr1[0].toLowerCase()).to.equal(
         addr1.toLowerCase(),
-        'Incorrect address 1 fetched.'
+        'Incorrect address 1 fetched.',
       );
       req.startPath = path8;
       const latAddr8 = await test.client.getAddresses(req);
       expect(latAddr8[0].toLowerCase()).to.equal(
         addr8.toLowerCase(),
-        'Incorrect address 8 fetched.'
+        'Incorrect address 8 fetched.',
       );
       test.continue = true;
-    })
-    
+    });
+
     it('Should test that wrongWallet retry works', async () => {
       question(
-        'Please switch to a different SafeCard. Press enter to continue.'
+        'Please switch to a different SafeCard. Press enter to continue.',
       );
       try {
         // Should get wrong wallet on the first attempt
@@ -237,87 +245,93 @@ describe('[Determinism]', () => {
       } catch (err) {
         expect(err).to.equal(
           `${responseMsgs[responseCodes.RESP_ERR_WRONG_WALLET]} (Lattice)`,
-          'Wrong wallet expected.'
+          'Wrong wallet expected.',
         );
         question(
-          'Please switch back to the first SafeCard. Press enter to continue.'
+          'Please switch back to the first SafeCard. Press enter to continue.',
         );
         test.client.skipRetryOnWrongWallet = false;
         await test.client.sign(txReq);
-        console.log('did not fail')
+        console.log('did not fail');
         test.continue = true;
       }
-    })
-  })
-  
+    });
+  });
+
   describe('Test uniformity of Ethereum transaction sigs', () => {
     beforeEach(() => {
       expect(test.continue).to.equal(
         true,
-        'Unauthorized or critical failure. Aborting'
+        'Unauthorized or critical failure. Aborting',
       );
       test.continue = false;
-    })
-  
+    });
+
     it('Should validate uniformity sigs on m/44\'/60\'/0\'/0/0', async () => {
       txReq.data.signerPath[2] = HARDENED_OFFSET;
       await testUniformSigs(txReq, tx);
       test.continue = true;
-    })
-  
+    });
+
     it('Should validate uniformity sigs on m/44\'/60\'/0\'/0/1', async () => {
       txReq.data.signerPath[2] = HARDENED_OFFSET + 1;
       await testUniformSigs(txReq, tx);
       test.continue = true;
-    })
-  
+    });
+
     it('Should validate uniformity sigs on m/44\'/60\'/0\'/0/8', async () => {
       txReq.data.signerPath[2] = HARDENED_OFFSET + 8;
       await testUniformSigs(txReq, tx);
       test.continue = true;
-    })
-  
+    });
+
     it('Should update the transaction to use oversized data', async () => {
-      tx = EthTxFactory.fromTxData({
-        type: 2,
-        maxFeePerGas: 1200000000,
-        maxPriorityFeePerGas: 1200000000,
-        nonce: 0,
-        gasLimit: 50000,
-        to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-        value: 100,
-        data: `0x${randomBytes(4000).toString('hex')}`,
-      }, { 
-        common: new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London })
-      })
+      tx = EthTxFactory.fromTxData(
+        {
+          type: 2,
+          maxFeePerGas: 1200000000,
+          maxPriorityFeePerGas: 1200000000,
+          nonce: 0,
+          gasLimit: 50000,
+          to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+          value: 100,
+          data: `0x${randomBytes(4000).toString('hex')}`,
+        },
+        {
+          common: new Common({
+            chain: Chain.Mainnet,
+            hardfork: Hardfork.London,
+          }),
+        },
+      );
       txReq.data.payload = tx.getMessageToSign(false);
       test.continue = true;
-    })
-  
+    });
+
     it('Should validate uniformity sigs on m/44\'/60\'/0\'/0/0', async () => {
       txReq.data.signerPath[2] = HARDENED_OFFSET;
       await testUniformSigs(txReq, tx);
       test.continue = true;
-    })
-  
+    });
+
     it('Should validate uniformity sigs on m/44\'/60\'/0\'/0/1', async () => {
       txReq.data.signerPath[2] = HARDENED_OFFSET + 1;
       await testUniformSigs(txReq, tx);
       test.continue = true;
-    })
-  
+    });
+
     it('Should validate uniformity sigs on m/44\'/60\'/0\'/0/8', async () => {
       txReq.data.signerPath[2] = HARDENED_OFFSET + 8;
       await testUniformSigs(txReq, tx);
       test.continue = true;
-    })
-  })
-  
+    });
+  });
+
   describe('Compare personal_sign signatures vs Ledger vectors (1)', () => {
     beforeEach(() => {
       expect(test.continue).to.equal(
         true,
-        'Unauthorized or critical failure. Aborting'
+        'Unauthorized or critical failure. Aborting',
       );
       msgReq = {
         currency: 'ETH_MSG',
@@ -328,8 +342,8 @@ describe('[Determinism]', () => {
         },
       };
       test.continue = false;
-    })
-  
+    });
+
     it('Should validate signature from addr0', async () => {
       const expected =
         '4820a558ab69907c90141f4857f54a7d71e7791f84478fef7b9a3e5b200ee242' + // r
@@ -342,8 +356,8 @@ describe('[Determinism]', () => {
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).to.equal(jsSig, 'JS sig does not match');
       test.continue = true;
-    })
-  
+    });
+
     it('Should validate signature from addr1', async () => {
       const expected =
         'c292c988b26ae24a06a8270f2794c259ec5742168ed77cd635cba041f767a569' + // r
@@ -356,8 +370,8 @@ describe('[Determinism]', () => {
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).to.equal(jsSig, 'JS sig does not match');
       test.continue = true;
-    })
-  
+    });
+
     it('Should validate signature from addr8', async () => {
       const expected =
         '60cadafdbb7cba590a37eeff854d2598af71904077312875ef7b4f525d4dcb52' + // r
@@ -370,14 +384,14 @@ describe('[Determinism]', () => {
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).to.equal(jsSig, 'JS sig does not match');
       test.continue = true;
-    })
-  })
-  
+    });
+  });
+
   describe('Compare personal_sign signatures vs Ledger vectors (2)', () => {
     beforeEach(() => {
       expect(test.continue).to.equal(
         true,
-        'Unauthorized or critical failure. Aborting'
+        'Unauthorized or critical failure. Aborting',
       );
       msgReq = {
         currency: 'ETH_MSG',
@@ -388,8 +402,8 @@ describe('[Determinism]', () => {
         },
       };
       test.continue = false;
-    })
-  
+    });
+
     it('Should validate signature from addr0', async () => {
       const expected =
         'b4fb4e0db168de42781ee1a27a1e907d5ec39aaccf24733846739f94f5b4542f' + // r
@@ -402,8 +416,8 @@ describe('[Determinism]', () => {
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).to.equal(jsSig, 'JS sig does not match');
       test.continue = true;
-    })
-  
+    });
+
     it('Should validate signature from addr1', async () => {
       const expected =
         '1318229681d8fcdf6db12819c8859501186a3c792543d38a38643c6f185dd252' + // r
@@ -416,8 +430,8 @@ describe('[Determinism]', () => {
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).to.equal(jsSig, 'JS sig does not match');
       test.continue = true;
-    })
-  
+    });
+
     it('Should validate signature from addr8', async () => {
       const expected =
         'c748f3fbf9f517fbd33462a858b40615ab6747295c27b4a46568d7d08c1d9d32' + // r
@@ -430,14 +444,14 @@ describe('[Determinism]', () => {
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).to.equal(jsSig, 'JS sig does not match');
       test.continue = true;
-    })
-  })
-  
+    });
+  });
+
   describe('Compare personal_sign signatures vs Ledger vectors (3)', () => {
     beforeEach(() => {
       expect(test.continue).to.equal(
         true,
-        'Unauthorized or critical failure. Aborting'
+        'Unauthorized or critical failure. Aborting',
       );
       msgReq = {
         currency: 'ETH_MSG',
@@ -448,8 +462,8 @@ describe('[Determinism]', () => {
         },
       };
       test.continue = false;
-    })
-  
+    });
+
     it('Should validate signature from addr0', async () => {
       const expected =
         'f245100f07a6c695140fda7e29097034b3c97be94910639d20efdff5c96387fd' + // r
@@ -462,8 +476,8 @@ describe('[Determinism]', () => {
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).to.equal(jsSig, 'JS sig does not match');
       test.continue = true;
-    })
-  
+    });
+
     it('Should validate signature from addr1', async () => {
       const expected =
         '3a42c4955e4fb7ee2c4ee58df79c4be5f62839e691c169b74f90eafd371e2065' + // r
@@ -476,8 +490,8 @@ describe('[Determinism]', () => {
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).to.equal(jsSig, 'JS sig does not match');
       test.continue = true;
-    })
-  
+    });
+
     it('Should validate signature from addr8', async () => {
       const expected =
         '3e55dbb101880960cb32c17237d3ceb9d5846cf2f68c5c4c504cb827ea6a2e73' + // r
@@ -490,14 +504,14 @@ describe('[Determinism]', () => {
       const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).to.equal(jsSig, 'JS sig does not match');
       test.continue = true;
-    })
-  })
-  
+    });
+  });
+
   describe('Compare EIP712 signatures vs Ledger vectors (1)', () => {
     beforeEach(() => {
       expect(test.continue).to.equal(
         true,
-        'Unauthorized or critical failure. Aborting'
+        'Unauthorized or critical failure. Aborting',
       );
       msgReq = {
         currency: 'ETH_MSG',
@@ -540,8 +554,8 @@ describe('[Determinism]', () => {
         },
       };
       test.continue = false;
-    })
-  
+    });
+
     it('Should validate signature from addr0', async () => {
       const expected =
         'dbf9a493935770f97a1f0886f370345508398ac76fbf31ccf1c30d8846d3febf' + // r
@@ -552,8 +566,8 @@ describe('[Determinism]', () => {
       const sig = test.helpers.getSigStr(res);
       expect(sig).to.equal(expected);
       test.continue = true;
-    })
-  
+    });
+
     it('Should validate signature from addr1', async () => {
       const expected =
         '9e784c6388f6f938f94239c67dc764909b86f34ec29312f4c623138fd7192115' + // r
@@ -564,8 +578,8 @@ describe('[Determinism]', () => {
       const sig = test.helpers.getSigStr(res);
       expect(sig).to.equal(expected);
       test.continue = true;
-    })
-    
+    });
+
     it('Should validate signature from addr8', async () => {
       const expected =
         '6e7e9bfc4773291713bb5cdc483057d43a95a5082920bdd1dd3470caf6f11155' + // r
@@ -577,13 +591,13 @@ describe('[Determinism]', () => {
       expect(sig).to.equal(expected);
       test.continue = true;
     });
-  })
-  
+  });
+
   describe('Compare EIP712 signatures vs Ledger vectors (2)', () => {
     beforeEach(() => {
       expect(test.continue).to.equal(
         true,
-        'Unauthorized or critical failure. Aborting'
+        'Unauthorized or critical failure. Aborting',
       );
       msgReq = {
         currency: 'ETH_MSG',
@@ -616,8 +630,8 @@ describe('[Determinism]', () => {
         },
       };
       test.continue = false;
-    })
-  
+    });
+
     it('Should validate signature from addr0', async () => {
       const expected =
         '0a1843ee1be7bf1ddd8bb32230ee3842b47022b8ba8795d3522db8a7341a9b85' + // r
@@ -628,8 +642,8 @@ describe('[Determinism]', () => {
       const sig = test.helpers.getSigStr(res);
       expect(sig).to.equal(expected);
       test.continue = true;
-    })
-  
+    });
+
     it('Should validate signature from addr1', async () => {
       const expected =
         'f5284359479eb32eefe88bd24de59e4fd656d82238c7752e7a576b7a875eb5ae' + // r
@@ -640,8 +654,8 @@ describe('[Determinism]', () => {
       const sig = test.helpers.getSigStr(res);
       expect(sig).to.equal(expected);
       test.continue = true;
-    })
-  
+    });
+
     it('Should validate signature from addr8', async () => {
       const expected =
         'f7a94b7ba7e0fbab88472cb77c5c255ba36e60e9f90bf4073960082bb5ef17cf' + // r
@@ -652,14 +666,14 @@ describe('[Determinism]', () => {
       const sig = test.helpers.getSigStr(res);
       expect(sig).to.equal(expected);
       test.continue = true;
-    })
-  })
-  
+    });
+  });
+
   describe('Compare EIP712 signatures vs Ledger vectors (3)', () => {
     beforeEach(() => {
       expect(test.continue).to.equal(
         true,
-        'Unauthorized or critical failure. Aborting'
+        'Unauthorized or critical failure. Aborting',
       );
       msgReq = {
         currency: 'ETH_MSG',
@@ -692,8 +706,8 @@ describe('[Determinism]', () => {
         },
       };
       test.continue = false;
-    })
-  
+    });
+
     it('Should validate signature from addr0', async () => {
       const expected =
         'c693714421acbba9fb8fdcd825295b6042802b06a55ae17a65db510dd5a348e0' + // r
@@ -726,18 +740,18 @@ describe('[Determinism]', () => {
       const sig = test.helpers.getSigStr(res);
       expect(sig).to.equal(expected);
       test.continue = true;
-    })
-  })
-  
+    });
+  });
+
   describe('Test random personal_sign messages against JS signatures', () => {
     beforeEach(() => {
       expect(test.continue).to.equal(
         true,
-        'Unauthorized or critical failure. Aborting'
+        'Unauthorized or critical failure. Aborting',
       );
       test.continue = false;
-    })
-  
+    });
+
     it('Should test random vectors', async () => {
       for (let i = 0; i < RANDOM_VEC.length; i++) {
         let res, jsSig, sig;
@@ -769,18 +783,18 @@ describe('[Determinism]', () => {
         expect(sig).to.equal(jsSig, 'Addr8 sig failed');
       }
       test.continue = true;
-    })
-  })
-  
+    });
+  });
+
   describe('Teardown Test', () => {
     beforeEach(() => {
       expect(test.continue).to.equal(
         true,
-        'Unauthorized or critical failure. Aborting'
+        'Unauthorized or critical failure. Aborting',
       );
       test.continue = false;
     });
-  
+
     it('Should find out if we should reload the seed', async () => {
       if (skipSeedLoading) {
         skipSeedRestore = true;
@@ -792,14 +806,14 @@ describe('[Determinism]', () => {
       // here more quickly, but please be aware that you will lose your original seed.
       const result = question(
         '\nWARNING: If you choose `N` you will no longer be able to restore your original seed from these tests.' +
-          '\nDo you want to reload your original seed? (Y/N) '
+        '\nDo you want to reload your original seed? (Y/N) ',
       );
       if (result.toLowerCase() !== 'y') {
         skipSeedRestore = true;
       }
       test.continue = true;
     });
-  
+
     it('Should remove the seed', async () => {
       if (skipSeedRestore) {
         test.continue = true;
@@ -816,12 +830,12 @@ describe('[Determinism]', () => {
       jobReq.payload = helpers.serializeJobData(
         jobType,
         activeWalletUID,
-        jobData
+        jobData,
       );
       await runTestCase(helpers.gpErrors.GP_SUCCESS);
       test.continue = true;
     });
-  
+
     it('Should load the seed', async () => {
       if (skipSeedRestore) {
         test.continue = true;
@@ -831,7 +845,7 @@ describe('[Determinism]', () => {
       await runTestCase(helpers.gpErrors.GP_SUCCESS);
       test.continue = true;
     });
-  
+
     it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
       if (skipSeedRestore) {
         test.continue = true;
@@ -839,11 +853,11 @@ describe('[Determinism]', () => {
       }
       question(
         '\nPlease remove, re-insert, and unlock your SafeCard.\n' +
-          'Press enter to continue after addresses have fully synced.'
+        'Press enter to continue after addresses have fully synced.',
       );
       test.continue = true;
     });
-  
+
     it('Should re-connect to the Lattice and update the walletUID.', async () => {
       if (skipSeedRestore) {
         test.continue = true;
@@ -856,7 +870,7 @@ describe('[Determinism]', () => {
       activeWalletUID = helpers.copyBuffer(test.client.getActiveWallet().uid);
       test.continue = true;
     });
-  
+
     it('Should ensure export seed matches the seed we just loaded', async () => {
       if (skipSeedRestore) {
         test.continue = true;
@@ -871,8 +885,7 @@ describe('[Determinism]', () => {
       test.continue = true;
     });
   });
-})
-
+});
 
 //---------
 // Helpers
@@ -884,30 +897,70 @@ async function testUniformSigs(txReq, tx) {
   const tx4Resp = await test.client.sign(txReq);
   const tx5Resp = await test.client.sign(txReq);
   // Check sig 1
-  expect(helpers.getSigStr(tx1Resp, tx)).to.equal(helpers.getSigStr(tx2Resp, tx));
-  expect(helpers.getSigStr(tx1Resp, tx)).to.equal(helpers.getSigStr(tx3Resp, tx));
-  expect(helpers.getSigStr(tx1Resp, tx)).to.equal(helpers.getSigStr(tx4Resp, tx));
-  expect(helpers.getSigStr(tx1Resp, tx)).to.equal(helpers.getSigStr(tx5Resp, tx));
+  expect(helpers.getSigStr(tx1Resp, tx)).to.equal(
+    helpers.getSigStr(tx2Resp, tx),
+  );
+  expect(helpers.getSigStr(tx1Resp, tx)).to.equal(
+    helpers.getSigStr(tx3Resp, tx),
+  );
+  expect(helpers.getSigStr(tx1Resp, tx)).to.equal(
+    helpers.getSigStr(tx4Resp, tx),
+  );
+  expect(helpers.getSigStr(tx1Resp, tx)).to.equal(
+    helpers.getSigStr(tx5Resp, tx),
+  );
   // Check sig 2
-  expect(helpers.getSigStr(tx2Resp, tx)).to.equal(helpers.getSigStr(tx1Resp, tx));
-  expect(helpers.getSigStr(tx2Resp, tx)).to.equal(helpers.getSigStr(tx3Resp, tx));
-  expect(helpers.getSigStr(tx2Resp, tx)).to.equal(helpers.getSigStr(tx4Resp, tx));
-  expect(helpers.getSigStr(tx2Resp, tx)).to.equal(helpers.getSigStr(tx5Resp, tx));
+  expect(helpers.getSigStr(tx2Resp, tx)).to.equal(
+    helpers.getSigStr(tx1Resp, tx),
+  );
+  expect(helpers.getSigStr(tx2Resp, tx)).to.equal(
+    helpers.getSigStr(tx3Resp, tx),
+  );
+  expect(helpers.getSigStr(tx2Resp, tx)).to.equal(
+    helpers.getSigStr(tx4Resp, tx),
+  );
+  expect(helpers.getSigStr(tx2Resp, tx)).to.equal(
+    helpers.getSigStr(tx5Resp, tx),
+  );
   // Check sig 3
-  expect(helpers.getSigStr(tx3Resp, tx)).to.equal(helpers.getSigStr(tx1Resp, tx));
-  expect(helpers.getSigStr(tx3Resp, tx)).to.equal(helpers.getSigStr(tx2Resp, tx));
-  expect(helpers.getSigStr(tx3Resp, tx)).to.equal(helpers.getSigStr(tx4Resp, tx));
-  expect(helpers.getSigStr(tx3Resp, tx)).to.equal(helpers.getSigStr(tx5Resp, tx));
+  expect(helpers.getSigStr(tx3Resp, tx)).to.equal(
+    helpers.getSigStr(tx1Resp, tx),
+  );
+  expect(helpers.getSigStr(tx3Resp, tx)).to.equal(
+    helpers.getSigStr(tx2Resp, tx),
+  );
+  expect(helpers.getSigStr(tx3Resp, tx)).to.equal(
+    helpers.getSigStr(tx4Resp, tx),
+  );
+  expect(helpers.getSigStr(tx3Resp, tx)).to.equal(
+    helpers.getSigStr(tx5Resp, tx),
+  );
   // Check sig 4
-  expect(helpers.getSigStr(tx4Resp, tx)).to.equal(helpers.getSigStr(tx1Resp, tx));
-  expect(helpers.getSigStr(tx4Resp, tx)).to.equal(helpers.getSigStr(tx2Resp, tx));
-  expect(helpers.getSigStr(tx4Resp, tx)).to.equal(helpers.getSigStr(tx3Resp, tx));
-  expect(helpers.getSigStr(tx4Resp, tx)).to.equal(helpers.getSigStr(tx5Resp, tx));
+  expect(helpers.getSigStr(tx4Resp, tx)).to.equal(
+    helpers.getSigStr(tx1Resp, tx),
+  );
+  expect(helpers.getSigStr(tx4Resp, tx)).to.equal(
+    helpers.getSigStr(tx2Resp, tx),
+  );
+  expect(helpers.getSigStr(tx4Resp, tx)).to.equal(
+    helpers.getSigStr(tx3Resp, tx),
+  );
+  expect(helpers.getSigStr(tx4Resp, tx)).to.equal(
+    helpers.getSigStr(tx5Resp, tx),
+  );
   // Check sig 5
-  expect(helpers.getSigStr(tx5Resp, tx)).to.equal(helpers.getSigStr(tx1Resp, tx));
-  expect(helpers.getSigStr(tx5Resp, tx)).to.equal(helpers.getSigStr(tx2Resp, tx));
-  expect(helpers.getSigStr(tx5Resp, tx)).to.equal(helpers.getSigStr(tx3Resp, tx));
-  expect(helpers.getSigStr(tx5Resp, tx)).to.equal(helpers.getSigStr(tx4Resp, tx));
+  expect(helpers.getSigStr(tx5Resp, tx)).to.equal(
+    helpers.getSigStr(tx1Resp, tx),
+  );
+  expect(helpers.getSigStr(tx5Resp, tx)).to.equal(
+    helpers.getSigStr(tx2Resp, tx),
+  );
+  expect(helpers.getSigStr(tx5Resp, tx)).to.equal(
+    helpers.getSigStr(tx3Resp, tx),
+  );
+  expect(helpers.getSigStr(tx5Resp, tx)).to.equal(
+    helpers.getSigStr(tx4Resp, tx),
+  );
 }
 
 async function runTestCase(expectedCode) {
@@ -947,7 +1000,7 @@ function _setupJob (type, opts = {}) {
     jobReq.payload = helpers.serializeJobData(
       jobType,
       activeWalletUID,
-      jobData
+      jobData,
     );
     return;
   } else if (type === helpers.jobTypes.WALLET_JOB_DELETE_SEED) {
@@ -962,7 +1015,7 @@ function _setupJob (type, opts = {}) {
     jobReq.payload = helpers.serializeJobData(
       jobType,
       activeWalletUID,
-      jobData
+      jobData,
     );
   } else if (type === helpers.jobTypes.WALLET_JOB_LOAD_SEED) {
     jobType = type;
@@ -978,7 +1031,7 @@ function _setupJob (type, opts = {}) {
     jobReq.payload = helpers.serializeJobData(
       jobType,
       activeWalletUID,
-      jobData
+      jobData,
     );
   }
 }
