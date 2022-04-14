@@ -1,9 +1,9 @@
 /**
  * Tests for establishing a connection to a target Lattice and validating
  * basic functionality.
- * 
+ *
  * This test suite serves two purposes:
- * 
+ *
  * 1. You need to run this before you can run any other tests. Run it with `REUSE_KEY=1`
  *    as an `env` param. This will ask you for a device ID and will attempt a pairing
  *    with the target Lattice. Note that the Lattice cannot already be paired so you may
@@ -11,7 +11,7 @@
  *    the connection will be cached locally and you can run subsequent tests with
  *    `DEVICE_ID=<yourDeviceId>` as an `env` param. This includes *any* test, including
  *    this one.
- * 
+ *
  * 2. You can run this to just validate basic connectivity. If you don't need to cache
  *    the connection you can run this without any `env` params and it will attempt to
  *    pair with a target Lattice.
@@ -20,11 +20,14 @@ import Common, { Chain, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { expect } from 'chai';
 import { question } from 'readline-sync';
-import { 
-  getFwVersionConst, HARDENED_OFFSET, responseCodes, responseMsgs 
+import {
+  getFwVersionConst,
+  HARDENED_OFFSET,
+  responseCodes,
+  responseMsgs,
 } from '../src/constants';
-import { Constants } from '../src/index'
-import { randomBytes } from '../src/util'
+import { Constants } from '../src/index';
+import { randomBytes } from '../src/util';
 import helpers from './testUtil/helpers';
 
 let client, id;
@@ -39,9 +42,12 @@ describe('Connect and Pair', () => {
   });
 
   beforeEach(() => {
-    expect(continueTests).to.equal(true, 'Error found in prior test. Aborting.');
+    expect(continueTests).to.equal(
+      true,
+      'Error found in prior test. Aborting.',
+    );
     continueTests = false;
-  })
+  });
 
   //-------------------------------------------
   // TESTS
@@ -95,11 +101,11 @@ describe('Connect and Pair', () => {
     const clientTwo = helpers.setupTestClient(null, stateData);
     const addrs2 = await clientTwo.getAddresses(addrData);
     expect(JSON.stringify(addrs1)).to.equal(
-      JSON.stringify(addrs2), 
-      'Client not rehydrated properly'
+      JSON.stringify(addrs2),
+      'Client not rehydrated properly',
     );
     continueTests = true;
-  })
+  });
 
   it('Should get addresses', async () => {
     const fwConstants = getFwVersionConst(client.fwVersion);
@@ -148,7 +154,7 @@ describe('Connect and Pair', () => {
     addrData.n = 1;
     try {
       await client.getAddresses(addrData);
-      throw new Error('Expected failure')
+      throw new Error('Expected failure');
     } catch (err) {
       // Switch to BTC coin. Should work now.
       addrData.startPath[1] = helpers.BTC_COIN;
@@ -204,8 +210,17 @@ describe('Connect and Pair', () => {
       return;
     }
     const fwConstants = getFwVersionConst(client.fwVersion);
-    const signerPath = [ helpers.BTC_PURPOSE_P2PKH, helpers.ETH_COIN, HARDENED_OFFSET, 0, 0 ];
-    const common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London })
+    const signerPath = [
+      helpers.BTC_PURPOSE_P2PKH,
+      helpers.ETH_COIN,
+      HARDENED_OFFSET,
+      0,
+      0,
+    ];
+    const common = new Common({
+      chain: Chain.Mainnet,
+      hardfork: Hardfork.London,
+    });
     let txData = {
       type: 1,
       gasPrice: 1200000000,
@@ -223,7 +238,7 @@ describe('Connect and Pair', () => {
         curveType: Constants.SIGNING.CURVES.SECP256K1,
         hashType: Constants.SIGNING.HASHES.KECCAK256,
         encodingType: Constants.SIGNING.ENCODINGS.EVM,
-      }
+      },
     };
 
     // Legacy transaction
@@ -242,8 +257,9 @@ describe('Connect and Pair', () => {
     };
 
     // Test data range
-    const maxDataSz = fwConstants.ethMaxDataSz +
-                      (fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz);
+    const maxDataSz =
+      fwConstants.ethMaxDataSz +
+      fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
     // NOTE: This will display a prehashed payload for bridged general signing
     // requests because `ethMaxDataSz` represents the `data` field for legacy
     // requests, but it represents the entire payload for general signing requests.
@@ -252,7 +268,7 @@ describe('Connect and Pair', () => {
     req.data.payload = tx.getMessageToSign(false);
     await client.sign(req);
     question(
-      'Please REJECT the next request if the warning screen displays. Press enter to continue.'
+      'Please REJECT the next request if the warning screen displays. Press enter to continue.',
     );
     req.data.data = randomBytes(maxDataSz + 1);
     tx = EthTxFactory.fromTxData(txData, { common });
@@ -261,9 +277,8 @@ describe('Connect and Pair', () => {
     try {
       await client.sign(req);
     } catch (err) {
-      rejected = err.indexOf(
-        responseMsgs[responseCodes.RESP_ERR_USER_DECLINED]
-      ) > -1;
+      rejected =
+        err.indexOf(responseMsgs[responseCodes.RESP_ERR_USER_DECLINED]) > -1;
     } finally {
       expect(rejected).to.equal(true);
     }

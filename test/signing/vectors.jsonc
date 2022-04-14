@@ -8,14 +8,14 @@
       // to simulate a production environment of fetching ABI data and adding
       // decoding info to the request.
       "etherscanTxHashes": [
-        //  swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] path, 
+        //  swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] path,
         //  address to, uint256 deadline)
         "0xeee0752109c6d31038bab6c2b0a3e3857e8bffb9c229de71f0196fda6fb28a5e",
         //  remove_liquidity_one_coin(uint256 _token_amount, int128 i, uint256 _min_amount)
         "0xa6173b4890303e12ca1b195ea4a04d8891b0d83768b734d2ecdb9c6dd9d828c4",
         //  atomicMatch_(address[14],uint256[18],uint8[8],bytes,bytes,bytes,bytes,bytes,bytes,
         //  uint8[2],bytes32[5])
-        // this one is too large for 1 frame       
+        // this one is too large for 1 frame
         // "0x92c82aad37a925e3aabe3d603109a5e65993aa2615c4b2278c3d355d9d433dff",
         //  exactInput((bytes,address,uint256,uint256,uint256))
         "0xee9710119c13dba6fe2de240ef1e24a2489e98d9c7dd5881e2901056764ee234",

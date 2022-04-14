@@ -1,23 +1,35 @@
 // Utils for Ethereum transactions. This is effecitvely a shim of ethereumjs-util, which
 // does not have browser (or, by proxy, React-Native) support.
+import Common, { Chain, Hardfork } from '@ethereumjs/common';
+import { TransactionFactory } from '@ethereumjs/tx';
 import BN from 'bignumber.js';
 import cbor from 'borc';
 import { Buffer } from 'buffer/';
 //@ts-expect-error - This third-party package is not typed properly
 import { TypedDataUtils } from 'eth-eip712-util-browser';
 import { keccak256 } from 'js-sha3';
-import rlp from 'rlp-browser'; // [TODO: Deprecate]
 import { encode as rlpEncode } from 'rlp';
+import rlp from 'rlp-browser'; // [TODO: Deprecate]
 import secp256k1 from 'secp256k1';
-import { ASCII_REGEX, ethMsgProtocol, HANDLE_LARGER_CHAIN_ID, MAX_CHAIN_ID_BYTES, signingSchema } from './constants';
-import { buildSignerPathBuf, ensureHexBuffer, fixLen, isAsciiStr, splitFrames } from './util'
-import Common, { Chain, Hardfork } from '@ethereumjs/common'
-import { TransactionFactory } from '@ethereumjs/tx'
+import {
+  ASCII_REGEX,
+  ethMsgProtocol,
+  HANDLE_LARGER_CHAIN_ID,
+  MAX_CHAIN_ID_BYTES,
+  signingSchema,
+} from './constants';
+import {
+  buildSignerPathBuf,
+  ensureHexBuffer,
+  fixLen,
+  isAsciiStr,
+  splitFrames,
+} from './util';
 
 const buildEthereumMsgRequest = function (input) {
   if (!input.payload || !input.protocol || !input.signerPath)
     throw new Error(
-      'You must provide `payload`, `signerPath`, and `protocol` arguments in the messsage request'
+      'You must provide `payload`, `signerPath`, and `protocol` arguments in the messsage request',
     );
   if (input.signerPath.length > 5 || input.signerPath.length < 2)
     throw new Error('Please provide a signer path with 2-5 indices');
@@ -34,7 +46,7 @@ const buildEthereumMsgRequest = function (input) {
       case 'eip712':
         if (!input.fwConstants.eip712Supported)
           throw new Error(
-            'EIP712 is not supported by your Lattice firmware version. Please upgrade.'
+            'EIP712 is not supported by your Lattice firmware version. Please upgrade.',
           );
         return buildEIP712Request(req, input);
       default:
@@ -55,7 +67,7 @@ const validateEthereumMsgResponse = function (res, req) {
       ? prehash
       : Buffer.from(
           keccak256(Buffer.concat([get_personal_sign_prefix(msg.length), msg])),
-          'hex'
+        'hex',
         );
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
     return addRecoveryParam(hash, sig, signer, {
@@ -102,7 +114,7 @@ const buildEthereumTxRequest = function (data) {
     // Is this a contract deployment?
     if (data.to === null && !contractDeployKey) {
       throw new Error(
-        'Contract deployment not supported. Please update your Lattice firmware.'
+        'Contract deployment not supported. Please update your Lattice firmware.',
       );
     }
     const isDeployment = data.to === null && contractDeployKey;
@@ -165,7 +177,7 @@ const buildEthereumTxRequest = function (data) {
     if (isEip1559) {
       if (!data.maxPriorityFeePerGas)
         throw new Error(
-          'EIP1559 transactions must include `maxPriorityFeePerGas`'
+          'EIP1559 transactions must include `maxPriorityFeePerGas`',
         );
       maxPriorityFeePerGasBytes = ensureHexBuffer(data.maxPriorityFeePerGas);
       rawTx.push(maxPriorityFeePerGasBytes);
@@ -276,7 +288,7 @@ const buildEthereumTxRequest = function (data) {
           throw new Error('maxPriorityFeePerGasBytes too large');
         maxPriorityFeePerGasBytes.copy(
           txReqPayload,
-          off + (8 - maxPriorityFeePerGasBytes.length)
+          off + (8 - maxPriorityFeePerGasBytes.length),
         );
         off += 8; // Skip EIP1559 params
       } else if (isEip2930) {
@@ -312,7 +324,7 @@ const buildEthereumTxRequest = function (data) {
         // If this payload is too large to send, but the Lattice allows a prehashed message, do that
         prehash = Buffer.from(
           keccak256(get_rlp_encoded_preimage(rawTx, type)),
-          'hex'
+          'hex',
         );
       } else {
         if (
@@ -322,12 +334,12 @@ const buildEthereumTxRequest = function (data) {
           throw new Error(
             `Data field too large (got ${dataBytes.length}; must be <=${
               maxSzAllowed - chainIdExtraSz
-            } bytes)`
+            } bytes)`,
           );
         // Split overflow data into extraData frames
         const frames = splitFrames(
           dataToCopy.slice(MAX_BASE_DATA_SZ),
-          extraDataFrameSz
+          extraDataFrameSz,
         );
         frames.forEach((frame) => {
           const szLE = Buffer.alloc(4);
@@ -340,7 +352,7 @@ const buildEthereumTxRequest = function (data) {
       // we prehash the message here.
       prehash = Buffer.from(
         keccak256(get_rlp_encoded_preimage(rawTx, type)),
-        'hex'
+        'hex',
       );
     }
 
@@ -394,7 +406,7 @@ const buildEthRawTx = function (tx, sig, address) {
   // RLP-encode the data we sent to the lattice
   const hash = Buffer.from(
     keccak256(get_rlp_encoded_preimage(tx.rawTx, tx.type)),
-    'hex'
+    'hex',
   );
   const newSig = addRecoveryParam(hash, sig, address, tx);
   // Use the signature to generate a new raw transaction payload
@@ -412,7 +424,7 @@ const buildEthRawTx = function (tx, sig, address) {
       rlpEncodedWithSig,
     ]);
   }
-  return { rawTx: rlpEncodedWithSig.toString('hex'), sigWithV: newSig }
+  return { rawTx: rlpEncodedWithSig.toString('hex'), sigWithV: newSig };
 };
 
 // Attach a recovery parameter to a signature by brute-forcing ECRecover
@@ -481,7 +493,7 @@ function getRecoveryParam (v, txData: any = {}) {
   const chainIdBuf = getChainIdBuf(chainId);
   const chainIdBN = new BN(chainIdBuf.toString('hex'), 16);
   return ensureHexBuffer(
-    `0x${chainIdBN.times(2).plus(35).plus(v).toString(16)}`
+    `0x${chainIdBN.times(2).plus(35).plus(v).toString(16)}`,
   );
 }
 
@@ -575,13 +587,11 @@ function buildPersonalSignRequest(req, input) {
       payload = ensureHexBuffer(input.payload);
       displayHex =
         false ===
-      ASCII_REGEX.test(
-          Buffer.from(input.payload.slice(2), 'hex').toString()
-        );
+        ASCII_REGEX.test(Buffer.from(input.payload.slice(2), 'hex').toString());
     } else {
       if (false === isAsciiStr(input.payload))
         throw new Error(
-          'Currently, the Lattice can only display ASCII strings.'
+          'Currently, the Lattice can only display ASCII strings.',
         );
       payload = Buffer.from(input.payload);
     }
@@ -612,9 +622,9 @@ function buildPersonalSignRequest(req, input) {
     off += 2;
     const prehash = Buffer.from(
       keccak256(
-        Buffer.concat([get_personal_sign_prefix(payload.length), payload])
+        Buffer.concat([get_personal_sign_prefix(payload.length), payload]),
       ),
-      'hex'
+      'hex',
     );
     prehash.copy(req.payload, off);
     req.prehash = prehash;
@@ -636,7 +646,8 @@ function buildPersonalSignRequest(req, input) {
 
 function buildEIP712Request(req, input) {
   try {
-    const { ethMaxMsgSz, varAddrPathSzAllowed, eip712MaxTypeParams } = input.fwConstants;
+    const { ethMaxMsgSz, varAddrPathSzAllowed, eip712MaxTypeParams } =
+      input.fwConstants;
     const { TYPED_DATA } = ethMsgProtocol;
     const L = 24 + ethMaxMsgSz + 4;
     let off = 0;
@@ -644,14 +655,17 @@ function buildEIP712Request(req, input) {
     req.payload.writeUInt8(TYPED_DATA.enumIdx, 0);
     off += 1;
     // Write the signer path
-    const signerPathBuf = buildSignerPathBuf(input.signerPath, varAddrPathSzAllowed);
+    const signerPathBuf = buildSignerPathBuf(
+      input.signerPath,
+      varAddrPathSzAllowed,
+    );
     signerPathBuf.copy(req.payload, off);
     off += signerPathBuf.length;
     // Parse/clean the EIP712 payload, serialize with CBOR, and write to the payload
     const data = JSON.parse(JSON.stringify(input.payload));
     if (!data.primaryType || !data.types[data.primaryType])
       throw new Error(
-        'primaryType must be specified and the type must be included.'
+        'primaryType must be specified and the type must be included.',
       );
     if (!data.message || !data.domain)
       throw new Error('message and domain must be specified.');
@@ -666,25 +680,25 @@ function buildEIP712Request(req, input) {
       JSON.parse(JSON.stringify(data.message)),
       JSON.parse(JSON.stringify(data.primaryType)),
       JSON.parse(JSON.stringify(data.types)),
-      true
+      true,
     );
     input.payload.domain = parseEIP712Msg(
       JSON.parse(JSON.stringify(data.domain)),
       'EIP712Domain',
       JSON.parse(JSON.stringify(data.types)),
-      true
+      true,
     );
     data.domain = parseEIP712Msg(
       data.domain,
       'EIP712Domain',
       data.types,
-      false
+      false,
     );
     data.message = parseEIP712Msg(
       data.message,
       data.primaryType,
       data.types,
-      false
+      false,
     );
     // Now build the message to be sent to the Lattice
     const payload = Buffer.from(cbor.encode(data));
@@ -697,7 +711,7 @@ function buildEIP712Request(req, input) {
       if (data.types[k].length > eip712MaxTypeParams) {
         shouldPrehash = true;
       }
-    })
+    });
     if (fwConst.ethMsgPreHashAllowed && shouldPrehash) {
       // If this payload is too large to send, but the Lattice allows a prehashed message, do that
       req.payload.writeUInt16LE(payload.length, off);
@@ -733,16 +747,16 @@ function getExtraData(payload, input) {
       MAX_BASE_MSG_SZ + extraDataMaxFrames * extraDataFrameSz;
     if (!EXTRA_DATA_ALLOWED)
       throw new Error(
-        `Your message is ${payload.length} bytes, but can only be a maximum of ${MAX_BASE_MSG_SZ}`
+        `Your message is ${payload.length} bytes, but can only be a maximum of ${MAX_BASE_MSG_SZ}`,
       );
     else if (EXTRA_DATA_ALLOWED && payload.length > maxSzAllowed)
       throw new Error(
-        `Your message is ${payload.length} bytes, but can only be a maximum of ${maxSzAllowed}`
+        `Your message is ${payload.length} bytes, but can only be a maximum of ${maxSzAllowed}`,
       );
     // Split overflow data into extraData frames
     const frames = splitFrames(
       payload.slice(MAX_BASE_MSG_SZ),
-      extraDataFrameSz
+      extraDataFrameSz,
     );
     frames.forEach((frame) => {
       const szLE = Buffer.alloc(4);
@@ -773,7 +787,7 @@ function parseEIP712Msg(msg, typeName, types, forJSParser = false) {
             msg[i][item.name],
             singularType,
             types,
-            forJSParser
+            forJSParser,
           );
         }
       } else if (isCustomType) {
@@ -782,7 +796,7 @@ function parseEIP712Msg(msg, typeName, types, forJSParser = false) {
           msg[item.name],
           singularType,
           types,
-          forJSParser
+          forJSParser,
         );
       } else if (Array.isArray(msg)) {
         // If we have an array for this particular type and the type we are parsing
@@ -796,7 +810,7 @@ function parseEIP712Msg(msg, typeName, types, forJSParser = false) {
               msg[i][item.name][j] = parseEIP712Item(
                 msg[i][item.name][j],
                 singularType,
-                forJSParser
+                forJSParser,
               );
             }
           } else {
@@ -804,7 +818,7 @@ function parseEIP712Msg(msg, typeName, types, forJSParser = false) {
             msg[i][item.name] = parseEIP712Item(
               msg[i][item.name],
               singularType,
-              forJSParser
+              forJSParser,
             );
           }
         }
@@ -815,7 +829,7 @@ function parseEIP712Msg(msg, typeName, types, forJSParser = false) {
           msg[item.name][i] = parseEIP712Item(
             msg[item.name][i],
             singularType,
-            forJSParser
+            forJSParser,
           );
         }
       } else {
@@ -823,7 +837,7 @@ function parseEIP712Msg(msg, typeName, types, forJSParser = false) {
         msg[item.name] = parseEIP712Item(
           msg[item.name],
           singularType,
-          forJSParser
+          forJSParser,
         );
       }
     });
@@ -860,7 +874,7 @@ function parseEIP712Item(data, type, forJSParser = false) {
     }
     if (data.length !== 20)
       throw new Error(
-        `Address type must be 20 bytes, but got ${data.length} bytes`
+        `Address type must be 20 bytes, but got ${data.length} bytes`,
       );
     // For EIP712 encoding module it's easier to encode hex strings
     if (forJSParser) {
@@ -901,7 +915,7 @@ function parseEIP712Item(data, type, forJSParser = false) {
 function get_personal_sign_prefix(L) {
   return Buffer.from(
     `\u0019Ethereum Signed Message:\n${L.toString()}`,
-    'utf-8'
+    'utf-8',
   );
 }
 
@@ -922,7 +936,7 @@ function get_rlp_encoded_preimage(rawTx, txType) {
 //
 // NOTE: Once we deprecate, we will remove this entire file
 // ======
-const ethConvertLegacyToGenericReq = function(req) {
+const ethConvertLegacyToGenericReq = function (req) {
   let common;
   if (!req.chainId || ensureHexBuffer(req.chainId).toString('hex') === '01') {
     common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London });
@@ -930,8 +944,8 @@ const ethConvertLegacyToGenericReq = function(req) {
     // Not every network will support these EIPs but we will allow
     // signing of transactions using them
     common = Common.custom(
-      { chainId: req.chainId }, 
-      { hardfork: Hardfork.London, eips: [1559, 2930]}
+      { chainId: req.chainId },
+      { hardfork: Hardfork.London, eips: [1559, 2930] },
     );
   }
   const tx = TransactionFactory.fromTxData(req, { common });
@@ -943,9 +957,9 @@ const ethConvertLegacyToGenericReq = function(req) {
     return tx.getMessageToSign(false);
   } else {
     // Legacy transaction type
-    return Buffer.from(rlpEncode(tx.getMessageToSign(false))); 
+    return Buffer.from(rlpEncode(tx.getMessageToSign(false)));
   }
-}
+};
 
 export default {
   buildEthereumMsgRequest,
@@ -957,4 +971,4 @@ export default {
   ensureHexBuffer,
 
   ethConvertLegacyToGenericReq,
-}
+};
