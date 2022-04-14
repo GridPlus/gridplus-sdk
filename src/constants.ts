@@ -314,6 +314,7 @@ export const EXTERNAL = {
       SOLANA: 2,
       TERRA: 3,
       EVM: 4,
+      NEAR: 5,
     },
   },
 };
@@ -483,6 +484,9 @@ function getFwVersionConst(v) {
       reserved: 2895728,
       maxSz: 1024,
     };
+
+    // NEAR decoder was also added
+    c.genericSigning.encodingTypes.NEAR = EXTERNAL.SIGNING.ENCODINGS.NEAR;
   }
 
   return c;

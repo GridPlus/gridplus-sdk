@@ -107,12 +107,12 @@ describe('Test General Signing', () => {
     global.test.continue = true;
   });
 
+/*
   it('Should load determinism tests', async () => {
     require('./determinism');
     global.test.continue = true;
   });
-
-  it('Should load unformatted tests', async () => {
+  it('Should load unformatted Tests', async () => {
     require('./unformatted');
     global.test.continue = true;
   });
@@ -132,3 +132,9 @@ describe('Test General Signing', () => {
     global.test.continue = true;
   });
 });
+*/
+
+  it('Should load NEAR Tests', async () => {
+    require('./near');
+  })
+})
