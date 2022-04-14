@@ -133,9 +133,7 @@ describe('exportSeed', () => {
   });
 
   it('Should get GP_ENODEV for unknown (random) wallet', async () => {
-    // Note: `randomBytes` returns a buffer from the `buffer/` module,
-    // which fails on node's Buffer.isBuffer, so recast here
-    const dummyWalletUID = Buffer.from(randomBytes(32));
+    const dummyWalletUID = randomBytes(32);
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_ENODEV);
     continueTests = true;
@@ -173,7 +171,7 @@ describe('getAddresses', () => {
   });
 
   it('Should get GP_EWALLET for unknown (random) wallet', async () => {
-    const dummyWalletUID = Buffer.from(randomBytes(32));
+    const dummyWalletUID = randomBytes(32);
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EWALLET);
     continueTests = true;
@@ -572,7 +570,7 @@ describe('signTx', () => {
       numRequests: 1,
       sigReq: [
         {
-          data: Buffer.from(randomBytes(32)),
+          data: randomBytes(32),
           signerPath: path,
         },
       ],
@@ -648,7 +646,7 @@ describe('signTx', () => {
   });
 
   it('Should get GP_EWALLET for unknown (random) wallet', async () => {
-    const dummyWalletUID = Buffer.from(randomBytes(32));
+    const dummyWalletUID = randomBytes(32);
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EWALLET);
     continueTests = true;
@@ -936,7 +934,7 @@ describe('deleteSeed', () => {
   });
 
   it('Should get GP_EINVAL for unknown (random) wallet', async () => {
-    const dummyWalletUID = Buffer.from(randomBytes(32));
+    const dummyWalletUID = randomBytes(32);
     jobReq.payload = helpers.serializeJobData(jobType, dummyWalletUID, jobData);
     await runTestCase(helpers.gpErrors.GP_EINVAL);
     continueTests = true;

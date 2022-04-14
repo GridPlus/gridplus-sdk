@@ -1,7 +1,6 @@
 // Util for Bitcoin-specific functionality
 import { bech32 } from 'bech32';
 import bs58check from 'bs58check';
-import { Buffer } from 'buffer/';
 import { ripemd160 } from 'hash.js/lib/hash/ripemd';
 import { sha256 } from 'hash.js/lib/hash/sha';
 import { BIP_CONSTANTS, signingSchema } from './constants';

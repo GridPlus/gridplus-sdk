@@ -4,7 +4,6 @@ import Common, { Chain, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory } from '@ethereumjs/tx';
 import BN from 'bignumber.js';
 import cbor from 'borc';
-import { Buffer } from 'buffer/';
 //@ts-expect-error - This third-party package is not typed properly
 import { TypedDataUtils } from 'eth-eip712-util-browser';
 import { keccak256 } from 'js-sha3';
