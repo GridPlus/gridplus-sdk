@@ -537,9 +537,9 @@ export const deserializeGetAddressesJobResult = function (res) {
     count: null,
     addresses: [],
   };
-  getAddrResult.pubOnly = res.readUint8(off);
+  getAddrResult.pubOnly = res.readUInt8(off);
   off += 1;
-  getAddrResult.count = res.readUint8(off);
+  getAddrResult.count = res.readUInt8(off);
   off += 3; // Skip a 2-byte empty shim value (for backwards compatibility)
   for (let i = 0; i < getAddrResult.count; i++) {
     const _addr = res.slice(off, off + ADDR_STR_LEN);

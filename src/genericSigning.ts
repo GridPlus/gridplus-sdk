@@ -197,7 +197,7 @@ export const parseGenericSigningResponse = function (
   if (curveType === Constants.SIGNING.CURVES.SECP256K1) {
     // Handle `GpEccPubkey256_t`
     if (!omitPubkey) {
-      const compression = res.readUint8(off);
+      const compression = res.readUInt8(off);
       off += 1;
       if (compression === 0x02 || compression === 0x03) {
         // Compressed key - only copy x
