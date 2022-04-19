@@ -1,6 +1,5 @@
 import bitwise from 'bitwise';
 import { Byte, UInt4 } from 'bitwise/types';
-import { Buffer } from 'buffer/';
 import { KeyPair } from 'elliptic';
 import { encode as rlpEncode } from 'rlp';
 import superagent from 'superagent';

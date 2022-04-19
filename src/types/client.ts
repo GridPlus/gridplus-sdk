@@ -1,4 +1,3 @@
-import { Buffer } from 'buffer/';
 import 'hash.js';
 
 export type KVRecord = {
