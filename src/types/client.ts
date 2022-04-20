@@ -1,4 +1,3 @@
-import { Buffer } from 'buffer/';
 import 'hash.js';
 
 export type KVRecord = {
@@ -29,5 +28,5 @@ export type GetKvRecordsData = {
     [key: string]: string;
   }[];
   fetched: number;
-  total: number
-}
+  total: number;
+};

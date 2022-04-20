@@ -1,7 +1,6 @@
 // Static utility functions
 import aes from 'aes-js';
 import BN from 'bignumber.js';
-import { Buffer } from 'buffer/';
 import crc32 from 'crc-32';
 import elliptic from 'elliptic';
 import {

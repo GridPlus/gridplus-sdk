@@ -106,7 +106,8 @@ const responseMsgs = {
   [responseCodes.RESP_ERR_USER_DECLINED]: 'Request declined by user',
   [responseCodes.RESP_ERR_PAIR_FAIL]: 'Pairing failed',
   [responseCodes.RESP_ERR_PAIR_DISABLED]: 'Pairing is currently disabled',
-  [responseCodes.RESP_ERR_PERMISSION_DISABLED]: 'Automated signing is currently disabled',
+  [responseCodes.RESP_ERR_PERMISSION_DISABLED]:
+    'Automated signing is currently disabled',
   [responseCodes.RESP_ERR_INTERNAL]: 'Device error',
   [responseCodes.RESP_ERR_GCE_TIMEOUT]: 'Timeout',
   [responseCodes.RESP_ERR_WRONG_WALLET]: 'Active wallet does not match request',
@@ -306,16 +307,16 @@ export const EXTERNAL = {
     },
     CURVES: {
       SECP256K1: 0,
-      ED25519: 1
+      ED25519: 1,
     },
     ENCODINGS: {
       NONE: 1,
       SOLANA: 2,
       TERRA: 3,
       EVM: 4,
-    }
-  }
-}
+    },
+  },
+};
 
 function getFwVersionConst(v) {
   const c: any = {
@@ -442,8 +443,8 @@ function getFwVersionConst(v) {
   if (!legacy && gte(v, [0, 14, 0])) {
     // Size of `category` buffer. Inclusive of null terminator byte.
     c.abiCategorySz = 32;
-    c.abiMaxRmv = 200;  // Max number of ABI defs that can be removed with
-                        // a single request
+    c.abiMaxRmv = 200; // Max number of ABI defs that can be removed with
+    // a single request
     // See `sizeof(GenericSigningRequest_t)` in firmware
     c.genericSigning.baseReqSz = 1552;
     // See `GENERIC_SIGNING_BASE_MSG_SZ` in firmware
@@ -453,11 +454,11 @@ function getFwVersionConst(v) {
     c.genericSigning.encodingTypes = {
       NONE: EXTERNAL.SIGNING.ENCODINGS.NONE,
       SOLANA: EXTERNAL.SIGNING.ENCODINGS.SOLANA,
-    }
+    };
     // Supported flags for `getAddresses`
-    c.getAddressFlags = [ 
-      EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB, 
-      EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB 
+    c.getAddressFlags = [
+      EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB,
+      EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB,
     ];
     // We updated the max number of params in EIP712 types
     c.eip712MaxTypeParams = 36;
@@ -486,6 +487,7 @@ function getFwVersionConst(v) {
 
   return c;
 }
+// eslint-disable-next-line no-control-regex
 const ASCII_REGEX = /^[\x00-\x7F]+$/;
 
 export {
