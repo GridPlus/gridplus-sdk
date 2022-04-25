@@ -134,6 +134,22 @@ describe('[Terra]', () => {
     return Buffer.from(_jsSig.data.single.signature, 'base64');
   }
 
+  it('Should test address derivations', async () => {
+    const path = req.data.signerPath;
+    for (let i = 0; i < 5; i++) {
+      path[4] += i;
+      const jsAccount = getTerraAccount(req.data.signerPath);
+      const jsPub = Buffer.from(jsAccount.account.public_key.key, 'base64').toString('hex');
+      const latticePubs = await test.client.getAddresses({
+        startPath: DEFAULT_TERRA_SIGNER,
+        n: 1,
+        flag: Constants.GET_ADDR_FLAGS.SECP256K1_PUB,
+      })
+      const latticePub = test.helpers.compressPubKey(latticePubs[0]).toString('hex');
+      test.expect(latticePub).to.equal(jsPub, 'Pubkeys did not match');
+    }
+  })
+
   it('Should decode MsgSend', async () => {
     // Get signer account
     const signer = getTerraAccount(req.data.signerPath);
