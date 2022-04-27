@@ -1,3 +1,4 @@
+import { Capability } from '@ethereumjs/tx';
 import bip32 from 'bip32';
 import { wordlists } from 'bip39';
 import bitcoin from 'bitcoinjs-lib';
@@ -966,7 +967,7 @@ export const getV = function (tx, resp) {
   } else if (tx.chainId) {
     chainId = new BN(tx.chainId);
   }
-  if (!chainId || !tx.supports(EthTxCapability.EIP155ReplayProtection)) {
+  if (!chainId || !tx.supports(Capability.EIP155ReplayProtection)) {
     return new BN(recovery).addn(27);
   }
   // EIP155 replay protection is included in the `v` param

@@ -1,7 +1,6 @@
 import bitwise from 'bitwise';
 import { Byte, UInt4 } from 'bitwise/types';
 import { KeyPair } from 'elliptic';
-import { encode as rlpEncode } from 'rlp';
 import superagent from 'superagent';
 import bitcoin from './bitcoin';
 import { sha256 } from 'hash.js/lib/hash/sha';
@@ -538,6 +537,13 @@ export class Client {
    * data that can be used to decode some data in the future. The best example of this is the ABI
    * defintion of a contract function. This definition is used to deserialize EVM calldata for
    * future requests that call the specified function (as determined by the function selector).
+   * 
+   * NOTE: The CRUD API to manage calldata decoders is written, but is currently
+   * compiled out of firmware to free up code space. For now we will leave
+   * these functions commented out.
+   * NOTE: You will need to re-enable `import { encode as rlpEncode } from 'rlp';`
+   * 
+   * @deprecated
    * @category Lattice
    * @returns The decrypted response.
    */
@@ -547,6 +553,12 @@ export class Client {
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb);
+      // TODO: Update function comment if/when this is re-enabled.
+      return cb(
+        'Feature currently disabled in Lattice firmware. Please include ' +
+        'calldata decoder data in the signing request itself.'
+      );
+      /*
       const { decoders, decoderType } = opts;
       const fwConstants = getFwVersionConst(this.fwVersion);
       if (!fwConstants.maxDecoderBufSz) {
@@ -575,11 +587,18 @@ export class Client {
           return cb(null);
         },
       );
+      */
     });
   }
 
   /**
    * `getDecoders` fetches a set of decoders saved on the target Lattice.
+   *  
+   * NOTE: The CRUD API to manage calldata decoders is written, but is currently
+   * compiled out of firmware to free up code space. For now we will leave
+   * these functions commented out.
+   * 
+   * @deprecated
    * @category Lattice
    * @returns The decrypted response.
    */
@@ -594,6 +613,12 @@ export class Client {
   ): Promise<{ decoders: Buffer[], total: number }> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb);
+      // TODO: Update function comment if/when this is re-enabled.
+      return cb(
+        'Feature currently disabled in Lattice firmware. Please include ' +
+        'calldata decoder data in the signing request itself.'
+      );
+      /*
       const { n = 1, startIdx = 0, skipTotal = false, decoderType } = opts;
       const fwConstants = getFwVersionConst(this.fwVersion);
       if (!fwConstants.maxDecoderBufSz) {
@@ -633,11 +658,19 @@ export class Client {
         }
         return cb(null, { decoders, total });
       });
+      */
     });
   }
 
   /**
    * `removeDecoders` requests removal of a set of decoders on the target Lattice.
+   * 
+   * NOTE: The CRUD API to manage calldata decoders is written, but is currently
+   * compiled out of firmware to free up code space. For now we will leave
+   * these functions commented out.
+   * NOTE: You will need to re-enable `import { encode as rlpEncode } from 'rlp';`
+   * 
+   * @deprecated
    * @category Lattice
    * @returns The decrypted response.
    */
@@ -647,6 +680,12 @@ export class Client {
   ): Promise<number> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb);
+      // TODO: Update function comment if/when this is re-enabled.
+      return cb(
+        'Feature currently disabled in Lattice firmware. Please include ' +
+        'calldata decoder data in the signing request itself.'
+      );
+      /*
       const { decoders, decoderType, rmAll = false } = opts;
       const fwConstants = getFwVersionConst(this.fwVersion);
       if (!fwConstants.maxDecoderBufSz) {
@@ -690,12 +729,17 @@ export class Client {
           return cb(null, numRemoved);
         },
       );
+      */
     });
   }
 
   /**
    * `addPermissionV0` takes in a currency, time window, spending limit, and decimals, and builds a
    * payload to send to the Lattice.
+   * 
+   * NOTE: This feature has been deprecated, but may be replaced in the future.
+   * 
+   * @deprecated
    * @category Lattice
    */
   public addPermissionV0 (
@@ -710,6 +754,10 @@ export class Client {
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb);
+      return cb(
+        'This feature has been deprecated and may be replaced at a later time.'
+      );
+      /*
       const { currency, timeWindow, limit, decimals, asset } = opts;
       if (
         !currency ||
@@ -752,6 +800,7 @@ export class Client {
           return cb(null);
         }
       });
+      */
     });
   }
 

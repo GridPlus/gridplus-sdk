@@ -34,8 +34,6 @@ const TEST_MNEMONIC =
   'pyramid dash split announce trend grain';
 const TEST_SEED = mnemonicToSeedSync(TEST_MNEMONIC);
 let jobType, jobData, jobReq, txReq, msgReq;
-let skipSeedLoading = false,
-  skipSeedRestore = false;
 
 let numIter = 20;
 if (process.env.N) numIter = parseInt(process.env.N);
@@ -96,27 +94,9 @@ describe('[Determinism]', () => {
       test.continue = false;
     });
 
-    it('Should find out if we need to load the seed', async () => {
-      // Determine if we should skip the process of loading the test seed.
-      // This should only be selected if the user has previously chosen not
-      // to re-load the original seed at the end of this test script.
-      const result = question(
-        'Please insert and unlock a normal SafeCard (with an exportable seed).' +
-        '\nDo you have the test seed loaded on this card already? (Y/N) ',
-      );
-      if (result.toLowerCase() !== 'n') {
-        skipSeedLoading = true;
-      }
-      test.continue = true;
-    });
-
     it('Should remove the seed', async () => {
       // Make sure a seed was exported
       if (!test.seed) {
-        return;
-      }
-      if (skipSeedLoading) {
-        test.continue = true;
         return;
       }
       _setupJob(helpers.jobTypes.WALLET_JOB_DELETE_SEED);
@@ -125,20 +105,12 @@ describe('[Determinism]', () => {
     });
 
     it('Should load the known test seed', async () => {
-      if (skipSeedLoading) {
-        test.continue = true;
-        return;
-      }
       _setupJob(helpers.jobTypes.WALLET_JOB_LOAD_SEED, { seed: TEST_SEED });
       await runTestCase(helpers.gpErrors.GP_SUCCESS);
       test.continue = true;
     });
 
     it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
-      if (skipSeedLoading) {
-        test.continue = true;
-        return;
-      }
       question(
         '\nPlease remove, re-insert, and unlock your SafeCard.\n' +
         'Press enter to continue after addresses have fully synced.',
@@ -236,7 +208,7 @@ describe('[Determinism]', () => {
 
     it('Should test that wrongWallet retry works', async () => {
       question(
-        'Please switch to a different SafeCard. Press enter to continue.',
+        'Please switch to a SafeCard with a different seed. Press enter to continue.',
       );
       try {
         // Should get wrong wallet on the first attempt
@@ -252,7 +224,6 @@ describe('[Determinism]', () => {
         );
         test.client.skipRetryOnWrongWallet = false;
         await test.client.sign(txReq);
-        console.log('did not fail');
         test.continue = true;
       }
     });
@@ -795,30 +766,7 @@ describe('[Determinism]', () => {
       test.continue = false;
     });
 
-    it('Should find out if we should reload the seed', async () => {
-      if (skipSeedLoading) {
-        skipSeedRestore = true;
-        test.continue = true;
-        return;
-      }
-      // Determine if we should skip the process of restoring the original seed.
-      // A user might choose Y here if they want to debug the signing requests
-      // here more quickly, but please be aware that you will lose your original seed.
-      const result = question(
-        '\nWARNING: If you choose `N` you will no longer be able to restore your original seed from these tests.' +
-        '\nDo you want to reload your original seed? (Y/N) ',
-      );
-      if (result.toLowerCase() !== 'y') {
-        skipSeedRestore = true;
-      }
-      test.continue = true;
-    });
-
     it('Should remove the seed', async () => {
-      if (skipSeedRestore) {
-        test.continue = true;
-        return;
-      }
       jobType = helpers.jobTypes.WALLET_JOB_DELETE_SEED;
       jobData = {
         iface: 1,
@@ -837,32 +785,20 @@ describe('[Determinism]', () => {
     });
 
     it('Should load the seed', async () => {
-      if (skipSeedRestore) {
-        test.continue = true;
-        return;
-      }
       _setupJob(helpers.jobTypes.WALLET_JOB_LOAD_SEED, { seed: test.seed });
       await runTestCase(helpers.gpErrors.GP_SUCCESS);
       test.continue = true;
     });
 
     it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
-      if (skipSeedRestore) {
-        test.continue = true;
-        return;
-      }
       question(
         '\nPlease remove, re-insert, and unlock your SafeCard.\n' +
-        'Press enter to continue after addresses have fully synced.',
+        'Press enter to continue.',
       );
       test.continue = true;
     });
 
     it('Should re-connect to the Lattice and update the walletUID.', async () => {
-      if (skipSeedRestore) {
-        test.continue = true;
-        return;
-      }
       expect(process.env.DEVICE_ID).to.not.equal(null);
       await test.client.connect(process.env.DEVICE_ID);
       expect(test.client.isPaired).to.equal(true);
@@ -872,10 +808,6 @@ describe('[Determinism]', () => {
     });
 
     it('Should ensure export seed matches the seed we just loaded', async () => {
-      if (skipSeedRestore) {
-        test.continue = true;
-        return;
-      }
       // Export the seed and make sure it matches!
       _setupJob(helpers.jobTypes.WALLET_JOB_EXPORT_SEED);
       const _res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
