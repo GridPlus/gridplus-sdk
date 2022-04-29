@@ -41,6 +41,7 @@ import {
   toPaddedDER,
   randomBytes,
   isUInt4,
+  generatePrivateKey,
 } from './util';
 const EMPTY_WALLET_UID = Buffer.alloc(32);
 
@@ -269,13 +270,7 @@ export class Client {
         // (RESP_ERR_PAIR_FAIL)
         nameBuf.write(this.name);
       }
-      // Make sure we add a null termination byte to the pairing secret
-      const preImage = Buffer.concat([
-        pubKey,
-        nameBuf,
-        Buffer.from(pairingSecret),
-      ]);
-      const hash = Buffer.from(sha256().update(preImage).digest('hex'), 'hex');
+      const hash = generatePrivateKey(pubKey, nameBuf, Buffer.from(pairingSecret));
       const sig = this.key.sign(hash); // returns an array, not a buffer
       const derSig = toPaddedDER(sig);
       const payload = Buffer.concat([nameBuf, derSig]);
