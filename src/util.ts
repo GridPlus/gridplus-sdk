@@ -2,6 +2,7 @@
 import { Capability } from '@ethereumjs/tx';
 import aes from 'aes-js';
 import { BN } from 'bn.js';
+import BigNum from 'bignumber.js';
 import crc32 from 'crc-32';
 import elliptic from 'elliptic';
 import { sha256 } from 'hash.js/lib/hash/sha';
@@ -14,7 +15,6 @@ import {
   responseMsgs,
   VERSION_BYTE
 } from './constants';
-import { SignData } from './types/client';
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
 let ec;
@@ -142,7 +142,7 @@ export const splitFrames = function(data, frameSz) {
 }
 
 function isBase10NumStr(x) {
-  const bn = new BN(x).toString().split('.').join('');
+  const bn = new BigNum(x).toString().split('.').join('');
   const s = new String(x);
   // Note that the JS native `String()` loses precision for large numbers, but we only
   // want to validate the base of the number so we don't care about far out precision.
@@ -160,7 +160,7 @@ export const ensureHexBuffer = function(x, zeroIsNull = true) {
     // Otherwise try to get this converted to a hex string
     if (isNumber) {
       // If this is a number or a base-10 number string, convert it to hex
-      x = `${new BN(x).toString(16)}`;
+      x = `${new BigNum(x).toString(16)}`;
     } else if (typeof x === 'string' && x.slice(0, 2) === '0x') {
       x = x.slice(2);
     } else {
