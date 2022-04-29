@@ -40,6 +40,7 @@ import {
   promisifyCb,
   toPaddedDER,
   randomBytes,
+  isUInt4,
 } from './util';
 const EMPTY_WALLET_UID = Buffer.alloc(32);
 
@@ -55,7 +56,7 @@ export class Client {
   private baseUrl: string;
   private name: string;
   private key: KeyPair;
-  private privKey: Buffer;
+  private privKey: Buffer | string;
   private retryCount: number;
   private fwVersion: Buffer;
   private skipRetryOnWrongWallet: boolean;
@@ -105,7 +106,7 @@ export class Client {
     /** The name of the client. */
     name?: string;
     /** The private key of the client.*/
-    privKey?: Buffer;
+    privKey?: Buffer | string;
     /** Number of times to retry a request if it fails. */
     retryCount?: number;
     /** The time to wait for a response before cancelling. */
@@ -189,6 +190,13 @@ export class Client {
       };
     }
     return null;
+  }
+
+  /**
+   * `getAppName` returns the name of the application to which this device is currently paired.
+   */
+  public getAppName (): string {
+    return this.name;
   }
 
   //=======================================================================
@@ -320,9 +328,9 @@ export class Client {
    * @returns An array of addresses.
    */
   public getAddresses (
-    opts: { startPath: number[], n: UInt4, flag: UInt4 },
+    opts: { startPath: number[], n: number, flag: number },
     _cb?: (err?: string, data?: Buffer | string[]) => void,
-  ): Promise<Buffer | string[]> {
+  ): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb);
       const MAX_ADDR = 10;
@@ -331,6 +339,9 @@ export class Client {
         return cb('Please provide `startPath` and `n` options');
       if (startPath.length < 2 || startPath.length > 5)
         return cb('Path must include between 2 and 5 indices');
+      if (!isUInt4(n) || !isUInt4(flag)) {
+        return cb('Parameters `n` and `flag` must be integers between 0 and 15 inclusive');
+      }
       if (n > MAX_ADDR)
         return cb(`You may only request ${MAX_ADDR} addresses at once.`);
 
@@ -378,11 +389,11 @@ export class Client {
         // `n` as a 4 bit value
         flagVal =
           fwConstants.getAddressFlags &&
-            fwConstants.getAddressFlags.indexOf(flag) > -1
-            ? flag
+          fwConstants.getAddressFlags.indexOf(flag) > -1
+          ? (flag as UInt4)
             : 0;
         const flagBits = bitwise.nibble.read(flagVal);
-        const countBits = bitwise.nibble.read(n);
+        const countBits = bitwise.nibble.read(n as UInt4);
         val = bitwise.byte.write(flagBits.concat(countBits) as Byte);
       } else {
         // Very old firmware does not support this flag. We can deprecate this soon.

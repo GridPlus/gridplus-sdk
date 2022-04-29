@@ -13,7 +13,10 @@ import {
 } from './constants';
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
+import isInteger from 'lodash/isInteger'
+import inRange from 'lodash/inRange'
 let ec;
+
 //--------------------------------------------------
 // LATTICE UTILS
 //--------------------------------------------------
@@ -290,3 +293,8 @@ export const randomBytes = function(n) {
   }
   return buf;
 }
+
+/**
+ * `isUInt4` accepts a number and returns true if it is a UInt4
+*/
+export const isUInt4 = (n: number) => isInteger(n) && inRange(0, 16)
