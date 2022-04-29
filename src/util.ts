@@ -304,13 +304,13 @@ export const randomBytes = function(n) {
 export const isUInt4 = (n: number) => isInteger(n) && inRange(0, 16)
 
 /**
- * Generates a private key for use in maintaining connection to device.
+ * Generates an application secret for use in maintaining connection to device.
  * @param {Buffer} deviceId - The device ID of the device you want to generate a token for.
  * @param {Buffer} password - The password entered when connecting to the device.
  * @param {Buffer} appName - The name of the application.
- * @returns a private key as a Buffer
+ * @returns an application secret as a Buffer
  */
-export const generatePrivateKey = (
+export const generateAppSecret = (
   deviceId: Buffer,
   password: Buffer,
   appName: Buffer
@@ -378,5 +378,5 @@ export const getV = function (tx, resp) {
 
 export const EXTERNAL = {
   getV,
-  generatePrivateKey
+  generateAppSecret
 }
