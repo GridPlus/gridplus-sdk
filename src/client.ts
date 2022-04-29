@@ -40,7 +40,7 @@ import {
   promisifyCb,
   toPaddedDER,
   randomBytes,
-  generatePrivateKey,
+  generateAppSecret,
 } from './util';
 const EMPTY_WALLET_UID = Buffer.alloc(32);
 
@@ -262,7 +262,7 @@ export class Client {
         // (RESP_ERR_PAIR_FAIL)
         nameBuf.write(this.name);
       }
-      const hash = generatePrivateKey(pubKey, nameBuf, Buffer.from(pairingSecret));
+      const hash = generateAppSecret(pubKey, nameBuf, Buffer.from(pairingSecret));
       const sig = this.key.sign(hash); // returns an array, not a buffer
       const derSig = toPaddedDER(sig);
       const payload = Buffer.concat([nameBuf, derSig]);
