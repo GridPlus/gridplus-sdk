@@ -1,7 +1,6 @@
 import bitwise from 'bitwise';
 import { Byte, UInt4 } from 'bitwise/types';
 import { KeyPair } from 'elliptic';
-import { encode as rlpEncode } from 'rlp';
 import superagent from 'superagent';
 import bitcoin from './bitcoin';
 import { sha256 } from 'hash.js/lib/hash/sha';
@@ -41,6 +40,8 @@ import {
   promisifyCb,
   toPaddedDER,
   randomBytes,
+  isUInt4,
+  generateAppSecret,
 } from './util';
 const EMPTY_WALLET_UID = Buffer.alloc(32);
 
@@ -56,7 +57,7 @@ export class Client {
   private baseUrl: string;
   private name: string;
   private key: KeyPair;
-  private privKey: Buffer;
+  private privKey: Buffer | string;
   private retryCount: number;
   private fwVersion: Buffer;
   private skipRetryOnWrongWallet: boolean;
@@ -106,7 +107,7 @@ export class Client {
     /** The name of the client. */
     name?: string;
     /** The private key of the client.*/
-    privKey?: Buffer;
+    privKey?: Buffer | string;
     /** Number of times to retry a request if it fails. */
     retryCount?: number;
     /** The time to wait for a response before cancelling. */
@@ -192,6 +193,13 @@ export class Client {
     return null;
   }
 
+  /**
+   * `getAppName` returns the name of the application to which this device is currently paired.
+   */
+  public getAppName (): string {
+    return this.name;
+  }
+
   //=======================================================================
   // LATTICE FUNCTIONS
   //=======================================================================
@@ -262,13 +270,7 @@ export class Client {
         // (RESP_ERR_PAIR_FAIL)
         nameBuf.write(this.name);
       }
-      // Make sure we add a null termination byte to the pairing secret
-      const preImage = Buffer.concat([
-        pubKey,
-        nameBuf,
-        Buffer.from(pairingSecret),
-      ]);
-      const hash = Buffer.from(sha256().update(preImage).digest('hex'), 'hex');
+      const hash = generateAppSecret(pubKey, nameBuf, Buffer.from(pairingSecret));
       const sig = this.key.sign(hash); // returns an array, not a buffer
       const derSig = toPaddedDER(sig);
       const payload = Buffer.concat([nameBuf, derSig]);
@@ -321,9 +323,9 @@ export class Client {
    * @returns An array of addresses.
    */
   public getAddresses (
-    opts: { startPath: number[], n: UInt4, flag: UInt4 },
+    opts: { startPath: number[], n: number, flag: number },
     _cb?: (err?: string, data?: Buffer | string[]) => void,
-  ): Promise<Buffer | string[]> {
+  ): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb);
       const MAX_ADDR = 10;
@@ -332,6 +334,9 @@ export class Client {
         return cb('Please provide `startPath` and `n` options');
       if (startPath.length < 2 || startPath.length > 5)
         return cb('Path must include between 2 and 5 indices');
+      if (!isUInt4(n) || !isUInt4(flag)) {
+        return cb('Parameters `n` and `flag` must be integers between 0 and 15 inclusive');
+      }
       if (n > MAX_ADDR)
         return cb(`You may only request ${MAX_ADDR} addresses at once.`);
 
@@ -379,11 +384,11 @@ export class Client {
         // `n` as a 4 bit value
         flagVal =
           fwConstants.getAddressFlags &&
-            fwConstants.getAddressFlags.indexOf(flag) > -1
-            ? flag
+          fwConstants.getAddressFlags.indexOf(flag) > -1
+          ? (flag as UInt4)
             : 0;
         const flagBits = bitwise.nibble.read(flagVal);
-        const countBits = bitwise.nibble.read(n);
+        const countBits = bitwise.nibble.read(n as UInt4);
         val = bitwise.byte.write(flagBits.concat(countBits) as Byte);
       } else {
         // Very old firmware does not support this flag. We can deprecate this soon.
@@ -538,6 +543,13 @@ export class Client {
    * data that can be used to decode some data in the future. The best example of this is the ABI
    * defintion of a contract function. This definition is used to deserialize EVM calldata for
    * future requests that call the specified function (as determined by the function selector).
+   * 
+   * NOTE: The CRUD API to manage calldata decoders is written, but is currently
+   * compiled out of firmware to free up code space. For now we will leave
+   * these functions commented out.
+   * NOTE: You will need to re-enable `import { encode as rlpEncode } from 'rlp';`
+   * 
+   * @deprecated
    * @category Lattice
    * @returns The decrypted response.
    */
@@ -547,6 +559,12 @@ export class Client {
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb);
+      // TODO: Update function comment if/when this is re-enabled.
+      return cb(
+        'Feature currently disabled in Lattice firmware. Please include ' +
+        'calldata decoder data in the signing request itself.'
+      );
+      /*
       const { decoders, decoderType } = opts;
       const fwConstants = getFwVersionConst(this.fwVersion);
       if (!fwConstants.maxDecoderBufSz) {
@@ -575,11 +593,18 @@ export class Client {
           return cb(null);
         },
       );
+      */
     });
   }
 
   /**
    * `getDecoders` fetches a set of decoders saved on the target Lattice.
+   *  
+   * NOTE: The CRUD API to manage calldata decoders is written, but is currently
+   * compiled out of firmware to free up code space. For now we will leave
+   * these functions commented out.
+   * 
+   * @deprecated
    * @category Lattice
    * @returns The decrypted response.
    */
@@ -594,6 +619,12 @@ export class Client {
   ): Promise<{ decoders: Buffer[], total: number }> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb);
+      // TODO: Update function comment if/when this is re-enabled.
+      return cb(
+        'Feature currently disabled in Lattice firmware. Please include ' +
+        'calldata decoder data in the signing request itself.'
+      );
+      /*
       const { n = 1, startIdx = 0, skipTotal = false, decoderType } = opts;
       const fwConstants = getFwVersionConst(this.fwVersion);
       if (!fwConstants.maxDecoderBufSz) {
@@ -633,11 +664,19 @@ export class Client {
         }
         return cb(null, { decoders, total });
       });
+      */
     });
   }
 
   /**
    * `removeDecoders` requests removal of a set of decoders on the target Lattice.
+   * 
+   * NOTE: The CRUD API to manage calldata decoders is written, but is currently
+   * compiled out of firmware to free up code space. For now we will leave
+   * these functions commented out.
+   * NOTE: You will need to re-enable `import { encode as rlpEncode } from 'rlp';`
+   * 
+   * @deprecated
    * @category Lattice
    * @returns The decrypted response.
    */
@@ -647,6 +686,12 @@ export class Client {
   ): Promise<number> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb);
+      // TODO: Update function comment if/when this is re-enabled.
+      return cb(
+        'Feature currently disabled in Lattice firmware. Please include ' +
+        'calldata decoder data in the signing request itself.'
+      );
+      /*
       const { decoders, decoderType, rmAll = false } = opts;
       const fwConstants = getFwVersionConst(this.fwVersion);
       if (!fwConstants.maxDecoderBufSz) {
@@ -690,12 +735,17 @@ export class Client {
           return cb(null, numRemoved);
         },
       );
+      */
     });
   }
 
   /**
    * `addPermissionV0` takes in a currency, time window, spending limit, and decimals, and builds a
    * payload to send to the Lattice.
+   * 
+   * NOTE: This feature has been deprecated, but may be replaced in the future.
+   * 
+   * @deprecated
    * @category Lattice
    */
   public addPermissionV0 (
@@ -710,6 +760,10 @@ export class Client {
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const cb = promisifyCb(resolve, reject, _cb);
+      return cb(
+        'This feature has been deprecated and may be replaced at a later time.'
+      );
+      /*
       const { currency, timeWindow, limit, decimals, asset } = opts;
       if (
         !currency ||
@@ -752,6 +806,7 @@ export class Client {
           return cb(null);
         }
       });
+      */
     });
   }
 
