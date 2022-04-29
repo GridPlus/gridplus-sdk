@@ -2,6 +2,7 @@
 import { Capability } from '@ethereumjs/tx';
 import aes from 'aes-js';
 import { BN } from 'bn.js';
+import BigNum from 'bignumber.js';
 import crc32 from 'crc-32';
 import elliptic from 'elliptic';
 import { sha256 } from 'hash.js/lib/hash/sha';
@@ -14,7 +15,6 @@ import {
   responseMsgs,
   VERSION_BYTE
 } from './constants';
-import { SignData } from './types/client';
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
 import isInteger from 'lodash/isInteger'
@@ -145,7 +145,7 @@ export const splitFrames = function(data, frameSz) {
 }
 
 function isBase10NumStr(x) {
-  const bn = new BN(x).toString().split('.').join('');
+  const bn = new BigNum(x).toString().split('.').join('');
   const s = new String(x);
   // Note that the JS native `String()` loses precision for large numbers, but we only
   // want to validate the base of the number so we don't care about far out precision.
@@ -163,7 +163,7 @@ export const ensureHexBuffer = function(x, zeroIsNull = true) {
     // Otherwise try to get this converted to a hex string
     if (isNumber) {
       // If this is a number or a base-10 number string, convert it to hex
-      x = `${new BN(x).toString(16)}`;
+      x = `${new BigNum(x).toString(16)}`;
     } else if (typeof x === 'string' && x.slice(0, 2) === '0x') {
       x = x.slice(2);
     } else {
@@ -304,13 +304,13 @@ export const randomBytes = function(n) {
 export const isUInt4 = (n: number) => isInteger(n) && inRange(0, 16)
 
 /**
- * Generates a private key for use in maintaining connection to device.
+ * Generates an application secret for use in maintaining connection to device.
  * @param {Buffer} deviceId - The device ID of the device you want to generate a token for.
  * @param {Buffer} password - The password entered when connecting to the device.
  * @param {Buffer} appName - The name of the application.
- * @returns a private key as a Buffer
+ * @returns an application secret as a Buffer
  */
-export const generatePrivateKey = (
+export const generateAppSecret = (
   deviceId: Buffer,
   password: Buffer,
   appName: Buffer
@@ -378,5 +378,5 @@ export const getV = function (tx, resp) {
 
 export const EXTERNAL = {
   getV,
-  generatePrivateKey
+  generateAppSecret
 }
