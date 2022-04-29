@@ -13,7 +13,7 @@ import {
 } from './constants';
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
-const ec = new EC('p256');
+let ec;
 //--------------------------------------------------
 // LATTICE UTILS
 //--------------------------------------------------
@@ -216,10 +216,12 @@ export const parseDER = function(sigBuf) {
 }
 
 export const getP256KeyPair = function(priv) {
+  if (ec === undefined) ec = new EC('p256');
   return ec.keyFromPrivate(priv, 'hex');
 }
 
 export const getP256KeyPairFromPub = function(pub) {
+  if (ec === undefined) ec = new EC('p256');
   return ec.keyFromPublic(pub, 'hex');
 }
 
