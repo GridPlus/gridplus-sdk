@@ -993,6 +993,20 @@ export const getSigStr = function (resp, tx = null) {
   return `${resp.sig.r}${resp.sig.s}${v}`;
 };
 
+export const compressPubKey = function (pub) {
+  if (pub.length !== 65) {
+    return pub;
+  }
+  const compressed = Buffer.alloc(33);
+  pub.slice(1, 33).copy(compressed, 1);
+  if (pub[64] % 2) {
+    compressed[0] = 0x03;
+  } else {
+    compressed[0] = 0x02;
+  }
+  return compressed;
+}
+
 export default {
   BTC_PURPOSE_P2WPKH,
   BTC_PURPOSE_P2SH_P2WPKH,
@@ -1032,4 +1046,5 @@ export default {
   getPathStr,
   getV,
   getSigStr,
+  compressPubKey,
 };
