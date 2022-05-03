@@ -53,6 +53,8 @@ export const buildGenericSigningMsgRequest = function (req) {
   const { encoding } = encodedPayload;
   let { payloadBuf } = encodedPayload;
   const payloadDataSz = payloadBuf.length;
+  // Size of data payload that can be included in the first/base request
+  const maxExpandedSz = baseDataSz + extraDataMaxFrames * extraDataFrameSz;
   // Sanity checks
   if (!payloadDataSz) {
     throw new Error('Payload could not be handled.');
@@ -71,7 +73,12 @@ export const buildGenericSigningMsgRequest = function (req) {
 
   // If there is a decoder attached to our payload, add it to
   // the data field of the request.
-  if (decoder && calldataDecoding && decoder.length <= calldataDecoding.maxSz) {
+  const hasDecoder = (decoder && calldataDecoding && decoder.length <= calldataDecoding.maxSz);
+  // Make sure the payload AND decoder data fits in the firmware buffer.
+  // If it doesn't, we can't include the decoder because the payload will likely
+  // be pre-hashed and the decoder data isn't part of the message to sign.
+  const decoderFits = (hasDecoder && payloadBuf.length + decoder.length <= maxExpandedSz);
+  if (hasDecoder && decoderFits) {
     const decoderBuf = Buffer.alloc(8 + decoder.length);
     // First write th reserved word
     decoderBuf.writeUInt32LE(calldataDecoding.reserved, 0);
@@ -110,8 +117,6 @@ export const buildGenericSigningMsgRequest = function (req) {
   buf.writeUInt8(omitPubkey ? 1 : 0, off);
   off += 1;
 
-  // Size of data payload that can be included in the first/base request
-  const maxExpandedSz = baseDataSz + extraDataMaxFrames * extraDataFrameSz;
   // Flow data into extraData requests if applicable
   const extraDataPayloads = [];
   let prehash = null;
@@ -119,8 +124,7 @@ export const buildGenericSigningMsgRequest = function (req) {
   let didPrehash = false;
   if (payloadBuf.length > baseDataSz) {
     if (prehashAllowed && payloadBuf.length > maxExpandedSz) {
-      // If we prehash, we need to provide the full payload size, including
-      // any calldata decoder bytes.
+      // If we prehash, we need to provide the full payload size
       buf.writeUInt16LE(payloadBuf.length, off);
       off += 2;
       didPrehash = true;
