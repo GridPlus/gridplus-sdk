@@ -8,7 +8,6 @@ import cbor from 'borc';
 import { TypedDataUtils } from 'eth-eip712-util-browser';
 import { keccak256 } from 'js-sha3';
 import { encode as rlpEncode } from 'rlp';
-import rlp from 'rlp-browser'; // [TODO: Deprecate]
 import secp256k1 from 'secp256k1';
 import {
   ASCII_REGEX,
@@ -416,14 +415,14 @@ const buildEthRawTx = function (tx, sig, address) {
   // See: https://github.com/ethereumjs/ethereumjs-tx/blob/master/src/transaction.ts#L187
   newRawTx.push(stripZeros(newSig.r));
   newRawTx.push(stripZeros(newSig.s));
-  let rlpEncodedWithSig = rlp.encode(newRawTx);
+  let rlpEncodedWithSig = rlpEncode(newRawTx);
   if (tx.type) {
     rlpEncodedWithSig = Buffer.concat([
       Buffer.from([tx.type]),
       rlpEncodedWithSig,
     ]);
   }
-  return { rawTx: rlpEncodedWithSig.toString('hex'), sigWithV: newSig };
+  return { rawTx: Buffer.from(rlpEncodedWithSig).toString('hex'), sigWithV: newSig };
 };
 
 // Attach a recovery parameter to a signature by brute-forcing ECRecover
@@ -920,9 +919,9 @@ function get_personal_sign_prefix(L) {
 
 function get_rlp_encoded_preimage(rawTx, txType) {
   if (txType) {
-    return Buffer.concat([Buffer.from([txType]), rlp.encode(rawTx)]);
+    return Buffer.concat([Buffer.from([txType]), rlpEncode(rawTx)]);
   } else {
-    return rlp.encode(rawTx);
+    return rlpEncode(rawTx);
   }
 }
 
