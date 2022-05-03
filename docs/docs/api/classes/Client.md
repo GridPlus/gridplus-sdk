@@ -20,17 +20,16 @@ custom_edit_url: null
 | :------ | :------ | :------ |
 | `params` | `Object` | Parameters are passed as an object. |
 | `params.baseUrl?` | `string` | The base URL of the signing server. |
-| `params.crypto` | `string` | The crypto library to use. Currently only 'secp256k1' is supported. |
-| `params.key?` | `string` | The public key of the client. |
-| `params.name` | `string` | The name of the client. |
-| `params.pairingSalt?` | `string` | A random string used to salt the pairing code. |
-| `params.privKey?` | `string` | The private key of the client. |
+| `params.name?` | `string` | The name of the client. |
+| `params.privKey?` | `string` \| `Buffer` | The private key of the client. |
 | `params.retryCount?` | `number` | Number of times to retry a request if it fails. |
+| `params.skipRetryOnWrongWallet` | `boolean` | If true we will not retry if we get a wrong wallet error code |
+| `params.stateData?` | `string` | User can pass in previous state data to rehydrate connected session |
 | `params.timeout?` | `number` | The time to wait for a response before cancelling. |
 
 #### Defined in
 
-[client.ts:88](https://github.com/GridPlus/gridplus-sdk/blob/e88a4c7/src/client.ts#L88)
+[client.ts:96](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L96)
 
 ## Properties
 
@@ -42,7 +41,7 @@ Is the Lattice paired with this Client.
 
 #### Defined in
 
-[client.ts:42](https://github.com/GridPlus/gridplus-sdk/blob/e88a4c7/src/client.ts#L42)
+[client.ts:53](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L53)
 
 ___
 
@@ -54,39 +53,50 @@ The time to wait for a response before cancelling.
 
 #### Defined in
 
-[client.ts:44](https://github.com/GridPlus/gridplus-sdk/blob/e88a4c7/src/client.ts#L44)
+[client.ts:55](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L55)
 
 ## Lattice Methods
 
-### addAbiDefs
+### addDecoders
 
-▸ **addAbiDefs**(`defs`, `cb`, `nextCode?`): `any`
+▸ **addDecoders**(`opts`, `_cb?`): `Promise`<`void`\>
 
-`addAbiDefs` sends a list of ABI definitions to the device in chunks of up to `MAX_ABI_DEFS`.
+`addDecoders` sends an RLP-encoded list of decoders to the Lattice. A "decoder" is a piece of
+data that can be used to decode some data in the future. The best example of this is the ABI
+defintion of a contract function. This definition is used to deserialize EVM calldata for
+future requests that call the specified function (as determined by the function selector).
+
+NOTE: The CRUD API to manage calldata decoders is written, but is currently
+compiled out of firmware to free up code space. For now we will leave
+these functions commented out.
+NOTE: You will need to re-enable `import { encode as rlpEncode } from 'rlp';`
+
+**`deprecated`**
 
 #### Parameters
 
-| Name | Type | Default value |
-| :------ | :------ | :------ |
-| `defs` | `any` | `undefined` |
-| `cb` | `any` | `undefined` |
-| `nextCode` | `any` | `null` |
+| Name | Type |
+| :------ | :------ |
+| `opts` | `Object` |
+| `opts.decoderType` | `number` |
+| `opts.decoders` | `Buffer`[] |
+| `_cb?` | (`err?`: `string`) => `void` |
 
 #### Returns
 
-`any`
+`Promise`<`void`\>
 
 The decrypted response.
 
 #### Defined in
 
-[client.ts:402](https://github.com/GridPlus/gridplus-sdk/blob/e88a4c7/src/client.ts#L402)
+[client.ts:556](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L556)
 
 ___
 
 ### addKvRecords
 
-▸ **addKvRecords**(`opts`, `cb`): `any`
+▸ **addKvRecords**(`opts`, `_cb?`): `Promise`<`void`\>
 
 `addKvRecords` takes in a set of key-value records and sends a request to add them to the
 Lattice.
@@ -95,48 +105,60 @@ Lattice.
 
 | Name | Type |
 | :------ | :------ |
-| `opts` | `any` |
-| `cb` | `any` |
+| `opts` | `Object` |
+| `opts.caseSensitive` | `boolean` |
+| `opts.records` | `KVRecord`[] |
+| `opts.type?` | `number` |
+| `_cb?` | (`err?`: `string`) => `void` |
 
 #### Returns
 
-`any`
+`Promise`<`void`\>
 
 A callback with an error or null.
 
 #### Defined in
 
-[client.ts:562](https://github.com/GridPlus/gridplus-sdk/blob/e88a4c7/src/client.ts#L562)
+[client.ts:905](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L905)
 
 ___
 
 ### addPermissionV0
 
-▸ **addPermissionV0**(`opts`, `cb`): `any`
+▸ **addPermissionV0**(`opts`, `_cb?`): `Promise`<`void`\>
 
 `addPermissionV0` takes in a currency, time window, spending limit, and decimals, and builds a
 payload to send to the Lattice.
+
+NOTE: This feature has been deprecated, but may be replaced in the future.
+
+**`deprecated`**
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
-| `opts` | `any` |
-| `cb` | `any` |
+| `opts` | `Object` |
+| `opts.asset` | `string` |
+| `opts.currency` | `string` |
+| `opts.decimals` | `number` |
+| `opts.limit` | `number` |
+| `opts.timeWindow` | `number` |
+| `_cb?` | (`err?`: `string`) => `void` |
 
 #### Returns
 
-`any`
+`Promise`<`void`\>
 
 #### Defined in
 
-[client.ts:439](https://github.com/GridPlus/gridplus-sdk/blob/e88a4c7/src/client.ts#L439)
+[client.ts:751](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L751)
 
 ___
 
 ### connect
 
-▸ **connect**(`deviceId`, `cb`): `any`
+▸ **connect**(`deviceId`, `_cb?`): `Promise`<`boolean`\>
 
 `connect` will attempt to contact a device based on its deviceId. The response should include
 an ephemeral public key, which is used to pair with the device in a later request.
@@ -145,22 +167,22 @@ an ephemeral public key, which is used to pair with the device in a later reques
 
 | Name | Type |
 | :------ | :------ |
-| `deviceId` | `any` |
-| `cb` | `any` |
+| `deviceId` | `string` |
+| `_cb?` | (`err?`: `string`, `isPaired?`: `boolean`) => `void` |
 
 #### Returns
 
-`any`
+`Promise`<`boolean`\>
 
 #### Defined in
 
-[client.ts:157](https://github.com/GridPlus/gridplus-sdk/blob/e88a4c7/src/client.ts#L157)
+[client.ts:212](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L212)
 
 ___
 
 ### getAddresses
 
-▸ **getAddresses**(`opts`, `cb`): `any`
+▸ **getAddresses**(`opts`, `_cb?`): `Promise`<`Buffer`\>
 
 `getAddresses` takes a starting path and a number to get the addresses associated with the
 active wallet.
@@ -170,25 +192,61 @@ active wallet.
 | Name | Type |
 | :------ | :------ |
 | `opts` | `Object` |
-| `opts.n` | `UInt4` |
+| `opts.flag` | `number` |
+| `opts.n` | `number` |
 | `opts.startPath` | `number`[] |
-| `cb` | `any` |
+| `_cb?` | (`err?`: `string`, `data?`: `Buffer` \| `string`[]) => `void` |
 
 #### Returns
 
-`any`
+`Promise`<`Buffer`\>
 
 An array of addresses.
 
 #### Defined in
 
-[client.ts:257](https://github.com/GridPlus/gridplus-sdk/blob/e88a4c7/src/client.ts#L257)
+[client.ts:325](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L325)
+
+___
+
+### getDecoders
+
+▸ **getDecoders**(`opts`, `_cb?`): `Promise`<{ `decoders`: `Buffer`[] ; `total`: `number`  }\>
+
+`getDecoders` fetches a set of decoders saved on the target Lattice.
+
+NOTE: The CRUD API to manage calldata decoders is written, but is currently
+compiled out of firmware to free up code space. For now we will leave
+these functions commented out.
+
+**`deprecated`**
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `opts` | `Object` |
+| `opts.decoderType` | `number` |
+| `opts.n?` | `number` |
+| `opts.skipTotal?` | `boolean` |
+| `opts.startIdx?` | `number` |
+| `_cb?` | (`err?`: `string`, `data?`: { `decoders`: `Buffer`[] ; `total`: `number`  }) => `void` |
+
+#### Returns
+
+`Promise`<{ `decoders`: `Buffer`[] ; `total`: `number`  }\>
+
+The decrypted response.
+
+#### Defined in
+
+[client.ts:611](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L611)
 
 ___
 
 ### getKvRecords
 
-▸ **getKvRecords**(`opts`, `cb`): `Buffer`
+▸ **getKvRecords**(`opts`, `_cb?`): `Promise`<`GetKvRecordsData`\>
 
 `getKvRecords` fetches a list of key-value records from the Lattice.
 
@@ -196,22 +254,25 @@ ___
 
 | Name | Type |
 | :------ | :------ |
-| `opts` | `any` |
-| `cb` | `any` |
+| `opts` | `Object` |
+| `opts.n?` | `number` |
+| `opts.start?` | `number` |
+| `opts.type?` | `number` |
+| `_cb?` | (`err?`: `string`, `data?`: `GetKvRecordsData`) => `void` |
 
 #### Returns
 
-`Buffer`
+`Promise`<`GetKvRecordsData`\>
 
 #### Defined in
 
-[client.ts:488](https://github.com/GridPlus/gridplus-sdk/blob/e88a4c7/src/client.ts#L488)
+[client.ts:817](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L817)
 
 ___
 
 ### pair
 
-▸ **pair**(`pairingSecret`, `cb`): `any`
+▸ **pair**(`pairingSecret`, `_cb?`): `Promise`<`boolean`\>
 
 If a pairing secret is provided, `pair` uses it to sign a hash of the public key, name, and
 pairing secret. It then sends the name and signature to the device. If no pairing secret is
@@ -221,24 +282,59 @@ provided, `pair` sends a zero-length name buffer to the device.
 
 | Name | Type |
 | :------ | :------ |
-| `pairingSecret` | `any` |
-| `cb` | `any` |
+| `pairingSecret` | `string` |
+| `_cb?` | (`err?`: `string`, `hasActiveWallet?`: `boolean`) => `void` |
 
 #### Returns
 
-`any`
+`Promise`<`boolean`\>
 
 The active wallet object.
 
 #### Defined in
 
-[client.ts:192](https://github.com/GridPlus/gridplus-sdk/blob/e88a4c7/src/client.ts#L192)
+[client.ts:254](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L254)
+
+___
+
+### removeDecoders
+
+▸ **removeDecoders**(`opts`, `_cb?`): `Promise`<`number`\>
+
+`removeDecoders` requests removal of a set of decoders on the target Lattice.
+
+NOTE: The CRUD API to manage calldata decoders is written, but is currently
+compiled out of firmware to free up code space. For now we will leave
+these functions commented out.
+NOTE: You will need to re-enable `import { encode as rlpEncode } from 'rlp';`
+
+**`deprecated`**
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `opts` | `Object` |
+| `opts.decoderType` | `number` |
+| `opts.decoders?` | `Buffer`[] |
+| `opts.rmAll?` | `boolean` |
+| `_cb?` | (`err?`: `string`, `data?`: `number`) => `void` |
+
+#### Returns
+
+`Promise`<`number`\>
+
+The decrypted response.
+
+#### Defined in
+
+[client.ts:683](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L683)
 
 ___
 
 ### removeKvRecords
 
-▸ **removeKvRecords**(`opts`, `cb`): `any`
+▸ **removeKvRecords**(`opts`, `_cb?`): `Promise`<`void`\>
 
 `removeKvRecords` takes in an array of ids and sends a request to remove them from the Lattice.
 
@@ -246,24 +342,26 @@ ___
 
 | Name | Type |
 | :------ | :------ |
-| `opts` | `any` |
-| `cb` | `any` |
+| `opts` | `Object` |
+| `opts.ids` | `number`[] |
+| `opts.type` | `number` |
+| `_cb?` | (`err?`: `string`) => `void` |
 
 #### Returns
 
-`any`
+`Promise`<`void`\>
 
 A callback with an error or null.
 
 #### Defined in
 
-[client.ts:646](https://github.com/GridPlus/gridplus-sdk/blob/e88a4c7/src/client.ts#L646)
+[client.ts:998](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L998)
 
 ___
 
 ### sign
 
-▸ **sign**(`opts`, `cb`, `cachedData?`, `nextCode?`): `any`
+▸ **sign**(`opts`, `_cb?`, `cachedData?`, `nextCode?`): `Promise`<`SignData`\>
 
 `sign` builds and sends a request for signing to the device.
 
@@ -271,24 +369,50 @@ ___
 
 | Name | Type | Default value |
 | :------ | :------ | :------ |
-| `opts` | `any` | `undefined` |
-| `cb` | `any` | `undefined` |
+| `opts` | `Object` | `undefined` |
+| `opts.currency` | `string` | `undefined` |
+| `opts.data` | `any` | `undefined` |
+| `_cb?` | (`err?`: `string`, `data?`: `SignData`) => `void` | `undefined` |
 | `cachedData` | `any` | `null` |
 | `nextCode` | `any` | `null` |
 
 #### Returns
 
-`any`
+`Promise`<`SignData`\>
 
 The response from the device.
 
 #### Defined in
 
-[client.ts:325](https://github.com/GridPlus/gridplus-sdk/blob/e88a4c7/src/client.ts#L325)
+[client.ts:413](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L413)
 
 ___
 
 ## Other Methods
+
+### fetchActiveWallet
+
+▸ **fetchActiveWallet**(`_cb?`): `Promise`<`unknown`\>
+
+Fetch the active wallet in the device.
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `_cb?` | (`err?`: `string`, `wallet?`: `Buffer`) => `void` |
+
+#### Returns
+
+`Promise`<`unknown`\>
+
+callback with an error or null
+
+#### Defined in
+
+[client.ts:1040](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L1040)
+
+___
 
 ### getActiveWallet
 
@@ -311,31 +435,61 @@ The active wallet.
 
 #### Defined in
 
-[client.ts:1217](https://github.com/GridPlus/gridplus-sdk/blob/e88a4c7/src/client.ts#L1217)
+[client.ts:1724](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L1724)
 
 ___
 
-### parseAbi
+### getAppName
 
-▸ **parseAbi**(`source`, `data`, `skipErrors?`): `any`
+▸ **getAppName**(): `string`
 
-TODO: Find a better way to export this.
-`parseAbi` takes a source and data as arguments, and returns the parsed ABI.
-
-#### Parameters
-
-| Name | Type | Default value | Description |
-| :------ | :------ | :------ | :------ |
-| `source` | `any` | `undefined` | The name of the source of the ABI data. |
-| `data` | `any` | `undefined` | The data to parse. |
-| `skipErrors` | `boolean` | `false` | If true, errors will be skipped and the function will return an object with an error property. |
+`getAppName` returns the name of the application to which this device is currently paired.
 
 #### Returns
 
-`any`
-
-The parsed ABI.
+`string`
 
 #### Defined in
 
-[client.ts:1265](https://github.com/GridPlus/gridplus-sdk/blob/e88a4c7/src/client.ts#L1265)
+[client.ts:199](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L199)
+
+___
+
+### getFwVersion
+
+▸ **getFwVersion**(): `Object`
+
+`getFwVersion` gets the firmware version of the paired device.
+
+#### Returns
+
+`Object`
+
+Either an object with semver properties (fix, minor, and major) or `null`.
+
+| Name | Type |
+| :------ | :------ |
+| `fix` | `number` |
+| `major` | `number` |
+| `minor` | `number` |
+
+#### Defined in
+
+[client.ts:181](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L181)
+
+___
+
+### getStateData
+
+▸ **getStateData**(): `string`
+
+Get a JSON string containing state data that can be used to rehydrate a session. Pass the
+contents of this to the constructor as `stateData` to rehydrate.
+
+#### Returns
+
+`string`
+
+#### Defined in
+
+[client.ts:173](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L173)
