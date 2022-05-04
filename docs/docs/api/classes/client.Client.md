@@ -1,10 +1,11 @@
 ---
-id: "Client"
+id: "client.Client"
 title: "Class: Client"
 sidebar_label: "Client"
-sidebar_position: 0
 custom_edit_url: null
 ---
+
+[client](../modules/client).Client
 
 `Client` is a class-based interface for managing a Lattice device.
 
@@ -29,7 +30,7 @@ custom_edit_url: null
 
 #### Defined in
 
-[client.ts:96](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L96)
+[client.ts:96](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L96)
 
 ## Properties
 
@@ -41,7 +42,7 @@ Is the Lattice paired with this Client.
 
 #### Defined in
 
-[client.ts:53](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L53)
+[client.ts:53](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L53)
 
 ___
 
@@ -53,7 +54,7 @@ The time to wait for a response before cancelling.
 
 #### Defined in
 
-[client.ts:55](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L55)
+[client.ts:55](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L55)
 
 ## Lattice Methods
 
@@ -90,7 +91,7 @@ The decrypted response.
 
 #### Defined in
 
-[client.ts:556](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L556)
+[client.ts:556](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L556)
 
 ___
 
@@ -119,7 +120,7 @@ A callback with an error or null.
 
 #### Defined in
 
-[client.ts:905](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L905)
+[client.ts:905](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L905)
 
 ___
 
@@ -152,7 +153,7 @@ NOTE: This feature has been deprecated, but may be replaced in the future.
 
 #### Defined in
 
-[client.ts:751](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L751)
+[client.ts:751](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L751)
 
 ___
 
@@ -176,7 +177,7 @@ an ephemeral public key, which is used to pair with the device in a later reques
 
 #### Defined in
 
-[client.ts:212](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L212)
+[client.ts:212](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L212)
 
 ___
 
@@ -205,7 +206,7 @@ An array of addresses.
 
 #### Defined in
 
-[client.ts:325](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L325)
+[client.ts:325](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L325)
 
 ___
 
@@ -240,7 +241,7 @@ The decrypted response.
 
 #### Defined in
 
-[client.ts:611](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L611)
+[client.ts:611](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L611)
 
 ___
 
@@ -266,7 +267,7 @@ ___
 
 #### Defined in
 
-[client.ts:817](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L817)
+[client.ts:817](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L817)
 
 ___
 
@@ -293,7 +294,7 @@ The active wallet object.
 
 #### Defined in
 
-[client.ts:254](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L254)
+[client.ts:254](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L254)
 
 ___
 
@@ -328,7 +329,7 @@ The decrypted response.
 
 #### Defined in
 
-[client.ts:683](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L683)
+[client.ts:683](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L683)
 
 ___
 
@@ -355,7 +356,7 @@ A callback with an error or null.
 
 #### Defined in
 
-[client.ts:998](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L998)
+[client.ts:998](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L998)
 
 ___
 
@@ -384,7 +385,7 @@ The response from the device.
 
 #### Defined in
 
-[client.ts:413](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L413)
+[client.ts:413](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L413)
 
 ___
 
@@ -410,7 +411,7 @@ callback with an error or null
 
 #### Defined in
 
-[client.ts:1040](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L1040)
+[client.ts:1040](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L1040)
 
 ___
 
@@ -435,7 +436,7 @@ The active wallet.
 
 #### Defined in
 
-[client.ts:1724](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L1724)
+[client.ts:1724](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L1724)
 
 ___
 
@@ -451,7 +452,7 @@ ___
 
 #### Defined in
 
-[client.ts:199](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L199)
+[client.ts:199](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L199)
 
 ___
 
@@ -475,7 +476,7 @@ Either an object with semver properties (fix, minor, and major) or `null`.
 
 #### Defined in
 
-[client.ts:181](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L181)
+[client.ts:181](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L181)
 
 ___
 
@@ -492,4 +493,4 @@ contents of this to the constructor as `stateData` to rehydrate.
 
 #### Defined in
 
-[client.ts:173](https://github.com/GridPlus/gridplus-sdk/blob/f0e0175/src/client.ts#L173)
+[client.ts:173](https://github.com/GridPlus/gridplus-sdk/blob/4ac365f/src/client.ts#L173)

@@ -4,6 +4,14 @@
 const lightCodeTheme = require('prism-react-renderer/themes/github');
 const darkCodeTheme = require('prism-react-renderer/themes/palenight');
 
+const excludedFiles = [
+  'bitcoin',
+  'ethereum',
+  'genericSigning',
+  'index',
+  'calldata/index',
+].map((s) => `../src/${s}.ts`);
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'GridPlus SDK',
@@ -22,12 +30,14 @@ const config = {
       // Plugin / TypeDoc options
       {
         entryPoints: ['../src'],
-        // entryPointStrategy: "expand",
+        entryPointStrategy: 'expand',
+        exclude: [...excludedFiles, '../src/types/**'],
         tsconfig: '../tsconfig.json',
         watch: process.env.TYPEDOC_WATCH,
         excludeInternal: true,
         excludePrivate: true,
         readme: 'none',
+        mode: 'modules',
       },
     ],
   ],

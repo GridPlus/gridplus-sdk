@@ -4,9 +4,9 @@ import { encode } from 'rlp';
 /**
  * Look through an ABI definition to see if there is a function that matches the signature provided.
  * @param sig    a 0x-prefixed hex string containing 4 bytes of info
- * @param abi    a Solidity JSON ABI structure
- *               (https://docs.ethers.io/v5/api/utils/abi/formats/#abi-formats--solidity)
+ * @param abi    a Solidity JSON ABI structure ([external link](https://docs.ethers.io/v5/api/utils/abi/formats/#abi-formats--solidity))
  * @returns      Buffer containing RLP-serialized array of calldata info to pass to signing request
+ * @public
  */
 export const parseSolidityJSONABI = function (sig: string, abi: any[]): Buffer {
   sig = coerceSig(sig);
@@ -34,6 +34,7 @@ export const parseSolidityJSONABI = function (sig: string, abi: any[]): Buffer {
  * @param sig    a 0x-prefixed hex string containing 4 bytes of info
  * @param name   canonical name of the function
  * @returns      Buffer containing RLP-serialized array of calldata info to pass to signing request
+ * @public
  */
 export const parseCanonicalName = function (sig: string, name: string): Buffer {
   sig = coerceSig(sig);
@@ -61,15 +62,16 @@ export const parseCanonicalName = function (sig: string, name: string): Buffer {
 
 /**
  * Convert a canonical name to a function selector (a.k.a. "sig")
+ * @internal
  */
-function getFuncSig(canonicalName: string): string {
+function getFuncSig (canonicalName: string): string {
   return `0x${keccak256(canonicalName).slice(0, 8)}`;
 }
 
 /**
  * Ensure the sig is properly formatted
  */
-function coerceSig(sig: string): string {
+function coerceSig (sig: string): string {
   if (typeof sig !== 'string' || (sig.length !== 10 && sig.length !== 8)) {
     throw new Error('`sig` must be a hex string with 4 bytes of data.');
   }
@@ -82,8 +84,9 @@ function coerceSig(sig: string): string {
 /**
  * Take the next type from a canonical definition string. Note that the string can be that of a
  * tuple. NOTE: The string should start at the index after the leading '('
+ * @internal
  */
-function popTypeStrFromCanonical(subName: string): string {
+function popTypeStrFromCanonical (subName: string): string {
   if (isTuple(subName)) {
     return getTupleName(subName);
   } else if (subName.indexOf(',') > -1) {
@@ -99,8 +102,9 @@ function popTypeStrFromCanonical(subName: string): string {
 /**
  * Parse a type string, e.g. 'uint256'. Converts the string to an array of EVMParamInfo, which may
  * have nested structure if there are tuples.
+ * @internal
  */
-function parseTypeStr(typeStr: string): any[] {
+function parseTypeStr (typeStr: string): any[] {
   // Non-tuples can be decoded without worrying about recursion
   if (!isTuple(typeStr)) {
     return [parseBasicTypeStr(typeStr)];
@@ -133,8 +137,9 @@ function parseTypeStr(typeStr: string): any[] {
 
 /**
  * Convert a basic type (e.g. 'uint256') from a string to EVMParamInfo type.
+ * @internal
  */
-function parseBasicTypeStr(typeStr: string): EVMParamInfo {
+function parseBasicTypeStr (typeStr: string): EVMParamInfo {
   const param: EVMParamInfo = {
     szBytes: 0,
     typeIdx: 0,
@@ -166,6 +171,7 @@ function parseBasicTypeStr(typeStr: string): EVMParamInfo {
 /**
  * Parse an Etherscan definition into a calldata structure that the Lattice EVM decoder can handle
  * (EVMDef). This function may recurse if there are tuple types.
+ * @internal
  */
 function parseDef (
   item,
@@ -218,8 +224,9 @@ function parseDef (
  * Convert a set of EVMParamInfo objects into an array that can be serialized into decoder info that
  * can be passed with the signing request. NOTE: We do not know parameter names, so we just number
  * them
+ * @internal
  */
-function parseParamDef(def: any[], prefix = ''): any[] {
+function parseParamDef (def: any[], prefix = ''): any[] {
   const parsedDef = [];
   let numTuples = 0;
   def.forEach((param, i) => {
@@ -246,8 +253,9 @@ function parseParamDef(def: any[], prefix = ''): any[] {
 
 /**
  * Convert a param into an EVMParamInfo object before flattening its data into an array.
+ * @internal
  */
-function getFlatParam(input): any[] {
+function getFlatParam (input): any[] {
   if (!input.type) {
     throw new Error('No type in input');
   }
@@ -268,8 +276,9 @@ function getFlatParam(input): any[] {
  *                    value for this. For example, a `uint` with a 4 in this slot would be uint32
  *                    (8*4 = 32). Maximum number of bytes is always 32 because these types can only
  *                    be used in single 32 byte words.
+ * @internal
  */
-function getParamTypeInfo(type: string): EVMParamInfo {
+function getParamTypeInfo (type: string): EVMParamInfo {
   const param: EVMParamInfo = {
     szBytes: 0,
     typeIdx: 0,
@@ -303,8 +312,9 @@ function getParamTypeInfo(type: string): EVMParamInfo {
 /**
  * Determine the dimensions of an array type. These dimensions can be either fixed or variable size.
  * Returns an array of sizes. Ex: uint256[][] -> [0, 0], uint256[1][3] -> [1, 3], uint256 -> []
+ * @internal
  */
-function getArraySzs(type: string): number[] {
+function getArraySzs (type: string): number[] {
   if (typeof type !== 'string') {
     throw new Error('Invalid type');
   }
@@ -333,6 +343,7 @@ function getArraySzs(type: string): number[] {
   return szs;
 }
 
+/** @internal */
 function getTupleName (name, withArr = true) {
   let brackets = 0,
     addedFirstBracket = false;
@@ -355,7 +366,8 @@ function getTupleName (name, withArr = true) {
   throw new Error(BAD_CANONICAL_ERR);
 }
 
-function isTuple(type: string): boolean {
+/** @internal */
+function isTuple (type: string): boolean {
   return type[0] === '(';
 }
 
