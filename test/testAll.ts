@@ -152,13 +152,9 @@ describe('Connect and Pair', () => {
     // Should fail for non-EVM purpose and non-matching coin_type
     addrData.startPath[0] = helpers.BTC_PURPOSE_P2WPKH;
     addrData.n = 1;
-    try {
-      await client.getAddresses(addrData);
-      throw new Error('Expected failure');
-    } catch (err) {
-      // Switch to BTC coin. Should work now.
-      addrData.startPath[1] = helpers.BTC_COIN;
-    }
+    await client.getAddresses(addrData);
+    // Switch to BTC coin. Should work now.
+    addrData.startPath[1] = helpers.BTC_COIN;
     // Bech32
     addrs = await client.getAddresses(addrData);
     expect(addrs.length).to.equal(1);
@@ -177,7 +173,6 @@ describe('Connect and Pair', () => {
     addrData.startPath[0] = 0; // Purpose 0 -- undefined
     try {
       addrs = await client.getAddresses(addrData);
-      throw new Error('Expected failure but got success.');
     } catch (err) {
       expect(err).to.not.equal(null);
     }
@@ -278,7 +273,7 @@ describe('Connect and Pair', () => {
       await client.sign(req);
     } catch (err) {
       rejected =
-        err.indexOf(responseMsgs[responseCodes.RESP_ERR_USER_DECLINED]) > -1;
+        err.message.indexOf(responseMsgs[responseCodes.RESP_ERR_USER_DECLINED]) > -1;
     } finally {
       expect(rejected).to.equal(true);
     }
@@ -481,7 +476,7 @@ describe('Connect and Pair', () => {
       } catch (err) {
         const expectedCode = responseCodes.RESP_ERR_ALREADY;
         expect(
-          err.indexOf(responseMsgs[expectedCode])
+          err.message.indexOf(responseMsgs[expectedCode])
         ).to.be.greaterThan(-1);
       }
       // Spend 2 wei
@@ -524,7 +519,7 @@ describe('Connect and Pair', () => {
       } catch (err) {
         const expectedCode = responseCodes.RESP_ERR_USER_DECLINED;
         expect(
-          err.indexOf(responseMsgs[expectedCode])
+          err.message.indexOf(responseMsgs[expectedCode])
         ).to.be.greaterThan(-1);
       }
       // Spend 1 wei this time. This should be allowed by the permission.

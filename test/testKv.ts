@@ -113,7 +113,7 @@ describe('Test key-value files API', () => {
       await client.sign(ETH_REQ);
     } catch (err) {
       expect(
-        err.indexOf(responseMsgs[responseCodes.RESP_ERR_USER_DECLINED])
+        err.message.indexOf(responseMsgs[responseCodes.RESP_ERR_USER_DECLINED])
       ).to.not.equal(
         -1,
         `Expected rejection but got: ${err}`
@@ -294,7 +294,7 @@ describe('Test key-value files API', () => {
       await client.sign(ETH_REQ);
     } catch (err) {
       expect(
-        err.indexOf(responseMsgs[responseCodes.RESP_ERR_USER_DECLINED])
+        err.message.indexOf(responseMsgs[responseCodes.RESP_ERR_USER_DECLINED])
       ).to.not.equal(
         -1,
         `Expected rejection but got: ${err}`
