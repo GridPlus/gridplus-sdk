@@ -36,6 +36,13 @@ The following options can be used after `env` with any test.
 | `name` | Any 5-25 character string (default="SDK Test") | The name of the pairing you will create |
 | `baseUrl` | Any URL (default="https://signing.gridplus.io") | URL describing where to send HTTP requests. Should be changed if your Lattice is on non-default message routing infrastructure. |
 
+## Setting up the `.env` file
+
+Alternatively, you may input `env` options into a `.env` file to make it easier to run scripts. To create your `.env` file, follow these steps:
+1. Copy the `.env.template` file.
+2. Rename the `.env.template` file to `.env`.
+3. Update the desired params in that file, probably your `DEVICE_ID`.
+
 ## Firmware Test Runner
 
 Several tests require dev Lattice firmware with the following flag in the root `CMakeLists.txt`:
