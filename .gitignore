@@ -3,3 +3,4 @@ docs/_build
 dist
 node_modules
 coverage
+.env

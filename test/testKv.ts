@@ -17,8 +17,8 @@ const UNISWAP_TAG = 'Uniswap V2 Router';
 const RANDOM_ADDR = '0x30da3d7A865C934b389c919c737510054111AB3A';
 const RANDOM_TAG = 'Test Address Name';
 const REJECT_PROMPT_TEXT = 'Please reject if you do NOT see an address tag.'
-const _numStartingRecords = 0;
-const _fetchedRecords = [];
+let _numStartingRecords = 0;
+let _fetchedRecords = [];
 const ETH_REQ = {
   currency: 'ETH',
   data: {
@@ -70,7 +70,7 @@ describe('Test key-value files API', () => {
   it('Should attempt to pair with pairing secret', async () => {
     if (!process.env.DEVICE_ID) {
       const secret = question('Please enter the pairing secret: ');
-       await client.pair(secret);
+      await client.pair(secret);
       expect(client.hasActiveWallet()).to.equal(true);
     }
     continueTests = true;
@@ -100,7 +100,7 @@ describe('Test key-value files API', () => {
           for (let i = 0; i < Math.min(100, data.records.length); i++) {
             ids.push(data.records[i].id);
           }
-          await client.removeKvRecords({ ids})
+          await client.removeKvRecords({ ids })
         }
       }
     }
