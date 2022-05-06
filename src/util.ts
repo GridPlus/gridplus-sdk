@@ -25,8 +25,8 @@ let ec;
 // LATTICE UTILS
 //--------------------------------------------------
 
-// Parse a response from the Lattice1
-export const parseLattice1Response = function(r) {
+/** @internal Parse a response from the Lattice1 */
+export const parseLattice1Response = function (r) {
   const parsed: any = {
     err: null,
     data: null,
@@ -62,9 +62,8 @@ export const parseLattice1Response = function(r) {
   // Get response code
   const responseCode = payload.readUInt8(0);
   if (responseCode !== responseCodes.RESP_SUCCESS) {
-    parsed.err = `${
-      responseMsgs[responseCode] ? responseMsgs[responseCode] : 'Unknown Error'
-    } (Lattice)`;
+    parsed.err = `${responseMsgs[responseCode] ? responseMsgs[responseCode] : 'Unknown Error'
+      } (Lattice)`;
     parsed.responseCode = responseCode;
     return parsed;
   } else {
@@ -83,7 +82,8 @@ export const parseLattice1Response = function(r) {
   return parsed;
 }
 
-export const checksum = function(x) {
+/** @internal */
+export const checksum = function (x) {
   // crc32 returns a signed integer - need to cast it to unsigned
   // Note that this uses the default 0xedb88320 polynomial
   return crc32.buf(x) >>> 0; // Need this to be a uint, hence the bit shift
@@ -91,7 +91,8 @@ export const checksum = function(x) {
 
 // Get a 74-byte padded DER-encoded signature buffer
 // `sig` must be the signature output from elliptic.js
-export const toPaddedDER = function(sig) {
+/** @internal */
+export const toPaddedDER = function (sig) {
   // We use 74 as the maximum length of a DER signature. All sigs must
   // be right-padded with zeros so that this can be a fixed size field
   const b = Buffer.alloc(74);
@@ -103,7 +104,8 @@ export const toPaddedDER = function(sig) {
 //--------------------------------------------------
 // TRANSACTION UTILS
 //--------------------------------------------------
-export const isValidAssetPath = function(path, fwConstants) {
+/** @internal */
+export const isValidAssetPath = function (path, fwConstants) {
   const allowedPurposes = [
     PURPOSES.ETH,
     PURPOSES.BTC_LEGACY,
@@ -133,7 +135,8 @@ export const isValidAssetPath = function(path, fwConstants) {
   );
 }
 
-export const splitFrames = function(data, frameSz) {
+/** @internal */
+export const splitFrames = function (data, frameSz) {
   const frames = [];
   const n = Math.ceil(data.length / frameSz);
   let off = 0;
@@ -144,7 +147,8 @@ export const splitFrames = function(data, frameSz) {
   return frames;
 }
 
-function isBase10NumStr(x) {
+/** @internal */
+function isBase10NumStr (x) {
   const bn = new BigNum(x).toString().split('.').join('');
   const s = new String(x);
   // Note that the JS native `String()` loses precision for large numbers, but we only
@@ -152,8 +156,8 @@ function isBase10NumStr(x) {
   return bn.slice(0, 8) === s.slice(0, 8);
 }
 
-// Ensure a param is represented by a buffer
-export const ensureHexBuffer = function(x, zeroIsNull = true) {
+/** @internal Ensure a param is represented by a buffer */
+export const ensureHexBuffer = function (x, zeroIsNull = true) {
   try {
     // For null values, return a 0-sized buffer. For most situations we assume
     // 0 should be represented with a zero-length buffer (e.g. for RLP-building
@@ -179,7 +183,8 @@ export const ensureHexBuffer = function(x, zeroIsNull = true) {
   }
 }
 
-export const fixLen = function(msg, length) {
+/** @internal */
+export const fixLen = function (msg, length) {
   const buf = Buffer.alloc(length);
   if (msg.length < length) {
     msg.copy(buf, length - msg.length);
@@ -191,7 +196,8 @@ export const fixLen = function(msg, length) {
 //--------------------------------------------------
 // CRYPTO UTILS
 //--------------------------------------------------
-export const aes256_encrypt = function(data, key) {
+/** @internal */
+export const aes256_encrypt = function (data, key) {
   const iv = Buffer.from(AES_IV);
   const aesCbc = new aes.ModeOfOperation.cbc(key, iv);
   const paddedData =
@@ -199,14 +205,16 @@ export const aes256_encrypt = function(data, key) {
   return Buffer.from(aesCbc.encrypt(paddedData));
 }
 
-export const aes256_decrypt = function(data, key) {
+/** @internal */
+export const aes256_decrypt = function (data, key) {
   const iv = Buffer.from(AES_IV);
   const aesCbc = new aes.ModeOfOperation.cbc(key, iv);
   return Buffer.from(aesCbc.decrypt(data));
 }
 
 // Decode a DER signature. Returns signature object {r, s } or null if there is an error
-export const parseDER = function(sigBuf) {
+/** @internal */
+export const parseDER = function (sigBuf) {
   if (sigBuf[0] !== 0x30 || sigBuf[2] !== 0x02) return null;
   let off = 3;
   const sig = { r: null, s: null };
@@ -222,17 +230,20 @@ export const parseDER = function(sigBuf) {
   return sig;
 }
 
-export const getP256KeyPair = function(priv) {
+/** @internal */
+export const getP256KeyPair = function (priv) {
   if (ec === undefined) ec = new EC('p256');
   return ec.keyFromPrivate(priv, 'hex');
 }
 
-export const getP256KeyPairFromPub = function(pub) {
+/** @internal */
+export const getP256KeyPairFromPub = function (pub) {
   if (ec === undefined) ec = new EC('p256');
   return ec.keyFromPublic(pub, 'hex');
 }
 
-export const buildSignerPathBuf = function(signerPath, varAddrPathSzAllowed) {
+/** @internal */
+export const buildSignerPathBuf = function (signerPath, varAddrPathSzAllowed) {
   const buf = Buffer.alloc(24);
   let off = 0;
   if (varAddrPathSzAllowed && signerPath.length > 5)
@@ -254,15 +265,16 @@ export const buildSignerPathBuf = function(signerPath, varAddrPathSzAllowed) {
 //--------------------------------------------------
 // OTHER UTILS
 //--------------------------------------------------
-export const isAsciiStr = function(str, allowFormatChars=false) {
+/** @internal */
+export const isAsciiStr = function (str, allowFormatChars = false) {
   if (typeof str !== 'string') {
     return false;
   }
-  const extraChars =  allowFormatChars ?
-                      [
-                        0x0020, // Space
-                        0x000a, // New line
-                      ] : [];
+  const extraChars = allowFormatChars ?
+    [
+      0x0020, // Space
+      0x000a, // New line
+    ] : [];
   for (let i = 0; i < str.length; i++) {
     const c = str.charCodeAt(i);
     if (extraChars.indexOf(c) < 0 && (c < 0x0020 || c > 0x007f)) {
@@ -272,14 +284,15 @@ export const isAsciiStr = function(str, allowFormatChars=false) {
   return true;
 }
 
-// Check if a value exists in an object. Only checks first level of keys.
-export const existsIn = function(val, obj) {
+/** @internal Check if a value exists in an object. Only checks first level of keys. */
+export const existsIn = function (val, obj) {
   return Object.keys(obj).some(key => obj[key] === val);
 }
 
 /**
  * `promisifyCb` accepts `resolve` and `reject` from a `Promise` and an optional callback. 
  * It returns that callback if it exists, otherwise it resolves or rejects as a `Promise`
+ * @internal
  */
 export const promisifyCb = (resolve, reject, cb: (err: string, ...cbParams) => void) => {
   return (err, ...params) => {
@@ -289,8 +302,9 @@ export const promisifyCb = (resolve, reject, cb: (err: string, ...cbParams) => v
   }
 }
 
-// Create a buffer of size `n` and fill it with random data
-export const randomBytes = function(n) {
+
+/** @internal Create a buffer of size `n` and fill it with random data */
+export const randomBytes = function (n) {
   const buf = Buffer.alloc(n);
   for (let i = 0; i < n; i++) {
     buf[i] = Math.round(Math.random() * 255);
@@ -298,9 +312,7 @@ export const randomBytes = function(n) {
   return buf;
 }
 
-/**
- * `isUInt4` accepts a number and returns true if it is a UInt4
-*/
+/** @internal `isUInt4` accepts a number and returns true if it is a UInt4 */
 export const isUInt4 = (n: number) => isInteger(n) && inRange(0, 16)
 
 /**
@@ -309,6 +321,7 @@ export const isUInt4 = (n: number) => isInteger(n) && inRange(0, 16)
  * @param {Buffer} password - The password entered when connecting to the device.
  * @param {Buffer} appName - The name of the application.
  * @returns an application secret as a Buffer
+ * @public
  */
 export const generateAppSecret = (
   deviceId: Buffer,
@@ -327,17 +340,18 @@ export const generateAppSecret = (
 /**
  * Generic signing does not return a `v` value like legacy ETH signing requests did.
  * Get the `v` component of the signature as well as an `initV`
- * parameter, which is what you need to use to re-create an @ethereumjs/tx
- * object. There is a lot of tech debt in @ethereumjs/tx which also
+ * parameter, which is what you need to use to re-create an `@ethereumjs/tx`
+ * object. There is a lot of tech debt in `@ethereumjs/tx` which also
  * inherits the tech debt of ethereumjs-util.
  * 1.  The legacy `Transaction` type can call `_processSignature` with the regular
  *     `v` value.
  * 2.  Newer transaction types such as `FeeMarketEIP1559Transaction` will subtract
  *     27 from the `v` that gets passed in, so we need to add `27` to create `initV`
- * @param tx - An @ethereumjs/tx Transaction object
+ * @param tx - An `@ethereumjs/tx` Transaction object
  * @param resp - response from Lattice. Can be either legacy or generic signing variety
+ * @public
  */
-export const getV = function (tx, resp) {
+export function getV (tx, resp) {
   const hash = tx.getMessageToSign(true);
   const rs = new Uint8Array(Buffer.concat([resp.sig.r, resp.sig.s]));
   const pubkey = new Uint8Array(resp.pubkey);
@@ -374,8 +388,9 @@ export const getV = function (tx, resp) {
   // EIP155 replay protection is included in the `v` param
   // and uses the chainId value.
   return chainId.muln(2).addn(35).addn(recovery);
-};
+}
 
+/** @internal */
 export const EXTERNAL = {
   getV,
   generateAppSecret

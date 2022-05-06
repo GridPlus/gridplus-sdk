@@ -1,16 +1,20 @@
-// Consistent with Lattice's IV
+/** @internal Consistent with Lattice's IV */
 const AES_IV = [
   0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73, 0x73, 0x77,
   0x6f, 0x72, 0x64,
 ];
 
-const ADDR_STR_LEN = 129; // 128-char strings (null terminated)
+/** @internal 128-char strings (null terminated) */
+const ADDR_STR_LEN = 129;
 
-// Decrypted response lengths will be fixed for any given message type.
-// These are defined in the Lattice spec.
-// Every decrypted response should have a 65-byte pubkey prefixing it (and a 4-byte request ID)
-// These are NOT counted in `decResLengths`, meaning these values are 69-bytes smaller than the
-// corresponding structs in firmware.
+/**
+ * Decrypted response lengths will be fixed for any given message type.
+ * These are defined in the Lattice spec.
+ * Every decrypted response should have a 65-byte pubkey prefixing it (and a 4-byte request ID)
+ * These are NOT counted in `decResLengths`, meaning these values are 69-bytes smaller than the
+ * corresponding structs in firmware.
+ * @internal
+ */
 const decResLengths = {
   empty: 0, // Only contains the pubkey
   getAddresses: 10 * ADDR_STR_LEN, // 10x 129 byte strings (128 bytes + null terminator)
@@ -22,36 +26,48 @@ const decResLengths = {
   test: 1646, // Max size of test response payload
 };
 
-// Every corresponding decrypted response struct in firmware has a pubkey
-// and checksum added. These are not included in `decResLengths`
+/**
+ * Every corresponding decrypted response struct in firmware has a pubkey
+ * and checksum added. These are not included in `decResLengths`
+ * @internal
+ */
 const DES_RES_EXTRADATA_LEN = 69;
 
-// Encrypted responses also have metadata
-// Prefix:
-// * protocol version (1 byte)
-// * response type, reserved (1 byte) -- not used
-// * response id (4 bytes) -- not used
-// * payload length (2 bytes)
-// * response code (1 byte)
-// Suffix:
-// * checksum (4 bytes) -- NOT the same checksum as inside the decrypted msg
+/**
+ * Encrypted responses also have metadata
+ * - Prefix:
+ *   - protocol version (1 byte)
+ *   - response type, reserved (1 byte) -- not used
+ *   - response id (4 bytes) -- not used
+ *   - payload length (2 bytes)
+ *   - response code (1 byte)
+ * - Suffix:
+ *   - checksum (4 bytes) -- NOT the same checksum as inside the decrypted msg
+ * @internal
+ */
 const ENC_MSG_METADATA_LEN = 13;
 
+/** @internal */
 const ENC_MSG_EXTRA_LEN = DES_RES_EXTRADATA_LEN + ENC_MSG_METADATA_LEN;
-// Per Lattice spec, all encrypted messages must fit in a buffer of this size.
-// The length comes from the largest request/response data type size
-// We also add the prefix length
+/**
+ * Per Lattice spec, all encrypted messages must fit in a buffer of this size.
+ * The length comes from the largest request/response data type size
+ * We also add the prefix length
+ * @internal
+ */
 let ENC_MSG_LEN = 0;
 Object.keys(decResLengths).forEach((k) => {
   if (decResLengths[k] + ENC_MSG_EXTRA_LEN > ENC_MSG_LEN)
     ENC_MSG_LEN = decResLengths[k] + ENC_MSG_EXTRA_LEN;
 });
 
+/** @internal */
 const deviceCodes = {
   CONNECT: 1,
   ENCRYPTED_REQUEST: 2,
 };
 
+/** @internal */
 const encReqCodes = {
   FINALIZE_PAIRING: 0,
   GET_ADDRESSES: 1,
@@ -68,16 +84,19 @@ const encReqCodes = {
   TEST: 12,
 };
 
+/** @internal */
 const messageConstants = {
   NOT_PAIRED: 0x00,
   PAIRED: 0x01,
 };
 
+/** @internal */
 const addressSizes = {
   BTC: 20, // 20 byte pubkeyhash
   ETH: 20, // 20 byte address not including 0x prefix
 };
 
+/** @internal */
 const responseCodes = {
   RESP_SUCCESS: 0x00,
   RESP_ERR_INVALID_MSG: 0x80,
@@ -97,6 +116,7 @@ const responseCodes = {
   RESP_ERR_INVALID_EPHEM_ID: 0x8e,
 };
 
+/** @internal */
 const responseMsgs = {
   [responseCodes.RESP_SUCCESS]: 0x00,
   [responseCodes.RESP_ERR_INVALID_MSG]: 'Invalid request',
@@ -119,6 +139,7 @@ const responseMsgs = {
     'Could not find requester. Please reconnect.',
 };
 
+/** @internal */
 const signingSchema = {
   BTC_TRANSFER: 0,
   ETH_TRANSFER: 1,
@@ -128,7 +149,10 @@ const signingSchema = {
   GENERAL_SIGNING: 5,
 };
 
+/** @internal */
 const HARDENED_OFFSET = 0x80000000; // Hardened offset
+
+/** @internal */
 const BIP_CONSTANTS = {
   PURPOSES: {
     ETH: HARDENED_OFFSET + 44,
@@ -143,13 +167,22 @@ const BIP_CONSTANTS = {
   },
 };
 
-const REQUEST_TYPE_BYTE = 0x02; // For all HSM-bound requests
-const VERSION_BYTE = 1;
-const HANDLE_LARGER_CHAIN_ID = 255; // ChainId value to signify larger chainID is in data buffer
-const MAX_CHAIN_ID_BYTES = 8; // Max number of bytes to contain larger chainID in data buffer
+/** @internal For all HSM-bound requests */
+const REQUEST_TYPE_BYTE = 0x02;
 
+/** @internal */
+const VERSION_BYTE = 1;
+
+/** @internal ChainId value to signify larger chainID is in data buffer */
+const HANDLE_LARGER_CHAIN_ID = 255;
+
+/** @internal Max number of bytes to contain larger chainID in data buffer */
+const MAX_CHAIN_ID_BYTES = 8;
+
+/** @internal */
 const BASE_URL = 'https://signing.gridpl.us';
 
+/** @internal */
 const EIP712_ABI_LATTICE_FW_TYPE_MAP = {
   address: 1,
   bool: 2,
@@ -254,6 +287,7 @@ const EIP712_ABI_LATTICE_FW_TYPE_MAP = {
   string: 102,
 };
 
+/** @internal */
 const ETH_ABI_LATTICE_FW_TYPE_MAP = {
   ...EIP712_ABI_LATTICE_FW_TYPE_MAP,
   tuple1: 103,
@@ -275,6 +309,7 @@ const ETH_ABI_LATTICE_FW_TYPE_MAP = {
   tuple17: 119, // Firmware currently cannot support tuples larger than this
 };
 
+/** @internal */
 const ethMsgProtocol = {
   SIGN_PERSONAL: {
     str: 'signPersonal',
@@ -288,10 +323,10 @@ const ethMsgProtocol = {
   },
 };
 
-//======================================================
-// EXTERNALLY EXPORTED CONSTANTS
-// These are used for building requests
-//======================================================
+/**
+ * Externally exported constants used for building requests
+ * @public
+ */
 export const EXTERNAL = {
   // Optional flags for `getAddresses`
   GET_ADDR_FLAGS: {
@@ -318,13 +353,14 @@ export const EXTERNAL = {
   },
 };
 
-function getFwVersionConst(v) {
+/** @internal */
+function getFwVersionConst (v) {
   const c: any = {
     extraDataFrameSz: 0,
     extraDataMaxFrames: 0,
     genericSigning: {},
   };
-  function gte(v, exp) {
+  function gte (v, exp) {
     // Note that `v` fields come in as [fix|minor|major]
     return (
       v[2] > exp[0] ||
@@ -487,6 +523,8 @@ function getFwVersionConst(v) {
 
   return c;
 }
+
+/** @internal */
 // eslint-disable-next-line no-control-regex
 const ASCII_REGEX = /^[\x00-\x7F]+$/;
 
