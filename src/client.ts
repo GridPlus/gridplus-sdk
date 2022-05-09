@@ -37,7 +37,6 @@ import {
   isValidAssetPath,
   parseDER,
   parseLattice1Response,
-  promisifyCb,
   toPaddedDER,
   randomBytes,
   isUInt4,
