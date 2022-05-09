@@ -1,11 +1,14 @@
 // Static utility functions
-import { Capability } from '@ethereumjs/tx';
+import Common, { Chain, Hardfork } from '@ethereumjs/common';
+import { Capability, TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import aes from 'aes-js';
 import { BN } from 'bn.js';
 import BigNum from 'bignumber.js';
 import crc32 from 'crc-32';
 import elliptic from 'elliptic';
 import { sha256 } from 'hash.js/lib/hash/sha';
+import { keccak256 } from 'js-sha3';
+import { decode as rlpDecode, encode as rlpEncode } from 'rlp';
 import { ecdsaRecover } from 'secp256k1';
 import {
   AES_IV,
@@ -347,12 +350,47 @@ export const generateAppSecret = (
  *     `v` value.
  * 2.  Newer transaction types such as `FeeMarketEIP1559Transaction` will subtract
  *     27 from the `v` that gets passed in, so we need to add `27` to create `initV`
- * @param tx - An `@ethereumjs/tx` Transaction object
+ * @param tx - An @ethereumjs/tx Transaction object or Buffer (serialized tx)
  * @param resp - response from Lattice. Can be either legacy or generic signing variety
- * @public
+ * @returns bn.js BN object containing the `v` param
  */
-export function getV (tx, resp) {
-  const hash = tx.getMessageToSign(true);
+export const getV = function (tx, resp) {
+  let chainId, hash, type;
+  const txIsBuf = Buffer.isBuffer(tx);
+  if (txIsBuf) {
+    hash = Buffer.from(keccak256(tx), 'hex');
+    try {
+      const legacyTxArray = rlpDecode(tx);
+      if (legacyTxArray.length === 6) {
+        // Six item array means this is a pre-EIP155 transaction
+        chainId = null;
+      } else {
+        // Otherwise the `v` param is the `chainId`
+        chainId = new BN(legacyTxArray[6]);
+      }
+      // Legacy tx = type 0
+      type = 0;
+    } catch (err) {
+      // This is likely a typed transaction
+      try {
+        const txObj = EthTxFactory.fromSerializedData(tx);
+        type = txObj._type;
+      } catch (err) {
+        // If we can't RLP decode and can't hydrate an @ethereumjs/tx object,
+        // we don't know what this is and should abort.
+        throw new Error('Could not recover V. Bad transaction data.');
+      }
+    }
+  } else {
+    // @ethereumjs/tx object passed in
+    type = tx._type;
+    hash = type ?
+      tx.getMessageToSign(true) :             // newer tx types
+      rlpEncode(tx.getMessageToSign(false));  // legacy tx
+    if (tx.supports(Capability.EIP155ReplayProtection)) {
+      chainId = tx.common.chainIdBN().toNumber();
+    }
+  }
   const rs = new Uint8Array(Buffer.concat([resp.sig.r, resp.sig.s]));
   const pubkey = new Uint8Array(resp.pubkey);
   const recovery0 = ecdsaRecover(rs, 0, hash, false);
@@ -366,23 +404,15 @@ export function getV (tx, resp) {
   } else if (pubkeyStr === recovery1Str) {
     recovery = 1;
   } else {
-    return null;
+    // If we fail a second time, exit here.
+    throw new Error('Failed to recover V parameter. Bad signature or transaction data.');
   }
   // Newer transaction types just use the [0, 1] value
-  if (tx._type) {
+  if (type) {
     return new BN(recovery);
   }
-  // Legacy transactions should check for EIP155 support.
-  // In practice, virtually every transaction should have EIP155
-  // support since that hardfork happened in 2016...
-  // Various methods for fetching a chainID from different @ethereumjs/tx objects
-  let chainId = null;
-  if (tx.common && typeof tx.common.chainIdBN === 'function') {
-    chainId = tx.common.chainIdBN();
-  } else if (tx.chainId) {
-    chainId = new BN(tx.chainId);
-  }
-  if (!chainId || !tx.supports(Capability.EIP155ReplayProtection)) {
+  // If there is no chain ID, this is a pre-EIP155 tx
+  if (!chainId) {
     return new BN(recovery).addn(27);
   }
   // EIP155 replay protection is included in the `v` param

@@ -81,7 +81,6 @@ describe('Start EVM signing tests', () => {
 });
 
 describe('[EVM] Test transactions', () => {
-
   describe('EIP1559', () => {
     beforeEach(() => {
       test.expect(test.continue).to.equal(true, 'Error in previous test.');
@@ -178,7 +177,7 @@ describe('[EVM] Test transactions', () => {
       await run(req);
     });
   });
-
+  
   describe('Legacy (Non-EIP155)', () => {
     beforeEach(() => {
       test.expect(test.continue).to.equal(true, 'Error in previous test.');
@@ -202,7 +201,7 @@ describe('[EVM] Test transactions', () => {
       await run(req);
     });
   });
-
+  
   describe('Boundary tests', () => {
     beforeEach(() => {
       test.expect(test.continue).to.equal(true, 'Error in previous test.');
@@ -874,7 +873,7 @@ async function run (
     // Get params from Lattice sig
     const latticeR = Buffer.from(resp.sig.r);
     const latticeS = Buffer.from(resp.sig.s);
-    const latticeV = test.helpers.getV(tx, resp);
+    const latticeV = new BN(resp.sig.v); 
     // Strip off leading zeros to do an exact componenet check.
     // We will still validate the original lattice sig in a tx.
     const rToCheck =
@@ -893,8 +892,8 @@ async function run (
       .expect(sToCheck.equals(refS))
       .to.equal(true, 'Signature S component does not match reference');
     test
-      .expect(new BN(latticeV).eq(refV))
-      .to.equal(true, 'Signature V component does not match reference');
+      .expect(latticeV.toString())
+      .to.equal(refV.toString(), 'Signature V component does not match reference');
     // One more check -- create a new tx with the signatre params and verify it
     const signedTxData = JSON.parse(JSON.stringify(txData));
     signedTxData.v = latticeV;
