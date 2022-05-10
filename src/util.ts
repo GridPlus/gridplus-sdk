@@ -366,7 +366,7 @@ export const getV = function (tx, resp) {
         chainId = null;
       } else {
         // Otherwise the `v` param is the `chainId`
-        chainId = new BN(legacyTxArray[6]);
+        chainId = new BN(legacyTxArray[6] as Uint8Array);
       }
       // Legacy tx = type 0
       type = 0;
@@ -374,6 +374,7 @@ export const getV = function (tx, resp) {
       // This is likely a typed transaction
       try {
         const txObj = EthTxFactory.fromSerializedData(tx);
+        //@ts-expect-error -- Accessing private property
         type = txObj._type;
       } catch (err) {
         // If we can't RLP decode and can't hydrate an @ethereumjs/tx object,
