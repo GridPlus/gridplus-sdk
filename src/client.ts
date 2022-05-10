@@ -1585,12 +1585,7 @@ export class Client {
       };
     } else {
       // Generic signing request
-      return parseGenericSigningResponse(
-        res,
-        off,
-        req.curveType,
-        req.omitPubkey,
-      );
+      return parseGenericSigningResponse(res, off, req);
     }
   }
 
