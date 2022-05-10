@@ -1,49 +1,61 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
 
-const lightCodeTheme = require("prism-react-renderer/themes/github");
-const darkCodeTheme = require("prism-react-renderer/themes/palenight");
+const lightCodeTheme = require('prism-react-renderer/themes/github');
+const darkCodeTheme = require('prism-react-renderer/themes/palenight');
+
+const excludedFiles = [
+  'bitcoin',
+  'ethereum',
+  'genericSigning',
+  'index',
+  'calldata/index',
+].map((s) => `../src/${s}.ts`);
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: "GridPlus SDK",
-  tagline: "The new standard for hardware wallets",
-  url: "https://gridplus.io",
-  baseUrl: "/gridplus-sdk/",
-  onBrokenLinks: "throw",
-  onBrokenMarkdownLinks: "warn",
-  favicon: "img/logo.jpeg",
-  organizationName: "gridplus",
-  projectName: "gridplus-sdk",
+  title: 'GridPlus SDK',
+  tagline: 'The new standard for hardware wallets',
+  url: 'https://gridplus.io',
+  baseUrl: '/gridplus-sdk/',
+  onBrokenLinks: 'throw',
+  onBrokenMarkdownLinks: 'warn',
+  favicon: 'img/logo.jpeg',
+  organizationName: 'gridplus',
+  projectName: 'gridplus-sdk',
   plugins: [
     [
-      "docusaurus-plugin-typedoc",
+      'docusaurus-plugin-typedoc',
 
       // Plugin / TypeDoc options
       {
-        entryPoints: ["../src"],
-        // entryPointStrategy: "expand",
-        tsconfig: "../tsconfig.json",
+        entryPoints: ['../src'],
+        entryPointStrategy: 'expand',
+        exclude: [...excludedFiles, '../src/types/**'],
+        tsconfig: '../tsconfig.json',
         watch: process.env.TYPEDOC_WATCH,
         excludeInternal: true,
         excludePrivate: true,
-        readme: "none",
+        readme: 'none',
+        mode: 'modules',
       },
     ],
   ],
   presets: [
     [
-      "classic",
+      'classic',
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
-          sidebarPath: require.resolve("./sidebars.js"),
+          sidebarPath: require.resolve('./sidebars.js'),
           // Please change this to your repo.
-          editUrl: "https://github.com/gridplus/gridplus-sdk",
-          remarkPlugins: [require("mdx-mermaid")],
+          editUrl: 'https://github.com/gridplus/gridplus-sdk',
+          remarkPlugins: [require('mdx-mermaid')],
+          routeBasePath: '/',
         },
+        blog: false,
         theme: {
-          customCss: require.resolve("./src/css/custom.css"),
+          customCss: require.resolve('./src/css/custom.css'),
         },
       }),
     ],
@@ -53,17 +65,17 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
       navbar: {
-        title: "",
+        title: '',
         logo: {
-          alt: "Gridplus Logo",
-          src: "img/logo.png",
+          alt: 'Gridplus Logo',
+          src: 'img/logo.png',
         },
         items: [
           {
-            type: "doc",
-            docId: "index",
-            position: "left",
-            label: "Docs",
+            type: 'doc',
+            docId: 'index',
+            position: 'left',
+            label: 'Docs',
           },
           // {
           //   type: "docSidebar",
@@ -72,42 +84,42 @@ const config = {
           //   label: "API",
           // },
           {
-            href: "https://github.com/gridplus/gridplus-sdk",
-            label: "GitHub",
-            position: "right",
+            href: 'https://github.com/gridplus/gridplus-sdk',
+            label: 'GitHub',
+            position: 'right',
           },
         ],
       },
       footer: {
-        style: "dark",
+        style: 'dark',
         links: [
           {
-            title: "Community",
+            title: 'Community',
             items: [
               {
-                label: "Stack Overflow",
-                href: "https://stackoverflow.com/questions/tagged/gridplus",
+                label: 'Stack Overflow',
+                href: 'https://stackoverflow.com/questions/tagged/gridplus',
               },
               {
-                label: "Discord",
-                href: "https://discordapp.com/invite/gridplus",
+                label: 'Discord',
+                href: 'https://discordapp.com/invite/gridplus',
               },
               {
-                label: "Twitter",
-                href: "https://twitter.com/gridplus",
+                label: 'Twitter',
+                href: 'https://twitter.com/gridplus',
               },
             ],
           },
           {
-            title: "More",
+            title: 'More',
             items: [
               {
-                label: "Blog",
-                href: "https://blog.gridplus.io",
+                label: 'Blog',
+                href: 'https://blog.gridplus.io',
               },
               {
-                label: "GitHub",
-                href: "https://github.com/gridplus/gridplus-sdk",
+                label: 'GitHub',
+                href: 'https://github.com/gridplus/gridplus-sdk',
               },
             ],
           },

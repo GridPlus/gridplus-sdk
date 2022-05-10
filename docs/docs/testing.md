@@ -1,143 +1,68 @@
-# Testing
 
-If you have a Lattice1 device that is connected to the internet, you can run the full test suite with:
+# 🧪 Testing
 
-```bash
-npm test
+All functionality is tested in some script in `/test`. Please see those scripts for examples on functionality not documented.
+
+:::caution
+
+Testing is only possible with a development Lattice, which GridPlus does not distribute publicly. Therefore, if you do not have a development Lattice, you will not be able to run many of these tests.**
+
+:::
+
+## Setting up a test connection
+
+Only one test can be run against an unpaired Lattice: `npm run test`. Therefore this must be run before running any other tests. If you wish to run additional tests, you need to specify the following:
+
+```ts
+env REUSE_KEY=1 npm run test
 ```
 
-By default, running tests this way will pair with your Lattice device each time you run the tests. 
+The `REUSE_KEY` will save the connection locally so you can run future tests. Running this test will ask for your device ID and will go through the pairing process. After pairing, the rest of the script will test a broad range of SDK functionality.
 
-If you aren't testing the pairing process, you can reuse the pairing key for each test by passing an
-environment variable, `REUSE_KEY`, when pairing like this:
+To use the connection you've established with any test (including this initial one), you need to include your `DEVICE_ID` as an env argument:
 
-```bash
-env REUSE_KEY=1 npm test
+```ts
+env DEVICE_ID='mydeviceid' npm run test
 ```
 
-All subsequent tests will re-use the key if you specify your device ID as an environment variable like this: 
+## Global `env` Options
 
-```bash
-env DEVICE_ID='my_device_id' npm test
+The following options can be used after `env` with any test.
+
+| Param | Options | Description |
+|:------|:--------|:------------|
+| `REUSE_KEY` | Must be `1` | Indicates we will be creating a new pairing with a Lattice and stashing that connection |
+| `DEVICE_ID` | A six character string | The device ID of the target Lattice |
+| `name` | Any 5-25 character string (default="SDK Test") | The name of the pairing you will create |
+| `baseUrl` | Any URL (default="https://signing.gridplus.io") | URL describing where to send HTTP requests. Should be changed if your Lattice is on non-default message routing infrastructure. |
+
+## Setting up the `.env` file
+
+Alternatively, you may input `env` options into a `.env` file to make it easier to run scripts. To create your `.env` file, follow these steps:
+1. Copy the `.env.template` file.
+2. Rename the `.env.template` file to `.env`.
+3. Update the desired params in that file, probably your `DEVICE_ID`.
+
+## Firmware Test Runner
+
+Several tests require dev Lattice firmware with the following flag in the root `CMakeLists.txt`:
+
+```ts
+FEATURE_TEST_RUNNER=1
 ```
 
-> **Note**: By default, your Lattice will utilize its on-board wallet. If you wish to test against a SafeCard, you will need to insert it and PIN it (i.e. the card needs to be set up). If you reboot your unit, you will need to remove the card and re-insert (and re-authenticate) before testing against it.
+See table in the next section.
 
-## Signing
+## Reference: Tests and Options
 
-Once you have paired with a device in a re-usable way (i.e. setting `REUSE_KEY=1` as above), you can run more robust tests around signing. 
+This section gives an overview of each test and which options can be passed for the specific test (in addition to global options)
 
-> **Note**: If you are testing with a dev Lattice, it is highly recommended that you compile the
-> autosign flag into your firmware (or else you will need to press accept `n` times).
-
-## Test Suites
-
-There are a series of test suites that can be used to validate the SDK's behavior. Each can be run independently using the commands as described below. 
-
-### Test Suite Options 
-
-Some test suites allow for additional options that allow for more versatile testing configurations. These options are passed in as environment variables like this: 
-
-```bash
-env DEVICE_ID='my_device_id' N=25 npm test
-```
-
-See the options area for each test suite for which options are usable with that suite.
-
-- #### `N`
-  - `default=3`
-  - number of inputs per test. Note that if you choose e.g. `N=2` each test will first test one input, then will test two. Must be >0 and <11.
-- #### `SEED` 
-  - `default="myrandomseed"` 
-  - randomness for the pseudorandom number generator that builds deterministic test vectors
-- #### `TESTNET` 
-  - `default=false` 
-  - if set to any value you will test all combinations for both mainnet and testnet transactions (doubles number of tests run)
-
-
-### Ethereum
-
-Ethereum tests include both boundary checks on transaction params and randomized test vectors (20 by
-default). 
-
-Run the suite with:
-
-```bash
-env DEVICE_ID='my_device_id' npm run test-eth
-```
-
-#### Options
-
-- [`N`](#n)
-- [`SEED`](#seed)
-
-### Ethereum Messages
-
-You may test Ethereum messages sent to the Lattice with the following script:
-
-```bash
-env DEVICE_ID='my_device_id' npm run test-eth-msg
-```
-
-#### Options
-
-- [`N`](#n)
-- [`SEED`](#seed)
-
-### Ethereum ABI
-
-You may test functionality around loading Ethereum ABI definitions and displaying calldata in a markdown screen with the following script:
-
-```bash
-env DEVICE_ID='my_device_id' npm run test-eth-abi
-```
-
-#### Options
-
-- [`SEED`](#seed)
-
-## Dev Lattice Tests
-
-The following tests *require* a development Lattice to complete successfully.
-
-### Bitcoin
-
-Bitcoin tests cover legacy, wrapped segwit, and segwit spending to all address types. Vectors are built deterministically using the seed and all permutations are tested.
-
-```bash
-env DEVICE_ID='my_device_id' npm run test-btc
-```
-
-#### Options
-
-- [`N`](#n)
-- [`SEED`](#seed)
-- [`TESTNET`](#testnet)
-
-
-### Wallet Jobs
-
-Lattice firmware uses "wallet jobs" to interact with the SafeCard/Lattice wallet directly. The SDK does not have access to these methods in production builds, but for debug builds the test harness can be used to interact with them.
-
-```bash
-env DEVICE_ID='my_device_id' npm run test-wallet-jobs
-```
-
-### Signatures
-
-Tests signing with and without SafeCards.
-
-```bash
-env DEVICE_ID='my_device_id' npm run test-sigs
-```
-
-#### Options
-
-- [`N`](#n)
-- [`SEED`](#seed)
-
-## Test Harness
-
-We can test debug firmware builds using the `client.test` function in the SDK. This utilizes the firmware's test harness with an encrypted route. You can run these tests with the same `env DEVICE_ID='my_device_id` flag as some of the other tests.
-
-> NOTE: Since these are encrypted routes, you need to be paired with your Lattice before you can run them (using `env REUSE_KEY=1 npm test` as before -- you still only need to do this once).
+| Test | Description | Uses Test Runner | Additional `env` Options |
+|:-----|:------------|:-----------------|:--------------|
+| `npm run test` | Sets up test connection and tests basic functionality like `getAddresses` and `sign`. You need to run this with `REUSE_KEY=1` and pair before running any other tests. | No | N/A |
+| `npm run test-signing` | Tests various aspects of the message signing path as well as all known decoders. | Yes | `SEED` (random string to seed a random number generator)<br/>`ETHERSCAN_KEY` (API key for making Etherscan requests. Used in EVM tests.) |
+| `npm run test-btc` | *(Legacy pathway)* Tests spending different types of BTC inputs. Signatures validated against `bitcoinjs-lib` using seed exported by test harness. | Yes | `N` (number of random vectors to populate)<br/>`SEED` (random string to seed a random number generator)<br/>`testnet` (if true, testnet addresses and transactions will also be tested) |
+| `npm run test-eth-msg` | *(Legacy pathway)* Tests Ethereum message requests `signPersonal` and `signTypedData`. Tests boundary conditions of EIP712 messages. | No | `N` (number of random vectors to populate)<br/>`SEED` (random string to seed a random number generator) |
+| `npm run test-kv` | Tests loading and using kv (key-value) files. These are used for address tags. | No | N/A |
+| `npm run test-non-exportable` | Tests to validate signatures from a SafeCards with a non-exportable seed (legacy) | No | N/A |
+| `npm run test-wallet-jobs` | Tests exported addresses and public keys against those from reference libraries using seed exported by test harness. | Yes | N/A |

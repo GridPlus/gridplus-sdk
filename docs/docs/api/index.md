@@ -7,6 +7,9 @@ sidebar_position: 0.5
 custom_edit_url: null
 ---
 
-## Classes
+## Modules
 
-- [Client](classes/Client)
+- [calldata/evm](modules/calldata_evm)
+- [client](modules/client)
+- [constants](modules/constants)
+- [util](modules/util)

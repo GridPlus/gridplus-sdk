@@ -15,6 +15,7 @@ import { Constants } from './index';
 import {
   buildSignerPathBuf,
   existsIn,
+  getV,
   fixLen,
   parseDER,
   splitFrames,
@@ -52,6 +53,7 @@ export const buildGenericSigningMsgRequest = function (req) {
   );
   const { encoding } = encodedPayload;
   let { payloadBuf } = encodedPayload;
+  const origPayloadBuf = payloadBuf;
   const payloadDataSz = payloadBuf.length;
   // Size of data payload that can be included in the first/base request
   const maxExpandedSz = baseDataSz + extraDataMaxFrames * extraDataFrameSz;
@@ -181,25 +183,23 @@ export const buildGenericSigningMsgRequest = function (req) {
     extraDataPayloads,
     schema: signingSchema.GENERAL_SIGNING,
     curveType,
+    encodingType,
+    hashType,
     omitPubkey,
+    origPayloadBuf,
   };
 };
 
-export const parseGenericSigningResponse = function (
-  res,
-  off,
-  curveType,
-  omitPubkey,
-) {
+export const parseGenericSigningResponse = function (res, off, req) {
   const parsed = {
     pubkey: null,
     sig: null,
   };
   // Parse BIP44 path
   // Parse pubkey and then sig
-  if (curveType === Constants.SIGNING.CURVES.SECP256K1) {
+  if (req.curveType === Constants.SIGNING.CURVES.SECP256K1) {
     // Handle `GpEccPubkey256_t`
-    if (!omitPubkey) {
+    if (!req.omitPubkey) {
       const compression = res.readUInt8(off);
       off += 1;
       if (compression === 0x02 || compression === 0x03) {
@@ -226,8 +226,18 @@ export const parseGenericSigningResponse = function (
     // the result is a 64 byte sig
     parsed.sig.r = fixLen(parsed.sig.r, 32);
     parsed.sig.s = fixLen(parsed.sig.s, 32);
-  } else if (curveType === Constants.SIGNING.CURVES.ED25519) {
-    if (!omitPubkey) {
+    // If this is an EVM request, we want to add a `v`. Other request
+    // types do not require this additional signature param.
+    if (req.encodingType === Constants.SIGNING.ENCODINGS.EVM) {
+      const vBn = getV(req.origPayloadBuf, parsed);
+      // NOTE: For backward-compatability reasons we are returning
+      // a Buffer for `v` here. In the future, we will switch to
+      // returning `v` as a BN and `r`,`s` as Buffers (they are hex
+      // strings right now).
+      parsed.sig.v = vBn.toBuffer();
+    }
+  } else if (req.curveType === Constants.SIGNING.CURVES.ED25519) {
+    if (!req.omitPubkey) {
       // Handle `GpEdDSAPubkey_t`
       parsed.pubkey = Buffer.alloc(32);
       res.slice(off, off + 32).copy(parsed.pubkey);
