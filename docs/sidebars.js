@@ -42,18 +42,22 @@ const sidebars = {
         {
           type: 'doc',
           id: 'api/classes/client.Client',
+          label: 'Client',
         },
         {
           type: 'doc',
           id: 'api/modules/util',
+          label: 'Utils',
         },
         {
           type: 'doc',
           id: 'api/modules/constants',
+          label: 'Constants',
         },
         {
           type: 'doc',
           id: 'api/modules/calldata_evm',
+          label: 'Calldata',
         },
       ],
     },
