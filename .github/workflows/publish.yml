@@ -5,42 +5,18 @@ on:
     types: [published]
 
 jobs:
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Install Node.js
-        uses: actions/setup-node@v1
-        with:
-          node-version: 16.x
-
-      - name: Install NPM packages
-        run: npm ci
-
-      - name: Build project
-        run: npm run build
-
-      - name: Upload production-ready build files
-        uses: actions/upload-artifact@v2
-        with:
-          name: production-files
-          path: ./build
-
   publish-npm:
-    needs: build-and-test
+    name: Publish
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
       - name: Install Node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: 16.x
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install NPM packages
         run: npm ci
