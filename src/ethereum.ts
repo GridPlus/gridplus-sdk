@@ -64,9 +64,9 @@ const validateEthereumMsgResponse = function (res, req) {
     const hash = prehash
       ? prehash
       : Buffer.from(
-          keccak256(Buffer.concat([get_personal_sign_prefix(msg.length), msg])),
+        keccak256(Buffer.concat([get_personal_sign_prefix(msg.length), msg])),
         'hex',
-        );
+      );
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
     return addRecoveryParam(hash, sig, signer, {
       chainId: 1,
@@ -330,8 +330,7 @@ const buildEthereumTxRequest = function (data) {
           (EXTRA_DATA_ALLOWED && totalSz > maxSzAllowed)
         )
           throw new Error(
-            `Data field too large (got ${dataBytes.length}; must be <=${
-              maxSzAllowed - chainIdExtraSz
+            `Data field too large (got ${dataBytes.length}; must be <=${maxSzAllowed - chainIdExtraSz
             } bytes)`,
           );
         // Split overflow data into extraData frames
@@ -389,7 +388,7 @@ const buildEthereumTxRequest = function (data) {
 };
 
 // From ethereumjs-util
-function stripZeros(a) {
+function stripZeros (a) {
   let first = a[0];
   while (a.length > 0 && first.toString() === '0') {
     a = a.slice(1);
@@ -426,7 +425,7 @@ const buildEthRawTx = function (tx, sig, address) {
 };
 
 // Attach a recovery parameter to a signature by brute-forcing ECRecover
-function addRecoveryParam(hashBuf, sig, address, txData = {}) {
+function addRecoveryParam (hashBuf, sig, address, txData = {}) {
   try {
     // Rebuild the keccak256 hash here so we can `ecrecover`
     const hash = new Uint8Array(hashBuf);
@@ -465,7 +464,7 @@ const hashTransaction = function (serializedTx) {
 };
 
 // Returns address string given public key buffer
-function pubToAddrStr(pub) {
+function pubToAddrStr (pub) {
   return keccak256(pub).slice(-40);
 }
 
@@ -505,7 +504,7 @@ const chainIds = {
 
 // Get a buffer containing the chainId value.
 // Returns a 1, 2, 4, or 8 byte buffer with the chainId encoded in big endian
-function getChainIdBuf(chainId) {
+function getChainIdBuf (chainId) {
   let b;
   // If our chainID is a hex string, we can convert it to a hex
   // buffer directly
@@ -529,7 +528,7 @@ function getChainIdBuf(chainId) {
 }
 
 // Determine if the chain uses EIP155 by default, based on the chainID
-function chainUsesEIP155(chainID) {
+function chainUsesEIP155 (chainID) {
   switch (chainID) {
     case 3: // ropsten
     case 4: // rinkeby
@@ -544,7 +543,7 @@ function chainUsesEIP155(chainID) {
 }
 
 // Determine if a valid number was passed in as a hex string
-function isValidChainIdHexNumStr(s) {
+function isValidChainIdHexNumStr (s) {
   if (typeof s !== 'string') return false;
   if (s.slice(0, 2) !== '0x') return false;
   try {
@@ -558,13 +557,13 @@ function isValidChainIdHexNumStr(s) {
 // If this is a nubmer that fits in one byte, we don't need to add it
 // to the `data` buffer of the main transaction.
 // Note the one edge case: we still need to use the `data` field for chainID=255.
-function useChainIdBuffer(id) {
+function useChainIdBuffer (id) {
   const buf = getChainIdBuf(id);
   if (buf.length === 1) return buf.readUInt8(0) === 255;
   return true;
 }
 
-function buildPersonalSignRequest(req, input) {
+function buildPersonalSignRequest (req, input) {
   const MAX_BASE_MSG_SZ = input.fwConstants.ethMaxMsgSz;
   const VAR_PATH_SZ = input.fwConstants.varAddrPathSzAllowed;
   const L = 24 + MAX_BASE_MSG_SZ + 4;
@@ -642,7 +641,7 @@ function buildPersonalSignRequest(req, input) {
   return req;
 }
 
-function buildEIP712Request(req, input) {
+function buildEIP712Request (req, input) {
   try {
     const { ethMaxMsgSz, varAddrPathSzAllowed, eip712MaxTypeParams } =
       input.fwConstants;
@@ -733,7 +732,7 @@ function buildEIP712Request(req, input) {
   }
 }
 
-function getExtraData(payload, input) {
+function getExtraData (payload, input) {
   const { ethMaxMsgSz, extraDataFrameSz, extraDataMaxFrames } =
     input.fwConstants;
   const MAX_BASE_MSG_SZ = ethMaxMsgSz;
@@ -765,7 +764,7 @@ function getExtraData(payload, input) {
   return extraDataPayloads;
 }
 
-function parseEIP712Msg(msg, typeName, types, forJSParser = false) {
+function parseEIP712Msg (msg, typeName, types, forJSParser = false) {
   try {
     const type = types[typeName];
     type.forEach((item) => {
@@ -845,7 +844,7 @@ function parseEIP712Msg(msg, typeName, types, forJSParser = false) {
   return msg;
 }
 
-function parseEIP712Item(data, type, forJSParser = false) {
+function parseEIP712Item (data, type, forJSParser = false) {
   if (type === 'bytes') {
     // Variable sized bytes need to be buffer type
     data = ensureHexBuffer(data);
@@ -910,14 +909,14 @@ function parseEIP712Item(data, type, forJSParser = false) {
   return data;
 }
 
-function get_personal_sign_prefix(L) {
+function get_personal_sign_prefix (L) {
   return Buffer.from(
     `\u0019Ethereum Signed Message:\n${L.toString()}`,
     'utf-8',
   );
 }
 
-function get_rlp_encoded_preimage(rawTx, txType) {
+function get_rlp_encoded_preimage (rawTx, txType) {
   if (txType) {
     return Buffer.concat([Buffer.from([txType]), rlpEncode(rawTx)]);
   } else {
@@ -942,7 +941,7 @@ const ethConvertLegacyToGenericReq = function (req) {
     // Not every network will support these EIPs but we will allow
     // signing of transactions using them
     common = Common.custom(
-      { chainId: req.chainId },
+      { chainId: Number(req.chainId) },
       { hardfork: Hardfork.London, eips: [1559, 2930] },
     );
   }
