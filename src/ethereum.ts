@@ -942,7 +942,7 @@ const ethConvertLegacyToGenericReq = function (req) {
     // Not every network will support these EIPs but we will allow
     // signing of transactions using them
     common = Common.custom(
-      { chainId: req.chainId },
+      { chainId: Number(req.chainId) },
       { hardfork: Hardfork.London, eips: [1559, 2930] },
     );
   }

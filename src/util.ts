@@ -1,13 +1,14 @@
 // Static utility functions
-import Common, { Chain, Hardfork } from '@ethereumjs/common';
 import { Capability, TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import aes from 'aes-js';
-import { BN } from 'bn.js';
 import BigNum from 'bignumber.js';
+import { BN } from 'bn.js';
 import crc32 from 'crc-32';
 import elliptic from 'elliptic';
 import { sha256 } from 'hash.js/lib/hash/sha';
 import { keccak256 } from 'js-sha3';
+import inRange from 'lodash/inRange';
+import isInteger from 'lodash/isInteger';
 import { decode as rlpDecode, encode as rlpEncode } from 'rlp';
 import { ecdsaRecover } from 'secp256k1';
 import {
@@ -20,8 +21,6 @@ import {
 } from './constants';
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
-import isInteger from 'lodash/isInteger'
-import inRange from 'lodash/inRange'
 let ec;
 
 //--------------------------------------------------
