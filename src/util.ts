@@ -11,9 +11,12 @@ import inRange from 'lodash/inRange';
 import isInteger from 'lodash/isInteger';
 import { decode as rlpDecode, encode as rlpEncode } from 'rlp';
 import { ecdsaRecover } from 'secp256k1';
+import { Calldata } from '.';
+import superagent from 'superagent'
 import {
   AES_IV,
   BIP_CONSTANTS,
+  NETWORKS_BY_CHAIN_ID,
   HARDENED_OFFSET,
   responseCodes,
   responseMsgs,
@@ -420,8 +423,90 @@ export const getV = function (tx, resp) {
   return chainId.muln(2).addn(35).addn(recovery);
 }
 
+/**
+ *  Fetches calldata from a remote scanner based on the transaction's `chainId`
+ */
+export async function fetchCalldataDecoder (_data: Uint8Array | string, to: string, _chainId: number | string) {
+  try {
+    // Exit if there is no data. The 2 comes from the 0x prefix, but a later
+    // check will confirm that there are at least 4 bytes of data in the buffer.
+    if (!_data || _data.length < 2) {
+      throw new Error('Data is either undefined or less than two bytes')
+    }
+    const isHexString = typeof _data === 'string' && _data.slice(0, 2) === '0x'
+    const data = isHexString ?
+      Buffer.from(_data.slice(2), 'hex') :
+      //@ts-expect-error - Buffer doesn't recognize Uint8Array type properly
+      Buffer.from(_data, 'hex');
+      
+    if (data.length < 4) {
+      throw new Error('Data must contain at least 4 bytes of data to define the selector')
+    }
+    const selector = Buffer.from(data.slice(0, 4)).toString('hex');
+    // Convert the chainId to a number and use it to determine if we can call out to
+    // an etherscan-like explorer for richer data.
+    const chainId = Number(_chainId);
+    const supportedChain = NETWORKS_BY_CHAIN_ID[chainId];
+    if (supportedChain) {
+      const baseUrl = supportedChain.baseUrl;
+      const url = `${baseUrl}/api?module=contract&action=getabi&address=${to}&apiKey=${process.env.ETHERSCAN_KEY}`
+      const response = await superagent
+        .get(url)
+        .catch(err => {
+          console.warn(`Fetching calldata from ${supportedChain.name} failed\n`, err)
+        })
+      if (
+        response &&
+        response.body &&
+        response.body.result
+      ) {
+        const abi = JSON.parse(response.body.result)
+        return {
+          def: Calldata.EVM.parsers.parseSolidityJSONABI(selector, abi),
+          abi
+        }
+      }
+      console.warn(
+        `Could not find selector in calldata for network: ${supportedChain.name}\n`,
+        'Falling back to 4byte\n',
+      );
+    }
+
+    // Fallback to checking 4byte
+    const url = `https://www.4byte.directory/api/v1/signatures?hex_signature=0x${selector}`
+    const response = await superagent
+      .get(url)
+      .catch(err => {
+        console.warn('Failed to fetch calldata from 4byte \n', err)
+      });
+    if (
+      response &&
+      response.body &&
+      response.body.results &&
+      response.body.results.length
+    ) {
+      const fourByteResults = response.body.results;
+      if (fourByteResults.length > 1) {
+        console.warn('WARNING: There are multiple results. Using the first one.');
+      }
+      const canonicalName = fourByteResults[0]?.text_signature;
+      return {
+        def: Calldata.EVM.parsers.parseCanonicalName(selector, canonicalName),
+        abi: fourByteResults
+      }
+    }
+    throw new Error('Could not find selector in calldata from 4byte')
+  }
+  catch (err) {
+    err.message = `Fetching calldata failed \n ${err.message}`
+    console.warn(err)
+    return { def: null, abi: null }
+  }
+}
+
 /** @internal */
 export const EXTERNAL = {
   getV,
-  generateAppSecret
+  generateAppSecret,
+  fetchCalldataDecoder
 }
