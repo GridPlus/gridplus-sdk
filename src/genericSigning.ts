@@ -230,11 +230,11 @@ export const parseGenericSigningResponse = function (res, off, req) {
     // types do not require this additional signature param.
     if (req.encodingType === Constants.SIGNING.ENCODINGS.EVM) {
       const vBn = getV(req.origPayloadBuf, parsed);
-      // NOTE: For backward-compatability reasons we are returning
+      // NOTE: For backward-compatibility reasons we are returning
       // a Buffer for `v` here. In the future, we will switch to
       // returning `v` as a BN and `r`,`s` as Buffers (they are hex
       // strings right now).
-      parsed.sig.v = vBn.toBuffer();
+      parsed.sig.v = Buffer.from(vBn);
     }
   } else if (req.curveType === Constants.SIGNING.CURVES.ED25519) {
     if (!req.omitPubkey) {
