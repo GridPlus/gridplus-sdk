@@ -528,6 +528,25 @@ function getFwVersionConst (v) {
 // eslint-disable-next-line no-control-regex
 const ASCII_REGEX = /^[\x00-\x7F]+$/;
 
+const NETWORKS_BY_CHAIN_ID = {
+  1: {
+    name: 'ethereum',
+    baseUrl: 'https://api.etherscan.io',
+  },
+  137: {
+    name: 'polygon',
+    baseUrl: 'https://api.polygonscan.com',
+  },
+  56: {
+    name: 'binance',
+    baseUrl: 'https://api.bscscan.com',
+  },
+  43114: {
+    name: 'avalanche',
+    baseUrl: 'https://api.snowtrace.io',
+  },
+};
+
 export {
   ASCII_REGEX,
   getFwVersionConst,
@@ -535,6 +554,7 @@ export {
   AES_IV,
   BIP_CONSTANTS,
   BASE_URL,
+  NETWORKS_BY_CHAIN_ID,
   ENC_MSG_LEN,
   addressSizes,
   decResLengths,

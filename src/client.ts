@@ -115,8 +115,8 @@ export class Client {
     /** User can pass in previous state data to rehydrate connected session */
     stateData?: string;
     /** If true we will not retry if we get a wrong wallet error code */
-    skipRetryOnWrongWallet: boolean;
-    }) {
+    skipRetryOnWrongWallet?: boolean;
+  }) {
     // Default state params
     // -----
     this.ephemeralPub = null;
@@ -323,7 +323,7 @@ export class Client {
    * @returns An array of addresses.
    */
   public getAddresses (
-    opts: { startPath: number[], n: number, flag: number },
+    opts: { startPath: number[], n: number, flag?: number },
     _cb?: (err?: string, data?: Buffer | string[]) => void,
   ): Promise<Buffer> {
     return new Promise((resolve, reject) => {
@@ -384,8 +384,8 @@ export class Client {
         // `n` as a 4 bit value
         flagVal =
           fwConstants.getAddressFlags &&
-          fwConstants.getAddressFlags.indexOf(flag) > -1
-          ? (flag as UInt4)
+            fwConstants.getAddressFlags.indexOf(flag) > -1
+            ? (flag as UInt4)
             : 0;
         const flagBits = bitwise.nibble.read(flagVal);
         const countBits = bitwise.nibble.read(n as UInt4);
@@ -1703,7 +1703,7 @@ export class Client {
   }
 
   // Determine if a provided firmware version matches or exceeds the current firmware version
-  private _fwVersionGTE(_major: number, _minor: number, _fix: number): boolean {
+  private _fwVersionGTE (_major: number, _minor: number, _fix: number): boolean {
     const { major, minor, fix } = this.getFwVersion();
     return (
       major > _major ||

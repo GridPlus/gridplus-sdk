@@ -11,20 +11,18 @@ import { encode } from 'rlp';
 export const parseSolidityJSONABI = function (sig: string, abi: any[]): Buffer {
   sig = coerceSig(sig);
   // Find the first match in the ABI
-  const match = abi.find((item) => {
-    if (item.type === 'function') {
+  const match = abi
+    .filter((item) => item.type === 'function')
+    .find((item) => {
       const def = parseDef(item);
-      // If this matches the function selector (sig) we can return it
-      if (getFuncSig(def.canonicalName) === sig) {
-        return item;
-      }
-    }
-  });
+      const funcSig = getFuncSig(def.canonicalName)
+      return funcSig === sig
+    })
   if (match) {
     const def = parseDef(match).def;
     return Buffer.from(encode(def));
   }
-  return null;
+  return null
 };
 
 /**

@@ -234,7 +234,7 @@ export const parseGenericSigningResponse = function (res, off, req) {
       // a Buffer for `v` here. In the future, we will switch to
       // returning `v` as a BN and `r`,`s` as Buffers (they are hex
       // strings right now).
-      parsed.sig.v = Buffer.from(vBn);
+      parsed.sig.v = vBn.toArrayLike(Buffer);
     }
   } else if (req.curveType === Constants.SIGNING.CURVES.ED25519) {
     if (!req.omitPubkey) {
