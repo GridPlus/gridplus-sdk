@@ -545,6 +545,10 @@ const NETWORKS_BY_CHAIN_ID = {
     name: 'avalanche',
     baseUrl: 'https://api.snowtrace.io',
   },
+  100: {
+    name: 'gnosis chain',
+    baseUrl: 'https://blockscout.com/xdai/mainnet',
+  }
 };
 
 export {
