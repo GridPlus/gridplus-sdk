@@ -14,14 +14,14 @@ import {
   ethMsgProtocol,
   HANDLE_LARGER_CHAIN_ID,
   MAX_CHAIN_ID_BYTES,
-  signingSchema,
+  signingSchema
 } from './constants';
 import {
   buildSignerPathBuf,
   ensureHexBuffer,
   fixLen,
   isAsciiStr,
-  splitFrames,
+  splitFrames
 } from './util';
 
 const buildEthereumMsgRequest = function (input) {
@@ -415,14 +415,14 @@ const buildEthRawTx = function (tx, sig, address) {
   // See: https://github.com/ethereumjs/ethereumjs-tx/blob/master/src/transaction.ts#L187
   newRawTx.push(stripZeros(newSig.r));
   newRawTx.push(stripZeros(newSig.s));
-  let rlpEncodedWithSig = rlpEncode(newRawTx);
+  let rlpEncodedWithSig = Buffer.from(rlpEncode(newRawTx));
   if (tx.type) {
     rlpEncodedWithSig = Buffer.concat([
       Buffer.from([tx.type]),
       rlpEncodedWithSig,
     ]);
   }
-  return { rawTx: Buffer.from(rlpEncodedWithSig).toString('hex'), sigWithV: newSig };
+  return { rawTx: rlpEncodedWithSig.toString('hex'), sigWithV: newSig };
 };
 
 // Attach a recovery parameter to a signature by brute-forcing ECRecover
@@ -919,9 +919,9 @@ function get_personal_sign_prefix(L) {
 
 function get_rlp_encoded_preimage(rawTx, txType) {
   if (txType) {
-    return Buffer.concat([Buffer.from([txType]), rlpEncode(rawTx)]);
+    return Buffer.concat([Buffer.from([txType]), Buffer.from(rlpEncode(rawTx))]);
   } else {
-    return rlpEncode(rawTx);
+    return Buffer.from(rlpEncode(rawTx));
   }
 }
 
