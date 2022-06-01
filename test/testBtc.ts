@@ -13,7 +13,7 @@ let client,
 
 // Build the inputs. By default we will build 10. Note that there are `n` tests for
 // *each category*, where `n` is the number of inputs.
-function rand32Bit() {
+function rand32Bit () {
   return Math.floor(prng.quick() * 2 ** 32);
 }
 const inputs = [];
@@ -30,7 +30,7 @@ for (let i = 0; i < count; i++) {
   inputs.push({ hash: hash.toString('hex'), value, signerIdx, idx });
 }
 
-async function testSign(req, signingKeys, sigHashes) {
+async function testSign (req, signingKeys, sigHashes) {
   const tx = await client.sign(req);
   expect(tx.sigs.length).to.equal(signingKeys.length);
   expect(tx.sigs.length).to.equal(sigHashes.length);
@@ -79,11 +79,11 @@ describe('exportSeed', () => {
   });
 });
 
-async function run(p) {
+async function run (p) {
   await testSign(p.txReq, p.signingKeys, p.sigHashes);
 }
 
-async function runTestSet(opts, wallet, inputsSlice) {
+async function runTestSet (opts, wallet, inputsSlice) {
   if (TEST_TESTNET) {
     // Testnet + change
     try {
@@ -93,7 +93,7 @@ async function runTestSet(opts, wallet, inputsSlice) {
         helpers.setup_btc_sig_test(opts, wallet, inputsSlice, prng)
       );
     } catch (err) {
-      expect(err).to.equal(
+      expect(err.message).to.equal(
         null,
         `Failed in (testnet, change): ${err.message()}`
       );
@@ -107,7 +107,7 @@ async function runTestSet(opts, wallet, inputsSlice) {
         helpers.setup_btc_sig_test(opts, wallet, inputsSlice, prng)
       );
     } catch (err) {
-      expect(err).to.equal(
+      expect(err.message).to.equal(
         null,
         `Failed in (testnet, !change): ${err.message()}`
       );
@@ -122,7 +122,7 @@ async function runTestSet(opts, wallet, inputsSlice) {
       helpers.setup_btc_sig_test(opts, wallet, inputsSlice, prng)
     );
   } catch (err) {
-    expect(err).to.equal(
+    expect(err.message).to.equal(
       null,
       `Failed in (!testnet, change): ${err.message()}`
     );
@@ -136,7 +136,7 @@ async function runTestSet(opts, wallet, inputsSlice) {
       helpers.setup_btc_sig_test(opts, wallet, inputsSlice, prng)
     );
   } catch (err) {
-    expect(err).to.equal(
+    expect(err.message).to.equal(
       null,
       `Failed in (!testnet, !change): ${err.message()}`
     );
@@ -163,7 +163,7 @@ describe('Test segwit spender (p2wpkh)', function () {
         continueTests = true;
       }
     } catch (err) {
-      expect(err).to.equal(null, err);
+      expect(err.message).to.equal(null, err);
     }
   })
 
@@ -181,7 +181,7 @@ describe('Test segwit spender (p2wpkh)', function () {
         continueTests = true;
       }
     } catch (err) {
-      expect(err).to.equal(null, err);
+      expect(err.message).to.equal(null, err);
     }
   })
 
@@ -199,7 +199,7 @@ describe('Test segwit spender (p2wpkh)', function () {
         continueTests = true;
       }
     } catch (err) {
-      expect(err).to.equal(null, err);
+      expect(err.message).to.equal(null, err);
     }
   })
 })
@@ -223,7 +223,7 @@ describe('Test wrapped segwit spender (p2sh-p2wpkh)', function () {
         continueTests = true;
       }
     } catch (err) {
-      expect(err).to.equal(null, err);
+      expect(err.message).to.equal(null, err);
     }
   })
 
@@ -241,7 +241,7 @@ describe('Test wrapped segwit spender (p2sh-p2wpkh)', function () {
         continueTests = true;
       }
     } catch (err) {
-      expect(err).to.equal(null, err);
+      expect(err.message).to.equal(null, err);
     }
   })
 
@@ -259,7 +259,7 @@ describe('Test wrapped segwit spender (p2sh-p2wpkh)', function () {
         continueTests = true;
       }
     } catch (err) {
-      expect(err).to.equal(null, err);
+      expect(err.message).to.equal(null, err);
     }
   })
 })
@@ -283,7 +283,7 @@ describe('Test legacy spender (p2pkh)', function () {
         continueTests = true;
       }
     } catch (err) {
-      expect(err).to.equal(null, err);
+      expect(err.message).to.equal(null, err);
     }
   })
 
@@ -301,7 +301,7 @@ describe('Test legacy spender (p2pkh)', function () {
         continueTests = true;
       }
     } catch (err) {
-      expect(err).to.equal(null, err);
+      expect(err.message).to.equal(null, err);
     }
   })
 
@@ -319,7 +319,7 @@ describe('Test legacy spender (p2pkh)', function () {
         continueTests = true;
       }
     } catch (err) {
-      expect(err).to.equal(null, err);
+      expect(err.message).to.equal(null, err);
     }
   })
 })

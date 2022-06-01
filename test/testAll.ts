@@ -174,7 +174,7 @@ describe('Connect and Pair', () => {
     try {
       addrs = await client.getAddresses(addrData);
     } catch (err) {
-      expect(err).to.not.equal(null);
+      expect(err.message).to.not.equal(null);
     }
     addrData.startPath[0] = helpers.BTC_PURPOSE_P2SH_P2WPKH;
 
@@ -184,7 +184,7 @@ describe('Connect and Pair', () => {
       addrs = await client.getAddresses(addrData);
       throw new Error('Expected failure but got success.');
     } catch (err) {
-      expect(err).to.not.equal(null);
+      expect(err.message).to.not.equal(null);
     }
     addrData.startPath[1] = helpers.BTC_COIN;
     // Too many addresses (n>10)
@@ -193,7 +193,7 @@ describe('Connect and Pair', () => {
       addrs = await client.getAddresses(addrData);
       throw new Error('Expected failure but got success.');
     } catch (err) {
-      expect(err).to.not.equal(null);
+      expect(err.message).to.not.equal(null);
     }
     continueTests = true;
   });
@@ -457,14 +457,14 @@ describe('Connect and Pair', () => {
       try {
         await client.addPermissionV0(opts);
       } catch (err) {
-        expect(err).to.equal('Time window and spending limit must be positive.');
+        expect(err.message).to.equal('Time window and spending limit must be positive.');
       }
       try {
         opts.timeWindow = 300;
         opts.limit = 0;
         await client.addPermissionV0(opts);
       } catch (err) {
-        expect(err).to.equal('Time window and spending limit must be positive.');
+        expect(err.message).to.equal('Time window and spending limit must be positive.');
       }
       // Add a 5-minute permission allowing 5 wei to be spent
       opts.timeWindow = 300;
@@ -528,7 +528,7 @@ describe('Connect and Pair', () => {
       expect(signResp.tx).to.not.equal(null);
       continueTests = true;
     } catch (err) {
-      expect(err).to.equal(null, err);
+      expect(err.message).to.equal(null, err);
     }
   });
   */

@@ -209,7 +209,7 @@ export class Client {
    * an ephemeral public key, which is used to pair with the device in a later request.
    * @category Lattice
    */
-  public async connect (deviceId: string) {
+  public async connect (deviceId: string): Promise<boolean> {
     // User may "re-connect" if a device ID has previously been stored
     if (!deviceId) {
       throw new Error('No device ID has been stored. Please connect with your device ID first.')
@@ -236,7 +236,7 @@ export class Client {
    * @category Lattice
    * @returns The active wallet object.
    */
-  public async pair (pairingSecret: string) {
+  public async pair (pairingSecret: string): Promise<boolean> {
     // Build the secret hash from the salt
     const pubKey = this.pubKeyBytes();
     const nameBuf = Buffer.alloc(25);
@@ -288,11 +288,11 @@ export class Client {
    * @category Lattice
    * @returns An array of addresses.
    */
-  public async getAddresses (opts: { startPath: number[], n: number, flag?: number }): Promise<Buffer[]> {
+  public async getAddresses (opts: { startPath: number[], n: number, flag?: number }): Promise<string[] | Buffer | Buffer[]> {
     const MAX_ADDR = 10;
-    const { startPath, n, flag = 0 } = opts;
-    if (startPath === undefined || n === undefined)
-      throw new Error('Please provide `startPath` and `n` options');
+    const { startPath, n = 1, flag = 0 } = opts;
+    if (startPath === undefined)
+      throw new Error('Please provide `startPath`');
     if (startPath.length < 2 || startPath.length > 5)
       throw new Error('Path must include between 2 and 5 indices');
     if (!isUInt4(n) || !isUInt4(flag)) {
@@ -302,13 +302,13 @@ export class Client {
       throw new Error(`You may only request ${MAX_ADDR} addresses at once.`);
 
     const fwConstants = getFwVersionConst(this.fwVersion);
-    const flags = fwConstants.getAddressFlags || [];
+    const allowedFlags = fwConstants.getAddressFlags || [];
     const isPubkeyOnly =
-      flags.indexOf(flag) > -1 &&
+      allowedFlags.indexOf(flag) > -1 &&
       (flag === EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB ||
         flag === EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB);
     if (!isPubkeyOnly && !isValidAssetPath(startPath, fwConstants)) {
-      throw new Error('Parent derivation path is not supported');
+      throw new Error('Unknown derivation path. Cannot return formatted addresses. Please use a supported asset path or request public keys.');
     }
 
     let sz = 32 + 20 + 1; // walletUID + 5 u32 indices + count/flag
@@ -338,8 +338,6 @@ export class Client {
       if (i <= startPath.length) payload.writeUInt32BE(startPath[i], off);
       off += 4;
     }
-    // Specify the number of subsequent addresses to request. We also allow the user to skip the
-    // cache and request any address related to the asset in the wallet.
     let val,
       flagVal: UInt4 = 0;
     if (fwConstants.addrFlagsAllowed) {
@@ -442,9 +440,12 @@ export class Client {
       } catch (err) {
         throw new Error(`Error building signing request: ${err.message}`);
       }
-      if (req.err !== undefined) throw new Error(req.err);
-      if (req.payload.length > fwConstants.reqMaxDataSz)
+      if (req.err !== undefined) {
+        throw new Error(req.err);
+      }
+      if (req.payload.length > fwConstants.reqMaxDataSz) {
         throw new Error('Transaction is too large');
+      }
       reqPayload = req.payload;
       schema = req.schema;
     }
@@ -576,7 +577,7 @@ export class Client {
       throw new Error('Unsupported. Please update firmware.');
     } else if (
       typeof records !== 'object' ||
-      Object.keys(records).length === 0
+      Object.keys(records).length < 1
     ) {
       throw new Error(
         'One or more key-value mapping must be provided in `records` param.',
@@ -585,8 +586,6 @@ export class Client {
       throw new Error(
         `Too many keys provided. Please only provide up to ${fwConstants.kvActionMaxNum}.`,
       );
-    } else if (Object.keys(records).length < 1) {
-      throw new Error('You must provide at least one key to add.');
     }
     const payload = Buffer.alloc(1 + 139 * fwConstants.kvActionMaxNum);
     payload.writeUInt8(Object.keys(records).length, 0);

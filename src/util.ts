@@ -294,20 +294,6 @@ export const existsIn = function (val, obj) {
   return Object.keys(obj).some(key => obj[key] === val);
 }
 
-/**
- * `promisifyCb` accepts `resolve` and `reject` from a `Promise` and an optional callback. 
- * It returns that callback if it exists, otherwise it resolves or rejects as a `Promise`
- * @internal
- */
-export const promisifyCb = (resolve, reject, cb: (err: string, ...cbParams) => void) => {
-  return (err, ...params) => {
-    if (cb && typeof cb === 'function') return cb(err, ...params)
-    if (err && typeof err === 'string') return reject(err)
-    return resolve(...params)
-  }
-}
-
-
 /** @internal Create a buffer of size `n` and fill it with random data */
 export const randomBytes = function (n) {
   const buf = Buffer.alloc(n);
