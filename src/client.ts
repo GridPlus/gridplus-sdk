@@ -53,8 +53,9 @@ export class Client {
   public isPaired: boolean;
   /** The time to wait for a response before cancelling. */
   public timeout: number;
+  /** The remote url to which the SDK sends requests. */
+  public baseUrl: string;
 
-  private baseUrl: string;
   private name: string;
   private key: KeyPair;
   private privKey: Buffer | string;
