@@ -711,7 +711,8 @@ function buildEIP712Request(req, input) {
       req.payload.writeUInt16LE(payload.length, off);
       off += 2;
       const prehash = TypedDataUtils.hash(req.input.payload);
-      prehash.copy(req.payload, off);
+      const prehashBuf = Buffer.from(prehash);
+      prehashBuf.copy(req.payload, off);
       req.prehash = prehash;
     } else {
       const extraDataPayloads = getExtraData(payload, input);
