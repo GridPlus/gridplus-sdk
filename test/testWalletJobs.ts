@@ -736,17 +736,116 @@ describe('signTx', () => {
   });
 });
 
-describe('Get delete permission', () => {
+// NOTE: These tests will only pass for SafeCard applets >=v2.3
+describe('SafeCard applet `extraData` operations', () => {
+  const mnemonic_12 =
+  'need flight merit nation wolf cannon leader convince law shift cotton crouch';
+  const mnemonic_24 = 
+  'silly actress ice spot noise unlock adjust clog verify idle chicken venue arrest bitter output task file awesome language viable dolphin artist dismiss into'
   beforeEach(() => {
-    expect(continueTests).to.equal(true, 'Error in previous test. Aborting.');
+    expect(continueTests).to.equal(
+      true,
+      'Unauthorized or critical failure. Aborting',
+    );
+    continueTests = false;
+    jobReq = {
+      testID: 0, // wallet_job test ID
+      payload: null,
+    };
+  })
+
+  it('Should remove the current seed', async () => {
+    jobReq.payload = helpers.serializeJobData(
+      helpers.jobTypes.WALLET_JOB_DELETE_SEED,
+      currentWalletUID,
+      { iface: 1 }
+    );
+    await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    continueTests = true;
   });
 
-  it('Should get permission to remove seed.', () => {
-    question(
-      '\nThe following tests will remove your seed.\n' +
-      'It should be added back in a later test, but these tests could fail!\n' +
-      'Press enter to continue.',
+  it('Should load a 12 word mnemonic', async () => {
+    jobReq.payload = helpers.serializeJobData(
+      helpers.jobTypes.WALLET_JOB_LOAD_SEED,
+      currentWalletUID,
+      {
+        iface: 1, // external SafeCard interface
+        mnemonic: mnemonic_12,
+        seed: mnemonicToSeedSync(mnemonic_12),
+        exportability: 2, // always exportable
+      },
     );
+    await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    continueTests = true;
+  });
+
+  it('Should reconnect to update the wallet UIDs', async () => {
+    await client.connect(process.env.DEVICE_ID);
+    currentWalletUID = getCurrentWalletUID();
+    continueTests = true;
+  });
+
+  it('Should export and validate the presence of the mnemonic', async () => {
+    jobReq.payload = helpers.serializeJobData(
+      helpers.jobTypes.WALLET_JOB_EXPORT_SEED,
+      currentWalletUID,
+      {}
+    );
+    const { mnemonic } = await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    expect(mnemonic).to.equal(mnemonic_12);
+    continueTests = true;
+  });
+
+  it('Should remove the current seed', async () => {
+    jobReq.payload = helpers.serializeJobData(
+      helpers.jobTypes.WALLET_JOB_DELETE_SEED,
+      currentWalletUID,
+      { iface: 1 }
+    );
+    await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    continueTests = true;
+  });
+
+  it('Should load a 24 word mnemonic', async () => {
+    jobReq.payload = helpers.serializeJobData(
+      helpers.jobTypes.WALLET_JOB_LOAD_SEED,
+      currentWalletUID,
+      {
+        iface: 1, // external SafeCard interface
+        mnemonic: mnemonic_24,
+        seed: mnemonicToSeedSync(mnemonic_24),
+        exportability: 2, // always exportable
+      },
+    );
+    await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    continueTests = true;
+  });
+
+  it('Should reconnect to update the wallet UIDs', async () => {
+    await client.connect(process.env.DEVICE_ID);
+    currentWalletUID = getCurrentWalletUID();
+    continueTests = true;
+  });
+
+  it('Should export and validate the presence of the mnemonic', async () => {
+    jobReq.payload = helpers.serializeJobData(
+      helpers.jobTypes.WALLET_JOB_EXPORT_SEED,
+      currentWalletUID,
+      {}
+    );
+    const { mnemonic } = await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    expect(mnemonic).to.equal(mnemonic_24);
+    continueTests = true;
+  });
+
+  it('Should remove the current seed', async () => {
+    jobReq.payload = helpers.serializeJobData(
+      helpers.jobTypes.WALLET_JOB_DELETE_SEED,
+      currentWalletUID,
+      { iface: 1 }
+    );
+    await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    continueTests = true;
   });
 });
 
@@ -760,25 +859,7 @@ describe('Test leading zeros', () => {
     continueTests = false;
   });
 
-  it('Should remove the current seed', async () => {
-    jobType = helpers.jobTypes.WALLET_JOB_DELETE_SEED;
-    jobData = {
-      iface: 1,
-    };
-    jobReq = {
-      testID: 0, // wallet_job test ID
-      payload: null,
-    };
-    jobReq.payload = helpers.serializeJobData(
-      jobType,
-      currentWalletUID,
-      jobData,
-    );
-    await runTestCase(helpers.gpErrors.GP_SUCCESS);
-    continueTests = true;
-  });
-
-  it('Should load the new seed', async () => {
+  it('Should load a known seed', async () => {
     jobType = helpers.jobTypes.WALLET_JOB_LOAD_SEED;
     jobData = {
       iface: 1, // external SafeCard interface
@@ -797,6 +878,7 @@ describe('Test leading zeros', () => {
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
     continueTests = true;
   });
+
 
   it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
     question(
