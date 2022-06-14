@@ -735,7 +735,21 @@ export const serializeExportSeedJobData = function () {
 };
 
 export const deserializeExportSeedJobResult = function (res) {
-  return { seed: res.slice(0, 64) };
+  let off = 0;
+  const seed = res.slice(off, 64);
+  off += 64;
+  let mWordIdxs = [];
+  for (let i = 0; i < 24; i++) {
+    mWordIdxs.push(res.slice(off, off + 4).readUInt32LE(0));
+    off += 4;
+  }
+  const numWords = res.slice(off, off + 4).readUInt32LE(0);
+  off += 4;
+  let mnemonic = '';
+  for (let i = 0; i < numWords; i++) {
+    mnemonic += wordlists.english[mWordIdxs[i]];
+  }
+  return { seed, mnemonic };
 };
 
 //---------------------------------------------------
@@ -751,10 +765,32 @@ export const serializeDeleteSeedJobData = function (data) {
 // Load Seed helpers
 //---------------------------------------------------
 export const serializeLoadSeedJobData = function (data) {
-  const req = Buffer.alloc(66);
-  req.writeUInt8(data.iface, 0);
-  data.seed.copy(req, 1);
-  req.writeUInt8(data.exportability, 65);
+  const req = Buffer.alloc(219);
+  let off = 0;
+  req.writeUInt8(data.iface, off);
+  off += 1;
+  data.seed.copy(req, off);
+  off += data.seed.length;
+  req.writeUInt8(data.exportability, off);
+  off += 1;
+  if (data.mnemonic) {
+    // Mark `hasMnemonic=true`
+    req.writeUInt8(1, off);
+    off += 1;
+    // Serialize the mnemonic
+    const mWords = data.mnemonic.split(" ");
+    for (let i = 0; i < mWords.length; i++) {
+      req.writeUint32LE(wordlists.english.indexOf(mWords[i]), off + (i * 4));
+    }
+    // Account for the max mnemonic size
+    off += 24 * 4;
+    // Strangely the struct is written with the length of
+    // words after the words themselves lol
+    req.writeUInt32LE(mWords.length);
+    // Ignore the passphrase since we only use this wallet job
+    // helper to test loading a mnemonic onto the card's extraData
+    // buffer, which does not include the passphrase.
+  }
   return req;
 };
 
