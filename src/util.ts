@@ -438,7 +438,7 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
       Buffer.from(_data.slice(2), 'hex') :
       //@ts-expect-error - Buffer doesn't recognize Uint8Array type properly
       Buffer.from(_data, 'hex');
-      
+
     if (data.length < 4) {
       throw new Error('Data must contain at least 4 bytes of data to define the selector')
     }
@@ -489,7 +489,11 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
       if (fourByteResults.length > 1) {
         console.warn('WARNING: There are multiple results. Using the first one.');
       }
-      const canonicalName = fourByteResults[0]?.text_signature;
+      const canonicalName = fourByteResults.sort((a, b) => {
+        const aTime = new Date(a.created_at).getTime();
+        const bTime = new Date(b.created_at).getTime();
+        return aTime - bTime;
+      })[0]?.text_signature;
       return {
         def: Calldata.EVM.parsers.parseCanonicalName(selector, canonicalName),
         abi: fourByteResults
