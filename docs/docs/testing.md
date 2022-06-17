@@ -34,7 +34,7 @@ The following options can be used after `env` with any test.
 | `REUSE_KEY` | Must be `1` | Indicates we will be creating a new pairing with a Lattice and stashing that connection |
 | `DEVICE_ID` | A six character string | The device ID of the target Lattice |
 | `name` | Any 5-25 character string (default="SDK Test") | The name of the pairing you will create |
-| `baseUrl` | Any URL (default="https://signing.gridplus.io") | URL describing where to send HTTP requests. Should be changed if your Lattice is on non-default message routing infrastructure. |
+| `baseUrl` | Any URL (default="https://signing.gridpl.us") | URL describing where to send HTTP requests. Should be changed if your Lattice is on non-default message routing infrastructure. |
 
 ## Setting up the `.env` file
 

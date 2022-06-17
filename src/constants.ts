@@ -362,10 +362,10 @@ export const EXTERNAL = {
 
 /** @internal */
 function getFwVersionConst (v: Buffer): FirmwareConstants {
-  const c: FirmwareConstants = {
+  const c: any = {
     extraDataFrameSz: 0,
     extraDataMaxFrames: 0,
-    genericSigning: {},
+    genericSigning: {} as any,
   };
   function gte (v: Buffer, exp: FirmwareArr): boolean {
     // Note that `v` fields come in as [fix|minor|major]

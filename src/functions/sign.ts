@@ -178,7 +178,8 @@ export const decodeSignResponse = ({
   // Get the change data if we are making a BTC transaction
   let changeRecipient;
   if (currency === CURRENCIES.BTC) {
-    const changeVersion = bitcoin.getAddressFormat(request.origData.changePath);
+    const btcRequest = request as BitcoinSignRequest;
+    const changeVersion = bitcoin.getAddressFormat(btcRequest.origData.changePath);
     const changePubKeyHash = data.slice(off, off + PKH_PREFIX_LEN);
     off += PKH_PREFIX_LEN;
     changeRecipient = bitcoin.getBitcoinAddress(
@@ -217,13 +218,13 @@ export const decodeSignResponse = ({
 
     // First output comes from request dta
     preSerializedData.outputs.push({
-      value: request.origData.value,
-      recipient: request.origData.recipient,
+      value: btcRequest.origData.value,
+      recipient: btcRequest.origData.recipient,
     });
-    if (request.changeData.value > 0) {
+    if (btcRequest.changeData.value > 0) {
       // Second output comes from change data
       preSerializedData.outputs.push({
-        value: request.changeData.value,
+        value: btcRequest.changeData.value,
         recipient: changeRecipient,
       });
     }
@@ -231,11 +232,11 @@ export const decodeSignResponse = ({
     // Add the inputs
     for (let i = 0; i < sigs.length; i++) {
       preSerializedData.inputs.push({
-        hash: request.origData.prevOuts[i].txHash,
-        index: request.origData.prevOuts[i].index,
+        hash: btcRequest.origData.prevOuts[i].txHash,
+        index: btcRequest.origData.prevOuts[i].index,
         sig: sigs[i],
         pubkey: pubkeys[i],
-        signerPath: request.origData.prevOuts[i].signerPath,
+        signerPath: btcRequest.origData.prevOuts[i].signerPath,
       });
     }
 

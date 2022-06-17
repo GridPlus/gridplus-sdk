@@ -12,7 +12,7 @@ export const isWrongWallet = (responseCode: number) =>
 export const isInvalidEphemeralId = (responseCode: number) =>
   responseCode === responseCodes.RESP_ERR_INVALID_EPHEM_ID;
 
-export const doesFetchWalletsOnLoad = (fwVersion: Buffer) =>
+export const doesFetchWalletsOnLoad = (fwVersion: FirmwareVersion) =>
   isFWSupported(fwVersion, { major: 0, minor: 14, fix: 1 });
 
 export const shouldUseEVMLegacyConverter = (fwConstants: FirmwareConstants) =>

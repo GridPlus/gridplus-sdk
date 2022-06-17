@@ -1,4 +1,3 @@
-
 /**
  * Get 64 bytes representing the public key This is the uncompressed key without the leading 04
  * byte
@@ -43,11 +42,17 @@ export const parseWallets = (walletData): ActiveWallets => {
   // Internal first
   let off = 0;
   const activeWallets: ActiveWallets = {
-    internal: { uid: undefined, capabilities: undefined, name: undefined },
+    internal: {
+      uid: undefined,
+      capabilities: undefined,
+      name: undefined,
+      external: false,
+    },
     external: {
       uid: undefined,
       capabilities: undefined,
       name: undefined,
+      external: true,
     },
   };
   activeWallets.internal.uid = walletData.slice(off, off + 32);
@@ -70,7 +75,7 @@ export const parseWallets = (walletData): ActiveWallets => {
 
 // Determine if a provided firmware version matches or exceeds the current firmware version
 export const isFWSupported = (
-  fwVersion: Buffer,
+  fwVersion: FirmwareVersion,
   versionSupported: FirmwareVersion,
 ): boolean => {
   const { major, minor, fix } = fwVersion;

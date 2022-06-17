@@ -102,7 +102,7 @@ export const encodeGetAddressesRequest = ({
   flag,
 }: EncodeGetAddressesRequestParams) => {
   const fwConstants = getFwVersionConst(fwVersion);
-  const flags = fwConstants.getAddressFlags || [];
+  const flags = fwConstants.getAddressFlags || [] as any[];
   const isPubkeyOnly =
     flags.indexOf(flag) > -1 &&
     (flag === EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB ||

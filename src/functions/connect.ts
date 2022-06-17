@@ -42,7 +42,7 @@ export async function connect ({
 
   // If we are paired and are on older firmware (<0.14.1), we need a follow up request to sync
   // wallet state.
-  if (isPaired && !doesFetchWalletsOnLoad(fwVersion)) {
+  if (isPaired && !doesFetchWalletsOnLoad(client.getFwVersion())) {
     await client.fetchActiveWallet();
   }
 

@@ -1,7 +1,6 @@
-import { decResLengths } from '../constants';
+import { decResLengths, EMPTY_WALLET_UID } from '../constants';
 import {
   decryptResponse,
-  EMPTY_WALLET_UID,
   encryptRequest,
   request,
 } from '../shared/functions';
