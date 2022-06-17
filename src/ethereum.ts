@@ -638,8 +638,7 @@ function buildPersonalSignRequest(req, input) {
   return req;
 }
 
-function buildEIP712Request(req, input) {
-  try {
+function buildEIP712Request (req, input) {
     const { ethMaxMsgSz, varAddrPathSzAllowed, eip712MaxTypeParams } =
       input.fwConstants;
     const { TYPED_DATA } = ethMsgProtocol;
@@ -725,9 +724,6 @@ function buildEIP712Request(req, input) {
       req.payload = req.payload.slice(0, off);
     }
     return req;
-  } catch (err) {
-    return { err: `Failed to build EIP712 request: ${err.message}` };
-  }
 }
 
 function getExtraData(payload, input) {
@@ -762,8 +758,7 @@ function getExtraData(payload, input) {
   return extraDataPayloads;
 }
 
-function parseEIP712Msg(msg, typeName, types, forJSParser = false) {
-  try {
+function parseEIP712Msg (msg, typeName, types, forJSParser = false) {
     const type = types[typeName];
     type.forEach((item) => {
       const isArrayType = item.type.indexOf('[') > -1;
@@ -835,10 +830,8 @@ function parseEIP712Msg(msg, typeName, types, forJSParser = false) {
           forJSParser,
         );
       }
-    });
-  } catch (err) {
-    throw new Error(err.message);
-  }
+  })
+
   return msg;
 }
 

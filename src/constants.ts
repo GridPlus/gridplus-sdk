@@ -82,7 +82,7 @@ const encReqCodes = {
   GET_DECODERS: 10,
   REMOVE_DECODERS: 11,
   TEST: 12,
-};
+} as const;
 
 /** @internal */
 const messageConstants = {
@@ -115,6 +115,13 @@ const responseCodes = {
   RESP_ERR_ALREADY: 0x8d,
   RESP_ERR_INVALID_EPHEM_ID: 0x8e,
 };
+
+/** @internal */
+const CURRENCIES = {
+  ETH: 'ETH',
+  BTC: 'BTC',
+  ETH_MSG: 'ETH_MSG',
+}
 
 /** @internal */
 const responseMsgs = {
@@ -354,13 +361,13 @@ export const EXTERNAL = {
 };
 
 /** @internal */
-function getFwVersionConst (v) {
-  const c: any = {
+function getFwVersionConst (v: Buffer): FirmwareConstants {
+  const c: FirmwareConstants = {
     extraDataFrameSz: 0,
     extraDataMaxFrames: 0,
     genericSigning: {},
   };
-  function gte (v, exp) {
+  function gte (v: Buffer, exp: FirmwareArr): boolean {
     // Note that `v` fields come in as [fix|minor|major]
     return (
       v[2] > exp[0] ||
@@ -528,9 +535,14 @@ function getFwVersionConst (v) {
 // eslint-disable-next-line no-control-regex
 const ASCII_REGEX = /^[\x00-\x7F]+$/;
 
+/** @internal */
 const EXTERNAL_NETWORKS_BY_CHAIN_ID_URL =
   'https://gridplus.github.io/chains/chains.json';
 
+/** @internal - Max number of addresses to fetch */
+const MAX_ADDR = 10;
+
+/** @internal */
 const NETWORKS_BY_CHAIN_ID = {
   1: {
     name: 'ethereum',
@@ -554,6 +566,25 @@ const NETWORKS_BY_CHAIN_ID = {
   },
 };
 
+/** @internal */
+export const EMPTY_WALLET_UID = Buffer.alloc(32);
+
+/** @internal */
+export const DEFAULT_ACTIVE_WALLETS: ActiveWallets = {
+  internal: {
+    uid: EMPTY_WALLET_UID,
+    external: false,
+    name: Buffer.alloc(0),
+    capabilities: 0,
+  },
+  external: {
+    uid: EMPTY_WALLET_UID,
+    external: true,
+    name: Buffer.alloc(0),
+    capabilities: 0,
+  },
+};
+
 export {
   ASCII_REGEX,
   getFwVersionConst,
@@ -561,6 +592,8 @@ export {
   AES_IV,
   BIP_CONSTANTS,
   BASE_URL,
+  CURRENCIES,
+  MAX_ADDR,
   NETWORKS_BY_CHAIN_ID,
   EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
   ENC_MSG_LEN,

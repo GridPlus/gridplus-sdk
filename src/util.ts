@@ -220,20 +220,19 @@ export const aes256_decrypt = function (data, key) {
 
 // Decode a DER signature. Returns signature object {r, s } or null if there is an error
 /** @internal */
-export const parseDER = function (sigBuf) {
-  if (sigBuf[0] !== 0x30 || sigBuf[2] !== 0x02) return null;
+export const parseDER = function (sigBuf: Buffer) {
+  if (sigBuf[0] !== 0x30 || sigBuf[2] !== 0x02) throw new Error('Failed to decode DER signature');
   let off = 3;
-  const sig = { r: null, s: null };
   const rLen = sigBuf[off];
   off++;
-  sig.r = sigBuf.slice(off, off + rLen);
+  const r = sigBuf.slice(off, off + rLen);
   off += rLen;
-  if (sigBuf[off] !== 0x02) return null;
+  if (sigBuf[off] !== 0x02) throw new Error('Failed to decode DER signature');
   off++;
   const sLen = sigBuf[off];
   off++;
-  sig.s = sigBuf.slice(off, off + sLen);
-  return sig;
+  const s = sigBuf.slice(off, off + sLen);
+  return { r, s };
 }
 
 /** @internal */
@@ -305,7 +304,7 @@ export const randomBytes = function (n) {
 }
 
 /** @internal `isUInt4` accepts a number and returns true if it is a UInt4 */
-export const isUInt4 = (n: number) => isInteger(n) && inRange(0, 16)
+export const isUInt4 = (n: number) => isInteger(n) && inRange(n, 0, 16)
 
 /**
  * Generates an application secret for use in maintaining connection to device.
