@@ -37,7 +37,6 @@ import {
   isValidAssetPath,
   parseDER,
   parseLattice1Response,
-  promisifyCb,
   toPaddedDER,
   randomBytes,
   isUInt4,
@@ -210,39 +209,24 @@ export class Client {
    * an ephemeral public key, which is used to pair with the device in a later request.
    * @category Lattice
    */
-  public connect (
-    deviceId: string,
-    _cb?: (err?: string, isPaired?: boolean) => void,
-  ): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      let cb = promisifyCb(resolve, reject, _cb);
-      // User may "re-connect" if a device ID has previously been stored
-      if (typeof deviceId === 'function') {
-        if (!this.deviceId)
-          return cb(
-            'No device ID has been stored. Please connect with your device ID first.',
-          );
-        cb = deviceId;
-      } else {
-        // If the user passes in a device ID, connect to that device and save the new ID for future
-        // use.
-        this.deviceId = deviceId;
-      }
-      const param = this._buildRequest(deviceCodes.CONNECT, this.pubKeyBytes());
-      this._request(param, null, (err, res) => {
-        if (err) return cb(err);
-        this.isPaired = this._handleConnect(res) || false;
-        // If we are paired and are on older firmware (<0.14.1), we need a follow up request to sync
-        // wallet state.
-        if (this.isPaired && !this._fwVersionGTE(0, 14, 1)) {
-          this.fetchActiveWallet((err) => {
-            return cb(err, this.isPaired);
-          });
-        } else {
-          return cb(err, this.isPaired);
-        }
-      });
-    });
+  public async connect (deviceId: string): Promise<boolean> {
+    // User may "re-connect" if a device ID has previously been stored
+    if (!deviceId) {
+      throw new Error('No device ID has been stored. Please connect with your device ID first.')
+    }
+    // If the user passes in a device ID, connect to that device and save the new ID for future use.
+    this.deviceId = deviceId;
+
+    const payload = this._buildRequest(deviceCodes.CONNECT, this.pubKeyBytes());
+    const res = await this._request(payload)
+
+    this.isPaired = this._handleConnect(res);
+    // If we are paired and are on older firmware (<0.14.1), we need a follow up request to sync
+    // wallet state.
+    if (this.isPaired && !this._fwVersionGTE(0, 14, 1)) {
+      this.fetchActiveWallet();
+    }
+    return this.isPaired
   }
 
   /**
@@ -252,69 +236,50 @@ export class Client {
    * @category Lattice
    * @returns The active wallet object.
    */
-  public pair (
-    pairingSecret: string,
-    _cb?: (err?: string, hasActiveWallet?: boolean) => void,
-  ): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb);
-      // Build the secret hash from the salt
-      const pubKey = this.pubKeyBytes();
-      const nameBuf = Buffer.alloc(25);
-      if (this.name.length < 5 || this.name.length > 24) {
-        return cb('Invalid length for name provided. Must be 5-24 characters.');
-      }
-      if (pairingSecret.length > 0) {
-        // If a pairing secret of zero length is passed in, it usually indicates we want to cancel
-        // the pairing attempt. In this case we pass a zero-length name buffer so the firmware can
-        // know not to draw the error screen. Note that we still expect an error to come back
-        // (RESP_ERR_PAIR_FAIL)
-        nameBuf.write(this.name);
-      }
-      const hash = generateAppSecret(pubKey, nameBuf, Buffer.from(pairingSecret));
-      const sig = this.key.sign(hash); // returns an array, not a buffer
-      const derSig = toPaddedDER(sig);
-      const payload = Buffer.concat([nameBuf, derSig]);
+  public async pair (pairingSecret: string): Promise<boolean> {
+    // Build the secret hash from the salt
+    const pubKey = this.pubKeyBytes();
+    const nameBuf = Buffer.alloc(25);
+    if (this.name.length < 5 || this.name.length > 24) {
+      throw new Error('Invalid length for name provided. Must be 5-24 characters.');
+    }
+    if (pairingSecret.length > 0) {
+      // If a pairing secret of zero length is passed in, it usually indicates we want to cancel
+      // the pairing attempt. In this case we pass a zero-length name buffer so the firmware can
+      // know not to draw the error screen. Note that we still expect an error to come back
+      // (RESP_ERR_PAIR_FAIL)
+      nameBuf.write(this.name);
+    }
+    const hash = generateAppSecret(pubKey, nameBuf, Buffer.from(pairingSecret));
+    const sig = this.key.sign(hash); // returns an array, not a buffer
+    const derSig = toPaddedDER(sig);
+    const payload = Buffer.concat([nameBuf, derSig]);
 
-      // Build the request
-      this._request(payload, 'FINALIZE_PAIRING', (err, res) => {
-        if (err) return cb(err);
-        // Recover the ephemeral key
-        const errStr = this._handlePair(res);
-        if (errStr) return cb(errStr);
-        // Try to get the active wallet once pairing is successful
-        this.fetchActiveWallet((err) => {
-          if (err) return cb(err);
-          return cb(null, this.hasActiveWallet());
-        });
-      });
-    });
+    // Build the request
+    const res = await this._request(payload, 'FINALIZE_PAIRING')
+    // Recover the ephemeral key
+    this._handlePair(res);
+    // Try to get the active wallet once pairing is successful
+    await this.fetchActiveWallet();
+    return this.hasActiveWallet()
   }
 
   /**
    * `test` takes a data object with a testID and a payload, and sends them to the device.
    * @category Lattice
    */
-  private test (
-    data: { payload: Buffer, testID: number },
-    _cb?: (err?: string, data?: Buffer) => void,
-  ) {
-    return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb);
-      if (!data.payload)
-        return cb('First argument must contain `testID` and `payload` fields.');
-      const TEST_DATA_SZ = 500;
-      const payload = Buffer.alloc(TEST_DATA_SZ + 6);
-      payload.writeUInt32BE(data.testID, 0);
-      payload.writeUInt16BE(data.payload.length, 4);
-      data.payload.copy(payload, 6);
-      this._request(payload, 'TEST', (err, res) => {
-        if (err) return cb(err);
-        const decrypted = this._handleEncResponse(res, decResLengths.test);
-        if (decrypted.err !== null) return cb(decrypted.err);
-        return cb(null, decrypted.data.slice(65)); // remove ephem pub
-      });
-    });
+  private async test (data: { payload: Buffer, testID: number }) {
+    if (!data.payload) {
+      throw new Error('First argument must contain `testID` and `payload` fields.');
+    }
+    const TEST_DATA_SZ = 500;
+    const payload = Buffer.alloc(TEST_DATA_SZ + 6);
+    payload.writeUInt32BE(data.testID, 0);
+    payload.writeUInt16BE(data.payload.length, 4);
+    data.payload.copy(payload, 6);
+    const res = await this._request(payload, 'TEST')
+    const decrypted = this._handleEncResponse(res, decResLengths.test);
+    return decrypted.slice(65)// remove ephem pub
   }
 
   /**
@@ -323,87 +288,77 @@ export class Client {
    * @category Lattice
    * @returns An array of addresses.
    */
-  public getAddresses (
-    opts: { startPath: number[], n: number, flag?: number },
-    _cb?: (err?: string, data?: Buffer | string[]) => void,
-  ): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb);
-      const MAX_ADDR = 10;
-      const { startPath, n, flag = 0 } = opts;
-      if (startPath === undefined || n === undefined)
-        return cb('Please provide `startPath` and `n` options');
-      if (startPath.length < 2 || startPath.length > 5)
-        return cb('Path must include between 2 and 5 indices');
-      if (!isUInt4(n) || !isUInt4(flag)) {
-        return cb('Parameters `n` and `flag` must be integers between 0 and 15 inclusive');
-      }
-      if (n > MAX_ADDR)
-        return cb(`You may only request ${MAX_ADDR} addresses at once.`);
+  public async getAddresses (opts: { startPath: number[], n: number, flag?: number }): Promise<string[] | Buffer | Buffer[]> {
+    const MAX_ADDR = 10;
+    const { startPath, n = 1, flag = 0 } = opts;
+    if (startPath === undefined)
+      throw new Error('Please provide `startPath`');
+    if (startPath.length < 2 || startPath.length > 5)
+      throw new Error('Path must include between 2 and 5 indices');
+    if (!isUInt4(n) || !isUInt4(flag)) {
+      throw new Error('Parameters `n` and `flag` must be integers between 0 and 15 inclusive');
+    }
+    if (n > MAX_ADDR)
+      throw new Error(`You may only request ${MAX_ADDR} addresses at once.`);
 
-      const fwConstants = getFwVersionConst(this.fwVersion);
-      const flags = fwConstants.getAddressFlags || [];
-      const isPubkeyOnly =
-        flags.indexOf(flag) > -1 &&
-        (flag === EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB ||
-          flag === EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB);
-      if (!isPubkeyOnly && !isValidAssetPath(startPath, fwConstants)) {
-        return cb('Parent derivation path is not supported');
-      }
+    const fwConstants = getFwVersionConst(this.fwVersion);
+    const allowedFlags = fwConstants.getAddressFlags || [];
+    const isPubkeyOnly =
+      allowedFlags.indexOf(flag) > -1 &&
+      (flag === EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB ||
+        flag === EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB);
+    if (!isPubkeyOnly && !isValidAssetPath(startPath, fwConstants)) {
+      throw new Error('Unknown derivation path. Cannot return formatted addresses. Please use a supported asset path or request public keys.');
+    }
 
-      let sz = 32 + 20 + 1; // walletUID + 5 u32 indices + count/flag
-      if (fwConstants.varAddrPathSzAllowed) {
-        sz += 1; // pathDepth
-      } else if (startPath.length !== 5) {
-        return cb(
-          'Your Lattice firmware only supports derivation paths with 5 indices. Please upgrade.',
-        );
-      }
-      const payload = Buffer.alloc(sz);
-      let off = 0;
+    let sz = 32 + 20 + 1; // walletUID + 5 u32 indices + count/flag
+    if (fwConstants.varAddrPathSzAllowed) {
+      sz += 1; // pathDepth
+    } else if (startPath.length !== 5) {
+      throw new Error(
+        'Your Lattice firmware only supports derivation paths with 5 indices. Please upgrade.',
+      );
+    }
+    const payload = Buffer.alloc(sz);
+    let off = 0;
 
-      // WalletUID
-      const wallet = this.getActiveWallet();
-      if (wallet === null) return cb('No active wallet.');
-      wallet.uid.copy(payload, off);
-      off += 32;
-      // Build the start path (5x u32 indices)
-      if (fwConstants.varAddrPathSzAllowed) {
-        payload.writeUInt8(startPath.length, off);
-        off += 1;
-      }
-      for (let i = 0; i < 5; i++) {
-        if (i <= startPath.length) payload.writeUInt32BE(startPath[i], off);
-        off += 4;
-      }
-      // Specify the number of subsequent addresses to request. We also allow the user to skip the
-      // cache and request any address related to the asset in the wallet.
-      let val,
-        flagVal: UInt4 = 0;
-      if (fwConstants.addrFlagsAllowed) {
-        // A 4-bit flag can be used for non-standard address requests This needs to be combined with
-        // `n` as a 4 bit value
-        flagVal =
-          fwConstants.getAddressFlags &&
-            fwConstants.getAddressFlags.indexOf(flag) > -1
-            ? (flag as UInt4)
-            : 0;
-        const flagBits = bitwise.nibble.read(flagVal);
-        const countBits = bitwise.nibble.read(n as UInt4);
-        val = bitwise.byte.write(flagBits.concat(countBits) as Byte);
-      } else {
-        // Very old firmware does not support this flag. We can deprecate this soon.
-        val = n;
-      }
-      payload.writeUInt8(val, off);
-      off++;
-      return this._request(payload, 'GET_ADDRESSES', (err, res) => {
-        if (err) return cb(err);
-        const parsedRes = this._handleGetAddresses(res, flagVal);
-        if (parsedRes.err) return cb(parsedRes.err);
-        return cb(null, parsedRes.data);
-      });
-    });
+    // WalletUID
+    const wallet = this.getActiveWallet();
+    if (wallet === null) {
+      throw new Error('No active wallet.');
+    }
+    wallet.uid.copy(payload, off);
+    off += 32;
+    // Build the start path (5x u32 indices)
+    if (fwConstants.varAddrPathSzAllowed) {
+      payload.writeUInt8(startPath.length, off);
+      off += 1;
+    }
+    for (let i = 0; i < 5; i++) {
+      if (i <= startPath.length) payload.writeUInt32BE(startPath[i], off);
+      off += 4;
+    }
+    let val,
+      flagVal: UInt4 = 0;
+    if (fwConstants.addrFlagsAllowed) {
+      // A 4-bit flag can be used for non-standard address requests This needs to be combined with
+      // `n` as a 4 bit value
+      flagVal =
+        fwConstants.getAddressFlags &&
+          fwConstants.getAddressFlags.indexOf(flag) > -1
+          ? (flag as UInt4)
+          : 0;
+      const flagBits = bitwise.nibble.read(flagVal);
+      const countBits = bitwise.nibble.read(n as UInt4);
+      val = bitwise.byte.write(flagBits.concat(countBits) as Byte);
+    } else {
+      // Very old firmware does not support this flag. We can deprecate this soon.
+      val = n;
+    }
+    payload.writeUInt8(val, off);
+    off++;
+    const res = await this._request(payload, 'GET_ADDRESSES')
+    return this._handleGetAddresses(res, flagVal)
   }
 
   /**
@@ -411,490 +366,200 @@ export class Client {
    * @category Lattice
    * @returns The response from the device.
    */
-  public sign (
+  public async sign (
     opts: { data, currency: string },
-    _cb?: (err?: string, data?: SignData) => void,
     cachedData = null,
     nextCode = null,
   ): Promise<SignData> {
-    return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb);
-      let { data } = opts;
-      if (!data) {
-        return cb('You must provide `data`');
-      }
-      // All transaction requests must be put into the same sized buffer. This comes from
-      // sizeof(GpTransactionRequest_t), but note we remove the 2-byte schemaId since it is not
-      // returned from our resolver. Note that different firmware versions may have different data
-      // sizes.
-      const fwConstants = getFwVersionConst(this.fwVersion);
-      // Build the signing request payload to send to the device. If we catch bad params, return an
-      // error instead
-      data = { fwConstants, ...data };
-      let req, reqPayload, schema;
-      let currency = null;
-      if (cachedData !== null && nextCode !== null) {
-        currency = cachedData.currency;
-        req = cachedData;
-        reqPayload = Buffer.concat([nextCode, req.extraDataPayloads.shift()]);
-        schema = signingSchema.EXTRA_DATA;
-      } else {
-        currency = opts.currency;
-        try {
-          // TEMPORARY BRIDGE -- DEPRECATE ME In v0.15.0 Lattice firmware removed the legacy ETH
-          // signing path, so we need to convert such requests to general signing requests using the
-          // EVM decoder. NOTE: Not every request can be converted, so users should switch to using
-          // general signing requests for newer firmware versions. EIP1559 and EIP155 legacy
-          // requests will convert, but others may not.
-          const useEVMLegacyConverter =
-            fwConstants.genericSigning &&
-            fwConstants.genericSigning.encodingTypes &&
-            fwConstants.genericSigning.encodingTypes.EVM;
-          if (currency === 'ETH' && useEVMLegacyConverter) {
-            console.warn(
-              'Using the legacy ETH signing path. This will soon be deprecated. ' +
-              'Please switch to general signing request.',
-            );
-            let payload;
-            try {
-              payload = ethereum.ethConvertLegacyToGenericReq(data);
-            } catch (err) {
-              return cb(
-                'Could not convert legacy request. Please switch to a general signing ' +
-                'request. See gridplus-sdk docs for more information.',
-              );
-            }
-            data = {
-              fwConstants,
-              encodingType: EXTERNAL.SIGNING.ENCODINGS.EVM,
-              curveType: EXTERNAL.SIGNING.CURVES.SECP256K1,
-              hashType: EXTERNAL.SIGNING.HASHES.KECCAK256,
-              signerPath: data.signerPath,
-              payload,
-            };
-            currency = null;
-          }
-
-          if (currency === 'ETH') {
-            // Legacy signing pathway -- should deprecate in the future
-            req = ethereum.buildEthereumTxRequest(data);
-          } else if (currency === 'ETH_MSG') {
-            req = ethereum.buildEthereumMsgRequest(data);
-          } else if (currency === 'BTC') {
-            req = bitcoin.buildBitcoinTxRequest(data);
-          } else {
-            req = buildGenericSigningMsgRequest(data);
-          }
-        } catch (err) {
-          return cb(`Error building signing request: ${err.message}`);
-        }
-        if (req.err !== undefined) return cb(req.err);
-        if (req.payload.length > fwConstants.reqMaxDataSz)
-          return cb('Transaction is too large');
-        reqPayload = req.payload;
-        schema = req.schema;
-      }
-      // Build the payload
-      const payload = Buffer.alloc(2 + fwConstants.reqMaxDataSz);
-      let off = 0;
-      // Whether there will be follow up requests
-      const hasExtraPayloads =
-        req.extraDataPayloads && Number(req.extraDataPayloads.length > 0);
-      payload.writeUInt8(hasExtraPayloads, off);
-      off += 1;
-      // Copy request schema (e.g. ETH or BTC transfer)
-      payload.writeUInt8(schema, off);
-      off += 1;
-      // Copy the wallet UID
-      const wallet = this.getActiveWallet();
-      if (wallet === null) return cb('No active wallet.');
-      wallet.uid.copy(payload, off);
-      off += wallet.uid.length;
-      // Build data based on the type of request Copy the payload of the request
-      reqPayload.copy(payload, off);
-      // Construct the encrypted request and send it
-      return this._request(payload, 'SIGN_TRANSACTION', (err, res) => {
-        if (err) {
-          // If there was another error caught, return it
-          if (err) return cb(err);
-        } else if (hasExtraPayloads) {
-          const decrypted = this._handleEncResponse(res, decResLengths.sign);
-          nextCode = decrypted.data.slice(65, 73);
-          if (!cachedData) {
-            cachedData = req;
-            // We need to keep track of the currency to handler the decoding
-            cachedData.currency = currency;
-          }
-          return this.sign(opts, cb, cachedData, nextCode);
-        } else {
-          // Correct wallet and no errors -- handle the response
-          try {
-            const parsedRes = this._handleSign(res, currency, req);
-            return cb(null, parsedRes);
-          } catch (err) {
-            return cb(err.message);
-          }
-        }
-      });
-    });
-  }
-
-  /**
-   * `addDecoders` sends an RLP-encoded list of decoders to the Lattice. A "decoder" is a piece of
-   * data that can be used to decode some data in the future. The best example of this is the ABI
-   * defintion of a contract function. This definition is used to deserialize EVM calldata for
-   * future requests that call the specified function (as determined by the function selector).
-   * 
-   * NOTE: The CRUD API to manage calldata decoders is written, but is currently
-   * compiled out of firmware to free up code space. For now we will leave
-   * these functions commented out.
-   * NOTE: You will need to re-enable `import { encode as rlpEncode } from 'rlp';`
-   * 
-   * @deprecated
-   * @category Lattice
-   * @returns The decrypted response.
-   */
-  public addDecoders (
-    opts: { decoderType: number, decoders: Buffer[] },
-    _cb?: (err?: string) => void,
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb);
-      // TODO: Update function comment if/when this is re-enabled.
-      return cb(
-        'Feature currently disabled in Lattice firmware. Please include ' +
-        'calldata decoder data in the signing request itself.'
-      );
-      /*
-      const { decoders, decoderType } = opts;
-      const fwConstants = getFwVersionConst(this.fwVersion);
-      if (!fwConstants.maxDecoderBufSz) {
-        return cb('Please update Lattice firmware.');
-      }
-      const payload = Buffer.alloc(3 + fwConstants.maxDecoderBufSz);
-      const encDecoders = Buffer.from(rlpEncode(decoders));
-      if (encDecoders.length > fwConstants.maxDecoderBufSz) {
-        return cb(
-          'Too much data to make request. Please remove some decoders.',
-        );
-      }
-      payload.writeUInt8(decoderType, 0);
-      payload.writeUInt16LE(encDecoders.length, 1);
-      encDecoders.copy(payload, 3);
-      return this._request(
-        payload,
-        'ADD_DECODERS',
-        (err, res, responseCode) => {
-          if (responseCode && responseCode !== responseCodes.RESP_SUCCESS) {
-            return cb('Error making request.');
-          } else if (err) {
-            return cb(err);
-          }
-          this._handleEncResponse(res, decResLengths.empty);
-          return cb(null);
-        },
-      );
-      */
-    });
-  }
-
-  /**
-   * `getDecoders` fetches a set of decoders saved on the target Lattice.
-   *  
-   * NOTE: The CRUD API to manage calldata decoders is written, but is currently
-   * compiled out of firmware to free up code space. For now we will leave
-   * these functions commented out.
-   * 
-   * @deprecated
-   * @category Lattice
-   * @returns The decrypted response.
-   */
-  public getDecoders (
-    opts: {
-      decoderType: number;
-      n?: number;
-      startIdx?: number;
-      skipTotal?: boolean;
-    },
-    _cb?: (err?: string, data?: { decoders: Buffer[], total: number }) => void,
-  ): Promise<{ decoders: Buffer[], total: number }> {
-    return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb);
-      // TODO: Update function comment if/when this is re-enabled.
-      return cb(
-        'Feature currently disabled in Lattice firmware. Please include ' +
-        'calldata decoder data in the signing request itself.'
-      );
-      /*
-      const { n = 1, startIdx = 0, skipTotal = false, decoderType } = opts;
-      const fwConstants = getFwVersionConst(this.fwVersion);
-      if (!fwConstants.maxDecoderBufSz) {
-        return cb('Please update Lattice firmware.');
-      }
-      if (n < 1) {
-        return cb('Must request at least one record (n=0)');
-      } else if (n < 0 || startIdx < 0) {
-        return cb('Both `n` and `startIdx` must be >=0');
-      }
-      const payload = Buffer.alloc(10);
-      payload.writeUInt8(decoderType, 0);
-      payload.writeUInt8(skipTotal ? 1 : 0, 1);
-      payload.writeUInt32LE(startIdx, 2);
-      payload.writeUInt32LE(n, 6);
-      return this._request(payload, 'GET_DECODERS', (err, res) => {
-        if (err) {
-          return cb(err);
-        }
-        // Correct wallet and no errors -- handle the response
-        const d = this._handleEncResponse(res, decResLengths.getDecoders);
-        if (d.err) {
-          return cb(d.err);
-        }
-        // Decode the response
-        const decoders = [];
-        let off = 65; // Skip 65 byte pubkey prefix
-        const numFetched = d.data.readUInt32LE(off);
-        off += 4;
-        const total = d.data.readUInt32LE(off);
-        off += 4;
-        for (let i = 0; i < numFetched; i++) {
-          const sz = d.data.readUInt32LE(off);
-          off += 4;
-          decoders.push(d.data.slice(off, off + sz));
-          off += sz;
-        }
-        return cb(null, { decoders, total });
-      });
-      */
-    });
-  }
-
-  /**
-   * `removeDecoders` requests removal of a set of decoders on the target Lattice.
-   * 
-   * NOTE: The CRUD API to manage calldata decoders is written, but is currently
-   * compiled out of firmware to free up code space. For now we will leave
-   * these functions commented out.
-   * NOTE: You will need to re-enable `import { encode as rlpEncode } from 'rlp';`
-   * 
-   * @deprecated
-   * @category Lattice
-   * @returns The decrypted response.
-   */
-  public removeDecoders (
-    opts: { decoderType: number, decoders?: Buffer[], rmAll?: boolean },
-    _cb?: (err?: string, data?: number) => void,
-  ): Promise<number> {
-    return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb);
-      // TODO: Update function comment if/when this is re-enabled.
-      return cb(
-        'Feature currently disabled in Lattice firmware. Please include ' +
-        'calldata decoder data in the signing request itself.'
-      );
-      /*
-      const { decoders, decoderType, rmAll = false } = opts;
-      const fwConstants = getFwVersionConst(this.fwVersion);
-      if (!fwConstants.maxDecoderBufSz) {
-        return cb('Please update Lattice firmware.');
-      } else if ((!decoders || !decoders.length) && !rmAll) {
-        return cb(
-          'At least one decoder must be provided unless using `rmAll`.',
-        );
-      }
-      const payload = Buffer.alloc(3 + fwConstants.maxDecoderBufSz);
-      let encDecoders = Buffer.alloc(0);
-      if (decoders) {
-        encDecoders = Buffer.from(rlpEncode(decoders));
-        if (encDecoders.length > fwConstants.maxDecoderBufSz) {
-          return cb(
-            'Too much data to make request. Please remove some decoders.',
+    let { data } = opts;
+    if (!data) {
+      throw new Error('You must provide `data`');
+    }
+    // All transaction requests must be put into the same sized buffer. This comes from
+    // sizeof(GpTransactionRequest_t), but note we remove the 2-byte schemaId since it is not
+    // returned from our resolver. Note that different firmware versions may have different data
+    // sizes.
+    const fwConstants = getFwVersionConst(this.fwVersion);
+    // Build the signing request payload to send to the device. If we catch bad params, return an
+    // error instead
+    data = { fwConstants, ...data };
+    let req, reqPayload, schema;
+    let currency = null;
+    if (cachedData !== null && nextCode !== null) {
+      currency = cachedData.currency;
+      req = cachedData;
+      reqPayload = Buffer.concat([nextCode, req.extraDataPayloads.shift()]);
+      schema = signingSchema.EXTRA_DATA;
+    } else {
+      currency = opts.currency;
+      try {
+        // TEMPORARY BRIDGE -- DEPRECATE ME In v0.15.0 Lattice firmware removed the legacy ETH
+        // signing path, so we need to convert such requests to general signing requests using the
+        // EVM decoder. NOTE: Not every request can be converted, so users should switch to using
+        // general signing requests for newer firmware versions. EIP1559 and EIP155 legacy
+        // requests will convert, but others may not.
+        const useEVMLegacyConverter =
+          fwConstants.genericSigning &&
+          fwConstants.genericSigning.encodingTypes &&
+          fwConstants.genericSigning.encodingTypes.EVM;
+        if (currency === 'ETH' && useEVMLegacyConverter) {
+          console.warn(
+            'Using the legacy ETH signing path. This will soon be deprecated. ' +
+            'Please switch to general signing request.',
           );
+          let payload;
+          try {
+            payload = ethereum.ethConvertLegacyToGenericReq(data);
+          } catch (err) {
+            throw new Error(
+              'Could not convert legacy request. Please switch to a general signing ' +
+              'request. See gridplus-sdk docs for more information.',
+            );
+          }
+          data = {
+            fwConstants,
+            encodingType: EXTERNAL.SIGNING.ENCODINGS.EVM,
+            curveType: EXTERNAL.SIGNING.CURVES.SECP256K1,
+            hashType: EXTERNAL.SIGNING.HASHES.KECCAK256,
+            signerPath: data.signerPath,
+            payload,
+          };
+          currency = null;
         }
-      }
-      const sz = rmAll ? 0 : encDecoders.length;
-      payload.writeUInt8(decoderType, 0);
-      payload.writeUInt16LE(sz, 1);
-      encDecoders.copy(payload, 3);
-      return this._request(
-        payload,
-        'REMOVE_DECODERS',
-        (err, res, responseCode) => {
-          if (responseCode && responseCode !== responseCodes.RESP_SUCCESS) {
-            return cb('Error making request.');
-          } else if (err) {
-            return cb(err);
-          }
-          const d = this._handleEncResponse(res, decResLengths.removeDecoders);
-          if (d.err) {
-            return cb(d.err);
-          }
-          // Decode the response
-          let off = 65; // Skip 65 byte pubkey prefix
-          const numRemoved = d.data.readUInt32LE(off);
-          off += 4;
-          return cb(null, numRemoved);
-        },
-      );
-      */
-    });
-  }
 
-  /**
-   * `addPermissionV0` takes in a currency, time window, spending limit, and decimals, and builds a
-   * payload to send to the Lattice.
-   * 
-   * NOTE: This feature has been deprecated, but may be replaced in the future.
-   * 
-   * @deprecated
-   * @category Lattice
-   */
-  public addPermissionV0 (
-    opts: {
-      currency: string;
-      timeWindow: number;
-      limit: number;
-      decimals: number;
-      asset: string;
-    },
-    _cb?: (err?: string) => void,
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb);
-      return cb(
-        'This feature has been deprecated and may be replaced at a later time.'
-      );
-      /*
-      const { currency, timeWindow, limit, decimals, asset } = opts;
-      if (
-        !currency ||
-        timeWindow === undefined ||
-        limit === undefined ||
-        decimals === undefined ||
-        timeWindow === null ||
-        limit === null ||
-        decimals === null
-      )
-        return cb(
-          'currency, timeWindow, decimals, and limit are all required options.',
-        );
-      else if (timeWindow === 0 || limit === 0)
-        return cb('Time window and spending limit must be positive.');
-      // Build the name of the permission
-      let name = currency;
-      if (asset) name += `_${asset}`;
-      // Start building the payload
-      const payload = Buffer.alloc(293);
-      // Copy the name
-      if (Buffer.from(name).length > 255) return cb('Asset name too long.');
-      Buffer.from(name).copy(payload, 0);
-      // Convert the limit to a 32 byte hex buffer and copy it in
-      const limitBuf = ethereum.ensureHexBuffer(limit);
-      if (limitBuf.length > 32) return cb('Limit too large.');
-      limitBuf.copy(payload, 256 + (32 - limitBuf.length));
-      // Copy the time window (seconds)
-      payload.writeUInt32BE(timeWindow, 288);
-      payload.writeUInt8(decimals, 292);
-      // Encrypt the request and send it to the Lattice.
-      return this._request(payload, 'ADD_PERMISSION_V0', (err, res) => {
-        if (err) {
-          // If there was another error caught, return it
-          if (err) return cb(err);
+        if (currency === 'ETH') {
+          // Legacy signing pathway -- should deprecate in the future
+          req = ethereum.buildEthereumTxRequest(data);
+        } else if (currency === 'ETH_MSG') {
+          req = ethereum.buildEthereumMsgRequest(data);
+        } else if (currency === 'BTC') {
+          req = bitcoin.buildBitcoinTxRequest(data);
         } else {
-          // Correct wallet and no errors -- handle the response
-          const d = this._handleEncResponse(res, decResLengths.empty);
-          if (d.err) return cb(d.err);
-          return cb(null);
+          req = buildGenericSigningMsgRequest(data);
         }
-      });
-      */
-    });
+      } catch (err) {
+        throw new Error(`Error building signing request: ${err.message}`);
+      }
+      if (req.err !== undefined) {
+        throw new Error(req.err);
+      }
+      if (req.payload.length > fwConstants.reqMaxDataSz) {
+        throw new Error('Transaction is too large');
+      }
+      reqPayload = req.payload;
+      schema = req.schema;
+    }
+    // Build the payload
+    const payload = Buffer.alloc(2 + fwConstants.reqMaxDataSz);
+    let off = 0;
+    // Whether there will be follow up requests
+    const hasExtraPayloads =
+      req.extraDataPayloads && Number(req.extraDataPayloads.length > 0);
+    payload.writeUInt8(hasExtraPayloads, off);
+    off += 1;
+    // Copy request schema (e.g. ETH or BTC transfer)
+    payload.writeUInt8(schema, off);
+    off += 1;
+    // Copy the wallet UID
+    const wallet = this.getActiveWallet();
+    if (wallet === null) throw new Error('No active wallet.');
+    wallet.uid.copy(payload, off);
+    off += wallet.uid.length;
+    // Build data based on the type of request Copy the payload of the request
+    reqPayload.copy(payload, off);
+    // Construct the encrypted request and send it
+    const res = await this._request(payload, 'SIGN_TRANSACTION')
+    if (hasExtraPayloads) {
+      const decrypted = this._handleEncResponse(res, decResLengths.sign);
+      nextCode = decrypted.slice(65, 73);
+      if (!cachedData) {
+        cachedData = req;
+        // We need to keep track of the currency to handler the decoding
+        cachedData.currency = currency;
+      }
+      return this.sign(opts, cachedData, nextCode);
+    }
+    // Correct wallet and no errors -- handle the response
+    return this._handleSign(res, currency, req);
   }
 
   /**
    * `getKvRecords` fetches a list of key-value records from the Lattice.
    * @category Lattice
    */
-  public getKvRecords (
+  public async getKvRecords (
     opts: { type?: number, n?: number, start?: number },
-    _cb?: (err?: string, data?: GetKvRecordsData) => void,
   ): Promise<GetKvRecordsData> {
-    return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb);
-      const { type = 0, n = 1, start = 0 } = opts;
-      const fwConstants = getFwVersionConst(this.fwVersion);
-      if (!fwConstants.kvActionsAllowed) {
-        return cb('Unsupported. Please update firmware.');
-      } else if (n < 1) {
-        return cb('You must request at least one record.');
-      } else if (n > fwConstants.kvActionMaxNum) {
-        return cb(
-          `You may only request up to ${fwConstants.kvActionMaxNum} records at once.`,
-        );
-      }
-      const payload = Buffer.alloc(9);
-      payload.writeUInt32LE(type, 0);
-      payload.writeUInt8(n, 4);
-      payload.writeUInt32LE(start, 5);
-      // Encrypt the request and send it to the Lattice.
-      return this._request(payload, 'GET_KV_RECORDS', (err, res) => {
-        if (err) {
-          // If there was another error caught, return it
-          if (err) return cb(err);
-        } else {
-          // Correct wallet and no errors -- handle the response
-          const d = this._handleEncResponse(res, decResLengths.getKvRecords);
-          if (d.err) return cb(d.err);
-          // Decode the response
-          let off = 65; // Skip 65 byte pubkey prefix
-          const nTotal = parseInt(
-            d.data.slice(off, off + 4).toString('hex'),
-            16,
-          );
-          off += 4;
-          const nFetched = parseInt(
-            d.data.slice(off, off + 1).toString('hex'),
-            16,
-          );
-          off += 1;
-          if (nFetched > fwConstants.kvActionMaxNum)
-            return cb('Too many records fetched. Firmware error.');
-          const records = [];
-          for (let i = 0; i < nFetched; i++) {
-            const r: KVRecord = {};
-            r.id = parseInt(d.data.slice(off, off + 4).toString('hex'), 16);
-            off += 4;
-            r.type = parseInt(d.data.slice(off, off + 4).toString('hex'), 16);
-            off += 4;
-            r.caseSensitive =
-              parseInt(d.data.slice(off, off + 1).toString('hex'), 16) === 1
-                ? true
-                : false;
-            off += 1;
-            const keySz = parseInt(
-              d.data.slice(off, off + 1).toString('hex'),
-              16,
-            );
-            off += 1;
-            r.key = d.data.slice(off, off + keySz - 1).toString();
-            off += fwConstants.kvKeyMaxStrSz + 1;
-            const valSz = parseInt(
-              d.data.slice(off, off + 1).toString('hex'),
-              16,
-            );
-            off += 1;
-            r.val = d.data.slice(off, off + valSz - 1).toString();
-            off += fwConstants.kvValMaxStrSz + 1;
-            records.push(r);
-          }
-          return cb(null, {
-            records,
-            total: nTotal,
-            fetched: nFetched,
-          });
-        }
-      });
-    });
+    const { type = 0, n = 1, start = 0 } = opts;
+    const fwConstants = getFwVersionConst(this.fwVersion);
+    if (!fwConstants.kvActionsAllowed) {
+      throw new Error('Unsupported. Please update firmware.');
+    } else if (n < 1) {
+      throw new Error('You must request at least one record.');
+    } else if (n > fwConstants.kvActionMaxNum) {
+      throw new Error(
+        `You may only request up to ${fwConstants.kvActionMaxNum} records at once.`,
+      );
+    }
+    const payload = Buffer.alloc(9);
+    payload.writeUInt32LE(type, 0);
+    payload.writeUInt8(n, 4);
+    payload.writeUInt32LE(start, 5);
+
+    // Encrypt the request and send it to the Lattice.
+    const res = await this._request(payload, 'GET_KV_RECORDS')
+
+    // Correct wallet and no errors -- handle the response
+    const decrypted = this._handleEncResponse(res, decResLengths.getKvRecords);
+
+    // Decode the response
+    let off = 65; // Skip 65 byte pubkey prefix
+    const nTotal = parseInt(
+      decrypted.slice(off, off + 4).toString('hex'),
+      16,
+    );
+    off += 4;
+    const nFetched = parseInt(
+      decrypted.slice(off, off + 1).toString('hex'),
+      16,
+    );
+    off += 1;
+    if (nFetched > fwConstants.kvActionMaxNum)
+      throw new Error('Too many records fetched. Firmware error.');
+    const records = [];
+    for (let i = 0; i < nFetched; i++) {
+      const r: KVRecord = {};
+      r.id = parseInt(decrypted.slice(off, off + 4).toString('hex'), 16);
+      off += 4;
+      r.type = parseInt(decrypted.slice(off, off + 4).toString('hex'), 16);
+      off += 4;
+      r.caseSensitive =
+        parseInt(decrypted.slice(off, off + 1).toString('hex'), 16) === 1
+          ? true
+          : false;
+      off += 1;
+      const keySz = parseInt(
+        decrypted.slice(off, off + 1).toString('hex'),
+        16,
+      );
+      off += 1;
+      r.key = decrypted.slice(off, off + keySz - 1).toString();
+      off += fwConstants.kvKeyMaxStrSz + 1;
+      const valSz = parseInt(
+        decrypted.slice(off, off + 1).toString('hex'),
+        16,
+      );
+      off += 1;
+      r.val = decrypted.slice(off, off + valSz - 1).toString();
+      off += fwConstants.kvValMaxStrSz + 1;
+      records.push(r);
+    }
+    return {
+      records,
+      total: nTotal,
+      fetched: nFetched,
+    };
+
   }
 
   /**
@@ -903,92 +568,78 @@ export class Client {
    * @category Lattice
    * @returns A callback with an error or null.
    */
-  public addKvRecords (
-    opts: { type?: number, records: KVRecord[], caseSensitive: boolean },
-    _cb?: (err?: string) => void,
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb);
-      const { type = 0, records = {}, caseSensitive = false } = opts;
-      const fwConstants = getFwVersionConst(this.fwVersion);
-      if (!fwConstants.kvActionsAllowed) {
-        return cb('Unsupported. Please update firmware.');
-      } else if (
-        typeof records !== 'object' ||
-        Object.keys(records).length === 0
-      ) {
-        return cb(
-          'One or more key-value mapping must be provided in `records` param.',
-        );
-      } else if (Object.keys(records).length > fwConstants.kvActionMaxNum) {
-        return cb(
-          `Too many keys provided. Please only provide up to ${fwConstants.kvActionMaxNum}.`,
-        );
-      } else if (Object.keys(records).length < 1) {
-        return cb('You must provide at least one key to add.');
-      }
-      const payload = Buffer.alloc(1 + 139 * fwConstants.kvActionMaxNum);
-      payload.writeUInt8(Object.keys(records).length, 0);
-      let off = 1;
-      try {
-        Object.keys(records).forEach((key) => {
-          if (
-            typeof key !== 'string' ||
-            String(key).length > fwConstants.kvKeyMaxStrSz
-          ) {
-            throw new Error(
-              `Key ${key} too large. Must be <=${fwConstants.kvKeyMaxStrSz} characters.`,
-            );
-          } else if (
-            typeof records[key] !== 'string' ||
-            String(records[key]).length > fwConstants.kvValMaxStrSz
-          ) {
-            throw new Error(
-              `Value ${records[key]} too large. Must be <=${fwConstants.kvValMaxStrSz} characters.`,
-            );
-          } else if (
-            String(key).length === 0 ||
-            String(records[key]).length === 0
-          ) {
-            throw new Error('Keys and values must be >0 characters.');
-          } else if (
-            !ASCII_REGEX.test(key) ||
-            !ASCII_REGEX.test(records[key])
-          ) {
-            throw new Error('Unicode characters are not supported.');
-          }
-          // Skip the ID portion. This will get added by firmware.
-          payload.writeUInt32LE(0, off);
-          off += 4;
-          payload.writeUInt32LE(type, off);
-          off += 4;
-          payload.writeUInt8(caseSensitive ? 1 : 0, off);
-          off += 1;
-          payload.writeUInt8(String(key).length + 1, off);
-          off += 1;
-          Buffer.from(String(key)).copy(payload, off);
-          off += fwConstants.kvKeyMaxStrSz + 1;
-          payload.writeUInt8(String(records[key]).length + 1, off);
-          off += 1;
-          Buffer.from(String(records[key])).copy(payload, off);
-          off += fwConstants.kvValMaxStrSz + 1;
-        });
-      } catch (err) {
-        return cb(`Error building request: ${err.message}`);
-      }
-      // Encrypt the request and send it to the Lattice.
-      return this._request(payload, 'ADD_KV_RECORDS', (err, res) => {
-        if (err) {
-          // If there was another error caught, return it
-          if (err) return cb(err);
-        } else {
-          // Correct wallet and no errors -- handle the response
-          const d = this._handleEncResponse(res, decResLengths.empty);
-          if (d.err) return cb(d.err);
-          return cb(null);
+  public async addKvRecords (
+    opts: { type?: number, records: KVRecord[], caseSensitive: boolean }
+  ): Promise<Buffer> {
+    const { type = 0, records = {}, caseSensitive = false } = opts;
+    const fwConstants = getFwVersionConst(this.fwVersion);
+    if (!fwConstants.kvActionsAllowed) {
+      throw new Error('Unsupported. Please update firmware.');
+    } else if (
+      typeof records !== 'object' ||
+      Object.keys(records).length < 1
+    ) {
+      throw new Error(
+        'One or more key-value mapping must be provided in `records` param.',
+      );
+    } else if (Object.keys(records).length > fwConstants.kvActionMaxNum) {
+      throw new Error(
+        `Too many keys provided. Please only provide up to ${fwConstants.kvActionMaxNum}.`,
+      );
+    }
+    const payload = Buffer.alloc(1 + 139 * fwConstants.kvActionMaxNum);
+    payload.writeUInt8(Object.keys(records).length, 0);
+    let off = 1;
+    try {
+      Object.keys(records).forEach((key) => {
+        if (
+          typeof key !== 'string' ||
+          String(key).length > fwConstants.kvKeyMaxStrSz
+        ) {
+          throw new Error(
+            `Key ${key} too large. Must be <=${fwConstants.kvKeyMaxStrSz} characters.`,
+          );
+        } else if (
+          typeof records[key] !== 'string' ||
+          String(records[key]).length > fwConstants.kvValMaxStrSz
+        ) {
+          throw new Error(
+            `Value ${records[key]} too large. Must be <=${fwConstants.kvValMaxStrSz} characters.`,
+          );
+        } else if (
+          String(key).length === 0 ||
+          String(records[key]).length === 0
+        ) {
+          throw new Error('Keys and values must be >0 characters.');
+        } else if (
+          !ASCII_REGEX.test(key) ||
+          !ASCII_REGEX.test(records[key])
+        ) {
+          throw new Error('Unicode characters are not supported.');
         }
+        // Skip the ID portion. This will get added by firmware.
+        payload.writeUInt32LE(0, off);
+        off += 4;
+        payload.writeUInt32LE(type, off);
+        off += 4;
+        payload.writeUInt8(caseSensitive ? 1 : 0, off);
+        off += 1;
+        payload.writeUInt8(String(key).length + 1, off);
+        off += 1;
+        Buffer.from(String(key)).copy(payload, off);
+        off += fwConstants.kvKeyMaxStrSz + 1;
+        payload.writeUInt8(String(records[key]).length + 1, off);
+        off += 1;
+        Buffer.from(String(records[key])).copy(payload, off);
+        off += fwConstants.kvValMaxStrSz + 1;
       });
-    });
+    } catch (err) {
+      throw new Error(`Error building request: ${err.message}`);
+    }
+    // Encrypt the request and send it to the Lattice.
+    const res = await this._request(payload, 'ADD_KV_RECORDS')
+    // Correct wallet and no errors -- handle the response
+    return this._handleEncResponse(res, decResLengths.empty);
   }
 
   /**
@@ -996,60 +647,44 @@ export class Client {
    * @category Lattice
    * @returns A callback with an error or null.
    */
-  public removeKvRecords (
+  public async removeKvRecords (
     opts: { type: number, ids: number[] },
-    _cb?: (err?: string) => void,
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb);
-      const { type = 0, ids = [] } = opts;
-      const fwConstants = getFwVersionConst(this.fwVersion);
-      if (!fwConstants.kvActionsAllowed) {
-        return cb('Unsupported. Please update firmware.');
-      } else if (!Array.isArray(ids) || ids.length < 1) {
-        return cb('You must include one or more `ids` to removed.');
-      } else if (ids.length > fwConstants.kvRemoveMaxNum) {
-        return cb(
-          `Only up to ${fwConstants.kvRemoveMaxNum} records may be removed at once.`,
-        );
-      }
-      const payload = Buffer.alloc(5 + 4 * fwConstants.kvRemoveMaxNum);
-      payload.writeUInt32LE(type, 0);
-      payload.writeUInt8(ids.length, 4);
-      for (let i = 0; i < ids.length; i++) {
-        payload.writeUInt32LE(ids[i], 5 + 4 * i);
-      }
-      // Encrypt the request and send it to the Lattice.
-      return this._request(payload, 'REMOVE_KV_RECORDS', (err, res) => {
-        if (err) {
-          // If there was another error caught, return it
-          if (err) return cb(err);
-        } else {
-          // Correct wallet and no errors -- handle the response
-          const d = this._handleEncResponse(res, decResLengths.empty);
-          if (d.err) return cb(d.err);
-          return cb(null);
-        }
-      });
-    });
+  ): Promise<Buffer> {
+    const { type = 0, ids = [] } = opts;
+    const fwConstants = getFwVersionConst(this.fwVersion);
+    if (!fwConstants.kvActionsAllowed) {
+      throw new Error('Unsupported. Please update firmware.');
+    } else if (!Array.isArray(ids) || ids.length < 1) {
+      throw new Error('You must include one or more `ids` to removed.');
+    } else if (ids.length > fwConstants.kvRemoveMaxNum) {
+      throw new Error(
+        `Only up to ${fwConstants.kvRemoveMaxNum} records may be removed at once.`,
+      );
+    }
+    const payload = Buffer.alloc(5 + 4 * fwConstants.kvRemoveMaxNum);
+    payload.writeUInt32LE(type, 0);
+    payload.writeUInt8(ids.length, 4);
+    for (let i = 0; i < ids.length; i++) {
+      payload.writeUInt32LE(ids[i], 5 + 4 * i);
+    }
+    // Encrypt the request and send it to the Lattice.
+    const res = await this._request(payload, 'REMOVE_KV_RECORDS')
+    // Correct wallet and no errors -- handle the response
+    return this._handleEncResponse(res, decResLengths.empty);
   }
 
   /**
    * Fetch the active wallet in the device.
    * @returns callback with an error or null
    */
-  public fetchActiveWallet (_cb?: (err?: string, wallet?: Buffer) => void) {
-    return new Promise((resolve, reject) => {
-      const cb = promisifyCb(resolve, reject, _cb);
-      const payload = Buffer.alloc(0);
-      return this._request(payload, 'GET_WALLETS', (err, res) => {
-        if (err) {
-          this._resetActiveWallets();
-          return cb(err);
-        }
-        return cb(this._handleGetWallets(res));
-      });
-    });
+  public async fetchActiveWallet (): Promise<Buffer> {
+    const payload = Buffer.alloc(0);
+    const res = await this._request(payload, 'GET_WALLETS')
+      .catch(async err => {
+        await this._resetActiveWallets();
+        throw new Error(err)
+      })
+    return this._handleGetWallets(res)
   }
 
   //=======================================================================
@@ -1155,11 +790,11 @@ export class Client {
    * @internal
    * @returns The response code.
    */
-  private _request (payload, encReqCode, cb, retryCount = this.retryCount) {
+  private async _request (payload, encReqCode = null, retryCount = this.retryCount): Promise<Buffer> {
     if (!this.deviceId) {
-      return cb('Device ID is not set. Please set it and try again.');
+      throw new Error('Device ID is not set. Please set it and try again.');
     } else if (encReqCode && encReqCodes[encReqCode] === undefined) {
-      return cb('Unknown encrypted request code.');
+      throw new Error('Unknown encrypted request code.');
     }
     // Encrypt the data if appropriate. Most requests are end-to-end encrypted, but some (e.g.
     // CONNNECT) are not encrypted.
@@ -1167,79 +802,76 @@ export class Client {
       ? this._buildEncRequest(encReqCodes[encReqCode], payload)
       : payload;
     const url = `${this.baseUrl}/${this.deviceId}`;
-    superagent
+    const res = await superagent
       .post(url)
       .timeout(this.timeout)
       .send({ data })
-      .then((res) => {
-        // Handle formatting or generic HTTP errors
-        if (!res || !res.body) {
-          return cb(`Invalid response: ${res}`);
-        } else if (res.body.status !== 200) {
-          return cb(`Error code ${res.body.status}: ${res.body.message}`);
-        }
-        // Handle retry logic
-        const parsed = parseLattice1Response(res.body.message);
-        const deviceBusy =
-          parsed.responseCode === responseCodes.RESP_ERR_DEV_BUSY ||
-          parsed.responseCode === responseCodes.RESP_ERR_GCE_TIMEOUT;
-        const wrongWallet =
-          parsed.responseCode === responseCodes.RESP_ERR_WRONG_WALLET;
-        const invalidEphemId =
-          parsed.responseCode === responseCodes.RESP_ERR_INVALID_EPHEM_ID;
-        const canRetry = retryCount > 0;
-        // Re-connect and/or retry request if needed
-        if (canRetry && deviceBusy) {
-          // Wait a few seconds and retry
-          setTimeout(() => {
-            this._request(payload, encReqCode, cb, retryCount - 1);
-          }, 3000);
-        } else if (canRetry && invalidEphemId) {
-          // Encrypted channel got out of sync. Reconnect and retry.
-          this.connect(this.deviceId, (err, isPaired) => {
-            if (err) {
-              // Abort on connection error
-              return cb(err);
-            } else if (!isPaired) {
-              // Abort if we are not paired
-              return cb('Not paired to device.');
-            }
-            this._request(payload, encReqCode, cb, retryCount - 1);
-          });
-        } else if (canRetry && wrongWallet && !this.skipRetryOnWrongWallet) {
-          // Incorrect wallet being requested. Clear wallet state.
-          this._resetActiveWallets();
-          // Refetch the active wallet.
-          this.fetchActiveWallet()
-            .then(() => {
-              payload = this._replaceWalletUID(encReqCode, payload);
-              if (!payload) {
-                // Not allowed to retry. Exit here.
-                return cb('Wrong wallet. Failed to switch. Please reconnect.');
-              }
-              this._request(payload, encReqCode, cb, 0);
-            })
-            .catch((err) => {
-              return cb(err);
-            });
-        } else if (parsed.responseCode || parsed.err) {
-          if (parsed.err) {
-            return cb(parsed.err);
-          }
-          cb(responseMsgs[parsed.responseCode] || 'Unknown request failure');
-        } else {
-          // All good
-          cb(null, parsed.data, parsed.responseCode);
-        }
-      })
       .catch((err) => {
         const isTimeout = err.code === 'ECONNABORTED' && err.errno === 'ETIME';
-        if (isTimeout)
-          return cb(
+        if (isTimeout) {
+          throw new Error(
             'Timeout waiting for device. Please ensure it is connected to the internet and try again in a minute.',
           );
-        else return cb(`Failed to make request to device: ${err.message}`);
+        }
+        throw new Error(`Failed to make request to device: ${err.message}`);
       });
+
+    // Handle formatting or generic HTTP errors
+    if (!res || !res.body) {
+      throw new Error(`Invalid response: ${res}`);
+    } else if (res.body.status !== 200) {
+      throw new Error(`Error code ${res.body.status}: ${res.body.message}`);
+    }
+    // Handle retry logic
+    const parsed = parseLattice1Response(res.body.message);
+    const deviceBusy =
+      parsed.responseCode === responseCodes.RESP_ERR_DEV_BUSY ||
+      parsed.responseCode === responseCodes.RESP_ERR_GCE_TIMEOUT;
+    const wrongWallet =
+      parsed.responseCode === responseCodes.RESP_ERR_WRONG_WALLET;
+    const invalidEphemId =
+      parsed.responseCode === responseCodes.RESP_ERR_INVALID_EPHEM_ID;
+    const canRetry = retryCount > 0;
+    // Re-connect and/or retry request if needed
+    if (canRetry && deviceBusy) {
+      // Wait a few seconds and retry
+      setTimeout(async () => await this._request(payload, encReqCode, retryCount - 1), 3000);
+    } else if (canRetry && invalidEphemId) {
+      // Encrypted channel got out of sync. Reconnect and retry.
+      const isPaired = await this.connect(this.deviceId)
+      if (!isPaired) {
+        // Abort if we are not paired
+        throw new Error('Not paired to device.');
+      }
+      return this._request(payload, encReqCode, retryCount - 1);
+
+    } else if (canRetry && wrongWallet && !this.skipRetryOnWrongWallet) {
+      // Incorrect wallet being requested. Clear wallet state.
+      this._resetActiveWallets();
+      // Refetch the active wallet.
+      await this.fetchActiveWallet()
+        .then(async () => {
+          payload = this._replaceWalletUID(encReqCode, payload);
+          if (!payload) {
+            // Not allowed to retry. Exit here.
+            throw new Error('Wrong wallet. Failed to switch. Please reconnect.');
+          }
+          return this._request(payload, encReqCode, 0);
+        })
+        .catch((err) => {
+          throw new Error(err);
+        });
+    } else if (parsed.responseCode || parsed.err) {
+      if (parsed.err) {
+        throw new Error(parsed.err);
+      }
+      throw new Error(responseMsgs[parsed.responseCode].toString() || 'Unknown request failure');
+    } else {
+      // All good
+      return parsed.data
+    }
+
+
   }
 
   // ----- Device response -----
@@ -1301,6 +933,9 @@ export class Client {
     const secret = this._getSharedSecret();
     const encData = encRes.slice(0, ENC_MSG_LEN);
     const res = aes256_decrypt(encData, secret);
+    if (!res) {
+      throw new Error('Error handling getAddresses response')
+    }
     // len does not include a 65-byte pubkey that prefies each encResponse
     len += 65;
     // Validate checksum. It will be the last 4 bytes of the decrypted payload. The length of the
@@ -1308,21 +943,14 @@ export class Client {
     const toCheck = res.slice(0, len);
     const cs = parseInt(`0x${res.slice(len, len + 4).toString('hex')}`);
     const csCheck = checksum(toCheck);
-    if (cs !== csCheck)
-      return {
-        err: `Checksum mismatch in response from Lattice (calculated ${csCheck}, wanted ${cs})`,
-      };
+    if (cs !== csCheck) {
+      throw new Error(`Checksum mismatch in response from Lattice (calculated ${csCheck}, wanted ${cs})`)
+    }
 
     // First 65 bytes is the next ephemeral pubkey
     const pub = res.slice(0, 65).toString('hex');
-    try {
-      this.ephemeralPub = getP256KeyPairFromPub(pub);
-      return { err: null, data: res };
-    } catch (e) {
-      return {
-        err: `Error handling getAddresses response: ${e.toString()}`,
-      };
-    }
+    this.ephemeralPub = getP256KeyPairFromPub(pub);
+    return res
   }
 
   /**
@@ -1334,8 +962,7 @@ export class Client {
    * @returns error (or null)
    */
   private _handlePair (encRes) {
-    const d = this._handleEncResponse(encRes, decResLengths.empty);
-    if (d.err) return d.err;
+    this._handleEncResponse(encRes, decResLengths.empty);
     this.isPaired = true;
     return null;
   }
@@ -1345,15 +972,12 @@ export class Client {
    * @internal
    * @return an array of address strings
    */
-  private _handleGetAddresses (encRes, flag) {
+  private _handleGetAddresses (encRes, flag): Buffer[] {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(
       encRes,
       decResLengths.getAddresses,
     );
-    if (decrypted.err !== null) return decrypted;
-
-    const addrData = decrypted.data;
     let off = 65; // Skip 65 byte pubkey prefix
     // Look for addresses until we reach the end (a 4 byte checksum)
     const addrs = [];
@@ -1366,7 +990,7 @@ export class Client {
     while (off + 4 < decResLengths.getAddresses) {
       if (arePubkeys) {
         // Pubkeys are shorter and are returned as buffers
-        const pubBytes = addrData.slice(off, off + 65);
+        const pubBytes = decrypted.slice(off, off + 65);
         const isEmpty = pubBytes.every((byte) => byte === 0x00);
         if (!isEmpty && flag === ED25519_PUB) {
           // ED25519 pubkeys are 32 bytes
@@ -1379,7 +1003,7 @@ export class Client {
         off += 65;
       } else {
         // Otherwise we are dealing with address strings
-        const addrBytes = addrData.slice(off, off + ADDR_STR_LEN);
+        const addrBytes = decrypted.slice(off, off + ADDR_STR_LEN);
         off += ADDR_STR_LEN;
         // Return the UTF-8 representation
         const len = addrBytes.indexOf(0); // First 0 is the null terminator
@@ -1388,7 +1012,8 @@ export class Client {
         }
       }
     }
-    return { data: addrs, err: null };
+
+    return addrs
   }
 
   /**
@@ -1399,19 +1024,15 @@ export class Client {
    */
   private _handleGetWallets (encRes) {
     const decrypted = this._handleEncResponse(encRes, decResLengths.getWallets);
-    if (decrypted.err !== null) {
-      return decrypted;
-    }
-    const res = decrypted.data;
     // Skip 65byte pubkey prefix. WalletDescriptor contains 32byte id + 4byte flag + 35byte name
-    this._parseAndAddWallets(res.slice(65));
+    this._parseAndAddWallets(decrypted.slice(65));
     if (
       this.activeWallets.internal.uid.equals(EMPTY_WALLET_UID) &&
       this.activeWallets.external.uid.equals(EMPTY_WALLET_UID)
     ) {
-      return 'No active wallet.';
+      throw new Error('No active wallet.');
     }
-    return null;
+    return decrypted;
   }
 
   // Given a set of wallet data, which contains two wallet descriptors, parse the data and save it
@@ -1462,16 +1083,14 @@ export class Client {
   ): { err: string } | SignData {
     // Handle the encrypted response
     const decrypted = this._handleEncResponse(encRes, decResLengths.sign);
-    if (decrypted.err !== null) return { err: decrypted.err };
     const PUBKEY_PREFIX_LEN = 65;
     const PKH_PREFIX_LEN = 20;
     let off = PUBKEY_PREFIX_LEN; // Skip past pubkey prefix
-    const res = decrypted.data;
     // Get the change data if we are making a BTC transaction
     let changeRecipient;
     if (currencyType === 'BTC') {
       const changeVersion = bitcoin.getAddressFormat(req.origData.changePath);
-      const changePubkeyhash = res.slice(off, off + PKH_PREFIX_LEN);
+      const changePubkeyhash = decrypted.slice(off, off + PKH_PREFIX_LEN);
       off += PKH_PREFIX_LEN;
       changeRecipient = bitcoin.getBitcoinAddress(
         changePubkeyhash,
@@ -1489,20 +1108,20 @@ export class Client {
       let n = 0;
       // Parse the signature for each output -- they are returned in the serialized payload in form
       // [pubkey, sig] There is one signature per output
-      while (off < res.length) {
+      while (off < decrypted.length) {
         // Exit out if we have seen all the returned sigs and pubkeys
-        if (res[off] !== 0x30) break;
+        if (decrypted[off] !== 0x30) break;
         // Otherwise grab another set Note that all DER sigs returned fill the maximum 74 byte
         // buffer, but also contain a length at off+1, which we use to parse the non-zero data.
         // First get the signature from its slot
         const sigStart = off;
-        const sigEnd = off + 2 + res[off + 1];
-        sigs.push(res.slice(sigStart, sigEnd));
+        const sigEnd = off + 2 + decrypted[off + 1];
+        sigs.push(decrypted.slice(sigStart, sigEnd));
         // Next, shift by the full set of signatures to hit the respective pubkey NOTE: The data
         // returned is: [<sig0>, <sig1>, ... <sig9>][<pubkey0>, <pubkey1>, ... <pubkey9>]
         const pubStart = n * compressedPubLength + PUBKEYS_OFFSET;
         const pubEnd = (n + 1) * compressedPubLength + PUBKEYS_OFFSET;
-        pubkeys.push(res.slice(pubStart, pubEnd));
+        pubkeys.push(decrypted.slice(pubStart, pubEnd));
         // Update offset to hit the next signature slot
         off += DERLength;
         n += 1;
@@ -1553,9 +1172,9 @@ export class Client {
         sigs,
       };
     } else if (currencyType === 'ETH') {
-      const sig = parseDER(res.slice(off, off + 2 + res[off + 1]));
+      const sig = parseDER(decrypted.slice(off, off + 2 + decrypted[off + 1]));
       off += DERLength;
-      const ethAddr = res.slice(off, off + 20);
+      const ethAddr = decrypted.slice(off, off + 20);
       // Determine the `v` param and add it to the sig before returning
       const { rawTx, sigWithV } = ethereum.buildEthRawTx(req, sig, ethAddr);
       return {
@@ -1569,9 +1188,9 @@ export class Client {
         signer: ethAddr,
       };
     } else if (currencyType === 'ETH_MSG') {
-      const sig = parseDER(res.slice(off, off + 2 + res[off + 1]));
+      const sig = parseDER(decrypted.slice(off, off + 2 + decrypted[off + 1]));
       off += DERLength;
-      const signer = res.slice(off, off + 20);
+      const signer = decrypted.slice(off, off + 20);
       const validatedSig = ethereum.validateEthereumMsgResponse(
         { signer, sig },
         req,
@@ -1586,7 +1205,7 @@ export class Client {
       };
     } else {
       // Generic signing request
-      return parseGenericSigningResponse(res, off, req);
+      return parseGenericSigningResponse(decrypted, off, req);
     }
   }
 

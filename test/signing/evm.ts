@@ -18,7 +18,7 @@ import request from 'request-promise';
 import { encode as rlpEncode, decode as rlpDecode } from 'rlp';
 import { HARDENED_OFFSET } from '../../src/constants';
 import { Constants, Calldata } from '../../src/index';
-import { fetchCalldataDecoder } from '../../src/util';
+import { fetchCalldataDecoder, randomBytes } from '../../src/util';
 import { getEncodedPayload } from '../../src/genericSigning';
 let test;
 const coder = new AbiCoder();
@@ -893,7 +893,7 @@ async function run (
       test.continue = true;
       return;
     }
-    test.expect(err).to.equal(null, err);
+    test.expect(err.message).to.equal(null, err);
   }
   test.continue = !shouldFail;
 }

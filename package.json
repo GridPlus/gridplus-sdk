@@ -1,9 +1,9 @@
 {
   "name": "gridplus-sdk",
-  "version": "1.3.5",
+  "version": "2.0.0",
   "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "NODE_ENV=production tsc -p tsconfig.json",
     "commit": "git-cz",
     "lint:fix": "eslint --fix src test --ext .ts",
     "lint": "eslint src test --ext .ts",
@@ -35,6 +35,7 @@
     "bs58check": "^2.1.2",
     "buffer": "^5.6.0",
     "crc-32": "^1.2.0",
+    "dotenv": "^16.0.0",
     "elliptic": "6.5.4",
     "eth-eip712-util-browser": "^0.0.3",
     "hash.js": "^1.1.7",
@@ -58,7 +59,6 @@
     "bip39": "^3.0.2",
     "bitcoinjs-lib": "4.0.3",
     "chai": "^4.2.0",
-    "dotenv": "^16.0.0",
     "ed25519-hd-key": "^1.2.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-prettier": "^4.0.0",
