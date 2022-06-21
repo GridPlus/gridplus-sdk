@@ -5,8 +5,8 @@
   "scripts": {
     "build": "NODE_ENV=production tsc -p tsconfig.json",
     "commit": "git-cz",
-    "lint:fix": "eslint --fix src test --ext .ts",
-    "lint": "eslint src test --ext .ts",
+    "lint:fix": "eslint --fix src --ext .ts",
+    "lint": "eslint src --ext .ts",
     "postinstall": "patch-package",
     "precommit": "npm run lint:fix && npm run test",
     "prepublish": "",

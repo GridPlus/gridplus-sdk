@@ -26,7 +26,6 @@ import {
   validateResponse,
 } from './validators';
 
-
 /**
  * Build a request to send to the device.
  * @internal
@@ -117,8 +116,9 @@ export const buildTransaction = ({
   // general signing requests for newer firmware versions. EIP1559 and EIP155 legacy
   // requests will convert, but others may not.
   if (currency === 'ETH' && shouldUseEVMLegacyConverter(fwConstants)) {
-    console.log('Using the legacy ETH signing path. This will soon be deprecated. ' +
-      'Please switch to general signing request.',
+    console.log(
+      'Using the legacy ETH signing path. This will soon be deprecated. ' +
+        'Please switch to general signing request.',
     );
     let payload;
     try {
@@ -126,7 +126,7 @@ export const buildTransaction = ({
     } catch (err) {
       throw new Error(
         'Could not convert legacy request. Please switch to a general signing ' +
-        'request. See gridplus-sdk docs for more information.',
+          'request. See gridplus-sdk docs for more information.',
       );
     }
     data = {
@@ -137,16 +137,31 @@ export const buildTransaction = ({
       signerPath: data.signerPath,
       payload,
     };
-    return { request: buildGenericSigningMsgRequest({ ...data, fwConstants }), isGeneric: true }
+    return {
+      request: buildGenericSigningMsgRequest({ ...data, fwConstants }),
+      isGeneric: true,
+    };
   } else if (currency === 'ETH') {
     // Legacy signing pathway -- should deprecate in the future
-    return { request: ethereum.buildEthereumTxRequest({ ...data, fwConstants }), isGeneric: false }
+    return {
+      request: ethereum.buildEthereumTxRequest({ ...data, fwConstants }),
+      isGeneric: false,
+    };
   } else if (currency === 'ETH_MSG') {
-    return { request: ethereum.buildEthereumMsgRequest({ ...data, fwConstants }), isGeneric: false }
+    return {
+      request: ethereum.buildEthereumMsgRequest({ ...data, fwConstants }),
+      isGeneric: false,
+    };
   } else if (currency === 'BTC') {
-    return { request: bitcoin.buildBitcoinTxRequest({ ...data, fwConstants }), isGeneric: false }
+    return {
+      request: bitcoin.buildBitcoinTxRequest({ ...data, fwConstants }),
+      isGeneric: false,
+    };
   }
-  return { request: buildGenericSigningMsgRequest({ ...data, fwConstants }), isGeneric: true }
+  return {
+    request: buildGenericSigningMsgRequest({ ...data, fwConstants }),
+    isGeneric: true,
+  };
 };
 
 const defaultTimeout = {
@@ -184,10 +199,10 @@ export const request = async ({
     throw new Error(`Error code ${res.body.status}: ${res.body.message}`);
   }
 
-  const { responseCode, err, data } = parseLattice1Response(res.body.message);
+  // TODO: Update ResponseCode handling const { responseCode, err, data } = parseLattice1Response(res.body.message);
+  const { err, data } = parseLattice1Response(res.body.message);
 
   if (err) {
-
     //TODO: Handle response codes
     throw new Error(
       // `Request Failed\nResponse Code: ${responseCode}\nError Message: ${err}`,
@@ -209,7 +224,7 @@ export const decryptResponse = (
   encryptedResponse: Buffer, //TODO: add type for responses
   length: number,
   sharedSecret: Buffer,
-): { decryptedData: Buffer, newEphemeralPub: Buffer } => {
+): DecryptedResponse => {
   // Decrypt response
   const encData = encryptedResponse.slice(0, ENC_MSG_LEN);
   const decryptedData = aes256_decrypt(encData, sharedSecret);
