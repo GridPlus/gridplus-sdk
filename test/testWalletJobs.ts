@@ -42,8 +42,8 @@ const BTC_PARENT_PATH = {
   addr: 0, // Not used for pathDepth=4
 };
 // For testing leading zero sigs
-let parentPathStr = 'm/44\'/60\'/0\'/0';
-let basePath = [
+const parentPathStr = 'm/44\'/60\'/0\'/0';
+const basePath = [
   helpers.BTC_PURPOSE_P2PKH,
   helpers.ETH_COIN,
   HARDENED_OFFSET,
@@ -791,7 +791,8 @@ describe('SafeCard applet `extraData` operations', () => {
       currentWalletUID,
       {}
     );
-    const { mnemonic } = await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    const res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    const { mnemonic } = helpers.deserializeExportSeedJobResult(res.result);
     expect(mnemonic).to.equal(mnemonic_12);
     continueTests = true;
   });
@@ -833,18 +834,9 @@ describe('SafeCard applet `extraData` operations', () => {
       currentWalletUID,
       {}
     );
-    const { mnemonic } = await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    const res = await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    const { mnemonic } = helpers.deserializeExportSeedJobResult(res.result);
     expect(mnemonic).to.equal(mnemonic_24);
-    continueTests = true;
-  });
-
-  it('Should remove the current seed', async () => {
-    jobReq.payload = helpers.serializeJobData(
-      helpers.jobTypes.WALLET_JOB_DELETE_SEED,
-      currentWalletUID,
-      { iface: 1 }
-    );
-    await runTestCase(helpers.gpErrors.GP_SUCCESS);
     continueTests = true;
   });
 });
@@ -857,6 +849,16 @@ describe('Test leading zeros', () => {
       'Unauthorized or critical failure. Aborting',
     );
     continueTests = false;
+  });
+
+  it('Should remove the current seed', async () => {
+    jobReq.payload = helpers.serializeJobData(
+      helpers.jobTypes.WALLET_JOB_DELETE_SEED,
+      currentWalletUID,
+      { iface: 1 }
+    );
+    await runTestCase(helpers.gpErrors.GP_SUCCESS);
+    continueTests = true;
   });
 
   it('Should load a known seed', async () => {
@@ -876,15 +878,6 @@ describe('Test leading zeros', () => {
       jobData,
     );
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
-    continueTests = true;
-  });
-
-
-  it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
-    question(
-      '\nPlease remove your SafeCard, then re-insert and unlock it.\n' +
-      'Press enter to continue.',
-    );
     continueTests = true;
   });
 
@@ -1071,14 +1064,6 @@ describe('Load Original Seed Back', () => {
       jobData,
     );
     await runTestCase(helpers.gpErrors.GP_SUCCESS);
-    continueTests = true;
-  });
-
-  it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
-    question(
-      '\n\nPlease remove your SafeCard, then re-insert and unlock it.\n' +
-      'Press enter to continue.',
-    );
     continueTests = true;
   });
 

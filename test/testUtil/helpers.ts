@@ -738,18 +738,18 @@ export const deserializeExportSeedJobResult = function (res) {
   let off = 0;
   const seed = res.slice(off, 64);
   off += 64;
-  let mWordIdxs = [];
+  const words = [];
   for (let i = 0; i < 24; i++) {
-    mWordIdxs.push(res.slice(off, off + 4).readUInt32LE(0));
+    const wordIdx = res.slice(off, off + 4).readUInt32LE(0);
+    words.push(wordlists.english[wordIdx]);
     off += 4;
   }
   const numWords = res.slice(off, off + 4).readUInt32LE(0);
   off += 4;
-  let mnemonic = '';
-  for (let i = 0; i < numWords; i++) {
-    mnemonic += wordlists.english[mWordIdxs[i]];
-  }
-  return { seed, mnemonic };
+  return { 
+    seed, 
+    mnemonic: words.slice(0, numWords).join(' '), 
+  };
 };
 
 //---------------------------------------------------
@@ -765,7 +765,7 @@ export const serializeDeleteSeedJobData = function (data) {
 // Load Seed helpers
 //---------------------------------------------------
 export const serializeLoadSeedJobData = function (data) {
-  const req = Buffer.alloc(219);
+  const req = Buffer.alloc(217);
   let off = 0;
   req.writeUInt8(data.iface, off);
   off += 1;
@@ -774,19 +774,15 @@ export const serializeLoadSeedJobData = function (data) {
   req.writeUInt8(data.exportability, off);
   off += 1;
   if (data.mnemonic) {
-    // Mark `hasMnemonic=true`
-    req.writeUInt8(1, off);
-    off += 1;
     // Serialize the mnemonic
-    const mWords = data.mnemonic.split(" ");
+    const mWords = data.mnemonic.split(' ');
     for (let i = 0; i < mWords.length; i++) {
       req.writeUint32LE(wordlists.english.indexOf(mWords[i]), off + (i * 4));
     }
-    // Account for the max mnemonic size
-    off += 24 * 4;
     // Strangely the struct is written with the length of
-    // words after the words themselves lol
-    req.writeUInt32LE(mWords.length);
+    // words after the words themselves lol (24 words * 4 bytes per word = 96)
+    // (Preserved for fear of any unintended consequences to chaning `BIP39Phrase_t` in fw)
+    req.writeUInt32LE(mWords.length, off + 96);
     // Ignore the passphrase since we only use this wallet job
     // helper to test loading a mnemonic onto the card's extraData
     // buffer, which does not include the passphrase.
