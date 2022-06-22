@@ -20,7 +20,8 @@ import {
   HARDENED_OFFSET,
   responseCodes,
   responseMsgs,
-  VERSION_BYTE
+  VERSION_BYTE,
+  EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
 } from './constants';
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
@@ -410,6 +411,45 @@ export const getV = function (tx, resp) {
 }
 
 /**
+ * Fetches an external JSON file containing networks indexed by chain id from a GridPlus repo, and
+ * returns the parsed JSON.
+ */
+async function fetchExternalNetworkForChainId (
+  chainId: number | string,
+): Promise<{
+  [key: string]: {
+    name: string;
+    baseUrl: string;
+    apiRoute: string;
+  };
+}> {
+  try {
+    const response = await superagent.get(EXTERNAL_NETWORKS_BY_CHAIN_ID_URL);
+    if (response && response.body) {
+      return response.body[chainId];
+    } else {
+      return undefined;
+    }
+  } catch (err) {
+    console.warn('Fetching external networks failed.\n', err);
+  }
+}
+
+/** 
+ * Builds a URL for fetching calldata from block explorers for any supported chains 
+ * */
+function buildUrlForSupportedChainAndAddress ({ supportedChain, address }) {
+  const baseUrl = supportedChain.baseUrl;
+  const apiRoute = supportedChain.apiRoute;
+  const urlWithRoute = `${baseUrl}/${apiRoute}&address=${address}`;
+
+  const apiKey = process.env.ETHERSCAN_KEY;
+  const apiKeyParam = apiKey ? `&apiKey=${process.env.ETHERSCAN_KEY}` : '';
+
+  return urlWithRoute + apiKeyParam
+}
+
+/**
  *  Fetches calldata from a remote scanner based on the transaction's `chainId`
  */
 export async function fetchCalldataDecoder (_data: Uint8Array | string, to: string, _chainId: number | string) {
@@ -432,10 +472,12 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
     // Convert the chainId to a number and use it to determine if we can call out to
     // an etherscan-like explorer for richer data.
     const chainId = Number(_chainId);
-    const supportedChain = NETWORKS_BY_CHAIN_ID[chainId];
+    const cachedNetwork = NETWORKS_BY_CHAIN_ID[chainId];
+    const supportedChain = cachedNetwork
+      ? cachedNetwork
+      : await fetchExternalNetworkForChainId(chainId);
     if (supportedChain) {
-      const baseUrl = supportedChain.baseUrl;
-      const url = `${baseUrl}/api?module=contract&action=getabi&address=${to}&apiKey=${process.env.ETHERSCAN_KEY}`
+      const url = buildUrlForSupportedChainAndAddress({ supportedChain, address: to })
       const response = await superagent
         .get(url)
         .catch(err => {
