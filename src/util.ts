@@ -20,7 +20,8 @@ import {
   HARDENED_OFFSET,
   responseCodes,
   responseMsgs,
-  VERSION_BYTE
+  VERSION_BYTE,
+  EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
 } from './constants';
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
@@ -410,6 +411,30 @@ export const getV = function (tx, resp) {
 }
 
 /**
+ * Fetches an external JSON file containing networks indexed by chain id from a GridPlus repo, and
+ * returns the parsed JSON.
+ */
+async function fetchExternalNetworkByChainId(): Promise<{
+  [key: string]: {
+    name: string;
+    baseUrl: string;
+    apiRoute: string;
+  };
+}> {
+  const response = await superagent
+    .get(EXTERNAL_NETWORKS_BY_CHAIN_ID_URL)
+    .catch((err) => {
+      console.warn('Fetching external networks failed.\n', err);
+    });
+
+  if (response && response.body) {
+    return response.body;
+  } else {
+    return undefined;
+  }
+}
+
+/**
  *  Fetches calldata from a remote scanner based on the transaction's `chainId`
  */
 export async function fetchCalldataDecoder (_data: Uint8Array | string, to: string, _chainId: number | string) {
@@ -432,10 +457,13 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
     // Convert the chainId to a number and use it to determine if we can call out to
     // an etherscan-like explorer for richer data.
     const chainId = Number(_chainId);
-    const supportedChain = NETWORKS_BY_CHAIN_ID[chainId];
+    const supportedChainList =
+      (await fetchExternalNetworkByChainId()) ?? NETWORKS_BY_CHAIN_ID;
+    const supportedChain = supportedChainList[chainId];
     if (supportedChain) {
       const baseUrl = supportedChain.baseUrl;
-      const url = `${baseUrl}/api?module=contract&action=getabi&address=${to}&apiKey=${process.env.ETHERSCAN_KEY}`
+      const apiRoute = supportedChain.apiRoute;
+      const url = `${baseUrl}/${apiRoute}&address=${to}`;
       const response = await superagent
         .get(url)
         .catch(err => {
