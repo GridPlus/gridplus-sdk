@@ -535,22 +535,22 @@ const NETWORKS_BY_CHAIN_ID = {
   1: {
     name: 'ethereum',
     baseUrl: 'https://api.etherscan.io',
-    apiRoute: 'api?module=contract&action=getabi&address=',
+    apiRoute: 'api?module=contract&action=getabi',
   },
   137: {
     name: 'polygon',
     baseUrl: 'https://api.polygonscan.com',
-    apiRoute: 'api?module=contract&action=getabi&address=',
+    apiRoute: 'api?module=contract&action=getabi',
   },
   56: {
     name: 'binance',
     baseUrl: 'https://api.bscscan.com',
-    apiRoute: 'api?module=contract&action=getabi&address=',
+    apiRoute: 'api?module=contract&action=getabi',
   },
   43114: {
     name: 'avalanche',
     baseUrl: 'https://api.snowtrace.io',
-    apiRoute: 'api?module=contract&action=getabi&address=',
+    apiRoute: 'api?module=contract&action=getabi',
   },
 };
 
