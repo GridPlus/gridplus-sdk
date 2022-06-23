@@ -38,6 +38,9 @@ const config = {
         excludePrivate: true,
         readme: 'none',
         mode: 'modules',
+        sidebar: {
+          autoConfiguration: false,
+        },
       },
     ],
   ],

@@ -20,7 +20,8 @@ import {
   HARDENED_OFFSET,
   responseCodes,
   responseMsgs,
-  VERSION_BYTE
+  VERSION_BYTE,
+  EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
 } from './constants';
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
@@ -294,20 +295,6 @@ export const existsIn = function (val, obj) {
   return Object.keys(obj).some(key => obj[key] === val);
 }
 
-/**
- * `promisifyCb` accepts `resolve` and `reject` from a `Promise` and an optional callback. 
- * It returns that callback if it exists, otherwise it resolves or rejects as a `Promise`
- * @internal
- */
-export const promisifyCb = (resolve, reject, cb: (err: string, ...cbParams) => void) => {
-  return (err, ...params) => {
-    if (cb && typeof cb === 'function') return cb(err, ...params)
-    if (err && typeof err === 'string') return reject(err)
-    return resolve(...params)
-  }
-}
-
-
 /** @internal Create a buffer of size `n` and fill it with random data */
 export const randomBytes = function (n) {
   const buf = Buffer.alloc(n);
@@ -424,6 +411,45 @@ export const getV = function (tx, resp) {
 }
 
 /**
+ * Fetches an external JSON file containing networks indexed by chain id from a GridPlus repo, and
+ * returns the parsed JSON.
+ */
+async function fetchExternalNetworkForChainId (
+  chainId: number | string,
+): Promise<{
+  [key: string]: {
+    name: string;
+    baseUrl: string;
+    apiRoute: string;
+  };
+}> {
+  try {
+    const response = await superagent.get(EXTERNAL_NETWORKS_BY_CHAIN_ID_URL);
+    if (response && response.body) {
+      return response.body[chainId];
+    } else {
+      return undefined;
+    }
+  } catch (err) {
+    console.warn('Fetching external networks failed.\n', err);
+  }
+}
+
+/** 
+ * Builds a URL for fetching calldata from block explorers for any supported chains 
+ * */
+function buildUrlForSupportedChainAndAddress ({ supportedChain, address }) {
+  const baseUrl = supportedChain.baseUrl;
+  const apiRoute = supportedChain.apiRoute;
+  const urlWithRoute = `${baseUrl}/${apiRoute}&address=${address}`;
+
+  const apiKey = process.env.ETHERSCAN_KEY;
+  const apiKeyParam = apiKey ? `&apiKey=${process.env.ETHERSCAN_KEY}` : '';
+
+  return urlWithRoute + apiKeyParam
+}
+
+/**
  *  Fetches calldata from a remote scanner based on the transaction's `chainId`
  */
 export async function fetchCalldataDecoder (_data: Uint8Array | string, to: string, _chainId: number | string) {
@@ -438,7 +464,7 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
       Buffer.from(_data.slice(2), 'hex') :
       //@ts-expect-error - Buffer doesn't recognize Uint8Array type properly
       Buffer.from(_data, 'hex');
-      
+
     if (data.length < 4) {
       throw new Error('Data must contain at least 4 bytes of data to define the selector')
     }
@@ -446,10 +472,12 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
     // Convert the chainId to a number and use it to determine if we can call out to
     // an etherscan-like explorer for richer data.
     const chainId = Number(_chainId);
-    const supportedChain = NETWORKS_BY_CHAIN_ID[chainId];
+    const cachedNetwork = NETWORKS_BY_CHAIN_ID[chainId];
+    const supportedChain = cachedNetwork
+      ? cachedNetwork
+      : await fetchExternalNetworkForChainId(chainId);
     if (supportedChain) {
-      const baseUrl = supportedChain.baseUrl;
-      const url = `${baseUrl}/api?module=contract&action=getabi&address=${to}&apiKey=${process.env.ETHERSCAN_KEY}`
+      const url = buildUrlForSupportedChainAndAddress({ supportedChain, address: to })
       const response = await superagent
         .get(url)
         .catch(err => {
@@ -489,7 +517,11 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
       if (fourByteResults.length > 1) {
         console.warn('WARNING: There are multiple results. Using the first one.');
       }
-      const canonicalName = fourByteResults[0]?.text_signature;
+      const canonicalName = fourByteResults.sort((a, b) => {
+        const aTime = new Date(a.created_at).getTime();
+        const bTime = new Date(b.created_at).getTime();
+        return aTime - bTime;
+      })[0]?.text_signature;
       return {
         def: Calldata.EVM.parsers.parseCanonicalName(selector, canonicalName),
         abi: fourByteResults

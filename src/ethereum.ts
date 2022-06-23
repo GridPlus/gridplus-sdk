@@ -37,7 +37,6 @@ const buildEthereumMsgRequest = function (input) {
     input, // Save the input for later
     msg: null, // Save the buffered message for later
   };
-  try {
     switch (input.protocol) {
       case 'signPersonal':
         return buildPersonalSignRequest(req, input);
@@ -50,9 +49,6 @@ const buildEthereumMsgRequest = function (input) {
       default:
         throw new Error('Unsupported protocol');
     }
-  } catch (err) {
-    return { err: err.toString() };
-  }
 };
 
 const validateEthereumMsgResponse = function (res, req) {
@@ -715,7 +711,8 @@ function buildEIP712Request(req, input) {
       req.payload.writeUInt16LE(payload.length, off);
       off += 2;
       const prehash = TypedDataUtils.hash(req.input.payload);
-      prehash.copy(req.payload, off);
+      const prehashBuf = Buffer.from(prehash);
+      prehashBuf.copy(req.payload, off);
       req.prehash = prehash;
     } else {
       const extraDataPayloads = getExtraData(payload, input);

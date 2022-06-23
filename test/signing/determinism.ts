@@ -215,7 +215,7 @@ describe('[Determinism]', () => {
         test.client.skipRetryOnWrongWallet = true;
         await test.client.sign(txReq);
       } catch (err) {
-        expect(err).to.equal(
+        expect(err.message).to.equal(
           `${responseMsgs[responseCodes.RESP_ERR_WRONG_WALLET]} (Lattice)`,
           'Wrong wallet expected.',
         );
@@ -754,7 +754,7 @@ describe('[Determinism]', () => {
         expect(sig).to.equal(jsSig, 'Addr8 sig failed');
       }
       test.continue = true;
-    });
+    })
   });
 
   describe('Teardown Test', () => {
@@ -822,7 +822,7 @@ describe('[Determinism]', () => {
 //---------
 // Helpers
 //---------
-async function testUniformSigs(txReq, tx) {
+async function testUniformSigs (txReq, tx) {
   const tx1Resp = await test.client.sign(txReq);
   const tx2Resp = await test.client.sign(txReq);
   const tx3Resp = await test.client.sign(txReq);
@@ -895,7 +895,7 @@ async function testUniformSigs(txReq, tx) {
   );
 }
 
-async function runTestCase(expectedCode) {
+async function runTestCase (expectedCode) {
   const res = await test.client.test(jobReq);
   const parsedRes = helpers.parseWalletJobResp(res, test.client.fwVersion);
   if (parsedRes.resultStatus !== expectedCode) {
@@ -905,13 +905,13 @@ async function runTestCase(expectedCode) {
   return parsedRes;
 }
 
-function deriveAddress(seed, path) {
+function deriveAddress (seed, path) {
   const wallet = bip32.fromSeed(seed);
   const priv = wallet.derivePath(helpers.getPathStr(path)).privateKey;
   return `0x${privateToAddress(priv).toString('hex')}`;
 }
 
-function signPersonalJS(_msg, path) {
+function signPersonalJS (_msg, path) {
   const wallet = bip32.fromSeed(TEST_SEED);
   const priv = wallet.derivePath(helpers.getPathStr(path)).privateKey;
   const msg = helpers.ethPersonalSignMsg(_msg);

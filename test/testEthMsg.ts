@@ -26,11 +26,11 @@ let numRandom = 20; // Number of random tests to conduct
 const MSG_PAYLOAD_METADATA_SZ = 28; // Metadata that must go in ETH_MSG requests
 let continueTests = true;
 
-function randInt(n) {
+function randInt (n) {
   return Math.floor(n * prng.quick());
 }
 
-function buildRandomMsg(type = 'signPersonal') {
+function buildRandomMsg (type = 'signPersonal') {
   if (type === 'signPersonal') {
     // A random string will do
     const isHexStr = randInt(2) > 0 ? true : false;
@@ -44,7 +44,7 @@ function buildRandomMsg(type = 'signPersonal') {
   }
 }
 
-function buildMsgReq(
+function buildMsgReq (
   payload,
   protocol,
   signerPath = [
@@ -65,7 +65,7 @@ function buildMsgReq(
   };
 }
 
-async function testMsg(req, expectPass = true) {
+async function testMsg (req, expectPass = true) {
   continueTests = false;
   try {
     const sig = await client.sign(req);
@@ -76,7 +76,7 @@ async function testMsg(req, expectPass = true) {
     }
   } catch (err) {
     if (!expectPass) {
-      expect(err).to.not.equal(null, 'Expected failure but got pass');
+      expect(err.message).to.not.equal(null, 'Expected failure but got pass');
       continueTests = true;
     }
   }
@@ -103,7 +103,7 @@ describe('Setup client', () => {
       expect(client.hasActiveWallet()).to.equal(true);
       continueTests = true;
     } catch (err) {
-      expect(err).to.equal(null, err);
+      expect(err.message).to.equal(null, err);
     }
   });
 });

@@ -528,22 +528,29 @@ function getFwVersionConst (v) {
 // eslint-disable-next-line no-control-regex
 const ASCII_REGEX = /^[\x00-\x7F]+$/;
 
+const EXTERNAL_NETWORKS_BY_CHAIN_ID_URL =
+  'https://gridplus.github.io/chains/chains.json';
+
 const NETWORKS_BY_CHAIN_ID = {
   1: {
     name: 'ethereum',
     baseUrl: 'https://api.etherscan.io',
+    apiRoute: 'api?module=contract&action=getabi',
   },
   137: {
     name: 'polygon',
     baseUrl: 'https://api.polygonscan.com',
+    apiRoute: 'api?module=contract&action=getabi',
   },
   56: {
     name: 'binance',
     baseUrl: 'https://api.bscscan.com',
+    apiRoute: 'api?module=contract&action=getabi',
   },
   43114: {
     name: 'avalanche',
     baseUrl: 'https://api.snowtrace.io',
+    apiRoute: 'api?module=contract&action=getabi',
   },
 };
 
@@ -555,6 +562,7 @@ export {
   BIP_CONSTANTS,
   BASE_URL,
   NETWORKS_BY_CHAIN_ID,
+  EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
   ENC_MSG_LEN,
   addressSizes,
   decResLengths,
