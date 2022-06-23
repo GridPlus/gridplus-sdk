@@ -29,6 +29,7 @@ export async function pair ({ pairingSecret, client }: PairRequestParams) {
     client.sharedSecret,
   );
 
+  client.isPaired = true
   client.ephemeralPub = newEphemeralPub;
 
   // Try to get the active wallet once pairing is successful
