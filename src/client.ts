@@ -27,6 +27,7 @@ export class Client {
   public timeout: number;
   /** The remote url to which the SDK sends requests. */
   public baseUrl: string;
+  /** @internal */
   public url?: string;
   /** `name` is a human readable string associated with this app on the Lattice */
   private name: string;
@@ -55,7 +56,22 @@ export class Client {
     timeout,
     retryCount,
     skipRetryOnWrongWallet,
-  }: any) {
+  }: {
+    /** The base URL of the signing server. */
+    baseUrl?: string;
+    /** The name of the client. */
+    name?: string;
+    /** The private key of the client.*/
+    privKey?: Buffer | string;
+    /** Number of times to retry a request if it fails. */
+    retryCount?: number;
+    /** The time to wait for a response before cancelling. */
+    timeout?: number;
+    /** User can pass in previous state data to rehydrate connected session */
+    stateData?: string;
+    /** If true we will not retry if we get a wrong wallet error code */
+    skipRetryOnWrongWallet?: boolean;
+  }) {
     this.name = name || 'Unknown';
     this.baseUrl = baseUrl || BASE_URL;
     this.deviceId = null;
@@ -70,7 +86,6 @@ export class Client {
     /** The user may pass in state data to rehydrate a session that was previously cached */
     if (stateData) {
       this.unpackAndApplyStateData(stateData);
-      return;
     }
   }
 
@@ -87,10 +102,12 @@ export class Client {
     );
   }
 
+  /** @internal */
   public get ephemeralPub () {
     return this._ephemeralPub;
   }
 
+  /** @internal */
   public set ephemeralPub (ephemeralPub: KeyPair) {
     if (ephemeralPub) {
       this._ephemeralPub = ephemeralPub;
@@ -98,15 +115,15 @@ export class Client {
   }
 
   /**
-   * `connect` will attempt to contact a device based on its `deviceId`. The response should include
-   * an ephemeral public key, which is used to pair with the device in a later request.
+   * Attempt to contact a device based on its `deviceId`. The response should include an ephemeral
+   * public key, which is used to pair with the device in a later request.
    * @category Lattice
    */
-  public async connect (id: string) {
+  public async connect (deviceId: string) {
     return retryWrapper({
       fn: connect,
       params: {
-        id,
+        id: deviceId,
         client: this,
       },
       retries: 3,
@@ -119,7 +136,6 @@ export class Client {
    * pairing secret. It then sends the name and signature to the device. If no pairing secret is
    * provided, `pair` sends a zero-length name buffer to the device.
    * @category Lattice
-   * @returns The active wallet object.
    */
   public async pair (pairingSecret: string) {
     return retryWrapper({
@@ -134,10 +150,8 @@ export class Client {
   }
 
   /**
-   * `getAddresses` takes a starting path and a number to get the addresses associated with the
-   * active wallet.
+   * Takes a starting path and a number to get the addresses associated with the active wallet.
    * @category Lattice
-   * @returns An array of addresses.
    */
   public async getAddresses ({
     startPath,
@@ -158,9 +172,8 @@ export class Client {
   }
 
   /**
-   * `sign` builds and sends a request for signing to the device.
+   * Builds and sends a request for signing to the Lattice.
    * @category Lattice
-   * @returns The response from the device.
    */
   public async sign ({
     data,
@@ -184,8 +197,7 @@ export class Client {
   }
 
   /**
-   * Fetch the active wallet in the device.
-   * @returns callback with an error or null
+   * Fetch the active wallet in the Lattice.
    */
   public async fetchActiveWallet (): Promise<ActiveWallets> {
     return retryWrapper({
@@ -199,10 +211,8 @@ export class Client {
   }
 
   /**
-   * `addKvRecords` takes in a set of key-value records and sends a request to add them to the
-   * Lattice.
+   * Takes in a set of key-value records and sends a request to add them to the Lattice.
    * @category Lattice
-   * @returns A callback with an error or null.
    */
   async addKvRecords ({
     type = 0,
@@ -223,7 +233,7 @@ export class Client {
   }
 
   /**
-   * `getKvRecords` fetches a list of key-value records from the Lattice.
+   * Fetches a list of key-value records from the Lattice.
    * @category Lattice
    */
   public async getKvRecords ({
@@ -245,9 +255,8 @@ export class Client {
   }
 
   /**
-   * `removeKvRecords` takes in an array of ids and sends a request to remove them from the Lattice.
+   * Takes in an array of ids and sends a request to remove them from the Lattice.
    * @category Lattice
-   * @returns A callback with an error or null.
    */
   public async removeKvRecords ({
     type = 0,
@@ -283,7 +292,7 @@ export class Client {
   }
 
   /** Check if the user has an active wallet */
-  private hasActiveWallet () {
+  public hasActiveWallet () {
     return !!this.getActiveWallet();
   }
 
@@ -292,25 +301,30 @@ export class Client {
    * @category Device Response
    * @internal
    */
-  private resetActiveWallets () {
+  public resetActiveWallets () {
     this.activeWallets = DEFAULT_ACTIVE_WALLETS;
   }
 
   /**
    * Get a JSON string containing state data that can be used to rehydrate a session. Pass the
    * contents of this to the constructor as `stateData` to rehydrate.
+   * @internal
    */
   public getStateData () {
     return this.packStateData();
   }
 
+  /**
+   * Returns the firmware version constants for the given firmware version.
+   * @internal
+   */
   public getFwConstants () {
     return getFwVersionConst(this.fwVersion ?? Buffer.alloc(0));
   }
 
   /**
    * `getFwVersion` gets the firmware version of the paired device.
-   * @returns Either an object with semver properties (fix, minor, and major) or `null`.
+   * @internal
    */
   public getFwVersion (): {
     fix: number;
@@ -337,6 +351,7 @@ export class Client {
   /**
    * Return JSON-stringified version of state data. Can be used to rehydrate an SDK session without
    * reconnecting to the target Lattice.
+   * @internal
    */
   private packStateData () {
     try {
@@ -372,6 +387,7 @@ export class Client {
   /**
    * Unpack a JSON-stringified version of state data and apply it to state. This will allow us to
    * rehydrate an old session.
+   * @internal
    */
   private unpackAndApplyStateData (data: string) {
     try {
