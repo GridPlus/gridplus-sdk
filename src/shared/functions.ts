@@ -21,7 +21,12 @@ import {
   randomBytes,
 } from '../util';
 import { LatticeResponseError } from './errors';
-import { isDeviceBusy, isInvalidEphemeralId, isWrongWallet, shouldUseEVMLegacyConverter } from './predicates';
+import {
+  isDeviceBusy,
+  isInvalidEphemeralId,
+  isWrongWallet,
+  shouldUseEVMLegacyConverter,
+} from './predicates';
 import {
   validateChecksum,
   validateRequestError,
@@ -175,6 +180,7 @@ export const request = async ({
     .post(url)
     .timeout(timeout)
     .send({ data: payload })
+    .catch(validateRequestError)
     .then(async (response) => {
       // Handle formatting or generic HTTP errors
       if (!response.body || !response.body.message) {
@@ -189,19 +195,19 @@ export const request = async ({
         response.body.message,
       );
 
-      if ((errorMessage || responseCode)) {
+      if (errorMessage || responseCode) {
         throw new LatticeResponseError(responseCode, errorMessage);
       }
 
       return data;
-    });
+    })
 };
 
 /**
  * `sleep()` returns a Promise that resolves after a given number of milliseconds.
  */
 function sleep (ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -213,31 +219,40 @@ function sleep (ms) {
  * @param retries - The number of times to retry the function
  * @param client - The Client to use for side-effects
  */
-export const retryWrapper = async ({ fn, params, retries, client }) => {
-  return fn({ ...params }).catch(async err => {
-    const errorMessage = err.errorMessage
-    const responseCode = err.responseCode
+export const retryWrapper = async ({
+  fn,
+  params,
+  retries,
+  client,
+}) => {
+  return fn({ ...params }).catch(async (err) => {
+    const errorMessage = err.errorMessage;
+    const responseCode = err.responseCode;
 
     if ((errorMessage || responseCode) && retries) {
 
       if (isDeviceBusy(responseCode)) {
         await sleep(3000);
-        return retryWrapper({ fn, params, retries: retries - 1, client });
       }
 
-      if (isWrongWallet(responseCode)) {
+      if (isWrongWallet(responseCode) && !client.skipRetryOnWrongWallet) {
         await client.fetchActiveWallet();
-        return retryWrapper({ fn, params, retries: retries - 1, client });
       }
 
       if (isInvalidEphemeralId(responseCode)) {
         await client.connect(client.deviceId);
-        return retryWrapper({ fn, params, retries: retries - 1, client });
       }
+
+      return retryWrapper({
+        fn,
+        params,
+        retries: retries - 1,
+        client,
+      });
     }
     throw err;
-  })
-}
+  });
+};
 
 /**
  * All encrypted responses must be decrypted with the previous shared secret. Per specification,

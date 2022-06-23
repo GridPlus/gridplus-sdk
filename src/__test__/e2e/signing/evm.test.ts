@@ -22,7 +22,7 @@ import { getEtherscanKey } from '../../utils/getters';
 import { runEvm } from '../../utils/runners';
 
 const globalVectors = jsonc.parse(
-  readFileSync(`${process.cwd()}/src/vectors.jsonc`).toString(),
+  readFileSync(`${process.cwd()}/src/__test__/vectors.jsonc`).toString(),
 );
 const vectors = globalVectors.evm.calldata;
 
