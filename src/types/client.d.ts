@@ -65,10 +65,7 @@ interface EncryptRequestParams {
 interface RequestParams {
   url: string;
   payload: any; //TODO Fix this any
-  timeout?: {
-    response: number;
-    deadline: number;
-  };
+  timeout?: number;
   retries?: number;
 }
 

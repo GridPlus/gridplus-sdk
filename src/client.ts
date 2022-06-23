@@ -1,4 +1,9 @@
-import { BASE_URL, DEFAULT_ACTIVE_WALLETS, EMPTY_WALLET_UID, getFwVersionConst } from './constants';
+import {
+  BASE_URL,
+  DEFAULT_ACTIVE_WALLETS,
+  EMPTY_WALLET_UID,
+  getFwVersionConst
+} from './constants';
 import {
   addKvRecords,
   connect,
@@ -7,9 +12,10 @@ import {
   getKvRecords,
   pair,
   removeKvRecords,
-  sign,
+  sign
 } from './functions/index';
-import { randomBytes, getP256KeyPair, getP256KeyPairFromPub } from './util';
+import { retryWrapper } from './shared/functions';
+import { getP256KeyPair, getP256KeyPairFromPub, randomBytes } from './util';
 
 /**
  * `Client` is a class-based interface for managing a Lattice device.
@@ -82,13 +88,11 @@ export class Client {
   }
 
   public get ephemeralPub () {
-    // console.debug('Getting ephemPub', this._ephemeralPub)
     return this._ephemeralPub;
   }
 
   public set ephemeralPub (ephemeralPub: KeyPair) {
     if (ephemeralPub) {
-      // console.debug('Setting ephemPub', ephemeralPub)
       this._ephemeralPub = ephemeralPub;
     }
   }
@@ -99,7 +103,15 @@ export class Client {
    * @category Lattice
    */
   public async connect (id: string) {
-    return connect({ id, client: this });
+    return retryWrapper({
+      fn: connect,
+      params: {
+        id,
+        client: this,
+      },
+      retries: 3,
+      client: this
+    })
   }
 
   /**
@@ -110,7 +122,15 @@ export class Client {
    * @returns The active wallet object.
    */
   public async pair (pairingSecret: string) {
-    return pair({ pairingSecret, client: this });
+    return retryWrapper({
+      fn: pair,
+      params: {
+        pairingSecret,
+        client: this,
+      },
+      retries: 3,
+      client: this
+    })
   }
 
   /**
@@ -124,7 +144,17 @@ export class Client {
     n = 1,
     flag = 0,
   }: GetAddressesRequestParams): Promise<Buffer[] | string[]> {
-    return getAddresses({ startPath, n, flag, client: this });
+    return retryWrapper({
+      fn: getAddresses,
+      params: {
+        startPath,
+        n,
+        flag,
+        client: this
+      },
+      retries: 3,
+      client: this
+    })
   }
 
   /**
@@ -137,14 +167,20 @@ export class Client {
     currency,
     cachedData,
     nextCode,
+    retries = 3
   }: SignRequestParams): Promise<SignData> {
-    return sign({
-      data,
-      currency,
-      cachedData,
-      nextCode,
-      client: this,
-    });
+    return retryWrapper({
+      fn: sign,
+      params: {
+        data,
+        currency,
+        cachedData,
+        nextCode,
+        client: this,
+      },
+      retries,
+      client: this
+    })
   }
 
   /**
@@ -152,7 +188,14 @@ export class Client {
    * @returns callback with an error or null
    */
   public async fetchActiveWallet (): Promise<ActiveWallets> {
-    return fetchActiveWallet({ client: this });
+    return retryWrapper({
+      fn: fetchActiveWallet,
+      params: {
+        client: this,
+      },
+      retries: 3,
+      client: this
+    })
   }
 
   /**
@@ -166,12 +209,17 @@ export class Client {
     records,
     caseSensitive = false,
   }: AddKvRecordsRequestParams): Promise<Buffer> {
-    return addKvRecords({
-      type,
-      records,
-      caseSensitive,
-      client: this,
-    });
+    return retryWrapper({
+      fn: addKvRecords,
+      params: {
+        type,
+        records,
+        caseSensitive,
+        client: this,
+      },
+      retries: 3,
+      client: this
+    })
   }
 
   /**
@@ -183,7 +231,17 @@ export class Client {
     n = 1,
     start = 0,
   }: GetKvRecordsRequestParams): Promise<GetKvRecordsData> {
-    return getKvRecords({ type, n, start, client: this });
+    return retryWrapper({
+      fn: getKvRecords,
+      params: {
+        type,
+        n,
+        start,
+        client: this,
+      },
+      retries: 3,
+      client: this
+    })
   }
 
   /**
@@ -195,7 +253,16 @@ export class Client {
     type = 0,
     ids = [],
   }: RemoveKvRecordsRequestParams): Promise<Buffer> {
-    return removeKvRecords({ type, ids, client: this });
+    return retryWrapper({
+      fn: removeKvRecords,
+      params: {
+        type,
+        ids,
+        client: this,
+      },
+      retries: 3,
+      client: this
+    })
   }
 
   /** Get the active wallet */

@@ -32,9 +32,13 @@ let ec;
 //--------------------------------------------------
 
 /** @internal Parse a response from the Lattice1 */
-export const parseLattice1Response = function (r) {
+export const parseLattice1Response = function (r): {
+  errorMessage?: string;
+  responseCode?: number;
+  data?: any;
+} {
   const parsed: any = {
-    err: null,
+    errorMessage: null,
     data: null,
   };
   const b = Buffer.from(r, 'hex');
@@ -44,7 +48,7 @@ export const parseLattice1Response = function (r) {
   const protoVer = b.readUInt8(off);
   off++;
   if (protoVer !== VERSION_BYTE) {
-    parsed.err = 'Incorrect protocol version. Please update your SDK';
+    parsed.errorMessage = 'Incorrect protocol version. Please update your SDK';
     return parsed;
   }
 
@@ -53,7 +57,7 @@ export const parseLattice1Response = function (r) {
   const msgType = b.readUInt8(off);
   off++;
   if (msgType !== 0x00) {
-    parsed.err = 'Incorrect response from Lattice1';
+    parsed.errorMessage = 'Incorrect response from Lattice1';
     return parsed;
   }
 
@@ -68,7 +72,8 @@ export const parseLattice1Response = function (r) {
   // Get response code
   const responseCode = payload.readUInt8(0);
   if (responseCode !== responseCodes.RESP_SUCCESS) {
-    parsed.err = `${responseMsgs[responseCode] ? responseMsgs[responseCode] : 'Unknown Error'
+    parsed.errorMessage = `${
+      responseMsgs[responseCode] ? responseMsgs[responseCode] : 'Unknown Error'
       } (Lattice)`;
     parsed.responseCode = responseCode;
     return parsed;
@@ -80,13 +85,13 @@ export const parseLattice1Response = function (r) {
   const cs = b.readUInt32BE(off);
   const expectedCs = checksum(b.slice(0, b.length - 4));
   if (cs !== expectedCs) {
-    parsed.err = 'Invalid checksum from device response';
+    parsed.errorMessage = 'Invalid checksum from device response';
     parsed.data = null;
     return parsed;
   }
 
   return parsed;
-}
+};
 
 /** @internal */
 export const checksum = function (x) {

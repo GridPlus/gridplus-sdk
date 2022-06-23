@@ -3,6 +3,7 @@ interface SignRequestParams {
   currency?: Currency;
   cachedData?: any;
   nextCode?: Buffer;
+  retries?: number;
 }
 
 interface SignRequestFunctionParams extends SignRequestParams {

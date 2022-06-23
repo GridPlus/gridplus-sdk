@@ -27,7 +27,7 @@
       "envFile": "${workspaceFolder}/.env",
       "name": "E2E Tests - All",
       "request": "launch",
-      "runtimeArgs": ["run-script", "test-e2e"],
+      "runtimeArgs": ["run-script", "e2e"],
       "runtimeExecutable": "npm",
       "type": "node"
     },
@@ -37,7 +37,7 @@
       "envFile": "${workspaceFolder}/.env",
       "name": "E2E Tests - General",
       "request": "launch",
-      "runtimeArgs": ["run-script", "test-gen"],
+      "runtimeArgs": ["run-script", "e2e-gen"],
       "runtimeExecutable": "npm",
       "type": "node"
     },
@@ -47,7 +47,7 @@
       "envFile": "${workspaceFolder}/.env",
       "name": "E2E Tests - Bitcoin",
       "request": "launch",
-      "runtimeArgs": ["run-script", "test-btc"],
+      "runtimeArgs": ["run-script", "e2e-btc"],
       "runtimeExecutable": "npm",
       "type": "node"
     },
@@ -57,7 +57,7 @@
       "envFile": "${workspaceFolder}/.env",
       "name": "E2E Tests - Signing",
       "request": "launch",
-      "runtimeArgs": ["run-script", "test-sign"],
+      "runtimeArgs": ["run-script", "e2e-sign"],
       "runtimeExecutable": "npm",
       "type": "node"
     },
@@ -67,7 +67,7 @@
       "envFile": "${workspaceFolder}/.env",
       "name": "E2E Tests - Key-Value",
       "request": "launch",
-      "runtimeArgs": ["run-script", "test-kv"],
+      "runtimeArgs": ["run-script", "e2e-kv"],
       "runtimeExecutable": "npm",
       "type": "node"
     },
@@ -77,7 +77,7 @@
       "envFile": "${workspaceFolder}/.env",
       "name": "E2E Tests - Non-Exportable Card",
       "request": "launch",
-      "runtimeArgs": ["run-script", "test-ne"],
+      "runtimeArgs": ["run-script", "e2e-ne"],
       "runtimeExecutable": "npm",
       "type": "node"
     },
@@ -87,7 +87,7 @@
       "envFile": "${workspaceFolder}/.env",
       "name": "E2E Tests - Wallet Jobs",
       "request": "launch",
-      "runtimeArgs": ["run-script", "test-wj"],
+      "runtimeArgs": ["run-script", "e2e-wj"],
       "runtimeExecutable": "npm",
       "type": "node"
     }

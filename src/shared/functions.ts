@@ -7,6 +7,7 @@ import {
   ENC_MSG_LEN,
   EXTERNAL,
   REQUEST_TYPE_BYTE,
+  responseMsgs,
   VERSION_BYTE,
 } from '../constants';
 import ethereum from '../ethereum';
@@ -19,7 +20,8 @@ import {
   parseLattice1Response,
   randomBytes,
 } from '../util';
-import { shouldUseEVMLegacyConverter } from './predicates';
+import { LatticeResponseError } from './errors';
+import { isDeviceBusy, isInvalidEphemeralId, isWrongWallet, shouldUseEVMLegacyConverter } from './predicates';
 import {
   validateChecksum,
   validateRequestError,
@@ -118,7 +120,7 @@ export const buildTransaction = ({
   if (currency === 'ETH' && shouldUseEVMLegacyConverter(fwConstants)) {
     console.log(
       'Using the legacy ETH signing path. This will soon be deprecated. ' +
-        'Please switch to general signing request.',
+      'Please switch to general signing request.',
     );
     let payload;
     try {
@@ -126,7 +128,7 @@ export const buildTransaction = ({
     } catch (err) {
       throw new Error(
         'Could not convert legacy request. Please switch to a general signing ' +
-          'request. See gridplus-sdk docs for more information.',
+        'request. See gridplus-sdk docs for more information.',
       );
     }
     data = {
@@ -164,54 +166,78 @@ export const buildTransaction = ({
   };
 };
 
-const defaultTimeout = {
-  //TODO Test
-  response: 50000, // Wait 5 seconds for the server to respond
-  deadline: 600000, // but allow 1 minute for the user to accept
-};
-
-interface LatticeRequest extends superagent.Response {
-  body: {
-    status: number;
-    message: string;
-  };
-}
-
 export const request = async ({
   url,
   payload,
-  timeout = defaultTimeout,
-  retries = 3,
+  timeout = 60000,
 }: RequestParams) => {
-  const res: LatticeRequest | void = await superagent
+  return superagent
     .post(url)
     .timeout(timeout)
-    .retry(retries)
     .send({ data: payload })
-    .catch((err: LatticeError) => {
-      validateRequestError(err);
+    .then(async (response) => {
+      // Handle formatting or generic HTTP errors
+      if (!response.body || !response.body.message) {
+        throw new Error(`Invalid response:  ${response.body.message}`);
+      } else if (response.body.status !== 200) {
+        throw new Error(
+          `Error code ${response.body.status}: ${response.body.message}`,
+        );
+      }
+
+      const { data, errorMessage, responseCode } = parseLattice1Response(
+        response.body.message,
+      );
+
+      if ((errorMessage || responseCode)) {
+        throw new LatticeResponseError(responseCode, errorMessage);
+      }
+
+      return data;
     });
-
-  // Handle formatting or generic HTTP errors
-  if (!res || !res.body) {
-    throw new Error(`Invalid response:  ${res}`);
-  } else if (res.body.status !== 200) {
-    throw new Error(`Error code ${res.body.status}: ${res.body.message}`);
-  }
-
-  // TODO: Update ResponseCode handling const { responseCode, err, data } = parseLattice1Response(res.body.message);
-  const { err, data } = parseLattice1Response(res.body.message);
-
-  if (err) {
-    //TODO: Handle response codes
-    throw new Error(
-      // `Request Failed\nResponse Code: ${responseCode}\nError Message: ${err}`,
-      `${err}`,
-    );
-  }
-
-  return data;
 };
+
+/**
+ * `sleep()` returns a Promise that resolves after a given number of milliseconds.
+ */
+function sleep (ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * `retryWrapper()` retries a function call if the error message or response code is present and the
+ * number of retries is greater than 0.
+ *
+ * @param fn - The function to retry
+ * @param params - The parameters to pass to the function
+ * @param retries - The number of times to retry the function
+ * @param client - The Client to use for side-effects
+ */
+export const retryWrapper = async ({ fn, params, retries, client }) => {
+  return fn({ ...params }).catch(async err => {
+    const errorMessage = err.errorMessage
+    const responseCode = err.responseCode
+
+    if ((errorMessage || responseCode) && retries) {
+
+      if (isDeviceBusy(responseCode)) {
+        await sleep(3000);
+        return retryWrapper({ fn, params, retries: retries - 1, client });
+      }
+
+      if (isWrongWallet(responseCode)) {
+        await client.fetchActiveWallet();
+        return retryWrapper({ fn, params, retries: retries - 1, client });
+      }
+
+      if (isInvalidEphemeralId(responseCode)) {
+        await client.connect(client.deviceId);
+        return retryWrapper({ fn, params, retries: retries - 1, client });
+      }
+    }
+    throw err;
+  })
+}
 
 /**
  * All encrypted responses must be decrypted with the previous shared secret. Per specification,
@@ -221,11 +247,13 @@ export const request = async ({
  * @internal
  */
 export const decryptResponse = (
-  encryptedResponse: Buffer, //TODO: add type for responses
+  encryptedResponse: Buffer,
   length: number,
   sharedSecret: Buffer,
 ): DecryptedResponse => {
-  // Decrypt response
+  if (!encryptedResponse || encryptedResponse.length < length) {
+    return { decryptedData: null, newEphemeralPub: null };
+  }
   const encData = encryptedResponse.slice(0, ENC_MSG_LEN);
   const decryptedData = aes256_decrypt(encData, sharedSecret);
 
