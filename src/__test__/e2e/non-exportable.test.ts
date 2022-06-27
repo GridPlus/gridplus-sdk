@@ -21,8 +21,9 @@ import { DEFAULT_SIGNER } from '../utils/builders';
 import { getSigStr } from '../utils/helpers';
 import { initializeClient } from '../utils/initializeClient';
 
-const client = initializeClient();
 describe('Non-Exportable Seed', () => {
+  const client = initializeClient();
+
   describe('Setup', () => {
     it('Should ask if the user wants to test a card with a non-exportable seed', async () => {
       // NOTE: non-exportable seeds were deprecated from the normal setup pathway in firmware v0.12.0

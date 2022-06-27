@@ -14,7 +14,8 @@ import {
   removeKvRecords,
   sign
 } from './functions/index';
-import { retryWrapper } from './shared/functions';
+import { buildRetryWrapper } from './shared/functions';
+import { validateEphemeralPub } from './shared/validators';
 import { getP256KeyPair, getP256KeyPairFromPub, randomBytes } from './util';
 
 /**
@@ -25,9 +26,9 @@ export class Client {
   public isPaired: boolean;
   /** The time to wait for a response before cancelling. */
   public timeout: number;
-  /** The remote url to which the SDK sends requests. */
+  /** The base of the remote url to which the SDK sends requests. */
   public baseUrl: string;
-  /** @internal */
+  /** @internal The `baseUrl` plus the `deviceId`. Set in {@link connect} when it completes successfully.  */
   public url?: string;
   /** `name` is a human readable string associated with this app on the Lattice */
   private name: string;
@@ -44,6 +45,8 @@ export class Client {
   private deviceId: string | null;
   /** Information about the current wallet. Should be null unless we know a wallet is present */
   public activeWallets: ActiveWallets;
+  /** A wrapper function for handling retries and injecting the {@link Client} class  */
+  private retryWrapper: (fn: any, params?: any) => Promise<any>;
 
   /**
    * @param params - Parameters are passed as an object.
@@ -82,6 +85,7 @@ export class Client {
     this.skipRetryOnWrongWallet = skipRetryOnWrongWallet || false;
     this.privKey = privKey || randomBytes(32);
     this.key = getP256KeyPair(this.privKey);
+    this.retryWrapper = buildRetryWrapper(this, this.retryCount);
 
     /** The user may pass in state data to rehydrate a session that was previously cached */
     if (stateData) {
@@ -109,9 +113,8 @@ export class Client {
 
   /** @internal */
   public set ephemeralPub (ephemeralPub: KeyPair) {
-    if (ephemeralPub) {
-      this._ephemeralPub = ephemeralPub;
-    }
+    validateEphemeralPub(ephemeralPub)
+    this._ephemeralPub = ephemeralPub;
   }
 
   /**
@@ -120,15 +123,7 @@ export class Client {
    * @category Lattice
    */
   public async connect (deviceId: string) {
-    return retryWrapper({
-      fn: connect,
-      params: {
-        id: deviceId,
-        client: this,
-      },
-      retries: 3,
-      client: this
-    })
+    return this.retryWrapper(connect, { id: deviceId })
   }
 
   /**
@@ -138,15 +133,7 @@ export class Client {
    * @category Lattice
    */
   public async pair (pairingSecret: string) {
-    return retryWrapper({
-      fn: pair,
-      params: {
-        pairingSecret,
-        client: this,
-      },
-      retries: 3,
-      client: this
-    })
+    return this.retryWrapper(pair, { pairingSecret })
   }
 
   /**
@@ -158,17 +145,7 @@ export class Client {
     n = 1,
     flag = 0,
   }: GetAddressesRequestParams): Promise<Buffer[] | string[]> {
-    return retryWrapper({
-      fn: getAddresses,
-      params: {
-        startPath,
-        n,
-        flag,
-        client: this
-      },
-      retries: 3,
-      client: this
-    })
+    return this.retryWrapper(getAddresses, { startPath, n, flag })
   }
 
   /**
@@ -180,34 +157,15 @@ export class Client {
     currency,
     cachedData,
     nextCode,
-    retries = 3
   }: SignRequestParams): Promise<SignData> {
-    return retryWrapper({
-      fn: sign,
-      params: {
-        data,
-        currency,
-        cachedData,
-        nextCode,
-        client: this,
-      },
-      retries,
-      client: this
-    })
+    return this.retryWrapper(sign, { data, currency, cachedData, nextCode })
   }
 
   /**
    * Fetch the active wallet in the Lattice.
    */
   public async fetchActiveWallet (): Promise<ActiveWallets> {
-    return retryWrapper({
-      fn: fetchActiveWallet,
-      params: {
-        client: this,
-      },
-      retries: 3,
-      client: this
-    })
+    return this.retryWrapper(fetchActiveWallet)
   }
 
   /**
@@ -219,17 +177,7 @@ export class Client {
     records,
     caseSensitive = false,
   }: AddKvRecordsRequestParams): Promise<Buffer> {
-    return retryWrapper({
-      fn: addKvRecords,
-      params: {
-        type,
-        records,
-        caseSensitive,
-        client: this,
-      },
-      retries: 3,
-      client: this
-    })
+    return this.retryWrapper(addKvRecords, { type, records, caseSensitive, })
   }
 
   /**
@@ -241,17 +189,7 @@ export class Client {
     n = 1,
     start = 0,
   }: GetKvRecordsRequestParams): Promise<GetKvRecordsData> {
-    return retryWrapper({
-      fn: getKvRecords,
-      params: {
-        type,
-        n,
-        start,
-        client: this,
-      },
-      retries: 3,
-      client: this
-    })
+    return this.retryWrapper(getKvRecords, { type, n, start, })
   }
 
   /**
@@ -262,16 +200,7 @@ export class Client {
     type = 0,
     ids = [],
   }: RemoveKvRecordsRequestParams): Promise<Buffer> {
-    return retryWrapper({
-      fn: removeKvRecords,
-      params: {
-        type,
-        ids,
-        client: this,
-      },
-      retries: 3,
-      client: this
-    })
+    return this.retryWrapper(removeKvRecords, { type, ids, })
   }
 
   /** Get the active wallet */
@@ -421,6 +350,7 @@ export class Client {
       this.key = getP256KeyPair(this.privKey);
       this.retryCount = unpacked.retryCount;
       this.timeout = unpacked.timeout;
+      this.retryWrapper = buildRetryWrapper(this, this.retryCount);
     } catch (err) {
       console.warn('Could not apply state data.');
     }

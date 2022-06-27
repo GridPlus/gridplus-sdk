@@ -44,7 +44,6 @@ import { initializeClient } from '../utils/initializeClient';
 import { testRequest } from '../utils/testRequest';
 
 const id = getDeviceId();
-const client = initializeClient();
 //---------------------------------------
 // STATE DATA
 //---------------------------------------
@@ -72,25 +71,27 @@ const KNOWN_SEED = mnemonicToSeedSync(mnemonic);
 const wallet = bip32.fromSeed(KNOWN_SEED);
 
 describe('Test Wallet Jobs', () => {
+  const client = initializeClient();
 
-  it('Should connect to a Lattice and make sure it is already paired.', async () => {
-    expect(id).not.toEqual(null);
-    await client.connect(id);
+  it('Should make sure client has active wallets', async () => {
     expect(client.isPaired).toEqual(true);
     const EMPTY_WALLET_UID = Buffer.alloc(32);
     const internalUID = client.activeWallets.internal.uid;
     const externalUID = client.activeWallets.external.uid;
-    const checkOne = !EMPTY_WALLET_UID.equals(internalUID);
-    const checkTwo = !EMPTY_WALLET_UID.equals(externalUID);
-    const checkThree = !!client.getActiveWallet();
-    const checkFour = !!client.getActiveWallet()?.uid.equals(externalUID);
-    expect(checkOne).toEqualElseLog(true, 'Internal A90 must be enabled.');
-    expect(checkTwo).toEqualElseLog(
+
+    expect(!EMPTY_WALLET_UID.equals(internalUID)).toEqualElseLog(
+      true,
+      'Internal A90 must be enabled.',
+    );
+    expect(!EMPTY_WALLET_UID.equals(externalUID)).toEqualElseLog(
       true,
       'P60 with exportable seed must be inserted.',
     );
-    expect(checkThree).toEqualElseLog(true, 'No active wallet discovered');
-    expect(checkFour).toEqualElseLog(
+    expect(!!client.getActiveWallet()).toEqualElseLog(
+      true,
+      'No active wallet discovered',
+    );
+    expect(!!client.getActiveWallet()?.uid.equals(externalUID)).toEqualElseLog(
       true,
       'P60 should be active wallet but is not registered as it.',
     );
@@ -844,89 +845,89 @@ describe('Test Wallet Jobs', () => {
       );
     });
   });
-});
 
-//---------------------------------------
-// HELPERS
-//---------------------------------------
-async function runTestCase (expectedCode: any) {
-  const res = await testRequest(jobReq);
-  //@ts-expect-error - accessing private property
-  const parsedRes = parseWalletJobResp(res, client.fwVersion);
-  expect(parsedRes.resultStatus).toEqualElseLog(
-    expectedCode,
-    getCodeMsg(parsedRes.resultStatus, expectedCode),
-  );
-  return parsedRes;
-}
+  //---------------------------------------
+  // HELPERS
+  //---------------------------------------
+  async function runTestCase (expectedCode: any) {
+    const res = await testRequest(jobReq);
+    //@ts-expect-error - accessing private property
+    const parsedRes = parseWalletJobResp(res, client.fwVersion);
+    expect(parsedRes.resultStatus).toEqualElseLog(
+      expectedCode,
+      getCodeMsg(parsedRes.resultStatus, expectedCode),
+    );
+    return parsedRes;
+  }
 
-function getCurrentWalletUID () {
-  return copyBuffer(client.getActiveWallet()?.uid);
-}
+  function getCurrentWalletUID () {
+    return copyBuffer(client.getActiveWallet()?.uid);
+  }
 
-async function runZerosTest (idx: any, numZeros: number, testPub = false) {
-  const w = wallet.derivePath(`${parentPathStr}/${idx}`);
-  const refPriv = w.privateKey;
-  const refPub = privateToPublic(refPriv);
-  for (let i = 0; i < numZeros; i++) {
-    if (testPub) {
-      expect(refPub[i]).toEqualElseLog(
-        0,
-        `Should be ${numZeros} leading pubKey zeros but got ${i}.`,
-      );
-    } else {
-      expect(refPriv[i]).toEqualElseLog(
-        0,
-        `Should be ${numZeros} leading privKey zeros but got ${i}.`,
+  async function runZerosTest (idx: any, numZeros: number, testPub = false) {
+    const w = wallet.derivePath(`${parentPathStr}/${idx}`);
+    const refPriv = w.privateKey;
+    const refPub = privateToPublic(refPriv);
+    for (let i = 0; i < numZeros; i++) {
+      if (testPub) {
+        expect(refPub[i]).toEqualElseLog(
+          0,
+          `Should be ${numZeros} leading pubKey zeros but got ${i}.`,
+        );
+      } else {
+        expect(refPriv[i]).toEqualElseLog(
+          0,
+          `Should be ${numZeros} leading privKey zeros but got ${i}.`,
+        );
+      }
+    }
+    // Validate the exported address
+    const path = basePath;
+    path[path.length - 1] = idx;
+    const ref = `0x${privateToAddress(refPriv).toString('hex').toLowerCase()}`;
+    const addrs = await client.getAddresses({ startPath: path, n: 1 }) as string[];
+    if (addrs[0]?.toLowerCase() !== ref) {
+      expect(addrs[0]?.toLowerCase()).toEqualElseLog(
+        ref,
+        'Failed to derive correct address for known seed',
       );
     }
-  }
-  // Validate the exported address
-  const path = basePath;
-  path[path.length - 1] = idx;
-  const ref = `0x${privateToAddress(refPriv).toString('hex').toLowerCase()}`;
-  const addrs = await client.getAddresses({ startPath: path, n: 1 }) as string[];
-  if (addrs[0]?.toLowerCase() !== ref) {
-    expect(addrs[0]?.toLowerCase()).toEqualElseLog(
-      ref,
-      'Failed to derive correct address for known seed',
+    // Validate the signer coming back from the sign request
+    const tx = EthTxFactory.fromTxData(
+      {
+        type: 1,
+        gasPrice: 1200000000,
+        nonce: 0,
+        gasLimit: 50000,
+        to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+        value: 1000000000000,
+        data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
+      },
+      {
+        common: new Common({
+          chain: Chain.Mainnet,
+          hardfork: Hardfork.London,
+        }),
+      },
     );
+    const txReq = {
+      data: {
+        signerPath: path,
+        curveType: Constants.SIGNING.CURVES.SECP256K1,
+        hashType: Constants.SIGNING.HASHES.KECCAK256,
+        encodingType: Constants.SIGNING.ENCODINGS.EVM,
+        payload: tx.getMessageToSign(false),
+      },
+    };
+    const resp: any = await client.sign(txReq);
+    // Make sure the exported signer matches expected
+    expect(resp.pubkey.slice(1).toString('hex')).toEqualElseLog(
+      refPub.toString('hex'),
+      'Incorrect signer',
+    );
+    // Make sure we can recover the same signer from the sig.
+    // `getV` will only return non-null if it can successfully
+    // ecrecover a pubkey that matches the one provided.
+    expect(getV(tx, resp)).not.toEqualElseLog(null, 'Incorrect signer');
   }
-  // Validate the signer coming back from the sign request
-  const tx = EthTxFactory.fromTxData(
-    {
-      type: 1,
-      gasPrice: 1200000000,
-      nonce: 0,
-      gasLimit: 50000,
-      to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-      value: 1000000000000,
-      data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
-    },
-    {
-      common: new Common({
-        chain: Chain.Mainnet,
-        hardfork: Hardfork.London,
-      }),
-    },
-  );
-  const txReq = {
-    data: {
-      signerPath: path,
-      curveType: Constants.SIGNING.CURVES.SECP256K1,
-      hashType: Constants.SIGNING.HASHES.KECCAK256,
-      encodingType: Constants.SIGNING.ENCODINGS.EVM,
-      payload: tx.getMessageToSign(false),
-    },
-  };
-  const resp: any = await client.sign(txReq);
-  // Make sure the exported signer matches expected
-  expect(resp.pubkey.slice(1).toString('hex')).toEqualElseLog(
-    refPub.toString('hex'),
-    'Incorrect signer',
-  );
-  // Make sure we can recover the same signer from the sig.
-  // `getV` will only return non-null if it can successfully
-  // ecrecover a pubkey that matches the one provided.
-  expect(getV(tx, resp)).not.toEqualElseLog(null, 'Incorrect signer');
-}
+});

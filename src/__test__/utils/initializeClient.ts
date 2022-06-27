@@ -23,7 +23,7 @@ export const initializeClient = () => {
       if (!isPaired) {
         expect(client.isPaired).toEqual(false);
         const secret = question('Please enter the pairing secret: ');
-        await client.pair(secret);
+        await client.pair(secret.toUpperCase());
         expect(!!client.getActiveWallet()).toEqual(true);
       }
       expect(client.isPaired).toEqual(true);

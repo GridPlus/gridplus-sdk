@@ -83,7 +83,6 @@ exports[`validators > fetchActiveWallet > should successfully validate 1`] = `
 
 exports[`validators > getAddresses > should successfully validate 1`] = `
 {
-  "flag": 1,
   "fwVersion": {
     "data": [
       0,

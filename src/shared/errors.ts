@@ -3,8 +3,7 @@ import { responseMsgs } from '../constants';
 const buildLatticeResponseErrorMessage = ({ responseCode, errorMessage }) => {
   const msg: string[] = [];
   if (responseCode) {
-    msg.push(`Response Code: ${responseCode}`);
-    msg.push(`Message: ${responseMsgs[responseCode]}`);
+    msg.push(`${responseMsgs[responseCode]}`);
   }
   if (errorMessage) {
     msg.push('Error Message: ');

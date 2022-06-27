@@ -1,5 +1,6 @@
 import { sha256 } from 'hash.js/lib/hash/sha';
 import superagent from 'superagent';
+import { Client } from '..';
 import bitcoin from '../bitcoin';
 import {
   deviceCodes,
@@ -7,7 +8,6 @@ import {
   ENC_MSG_LEN,
   EXTERNAL,
   REQUEST_TYPE_BYTE,
-  responseMsgs,
   VERSION_BYTE,
 } from '../constants';
 import ethereum from '../ethereum';
@@ -200,7 +200,7 @@ export const request = async ({
       }
 
       return data;
-    })
+    });
 };
 
 /**
@@ -211,36 +211,51 @@ function sleep (ms) {
 }
 
 /**
- * `retryWrapper()` retries a function call if the error message or response code is present and the
- * number of retries is greater than 0.
+ * Takes a function and a set of parameters, and returns a function that will retry the original
+ * function with the given parameters a number of times
+ *
+ * @param client - a {@link Client} instance that is passed to the {@link retryWrapper}
+ * @param retries - the number of times to retry the function before giving up
+ * @returns a {@link retryWrapper} function for handing retry logic
+ */
+export const buildRetryWrapper = (client: Client, retries: number) => {
+  return (fn, params?) =>
+    retryWrapper({
+      fn,
+      params: { ...params, client },
+      retries,
+      client,
+    });
+};
+
+/**
+ * Retries a function call if the error message or response code is present and the number of
+ * retries is greater than 0.
  *
  * @param fn - The function to retry
  * @param params - The parameters to pass to the function
  * @param retries - The number of times to retry the function
- * @param client - The Client to use for side-effects
+ * @param client - The {@link Client} to use for side-effects
  */
-export const retryWrapper = async ({
-  fn,
-  params,
-  retries,
-  client,
-}) => {
+export const retryWrapper = async ({ fn, params, retries, client }) => {
   return fn({ ...params }).catch(async (err) => {
+    /** `string` returned from the Lattice if there's an error */
     const errorMessage = err.errorMessage;
+    /** `number` returned from the Lattice if there's an error */
     const responseCode = err.responseCode;
 
     if ((errorMessage || responseCode) && retries) {
-
       if (isDeviceBusy(responseCode)) {
         await sleep(3000);
-      }
-
-      if (isWrongWallet(responseCode) && !client.skipRetryOnWrongWallet) {
+      } else if (
+        isWrongWallet(responseCode) &&
+        !client.skipRetryOnWrongWallet
+      ) {
         await client.fetchActiveWallet();
-      }
-
-      if (isInvalidEphemeralId(responseCode)) {
+      } else if (isInvalidEphemeralId(responseCode)) {
         await client.connect(client.deviceId);
+      } else {
+        throw err;
       }
 
       return retryWrapper({
@@ -250,6 +265,7 @@ export const retryWrapper = async ({
         client,
       });
     }
+
     throw err;
   });
 };

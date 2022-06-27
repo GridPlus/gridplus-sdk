@@ -13,7 +13,6 @@ import {
 import { BTC_PURPOSE_P2PKH, ETH_COIN } from '../utils/helpers';
 import { initializeClient } from '../utils/initializeClient';
 
-const client = initializeClient();
 
 // Random address to test the screen with.
 // IMPORTANT NOTE: For Ethereum addresses you should always add the lower case variety since
@@ -40,6 +39,8 @@ const ETH_REQ = {
 };
 
 describe('key-value', () => {
+  const client = initializeClient();
+
   it('Should ask if the user wants to reset state', async () => {
     const answer = question(
       'Do you want to clear all kv records and start anew? (Y/N) ',

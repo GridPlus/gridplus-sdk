@@ -183,7 +183,7 @@ export const buildTx = (data = '0xdeadbeef') => {
 };
 
 export const buildEthSignRequest = async (
-  client: Client
+  client: Client, txDataOverrides?: any
 ): Promise<any> => {
   if (client.getFwVersion()?.major === 0 && client.getFwVersion()?.minor < 15) {
     console.warn('Please update firmware. Skipping ETH signing tests.');
@@ -205,6 +205,7 @@ export const buildEthSignRequest = async (
     to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
     value: 1000000000000,
     data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
+    ...txDataOverrides
   };
   const tx = EthTxFactory.fromTxData(txData, { common });
   const req = {

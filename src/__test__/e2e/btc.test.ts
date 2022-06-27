@@ -18,7 +18,6 @@ import { testRequest } from '../utils/testRequest';
 
 const prng = getPrng();
 const TEST_TESTNET = !!getTestnet() || false;
-const client = initializeClient();
 let wallet: Wallet | null = null;
 type InputObj = { hash: string, value: number, signerIdx: number, idx: number };
 
@@ -41,7 +40,7 @@ for (let i = 0; i < count; i++) {
   inputs.push({ hash: hash.toString('hex'), value, signerIdx, idx });
 }
 
-async function testSign ({ txReq, signingKeys, sigHashes }: any) {
+async function testSign ({ txReq, signingKeys, sigHashes, client }: any) {
   const tx = await client.sign(txReq);
   const len = tx?.sigs?.length ?? 0
   expect(len).toEqual(signingKeys.length);
@@ -63,29 +62,32 @@ async function runTestSet (
   opts: any,
   wallet: Wallet | null,
   inputsSlice: InputObj[],
+  client,
 ) {
   expect(wallet).not.toEqualElseLog(null, 'Wallet not available');
   if (TEST_TESTNET) {
     // Testnet + change
     opts.isTestnet = true;
     opts.useChange = true;
-    await testSign(setup_btc_sig_test(opts, wallet, inputsSlice, prng));
+    await testSign({ ...setup_btc_sig_test(opts, wallet, inputsSlice, prng), client });
     // Testnet + no change
     opts.isTestnet = true;
     opts.useChange = false;
-    await testSign(setup_btc_sig_test(opts, wallet, inputsSlice, prng));
+    await testSign({ ...setup_btc_sig_test(opts, wallet, inputsSlice, prng), client });
   }
   // Mainnet + change
   opts.isTestnet = false;
   opts.useChange = true;
-  await testSign(setup_btc_sig_test(opts, wallet, inputsSlice, prng));
+  await testSign({ ...setup_btc_sig_test(opts, wallet, inputsSlice, prng), client });
   // Mainnet + no change
   opts.isTestnet = false;
   opts.useChange = false;
-  await testSign(setup_btc_sig_test(opts, wallet, inputsSlice, prng));
+  await testSign({ ...setup_btc_sig_test(opts, wallet, inputsSlice, prng), client });
 }
 
 describe('Bitcoin', () => {
+  const client = initializeClient();
+
   describe('wallet seeds', () => {
     it('Should get GP_SUCCESS for a known, connected wallet', async () => {
       const activeWalletUID = client.getActiveWallet()?.uid;
@@ -117,7 +119,7 @@ describe('Bitcoin', () => {
             spenderPurpose: BTC_PURPOSE_P2WPKH,
             recipientPurpose: BTC_PURPOSE_P2PKH,
           };
-          await runTestSet(opts, wallet, inputsSlice);
+          await runTestSet(opts, wallet, inputsSlice, client);
         });
 
         it('p2wpkh->p2sh-p2wpkh', async () => {
@@ -125,7 +127,7 @@ describe('Bitcoin', () => {
             spenderPurpose: BTC_PURPOSE_P2WPKH,
             recipientPurpose: BTC_PURPOSE_P2SH_P2WPKH,
           };
-          await runTestSet(opts, wallet, inputsSlice);
+          await runTestSet(opts, wallet, inputsSlice, client);
         });
 
         it('p2wpkh->p2wpkh', async () => {
@@ -133,7 +135,7 @@ describe('Bitcoin', () => {
             spenderPurpose: BTC_PURPOSE_P2WPKH,
             recipientPurpose: BTC_PURPOSE_P2WPKH,
           };
-          await runTestSet(opts, wallet, inputsSlice);
+          await runTestSet(opts, wallet, inputsSlice, client);
         });
       });
 
@@ -143,7 +145,7 @@ describe('Bitcoin', () => {
             spenderPurpose: BTC_PURPOSE_P2SH_P2WPKH,
             recipientPurpose: BTC_PURPOSE_P2PKH,
           };
-          await runTestSet(opts, wallet, inputsSlice);
+          await runTestSet(opts, wallet, inputsSlice, client);
         });
 
         it('p2sh-p2wpkh->p2sh-p2wpkh', async () => {
@@ -151,7 +153,7 @@ describe('Bitcoin', () => {
             spenderPurpose: BTC_PURPOSE_P2SH_P2WPKH,
             recipientPurpose: BTC_PURPOSE_P2SH_P2WPKH,
           };
-          await runTestSet(opts, wallet, inputsSlice);
+          await runTestSet(opts, wallet, inputsSlice, client);
         });
 
         it('p2sh-p2wpkh->p2wpkh', async () => {
@@ -159,7 +161,7 @@ describe('Bitcoin', () => {
             spenderPurpose: BTC_PURPOSE_P2SH_P2WPKH,
             recipientPurpose: BTC_PURPOSE_P2WPKH,
           };
-          await runTestSet(opts, wallet, inputsSlice);
+          await runTestSet(opts, wallet, inputsSlice, client);
         });
       });
 
@@ -169,7 +171,7 @@ describe('Bitcoin', () => {
             spenderPurpose: BTC_PURPOSE_P2PKH,
             recipientPurpose: BTC_PURPOSE_P2PKH,
           };
-          await runTestSet(opts, wallet, inputsSlice);
+          await runTestSet(opts, wallet, inputsSlice, client);
         });
 
         it('p2pkh->p2sh-p2wpkh', async () => {
@@ -177,7 +179,7 @@ describe('Bitcoin', () => {
             spenderPurpose: BTC_PURPOSE_P2PKH,
             recipientPurpose: BTC_PURPOSE_P2SH_P2WPKH,
           };
-          await runTestSet(opts, wallet, inputsSlice);
+          await runTestSet(opts, wallet, inputsSlice, client);
         });
 
         it('p2pkh->p2wpkh', async () => {
@@ -185,7 +187,7 @@ describe('Bitcoin', () => {
             spenderPurpose: BTC_PURPOSE_P2PKH,
             recipientPurpose: BTC_PURPOSE_P2WPKH,
           };
-          await runTestSet(opts, wallet, inputsSlice);
+          await runTestSet(opts, wallet, inputsSlice, client);
         });
       });
     })

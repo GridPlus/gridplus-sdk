@@ -14,9 +14,9 @@ import { runEvmTests } from './evm.test';
 import { runSolanaTests } from './solana.test';
 import { runUnformattedTests } from './unformatted.test';
 
-const client = initializeClient();
-
 describe('Test General Signing', () => {
+  const client = initializeClient();
+
   it('Should verify firmware version.', async () => {
     const fwConstants = client.getFwConstants();
     if (!fwConstants.genericSigning) {

@@ -11,8 +11,11 @@ import {
 } from '../shared/validators';
 
 /**
- * Fetch the active wallet in the device.
- * @returns callback with an error or null
+ * Fetch the active wallet in the device. 
+ *
+ * The Lattice has two wallet interfaces: internal and external. If a SafeCard is inserted and
+ * unlocked, the external interface is considered "active" and this will return its {@link Wallet}
+ * data. Otherwise it will return the info for the internal Lattice wallet.
  */
 export async function fetchActiveWallet ({
   client,

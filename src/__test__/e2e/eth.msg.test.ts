@@ -23,10 +23,11 @@ import { getN } from '../utils/getters';
 import { initializeClient } from '../utils/initializeClient';
 import { runEthMsg } from '../utils/runners';
 
-const client = initializeClient();
 const numRandom = getN() ? getN() : 20; // Number of random tests to conduct
 
 describe('ETH Messages', () => {
+  const client = initializeClient();
+
   describe('Test ETH personalSign', function () {
     it('Should throw error when message contains non-ASCII characters', async () => {
       const protocol = 'signPersonal';

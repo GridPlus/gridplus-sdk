@@ -19,22 +19,22 @@ import {
 import { isValidAssetPath } from '../util';
 
 /**
- * `getAddresses` takes a starting path and a number to get the addresses associated with the
- * active wallet.
+ * `getAddresses` takes a starting path and a number to get the addresses or public keys associated
+ * with the active wallet.
  * @category Lattice
- * @returns An array of addresses.
+ * @returns An array of addresses or public keys.
  */
 export async function getAddresses ({
   startPath,
   n,
-  flag: _flag,
+  flag,
   client,
 }: GetAddressesRequestFunctionParams): Promise<Buffer[]> {
-  const { url, fwVersion, wallet, sharedSecret, flag } =
+  const { url, fwVersion, wallet, sharedSecret } =
     validateGetAddressesRequest({
       startPath,
       n,
-      flag: _flag,
+      flag,
       url: client.url,
       fwVersion: client.fwVersion,
       wallet: client.getActiveWallet(),
@@ -79,7 +79,7 @@ export const validateGetAddressesRequest = ({
 }: ValidateGetAddressesRequestParams) => {
   validateStartPath(startPath);
   validateNAddresses(n);
-  const validFlag = validateIsUInt4(flag);
+  validateIsUInt4(flag);
   const validUrl = validateUrl(url);
   const validFwVersion = validateFwVersion(fwVersion);
   const validWallet = validateWallet(wallet);
@@ -90,7 +90,6 @@ export const validateGetAddressesRequest = ({
     fwVersion: validFwVersion,
     wallet: validWallet,
     sharedSecret: validSharedSecret,
-    flag: validFlag,
   };
 };
 
@@ -175,9 +174,8 @@ export const requestGetAddresses = async (payload: Buffer, url: string) => {
 };
 
 /**
- * @category Device Response
  * @internal
- * @return an array of address strings
+ * @return an array of address strings or pubkey buffers
  */
 export const decodeGetAddresses = (data: any, flag: number): Buffer[] => {
   let off = 65; // Skip 65 byte pubkey prefix

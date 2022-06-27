@@ -17,7 +17,6 @@ export const validateIsUInt4 = (n?: number) => {
 };
 
 export const validateNAddresses = (n: number) => {
-  validateIsUInt4(n);
   if (n > MAX_ADDR)
     throw new Error(`You may only request ${MAX_ADDR} addresses at once.`);
 };
@@ -84,7 +83,7 @@ export const validateFwConstants = (fwConstants?: FirmwareConstants) => {
   return fwConstants;
 };
 export const validateFwVersion = (fwVersion?: Buffer) => {
-  if (!fwVersion) {
+  if (!fwVersion || fwVersion.byteLength > 4) {
     throw new Error('Firmware version does not exist. Please reconnect.');
   }
   return fwVersion;
