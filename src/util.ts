@@ -32,9 +32,13 @@ let ec;
 //--------------------------------------------------
 
 /** @internal Parse a response from the Lattice1 */
-export const parseLattice1Response = function (r) {
+export const parseLattice1Response = function (r): {
+  errorMessage?: string;
+  responseCode?: number;
+  data?: any;
+} {
   const parsed: any = {
-    err: null,
+    errorMessage: null,
     data: null,
   };
   const b = Buffer.from(r, 'hex');
@@ -44,7 +48,7 @@ export const parseLattice1Response = function (r) {
   const protoVer = b.readUInt8(off);
   off++;
   if (protoVer !== VERSION_BYTE) {
-    parsed.err = 'Incorrect protocol version. Please update your SDK';
+    parsed.errorMessage = 'Incorrect protocol version. Please update your SDK';
     return parsed;
   }
 
@@ -53,7 +57,7 @@ export const parseLattice1Response = function (r) {
   const msgType = b.readUInt8(off);
   off++;
   if (msgType !== 0x00) {
-    parsed.err = 'Incorrect response from Lattice1';
+    parsed.errorMessage = 'Incorrect response from Lattice1';
     return parsed;
   }
 
@@ -68,7 +72,8 @@ export const parseLattice1Response = function (r) {
   // Get response code
   const responseCode = payload.readUInt8(0);
   if (responseCode !== responseCodes.RESP_SUCCESS) {
-    parsed.err = `${responseMsgs[responseCode] ? responseMsgs[responseCode] : 'Unknown Error'
+    parsed.errorMessage = `${
+      responseMsgs[responseCode] ? responseMsgs[responseCode] : 'Unknown Error'
       } (Lattice)`;
     parsed.responseCode = responseCode;
     return parsed;
@@ -80,13 +85,13 @@ export const parseLattice1Response = function (r) {
   const cs = b.readUInt32BE(off);
   const expectedCs = checksum(b.slice(0, b.length - 4));
   if (cs !== expectedCs) {
-    parsed.err = 'Invalid checksum from device response';
+    parsed.errorMessage = 'Invalid checksum from device response';
     parsed.data = null;
     return parsed;
   }
 
   return parsed;
-}
+};
 
 /** @internal */
 export const checksum = function (x) {
@@ -220,20 +225,19 @@ export const aes256_decrypt = function (data, key) {
 
 // Decode a DER signature. Returns signature object {r, s } or null if there is an error
 /** @internal */
-export const parseDER = function (sigBuf) {
-  if (sigBuf[0] !== 0x30 || sigBuf[2] !== 0x02) return null;
+export const parseDER = function (sigBuf: Buffer) {
+  if (sigBuf[0] !== 0x30 || sigBuf[2] !== 0x02) throw new Error('Failed to decode DER signature');
   let off = 3;
-  const sig = { r: null, s: null };
   const rLen = sigBuf[off];
   off++;
-  sig.r = sigBuf.slice(off, off + rLen);
+  const r = sigBuf.slice(off, off + rLen);
   off += rLen;
-  if (sigBuf[off] !== 0x02) return null;
+  if (sigBuf[off] !== 0x02) throw new Error('Failed to decode DER signature');
   off++;
   const sLen = sigBuf[off];
   off++;
-  sig.s = sigBuf.slice(off, off + sLen);
-  return sig;
+  const s = sigBuf.slice(off, off + sLen);
+  return { r, s };
 }
 
 /** @internal */
@@ -305,7 +309,7 @@ export const randomBytes = function (n) {
 }
 
 /** @internal `isUInt4` accepts a number and returns true if it is a UInt4 */
-export const isUInt4 = (n: number) => isInteger(n) && inRange(0, 16)
+export const isUInt4 = (n: number) => isInteger(n) && inRange(n, 0, 16)
 
 /**
  * Generates an application secret for use in maintaining connection to device.
