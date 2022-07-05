@@ -534,8 +534,7 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
     throw new Error('Could not find selector in calldata from 4byte')
   }
   catch (err) {
-    err.message = `Fetching calldata failed \n ${err.message}`
-    console.warn(err)
+    console.warn(`Fetching calldata failed: ${err.message}`)
     return { def: null, abi: null }
   }
 }
