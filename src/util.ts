@@ -32,9 +32,13 @@ let ec;
 //--------------------------------------------------
 
 /** @internal Parse a response from the Lattice1 */
-export const parseLattice1Response = function (r) {
+export const parseLattice1Response = function (r): {
+  errorMessage?: string;
+  responseCode?: number;
+  data?: any;
+} {
   const parsed: any = {
-    err: null,
+    errorMessage: null,
     data: null,
   };
   const b = Buffer.from(r, 'hex');
@@ -44,7 +48,7 @@ export const parseLattice1Response = function (r) {
   const protoVer = b.readUInt8(off);
   off++;
   if (protoVer !== VERSION_BYTE) {
-    parsed.err = 'Incorrect protocol version. Please update your SDK';
+    parsed.errorMessage = 'Incorrect protocol version. Please update your SDK';
     return parsed;
   }
 
@@ -53,7 +57,7 @@ export const parseLattice1Response = function (r) {
   const msgType = b.readUInt8(off);
   off++;
   if (msgType !== 0x00) {
-    parsed.err = 'Incorrect response from Lattice1';
+    parsed.errorMessage = 'Incorrect response from Lattice1';
     return parsed;
   }
 
@@ -68,7 +72,7 @@ export const parseLattice1Response = function (r) {
   // Get response code
   const responseCode = payload.readUInt8(0);
   if (responseCode !== responseCodes.RESP_SUCCESS) {
-    parsed.err = `${responseMsgs[responseCode] ? responseMsgs[responseCode] : 'Unknown Error'
+    parsed.errorMessage = `${responseMsgs[responseCode] ? responseMsgs[responseCode] : 'Unknown Error'
       } (Lattice)`;
     parsed.responseCode = responseCode;
     return parsed;
@@ -80,13 +84,13 @@ export const parseLattice1Response = function (r) {
   const cs = b.readUInt32BE(off);
   const expectedCs = checksum(b.slice(0, b.length - 4));
   if (cs !== expectedCs) {
-    parsed.err = 'Invalid checksum from device response';
+    parsed.errorMessage = 'Invalid checksum from device response';
     parsed.data = null;
     return parsed;
   }
 
   return parsed;
-}
+};
 
 /** @internal */
 export const checksum = function (x) {
@@ -220,20 +224,19 @@ export const aes256_decrypt = function (data, key) {
 
 // Decode a DER signature. Returns signature object {r, s } or null if there is an error
 /** @internal */
-export const parseDER = function (sigBuf) {
-  if (sigBuf[0] !== 0x30 || sigBuf[2] !== 0x02) return null;
+export const parseDER = function (sigBuf: Buffer) {
+  if (sigBuf[0] !== 0x30 || sigBuf[2] !== 0x02) throw new Error('Failed to decode DER signature');
   let off = 3;
-  const sig = { r: null, s: null };
   const rLen = sigBuf[off];
   off++;
-  sig.r = sigBuf.slice(off, off + rLen);
+  const r = sigBuf.slice(off, off + rLen);
   off += rLen;
-  if (sigBuf[off] !== 0x02) return null;
+  if (sigBuf[off] !== 0x02) throw new Error('Failed to decode DER signature');
   off++;
   const sLen = sigBuf[off];
   off++;
-  sig.s = sigBuf.slice(off, off + sLen);
-  return sig;
+  const s = sigBuf.slice(off, off + sLen);
+  return { r, s };
 }
 
 /** @internal */
@@ -305,7 +308,7 @@ export const randomBytes = function (n) {
 }
 
 /** @internal `isUInt4` accepts a number and returns true if it is a UInt4 */
-export const isUInt4 = (n: number) => isInteger(n) && inRange(0, 16)
+export const isUInt4 = (n: number) => isInteger(n) && inRange(n, 0, 16)
 
 /**
  * Generates an application secret for use in maintaining connection to device.
@@ -450,6 +453,40 @@ function buildUrlForSupportedChainAndAddress ({ supportedChain, address }) {
 }
 
 /**
+ * Takes a list of ABI data objects and a selector, and returns the earliest ABI data object that
+ * matches the selector.
+ */
+export function selectDefFrom4byteABI (abiData: any[], selector: string) {
+  if (abiData.length > 1) {
+    console.warn('WARNING: There are multiple results. Using the first one.');
+  }
+  let def;
+  abiData
+    .sort((a, b) => {
+      const aTime = new Date(a.created_at).getTime();
+      const bTime = new Date(b.created_at).getTime();
+      return aTime - bTime;
+    })
+    .find((result) => {
+      try {
+        def = Calldata.EVM.parsers.parseCanonicalName(
+          selector,
+          result.text_signature,
+        )
+        return !!def
+      }
+      catch (err) {
+        return false
+      }
+    })
+  if (def) {
+    return def
+  } else {
+    throw new Error('Could not find definition for selector')
+  }
+}
+
+/**
  *  Fetches calldata from a remote scanner based on the transaction's `chainId`
  */
 export async function fetchCalldataDecoder (_data: Uint8Array | string, to: string, _chainId: number | string) {
@@ -476,64 +513,49 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
     const supportedChain = cachedNetwork
       ? cachedNetwork
       : await fetchExternalNetworkForChainId(chainId);
-    if (supportedChain) {
-      const url = buildUrlForSupportedChainAndAddress({ supportedChain, address: to })
-      const response = await superagent
-        .get(url)
-        .catch(err => {
-          console.warn(`Fetching calldata from ${supportedChain.name} failed\n`, err)
-        })
-      if (
-        response &&
-        response.body &&
-        response.body.result
-      ) {
-        const abi = JSON.parse(response.body.result)
-        return {
-          def: Calldata.EVM.parsers.parseSolidityJSONABI(selector, abi),
-          abi
-        }
+
+    try {
+      if (supportedChain) {
+        const url = buildUrlForSupportedChainAndAddress({ supportedChain, address: to })
+        return await superagent
+          .get(url)
+          .then(res => {
+            if (res && res.body && res.body.result) {
+              const abi = JSON.parse(res.body.result)
+              const def = Calldata.EVM.parsers.parseSolidityJSONABI(selector, abi)
+              return { abi, def }
+            } else {
+              throw new Error('Server response was malformed')
+            }
+          }).catch(() => {
+            throw new Error('Fetching data from external network failed')
+          })
+      } else {
+        throw new Error(`Chain (id: ${chainId}) is not supported`)
       }
-      console.warn(
-        `Could not find selector in calldata for network: ${supportedChain.name}\n`,
-        'Falling back to 4byte\n',
-      );
+    } catch (err) {
+      console.warn(err.message, '\n', 'Falling back to 4byte');
     }
 
     // Fallback to checking 4byte
     const url = `https://www.4byte.directory/api/v1/signatures?hex_signature=0x${selector}`
-    const response = await superagent
+    return await superagent
       .get(url)
-      .catch(err => {
-        console.warn('Failed to fetch calldata from 4byte \n', err)
-      });
-    if (
-      response &&
-      response.body &&
-      response.body.results &&
-      response.body.results.length
-    ) {
-      const fourByteResults = response.body.results;
-      if (fourByteResults.length > 1) {
-        console.warn('WARNING: There are multiple results. Using the first one.');
-      }
-      const canonicalName = fourByteResults.sort((a, b) => {
-        const aTime = new Date(a.created_at).getTime();
-        const bTime = new Date(b.created_at).getTime();
-        return aTime - bTime;
-      })[0]?.text_signature;
-      return {
-        def: Calldata.EVM.parsers.parseCanonicalName(selector, canonicalName),
-        abi: fourByteResults
-      }
-    }
-    throw new Error('Could not find selector in calldata from 4byte')
+      .then(res => {
+        if (res && res.body && res.body.results && res.body.results.length) {
+          const abi = res.body.results
+          const def = selectDefFrom4byteABI(abi, selector)
+          return { abi, def }
+        } else {
+          throw new Error('No results found')
+        }
+      }).catch(err => {
+        throw new Error(`Fetching data from 4byte failed: ${err.message}`)
+      })
+  } catch (err) {
+    console.warn(`Fetching calldata failed: ${err.message}`)
   }
-  catch (err) {
-    err.message = `Fetching calldata failed \n ${err.message}`
-    console.warn(err)
-    return { def: null, abi: null }
-  }
+  return { def: null, abi: null }
 }
 
 /** @internal */

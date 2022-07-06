@@ -1,0 +1,85 @@
+
+type Currency = keyof typeof CURRENCIES;
+
+type SigningPath = [number, number, number, number, number];
+
+type SignData = {
+  tx?: string;
+  txHash?: string;
+  changeRecipient?: string;
+  sig?: {
+    v: Buffer;
+    r: Buffer;
+    s: Buffer;
+  };
+  sigs?: Buffer[];
+  signer?: Buffer;
+  err?: string;
+};
+
+type TransactionPayload = {
+  type: number;
+  gasPrice: number;
+  nonce: number;
+  gasLimit: number;
+  to: string;
+  value: number;
+  data: string;
+  maxFeePerGas: number;
+  maxPriorityFeePerGas: number;
+};
+
+interface SigningPayload {
+  signerPath: SigningPath;
+  payload: TransactionPayload;
+  curveType: number;
+  hashType: number;
+  encodingType: number;
+}
+
+type EncryptionRequestCodeKeys = keyof typeof encReqCodes;
+type EncryptionRequestCodes = typeof encReqCodes[EncryptionRequestCodeKeys];
+
+interface Wallet {
+  /** 32 byte id */
+  uid: Buffer;
+  /** 20 char (max) string */
+  name: Buffer;
+  /** 4 byte flag */
+  capabilities: number;
+  /** External or internal wallet */
+  external: boolean;
+}
+
+interface ActiveWallets {
+  internal: Wallet;
+  external: Wallet;
+}
+
+interface EncryptRequestParams {
+  payload: Buffer;
+  requestCode: EncryptionRequestCodeKeys;
+  sharedSecret: Buffer;
+}
+
+interface RequestParams {
+  url: string;
+  payload: any; //TODO Fix this any
+  timeout?: number;
+  retries?: number;
+}
+
+interface ClientStateData {
+  activeWallets: ActiveWallets;
+  ephemeralPub: Buffer;
+  fwVersion: Buffer;
+  deviceId: string;
+  name: string;
+  baseUrl: string;
+  privKey: Buffer;
+  key: Buffer;
+  retryCount: number;
+  timeout: number;
+}
+
+type RequestTypes = 'connect' | 'getAddresses' | 'sign' | 'fetchActiveWallet' | 'addKvRecords' | 'getKvRecords' | 'removeKvRecords'

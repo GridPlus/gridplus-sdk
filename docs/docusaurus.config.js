@@ -31,7 +31,7 @@ const config = {
       {
         entryPoints: ['../src'],
         entryPointStrategy: 'expand',
-        exclude: [...excludedFiles, '../src/types/**'],
+        exclude: [...excludedFiles, '../src/types/**', '**/__test__/**'],
         tsconfig: '../tsconfig.json',
         watch: process.env.TYPEDOC_WATCH,
         excludeInternal: true,
