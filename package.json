@@ -10,7 +10,7 @@
     "postinstall": "patch-package",
     "precommit": "npm run lint:fix && npm run test",
     "prepublish": "",
-    "test": "vitest src/__test__/unit",
+    "test": "vitest /src/__test__/unit /src/__test__/integration",
     "unit-decode": "vitest src/__test__/unit/decoders.test.ts",
     "unit-decrypt": "vitest src/__test__/unit/decrypters.test.ts",
     "unit-encode": "vitest src/__test__/unit/encoders.test.ts",
