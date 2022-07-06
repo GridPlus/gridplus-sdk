@@ -22,7 +22,7 @@ export const parseSolidityJSONABI = function (sig: string, abi: any[]): Buffer {
     const def = parseDef(match).def;
     return Buffer.from(encode(def));
   }
-  return null
+  throw new Error('Unable to find matching function in ABI');
 };
 
 /**

@@ -72,8 +72,7 @@ export const parseLattice1Response = function (r): {
   // Get response code
   const responseCode = payload.readUInt8(0);
   if (responseCode !== responseCodes.RESP_SUCCESS) {
-    parsed.errorMessage = `${
-      responseMsgs[responseCode] ? responseMsgs[responseCode] : 'Unknown Error'
+    parsed.errorMessage = `${responseMsgs[responseCode] ? responseMsgs[responseCode] : 'Unknown Error'
       } (Lattice)`;
     parsed.responseCode = responseCode;
     return parsed;
@@ -454,6 +453,40 @@ function buildUrlForSupportedChainAndAddress ({ supportedChain, address }) {
 }
 
 /**
+ * Takes a list of ABI data objects and a selector, and returns the earliest ABI data object that
+ * matches the selector.
+ */
+export function selectDefFrom4byteABI (abiData: any[], selector: string) {
+  if (abiData.length > 1) {
+    console.warn('WARNING: There are multiple results. Using the first one.');
+  }
+  let def;
+  abiData
+    .sort((a, b) => {
+      const aTime = new Date(a.created_at).getTime();
+      const bTime = new Date(b.created_at).getTime();
+      return aTime - bTime;
+    })
+    .find((result) => {
+      try {
+        def = Calldata.EVM.parsers.parseCanonicalName(
+          selector,
+          result.text_signature,
+        )
+        return !!def
+      }
+      catch (err) {
+        return false
+      }
+    })
+  if (def) {
+    return def
+  } else {
+    throw new Error('Could not find definition for selector')
+  }
+}
+
+/**
  *  Fetches calldata from a remote scanner based on the transaction's `chainId`
  */
 export async function fetchCalldataDecoder (_data: Uint8Array | string, to: string, _chainId: number | string) {
@@ -480,63 +513,49 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
     const supportedChain = cachedNetwork
       ? cachedNetwork
       : await fetchExternalNetworkForChainId(chainId);
-    if (supportedChain) {
-      const url = buildUrlForSupportedChainAndAddress({ supportedChain, address: to })
-      const response = await superagent
-        .get(url)
-        .catch(err => {
-          console.warn(`Fetching calldata from ${supportedChain.name} failed\n`, err)
-        })
-      if (
-        response &&
-        response.body &&
-        response.body.result
-      ) {
-        const abi = JSON.parse(response.body.result)
-        return {
-          def: Calldata.EVM.parsers.parseSolidityJSONABI(selector, abi),
-          abi
-        }
+
+    try {
+      if (supportedChain) {
+        const url = buildUrlForSupportedChainAndAddress({ supportedChain, address: to })
+        return await superagent
+          .get(url)
+          .then(res => {
+            if (res && res.body && res.body.result) {
+              const abi = JSON.parse(res.body.result)
+              const def = Calldata.EVM.parsers.parseSolidityJSONABI(selector, abi)
+              return { abi, def }
+            } else {
+              throw new Error('Server response was malformed')
+            }
+          }).catch(() => {
+            throw new Error('Fetching data from external network failed')
+          })
+      } else {
+        throw new Error(`Chain (id: ${chainId}) is not supported`)
       }
-      console.warn(
-        `Could not find selector in calldata for network: ${supportedChain.name}\n`,
-        'Falling back to 4byte\n',
-      );
+    } catch (err) {
+      console.warn(err.message, '\n', 'Falling back to 4byte');
     }
 
     // Fallback to checking 4byte
     const url = `https://www.4byte.directory/api/v1/signatures?hex_signature=0x${selector}`
-    const response = await superagent
+    return await superagent
       .get(url)
-      .catch(err => {
-        console.warn('Failed to fetch calldata from 4byte \n', err)
-      });
-    if (
-      response &&
-      response.body &&
-      response.body.results &&
-      response.body.results.length
-    ) {
-      const fourByteResults = response.body.results;
-      if (fourByteResults.length > 1) {
-        console.warn('WARNING: There are multiple results. Using the first one.');
-      }
-      const canonicalName = fourByteResults.sort((a, b) => {
-        const aTime = new Date(a.created_at).getTime();
-        const bTime = new Date(b.created_at).getTime();
-        return aTime - bTime;
-      })[0]?.text_signature;
-      return {
-        def: Calldata.EVM.parsers.parseCanonicalName(selector, canonicalName),
-        abi: fourByteResults
-      }
-    }
-    throw new Error('Could not find selector in calldata from 4byte')
-  }
-  catch (err) {
+      .then(res => {
+        if (res && res.body && res.body.results && res.body.results.length) {
+          const abi = res.body.results
+          const def = selectDefFrom4byteABI(abi, selector)
+          return { abi, def }
+        } else {
+          throw new Error('No results found')
+        }
+      }).catch(err => {
+        throw new Error(`Fetching data from 4byte failed: ${err.message}`)
+      })
+  } catch (err) {
     console.warn(`Fetching calldata failed: ${err.message}`)
-    return { def: null, abi: null }
   }
+  return { def: null, abi: null }
 }
 
 /** @internal */
