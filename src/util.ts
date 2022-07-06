@@ -457,34 +457,32 @@ function buildUrlForSupportedChainAndAddress ({ supportedChain, address }) {
  * matches the selector.
  */
 export function selectDefFrom4byteABI (abiData: any[], selector: string) {
-  try {
-    if (abiData.length > 1) {
-      console.warn('WARNING: There are multiple results. Using the first one.');
-    }
-    let def;
-    abiData
-      .sort((a, b) => {
-        const aTime = new Date(a.created_at).getTime();
-        const bTime = new Date(b.created_at).getTime();
-        return aTime - bTime;
-      })
-      .find((result) => {
-        try {
-          def = Calldata.EVM.parsers.parseCanonicalName(
-            selector,
-            result.text_signature,
-          )
-          return !!def
-        }
-        catch (err) {
-          return false
-        }
-      })
-    return def ?? null;
+  if (abiData.length > 1) {
+    console.warn('WARNING: There are multiple results. Using the first one.');
   }
-  catch (err) {
-    console.warn(err.message)
-    return null
+  let def;
+  abiData
+    .sort((a, b) => {
+      const aTime = new Date(a.created_at).getTime();
+      const bTime = new Date(b.created_at).getTime();
+      return aTime - bTime;
+    })
+    .find((result) => {
+      try {
+        def = Calldata.EVM.parsers.parseCanonicalName(
+          selector,
+          result.text_signature,
+        )
+        return !!def
+      }
+      catch (err) {
+        return false
+      }
+    })
+  if (def) {
+    return def
+  } else {
+    throw new Error('Could not find definition for selector')
   }
 }
 

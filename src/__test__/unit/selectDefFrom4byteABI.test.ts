@@ -52,7 +52,7 @@ describe('selectDefFrom4byteAbi', () => {
       },
     ];
     const selector = '0x38ed1739';
-    expect(selectDefFrom4byteABI(result, selector)).toBeNull();
+    expect(() => selectDefFrom4byteABI(result, selector)).toThrowError();
   });
 
   test('handle no selector', () => {
@@ -66,18 +66,18 @@ describe('selectDefFrom4byteAbi', () => {
       },
     ];
     const selector = undefined;
-    expect(selectDefFrom4byteABI(result, selector)).toBeNull();
+    expect(() => selectDefFrom4byteABI(result, selector)).toThrowError();
   });
 
   test('handle no result', () => {
     const result = undefined;
     const selector = '0x38ed1739';
-    expect(selectDefFrom4byteABI(result, selector)).toBeNull();
+    expect(() => selectDefFrom4byteABI(result, selector)).toThrowError();
   });
 
   test('handle bad data', () => {
     const result = [];
     const selector = '';
-    expect(selectDefFrom4byteABI(result, selector)).toBeNull();
+    expect(() => selectDefFrom4byteABI(result, selector)).toThrowError();
   });
 });
