@@ -1,7 +1,11 @@
 import { fetchCalldataDecoder } from '../../util';
 import { vi } from 'vitest';
+import { setup as setupMockServiceWorker } from './__mocks__/setup';
 
 describe('fetchCalldataDecoder', () => {
+  // Mocks out responses from Etherscan and 4byte
+  setupMockServiceWorker()
+
   beforeAll(() => {
     // Disable this mock to restore console logs when updating tests
     console.warn = vi.fn();
