@@ -1,9 +1,9 @@
 {
   "name": "gridplus-sdk",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
-    "build": "NODE_ENV=production tsc -p tsconfig.json",
+    "build": "NODE_ENV=production vite build",
     "commit": "git-cz",
     "lint:fix": "eslint --fix src --ext .ts",
     "lint": "eslint src --ext .ts",
@@ -27,7 +27,17 @@
     "e2e-sign": "vitest src/__test__/e2e/signing/signing.test.ts",
     "e2e-wj": "vitest src/__test__/e2e/wallet-jobs.test.ts"
   },
-  "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/gridplus-sdk.umd.js",
+  "module": "./dist/gridplus-sdk.es.js",
+  "exports": {
+    ".": {
+      "import": "./dist/gridplus-sdk.es.js",
+      "require": "./dist/gridplus-sdk.umd.js"
+    }
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/GridPlus/gridplus-sdk.git"
@@ -43,7 +53,6 @@
     "bs58check": "^2.1.2",
     "buffer": "^5.6.0",
     "crc-32": "^1.2.0",
-    "dotenv": "^16.0.0",
     "elliptic": "6.5.4",
     "eth-eip712-util-browser": "^0.0.3",
     "hash.js": "^1.1.7",
@@ -74,7 +83,6 @@
     "bip39": "^3.0.2",
     "bitcoinjs-lib": "4.0.3",
     "c8": "^7.11.3",
-    "chai": "^4.2.0",
     "ed25519-hd-key": "^1.2.0",
     "eslint": "^8.7.0",
     "eslint-config-prettier": "^8.5.0",
@@ -91,12 +99,9 @@
     "readline-sync": "^1.4.9",
     "request-promise": "^4.2.6",
     "seedrandom": "^3.0.5",
-    "ts-mocha": "^10.0.0",
     "typescript": "^4.7.0",
+    "vite": "^3.0.2",
     "vitest": "^0.15.2"
   },
-  "files": [
-    "dist"
-  ],
   "license": "MIT"
 }
