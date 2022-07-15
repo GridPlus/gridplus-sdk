@@ -15,14 +15,16 @@
         "0xa6173b4890303e12ca1b195ea4a04d8891b0d83768b734d2ecdb9c6dd9d828c4",
         //  atomicMatch_(address[14],uint256[18],uint8[8],bytes,bytes,bytes,bytes,bytes,bytes,
         //  uint8[2],bytes32[5])
-        // this one is too large for 1 frame
+        // This one is too large to fit a calldata decoder
         // "0x92c82aad37a925e3aabe3d603109a5e65993aa2615c4b2278c3d355d9d433dff",
         //  exactInput((bytes,address,uint256,uint256,uint256))
         "0xee9710119c13dba6fe2de240ef1e24a2489e98d9c7dd5881e2901056764ee234",
         //  exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))
         "0xc33308ca105630b99a0c24ddde4f4506aa4115ec6f1a25f1138f3bd8cfa32b49",
         //  proveAndClaimWithResolver(bytes,(bytes,bytes)[],bytes,address,address)
-        "0xe15e6205c6696d444fc426468defdf08e89a0f5b3b8a17c68428f7aeefd53ca1"
+        "0xe15e6205c6696d444fc426468defdf08e89a0f5b3b8a17c68428f7aeefd53ca1",
+        //  add_liquidity(uint256[2] amounts, uint256 deadline)
+        "0x9e61ebb7f25424d2a96c58168300db57aa50a05f6a19be291313b7cfe3b3ae62"
       ],
       // These are canonical ABI definitions that we use to test more unusual function types.
       // The names are parsed and dummy data is filled in (see helpers in ./evm.ts).
