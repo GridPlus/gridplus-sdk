@@ -49,30 +49,26 @@ const connectAndPairLattice = async (
   //--------------------------------------------------------------------------
   // Create 'client'
   //--------------------------------------------------------------------------
-  const clientOpts = {
+  const client = new Client({
     name: appName,
     baseUrl: baseUrl,
     timeout: 180000,
     privKey: privateKey,
     skipRetryOnWrongWallet: false,
-  };
-  const client = new Client(clientOpts);
-  const isPaired = await client.connect(deviceId);
+  });
 
-  if (!isPaired) {
-    const pairingCode = secret().toUpperCase();
-
-    const isActive = await client.pair(pairingCode).catch((err) => {
-      throw err || new Error('No active wallet found!');
-    });
-    if (!isActive) {
-      throw new Error('No active wallet found!');
-    } else {
-      return { client, deviceId };
+  await client.connect(deviceId).then(async (isPaired) => {
+    if (!isPaired) {
+      const pairingCode = secret().toUpperCase();
+      await client.pair(pairingCode).then((isActive) => {
+        if (!isActive) {
+          throw new Error('No active wallet found!');
+        }
+      });
     }
-  } else {
-    return { client, deviceId };
-  }
+  });
+
+  return { client, deviceId };
 };
 
 const createHdPath = (
@@ -93,30 +89,25 @@ const createHdPath = (
 };
 
 const signMessage = (message: string): Promise<any> => {
-  return connectAndPairLattice().then((context: any) => {
-    const data = {
-      protocol: 'signPersonal',
-      payload: message,
-      signerPath: createHdPath(),
-    };
-    const signOpts = {
+  return connectAndPairLattice().then(({ client }) =>
+    client.sign({
       currency: 'ETH_MSG',
-      data: data,
-    };
-
-    return context.client.sign(signOpts);
-  });
+      data: {
+        protocol: 'signPersonal',
+        payload: message,
+        signerPath: createHdPath(),
+      },
+    }),
+  );
 };
 
-const getAddresses = (): Promise<string[]> => {
-  return connectAndPairLattice().then((context: any) => {
-    const req = {
+const getAddresses = (): Promise<string[] | Buffer[]> => {
+  return connectAndPairLattice().then(({ client }) =>
+    client.getAddresses({
       startPath: createHdPath(),
       n: 2,
-    };
-    console.log(JSON.stringify(req, null, 2));
-    return context.client.getAddresses(req);
-  });
+    }),
+  );
 };
 
 describe('Chaos Monkey', () => {
