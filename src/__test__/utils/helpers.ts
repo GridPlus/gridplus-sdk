@@ -21,6 +21,7 @@ import { Constants } from '../..';
 import { getV, parseDER, randomBytes } from '../../util';
 import { Client } from '../../client';
 import { TypedTransaction } from '@ethereumjs/tx';
+import { getEnv } from './getters';
 const SIGHASH_ALL = 0x01;
 const secp256k1 = new EC('secp256k1');
 const ed25519 = new EdDSA('ed25519');
@@ -38,7 +39,7 @@ export const ETH_COIN = BIP_CONSTANTS.COINS.ETH;
 export const REUSABLE_KEY =
   '3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca';
 
-export function setupTestClient (env = process.env as any, stateData?: any): Client {
+export function setupTestClient (env = getEnv() as any, stateData?: any): Client {
   if (stateData) {
     return new Client({ stateData });
   }

@@ -50,7 +50,14 @@ export const runEvmTests = ({ client }: { client: Client }) => {
         bypassSetPayload,
         shouldFail,
         useLegacySigning,
-      );
+      ).catch((err) => {
+        if (err.responseCode === 128) {
+          err.message =
+            'NOTE: You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.\n' +
+            err.message;
+        }
+        throw err;
+      });
     };
 
     describe('[EVM] Test transactions', () => {
@@ -426,7 +433,7 @@ export const runEvmTests = ({ client }: { client: Client }) => {
     });
 
     describe('[EVM] Test decoders', () => {
-      describe('Test ABI decoder vectors', () => {
+      describe('Test ABI decoder vectors', async () => {
         const runAbiDecoderTest = (overrides: any, ...params: any) =>
           runEvmTestForReq(
             {
@@ -450,58 +457,57 @@ export const runEvmTests = ({ client }: { client: Client }) => {
 
         // Validate that we can decode using Etherscan ABI info as well as 4byte canonical names.
         for (let i = 0; i < vectors.etherscanTxHashes.length; i++) {
-          it(`(Etherscan + 4byte #${i}) ${vectors.etherscanTxHashes[i]}`, async () => {
-            // Hashes on ETH mainnet that we will use to fetch full tx and ABI data with
-            const getTxBase =
-              'https://api.etherscan.io/api?module=proxy&action=eth_getTransactionByHash&txhash=';
-            // 1. First fetch the transaction details from etherscan. This is just to get
-            // the calldata, so it would not be needed in a production environment
-            // (since we already have the calldata).
-            let getTxUrl = `${getTxBase}${vectors.etherscanTxHashes[i]}`;
-            const etherscanKey = getEtherscanKey()
-            if (etherscanKey) {
-              getTxUrl += `&apiKey=${etherscanKey}`;
-            }
-            const tx = await request(getTxUrl).then((res) => res.body.result);
-            if (!etherscanKey) {
-              // Need a timeout between requests if we don't have a key
-              console.warn(
-                'WARNING: No env.ETHERSCAN_KEY provided. Waiting 5s between requests...',
-              );
-              await new Promise((resolve) => setTimeout(resolve, 5000));
-            }
+          // Hashes on ETH mainnet that we will use to fetch full tx and ABI data with
+          const getTxBase =
+            'https://api.etherscan.io/api?module=proxy&action=eth_getTransactionByHash&txhash=';
+          // 1. First fetch the transaction details from etherscan. This is just to get
+          // the calldata, so it would not be needed in a production environment
+          // (since we already have the calldata).
+          const txHash = vectors.etherscanTxHashes[i];
+          let getTxUrl = `${getTxBase}${txHash}`;
+          const etherscanKey = getEtherscanKey();
+          if (etherscanKey) {
+            getTxUrl += `&apiKey=${etherscanKey}`;
+          }
+          const tx = await request(getTxUrl).then((res) => res.body.result);
+          const txData = { data: tx.input, ...tx };
+          if (!etherscanKey) {
+            // Need a timeout between requests if we don't have a key
+            console.warn(
+              'WARNING: No env.ETHERSCAN_KEY provided. Waiting 5s between requests...',
+            );
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+          }
+
+          it(`Etherscan #${i} ${txHash.slice(0, 8)}...`, async () => {
             // 2. Fetch the full ABI of the contract that the transaction interacted with.
-            {
-              const { def, abi } = await fetchCalldataDecoder(
-                tx.input,
-                tx.to,
-                1,
+            const { def, abi } = await fetchCalldataDecoder(
+              tx.input,
+              tx.to,
+              1,
+            );
+            if (!def) {
+              throw new Error(
+                `ERROR: Failed to decode ABI definition (${txHash}). Skipping.`,
               );
-              if (!def) {
-                throw new Error(
-                  `ERROR: Failed to decode ABI definition (${vectors.etherscanTxHashes[i]}). Skipping.`,
-                );
-              }
-              // 3. Test decoding using Etherscan ABI info
-              // Check that ethers can decode this
-              const funcName = rlpDecode(def)[0] ?? '';
-              if (ethersCanDecode(tx.input, abi, funcName.toString())) {
-                // Send the request
-                await runAbiDecoderTest({
-                  txData: { data: tx.input },
-                  data: { decoder: def },
-                });
-              } else {
-                throw new Error(
-                  `ERROR: ethers.js failed to decode abi for tx ${vectors.etherscanTxHashes[i]}. Skipping.`,
-                );
-              }
             }
+            // 3. Test decoding using Etherscan ABI info
+            // Check that ethers can decode this
+            const funcName = rlpDecode(def)[0] ?? '';
+            if (ethersCanDecode(tx.input, abi, funcName.toString())) {
+              // Send the request
+              await runAbiDecoderTest({ txData, data: { decoder: def } });
+            } else {
+              throw new Error(
+                `ERROR: ethers.js failed to decode abi for tx ${txHash}. Skipping.`,
+              );
+            }
+          });
+
+          it(`4byte #${i} ${txHash.slice(0, 8)}...`, async () => {
             // 4. Get the canonical name from 4byte by using an unsupported chainId
-            {
-              const { def } = await fetchCalldataDecoder(tx.input, tx.to, -1);
-              await runAbiDecoderTest({ data: { decode: def } });
-            }
+            const { def } = await fetchCalldataDecoder(tx.input, tx.to, -1);
+            await runAbiDecoderTest({ txData, data: { decoder: def } });
           });
         }
 
