@@ -19,5 +19,3 @@ export const shouldUseEVMLegacyConverter = (fwConstants: FirmwareConstants) =>
   fwConstants.genericSigning &&
   fwConstants.genericSigning.encodingTypes &&
   fwConstants.genericSigning.encodingTypes.EVM;
-
-export const isTesting = process.env['NODE_ENV'] === 'test';
