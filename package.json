@@ -7,7 +7,7 @@
     "commit": "git-cz",
     "lint:fix": "eslint --fix src --ext .ts",
     "lint": "eslint src --ext .ts",
-    "postinstall": "patch-package",
+    "postinstall": "npx patch-package",
     "precommit": "npm run lint:fix && npm run test",
     "prepublish": "",
     "test": "vitest /src/__test__/unit /src/__test__/integration",
