@@ -1,13 +1,13 @@
 {
   "name": "gridplus-sdk",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
     "build": "NODE_ENV=production vite build",
     "commit": "git-cz",
     "lint:fix": "eslint --fix src --ext .ts",
     "lint": "eslint src --ext .ts",
-    "postinstall": "patch-package",
+    "postinstall": "npx patch-package",
     "precommit": "npm run lint:fix && npm run test",
     "prepublish": "",
     "test": "vitest /src/__test__/unit /src/__test__/integration",
