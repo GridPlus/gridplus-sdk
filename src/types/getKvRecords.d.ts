@@ -24,12 +24,11 @@ interface EncodeGetKvRecordsRequestParams {
   start: number;
 }
 
-
-type GetKvRecordsData = {
+interface GetKvRecordsData {
   records: {
     id: string;
     [key: string]: string;
   }[];
   fetched: number;
   total: number;
-};
+}

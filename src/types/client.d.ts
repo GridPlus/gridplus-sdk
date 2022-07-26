@@ -3,7 +3,7 @@ type Currency = keyof typeof CURRENCIES;
 
 type SigningPath = [number, number, number, number, number];
 
-type SignData = {
+interface SignData {
   tx?: string;
   txHash?: string;
   changeRecipient?: string;
@@ -15,9 +15,9 @@ type SignData = {
   sigs?: Buffer[];
   signer?: Buffer;
   err?: string;
-};
+}
 
-type TransactionPayload = {
+interface TransactionPayload {
   type: number;
   gasPrice: number;
   nonce: number;
@@ -27,7 +27,7 @@ type TransactionPayload = {
   data: string;
   maxFeePerGas: number;
   maxPriorityFeePerGas: number;
-};
+}
 
 interface SigningPayload {
   signerPath: SigningPath;
