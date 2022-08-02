@@ -7,11 +7,11 @@ interface EncrypterParams {
   sharedSecret: Buffer;
 }
 
-type Signature = {
+interface Signature {
   r: Buffer;
   s: Buffer;
   v?: Buffer;
-};
+}
 
 type KeyPair = ec.KeyPair;
 
