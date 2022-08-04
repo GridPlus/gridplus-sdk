@@ -631,7 +631,7 @@ export const validateDerivedPublicKeys = function (
       // Otherwise this is a SECP256K1 pubkey
       const priv = wallet.derivePath(getPathStr(path)).privateKey;
       expect(pub.toString('hex')).toEqualElseLog(
-        secp256k1.keyFromPrivate(priv).getPublic().encode('hex', true),
+        secp256k1.keyFromPrivate(priv).getPublic().encode('hex'),
         'Exported SECP256K1 pubkey incorrect',
       );
     }
@@ -741,7 +741,21 @@ export const serializeExportSeedJobData = function () {
 };
 
 export const deserializeExportSeedJobResult = function (res) {
-  return { seed: res.slice(0, 64) };
+  let off = 0;
+  const seed = res.slice(off, 64);
+  off += 64;
+  const words = [];
+  for (let i = 0; i < 24; i++) {
+    const wordIdx = res.slice(off, off + 4).readUInt32LE(0);
+    words.push(wordlists.english[wordIdx]);
+    off += 4;
+  }
+  const numWords = res.slice(off, off + 4).readUInt32LE(0);
+  off += 4;
+  return { 
+    seed, 
+    mnemonic: words.slice(0, numWords).join(' '), 
+  };
 };
 
 //---------------------------------------------------
@@ -757,10 +771,28 @@ export const serializeDeleteSeedJobData = function (data) {
 // Load Seed helpers
 //---------------------------------------------------
 export const serializeLoadSeedJobData = function (data) {
-  const req = Buffer.alloc(66);
-  req.writeUInt8(data.iface, 0);
-  data.seed.copy(req, 1);
-  req.writeUInt8(data.exportability, 65);
+  const req = Buffer.alloc(217);
+  let off = 0;
+  req.writeUInt8(data.iface, off);
+  off += 1;
+  data.seed.copy(req, off);
+  off += data.seed.length;
+  req.writeUInt8(data.exportability, off);
+  off += 1;
+  if (data.mnemonic) {
+    // Serialize the mnemonic
+    const mWords = data.mnemonic.split(' ');
+    for (let i = 0; i < mWords.length; i++) {
+      req.writeUint32LE(wordlists.english.indexOf(mWords[i]), off + (i * 4));
+    }
+    // Strangely the struct is written with the length of
+    // words after the words themselves lol (24 words * 4 bytes per word = 96)
+    // (Preserved for fear of any unintended consequences to chaning `BIP39Phrase_t` in fw)
+    req.writeUInt32LE(mWords.length, off + 96);
+    // Ignore the passphrase since we only use this wallet job
+    // helper to test loading a mnemonic onto the card's extraData
+    // buffer, which does not include the passphrase.
+  }
   return req;
 };
 
