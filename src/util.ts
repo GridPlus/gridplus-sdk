@@ -23,6 +23,8 @@ import {
   VERSION_BYTE,
   EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
 } from './constants';
+import { Interface } from '@ethersproject/abi'
+
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
 let ec;
@@ -486,6 +488,37 @@ export function selectDefFrom4byteABI (abiData: any[], selector: string) {
   }
 }
 
+async function fetchSupportedChainData (selector: string, address: string, supportedChain: number, data: Buffer) {
+  const url = buildUrlForSupportedChainAndAddress({ supportedChain, address })
+  return superagent
+    .get(url)
+    .then(async res => {
+      if (res && res.body && res.body.result) {
+        return JSON.parse(res.body.result)
+      } else {
+        throw new Error('Server response was malformed')
+      }
+    }).catch(() => {
+      throw new Error('Fetching data from external network failed')
+    })
+}
+
+
+async function fetch4byteData (selector: string): Promise<any> {
+  const url = `https://www.4byte.directory/api/v1/signatures/?hex_signature=0x${selector}`
+  return await superagent
+    .get(url)
+    .then(res => {
+      if (res && res.body && res.body.results) {
+        return res.body.results
+      } else {
+        throw new Error('No results found')
+      }
+    }).catch(err => {
+      throw new Error(`Fetching data from 4byte failed: ${err.message}`)
+    })
+}
+
 /**
  *  Fetches calldata from a remote scanner based on the transaction's `chainId`
  */
@@ -516,20 +549,22 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
 
     try {
       if (supportedChain) {
-        const url = buildUrlForSupportedChainAndAddress({ supportedChain, address: to })
-        return await superagent
-          .get(url)
-          .then(res => {
-            if (res && res.body && res.body.result) {
-              const abi = JSON.parse(res.body.result)
-              const def = Calldata.EVM.parsers.parseSolidityJSONABI(selector, abi)
-              return { abi, def }
-            } else {
-              throw new Error('Server response was malformed')
-            }
-          }).catch(() => {
-            throw new Error('Fetching data from external network failed')
-          })
+        const abi = await fetchSupportedChainData(selector, to, supportedChain, data)
+        const iface = new Interface(abi)
+        const parsedAbi = Calldata.EVM.parsers.parseSolidityJSONABI(selector, iface)
+        let def = parsedAbi.def
+        const fragment = parsedAbi.fragment
+        if (fragment.name === 'multicall') {
+          const multicallDataList = iface.decodeFunctionData(fragment, data)
+          await Promise.all(multicallDataList[0].map(async multicallData => {
+            const bufferSelector = Buffer.from(multicallData.slice(2), 'hex')
+            const selector = bufferSelector.slice(0, 4).toString('hex')
+            const abi = await fetch4byteData(selector)
+            const multicallDef = selectDefFrom4byteABI(abi, selector)
+            def = Buffer.concat([def, multicallDef])
+          }))
+        }
+        return { abi, def }
       } else {
         throw new Error(`Chain (id: ${chainId}) is not supported`)
       }
@@ -538,23 +573,13 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
     }
 
     // Fallback to checking 4byte
-    const url = `https://www.4byte.directory/api/v1/signatures?hex_signature=0x${selector}`
-    return await superagent
-      .get(url)
-      .then(res => {
-        if (res && res.body && res.body.results && res.body.results.length) {
-          const abi = res.body.results
-          const def = selectDefFrom4byteABI(abi, selector)
-          return { abi, def }
-        } else {
-          throw new Error('No results found')
-        }
-      }).catch(err => {
-        throw new Error(`Fetching data from 4byte failed: ${err.message}`)
-      })
+    const abi = await fetch4byteData(selector)
+    const def = selectDefFrom4byteABI(abi, selector)
+    return { abi, def }
   } catch (err) {
     console.warn(`Fetching calldata failed: ${err.message}`)
   }
+
   return { def: null, abi: null }
 }
 

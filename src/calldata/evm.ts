@@ -1,5 +1,6 @@
 import { keccak256 } from 'js-sha3';
 import { encode } from 'rlp';
+import { Interface } from '@ethersproject/abi'
 
 /**
  * Look through an ABI definition to see if there is a function that matches the signature provided.
@@ -8,19 +9,12 @@ import { encode } from 'rlp';
  * @returns      Buffer containing RLP-serialized array of calldata info to pass to signing request
  * @public
  */
-export const parseSolidityJSONABI = function (sig: string, abi: any[]): Buffer {
+export const parseSolidityJSONABI = function (sig: string, iface: Interface) {
   sig = coerceSig(sig);
-  // Find the first match in the ABI
-  const match = abi
-    .filter((item) => item.type === 'function')
-    .find((item) => {
-      const def = parseDef(item);
-      const funcSig = getFuncSig(def.canonicalName)
-      return funcSig === sig
-    })
-  if (match) {
-    const def = parseDef(match).def;
-    return Buffer.from(encode(def));
+  const foundFragment = iface.getFunction(sig)
+  if (foundFragment) {
+    const def = parseDef(foundFragment).def
+    return { def: Buffer.from(encode(def)), fragment: foundFragment }
   }
   throw new Error('Unable to find matching function in ABI');
 };
