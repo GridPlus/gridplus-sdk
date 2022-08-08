@@ -1,6 +1,5 @@
 import { keccak256 } from 'js-sha3';
-import { encode } from 'rlp';
-import { Interface } from '@ethersproject/abi'
+import { Interface, AbiCoder } from '@ethersproject/abi'
 
 /**
  * Look through an ABI definition to see if there is a function that matches the signature provided.
@@ -21,7 +20,6 @@ export const parseSolidityJSONABI = function (sig: string, iface: Interface) {
 
 /**
  * Convert a canonical name into an ABI definition that can be included with calldata to a general
- * signing request. Parameter names will be encoded in order that they are discovered (e.g. "1",
  * "2", "2.1", "3")
  * @param sig    a 0x-prefixed hex string containing 4 bytes of info
  * @param name   canonical name of the function
@@ -53,6 +51,91 @@ export const parseCanonicalName = function (sig: string, name: string) {
 };
 
 /**
+ * Pull out nested calldata which may correspond to nested ABI definitions.
+ * This is relevant for e.g. `multicall` patterns.
+ * A def may be nested if the underlying type is `bytes` or `bytes[]` and 
+ * the calldata parm is of size (4 + 32*n).
+ * @param def - calldata decoder data for a def
+ * @param calldata - Buffer containing full calldata payload
+ * @return -  Array of calldata params, or null values. If the return
+ *            item has data (0x-prefixed hex string), it should be
+ *            checked as a possible nested def
+ */
+export const getNestedCalldata = function(def, calldata) {
+  const possibleNestedDefs = []
+  // Skip past first item, which is the function name
+  const defParams = def.slice(1)
+  const strParams = getParamStrNames(defParams);
+  const coder = new AbiCoder();
+  const decoded = coder.decode(strParams, '0x' + calldata.slice(4).toString('hex'))
+  function couldBeNestedDef(x) {
+    return (x.length - 4) % 32 === 0;
+  }
+  decoded.forEach((paramData, i) => {
+    if (isBytesType(defParams[i])) {
+      let nestedDefIsPossible = true;
+      if (isBytesArrItem(defParams[i])) {
+        // `bytes[]` type. Decode all underlying `bytes` items and
+        // do size checks on those.
+        // NOTE: We only do this for `bytes[]` but could, in the future,
+        // extend to more complex array structures if we see nested defs
+        // in this pattern. However, we have only ever seen `bytes[]`, which
+        // is typically used in `multicall` patterns
+        paramData.forEach((nestedParamDatum) => {
+          const nestedParamDatumBuf = Buffer.from(nestedParamDatum.slice(2), 'hex');
+          if (!couldBeNestedDef(nestedParamDatumBuf)) {
+            nestedDefIsPossible = false;
+          }
+        })
+      } else if (isBytesItem(defParams[i])) {
+        // Regular `bytes` type - perform size check
+        const paramDataBuf = Buffer.from(paramData.slice(2), 'hex');
+        nestedDefIsPossible = couldBeNestedDef(paramDataBuf);
+      } else {
+        // Unknown `bytes` item type
+        nestedDefIsPossible = false;
+      }
+      // If the data could contain a nested def (determined based on
+      // data size of the item), add the paramData to the return array.
+      possibleNestedDefs.push(nestedDefIsPossible ? paramData : null);
+    } else {
+      // No nested defs for non-bytes types
+      possibleNestedDefs.push(null);
+    }
+  })
+  return possibleNestedDefs;
+}
+
+/**
+ * If applicable, update decoder data to represent nested
+ * definitions, which are used in e.g. multicall patterns.
+ * This will update `def` in place and return it with any
+ * additional info necessary.
+ * @param def - Decoder data for a specific calldata function (def)
+ * @param nestedDefs - Array containing a possible set of nested
+ *                     defs which must be added to `def`
+ * @return - Possibly modified version of `def`
+ */
+export const replaceNestedDefs = function(def, nestedDefs) {
+  for (let i = 0; i < nestedDefs.length; i++) {
+    const isArrItem = isBytesArrItem(def[1 + i]);
+    const isItem = isBytesItem(def[1 + i]);
+    if (nestedDefs[i] !== null && (isArrItem || isItem)) {
+      // Update the def item type to indicate it will hold
+      // one or more nested definitions
+      def[1 + i][1] = EVM_TYPES.indexOf('nestedDef');
+      // Add nested def(s) in in an array. If this is an array
+      // item it means the nestedDefs should already be in an
+      // array. Otherwise we need to wrap the single nested
+      // def in an array to keep the data type consistent.
+      const defs = isArrItem ? nestedDefs[i] : [nestedDefs[i]];
+      def[1 + i] = def[1 + i].concat([defs]);
+    }
+  }
+  return def;
+}
+
+/**
  * Convert a canonical name to a function selector (a.k.a. "sig")
  * @internal
  */
@@ -71,6 +154,34 @@ function coerceSig (sig: string): string {
     sig = `0x${sig}`;
   }
   return sig;
+}
+
+/**
+ * Convert calldata param definitions into an array of their
+ * canonical string names.
+ * @param defParams - Array of def params
+ * @internal
+ */
+function getParamStrNames(defParams) {
+  const strNames = [];
+  for (let i = 0; i < defParams.length; i++) {
+    const param = defParams[i];
+    let s = EVM_TYPES[param[1]];
+    if (param[2]) {
+      s = `${s}${param[2] * 8}`;
+    }
+    if (param[3].length > 0) {
+      param[3].forEach((d) => {
+        if (param[3][d] === 0) {
+          s = `${s}[]`
+        } else {
+          s = `${s}[${param[3][d]}]`
+        }
+      })
+    }
+    strNames.push(s);
+  }
+  return strNames;
 }
 
 /**
@@ -363,6 +474,17 @@ function isTuple (type: string): boolean {
   return type[0] === '(';
 }
 
+/** @internal */
+function isBytesType(param) {
+  return EVM_TYPES[param[1]] === 'bytes';
+}
+function isBytesItem(param) {
+  return isBytesType(param) && param[3].length === 0;
+}
+function isBytesArrItem(param) {
+  return isBytesType(param) && param[3].length === 1 && param[3][0] === 0;
+}
+
 const BAD_CANONICAL_ERR = 'Could not parse canonical function name.';
 const EVM_TYPES = [
   null,
@@ -373,6 +495,7 @@ const EVM_TYPES = [
   'bytes',
   'string',
   'tuple',
+  'nestedDef',
 ];
 
 type EVMParamInfo = {

@@ -9,11 +9,10 @@ You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
  */
 import Common, { Chain, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
-import { Interface } from '@ethersproject/abi';
 import { BN } from 'bn.js';
 import { readFileSync } from 'fs';
 import { jsonc } from 'jsonc';
-import { decode as rlpDecode, encode as rlpEncode } from 'rlp';
+import { encode as rlpEncode } from 'rlp';
 import request from 'superagent';
 import { Client } from '../../../client';
 import { fetchCalldataDecoder, randomBytes } from '../../../util';
@@ -481,7 +480,7 @@ export const runEvmTests = ({ client }: { client: Client }) => {
 
           it(`Etherscan #${i} ${txHash.slice(0, 8)}...`, async () => {
             // 2. Fetch the full ABI of the contract that the transaction interacted with.
-            const { def, abi } = await fetchCalldataDecoder(
+            const { def } = await fetchCalldataDecoder(
               tx.input,
               tx.to,
               1,
@@ -492,16 +491,7 @@ export const runEvmTests = ({ client }: { client: Client }) => {
               );
             }
             // 3. Test decoding using Etherscan ABI info
-            // Check that ethers can decode this
-            const funcName = rlpDecode(def)[0] ?? '';
-            if (ethersCanDecode(tx.input, abi, funcName.toString())) {
-              // Send the request
-              await runAbiDecoderTest({ txData, data: { decoder: def } });
-            } else {
-              throw new Error(
-                `ERROR: ethers.js failed to decode abi for tx ${txHash}. Skipping.`,
-              );
-            }
+            await runAbiDecoderTest({ txData, data: { decoder: def } });
           });
 
           it(`4byte #${i} ${txHash.slice(0, 8)}...`, async () => {
@@ -656,21 +646,5 @@ export const runEvmTests = ({ client }: { client: Client }) => {
         */
       });
     });
-
-    //---------------------------------------
-    // INTERNAL HELPERS
-    //---------------------------------------
-    // Determine if ethers.js can decode calldata using an ABI def
-    function ethersCanDecode (calldata: any, abi: any, funcName: string) {
-      try {
-        const iface = new Interface(abi);
-        iface.decodeFunctionData(funcName, calldata);
-        return true;
-      } catch (err) {
-        return false;
-      }
-    }
-
-    // Convert a decoder definition to something ethers can consume
   });
 };

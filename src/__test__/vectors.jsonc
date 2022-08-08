@@ -22,7 +22,14 @@
         //  exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))
         "0xc33308ca105630b99a0c24ddde4f4506aa4115ec6f1a25f1138f3bd8cfa32b49",
         //  proveAndClaimWithResolver(bytes,(bytes,bytes)[],bytes,address,address)
-        "0xe15e6205c6696d444fc426468defdf08e89a0f5b3b8a17c68428f7aeefd53ca1"
+        "0xe15e6205c6696d444fc426468defdf08e89a0f5b3b8a17c68428f7aeefd53ca1",
+        // RECURSIVE DEFS
+        // multicall(bytes[])
+        "0xf4c48f0300acb2982fe8861ffd9291634115a33dc4107a66b4f9f43efb66896b",
+        // execTransaction(address,uint256,(disperseTokenSimple(address,address[],uint256[])),uint8,uint256,uint256,uint256,address,address,bytes)
+        "0xb6349347a1dec402c59cd94c5715513af7ecf3e532376f2a5a47c99ee224de2a",
+        // execTransaction(address,uint256,(multicall(bytes[])),uint8,uint256,uint256,uint256,address,address,bytes)
+        "0x2af244a02066c0a8e3998d247e071a03cd38ecbec60f93ddf63da0dce3932f86"
       ],
       // These are canonical ABI definitions that we use to test more unusual function types.
       // The names are parsed and dummy data is filled in (see helpers in ./evm.ts).
@@ -32,6 +39,7 @@
       // A few of these towards the end are not supported but they are such edge cases that
       // it's not worth worrying about them for now.
       "canonicalNames": [
+        /*
         // ---
         // Test a few vectors we alredy checked with Etherscan
         // ---
@@ -126,6 +134,7 @@
         // "nestedTup(bytes,(uint256,(bool,bytes)[2],bool)[])", // does not decode
         // "nestedTup(bytes,(uint256,(bool,bytes)[2],bool)[2])", // does not decode
         // "nestedTup(bytes,(uint256,(bool,bytes)[][],bool)[2][])", // too large
+      */
       ]
     }
   }
