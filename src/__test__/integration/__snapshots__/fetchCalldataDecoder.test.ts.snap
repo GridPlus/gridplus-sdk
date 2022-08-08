@@ -3447,7 +3447,8 @@ exports[`fetchCalldataDecoder > decode nested calldata 1`] = `
   ],
   "def": {
     "data": [
-      212,
+      248,
+      146,
       137,
       109,
       117,

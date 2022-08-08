@@ -11,10 +11,10 @@ import { Interface } from '@ethersproject/abi'
  */
 export const parseSolidityJSONABI = function (sig: string, iface: Interface) {
   sig = coerceSig(sig);
-  const foundFragment = iface.getFunction(sig)
-  if (foundFragment) {
-    const def = parseDef(foundFragment).def
-    return { def: Buffer.from(encode(def)), fragment: foundFragment }
+  const fragment = iface.getFunction(sig)
+  if (fragment) {
+    const def = parseDef(fragment).def
+    return { def, fragment }
   }
   throw new Error('Unable to find matching function in ABI');
 };
@@ -28,7 +28,7 @@ export const parseSolidityJSONABI = function (sig: string, iface: Interface) {
  * @returns      Buffer containing RLP-serialized array of calldata info to pass to signing request
  * @public
  */
-export const parseCanonicalName = function (sig: string, name: string): Buffer {
+export const parseCanonicalName = function (sig: string, name: string) {
   sig = coerceSig(sig);
   if (sig !== getFuncSig(name)) {
     throw new Error('Name does not match provided sig.');
@@ -49,7 +49,7 @@ export const parseCanonicalName = function (sig: string, name: string): Buffer {
     name = name.slice(typeStr.length + 1);
   }
   const parsedParamDef = parseParamDef(paramDef);
-  return Buffer.from(encode(def.concat(parsedParamDef)));
+  return def.concat(parsedParamDef);
 };
 
 /**

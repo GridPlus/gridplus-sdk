@@ -488,8 +488,8 @@ export function selectDefFrom4byteABI (abiData: any[], selector: string) {
   }
 }
 
-async function fetchSupportedChainData (selector: string, address: string, supportedChain: number, data: Buffer) {
-  const url = buildUrlForSupportedChainAndAddress({ supportedChain, address })
+async function fetchSupportedChainData (address: string, supportedChain: number) {
+  const url = buildUrlForSupportedChainAndAddress({ address, supportedChain })
   return superagent
     .get(url)
     .then(async res => {
@@ -517,6 +517,10 @@ async function fetch4byteData (selector: string): Promise<any> {
     }).catch(err => {
       throw new Error(`Fetching data from 4byte failed: ${err.message}`)
     })
+}
+
+function encodeDef (def: any) {
+  return Buffer.from(rlpEncode(def))
 }
 
 /**
@@ -549,10 +553,10 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
 
     try {
       if (supportedChain) {
-        const abi = await fetchSupportedChainData(selector, to, supportedChain, data)
+        const abi = await fetchSupportedChainData(to, supportedChain)
         const iface = new Interface(abi)
         const parsedAbi = Calldata.EVM.parsers.parseSolidityJSONABI(selector, iface)
-        let def = parsedAbi.def
+        const def = parsedAbi.def
         const fragment = parsedAbi.fragment
         if (fragment.name === 'multicall') {
           const multicallDataList = iface.decodeFunctionData(fragment, data)
@@ -561,10 +565,10 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
             const selector = bufferSelector.slice(0, 4).toString('hex')
             const abi = await fetch4byteData(selector)
             const multicallDef = selectDefFrom4byteABI(abi, selector)
-            def = Buffer.concat([def, multicallDef])
+            def.push(multicallDef)
           }))
         }
-        return { abi, def }
+        return { abi, def: encodeDef(def) }
       } else {
         throw new Error(`Chain (id: ${chainId}) is not supported`)
       }
@@ -575,7 +579,7 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
     // Fallback to checking 4byte
     const abi = await fetch4byteData(selector)
     const def = selectDefFrom4byteABI(abi, selector)
-    return { abi, def }
+    return { abi, def: encodeDef(def) }
   } catch (err) {
     console.warn(`Fetching calldata failed: ${err.message}`)
   }

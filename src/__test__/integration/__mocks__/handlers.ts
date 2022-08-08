@@ -9,6 +9,7 @@ import removeKvRecordsResponse from './removeKvRecords.json'
 import {
   etherscanResponse0xa0b86991,
   etherscanResponse0x7a250d56,
+  etherscanResponse0xc36442b6,
 } from './etherscan'
 import {
   fourbyteResponse0x38ed1739,
@@ -51,6 +52,11 @@ export const handlers = [
       if (address === '0x7a250d5630b4cf539739df2c5dacb4c659f2488d') {
         return res(
           ctx.json({ result: JSON.stringify(etherscanResponse0x7a250d56) }),
+        )
+      }
+      if (address === '0xc36442b4a4522e871399cd717abdd847ab11fe88') {
+        return res(
+          ctx.json({ result: JSON.stringify(etherscanResponse0xc36442b6) }),
         )
       }
     }
