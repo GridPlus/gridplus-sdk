@@ -1,5 +1,5 @@
 import { keccak256 } from 'js-sha3';
-import { Interface, AbiCoder } from '@ethersproject/abi'
+import { AbiCoder } from '@ethersproject/abi'
 
 /**
  * Look through an ABI definition to see if there is a function that matches the signature provided.
@@ -8,12 +8,19 @@ import { Interface, AbiCoder } from '@ethersproject/abi'
  * @returns      Buffer containing RLP-serialized array of calldata info to pass to signing request
  * @public
  */
-export const parseSolidityJSONABI = function (sig: string, iface: Interface) {
+export const parseSolidityJSONABI = function (sig: string, abi: any[]): { def: EVMDef } {
   sig = coerceSig(sig);
-  const fragment = iface.getFunction(sig)
-  if (fragment) {
-    const def = parseDef(fragment).def
-    return { def, fragment }
+  // Find the first match in the ABI
+  const match = abi
+    .filter((item) => item.type === 'function')
+    .find((item) => {
+      const def = parseDef(item);
+      const funcSig = getFuncSig(def.canonicalName)
+      return funcSig === sig
+    })
+  if (match) {
+    const def = parseDef(match).def;
+    return { def }
   }
   throw new Error('Unable to find matching function in ABI');
 };

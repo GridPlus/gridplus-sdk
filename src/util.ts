@@ -23,7 +23,6 @@ import {
   VERSION_BYTE,
   EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
 } from './constants';
-import { Interface } from '@ethersproject/abi'
 
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
@@ -553,8 +552,7 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
     try {
       if (supportedChain) {
         const abi = await fetchSupportedChainData(to, supportedChain)
-        const iface = new Interface(abi)
-        const parsedAbi = Calldata.EVM.parsers.parseSolidityJSONABI(selector, iface)
+        const parsedAbi = Calldata.EVM.parsers.parseSolidityJSONABI(selector, abi)
         let def = parsedAbi.def;
         def = await postProcessDef(def, data);
         return { abi, def: encodeDef(def) }
@@ -601,15 +599,15 @@ async function postProcessDef(def, calldata) {
       for await (const [j] of nestedDefs[i].entries()) {
         if (nestedDefs[i][j] !== null) {
           nestedDefs[i][j] = await postProcessDef(
-            nestedDefs[i][j], 
+            nestedDefs[i][j],
             Buffer.from(nestedCalldata[i][j].slice(2), 'hex')
-            );
-          }
+          );
         }
-      } 
+      }
+    }
     else if (nestedDefs[i] !== null) {
       nestedDefs[i] = await postProcessDef(
-        nestedDefs[i], 
+        nestedDefs[i],
         Buffer.from(nestedCalldata[i].slice(2), 'hex')
       );
     }
@@ -647,7 +645,7 @@ async function replaceNestedDefs(possNestedDefs) {
             const _nestedDef = selectDefFrom4byteABI(_nestedAbi, _nestedSelector);
             _nestedDefs.push(_nestedDef);
           } catch (err) {
-          shouldInclude = false;
+            shouldInclude = false;
             _nestedDefs.push(null);
           }
         }
