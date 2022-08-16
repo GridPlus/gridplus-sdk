@@ -595,6 +595,7 @@ describe('Test Wallet Jobs', () => {
     'silly actress ice spot noise unlock adjust clog verify idle chicken venue arrest ' +
     'bitter output task file awesome language viable dolphin artist dismiss into';
     beforeEach(() => {
+      expect(origWalletSeed).not.toEqualElseLog(null, 'Prior test failed. Aborting.');
       jobReq = {
         client,
         testID: 0, // wallet_job test ID
