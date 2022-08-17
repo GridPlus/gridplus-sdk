@@ -10,15 +10,14 @@ import { getDeviceId, getPrng } from '../utils/getters';
  * To run these tests you will need a dev Lattice with: `FEATURE_TEST_RUNNER=1`
  */
 
-import Common, { Chain, Hardfork } from '@ethereumjs/common';
-import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import bip32 from 'bip32';
 import { mnemonicToSeedSync } from 'bip39';
 import { privateToAddress, privateToPublic } from 'ethereumjs-util';
 import { question } from 'readline-sync';
+import { ecdsaRecover } from 'secp256k1';
 import { Constants } from '../..';
 import { HARDENED_OFFSET } from '../../constants';
-import { getV, randomBytes } from '../../util';
+import { parseDER, randomBytes } from '../../util';
 import { DEFAULT_SIGNER } from '../utils/builders';
 import {
   BTC_COIN,
@@ -63,11 +62,9 @@ const BTC_PARENT_PATH = {
   addr: 0, // Not used for pathDepth=4
 };
 // For testing leading zero sigs
-let parentPathStr = 'm/44\'/60\'/0\'/0';
-let basePath = DEFAULT_SIGNER
-const mnemonic =
+const KNOWN_MNEMONIC =
   'erosion loan violin drip laundry harsh social mercy leaf original habit buffalo';
-const KNOWN_SEED = mnemonicToSeedSync(mnemonic);
+const KNOWN_SEED = mnemonicToSeedSync(KNOWN_MNEMONIC);
 const wallet = bip32.fromSeed(KNOWN_SEED);
 
 describe('Test Wallet Jobs', () => {
@@ -78,7 +75,6 @@ describe('Test Wallet Jobs', () => {
     const EMPTY_WALLET_UID = Buffer.alloc(32);
     const internalUID = client.activeWallets.internal.uid;
     const externalUID = client.activeWallets.external.uid;
-
     expect(!EMPTY_WALLET_UID.equals(internalUID)).toEqualElseLog(
       true,
       'Internal A90 must be enabled.',
@@ -591,13 +587,98 @@ describe('Test Wallet Jobs', () => {
     });
   });
 
-  describe('Get delete permission', () => {
-    it('Should get permission to remove seed.', () => {
-      question(
-        '\nThe following tests will remove your seed.\n' +
-        'It should be added back in a later test, but these tests could fail!\n' +
-        'Press enter to continue.',
+  // NOTE: These tests will only pass for SafeCard applets >=v2.3
+  describe('SafeCard applet `extraData` operations', () => {
+    const mnemonic_12 =
+    'need flight merit nation wolf cannon leader convince law shift cotton crouch';
+    const mnemonic_24 = 
+    'silly actress ice spot noise unlock adjust clog verify idle chicken venue arrest ' +
+    'bitter output task file awesome language viable dolphin artist dismiss into';
+    beforeEach(() => {
+      expect(origWalletSeed).not.toEqualElseLog(null, 'Prior test failed. Aborting.');
+      jobReq = {
+        client,
+        testID: 0, // wallet_job test ID
+        payload: null,
+      };
+    })
+
+    it('Should remove the current seed', async () => {
+      jobReq.payload = serializeJobData(
+        jobTypes.WALLET_JOB_DELETE_SEED,
+        currentWalletUID,
+        { iface: 1 }
       );
+      await runTestCase(gpErrors.GP_SUCCESS);
+    });
+
+    it('Should load a 12 word mnemonic', async () => {
+      jobReq.payload = serializeJobData(
+        jobTypes.WALLET_JOB_LOAD_SEED,
+        currentWalletUID,
+        {
+          iface: 1, // external SafeCard interface
+          mnemonic: mnemonic_12,
+          seed: mnemonicToSeedSync(mnemonic_12),
+          exportability: 2, // always exportable
+        },
+      );
+      await runTestCase(gpErrors.GP_SUCCESS);
+    });
+
+    it('Should reconnect to update the wallet UIDs', async () => {
+      await client.connect(process.env.DEVICE_ID);
+      currentWalletUID = getCurrentWalletUID();
+    });
+
+    it('Should export and validate the presence of the mnemonic', async () => {
+      jobReq.payload = serializeJobData(
+        jobTypes.WALLET_JOB_EXPORT_SEED,
+        currentWalletUID,
+        {}
+      );
+      const res = await runTestCase(gpErrors.GP_SUCCESS);
+      const { mnemonic } = deserializeExportSeedJobResult(res.result);
+      expect(mnemonic).to.equal(mnemonic_12);
+    });
+
+    it('Should remove the current seed', async () => {
+      jobReq.payload = serializeJobData(
+        jobTypes.WALLET_JOB_DELETE_SEED,
+        currentWalletUID,
+        { iface: 1 }
+      );
+      await runTestCase(gpErrors.GP_SUCCESS);
+    });
+
+    it('Should load a 24 word mnemonic', async () => {
+      jobReq.payload = serializeJobData(
+        jobTypes.WALLET_JOB_LOAD_SEED,
+        currentWalletUID,
+        {
+          iface: 1, // external SafeCard interface
+          mnemonic: mnemonic_24,
+          seed: mnemonicToSeedSync(mnemonic_24),
+          exportability: 2, // always exportable
+        },
+      );
+      await runTestCase(gpErrors.GP_SUCCESS);
+    });
+
+    it('Should reconnect to update the wallet UIDs', async () => {
+      await client.connect(process.env.DEVICE_ID);
+      currentWalletUID = getCurrentWalletUID();
+    });
+
+    it('Should export and validate the presence of the mnemonic', async () => {
+      jobReq.payload = serializeJobData(
+        jobTypes.WALLET_JOB_EXPORT_SEED,
+        currentWalletUID,
+        {}
+      );
+      const res = await runTestCase(gpErrors.GP_SUCCESS);
+      const { mnemonic } = deserializeExportSeedJobResult(res.result);
+      expect(mnemonic).to.equal(mnemonic_24);
     });
   });
 
@@ -605,6 +686,8 @@ describe('Test Wallet Jobs', () => {
     beforeEach(() => {
       expect(origWalletSeed).not.toEqualElseLog(null, 'Prior test failed. Aborting.');
     });
+    let basePath = DEFAULT_SIGNER;
+    let parentPathStr = 'm/44\'/60\'/0\'/0';
 
     it('Should remove the current seed', async () => {
       jobType = jobTypes.WALLET_JOB_DELETE_SEED;
@@ -620,11 +703,12 @@ describe('Test Wallet Jobs', () => {
       await runTestCase(gpErrors.GP_SUCCESS);
     });
 
-    it('Should load the new seed', async () => {
+    it('Should load a known seed', async () => {
       jobType = jobTypes.WALLET_JOB_LOAD_SEED;
       jobData = {
         iface: 1, // external SafeCard interface
         seed: KNOWN_SEED,
+        mnemonic: KNOWN_MNEMONIC,
         exportability: 2, // always exportable
       };
       jobReq = {
@@ -636,16 +720,20 @@ describe('Test Wallet Jobs', () => {
       await runTestCase(gpErrors.GP_SUCCESS);
     });
 
-    it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
-      question(
-        '\nPlease remove your SafeCard, then re-insert and unlock it.\n' +
-        'Press enter to continue.',
-      );
-    });
-
     it('Should reconnect to update the wallet UIDs', async () => {
       await client.connect(id);
       currentWalletUID = getCurrentWalletUID();
+    });
+
+    it('Should export and validate the presence of the mnemonic', async () => {
+      jobReq.payload = serializeJobData(
+        jobTypes.WALLET_JOB_EXPORT_SEED,
+        currentWalletUID,
+        {}
+      );
+      const res = await runTestCase(gpErrors.GP_SUCCESS);
+      const { mnemonic } = deserializeExportSeedJobResult(res.result);
+      expect(mnemonic).to.equal(KNOWN_MNEMONIC);
     });
 
     it('Should make sure the first address is correct', async () => {
@@ -665,27 +753,27 @@ describe('Test Wallet Jobs', () => {
 
     // One leading privKey zero -> P(1/256)
     it('Should test address m/44\'/60\'/0\'/0/396 (1 leading zero byte)', async () => {
-      await runZerosTest(396, 1);
+      await runZerosTest(basePath, parentPathStr, 396, 1);
     });
     it('Should test address m/44\'/60\'/0\'/0/406 (1 leading zero byte)', async () => {
-      await runZerosTest(406, 1);
+      await runZerosTest(basePath, parentPathStr, 406, 1);
     });
     it('Should test address m/44\'/60\'/0\'/0/668 (1 leading zero byte)', async () => {
-      await runZerosTest(668, 1);
+      await runZerosTest(basePath, parentPathStr, 668, 1);
     });
 
     // Two leading privKey zeros -> P(1/65536)
     it('Should test address m/44\'/60\'/0\'/0/71068 (2 leading zero bytes)', async () => {
-      await runZerosTest(71068, 2);
+      await runZerosTest(basePath, parentPathStr, 71068, 2);
     });
     it('Should test address m/44\'/60\'/0\'/0/82173 (2 leading zero bytes)', async () => {
-      await runZerosTest(82173, 2);
+      await runZerosTest(basePath, parentPathStr, 82173, 2);
     });
 
     // Three leading privKey zeros -> P(1/16777216)
     // Unlikely any user ever runs into these but I wanted to derive the addrs for funsies
     it('Should test address m/44\'/60\'/0\'/0/11981831 (3 leading zero bytes)', async () => {
-      await runZerosTest(11981831, 3);
+      await runZerosTest(basePath, parentPathStr, 11981831, 3);
     });
 
     // Pubkeys are also used in the signature process, so we need to test paths with
@@ -704,7 +792,7 @@ describe('Test Wallet Jobs', () => {
     // is the leading-zero pubkey directly. Since we do not do a further derivation
     // with that leading-zero pubkey, there should never be any issues.
     it('Should test address m/44\'/60\'/0\'/153', async () => {
-      await runZerosTest(153, 1, true);
+      await runZerosTest(basePath, parentPathStr, 153, 1, true);
     });
 
     it('Should prepare for one more derivation step', async () => {
@@ -715,23 +803,23 @@ describe('Test Wallet Jobs', () => {
     // Now we will derive one more step with the leading zero pubkey feeding
     // into the derivation. This tests an edge case in firmware.
     it('Should test address m/44\'/60\'/0\'/153/0', async () => {
-      await runZerosTest(0, 0);
+      await runZerosTest(basePath, parentPathStr, 0, 0);
     });
 
     it('Should test address m/44\'/60\'/0\'/153/1', async () => {
-      await runZerosTest(1, 0);
+      await runZerosTest(basePath, parentPathStr, 1, 0);
     });
 
     it('Should test address m/44\'/60\'/0\'/153/5', async () => {
-      await runZerosTest(5, 0);
+      await runZerosTest(basePath, parentPathStr, 5, 0);
     });
 
     it('Should test address m/44\'/60\'/0\'/153/10000', async () => {
-      await runZerosTest(10000, 0);
+      await runZerosTest(basePath, parentPathStr, 10000, 0);
     });
 
     it('Should test address m/44\'/60\'/0\'/153/9876543', async () => {
-      await runZerosTest(9876543, 0);
+      await runZerosTest(basePath, parentPathStr, 9876543, 0);
     });
   });
 
@@ -786,13 +874,6 @@ describe('Test Wallet Jobs', () => {
     it('Should get GP_SUCCESS when valid seed is provided to valid interface', async () => {
       jobReq.payload = serializeJobData(jobType, currentWalletUID, jobData);
       await runTestCase(gpErrors.GP_SUCCESS);
-    });
-
-    it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
-      question(
-        '\n\nPlease remove your SafeCard, then re-insert and unlock it.\n' +
-        'Press enter to continue.',
-      );
     });
 
     it('Should reconnect to update the wallet UIDs', async () => {
@@ -864,7 +945,7 @@ describe('Test Wallet Jobs', () => {
     return copyBuffer(client.getActiveWallet()?.uid);
   }
 
-  async function runZerosTest (idx: any, numZeros: number, testPub = false) {
+  async function runZerosTest (path: Array, parentPathStr: string, idx: any, numZeros: number, testPub = false) {
     const w = wallet.derivePath(`${parentPathStr}/${idx}`);
     const refPriv = w.privateKey;
     const refPub = privateToPublic(refPriv);
@@ -881,8 +962,8 @@ describe('Test Wallet Jobs', () => {
         );
       }
     }
+    const refPubStr = '04' + refPub.toString('hex');
     // Validate the exported address
-    const path = basePath;
     path[path.length - 1] = idx;
     const ref = `0x${privateToAddress(refPriv).toString('hex').toLowerCase()}`;
     const addrs = await client.getAddresses({ startPath: path, n: 1 }) as string[];
@@ -892,42 +973,53 @@ describe('Test Wallet Jobs', () => {
         'Failed to derive correct address for known seed',
       );
     }
-    // Validate the signer coming back from the sign request
-    const tx = EthTxFactory.fromTxData(
-      {
-        type: 1,
-        gasPrice: 1200000000,
-        nonce: 0,
-        gasLimit: 50000,
-        to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-        value: 1000000000000,
-        data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
-      },
-      {
-        common: new Common({
-          chain: Chain.Mainnet,
-          hardfork: Hardfork.London,
-        }),
-      },
-    );
-    const txReq = {
-      data: {
-        signerPath: path,
-        curveType: Constants.SIGNING.CURVES.SECP256K1,
-        hashType: Constants.SIGNING.HASHES.KECCAK256,
-        encodingType: Constants.SIGNING.ENCODINGS.EVM,
-        payload: tx.getMessageToSign(false),
-      },
+    // Build the wallet job
+    const signerPath = {
+      pathDepth: path.length,
+      purpose: path.length > 0 ? path[0] : 0,
+      coin: path.length > 1 ? path[1] : 0,
+      account: path.length > 2 ? path[2] : 0,
+      change: path.length > 3 ? path[3] : 0,
+      addr: path.length > 4 ? path[4] : 0,
     };
-    const resp: any = await client.sign(txReq);
+    const randomTxHash = Buffer.from(
+      '704229f2128653abd86fbec078e4c50a28d1ce059bb26222c40a5cb0bc45733b', 
+      'hex'
+    )
+    jobType = jobTypes.WALLET_JOB_SIGN_TX;
+    jobData = {
+      numRequests: 1,
+      sigReq: [
+        {
+          data: randomTxHash,
+          signerPath,
+        },
+      ],
+    };
+    jobReq = {
+      client,
+      testID: 0, // wallet_job test ID
+      payload: serializeJobData(
+        jobType, 
+        currentWalletUID, 
+        jobData
+      ),
+    };
+    const _res = await runTestCase(gpErrors.GP_SUCCESS);
+    const res = deserializeSignTxJobResult(_res.result);
+    expect(res.numOutputs).to.equal(1);
+    const signerPubStr = res.outputs[0].pubkey.getPublic().encode('hex').toString('hex');
     // Make sure the exported signer matches expected
-    expect(resp.pubkey.slice(1).toString('hex')).toEqualElseLog(
-      refPub.toString('hex'),
-      'Incorrect signer',
-    );
+    expect(signerPubStr).toEqualElseLog(refPubStr, 'Incorrect signer');
     // Make sure we can recover the same signer from the sig.
-    // `getV` will only return non-null if it can successfully
-    // ecrecover a pubkey that matches the one provided.
-    expect(getV(tx, resp)).not.toEqualElseLog(null, 'Incorrect signer');
+    const {r, s} = parseDER(res.outputs[0].sig);
+    // Concatenate the R|S components. Note that sometimes these get
+    // prefixed with a `00` byte which we need to slice off.
+    const rs = Buffer.concat([r.slice(-32), s.slice(-32)]);
+    const r0 = Buffer.from(ecdsaRecover(rs, 0, randomTxHash, false)).toString('hex');
+    const r1 = Buffer.from(ecdsaRecover(rs, 1, randomTxHash, false)).toString('hex');
+    const isR0 = (r0 === signerPubStr) && (r0 === refPubStr);
+    const isR1 = (r1 === signerPubStr) && (r1 === refPubStr);
+    expect(isR0 || isR1, 'Incorrect signer');
   }
 });
