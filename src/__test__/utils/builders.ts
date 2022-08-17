@@ -125,7 +125,7 @@ export const buildSharedSecret = () => {
 };
 
 export const getNumIter = (n: number | string | undefined = getN()) =>
-  n ? parseInt(`${n}`) : 20;
+  n ? parseInt(`${n}`) : 5;
 
 /** Generate a bunch of random test vectors using the PRNG */
 export const buildRandomVectors = (n: number | string | undefined = getN()) => {

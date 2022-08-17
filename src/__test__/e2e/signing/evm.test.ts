@@ -174,7 +174,6 @@ export const runEvmTests = ({ client }: { client: Client }) => {
           );
 
         it('Should test shorter derivation paths', async () => {
-          console.log('DEFAULT_SIGNER', DEFAULT_SIGNER);
           await runBoundaryTest({
             data: {
               signerPath: DEFAULT_SIGNER.slice(0, 3),
@@ -201,8 +200,9 @@ export const runEvmTests = ({ client }: { client: Client }) => {
             ),
           ).rejects.toThrow();
         });
-
+        
         it('Should test other chains', async () => {
+          
           // Polygon
           await runBoundaryTest({ common: Common.custom({ chainId: 137 }) });
           // BSC
@@ -220,11 +220,7 @@ export const runEvmTests = ({ client }: { client: Client }) => {
             // @ts-expect-error - Common.custom() expects a number
             common: Common.custom({ chainId: '18446744073709551615' }),
           });
-          // Unknown chain (chainID too large)
-          await runBoundaryTest({
-            // @ts-expect-error - Common.custom() expects a number
-            common: Common.custom({ chainId: '18446744073709551616' }),
-          });
+          
           // Unknown chain - bypass set payload
           await expect(
             runBoundaryTest(
@@ -234,9 +230,16 @@ export const runEvmTests = ({ client }: { client: Client }) => {
             ),
           ).rejects.toThrow();
         });
-
+        
         it('Should test range of `value`', async () => {
+          // Should display as 1e-18
           await runBoundaryTest({ txData: { value: 1 } });
+          // 1e-8 -> should display as 1e-8
+          await runBoundaryTest({ txData: { value: 10000000000 } });
+          // 1e-7 -> should display as 0.00000001
+          await runBoundaryTest({ txData: { value: 100000000000 } });
+          // 1e18 = 1 ETH
+          await runBoundaryTest({ txData: { value: '0xde0b6b3a7640000' } });
           await runBoundaryTest({
             txData: {
               value:
@@ -272,13 +275,13 @@ export const runEvmTests = ({ client }: { client: Client }) => {
             txData: { data: `0x${randomBytes(maxDataSz + 1).toString('hex')}` },
           });
         });
-
+        
         it('Should test contract deployment', async () => {
           await runBoundaryTest({
             txData: { to: null, data: `0x${randomBytes(96).toString('hex')}` },
           });
         });
-
+        
         it('Should test direct RLP-encoded payloads with bad params', async () => {
           const req = buildEvmReq();
           const tx = EthTxFactory.fromTxData(req.txData, {
@@ -296,16 +299,24 @@ export const runEvmTests = ({ client }: { client: Client }) => {
           // Test numerical values >32 bytes
           // ---
           // Nonce
-          await runBoundaryTest(getParamPayloadReq(0), true, true);
+          await expect(
+            runBoundaryTest(getParamPayloadReq(0), true, true)
+          ).rejects.toThrow();
 
           // Gas
-          await runBoundaryTest(getParamPayloadReq(1), true, true);
+          await expect(
+            runBoundaryTest(getParamPayloadReq(1), true, true)
+          ).rejects.toThrow();
 
           // Gas Price
-          await runBoundaryTest(getParamPayloadReq(2), true, true);
+          await expect(
+            runBoundaryTest(getParamPayloadReq(2), true, true)
+          ).rejects.toThrow();
 
           // Value
-          await runBoundaryTest(getParamPayloadReq(4), true, true);
+          await expect(
+            runBoundaryTest(getParamPayloadReq(4), true, true)
+          ).rejects.toThrow();
 
           // Test wrong sized addresses
           // ---
@@ -335,7 +346,7 @@ export const runEvmTests = ({ client }: { client: Client }) => {
           ).rejects.toThrow();
         });
       });
-
+      
       describe('Random Transactions', () => {
         for (let i = 0; i < getNumIter(); i++) {
           it(`Should test random transactions: #${i}`, async () => {
