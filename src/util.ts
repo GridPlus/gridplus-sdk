@@ -159,7 +159,7 @@ export const splitFrames = function (data, frameSz) {
 
 /** @internal */
 function isBase10NumStr (x) {
-  const bn = new BigNum(x).toString().split('.').join('');
+  const bn = new BigNum(x).toFixed().split('.').join('');
   const s = new String(x);
   // Note that the JS native `String()` loses precision for large numbers, but we only
   // want to validate the base of the number so we don't care about far out precision.
