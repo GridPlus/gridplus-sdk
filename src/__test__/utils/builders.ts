@@ -296,8 +296,9 @@ export const buildEncDefs = (vectors: any) => {
   for (let i = 0; i < vectors.canonicalNames.length; i++) {
     const name = vectors.canonicalNames[i];
     const selector = `0x${keccak256(name).slice(0, 8)}`;
-    const encDef = EVMCalldata.parsers.parseCanonicalName(selector, name);
-    encDefs.push(Buffer.from(rlpEncode(encDef)));
+    const def = EVMCalldata.parsers.parseCanonicalName(selector, name);
+    const encDef = Buffer.from(rlpEncode(def));
+    encDefs.push(encDef);
     const { types, data } = convertDecoderToEthers(rlpDecode(encDef).slice(1));
     const calldata = coder.encode(types, data);
     encDefsCalldata.push(`${selector}${calldata.slice(2)}`);

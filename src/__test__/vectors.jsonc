@@ -39,7 +39,6 @@
       // A few of these towards the end are not supported but they are such edge cases that
       // it's not worth worrying about them for now.
       "canonicalNames": [
-        /*
         // ---
         // Test a few vectors we alredy checked with Etherscan
         // ---
@@ -134,7 +133,6 @@
         // "nestedTup(bytes,(uint256,(bool,bytes)[2],bool)[])", // does not decode
         // "nestedTup(bytes,(uint256,(bool,bytes)[2],bool)[2])", // does not decode
         // "nestedTup(bytes,(uint256,(bool,bytes)[][],bool)[2][])", // too large
-      */
       ]
     }
   }

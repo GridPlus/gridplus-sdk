@@ -443,6 +443,12 @@ export const runEvmTests = ({ client }: { client: Client }) => {
     });
 
     describe('[EVM] Test decoders', () => {
+      beforeAll(() => {
+        // Silence warnings, which will be thrown when you provide a 
+        // chainID=-1, which forces fallback to 4byte in certain tests
+        console.warn = vi.fn()
+      })
+
       describe('Test ABI decoder vectors', async () => {
         const runAbiDecoderTest = (overrides: any, ...params: any) =>
           runEvmTestForReq(
