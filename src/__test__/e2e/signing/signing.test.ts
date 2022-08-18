@@ -28,8 +28,8 @@ describe('Test General Signing', () => {
     }
   });
 
-  // runDeterminismTests({ client })
-  // runUnformattedTests({ client })
-  // runSolanaTests({ client });
+  runDeterminismTests({ client })
+  runUnformattedTests({ client })
+  runSolanaTests({ client });
   runEvmTests({ client });
 });
