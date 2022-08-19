@@ -21,7 +21,6 @@ const UNISWAP_ADDR = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D';
 const UNISWAP_TAG = 'Uniswap V2 Router';
 const RANDOM_ADDR = '0x30da3d7A865C934b389c919c737510054111AB3A';
 const RANDOM_TAG = 'Test Address Name';
-const REJECT_PROMPT_TEXT = 'Please reject if you do NOT see an address tag.';
 let _numStartingRecords = 0;
 let _fetchedRecords: any = [];
 const ETH_REQ = {
@@ -63,10 +62,16 @@ describe('key-value', () => {
     }
   });
 
+  it('Should notify the user when to approve requests', async () => {
+    question(
+      '\nNOTE: ONLY APPROVE REQUESTS THAT RENDER TAGS FOR THIS TEST SCRIPT.\n' +
+      'Press ENTER to continue.'
+    )
+  })
+
   it('Should make a request to an unknown address', async () => {
-    question(REJECT_PROMPT_TEXT);
     await client.sign(ETH_REQ).catch((err) => {
-      expect(err.message).toBe(
+      expect(err.message).toContain(
         responseMsgs[responseCodes.RESP_ERR_USER_DECLINED],
       );
     });
@@ -121,7 +126,6 @@ describe('key-value', () => {
   });
 
   it('Should make a request to an address which is now known', async () => {
-    question(REJECT_PROMPT_TEXT);
     await client.sign(ETH_REQ);
   });
 
@@ -161,7 +165,6 @@ describe('key-value', () => {
         payload: msg,
       },
     };
-    question(REJECT_PROMPT_TEXT);
     await client.sign(req);
   });
 
@@ -171,7 +174,6 @@ describe('key-value', () => {
     req.data.data = `0x23b872dd00000000000000000000000057974eb88e50cc61049b44e43e90d3bc40fa61c0000000000000000000000000${RANDOM_ADDR.slice(
       2,
     )}000000000000000000000000000000000000000000000000000000000000270f`;
-    question(REJECT_PROMPT_TEXT);
     await client.sign(req);
   });
 
@@ -207,9 +209,8 @@ describe('key-value', () => {
   });
 
   it('Should make another request to make sure case sensitivity is enforced', async () => {
-    question(REJECT_PROMPT_TEXT);
     await client.sign(ETH_REQ).catch((err) => {
-      expect(err.message).toBe(
+      expect(err.message).toContain(
         responseMsgs[responseCodes.RESP_ERR_USER_DECLINED],
       );
     });
