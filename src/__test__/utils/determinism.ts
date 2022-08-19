@@ -2,7 +2,7 @@ import { TypedTransaction } from '@ethereumjs/tx';
 import bip32 from 'bip32';
 import { mnemonicToSeedSync } from 'bip39';
 import { ecsign, privateToAddress } from 'ethereumjs-util';
-import { keccak256 } from 'js-sha3';
+import { keccak256 } from 'ethereum-cryptography/keccak';
 import { Client } from '../../client';
 import { TestRequestPayload } from '../../types/utils';
 import { buildTestRequestPayload } from './builders';

@@ -6,7 +6,7 @@ import BN from 'bignumber.js';
 import cbor from 'borc';
 //@ts-expect-error - This third-party package is not typed properly
 import { TypedDataUtils } from 'eth-eip712-util-browser';
-import { keccak256 } from 'js-sha3';
+import { keccak256 } from 'ethereum-cryptography/keccak';
 import { encode as rlpEncode } from 'rlp';
 import secp256k1 from 'secp256k1';
 import {
@@ -37,18 +37,18 @@ const buildEthereumMsgRequest = function (input) {
     input, // Save the input for later
     msg: null, // Save the buffered message for later
   };
-    switch (input.protocol) {
-      case 'signPersonal':
-        return buildPersonalSignRequest(req, input);
-      case 'eip712':
-        if (!input.fwConstants.eip712Supported)
-          throw new Error(
-            'EIP712 is not supported by your Lattice firmware version. Please upgrade.',
-          );
-        return buildEIP712Request(req, input);
-      default:
-        throw new Error('Unsupported protocol');
-    }
+  switch (input.protocol) {
+    case 'signPersonal':
+      return buildPersonalSignRequest(req, input);
+    case 'eip712':
+      if (!input.fwConstants.eip712Supported)
+        throw new Error(
+          'EIP712 is not supported by your Lattice firmware version. Please upgrade.',
+        );
+      return buildEIP712Request(req, input);
+    default:
+      throw new Error('Unsupported protocol');
+  }
 };
 
 const validateEthereumMsgResponse = function (res, req) {
@@ -60,9 +60,9 @@ const validateEthereumMsgResponse = function (res, req) {
     const hash = prehash
       ? prehash
       : Buffer.from(
-          keccak256(Buffer.concat([get_personal_sign_prefix(msg.length), msg])),
+        keccak256(Buffer.concat([get_personal_sign_prefix(msg.length), msg])),
         'hex',
-        );
+      );
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
     return addRecoveryParam(hash, sig, signer, {
       chainId: 1,
@@ -326,8 +326,7 @@ const buildEthereumTxRequest = function (data) {
           (EXTRA_DATA_ALLOWED && totalSz > maxSzAllowed)
         )
           throw new Error(
-            `Data field too large (got ${dataBytes.length}; must be <=${
-              maxSzAllowed - chainIdExtraSz
+            `Data field too large (got ${dataBytes.length}; must be <=${maxSzAllowed - chainIdExtraSz
             } bytes)`,
           );
         // Split overflow data into extraData frames
@@ -385,7 +384,7 @@ const buildEthereumTxRequest = function (data) {
 };
 
 // From ethereumjs-util
-function stripZeros(a) {
+function stripZeros (a) {
   let first = a[0];
   while (a.length > 0 && first.toString() === '0') {
     a = a.slice(1);
@@ -422,7 +421,7 @@ const buildEthRawTx = function (tx, sig, address) {
 };
 
 // Attach a recovery parameter to a signature by brute-forcing ECRecover
-function addRecoveryParam(hashBuf, sig, address, txData = {}) {
+function addRecoveryParam (hashBuf, sig, address, txData = {}) {
   try {
     // Rebuild the keccak256 hash here so we can `ecrecover`
     const hash = new Uint8Array(hashBuf);
@@ -461,7 +460,7 @@ const hashTransaction = function (serializedTx) {
 };
 
 // Returns address string given public key buffer
-function pubToAddrStr(pub) {
+function pubToAddrStr (pub) {
   return keccak256(pub).slice(-40);
 }
 
@@ -501,7 +500,7 @@ const chainIds = {
 
 // Get a buffer containing the chainId value.
 // Returns a 1, 2, 4, or 8 byte buffer with the chainId encoded in big endian
-function getChainIdBuf(chainId) {
+function getChainIdBuf (chainId) {
   let b;
   // If our chainID is a hex string, we can convert it to a hex
   // buffer directly
@@ -525,7 +524,7 @@ function getChainIdBuf(chainId) {
 }
 
 // Determine if the chain uses EIP155 by default, based on the chainID
-function chainUsesEIP155(chainID) {
+function chainUsesEIP155 (chainID) {
   switch (chainID) {
     case 3: // ropsten
     case 4: // rinkeby
@@ -540,7 +539,7 @@ function chainUsesEIP155(chainID) {
 }
 
 // Determine if a valid number was passed in as a hex string
-function isValidChainIdHexNumStr(s) {
+function isValidChainIdHexNumStr (s) {
   if (typeof s !== 'string') return false;
   if (s.slice(0, 2) !== '0x') return false;
   try {
@@ -554,13 +553,13 @@ function isValidChainIdHexNumStr(s) {
 // If this is a nubmer that fits in one byte, we don't need to add it
 // to the `data` buffer of the main transaction.
 // Note the one edge case: we still need to use the `data` field for chainID=255.
-function useChainIdBuffer(id) {
+function useChainIdBuffer (id) {
   const buf = getChainIdBuf(id);
   if (buf.length === 1) return buf.readUInt8(0) === 255;
   return true;
 }
 
-function buildPersonalSignRequest(req, input) {
+function buildPersonalSignRequest (req, input) {
   const MAX_BASE_MSG_SZ = input.fwConstants.ethMaxMsgSz;
   const VAR_PATH_SZ = input.fwConstants.varAddrPathSzAllowed;
   const L = 24 + MAX_BASE_MSG_SZ + 4;
@@ -639,94 +638,94 @@ function buildPersonalSignRequest(req, input) {
 }
 
 function buildEIP712Request (req, input) {
-    const { ethMaxMsgSz, varAddrPathSzAllowed, eip712MaxTypeParams } =
-      input.fwConstants;
-    const { TYPED_DATA } = ethMsgProtocol;
-    const L = 24 + ethMaxMsgSz + 4;
-    let off = 0;
-    req.payload = Buffer.alloc(L);
-    req.payload.writeUInt8(TYPED_DATA.enumIdx, 0);
-    off += 1;
-    // Write the signer path
-    const signerPathBuf = buildSignerPathBuf(
-      input.signerPath,
-      varAddrPathSzAllowed,
+  const { ethMaxMsgSz, varAddrPathSzAllowed, eip712MaxTypeParams } =
+    input.fwConstants;
+  const { TYPED_DATA } = ethMsgProtocol;
+  const L = 24 + ethMaxMsgSz + 4;
+  let off = 0;
+  req.payload = Buffer.alloc(L);
+  req.payload.writeUInt8(TYPED_DATA.enumIdx, 0);
+  off += 1;
+  // Write the signer path
+  const signerPathBuf = buildSignerPathBuf(
+    input.signerPath,
+    varAddrPathSzAllowed,
+  );
+  signerPathBuf.copy(req.payload, off);
+  off += signerPathBuf.length;
+  // Parse/clean the EIP712 payload, serialize with CBOR, and write to the payload
+  const data = JSON.parse(JSON.stringify(input.payload));
+  if (!data.primaryType || !data.types[data.primaryType])
+    throw new Error(
+      'primaryType must be specified and the type must be included.',
     );
-    signerPathBuf.copy(req.payload, off);
-    off += signerPathBuf.length;
-    // Parse/clean the EIP712 payload, serialize with CBOR, and write to the payload
-    const data = JSON.parse(JSON.stringify(input.payload));
-    if (!data.primaryType || !data.types[data.primaryType])
-      throw new Error(
-        'primaryType must be specified and the type must be included.',
-      );
-    if (!data.message || !data.domain)
-      throw new Error('message and domain must be specified.');
-    if (0 > Object.keys(data.types).indexOf('EIP712Domain'))
-      throw new Error('EIP712Domain type must be defined.');
-    // Parse the payload to ensure we have valid EIP712 data types and that
-    // they are encoded such that Lattice firmware can parse them.
-    // We need two different encodings: one to send to the Lattice in a format that plays
-    // nicely with our firmware CBOR decoder. The other is formatted to be consumable by
-    // our EIP712 validation module.
-    input.payload.message = parseEIP712Msg(
-      JSON.parse(JSON.stringify(data.message)),
-      JSON.parse(JSON.stringify(data.primaryType)),
-      JSON.parse(JSON.stringify(data.types)),
-      true,
-    );
-    input.payload.domain = parseEIP712Msg(
-      JSON.parse(JSON.stringify(data.domain)),
-      'EIP712Domain',
-      JSON.parse(JSON.stringify(data.types)),
-      true,
-    );
-    data.domain = parseEIP712Msg(
-      data.domain,
-      'EIP712Domain',
-      data.types,
-      false,
-    );
-    data.message = parseEIP712Msg(
-      data.message,
-      data.primaryType,
-      data.types,
-      false,
-    );
-    // Now build the message to be sent to the Lattice
-    const payload = Buffer.from(cbor.encode(data));
-    const fwConst = input.fwConstants;
-    const maxSzAllowed =
-      ethMaxMsgSz + fwConst.extraDataMaxFrames * fwConst.extraDataFrameSz;
-    // Determine if we need to prehash
-    let shouldPrehash = payload.length > maxSzAllowed;
-    Object.keys(data.types).forEach((k) => {
-      if (data.types[k].length > eip712MaxTypeParams) {
-        shouldPrehash = true;
-      }
-    });
-    if (fwConst.ethMsgPreHashAllowed && shouldPrehash) {
-      // If this payload is too large to send, but the Lattice allows a prehashed message, do that
-      req.payload.writeUInt16LE(payload.length, off);
-      off += 2;
-      const prehash = TypedDataUtils.hash(req.input.payload);
-      const prehashBuf = Buffer.from(prehash);
-      prehashBuf.copy(req.payload, off);
-      req.prehash = prehash;
-    } else {
-      const extraDataPayloads = getExtraData(payload, input);
-      req.extraDataPayloads = extraDataPayloads;
-      req.payload.writeUInt16LE(payload.length, off);
-      off += 2;
-      payload.copy(req.payload, off);
-      off += payload.length;
-      // Slice out the part of the buffer that we didn't use.
-      req.payload = req.payload.slice(0, off);
+  if (!data.message || !data.domain)
+    throw new Error('message and domain must be specified.');
+  if (0 > Object.keys(data.types).indexOf('EIP712Domain'))
+    throw new Error('EIP712Domain type must be defined.');
+  // Parse the payload to ensure we have valid EIP712 data types and that
+  // they are encoded such that Lattice firmware can parse them.
+  // We need two different encodings: one to send to the Lattice in a format that plays
+  // nicely with our firmware CBOR decoder. The other is formatted to be consumable by
+  // our EIP712 validation module.
+  input.payload.message = parseEIP712Msg(
+    JSON.parse(JSON.stringify(data.message)),
+    JSON.parse(JSON.stringify(data.primaryType)),
+    JSON.parse(JSON.stringify(data.types)),
+    true,
+  );
+  input.payload.domain = parseEIP712Msg(
+    JSON.parse(JSON.stringify(data.domain)),
+    'EIP712Domain',
+    JSON.parse(JSON.stringify(data.types)),
+    true,
+  );
+  data.domain = parseEIP712Msg(
+    data.domain,
+    'EIP712Domain',
+    data.types,
+    false,
+  );
+  data.message = parseEIP712Msg(
+    data.message,
+    data.primaryType,
+    data.types,
+    false,
+  );
+  // Now build the message to be sent to the Lattice
+  const payload = Buffer.from(cbor.encode(data));
+  const fwConst = input.fwConstants;
+  const maxSzAllowed =
+    ethMaxMsgSz + fwConst.extraDataMaxFrames * fwConst.extraDataFrameSz;
+  // Determine if we need to prehash
+  let shouldPrehash = payload.length > maxSzAllowed;
+  Object.keys(data.types).forEach((k) => {
+    if (data.types[k].length > eip712MaxTypeParams) {
+      shouldPrehash = true;
     }
-    return req;
+  });
+  if (fwConst.ethMsgPreHashAllowed && shouldPrehash) {
+    // If this payload is too large to send, but the Lattice allows a prehashed message, do that
+    req.payload.writeUInt16LE(payload.length, off);
+    off += 2;
+    const prehash = TypedDataUtils.hash(req.input.payload);
+    const prehashBuf = Buffer.from(prehash);
+    prehashBuf.copy(req.payload, off);
+    req.prehash = prehash;
+  } else {
+    const extraDataPayloads = getExtraData(payload, input);
+    req.extraDataPayloads = extraDataPayloads;
+    req.payload.writeUInt16LE(payload.length, off);
+    off += 2;
+    payload.copy(req.payload, off);
+    off += payload.length;
+    // Slice out the part of the buffer that we didn't use.
+    req.payload = req.payload.slice(0, off);
+  }
+  return req;
 }
 
-function getExtraData(payload, input) {
+function getExtraData (payload, input) {
   const { ethMaxMsgSz, extraDataFrameSz, extraDataMaxFrames } =
     input.fwConstants;
   const MAX_BASE_MSG_SZ = ethMaxMsgSz;
@@ -759,83 +758,83 @@ function getExtraData(payload, input) {
 }
 
 function parseEIP712Msg (msg, typeName, types, forJSParser = false) {
-    const type = types[typeName];
-    type.forEach((item) => {
-      const isArrayType = item.type.indexOf('[') > -1;
-      const singularType = isArrayType
-        ? item.type.slice(0, item.type.indexOf('['))
-        : item.type;
-      const isCustomType = Object.keys(types).indexOf(singularType) > -1;
-      if (isCustomType && Array.isArray(msg)) {
-        // For custom types we need to jump into the `msg` using the key (name of type) and
-        // parse that entire sub-struct as if it were a message.
-        // We will recurse into sub-structs until we reach a level where every item is an
-        // elementary (i.e. non-custom) type.
-        // For arrays, we need to loop through each message item.
-        for (let i = 0; i < msg.length; i++) {
-          msg[i][item.name] = parseEIP712Msg(
-            msg[i][item.name],
-            singularType,
-            types,
-            forJSParser,
-          );
-        }
-      } else if (isCustomType) {
-        // Not an array means we can jump directly into the sub-struct to convert
-        msg[item.name] = parseEIP712Msg(
-          msg[item.name],
+  const type = types[typeName];
+  type.forEach((item) => {
+    const isArrayType = item.type.indexOf('[') > -1;
+    const singularType = isArrayType
+      ? item.type.slice(0, item.type.indexOf('['))
+      : item.type;
+    const isCustomType = Object.keys(types).indexOf(singularType) > -1;
+    if (isCustomType && Array.isArray(msg)) {
+      // For custom types we need to jump into the `msg` using the key (name of type) and
+      // parse that entire sub-struct as if it were a message.
+      // We will recurse into sub-structs until we reach a level where every item is an
+      // elementary (i.e. non-custom) type.
+      // For arrays, we need to loop through each message item.
+      for (let i = 0; i < msg.length; i++) {
+        msg[i][item.name] = parseEIP712Msg(
+          msg[i][item.name],
           singularType,
           types,
           forJSParser,
         );
-      } else if (Array.isArray(msg)) {
-        // If we have an array for this particular type and the type we are parsing
-        // is *not* a custom type, loop through the array elements and convert the types.
-        for (let i = 0; i < msg.length; i++) {
-          if (isArrayType) {
-            // If this type is itself an array, loop through those elements and parse individually.
-            // This code is not reachable for custom types so we assume these are arrays of
-            // elementary types.
-            for (let j = 0; j < msg[i][item.name].length; j++) {
-              msg[i][item.name][j] = parseEIP712Item(
-                msg[i][item.name][j],
-                singularType,
-                forJSParser,
-              );
-            }
-          } else {
-            // Non-arrays parse + replace one value for the elementary type
-            msg[i][item.name] = parseEIP712Item(
-              msg[i][item.name],
+      }
+    } else if (isCustomType) {
+      // Not an array means we can jump directly into the sub-struct to convert
+      msg[item.name] = parseEIP712Msg(
+        msg[item.name],
+        singularType,
+        types,
+        forJSParser,
+      );
+    } else if (Array.isArray(msg)) {
+      // If we have an array for this particular type and the type we are parsing
+      // is *not* a custom type, loop through the array elements and convert the types.
+      for (let i = 0; i < msg.length; i++) {
+        if (isArrayType) {
+          // If this type is itself an array, loop through those elements and parse individually.
+          // This code is not reachable for custom types so we assume these are arrays of
+          // elementary types.
+          for (let j = 0; j < msg[i][item.name].length; j++) {
+            msg[i][item.name][j] = parseEIP712Item(
+              msg[i][item.name][j],
               singularType,
               forJSParser,
             );
           }
-        }
-      } else if (isArrayType) {
-        // If we have an elementary array type and a non-array message level,
-        //loop through the array and parse + replace  each item individually.
-        for (let i = 0; i < msg[item.name].length; i++) {
-          msg[item.name][i] = parseEIP712Item(
-            msg[item.name][i],
+        } else {
+          // Non-arrays parse + replace one value for the elementary type
+          msg[i][item.name] = parseEIP712Item(
+            msg[i][item.name],
             singularType,
             forJSParser,
           );
         }
-      } else {
-        // If this is a singular elementary type, simply parse + replace.
-        msg[item.name] = parseEIP712Item(
-          msg[item.name],
+      }
+    } else if (isArrayType) {
+      // If we have an elementary array type and a non-array message level,
+      //loop through the array and parse + replace  each item individually.
+      for (let i = 0; i < msg[item.name].length; i++) {
+        msg[item.name][i] = parseEIP712Item(
+          msg[item.name][i],
           singularType,
           forJSParser,
         );
       }
+    } else {
+      // If this is a singular elementary type, simply parse + replace.
+      msg[item.name] = parseEIP712Item(
+        msg[item.name],
+        singularType,
+        forJSParser,
+      );
+    }
   })
 
   return msg;
 }
 
-function parseEIP712Item(data, type, forJSParser = false) {
+function parseEIP712Item (data, type, forJSParser = false) {
   if (type === 'bytes') {
     // Variable sized bytes need to be buffer type
     data = ensureHexBuffer(data);
@@ -900,14 +899,14 @@ function parseEIP712Item(data, type, forJSParser = false) {
   return data;
 }
 
-function get_personal_sign_prefix(L) {
+function get_personal_sign_prefix (L) {
   return Buffer.from(
     `\u0019Ethereum Signed Message:\n${L.toString()}`,
     'utf-8',
   );
 }
 
-function get_rlp_encoded_preimage(rawTx, txType) {
+function get_rlp_encoded_preimage (rawTx, txType) {
   if (txType) {
     return Buffer.concat([Buffer.from([txType]), Buffer.from(rlpEncode(rawTx))]);
   } else {

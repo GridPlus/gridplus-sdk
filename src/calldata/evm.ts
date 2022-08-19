@@ -1,4 +1,4 @@
-import { keccak256 } from 'js-sha3';
+import { keccak256 } from 'ethereum-cryptography/keccak';
 import { encode } from 'rlp';
 
 /**

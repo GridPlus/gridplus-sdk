@@ -56,8 +56,7 @@
     "crc-32": "^1.2.0",
     "elliptic": "6.5.4",
     "eth-eip712-util-browser": "^0.0.3",
-    "hash.js": "^1.1.7",
-    "js-sha3": "^0.8.0",
+    "ethereum-cryptography": "^1.1.2",
     "rlp": "^3.0.0",
     "secp256k1": "4.0.2",
     "superagent": "^7.1.3"

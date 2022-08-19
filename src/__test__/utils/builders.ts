@@ -4,7 +4,7 @@ import {
   TypedTransaction
 } from '@ethereumjs/tx';
 import { AbiCoder } from '@ethersproject/abi';
-import { keccak256 } from 'js-sha3';
+import { keccak256 } from 'ethereum-cryptography/keccak';
 import randomWords from 'random-words';
 import { decode as rlpDecode } from 'rlp';
 import { Client } from '../../client';

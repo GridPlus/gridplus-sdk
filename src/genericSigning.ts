@@ -9,7 +9,7 @@ This payload should be coupled with:
 * Hash function to use on the message
 */
 import { sha256 } from 'hash.js/lib/hash/sha';
-import { keccak256 } from 'js-sha3';
+import { keccak256 } from 'ethereum-cryptography/keccak';
 import { HARDENED_OFFSET, signingSchema } from './constants';
 import { Constants } from './index';
 import {

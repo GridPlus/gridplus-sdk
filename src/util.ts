@@ -6,7 +6,7 @@ import { BN } from 'bn.js';
 import crc32 from 'crc-32';
 import elliptic from 'elliptic';
 import { sha256 } from 'hash.js/lib/hash/sha';
-import { keccak256 } from 'js-sha3';
+import { keccak256 } from 'ethereum-cryptography/keccak';
 import inRange from 'lodash/inRange';
 import isInteger from 'lodash/isInteger';
 import { decode as rlpDecode, encode as rlpEncode } from 'rlp';

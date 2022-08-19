@@ -8,7 +8,7 @@ import {
 import { ec as EC, eddsa as EdDSA } from 'elliptic';
 import { privateToAddress } from 'ethereumjs-util';
 import { sha256 } from 'hash.js/lib/hash/sha';
-import { keccak256 } from 'js-sha3';
+import { keccak256 } from 'ethereum-cryptography/keccak';
 import {
   ADDR_STR_LEN,
   BIP_CONSTANTS,
@@ -752,9 +752,9 @@ export const deserializeExportSeedJobResult = function (res) {
   }
   const numWords = res.slice(off, off + 4).readUInt32LE(0);
   off += 4;
-  return { 
-    seed, 
-    mnemonic: words.slice(0, numWords).join(' '), 
+  return {
+    seed,
+    mnemonic: words.slice(0, numWords).join(' '),
   };
 };
 
