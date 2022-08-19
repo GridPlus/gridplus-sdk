@@ -33,11 +33,11 @@ let seed: Buffer;
 export const runDeterminismTests = ({ client }: { client: Client }) => {
   describe('[Determinism]', () => {
     describe('Setup and validate seed', () => {
-      it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', async () => {
-        await question(
-          '\nPlease remove, re-insert, and unlock your SafeCard.\n' +
-          'Press enter to continue after addresses have fully synced.',
-        );
+      it('Should re-connect to the Lattice and update the walletUID.', async () => {
+        expect(getDeviceId()).to.not.equal(null);
+        await client.connect(getDeviceId());
+        expect(client.isPaired).toEqual(true);
+        expect(!!client.getActiveWallet()).toEqual(true);
       });
 
       it('Should remove the seed', async () => {
@@ -62,14 +62,8 @@ export const runDeterminismTests = ({ client }: { client: Client }) => {
         await runTestCase(testRequestPayload, gpErrors.GP_SUCCESS);
       });
 
-      it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
-        question(
-          '\nPlease remove, re-insert, and unlock your SafeCard.\n' +
-          'Press enter to continue after addresses have fully synced.',
-        );
-      });
-
       it('Should re-connect to the Lattice and update the walletUID.', async () => {
+        expect(getDeviceId()).to.not.equal(null);
         await client.connect(getDeviceId());
         expect(client.isPaired).toEqual(true);
         expect(!!client.getActiveWallet()).toEqual(true);
@@ -590,13 +584,6 @@ export const runDeterminismTests = ({ client }: { client: Client }) => {
           seed,
         );
         await runTestCase(testRequestPayload, gpErrors.GP_SUCCESS);
-      });
-
-      it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
-        question(
-          '\nPlease remove, re-insert, and unlock your SafeCard.\n' +
-          'Press enter to continue.',
-        );
       });
 
       it('Should re-connect to the Lattice and update the walletUID.', async () => {
