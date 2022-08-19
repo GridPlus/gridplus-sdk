@@ -9,11 +9,10 @@ You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
  */
 import Common, { Chain, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
-import { Interface } from '@ethersproject/abi';
 import { BN } from 'bn.js';
 import { readFileSync } from 'fs';
 import { jsonc } from 'jsonc';
-import { decode as rlpDecode, encode as rlpEncode } from 'rlp';
+import { encode as rlpEncode } from 'rlp';
 import request from 'superagent';
 import { Client } from '../../../client';
 import { fetchCalldataDecoder, randomBytes } from '../../../util';
@@ -175,7 +174,6 @@ export const runEvmTests = ({ client }: { client: Client }) => {
           );
 
         it('Should test shorter derivation paths', async () => {
-          console.log('DEFAULT_SIGNER', DEFAULT_SIGNER);
           await runBoundaryTest({
             data: {
               signerPath: DEFAULT_SIGNER.slice(0, 3),
@@ -202,8 +200,9 @@ export const runEvmTests = ({ client }: { client: Client }) => {
             ),
           ).rejects.toThrow();
         });
-
+        
         it('Should test other chains', async () => {
+          
           // Polygon
           await runBoundaryTest({ common: Common.custom({ chainId: 137 }) });
           // BSC
@@ -221,11 +220,7 @@ export const runEvmTests = ({ client }: { client: Client }) => {
             // @ts-expect-error - Common.custom() expects a number
             common: Common.custom({ chainId: '18446744073709551615' }),
           });
-          // Unknown chain (chainID too large)
-          await runBoundaryTest({
-            // @ts-expect-error - Common.custom() expects a number
-            common: Common.custom({ chainId: '18446744073709551616' }),
-          });
+          
           // Unknown chain - bypass set payload
           await expect(
             runBoundaryTest(
@@ -235,9 +230,16 @@ export const runEvmTests = ({ client }: { client: Client }) => {
             ),
           ).rejects.toThrow();
         });
-
+        
         it('Should test range of `value`', async () => {
+          // Should display as 1e-18
           await runBoundaryTest({ txData: { value: 1 } });
+          // 1e-8 -> should display as 1e-8
+          await runBoundaryTest({ txData: { value: 10000000000 } });
+          // 1e-7 -> should display as 0.00000001
+          await runBoundaryTest({ txData: { value: 100000000000 } });
+          // 1e18 = 1 ETH
+          await runBoundaryTest({ txData: { value: '0xde0b6b3a7640000' } });
           await runBoundaryTest({
             txData: {
               value:
@@ -273,13 +275,13 @@ export const runEvmTests = ({ client }: { client: Client }) => {
             txData: { data: `0x${randomBytes(maxDataSz + 1).toString('hex')}` },
           });
         });
-
+        
         it('Should test contract deployment', async () => {
           await runBoundaryTest({
             txData: { to: null, data: `0x${randomBytes(96).toString('hex')}` },
           });
         });
-
+        
         it('Should test direct RLP-encoded payloads with bad params', async () => {
           const req = buildEvmReq();
           const tx = EthTxFactory.fromTxData(req.txData, {
@@ -297,16 +299,24 @@ export const runEvmTests = ({ client }: { client: Client }) => {
           // Test numerical values >32 bytes
           // ---
           // Nonce
-          await runBoundaryTest(getParamPayloadReq(0), true, true);
+          await expect(
+            runBoundaryTest(getParamPayloadReq(0), true, true)
+          ).rejects.toThrow();
 
           // Gas
-          await runBoundaryTest(getParamPayloadReq(1), true, true);
+          await expect(
+            runBoundaryTest(getParamPayloadReq(1), true, true)
+          ).rejects.toThrow();
 
           // Gas Price
-          await runBoundaryTest(getParamPayloadReq(2), true, true);
+          await expect(
+            runBoundaryTest(getParamPayloadReq(2), true, true)
+          ).rejects.toThrow();
 
           // Value
-          await runBoundaryTest(getParamPayloadReq(4), true, true);
+          await expect(
+            runBoundaryTest(getParamPayloadReq(4), true, true)
+          ).rejects.toThrow();
 
           // Test wrong sized addresses
           // ---
@@ -336,7 +346,7 @@ export const runEvmTests = ({ client }: { client: Client }) => {
           ).rejects.toThrow();
         });
       });
-
+      
       describe('Random Transactions', () => {
         for (let i = 0; i < getNumIter(); i++) {
           it(`Should test random transactions: #${i}`, async () => {
@@ -433,6 +443,12 @@ export const runEvmTests = ({ client }: { client: Client }) => {
     });
 
     describe('[EVM] Test decoders', () => {
+      beforeAll(() => {
+        // Silence warnings, which will be thrown when you provide a 
+        // chainID=-1, which forces fallback to 4byte in certain tests
+        console.warn = vi.fn()
+      })
+
       describe('Test ABI decoder vectors', async () => {
         const runAbiDecoderTest = (overrides: any, ...params: any) =>
           runEvmTestForReq(
@@ -481,7 +497,7 @@ export const runEvmTests = ({ client }: { client: Client }) => {
 
           it(`Etherscan #${i} ${txHash.slice(0, 8)}...`, async () => {
             // 2. Fetch the full ABI of the contract that the transaction interacted with.
-            const { def, abi } = await fetchCalldataDecoder(
+            const { def } = await fetchCalldataDecoder(
               tx.input,
               tx.to,
               1,
@@ -492,16 +508,7 @@ export const runEvmTests = ({ client }: { client: Client }) => {
               );
             }
             // 3. Test decoding using Etherscan ABI info
-            // Check that ethers can decode this
-            const funcName = rlpDecode(def)[0] ?? '';
-            if (ethersCanDecode(tx.input, abi, funcName.toString())) {
-              // Send the request
-              await runAbiDecoderTest({ txData, data: { decoder: def } });
-            } else {
-              throw new Error(
-                `ERROR: ethers.js failed to decode abi for tx ${txHash}. Skipping.`,
-              );
-            }
+            await runAbiDecoderTest({ txData, data: { decoder: def } });
           });
 
           it(`4byte #${i} ${txHash.slice(0, 8)}...`, async () => {
@@ -656,21 +663,5 @@ export const runEvmTests = ({ client }: { client: Client }) => {
         */
       });
     });
-
-    //---------------------------------------
-    // INTERNAL HELPERS
-    //---------------------------------------
-    // Determine if ethers.js can decode calldata using an ABI def
-    function ethersCanDecode (calldata: any, abi: any, funcName: string) {
-      try {
-        const iface = new Interface(abi);
-        iface.decodeFunctionData(funcName, calldata);
-        return true;
-      } catch (err) {
-        return false;
-      }
-    }
-
-    // Convert a decoder definition to something ethers can consume
   });
 };

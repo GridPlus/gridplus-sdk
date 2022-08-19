@@ -23,6 +23,7 @@ import {
   VERSION_BYTE,
   EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
 } from './constants';
+
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
 let ec;
@@ -486,6 +487,41 @@ export function selectDefFrom4byteABI (abiData: any[], selector: string) {
   }
 }
 
+async function fetchSupportedChainData (address: string, supportedChain: number) {
+  const url = buildUrlForSupportedChainAndAddress({ address, supportedChain })
+  return superagent
+    .get(url)
+    .then(async res => {
+      if (res && res.body && res.body.result) {
+        return JSON.parse(res.body.result)
+      } else {
+        throw new Error('Server response was malformed')
+      }
+    }).catch(() => {
+      throw new Error('Fetching data from external network failed')
+    })
+}
+
+
+async function fetch4byteData (selector: string): Promise<any> {
+  const url = `https://www.4byte.directory/api/v1/signatures/?hex_signature=0x${selector}`
+  return await superagent
+    .get(url)
+    .then(res => {
+      if (res && res.body && res.body.results) {
+        return res.body.results
+      } else {
+        throw new Error('No results found')
+      }
+    }).catch(err => {
+      throw new Error(`Fetching data from 4byte failed: ${err.message}`)
+    })
+}
+
+function encodeDef (def: any) {
+  return Buffer.from(rlpEncode(def))
+}
+
 /**
  *  Fetches calldata from a remote scanner based on the transaction's `chainId`
  */
@@ -513,23 +549,13 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
     const supportedChain = cachedNetwork
       ? cachedNetwork
       : await fetchExternalNetworkForChainId(chainId);
-
     try {
       if (supportedChain) {
-        const url = buildUrlForSupportedChainAndAddress({ supportedChain, address: to })
-        return await superagent
-          .get(url)
-          .then(res => {
-            if (res && res.body && res.body.result) {
-              const abi = JSON.parse(res.body.result)
-              const def = Calldata.EVM.parsers.parseSolidityJSONABI(selector, abi)
-              return { abi, def }
-            } else {
-              throw new Error('Server response was malformed')
-            }
-          }).catch(() => {
-            throw new Error('Fetching data from external network failed')
-          })
+        const abi = await fetchSupportedChainData(to, supportedChain)
+        const parsedAbi = Calldata.EVM.parsers.parseSolidityJSONABI(selector, abi)
+        let def = parsedAbi.def;
+        def = await postProcessDef(def, data);
+        return { abi, def: encodeDef(def) }
       } else {
         throw new Error(`Chain (id: ${chainId}) is not supported`)
       }
@@ -538,24 +564,112 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
     }
 
     // Fallback to checking 4byte
-    const url = `https://www.4byte.directory/api/v1/signatures?hex_signature=0x${selector}`
-    return await superagent
-      .get(url)
-      .then(res => {
-        if (res && res.body && res.body.results && res.body.results.length) {
-          const abi = res.body.results
-          const def = selectDefFrom4byteABI(abi, selector)
-          return { abi, def }
-        } else {
-          throw new Error('No results found')
-        }
-      }).catch(err => {
-        throw new Error(`Fetching data from 4byte failed: ${err.message}`)
-      })
+    const abi = await fetch4byteData(selector)
+    let def = selectDefFrom4byteABI(abi, selector)
+    def = await postProcessDef(def, data);
+    return { abi, def: encodeDef(def) }
   } catch (err) {
     console.warn(`Fetching calldata failed: ${err.message}`)
   }
+
   return { def: null, abi: null }
+}
+
+/**
+ * Post-process fetched ABI definition.
+ * @param def - Calldata decoder data definition for calling function
+ * @param calldata - Raw transaction calldata
+ * @return - Updated `def`
+ */
+async function postProcessDef(def, calldata) {
+  // Replace all nested defs if applicable. This is done by looping
+  // through each param in the definition and if it is of type `bytes`
+  // or `bytes[]`, checking the param value in `calldata`. If the param
+  // value (or for `bytes[]` each underlying value) is of size (4 + 32*n)
+  // it could be nested calldata. We should use that item's selector(s)
+  // to look up nested definition(s).
+  const nestedCalldata = Calldata.EVM.processors.getNestedCalldata(def, calldata);
+  const nestedDefs = await replaceNestedDefs(nestedCalldata);
+  // Need to recurse before doing the full replacement
+  for await (const [i] of nestedDefs.entries()) {
+    // If this is an array of nested defs, loop through each one and
+    // postprocess it. The first item of a single def is the function
+    // name so we need to check that it isn't a string in this case.
+    if (Array.isArray(nestedDefs[i]) && typeof nestedDefs[i][0] !== 'string') {
+      for await (const [j] of nestedDefs[i].entries()) {
+        if (nestedDefs[i][j] !== null) {
+          nestedDefs[i][j] = await postProcessDef(
+            nestedDefs[i][j],
+            Buffer.from(nestedCalldata[i][j].slice(2), 'hex')
+          );
+        }
+      }
+    }
+    else if (nestedDefs[i] !== null) {
+      nestedDefs[i] = await postProcessDef(
+        nestedDefs[i],
+        Buffer.from(nestedCalldata[i].slice(2), 'hex')
+      );
+    }
+  }
+  // Replace any nested defs
+  const newDef = Calldata.EVM.processors.replaceNestedDefs(def, nestedDefs);
+  return newDef;
+}
+
+/**
+ * Given a set of possible nested defs, slice out selectors and look up
+ * definitions on 4byte.
+ * @param possNestedDefs - result of `getPossibleNestedDefs` processor
+ * @return Array containing calldata decoding data for each parameter
+ *          that had a possible nested def. If there was no possible
+ *          nested def or if a def could not be fetched from 4byte, the
+ *          array item will be `null`. In the case of multiple possible
+ *          defs behind one param (e.g. multicall pattern), ALL nested
+ *          items must have defs associated or the item will map to a
+ *          single `null` value in the return array.
+ *          
+ */
+async function replaceNestedDefs(possNestedDefs) {
+  // For all possible nested defs, attempt to fetch the underlying def
+  const nestedDefs = []
+  for await (const d of possNestedDefs) {
+    if (d !== null) {
+      if (Array.isArray(d)) {
+        const _nestedDefs = [];
+        let shouldInclude = true;
+        for await (const _d of d) {
+          try {
+            const _nestedSelector = _d.slice(2, 10);
+            const _nestedAbi = await fetch4byteData(_nestedSelector);
+            const _nestedDef = selectDefFrom4byteABI(_nestedAbi, _nestedSelector);
+            _nestedDefs.push(_nestedDef);
+          } catch (err) {
+            shouldInclude = false;
+            _nestedDefs.push(null);
+          }
+        }
+        if (shouldInclude) {
+          nestedDefs.push(_nestedDefs);
+        } else {
+          nestedDefs.push(null);
+        }
+      } else {
+        try {
+          const nestedSelector = d.slice(2, 10);
+          const nestedAbi = await fetch4byteData(nestedSelector);
+          const nestedDef = selectDefFrom4byteABI(nestedAbi, nestedSelector);
+          nestedDefs.push(nestedDef);
+        } catch (err) {
+          nestedDefs.push(null)
+        }
+      }
+    } else {
+      nestedDefs.push(null);
+    }
+  }
+  // For all nested defs, replace the 
+  return nestedDefs;
 }
 
 /** @internal */
