@@ -22,6 +22,7 @@ import {
   ETH_COIN,
   serializeJobData
 } from './helpers';
+const prng = getPrng();
 
 export const getFwVersionsList = () => {
   const arr: number[][] = [];
@@ -131,7 +132,6 @@ export const getNumIter = (n: number | string | undefined = getN()) =>
 export const buildRandomVectors = (n: number | string | undefined = getN()) => {
   const numIter = getNumIter(n);
 
-  const prng = getPrng();
   // Generate a bunch of random test vectors using the PRNG
   const RANDOM_VEC: any[] = [];
   for (let i = 0; i < numIter; i++) {
@@ -307,7 +307,6 @@ export const buildEncDefs = (vectors: any) => {
 
 export function buildRandomMsg (type = 'signPersonal', client: Client) {
   function randInt (n: number) {
-    const prng = getPrng();
     return Math.floor(n * prng.quick());
   }
 

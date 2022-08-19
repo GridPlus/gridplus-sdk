@@ -829,9 +829,9 @@ export const buildRandomEip712Object = function (randInt) {
     } else if (type === 'uint' || type === 'int') {
       return `0x${randomBytes(32).toString('hex')}`;
     } else if (type.indexOf('uint') > -1) {
-      return `0x${randomBytes(parseInt(type.slice(4)))}`;
+      return `0x${randomBytes(parseInt(type.slice(4)) / 8).toString('hex')}`;
     } else if (type.indexOf('int') > -1) {
-      return `0x${randomBytes(parseInt(type.slice(3)))}`;
+      return `0x${randomBytes(parseInt(type.slice(3)) / 8).toString('hex')}`;
     }
     switch (type) {
       case 'bytes':
