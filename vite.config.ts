@@ -13,6 +13,13 @@ export default defineConfig(({ mode }) => {
         entry: path.resolve(__dirname, 'src/index.ts'),
         name: 'gridplus-sdk',
         fileName: (format) => `gridplus-sdk.${format}.js`,
+        formats: ["cjs", "umd", "es"],
+      },
+      commonjsOptions: {
+        ignoreDynamicRequires: true,
+        dynamicRequireTargets: [
+          "node_modules/ethereum-cryptography"
+        ]
       },
       rollupOptions: {
         external: [],
@@ -20,6 +27,10 @@ export default defineConfig(({ mode }) => {
           globals: {},
         },
       },
+      minify: false
+    },
+    optimizeDeps: {
+      exclude: ['ethereum-cryptography']
     },
     plugins: [
       dts(),
