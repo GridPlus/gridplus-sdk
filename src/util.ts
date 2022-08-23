@@ -524,8 +524,10 @@ function encodeDef (def: any) {
 
 /**
  *  Fetches calldata from a remote scanner based on the transaction's `chainId`
+ * 
+ * TODO: Remove recurse option when FW 0.16 is released
  */
-export async function fetchCalldataDecoder (_data: Uint8Array | string, to: string, _chainId: number | string) {
+export async function fetchCalldataDecoder (_data: Uint8Array | string, to: string, _chainId: number | string, recurse = false) {
   try {
     // Exit if there is no data. The 2 comes from the 0x prefix, but a later
     // check will confirm that there are at least 4 bytes of data in the buffer.
@@ -554,7 +556,9 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
         const abi = await fetchSupportedChainData(to, supportedChain)
         const parsedAbi = Calldata.EVM.parsers.parseSolidityJSONABI(selector, abi)
         let def = parsedAbi.def;
-        def = await postProcessDef(def, data);
+        if (recurse) {
+          def = await postProcessDef(def, data);
+        }
         return { abi, def: encodeDef(def) }
       } else {
         throw new Error(`Chain (id: ${chainId}) is not supported`)
@@ -566,7 +570,9 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
     // Fallback to checking 4byte
     const abi = await fetch4byteData(selector)
     let def = selectDefFrom4byteABI(abi, selector)
-    def = await postProcessDef(def, data);
+    if (recurse) {
+      def = await postProcessDef(def, data);
+    }
     return { abi, def: encodeDef(def) }
   } catch (err) {
     console.warn(`Fetching calldata failed: ${err.message}`)
