@@ -1,9 +1,9 @@
 {
   "name": "gridplus-sdk",
-  "version": "2.2.6",
+  "version": "2.2.7",
   "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
-    "build": "NODE_ENV=production vite build",
+    "build": "NODE_ENV=production tsc -p tsconfig.json",
     "commit": "git-cz",
     "lint:fix": "eslint --fix src --ext .ts",
     "lint": "eslint src --ext .ts",
@@ -31,15 +31,8 @@
   "files": [
     "dist"
   ],
-  "main": "./dist/gridplus-sdk.umd.js",
+  "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "module": "./dist/gridplus-sdk.es.js",
-  "exports": {
-    ".": {
-      "import": "./dist/gridplus-sdk.es.js",
-      "require": "./dist/gridplus-sdk.umd.js"
-    }
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/GridPlus/gridplus-sdk.git"
@@ -51,7 +44,7 @@
     "bech32": "^2.0.0",
     "bignumber.js": "^9.0.1",
     "bitwise": "^2.0.4",
-    "gp-borc": "^3.0.1",
+    "borc": "^2.1.2",
     "bs58check": "^2.1.2",
     "buffer": "^5.6.0",
     "crc-32": "^1.2.0",
@@ -85,6 +78,7 @@
     "bip39": "^3.0.2",
     "bitcoinjs-lib": "4.0.3",
     "c8": "^7.11.3",
+    "dotenv": "^16.0.1",
     "ed25519-hd-key": "^1.2.0",
     "eslint": "^8.7.0",
     "eslint-config-prettier": "^8.5.0",
@@ -103,8 +97,6 @@
     "seedrandom": "^3.0.5",
     "typescript": "^4.7.0",
     "vite": "^3.0.2",
-    "vite-plugin-dts": "^1.4.0",
-    "vite-plugin-web3-polyfill": "^0.0.4",
     "vitest": "^0.15.2"
   },
   "license": "MIT"

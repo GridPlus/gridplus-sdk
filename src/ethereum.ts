@@ -3,7 +3,7 @@
 import Common, { Chain, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory } from '@ethereumjs/tx';
 import BN from 'bignumber.js';
-import cbor from 'gp-borc';
+import cbor from 'borc';
 //@ts-expect-error - This third-party package is not typed properly
 import { TypedDataUtils } from 'eth-eip712-util-browser';
 import { keccak256 } from 'js-sha3';
@@ -890,7 +890,7 @@ function parseEIP712Item(data, type, forJSParser = false) {
       // TODO: Find another cbor lib that is compataible with the firmware's lib in a browser
       // context. This is surprisingly difficult - I tried several libs and only cbor/borc have
       // worked (borc is a supposedly "browser compatible" version of cbor)
-      data = new cbor.Encoder().semanticTypes[0][0](b.toString('hex'), 16);
+      data = new cbor.Encoder().semanticTypes[1][0](b.toString('hex'), 16);
     }
   } else if (type === 'bool') {
     // Booleans need to be cast to a u8
