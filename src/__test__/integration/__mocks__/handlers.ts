@@ -9,10 +9,16 @@ import removeKvRecordsResponse from './removeKvRecords.json'
 import {
   etherscanResponse0xa0b86991,
   etherscanResponse0x7a250d56,
+  etherscanResponse0xc36442b6,
+  etherscanResponse0x06412d7e,
 } from './etherscan'
 import {
   fourbyteResponse0x38ed1739,
   fourbyteResponse0xa9059cbb,
+  fourbyteResponseac9650d8,
+  fourbyteResponse0c49ccbe,
+  fourbyteResponsefc6f7865,
+  fourbyteResponse0x6a761202
 } from './4byte'
 
 export const handlers = [
@@ -53,6 +59,16 @@ export const handlers = [
           ctx.json({ result: JSON.stringify(etherscanResponse0x7a250d56) }),
         )
       }
+      if (address === '0xc36442b4a4522e871399cd717abdd847ab11fe88') {
+        return res(
+          ctx.json({ result: JSON.stringify(etherscanResponse0xc36442b6) }),
+        )
+      }
+      if (address === '0x06412d7ebfbf66c25607e2ed24c1d207043be327') {
+        return res(
+          ctx.json({ result: JSON.stringify(etherscanResponse0x06412d7e) }),
+        )
+      }
     }
   }),
   rest.get('https://www.4byte.directory/api/v1/signatures', (req, res, ctx) => {
@@ -62,6 +78,18 @@ export const handlers = [
     }
     if (hexSignature === '0x38ed1739') {
       return res(ctx.json(fourbyteResponse0x38ed1739))
+    }
+    if (hexSignature === '0xac9650d8') {
+      return res(ctx.json(fourbyteResponseac9650d8))
+    }
+    if (hexSignature === '0x0c49ccbe') {
+      return res(ctx.json(fourbyteResponse0c49ccbe))
+    }
+    if (hexSignature === '0xfc6f7865') {
+      return res(ctx.json(fourbyteResponsefc6f7865))
+    }
+    if (hexSignature === '0x6a761202') {
+      return res(ctx.json(fourbyteResponse0x6a761202))
     }
   }),
 ]

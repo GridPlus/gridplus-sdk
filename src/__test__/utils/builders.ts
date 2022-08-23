@@ -6,7 +6,7 @@ import {
 import { AbiCoder } from '@ethersproject/abi';
 import { keccak256 } from 'js-sha3';
 import randomWords from 'random-words';
-import { decode as rlpDecode } from 'rlp';
+import { decode as rlpDecode, encode as rlpEncode } from 'rlp';
 import { Client } from '../../client';
 import { Calldata, Constants } from '../..';
 import { CURRENCIES, HARDENED_OFFSET } from '../../constants';
@@ -22,6 +22,7 @@ import {
   ETH_COIN,
   serializeJobData
 } from './helpers';
+const prng = getPrng();
 
 export const getFwVersionsList = () => {
   const arr: number[][] = [];
@@ -125,13 +126,12 @@ export const buildSharedSecret = () => {
 };
 
 export const getNumIter = (n: number | string | undefined = getN()) =>
-  n ? parseInt(`${n}`) : 20;
+  n ? parseInt(`${n}`) : 5;
 
 /** Generate a bunch of random test vectors using the PRNG */
 export const buildRandomVectors = (n: number | string | undefined = getN()) => {
   const numIter = getNumIter(n);
 
-  const prng = getPrng();
   // Generate a bunch of random test vectors using the PRNG
   const RANDOM_VEC: any[] = [];
   for (let i = 0; i < numIter; i++) {
@@ -296,7 +296,8 @@ export const buildEncDefs = (vectors: any) => {
   for (let i = 0; i < vectors.canonicalNames.length; i++) {
     const name = vectors.canonicalNames[i];
     const selector = `0x${keccak256(name).slice(0, 8)}`;
-    const encDef = EVMCalldata.parsers.parseCanonicalName(selector, name);
+    const def = EVMCalldata.parsers.parseCanonicalName(selector, name);
+    const encDef = Buffer.from(rlpEncode(def));
     encDefs.push(encDef);
     const { types, data } = convertDecoderToEthers(rlpDecode(encDef).slice(1));
     const calldata = coder.encode(types, data);
@@ -307,7 +308,6 @@ export const buildEncDefs = (vectors: any) => {
 
 export function buildRandomMsg (type = 'signPersonal', client: Client) {
   function randInt (n: number) {
-    const prng = getPrng();
     return Math.floor(n * prng.quick());
   }
 

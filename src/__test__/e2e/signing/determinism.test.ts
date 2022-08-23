@@ -33,11 +33,11 @@ let seed: Buffer;
 export const runDeterminismTests = ({ client }: { client: Client }) => {
   describe('[Determinism]', () => {
     describe('Setup and validate seed', () => {
-      it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', async () => {
-        await question(
-          '\nPlease remove, re-insert, and unlock your SafeCard.\n' +
-          'Press enter to continue after addresses have fully synced.',
-        );
+      it('Should re-connect to the Lattice and update the walletUID.', async () => {
+        expect(getDeviceId()).to.not.equal(null);
+        await client.connect(getDeviceId());
+        expect(client.isPaired).toEqual(true);
+        expect(!!client.getActiveWallet()).toEqual(true);
       });
 
       it('Should remove the seed', async () => {
@@ -62,14 +62,8 @@ export const runDeterminismTests = ({ client }: { client: Client }) => {
         await runTestCase(testRequestPayload, gpErrors.GP_SUCCESS);
       });
 
-      it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
-        question(
-          '\nPlease remove, re-insert, and unlock your SafeCard.\n' +
-          'Press enter to continue after addresses have fully synced.',
-        );
-      });
-
       it('Should re-connect to the Lattice and update the walletUID.', async () => {
+        expect(getDeviceId()).to.not.equal(null);
         await client.connect(getDeviceId());
         expect(client.isPaired).toEqual(true);
         expect(!!client.getActiveWallet()).toEqual(true);
@@ -138,20 +132,6 @@ export const runDeterminismTests = ({ client }: { client: Client }) => {
           'Incorrect address 8 fetched.',
         );
       });
-
-      const txReq = buildTxReq(buildTx());
-      it('Should test that wrongWallet retry works', async () => {
-        question(
-          'Please switch to a SafeCard with a different seed. Press enter to continue.',
-        );
-        await expect(client.sign(txReq)).rejects.toThrow(
-          /Active wallet does not match request/,
-        );
-        question(
-          'Please switch back to the first SafeCard. Press enter to continue.',
-        );
-        await client.sign(txReq);
-      }, 1000000);
     });
 
     describe('Test uniformity of Ethereum transaction sigs', () => {
@@ -162,14 +142,14 @@ export const runDeterminismTests = ({ client }: { client: Client }) => {
         await testUniformSigs(txReq, tx, client);
       });
 
-      it('Should validate uniformity sigs on m/44\'/60\'/0\'/0/1', async () => {
+      it('Should validate uniformity sigs on m/44\'/60\'/1\'/0/0', async () => {
         const tx = buildTx();
         const txReq = buildTxReq(tx);
         txReq.data.signerPath[2] = HARDENED_OFFSET + 1;
         await testUniformSigs(txReq, tx, client);
       });
 
-      it('Should validate uniformity sigs on m/44\'/60\'/0\'/0/8', async () => {
+      it('Should validate uniformity sigs on m/44\'/60\'/8\'/0/0', async () => {
         const tx = buildTx();
         const txReq = buildTxReq(tx);
         txReq.data.signerPath[2] = HARDENED_OFFSET + 8;
@@ -183,14 +163,14 @@ export const runDeterminismTests = ({ client }: { client: Client }) => {
         await testUniformSigs(txReq, tx, client);
       });
 
-      it('Should validate uniformity sigs on m/44\'/60\'/0\'/0/1', async () => {
+      it('Should validate uniformity sigs on m/44\'/60\'/1\'/0/0', async () => {
         const tx = buildTx(`0x${randomBytes(4000).toString('hex')}`);
         const txReq = buildTxReq(tx);
         txReq.data.signerPath[2] = HARDENED_OFFSET + 1;
         await testUniformSigs(txReq, tx, client);
       });
 
-      it('Should validate uniformity sigs on m/44\'/60\'/0\'/0/8', async () => {
+      it('Should validate uniformity sigs on m/44\'/60\'/8\'/0/0', async () => {
         const tx = buildTx(`0x${randomBytes(4000).toString('hex')}`);
         const txReq = buildTxReq(tx);
         txReq.data.signerPath[2] = HARDENED_OFFSET + 8;
@@ -604,13 +584,6 @@ export const runDeterminismTests = ({ client }: { client: Client }) => {
           seed,
         );
         await runTestCase(testRequestPayload, gpErrors.GP_SUCCESS);
-      });
-
-      it('Should wait for the user to remove and re-insert the card (triggering SafeCard wallet sync)', () => {
-        question(
-          '\nPlease remove, re-insert, and unlock your SafeCard.\n' +
-          'Press enter to continue.',
-        );
       });
 
       it('Should re-connect to the Lattice and update the walletUID.', async () => {

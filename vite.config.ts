@@ -1,30 +1,7 @@
-import * as path from 'path';
-import { defineConfig, loadEnv } from 'vite';
-import dts from 'vite-plugin-dts'
-import Web3Polyfill from 'vite-plugin-web3-polyfill'
+import { defineConfig } from 'vitest/config';
 
-export default defineConfig(({ mode }) => {
-  // Loads .env file into process.env based on mode (NODE_ENV)
-  Object.assign(process.env, loadEnv(mode, process.cwd(), ''))
-
+export default defineConfig(() => {
   return {
-    build: {
-      lib: {
-        entry: path.resolve(__dirname, 'src/index.ts'),
-        name: 'gridplus-sdk',
-        fileName: (format) => `gridplus-sdk.${format}.js`,
-      },
-      rollupOptions: {
-        external: [],
-        output: {
-          globals: {},
-        },
-      },
-    },
-    plugins: [
-      dts(),
-      Web3Polyfill() as any
-    ],
     test: {
       coverage: {
         reporter: ['lcov'],
