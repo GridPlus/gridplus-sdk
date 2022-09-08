@@ -313,25 +313,32 @@ export const isUInt4 = (n: number) => isInteger(n) && inRange(n, 0, 16)
 
 /**
  * Generates an application secret for use in maintaining connection to device.
- * @param {Buffer} deviceId - The device ID of the device you want to generate a token for.
- * @param {Buffer} password - The password entered when connecting to the device.
- * @param {Buffer} appName - The name of the application.
+ * @param deviceId - The device ID of the device you want to generate a token for.
+ * @param password - The password entered when connecting to the device.
+ * @param appName - The name of the application.
  * @returns an application secret as a Buffer
  * @public
  */
 export const generateAppSecret = (
-  deviceId: Buffer,
-  password: Buffer,
-  appName: Buffer
+  deviceId: Buffer | string,
+  password: Buffer | string,
+  appName: Buffer | string,
 ): Buffer => {
+  const deviceIdBuffer =
+    typeof deviceId === 'string' ? Buffer.from(deviceId) : deviceId;
+  const passwordBuffer =
+    typeof password === 'string' ? Buffer.from(password) : password;
+  const appNameBuffer =
+    typeof appName === 'string' ? Buffer.from(appName) : appName;
+
   const preImage = Buffer.concat([
-    deviceId,
-    password,
-    appName,
+    deviceIdBuffer,
+    passwordBuffer,
+    appNameBuffer,
   ]);
 
   return Buffer.from(sha256().update(preImage).digest('hex'), 'hex');
-}
+};
 
 /**
  * Generic signing does not return a `v` value like legacy ETH signing requests did.
