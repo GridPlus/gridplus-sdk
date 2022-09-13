@@ -19,11 +19,13 @@ import { fetchCalldataDecoder, randomBytes } from '../../../util';
 import { buildEncDefs, buildEvmReq, DEFAULT_SIGNER, getNumIter } from '../../utils/builders';
 import { getEtherscanKey } from '../../utils/getters';
 import { runEvm } from '../../utils/runners';
+import { initializeSeed } from '../../utils/initializeClient';
 
 const globalVectors = jsonc.parse(
   readFileSync(`${process.cwd()}/src/__test__/vectors.jsonc`).toString(),
 );
 const vectors = globalVectors.evm.calldata;
+let CURRENT_SEED = null;
 
 //---------------------------------------
 // STATE DATA
@@ -46,9 +48,10 @@ export const runEvmTests = ({ client }: { client: Client }) => {
       return runEvm(
         evmReq,
         client,
+        CURRENT_SEED,
         bypassSetPayload,
         shouldFail,
-        useLegacySigning,
+        useLegacySigning
       ).catch((err) => {
         if (err.responseCode === 128) {
           err.message =
@@ -58,6 +61,10 @@ export const runEvmTests = ({ client }: { client: Client }) => {
         throw err;
       });
     };
+
+    it('Should get the current wallet seed',  async () => {
+      CURRENT_SEED = await initializeSeed(client);
+    })
 
     describe('[EVM] Test transactions', () => {
       describe('EIP1559', () => {
