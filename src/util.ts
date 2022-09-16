@@ -531,8 +531,6 @@ function encodeDef (def: any) {
 
 /**
  *  Fetches calldata from a remote scanner based on the transaction's `chainId`
- * 
- * TODO: Remove recurse option when FW 0.16 is released
  */
 export async function fetchCalldataDecoder (_data: Uint8Array | string, to: string, _chainId: number | string, recurse = false) {
   try {

@@ -33,6 +33,7 @@ The following options can be used after `env` with any test.
 |:------|:--------|:------------|
 | `REUSE_KEY` | Must be `1` | Indicates we will be creating a new pairing with a Lattice and stashing that connection |
 | `DEVICE_ID` | A six character string | The device ID of the target Lattice |
+| `ETHERSCAN_KEY` | Any string | API key for making requests to Etherscan. This is needed specifically for `e2e-sign-evm-abi`. |
 | `name` | Any 5-25 character string (default="SDK Test") | The name of the pairing you will create |
 | `baseUrl` | Any URL (default="https://signing.gridpl.us") | URL describing where to send HTTP requests. Should be changed if your Lattice is on non-default message routing infrastructure. |
 
@@ -55,14 +56,22 @@ See table in the next section.
 
 ## Reference: Tests and Options
 
-This section gives an overview of each test and which options can be passed for the specific test (in addition to global options)
+You can run the following tests with `npm run <test name>`.
 
-| Test | Description | Uses Test Runner | Additional `env` Options |
-|:-----|:------------|:-----------------|:--------------|
-| `npm run test` | Sets up test connection and tests basic functionality like `getAddresses` and `sign`. You need to run this with `REUSE_KEY=1` and pair before running any other tests. | No | N/A |
-| `npm run test-signing` | Tests various aspects of the message signing path as well as all known decoders. | Yes | `SEED` (random string to seed a random number generator)<br/>`ETHERSCAN_KEY` (API key for making Etherscan requests. Used in EVM tests.) |
-| `npm run test-btc` | *(Legacy pathway)* Tests spending different types of BTC inputs. Signatures validated against `bitcoinjs-lib` using seed exported by test harness. | Yes | `N` (number of random vectors to populate)<br/>`SEED` (random string to seed a random number generator)<br/>`testnet` (if true, testnet addresses and transactions will also be tested) |
-| `npm run test-eth-msg` | *(Legacy pathway)* Tests Ethereum message requests `signPersonal` and `signTypedData`. Tests boundary conditions of EIP712 messages. | No | `N` (number of random vectors to populate)<br/>`SEED` (random string to seed a random number generator) |
-| `npm run test-kv` | Tests loading and using kv (key-value) files. These are used for address tags. | No | N/A |
-| `npm run test-non-exportable` | Tests to validate signatures from a SafeCards with a non-exportable seed (legacy) | No | N/A |
-| `npm run test-wallet-jobs` | Tests exported addresses and public keys against those from reference libraries using seed exported by test harness. | Yes | N/A |
+| Test | Description | Requires `FEATURE_TEST_RUNNER=1` |
+|:-----|:------------|:-----------------|
+| `test` | Runs integration tests. Does not use Lattice. | No |
+| `test-unit` | Runs SDK unit tests. Does not use Lattice. | No |
+| `e2e` | Runs all end-to-end tests. | Yes |
+| `e2e-btc` | Tests BTC signatures (legacy signing) | Yes |
+| `e2e-eth` | Tests EIP712 and `personal_sign` messages (legacy signing) | No |
+| `e2e-gen` | Tests seveal Lattice message routes and some SDK functionality. Bit of a legacy test but still useful. | No |
+| `e2e-kv` | Tests KV-files, which are used primarily for tags. | No |
+| `e2e-ne` | Tests non-exportable seeded SafeCards (legacy). | No |
+| `e2e-sign` | Runs all signing tests. | Yes |
+| `e2e-sign-determinism` | Tests determinism of signatures using known seed loading. | Yes |
+| `e2e-sign-evm-abi` | Tests ABI decoding and fetching for EVM transactions. | Yes |
+| `e2e-sign-evm-tx` | Tests EVM transaction types. | Yes |
+| `e2e-sign-solana` | Tests Solana transactions and address derivation. | Yes |
+| `e2e-sign-unformatted` | Tests signing unformatted payloads (ASCII or hex strings). | Yes |
+| `e2e-wj` | Tests wallet jobs, validating path derivations, seed management, etc. | Yes |
