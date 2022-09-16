@@ -351,6 +351,7 @@ export const EXTERNAL = {
     CURVES: {
       SECP256K1: 0,
       ED25519: 1,
+      BLS12_381_G2: 2,
     },
     ENCODINGS: {
       NONE: 1,

@@ -248,6 +248,16 @@ export const parseGenericSigningResponse = function (res, off, req) {
       r: res.slice(off, off + 32),
       s: res.slice(off + 32, off + 64),
     };
+  } else if (req.curveType === Constants.SIGNING.CURVES.BLS12_381_G2) {
+    if (!req.omitPubkey) {
+      // Handle `GpBLS12_381_G1Pub_t`
+      parsed.pubkey = Buffer.alloc(48);
+      res.slice(off, off + 48).copy(parsed.pubkey);
+    }
+    off += 48;
+    // Handle `GpBLS12_381_G2Sig_t`
+    parsed.sig = Buffer.alloc(96)
+    res.slice(off, off + 96).copy(parsed.sig);
   } else {
     throw new Error('Unsupported curve.');
   }
