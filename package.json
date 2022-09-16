@@ -25,7 +25,7 @@
     "e2e-gen": "vitest src/__test__/e2e/general.test.ts",
     "e2e-kv": "vitest src/__test__/e2e/kv.test.ts",
     "e2e-ne": "vitest src/__test__/e2e/non-exportable.test.ts",
-    "e2e-sign": "npm run e2e-sign-determinism && npm run e2e-sign-evm-abi && npm run e2e-sign-evm-tx && npm run e2e-sign-solana && npm run e2e-sign-unformatted",
+    "e2e-sign": "vitest src/__test__/e2e/signing",
     "e2e-sign-determinism": "vitest src/__test__/e2e/signing/determinism.test.ts",
     "e2e-sign-evm-abi": "vitest src/__test__/e2e/signing/evm-abi.test.ts",
     "e2e-sign-evm-tx": "vitest src/__test__/e2e/signing/evm-tx.test.ts",

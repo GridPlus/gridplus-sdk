@@ -27,10 +27,9 @@ import {
 import { initializeClient, initializeSeed } from '../../utils/initializeClient';
 import { runTestCase } from '../../utils/runners';
 let seed: Buffer;
-let client;
 
 describe('[Determinism]', () => {
-  client = initializeClient();
+  const client = initializeClient();
 
   describe('Setup and validate seed', () => {
     it('Should re-connect to the Lattice and update the walletUID.', async () => {

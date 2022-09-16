@@ -354,7 +354,7 @@ export const EXTERNAL = {
     ENCODINGS: {
       NONE: 1,
       SOLANA: 2,
-      // TERRA: 3, // Deprecated in firmware
+      // TERRA: 3, // DEPRECATED
       EVM: 4,
     },
   },
@@ -506,8 +506,8 @@ function getFwVersionConst (v: Buffer): FirmwareConstants {
     // We updated the max number of params in EIP712 types
     c.eip712MaxTypeParams = 36;
   }
-  // V0.14.1 Added the Terra decoder
   // DEPRECATED
+  // V0.14.1 Added the Terra decoder
   // if (!legacy && gte(v, [0, 14, 1])) {
   //   c.genericSigning.encodingTypes.TERRA = EXTERNAL.SIGNING.ENCODINGS.TERRA;
   // }

@@ -14,7 +14,6 @@ import { initializeClient, initializeSeed } from '../../utils/initializeClient';
 //---------------------------------------
 // STATE DATA
 //---------------------------------------
-let client;
 const DEFAULT_SOLANA_SIGNER = [
   HARDENED_OFFSET + 44,
   HARDENED_OFFSET + 501,
@@ -24,7 +23,7 @@ const DEFAULT_SOLANA_SIGNER = [
 const prng = getPrng();
 
 describe('[Solana]', () => {
-  client = initializeClient();
+  const client = initializeClient();
   const getReq = (overrides: any) => ({
     data: {
       curveType: Constants.SIGNING.CURVES.ED25519,

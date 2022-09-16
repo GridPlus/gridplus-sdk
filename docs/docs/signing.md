@@ -101,7 +101,9 @@ const sig = await client.sign(req)
 
 ## 💾 Calldata Decoding
 
-> NOTE: All available calldata decoding options will be documented in this section. More may be added as time goes on.
+:::note
+All available calldata decoding options will be documented in this section. More may be added as time goes on.
+:::
 
 Certain transaction decoder types may support calldata decoding for request data. You can use this feature by including "calldata decoder data" (explained shortly) in a general signing request using the `decoder` request param:
 
@@ -119,11 +121,15 @@ If you include a valid calldata decoder, the appearance of the transaction's dat
 
 EVM transactions serialize calldata according to the [Ethereum ABI specification](https://docs.soliditylang.org/en/latest/abi-spec.html). The first four bytes of a transaction's `data` represent the "function selector", which is (sort of) a unique identifier for a given function. 
 
-> NOTE: We do not support 100% of all edge cases in the ABI specification, but we do support the vast majority of types.  Please open a pull request or an issue if your request fails to decode on a Lattice.
+:::note
+We do not support 100% of all edge cases in the ABI specification, but we do support the vast majority of types.  Please open a pull request or an issue if your request fails to decode on a Lattice.
+:::
 
 We expose a method `Utils.fetchCalldataDecoder`, which will attempt to search [Etherscan](https://etherscan.io) (or the relevant clone, depending on `chainId`) for the function definition. If none is found it will try [4byte](https://4byte.directory) instead. If a function definition is found, `fetchCalldataDecoder` will parse and serialize it for the Lattice. `fetchCalldataDecoder` will return `{ abi, def }` and you will need to pass `def` into the signing request.
 
-> NOTE: `fetchCalldataDecoder` takes in params `(tx.input, tx.to, tx.chainId, shouldRecurse)`. The first 3 come from the transaction object (note that `chainId` must be a regular integer), while `shouldRecurse` is used to flag whether to look up nested definitions, as is typical with contract patterns like `multicall`. You can only use `shouldRecurse` with Lattice firmware v0.16.0 and above.
+:::note
+`fetchCalldataDecoder` takes in params `(tx.input, tx.to, tx.chainId, shouldRecurse)`. The first 3 come from the transaction object (note that `chainId` must be a regular integer), while `shouldRecurse` is used to flag whether to look up nested definitions, as is typical with contract patterns like `multicall`. You can only use `shouldRecurse` with Lattice firmware v0.16.0 and above.
+:::
 
 #### Example Usage (see `test/signing/evm-abi.ts` for more examples)
 
@@ -224,7 +230,9 @@ const sig = await client.sign(reqData)
 
 This is used in protocols such as EIP712. It is meant to be an encoding for JSON-like data that can be more human readable.
 
-> NOTE: Only `sign_typed_data` V3 and V4 are supported.
+:::note
+Only `sign_typed_data` V3 and V4 are supported.
+:::
 
 **`protocol` must be specified as `"eip712"`**.
 

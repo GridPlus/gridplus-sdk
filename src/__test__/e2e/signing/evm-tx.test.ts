@@ -14,14 +14,13 @@ import { initializeClient, initializeSeed } from '../../utils/initializeClient';
 //---------------------------------------
 // STATE DATA
 //---------------------------------------
-let client;
 let CURRENT_SEED = null;
 
 //---------------------------------------
 // TESTS
 //---------------------------------------
 describe('[EVM TX]', () => {
-  client = initializeClient();
+  const client = initializeClient();
   const runEvmTestForReq = (
     req?: any,
     bypassSetPayload?: boolean,

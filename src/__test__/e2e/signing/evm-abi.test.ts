@@ -23,7 +23,6 @@ const vectors = globalVectors.evm.calldata;
 //---------------------------------------
 // STATE DATA
 //---------------------------------------
-let client;
 let CURRENT_SEED = null;
 const { encDefs, encDefsCalldata } = buildEncDefs(vectors);
 
@@ -31,7 +30,7 @@ const { encDefs, encDefsCalldata } = buildEncDefs(vectors);
 // TESTS
 //---------------------------------------
 describe('[EVM ABI]', () => {
-  client = initializeClient();
+  const client = initializeClient();
   const runEvmTestForReq = (
     req?: any,
     bypassSetPayload?: boolean,

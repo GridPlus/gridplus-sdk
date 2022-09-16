@@ -6,7 +6,6 @@ import { HARDENED_OFFSET } from '../../../constants';
 import { getPrng } from '../../utils/getters';
 import { initializeClient } from '../../utils/initializeClient';
 
-let client;
 const prng = getPrng();
 const numIter = getNumIter();
 const DEFAULT_SIGNER = [
@@ -18,7 +17,7 @@ const DEFAULT_SIGNER = [
 ];
 
 describe('[Unformatted]', () => {
-  client = initializeClient();
+  const client = initializeClient();
   const getReq = (overrides: any) => ({
     data: {
       signerPath: DEFAULT_SIGNER,
