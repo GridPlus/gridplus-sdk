@@ -25,7 +25,12 @@
     "e2e-gen": "vitest src/__test__/e2e/general.test.ts",
     "e2e-kv": "vitest src/__test__/e2e/kv.test.ts",
     "e2e-ne": "vitest src/__test__/e2e/non-exportable.test.ts",
-    "e2e-sign": "vitest src/__test__/e2e/signing/signing.test.ts",
+    "e2e-sign": "vitest src/__test__/e2e/signing",
+    "e2e-sign-determinism": "vitest src/__test__/e2e/signing/determinism.test.ts",
+    "e2e-sign-evm-abi": "vitest src/__test__/e2e/signing/evm-abi.test.ts",
+    "e2e-sign-evm-tx": "vitest src/__test__/e2e/signing/evm-tx.test.ts",
+    "e2e-sign-solana": "vitest src/__test__/e2e/signing/solana.test.ts",
+    "e2e-sign-unformatted": "vitest src/__test__/e2e/signing/unformatted.test.ts",
     "e2e-wj": "vitest src/__test__/e2e/wallet-jobs.test.ts"
   },
   "files": [

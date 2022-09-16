@@ -13,7 +13,6 @@ import { testRequest } from './testRequest';
 export const initializeClient = () => {
   const id = getDeviceId();
   const client = setupTestClient();
-
   describe('Initializing client', () => {
     it('Connecting to Lattice', async () => {
       const _id = id

@@ -354,7 +354,7 @@ export const EXTERNAL = {
     ENCODINGS: {
       NONE: 1,
       SOLANA: 2,
-      TERRA: 3,
+      // TERRA: 3, // DEPRECATED
       EVM: 4,
     },
   },
@@ -506,10 +506,11 @@ function getFwVersionConst (v: Buffer): FirmwareConstants {
     // We updated the max number of params in EIP712 types
     c.eip712MaxTypeParams = 36;
   }
+  // DEPRECATED
   // V0.14.1 Added the Terra decoder
-  if (!legacy && gte(v, [0, 14, 1])) {
-    c.genericSigning.encodingTypes.TERRA = EXTERNAL.SIGNING.ENCODINGS.TERRA;
-  }
+  // if (!legacy && gte(v, [0, 14, 1])) {
+  //   c.genericSigning.encodingTypes.TERRA = EXTERNAL.SIGNING.ENCODINGS.TERRA;
+  // }
 
   // --- V0.15.X ---
   // V0.15.0 added an EVM decoder and removed the legacy ETH signing pathway
