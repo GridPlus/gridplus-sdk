@@ -104,10 +104,13 @@ export const encodeGetAddressesRequest = ({
   const flags = fwConstants.getAddressFlags || [] as any[];
   const isPubkeyOnly =
     flags.indexOf(flag) > -1 &&
-    (flag === EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB ||
-      flag === EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB);
+    (
+      flag === EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB ||
+      flag === EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB ||
+      flag === EXTERNAL.GET_ADDR_FLAGS.BLS12_381_G1_PUB
+    );
   if (!isPubkeyOnly && !isValidAssetPath(startPath, fwConstants)) {
-    throw new Error('Parent derivation path is not supported');
+    throw new Error('Derivation path or flag is not supported. Try updating Lattice firmware.');
   }
   let sz = 32 + 20 + 1; // walletUID + 5 u32 indices + count/flag
   if (fwConstants.varAddrPathSzAllowed) {
@@ -182,8 +185,8 @@ export const decodeGetAddresses = (data: any, flag: number): Buffer[] => {
   // Look for addresses until we reach the end (a 4 byte checksum)
   const addrs: any[] = [];
   // Pubkeys are formatted differently in the response
-  const { ED25519_PUB, SECP256K1_PUB } = EXTERNAL.GET_ADDR_FLAGS;
-  const arePubkeys = flag === ED25519_PUB || flag === SECP256K1_PUB;
+  const { ED25519_PUB, SECP256K1_PUB, BLS12_381_G1_PUB } = EXTERNAL.GET_ADDR_FLAGS;
+  const arePubkeys = flag === ED25519_PUB || flag === SECP256K1_PUB || flag === BLS12_381_G1_PUB;
   if (arePubkeys) {
     off += 1; // skip uint8 representing pubkey type
   }
@@ -195,6 +198,9 @@ export const decodeGetAddresses = (data: any, flag: number): Buffer[] => {
       if (!isEmpty && flag === ED25519_PUB) {
         // ED25519 pubkeys are 32 bytes
         addrs.push(pubBytes.slice(0, 32));
+      } else if (!isEmpty && flag === BLS12_381_G1_PUB) {
+        // BLS12_381_G1 keys are 48 bytes
+        addrs.push(pubBytes.slice(0, 48));
       } else if (!isEmpty) {
         // Only other returned pubkeys are ECC, or 65 bytes Note that we return full
         // (uncompressed) ECC pubkeys
