@@ -11,6 +11,7 @@ const WITHDRAWAL_PATH_IDX = [
 const DEPOSIT_PATH_IDX = [
   12381, 3600, 0, 0, 0
 ];
+const N = 1;
 
 async function testBLSDerivationAndSig(signerPath) {
   const signReq = {
@@ -54,7 +55,7 @@ describe('[BLS]', () => {
   })
 
   // Test first 5 deposit keys
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < N; i++) {
     const pathIdx = DEPOSIT_PATH_IDX;
     pathIdx[2] = i;
     it(`Should validate EIP2333 and signing at deposit index #${i}`, async () => {
@@ -62,7 +63,7 @@ describe('[BLS]', () => {
     })
   }
   // Test first 5 withdrawal keys
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < N; i++) {
     const pathIdx = WITHDRAWAL_PATH_IDX;
     pathIdx[2] = i;
     it(`Should validate EIP2333 and signing at withdrawal index #${i}`, async () => {
