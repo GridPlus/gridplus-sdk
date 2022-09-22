@@ -44,6 +44,10 @@ const req = {
 const sig = await client.sign(req)
 ```
 
+:::note
+When using the `gridplus-sdk` in a Node.js application with a version of Node lower than v18, you will need to patch the `fetch()` API in the global scope. One solution is to use the `node-fetch` package. See [the `node-fetch` README](https://github.com/node-fetch/node-fetch#installation) for instructions. Other options are available on NPM.
+:::
+
 ## 📃 Message Decoders
 
 By default, the message will be displayed on the Lattice's screen in either ASCII or hex -- if the message contains only ASCII, it will be displayed as such; otherwise it will get printed as a hex string. This means the Lattice can produce a signature for any message you like. However, there are additional decoders that make the request more readable on the Lattice. These decoders can be accessed inside of `Constants`:
@@ -61,6 +65,7 @@ const encodings = Constants.SIGNING.ENCODINGS
 If you do not wish to specify a decoder, you can leave this field empty and the message will display either as ASCII or a hex string on the device.
 
 ### Example: Using the EVM Decoder
+
 ```ts
 const tx = EthTxFactory.fromTxData(txData, { common: req.common });
 const req = {
