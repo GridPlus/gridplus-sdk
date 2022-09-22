@@ -12,7 +12,6 @@ import isInteger from 'lodash/isInteger';
 import { decode as rlpDecode, encode as rlpEncode } from 'rlp';
 import { ecdsaRecover } from 'secp256k1';
 import { Calldata } from '.';
-import cloneDeep from 'lodash/cloneDeep'
 import {
   AES_IV,
   BIP_CONSTANTS,
@@ -497,7 +496,7 @@ export function selectDefFrom4byteABI (abiData: any[], selector: string) {
 }
 
 export async function fetchWithTimeout (url, options) {
-  const { timeout } = options;
+  const { timeout = 8000 } = options;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
   const response = await fetch(url, {
@@ -559,7 +558,7 @@ async function fetchSupportedChainData (
 
 async function fetch4byteData (selector: string): Promise<any> {
   const url = `https://www.4byte.directory/api/v1/signatures/?hex_signature=0x${selector}`;
-  return await fetchAndCache(url)
+  return await fetch(url)
     .then((res) => res.json())
     .then((body) => {
       if (body && body.results) {
@@ -640,7 +639,7 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
  * @param calldata - Raw transaction calldata
  * @return - Updated `def`
  */
-async function postProcessDef(def, calldata) {
+async function postProcessDef (def, calldata) {
   // Replace all nested defs if applicable. This is done by looping
   // through each param in the definition and if it is of type `bytes`
   // or `bytes[]`, checking the param value in `calldata`. If the param
@@ -689,7 +688,7 @@ async function postProcessDef(def, calldata) {
  *          single `null` value in the return array.
  *          
  */
-async function replaceNestedDefs(possNestedDefs) {
+async function replaceNestedDefs (possNestedDefs) {
   // For all possible nested defs, attempt to fetch the underlying def
   const nestedDefs = []
   for await (const d of possNestedDefs) {
