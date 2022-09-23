@@ -1,5 +1,4 @@
 import { sha256 } from 'hash.js/lib/hash/sha';
-import superagent from 'superagent';
 import { Client } from '..';
 import bitcoin from '../bitcoin';
 import {
@@ -16,6 +15,7 @@ import {
   aes256_decrypt,
   aes256_encrypt,
   checksum,
+  fetchWithTimeout,
   getP256KeyPairFromPub,
   parseLattice1Response,
   randomBytes,
@@ -176,23 +176,26 @@ export const request = async ({
   payload,
   timeout = 60000,
 }: RequestParams) => {
-  return superagent
-    .post(url)
-    .timeout(timeout)
-    .send({ data: payload })
+  return fetchWithTimeout(url, {
+    method: 'POST',
+    body: JSON.stringify({ data: payload }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    timeout,
+  })
     .catch(validateRequestError)
-    .then(async (response) => {
+    .then((res) => res.json())
+    .then((body) => {
       // Handle formatting or generic HTTP errors
-      if (!response.body || !response.body.message) {
-        throw new Error(`Invalid response:  ${response.body.message}`);
-      } else if (response.body.status !== 200) {
-        throw new Error(
-          `Error code ${response.body.status}: ${response.body.message}`,
-        );
+      if (!body || !body.message) {
+        throw new Error('Invalid response');
+      } else if (body.status !== 200) {
+        throw new Error(`Error code ${body.status}: ${body.message}`);
       }
 
       const { data, errorMessage, responseCode } = parseLattice1Response(
-        response.body.message,
+        body.message,
       );
 
       if (errorMessage || responseCode) {

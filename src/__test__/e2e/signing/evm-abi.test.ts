@@ -8,7 +8,6 @@ You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
  */
 import { readFileSync } from 'fs';
 import { jsonc } from 'jsonc';
-import request from 'superagent';
 import { fetchCalldataDecoder } from '../../../util';
 import { buildEncDefs, buildEvmReq, DEFAULT_SIGNER } from '../../utils/builders';
 import { getEtherscanKey } from '../../utils/getters';
@@ -55,7 +54,7 @@ describe('[EVM ABI]', () => {
     });
   };
 
-  it('Should get the current wallet seed',  async () => {
+  it('Should get the current wallet seed', async () => {
     CURRENT_SEED = await initializeSeed(client);
   })
 
@@ -103,7 +102,7 @@ describe('[EVM ABI]', () => {
         if (etherscanKey) {
           getTxUrl += `&apiKey=${etherscanKey}`;
         }
-        const tx = await request(getTxUrl).then((res) => res.body.result);
+        const tx = await fetch(getTxUrl).then(res => res.json()).then((res) => res.result);
         const txData = { data: tx.input, ...tx };
         if (!etherscanKey) {
           // Need a timeout between requests if we don't have a key
