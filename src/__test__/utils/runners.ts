@@ -42,6 +42,7 @@ export async function runGeneric (request: SignRequestParams, client: Client) {
 export async function runEvm (
   req: any,
   client: Client,
+  seed: any,
   bypassSetPayload = false,
   shouldFail = false,
   useLegacySigning = false,
@@ -87,7 +88,9 @@ export async function runEvm (
     req.data.hashType = Constants.SIGNING.HASHES.KECCAK256;
     req.data.encodingType = Constants.SIGNING.ENCODINGS.EVM;
   }
-  const seed = await initializeSeed(client)
+  if (!seed) {
+    seed = await initializeSeed(client)
+  }
   validateGenericSig(seed, resp.sig, payloadBuf, req.data);
   // Sign the original tx and compare
   const { priv } = deriveSECP256K1Key(req.data.signerPath, seed);

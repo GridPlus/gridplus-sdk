@@ -57,7 +57,7 @@ export const buildFirmwareConstants = (...overrides: any) => {
       baseDataSz: 1519,
       hashTypes: { NONE: 0, KECCAK256: 1, SHA256: 2 },
       curveTypes: { SECP256K1: 0, ED25519: 1 },
-      encodingTypes: { NONE: 1, SOLANA: 2, TERRA: 3, EVM: 4 },
+      encodingTypes: { NONE: 1, SOLANA: 2, EVM: 4 },
       calldataDecoding: { reserved: 2895728, maxSz: 1024 },
     },
     getAddressFlags: [4, 3],

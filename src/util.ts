@@ -12,7 +12,6 @@ import isInteger from 'lodash/isInteger';
 import { decode as rlpDecode, encode as rlpEncode } from 'rlp';
 import { ecdsaRecover } from 'secp256k1';
 import { Calldata } from '.';
-import superagent from 'superagent'
 import {
   AES_IV,
   BIP_CONSTANTS,
@@ -23,6 +22,7 @@ import {
   VERSION_BYTE,
   EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
 } from './constants';
+import { isValidBlockExplorerResponse, isValid4ByteResponse } from './shared/validators';
 
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
@@ -313,25 +313,32 @@ export const isUInt4 = (n: number) => isInteger(n) && inRange(n, 0, 16)
 
 /**
  * Generates an application secret for use in maintaining connection to device.
- * @param {Buffer} deviceId - The device ID of the device you want to generate a token for.
- * @param {Buffer} password - The password entered when connecting to the device.
- * @param {Buffer} appName - The name of the application.
+ * @param deviceId - The device ID of the device you want to generate a token for.
+ * @param password - The password entered when connecting to the device.
+ * @param appName - The name of the application.
  * @returns an application secret as a Buffer
  * @public
  */
 export const generateAppSecret = (
-  deviceId: Buffer,
-  password: Buffer,
-  appName: Buffer
+  deviceId: Buffer | string,
+  password: Buffer | string,
+  appName: Buffer | string,
 ): Buffer => {
+  const deviceIdBuffer =
+    typeof deviceId === 'string' ? Buffer.from(deviceId) : deviceId;
+  const passwordBuffer =
+    typeof password === 'string' ? Buffer.from(password) : password;
+  const appNameBuffer =
+    typeof appName === 'string' ? Buffer.from(appName) : appName;
+
   const preImage = Buffer.concat([
-    deviceId,
-    password,
-    appName,
+    deviceIdBuffer,
+    passwordBuffer,
+    appNameBuffer,
   ]);
 
   return Buffer.from(sha256().update(preImage).digest('hex'), 'hex');
-}
+};
 
 /**
  * Generic signing does not return a `v` value like legacy ETH signing requests did.
@@ -428,9 +435,10 @@ async function fetchExternalNetworkForChainId (
   };
 }> {
   try {
-    const response = await superagent.get(EXTERNAL_NETWORKS_BY_CHAIN_ID_URL);
-    if (response && response.body) {
-      return response.body[chainId];
+    const body = await fetch(EXTERNAL_NETWORKS_BY_CHAIN_ID_URL)
+      .then((res) => res.json());
+    if (body) {
+      return body[chainId];
     } else {
       return undefined;
     }
@@ -487,35 +495,81 @@ export function selectDefFrom4byteABI (abiData: any[], selector: string) {
   }
 }
 
-async function fetchSupportedChainData (address: string, supportedChain: number) {
-  const url = buildUrlForSupportedChainAndAddress({ address, supportedChain })
-  return superagent
-    .get(url)
-    .then(async res => {
-      if (res && res.body && res.body.result) {
-        return JSON.parse(res.body.result)
-      } else {
-        throw new Error('Server response was malformed')
-      }
-    }).catch(() => {
-      throw new Error('Fetching data from external network failed')
-    })
+export async function fetchWithTimeout (url, options) {
+  const { timeout = 8000 } = options;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  const response = await fetch(url, {
+    ...options,
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+  return response;
 }
 
+async function fetchAndCache (url, opts?) {
+  try {
+    if (globalThis.caches && globalThis.Request) {
+      const cache = await caches.open('gp-calldata');
+      const request = new Request(url, opts);
+      const match = await cache.match(request);
+      if (match) {
+        return match;
+      } else {
+        const response = await fetch(request, opts);
+        const responseClone = response.clone();
+        const data = await response.json();
+        if (
+          response.ok &&
+          (isValidBlockExplorerResponse(data) || isValid4ByteResponse(data))
+        ) {
+          await cache.put(request, responseClone);
+          return cache.match(request, opts);
+        }
+        return response;
+      }
+    } else {
+      return fetch(url, opts);
+    }
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
+}
+
+async function fetchSupportedChainData (
+  address: string,
+  supportedChain: number,
+) {
+  const url = buildUrlForSupportedChainAndAddress({ address, supportedChain });
+  return fetchAndCache(url)
+    .then((res) => res.json())
+    .then((body) => {
+      if (body && body.result) {
+        return JSON.parse(body.result);
+      } else {
+        throw new Error('Server response was malformed');
+      }
+    })
+    .catch(() => {
+      throw new Error('Fetching data from external network failed');
+    });
+}
 
 async function fetch4byteData (selector: string): Promise<any> {
-  const url = `https://www.4byte.directory/api/v1/signatures/?hex_signature=0x${selector}`
-  return await superagent
-    .get(url)
-    .then(res => {
-      if (res && res.body && res.body.results) {
-        return res.body.results
+  const url = `https://www.4byte.directory/api/v1/signatures/?hex_signature=0x${selector}`;
+  return await fetch(url)
+    .then((res) => res.json())
+    .then((body) => {
+      if (body && body.results) {
+        return body.results;
       } else {
-        throw new Error('No results found')
+        throw new Error('No results found');
       }
-    }).catch(err => {
-      throw new Error(`Fetching data from 4byte failed: ${err.message}`)
     })
+    .catch((err) => {
+      throw new Error(`Fetching data from 4byte failed: ${err.message}`);
+    });
 }
 
 function encodeDef (def: any) {
@@ -524,8 +578,6 @@ function encodeDef (def: any) {
 
 /**
  *  Fetches calldata from a remote scanner based on the transaction's `chainId`
- * 
- * TODO: Remove recurse option when FW 0.16 is released
  */
 export async function fetchCalldataDecoder (_data: Uint8Array | string, to: string, _chainId: number | string, recurse = false) {
   try {
@@ -587,7 +639,7 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
  * @param calldata - Raw transaction calldata
  * @return - Updated `def`
  */
-async function postProcessDef(def, calldata) {
+async function postProcessDef (def, calldata) {
   // Replace all nested defs if applicable. This is done by looping
   // through each param in the definition and if it is of type `bytes`
   // or `bytes[]`, checking the param value in `calldata`. If the param
@@ -636,7 +688,7 @@ async function postProcessDef(def, calldata) {
  *          single `null` value in the return array.
  *          
  */
-async function replaceNestedDefs(possNestedDefs) {
+async function replaceNestedDefs (possNestedDefs) {
   // For all possible nested defs, attempt to fetch the underlying def
   const nestedDefs = []
   for await (const d of possNestedDefs) {

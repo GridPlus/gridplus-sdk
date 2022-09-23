@@ -204,3 +204,11 @@ export const validateRequestLength = (req: any, fwConstants: FirmwareConstants) 
     throw new Error('Transaction is too large');
   }
 }
+
+export const isValidBlockExplorerResponse = (data: any) => {
+  return data.result?.length > 0;
+}
+
+export const isValid4ByteResponse = (data: any) => {
+  return data.results?.length > 0;
+}
