@@ -135,8 +135,17 @@ describe('Test Wallet Jobs', () => {
       expect(origWalletSeed).not.toEqual(null);
       jobType = jobTypes.WALLET_JOB_GET_ADDRESSES;
       jobData = {
-        parent: JSON.parse(JSON.stringify(BTC_PARENT_PATH)),
-        first: 0,
+        path: {
+          pathDepth: BTC_PARENT_PATH.pathDepth + 1,
+          idx: [
+            BTC_PARENT_PATH.purpose,
+            BTC_PARENT_PATH.coin,
+            BTC_PARENT_PATH.account,
+            BTC_PARENT_PATH.change,
+            BTC_PARENT_PATH.addr,
+          ]
+        },
+        iterIdx: 4,
         count: 1,
       };
       jobReq = {
@@ -145,27 +154,27 @@ describe('Test Wallet Jobs', () => {
         payload: null,
       };
     });
-
+  
     it('Should get GP_SUCCESS for active wallet', async () => {
       jobReq.payload = serializeJobData(jobType, currentWalletUID, jobData);
       await runTestCase(gpErrors.GP_SUCCESS);
     });
-
+    
     it('Should get GP_EWALLET for unknown (random) wallet', async () => {
       const dummyWalletUID = randomBytes(32);
       jobReq.payload = serializeJobData(jobType, dummyWalletUID, jobData);
       await runTestCase(gpErrors.GP_EWALLET);
     });
-
+    
     it('Should get GP_EINVAL if `count` exceeds the max request size', async () => {
       jobData.count = 11;
       jobReq.payload = serializeJobData(jobType, currentWalletUID, jobData);
       await runTestCase(gpErrors.GP_EINVAL);
     });
-
+    
     it('Should validate first ETH', async () => {
-      jobData.parent.purpose = BTC_PURPOSE_P2PKH;
-      jobData.parent.coin = ETH_COIN;
+      jobData.path.idx[0] = BTC_PURPOSE_P2PKH;
+      jobData.path.idx[1] = ETH_COIN;
       jobReq.payload = serializeJobData(jobType, currentWalletUID, jobData);
       const _res = await runTestCase(gpErrors.GP_SUCCESS);
       const res = deserializeGetAddressesJobResult(_res.result);
@@ -173,14 +182,14 @@ describe('Test Wallet Jobs', () => {
     });
 
     it('Should validate an ETH address from a different EVM coin type', async () => {
-      jobData.parent.purpose = BTC_PURPOSE_P2PKH;
-      jobData.parent.coin = HARDENED_OFFSET + 1007; // Fantom coin_type via SLIP44
+      jobData.path.idx[0] = BTC_PURPOSE_P2PKH;
+      jobData.path.idx[1] = HARDENED_OFFSET + 1007; // Fantom coin_type via SLIP44
       jobReq.payload = serializeJobData(jobType, currentWalletUID, jobData);
       const _res = await runTestCase(gpErrors.GP_SUCCESS);
       const res = deserializeGetAddressesJobResult(_res.result);
       validateETHAddresses(res, jobData, origWalletSeed);
     });
-
+    
     it('Should validate the first BTC address', async () => {
       jobReq.payload = serializeJobData(jobType, currentWalletUID, jobData);
       const _res = await runTestCase(gpErrors.GP_SUCCESS);
@@ -189,7 +198,7 @@ describe('Test Wallet Jobs', () => {
     });
 
     it('Should validate first BTC change address', async () => {
-      jobData.parent.change = 1;
+      jobData.path.idx[3] = 1;
       jobReq.payload = serializeJobData(jobType, currentWalletUID, jobData);
       const _res = await runTestCase(gpErrors.GP_SUCCESS);
       const res = deserializeGetAddressesJobResult(_res.result);
@@ -197,7 +206,7 @@ describe('Test Wallet Jobs', () => {
     });
 
     it('Should validate the first BTC address (testnet)', async () => {
-      jobData.parent.coin = BTC_TESTNET_COIN;
+      jobData.path.idx[1] = BTC_TESTNET_COIN;
       jobReq.payload = serializeJobData(jobType, currentWalletUID, jobData);
       const _res = await runTestCase(gpErrors.GP_SUCCESS);
       const res = deserializeGetAddressesJobResult(_res.result);
@@ -205,8 +214,8 @@ describe('Test Wallet Jobs', () => {
     });
 
     it('Should validate first BTC change address (testnet)', async () => {
-      jobData.parent.change = 1;
-      jobData.parent.coin = BTC_TESTNET_COIN;
+      jobData.path.idx[3] = 1;
+      jobData.path.idx[1] = BTC_TESTNET_COIN;
       jobReq.payload = serializeJobData(jobType, currentWalletUID, jobData);
       const _res = await runTestCase(gpErrors.GP_SUCCESS);
       const res = deserializeGetAddressesJobResult(_res.result);
@@ -224,15 +233,12 @@ describe('Test Wallet Jobs', () => {
         addresses: addrs,
       };
       const jobData = {
-        parent: {
-          pathDepth: 4,
-          purpose: req.startPath[0],
-          coin: req.startPath[1],
-          account: req.startPath[2],
-          change: req.startPath[3],
+        path: {
+          pathDepth: 5,
+          idx: req.startPath,
         },
         count: req.n,
-        first: req.startPath[4],
+        iterIdx: 4,
       };
       validateBTCAddresses(resp, jobData, origWalletSeed);
     });
@@ -248,15 +254,12 @@ describe('Test Wallet Jobs', () => {
         addresses: addrs,
       };
       const jobData = {
-        parent: {
-          pathDepth: 4,
-          purpose: req.startPath[0],
-          coin: req.startPath[1],
-          account: req.startPath[2],
-          change: req.startPath[3],
+        path: {
+          pathDepth: 5,
+          idx: req.startPath,
         },
         count: req.n,
-        first: req.startPath[4],
+        iterIdx: 4,
       };
       validateBTCAddresses(resp, jobData, origWalletSeed);
     });
@@ -272,15 +275,12 @@ describe('Test Wallet Jobs', () => {
         addresses: addrs,
       };
       const jobData = {
-        parent: {
-          pathDepth: 4,
-          purpose: req.startPath[0],
-          coin: req.startPath[1],
-          account: req.startPath[2],
-          change: req.startPath[3],
+        path: {
+          pathDepth: 5,
+          idx: req.startPath,
         },
         count: req.n,
-        first: req.startPath[4],
+        iterIdx: 4,
       };
       validateBTCAddresses(resp, jobData, origWalletSeed);
     });
@@ -296,15 +296,12 @@ describe('Test Wallet Jobs', () => {
         addresses: addrs,
       };
       const jobData = {
-        parent: {
-          pathDepth: 4,
-          purpose: req.startPath[0],
-          coin: req.startPath[1],
-          account: req.startPath[2],
-          change: req.startPath[3],
+        path: {
+          pathDepth: 5,
+          idx: req.startPath,
         },
         count: req.n,
-        first: req.startPath[4],
+        iterIdx: 4,
       };
       // Let the validator know this is a nonstandard purpose
       validateBTCAddresses(resp, jobData, origWalletSeed);
@@ -327,7 +324,7 @@ describe('Test Wallet Jobs', () => {
 
     it('Should validate address with pathDepth=4', async () => {
       const req = {
-        startPath: [BTC_PURPOSE_P2SH_P2WPKH, ETH_COIN, 2532356, 7],
+        startPath: [BTC_PURPOSE_P2PKH, ETH_COIN, 2532356, 7],
         n: 3,
       };
       const addrs: any = await client.getAddresses(req);
@@ -336,21 +333,19 @@ describe('Test Wallet Jobs', () => {
         addresses: addrs,
       };
       const jobData = {
-        parent: {
-          pathDepth: 3,
-          purpose: req.startPath[0],
-          coin: req.startPath[1],
-          account: req.startPath[2],
+        path: {
+          pathDepth: 4,
+          idx: req.startPath,
         },
         count: req.n,
-        first: req.startPath[3],
+        iterIdx: 3,
       };
       validateETHAddresses(resp, jobData, origWalletSeed);
     });
 
     it('Should validate address with pathDepth=3', async () => {
       const req = {
-        startPath: [BTC_PURPOSE_P2SH_P2WPKH, ETH_COIN, 2532356],
+        startPath: [BTC_PURPOSE_P2PKH, ETH_COIN, 2532356],
         n: 3,
       };
       const addrs: any = await client.getAddresses(req);
@@ -359,13 +354,12 @@ describe('Test Wallet Jobs', () => {
         addresses: addrs,
       };
       const jobData = {
-        parent: {
-          pathDepth: 2,
-          purpose: req.startPath[0],
-          coin: req.startPath[1],
+        path: {
+          pathDepth: 3,
+          idx: req.startPath,
         },
         count: req.n,
-        first: req.startPath[2],
+        iterIdx: 2,
       };
       validateETHAddresses(resp, jobData, origWalletSeed);
     });
@@ -385,15 +379,12 @@ describe('Test Wallet Jobs', () => {
           addresses: addrs,
         };
         const jobData = {
-          parent: {
-            pathDepth: 4,
-            purpose: req.startPath[0],
-            coin: req.startPath[1],
-            account: req.startPath[2],
-            change: req.startPath[3],
+          path: {
+            pathDepth: 5,
+            idx: req.startPath,
           },
           count: req.n,
-          first: req.startPath[4],
+          iterIdx: 4,
         };
         validateBTCAddresses(resp, jobData, origWalletSeed);
       }
@@ -451,6 +442,7 @@ describe('Test Wallet Jobs', () => {
         );
       }
     });
+
   });
 
   describe('signTx', () => {

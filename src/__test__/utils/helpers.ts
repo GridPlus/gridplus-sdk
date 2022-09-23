@@ -467,6 +467,15 @@ export const stringifyPath = (parent) => {
       ? `${parent - HARDENED_OFFSET}'`
       : `${parent}`;
   };
+  if (parent.idx) {
+    // BIP32 style encoding
+    let s = 'm';
+    for (let i = 0; i < parent.pathDepth; i++) {
+      s += `/${convert(parent.idx[i])}`
+    }
+    return s;
+  }
+
   let d = parent.pathDepth;
   let s = 'm';
   if (d <= 0) return s;
@@ -513,19 +522,13 @@ export const getPathStr = function (path) {
 export const serializeGetAddressesJobData = function (data) {
   const req = Buffer.alloc(33);
   let off = 0;
-  req.writeUInt32LE(data.parent.pathDepth, off);
+  req.writeUInt32LE(data.path.pathDepth, off);
   off += 4;
-  req.writeUInt32LE(data.parent.purpose, off);
-  off += 4;
-  req.writeUInt32LE(data.parent.coin, off);
-  off += 4;
-  req.writeUInt32LE(data.parent.account, off);
-  off += 4;
-  req.writeUInt32LE(data.parent.change, off);
-  off += 4;
-  req.writeUInt32LE(data.parent.addr, off);
-  off += 4;
-  req.writeUInt32LE(data.first, off);
+  for (let i = 0; i < 5; i++) {
+    req.writeUInt32LE(i < data.path.pathDepth ? data.path.idx[i] : 0, off);
+    off += 4;
+  }
+  req.writeUInt32LE(data.iterIdx, off);
   off += 4;
   req.writeUInt32LE(data.count, off);
   off += 4;
@@ -565,14 +568,13 @@ export const validateBTCAddresses = function (
 ) {
   expect(resp.count).toEqual(jobData.count);
   const wallet = bip32.fromSeed(seed);
-  const path = JSON.parse(JSON.stringify(jobData.parent));
-  path.pathDepth = jobData.parent.pathDepth + 1;
+  const path = JSON.parse(JSON.stringify(jobData.path));
   const network =
     useTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.mainnet;
-  for (let i = jobData.first; i < jobData.first + jobData.count; i++) {
-    path.addr = i;
+  for (let i = 0; i < jobData.count; i++) {
+    path.idx[jobData.iterIdx] = jobData.path.idx[jobData.iterIdx] + i;
     // Validate the address
-    const purpose = jobData.parent.purpose;
+    const purpose = jobData.path.idx[0];
     const pubkey = wallet.derivePath(stringifyPath(path)).publicKey;
     let address;
     if (purpose === BTC_PURPOSE_P2WPKH) {
@@ -588,7 +590,7 @@ export const validateBTCAddresses = function (
       // This is the default and any unrecognized purpose will yield a legacy address.
       address = bitcoin.payments.p2pkh({ pubkey, network }).address;
     }
-    expect(address).toEqual(resp.addresses[i - jobData.first]);
+    expect(address).toEqual(resp.addresses[i]);
   }
 };
 
@@ -599,13 +601,12 @@ export const validateETHAddresses = function (resp, jobData, seed) {
   expect(resp.addresses[0].length).toEqual(42);
   // Confirm we can derive the same address from the previously exported seed
   const wallet = bip32.fromSeed(seed);
-  const path = JSON.parse(JSON.stringify(jobData.parent));
-  path.pathDepth = jobData.parent.pathDepth + 1;
-  for (let i = jobData.first; i < jobData.first + jobData.count; i++) {
-    path.addr = i;
+  const path = JSON.parse(JSON.stringify(jobData.path));
+  for (let i = 0; i < jobData.count; i++) {
+    path.idx[jobData.iterIdx] = jobData.path.idx[jobData.iterIdx] + i;
     const priv = wallet.derivePath(stringifyPath(path)).privateKey;
     const addr = `0x${privateToAddress(priv).toString('hex')}`;
-    expect(addr).toEqual(resp.addresses[i - jobData.first]);
+    expect(addr).toEqual(resp.addresses[i]);
   }
 };
 
