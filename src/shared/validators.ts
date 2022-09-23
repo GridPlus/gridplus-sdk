@@ -1,6 +1,7 @@
 import { UInt4 } from 'bitwise/types';
 import { MAX_ADDR, encReqCodes, EMPTY_WALLET_UID, ASCII_REGEX } from '../constants';
 import { isUInt4, checksum } from '../util';
+import isEmpty from 'lodash/isEmpty'
 
 export const validateValueExists = (arg: { [key: string]: any }) => {
   const [key, [, value]] = Object.entries(arg);
@@ -206,9 +207,18 @@ export const validateRequestLength = (req: any, fwConstants: FirmwareConstants) 
 }
 
 export const isValidBlockExplorerResponse = (data: any) => {
-  return data.result?.length > 0;
-}
+  try {
+    const result = JSON.parse(data.result);
+    return !isEmpty(result);
+  } catch (err) {
+    return false;
+  }
+};
 
 export const isValid4ByteResponse = (data: any) => {
-  return data.results?.length > 0;
-}
+  try {
+    return !isEmpty(data.results);
+  } catch (err) {
+    return false;
+  }
+};

@@ -8,6 +8,10 @@ import {
   validateSignRequest,
 } from '../../functions';
 import {
+  isValidBlockExplorerResponse,
+  isValid4ByteResponse,
+} from '../../shared/validators';
+import {
   buildGetAddressesObject,
   buildValidateConnectObject,
   buildValidateRequestObject,
@@ -123,6 +127,50 @@ describe('validators', () => {
       expect(() =>
         validateSignRequest(validateSignRequestBundle),
       ).toThrowError();
+    });
+  });
+
+  describe('abi data responses', () => {
+    describe('block explorers', () => {
+      test('should successfully validate etherscan data', () => {
+        const response: any = {
+          result:
+            '[{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"stateMutability":"payable","type":"fallback"},{"inputs":[],"name":"implementation","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"stateMutability":"payable","type":"receive"}]',
+        };
+        expect(isValidBlockExplorerResponse(response)).toBe(true);
+      });
+
+      test('should validate as false bad data', () => {
+        const response: any = {
+          result:
+            'Max rate limit reached, please use API Key for higher rate limit',
+        };
+        expect(isValidBlockExplorerResponse(response)).toBe(false);
+      });
+    });
+
+    describe('4byte', () => {
+      test('should successfully validate etherscan data', () => {
+        const response: any = {
+          results: [
+            {
+              id: 447919,
+              created_at: '2021-12-25T13:54:33.120581Z',
+              text_signature: 'multicall(uint256,bytes[])',
+              hex_signature: '0x5ae401dc',
+              bytes_signature: 'test',
+            },
+          ],
+        };
+        expect(isValid4ByteResponse(response)).toBe(true);
+      });
+
+      test('should validate as false bad data', () => {
+        const response: any = {
+          results: [],
+        };
+        expect(isValid4ByteResponse(response)).toBe(false);
+      });
     });
   });
 });
