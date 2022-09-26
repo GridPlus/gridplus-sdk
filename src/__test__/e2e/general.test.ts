@@ -41,7 +41,7 @@ const id = getDeviceId();
 
 describe('General', () => {
   const client = initializeClient();
-  
+
   it('Should test SDK dehydration/rehydration', async () => {
     const addrData = {
       startPath: [BTC_PURPOSE_P2SH_P2WPKH, BTC_COIN, HARDENED_OFFSET, 0, 0],
