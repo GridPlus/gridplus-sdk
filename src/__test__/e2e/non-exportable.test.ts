@@ -21,6 +21,8 @@ import { DEFAULT_SIGNER } from '../utils/builders';
 import { getSigStr } from '../utils/helpers';
 import { initializeClient } from '../utils/initializeClient';
 
+let runTests = true;
+
 describe('Non-Exportable Seed', () => {
   const client = initializeClient();
 
@@ -31,15 +33,18 @@ describe('Non-Exportable Seed', () => {
         'Do you have a non-exportable SafeCard seed loaded and wish to continue? (Y/N) ',
       );
       if (result.toLowerCase() !== 'y') {
-        console.log(
-          '\nTest must be run with a SafeCard loaded with a non-exportable seed.\n',
-        );
-        process.exit(1);
+        runTests = false;
       }
     });
   });
 
   describe('Test non-exportable seed on SafeCard', () => {
+    beforeEach(() => {
+      expect(runTests).to.equal(
+        true, 
+        'Skipping tests due to lack of non-exportable seed SafeCard.'
+      );
+    })
     it('Should test that ETH transaction sigs differ and validate on secp256k1', async () => {
       // Test ETH transactions
       const tx = EthTxFactory.fromTxData(
