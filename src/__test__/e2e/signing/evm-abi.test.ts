@@ -60,34 +60,34 @@ describe('[EVM ABI]', () => {
 
 
   describe('[EVM] Test decoders', () => {
+    const runAbiDecoderTest = (overrides: any, ...params: any) =>
+      runEvmTestForReq(
+        {
+          data: {
+            payload: null,
+            signerPath: DEFAULT_SIGNER,
+          },
+          currency: undefined,
+          txData: {
+            gasPrice: 1200000000,
+            nonce: 0,
+            gasLimit: 50000,
+            to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+            value: 100,
+            data: null,
+          },
+          ...overrides,
+        },
+        ...params,
+      );
+
     beforeAll(() => {
       // Silence warnings, which will be thrown when you provide a 
       // chainID=-1, which forces fallback to 4byte in certain tests
       console.warn = vi.fn()
     })
 
-    describe('Test ABI decoder vectors', async () => {
-      const runAbiDecoderTest = (overrides: any, ...params: any) =>
-        runEvmTestForReq(
-          {
-            data: {
-              payload: null,
-              signerPath: DEFAULT_SIGNER,
-            },
-            currency: undefined,
-            txData: {
-              gasPrice: 1200000000,
-              nonce: 0,
-              gasLimit: 50000,
-              to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-              value: 100,
-              data: null,
-            },
-            ...overrides,
-          },
-          ...params,
-        );
-
+    describe('Test ABI decoding on real (mainnet) tx vectors', async () => {
       // Validate that we can decode using Etherscan ABI info as well as 4byte canonical names.
       for (let i = 0; i < vectors.etherscanTxHashes.length; i++) {
         // Hashes on ETH mainnet that we will use to fetch full tx and ABI data with
@@ -104,12 +104,17 @@ describe('[EVM ABI]', () => {
         }
         const tx = await fetch(getTxUrl).then(res => res.json()).then((res) => res.result);
         const txData = { data: tx.input, ...tx };
+        let etherscanFailed = false;
         if (!etherscanKey) {
           // Need a timeout between requests if we don't have a key
           console.warn(
             'WARNING: No env.ETHERSCAN_KEY provided. Waiting 5s between requests...',
           );
           await new Promise((resolve) => setTimeout(resolve, 5000));
+        } else {
+          // Wait 1s between etherscan requests if there is a key.
+          // Some of these are nested and require multiple follow ups
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         }
 
         it(`Etherscan #${i} ${txHash.slice(0, 8)}...`, async () => {
@@ -118,8 +123,10 @@ describe('[EVM ABI]', () => {
             tx.input,
             tx.to,
             1,
+            true
           );
           if (!def) {
+            etherscanFailed = true;
             throw new Error(
               `ERROR: Failed to decode ABI definition (${txHash}). Skipping.`,
             );
@@ -129,40 +136,56 @@ describe('[EVM ABI]', () => {
         });
 
         it(`4byte #${i} ${txHash.slice(0, 8)}...`, async () => {
+          if (etherscanFailed) {
+            throw new Error(
+              'ERROR: Etherscan request failed. Cannot execute corresponding 4byte test. Skipping.'
+            )
+          }
           // 4. Get the canonical name from 4byte by using an unsupported chainId
-          const { def } = await fetchCalldataDecoder(tx.input, tx.to, -1);
+          const { def } = await fetchCalldataDecoder(tx.input, tx.to, -1, true);
           await runAbiDecoderTest({ txData, data: { decoder: def } });
         });
       }
+    })
 
-      // Validate a series of canonical definitions
-      for (let i = 0; i < vectors.canonicalNames.length; i++) {
-        it(`(Canonical #${i}) ${vectors.canonicalNames[i]}`, async () => {
-          const req = buildEvmReq({
-            data: { decoder: encDefs[i] },
-            txData: { data: encDefsCalldata[i] },
-          });
+    // Validate a series of canonical definitions
+    const setSz = 10;
+    const maxVec = vectors.canonicalNames.length
+    const canonicalSets = Math.ceil(maxVec / setSz);
+    for (let i = 0; i < canonicalSets; i++){ 
+      describe(`Test ABI decoding on canonical tx vectors (Set #${i+1}/${canonicalSets})`, async () => {
+        for (let j = 0; j < setSz; j++) {
+          const idx = (i * setSz) + j;
+          if (idx < maxVec) {
+            it(`(Canonical #${idx}/${maxVec}) ${vectors.canonicalNames[idx]}`, async () => {
+              const req = buildEvmReq({
+                data: { decoder: encDefs[idx] },
+                txData: { data: encDefsCalldata[idx] },
+              });
+              // The following prints are helpful for debugging.
+              // If you are testing changes to the ABI decoder in firmware, you
+              // should uncomment these prints and validate that the `data` matches
+              // what you see on the screen for each case. Please scroll through
+              // ALL the data on the Lattice to confirm each param has properly decoded.
+              // const { types, data } = convertDecoderToEthers(rlpDecode(req.data.decoder).slice(1));
+              // console.log('types', types)
+              // console.log('params', JSON.stringify(data))
+              // for (let cd = 2; cd < calldata.length; cd += 64) {
+              //   console.log(calldata.slice(cd, cd + 64));
+              // }
+              await runAbiDecoderTest(req);
+            });
+          }
+        }
+      })
+    }
 
-          // The following prints are helpful for debugging.
-          // If you are testing changes to the ABI decoder in firmware, you
-          // should uncomment these prints and validate that the `data` matches
-          // what you see on the screen for each case. Please scroll through
-          // ALL the data on the Lattice to confirm each param has properly decoded.
-          // const { types, data } = convertDecoderToEthers(rlpDecode(req.data.decoder).slice(1));
-          // console.log('types', types)
-          // console.log('params', JSON.stringify(data))
-          // for (let cd = 2; cd < calldata.length; cd += 64) {
-          //   console.log(calldata.slice(cd, cd + 64));
-          // }
-          await runAbiDecoderTest(req);
-        });
-      }
-      /*
-      NOTE: The CRUD API to manage calldata decoders is written, but is currently
-      compiled out of firmware to free up code space. For now we will leave
-      these tests commented out and may re-enable them at a later date
-      NOTE: You will need to re-enable `import { question } from 'readline-sync';`
-
+    /*
+    NOTE: The CRUD API to manage calldata decoders is written, but is currently
+    compiled out of firmware to free up code space. For now we will leave
+    these tests commented out and may re-enable them at a later date
+    NOTE: You will need to re-enable `import { question } from 'readline-sync';`
+    descrube('Test ABI CRUD API', async () => {
       // Test committing decoder data
       it('Should save the first 10 defs', async () => {
         const decoderType = Calldata.EVM.type;
@@ -277,7 +300,7 @@ describe('[EVM ABI]', () => {
         req.data.decoder = encDefs[9];
         await runEvm(req, true);
       });
-      */
-    });
+    })
+    */
   });
 });
