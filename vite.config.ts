@@ -6,7 +6,7 @@ export default defineConfig(() => {
       coverage: {
         reporter: ['lcov'],
       },
-      update: false,
+      update: true, // SHOULD BE FALSE MOST OF THE TIME
       reporters: ['default'],
       globals: true,
       testTimeout: 120000,

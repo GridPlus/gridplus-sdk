@@ -1,7 +1,7 @@
 interface GetAddressesRequestParams {
   startPath: number[];
   n: number;
-  flag?: number;
+  flag?: 3 | 4;
 }
 
 interface GetAddressesRequestFunctionParams extends GetAddressesRequestParams {
