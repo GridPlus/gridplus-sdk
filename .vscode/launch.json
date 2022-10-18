@@ -65,6 +65,16 @@
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "envFile": "${workspaceFolder}/.env",
+      "name": "E2E Tests - Solana",
+      "request": "launch",
+      "runtimeArgs": ["run-script", "e2e-sign-solana"],
+      "runtimeExecutable": "npm",
+      "type": "node"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
       "name": "E2E Tests - Key-Value",
       "request": "launch",
       "runtimeArgs": ["run-script", "e2e-kv"],
