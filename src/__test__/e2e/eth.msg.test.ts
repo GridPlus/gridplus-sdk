@@ -117,6 +117,7 @@ describe('ETH Messages', () => {
   });
 
   describe('Test ETH EIP712', function () {
+    
     it('Should test a message that needs to be prehashed', async () => {
       const msg = {
         types: {
@@ -139,6 +140,67 @@ describe('ETH Messages', () => {
         message: {
           action: 'dYdX STARK Key',
           onlySignOn: randomBytes(4000).toString('hex'),
+        },
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
+    
+    it('Should test an example from Blur NFT w/ 0 fees', async () => {
+      const msg = {
+        types: {
+          EIP712Domain: [
+            { name: 'name', type: 'string' },
+            { name: 'host', type: 'string' },
+            { name: 'version', type: 'string' },
+            { name: 'chainId', type: 'uint256' },
+            { name: 'verifyingContract', type: 'address' },
+          ],
+          Fee: [
+            { name: 'rate', type: 'uint256' },
+            { name: 'recipient', type: 'address' },
+          ],
+          Message: [
+            { name: 'trader', type: 'address' },
+            { name: 'side', type: 'uint256' },
+            { name: 'matchingPolicy', type: 'address' },
+            { name: 'collection', type: 'address' },
+            { name: 'tokenId', type: 'uint256' },
+            { name: 'amount', type: 'uint256' },
+            { name: 'paymentToken', type: 'address' },
+            { name: 'price', type: 'uint256' },
+            { name: 'listingTime', type: 'uint256' },
+            { name: 'expirationTime', type: 'uint256' },
+            { name: 'salt', type: 'uint256' },
+            { name: 'extraParams', type: 'bytes' },
+            { name: 'nonce', type: 'uint256' },
+            { name: 'fees', type: 'Fee[]'},
+          ],
+        },
+        domain: {
+          name: 'Blur',
+          verifyingContract: '0x0',
+          version: '1',
+          chainId: '',
+          host: '',
+        },
+        primaryType: 'Message',
+        message: {
+          trader: '0xfc92dff6d9519c79782e0d345915c441cf5ac41f',
+          side: '1',
+          matchingPolicy: '0x00000000006411739da1c40b106f8511de5d1fac',
+          collection: '0x7a15b36cb834aea88553de69077d3777460d73ac',
+          tokenId: '5280336779268220421569573059971679349075200194886069432279714075018412552192',
+          amount: '1',
+          paymentToken: '0x0000000000000000000000000000000000000000',
+          price: '990000000000000000',
+          listingTime: '1666370346',
+          expirationTime: '1666975146',
+          salt: '64535264870076277194623607183653108264',
+          extraParams: '0x',
+          nonce: '0',
+          fees: [
+            // { rate: 1, recipient: '0x00000000006411739da1c40b106f8511de5d1fac'}
+          ],
         },
       };
       await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
@@ -1208,5 +1270,6 @@ describe('ETH Messages', () => {
         });
       }
     });
+
   });
 });
