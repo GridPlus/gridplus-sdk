@@ -79,7 +79,6 @@ export async function sign ({
   );
 
   client.ephemeralPub = newEphemeralPub;
-
   const transaction = decodeSignResponse({
     data: decryptedData,
     request,
