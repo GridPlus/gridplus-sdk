@@ -53,7 +53,7 @@ describe('[BLS]', () => {
   it('Should get the current wallet seed', async () => {
     seed = await initializeSeed(client);
   })
-
+/*
   // Test first 5 deposit keys
   for (let i = 0; i < N; i++) {
     const pathIdx = DEPOSIT_PATH_IDX;
@@ -70,4 +70,16 @@ describe('[BLS]', () => {
       await testBLSDerivationAndSig(pathIdx);
     })
   }
+*/
+  it('Should export encrypted withdrawal private key', async () => {
+    const req = {
+      schema: Constants.ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335,
+      params: {
+        path: WITHDRAWAL_PATH_IDX,
+        c: 21704,
+      }
+    }
+    const encData = await client.exportEncryptedData(req);
+    console.log('encData', encData)
+  })
 })

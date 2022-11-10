@@ -7,6 +7,7 @@ import {
 import {
   addKvRecords,
   connect,
+  exportEncData,
   fetchActiveWallet,
   getAddresses,
   getKvRecords,
@@ -201,6 +202,16 @@ export class Client {
     ids = [],
   }: RemoveKvRecordsRequestParams): Promise<Buffer> {
     return this.retryWrapper(removeKvRecords, { type, ids, })
+  }
+
+  /**
+   * Takes a starting path and a number to get the addresses associated with the active wallet.
+   * @category Lattice
+   */
+  public async exportEncryptedData (
+    params: ExportEncDataRequest
+  ): Promise<ExportEncDataResponseData> {
+    return this.retryWrapper(exportEncData, params)
   }
 
   /** Get the active wallet */
