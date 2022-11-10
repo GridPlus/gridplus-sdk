@@ -69,6 +69,7 @@ You can run the following tests with `npm run <test name>`.
 | `e2e-kv` | Tests KV-files, which are used primarily for tags. | No |
 | `e2e-ne` | Tests non-exportable seeded SafeCards (legacy). | No |
 | `e2e-sign` | Runs all signing tests. | Yes |
+| `e2e-sign-bls` | Tests BLS signatures and key derivations. | Yes |
 | `e2e-sign-determinism` | Tests determinism of signatures using known seed loading. | Yes |
 | `e2e-sign-evm-abi` | Tests ABI decoding and fetching for EVM transactions. | Yes |
 | `e2e-sign-evm-tx` | Tests EVM transaction types. | Yes |
