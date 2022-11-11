@@ -339,6 +339,7 @@ export const EXTERNAL = {
   GET_ADDR_FLAGS: {
     SECP256K1_PUB: 3,
     ED25519_PUB: 4,
+    BLS12_381_G1_PUB: 5,
   },
   // Options for building general signing requests
   SIGNING: {
@@ -350,6 +351,7 @@ export const EXTERNAL = {
     CURVES: {
       SECP256K1: 0,
       ED25519: 1,
+      BLS12_381_G2: 2,
     },
     ENCODINGS: {
       NONE: 1,
@@ -527,6 +529,13 @@ function getFwVersionConst (v: Buffer): FirmwareConstants {
       reserved: 2895728,
       maxSz: 1024,
     };
+  }
+
+  // --- V0.17.X ---
+  // V0.17.0 added support for BLS12-381-G1 pubkeys and G2 sigs
+  if (!legacy && gte(v, [0, 17, 0])) {
+    c.getAddressFlags.push(EXTERNAL.GET_ADDR_FLAGS.BLS12_381_G1_PUB);
+    c.iterIdxAllowed = true;
   }
 
   return c;

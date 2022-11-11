@@ -19,12 +19,12 @@ import { Constants } from `gridplus-sdk`
 
 ## 🖊️ Requesting Signatures
 
-General signing allows you to request a signature on any message from a private key derived on any supported curve. Some curves (e.g. `secp256k1`) require a hashing algorithm to be specified in order to hash the message before signing. Other curves (e.g. `ed25519`) do not expect hashed messages prior to signing.
+General signing allows you to request a signature on any message from a private key derived on any supported curve. Some curves (e.g. `secp256k1`) require a hashing algorithm to be specified in order to hash the message before signing. Other curves (e.g. `ed25519`, `bls12_381`) do not expect hashed messages prior to signing.
 
 | Param | Location in `Constants` | Options | Description |
 |:------|:------------------------|:--------|:------------|
-| Curve | `Constants.SIGNING.CURVES` | `SECP256K1`, `ED25519` | Curve on which to derive the signer's private key |
-| Hash | `Constants.SIGNING.HASHES` | `KECCAK256`, `SHA256`, `NONE` | Hash to use prior to signing. Note that `ED25519` requires `NONE` as messages are not prehashed. |
+| Curve | `Constants.SIGNING.CURVES` | `SECP256K1`, `ED25519`, `BLS12_381_G2` | Curve on which to derive the signer's private key |
+| Hash | `Constants.SIGNING.HASHES` | `KECCAK256`, `SHA256`, `NONE` | Hash to use prior to signing. Note that `ED25519` and `BLS12_381_G2` require `NONE` as messages are not prehashed. |
 
 ### Example: using generic signing
 
