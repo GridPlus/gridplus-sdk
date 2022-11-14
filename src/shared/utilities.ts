@@ -1,3 +1,5 @@
+import { HARDENED_OFFSET } from '../constants';
+
 /**
  * Get 64 bytes representing the public key This is the uncompressed key without the leading 04
  * byte
@@ -89,4 +91,20 @@ export const isFWSupported = (
     (major >= _major && minor > _minor) ||
     (major >= _major && minor >= _minor && fix >= _fix)
   );
+};
+
+/**
+ * Convert a set of BIP39 path indices to a string
+ * @param path - Set of indices
+ */
+export const getPathStr = function (path) {
+  let pathStr = 'm';
+  path.forEach((idx) => {
+    if (idx >= HARDENED_OFFSET) {
+      pathStr += `/${idx - HARDENED_OFFSET}'`;
+    } else {
+      pathStr += `/${idx}`;
+    }
+  });
+  return pathStr;
 };

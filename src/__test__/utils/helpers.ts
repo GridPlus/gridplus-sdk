@@ -17,9 +17,9 @@ import {
 } from '../../constants';
 import { Constants } from '../..';
 
-// import { Client } from '../../../client/index';
 import { getV, parseDER, randomBytes } from '../../util';
 import { Client } from '../../client';
+import { getPathStr } from '../../shared/utilities'
 import { TypedTransaction } from '@ethereumjs/tx';
 import { getEnv } from './getters';
 const SIGHASH_ALL = 0x01;
@@ -504,18 +504,6 @@ export const stringifyPath = (parent) => {
   if (parent.addr !== undefined) s += `/${convert(parent.addr)}`;
   d--;
   return s;
-};
-
-export const getPathStr = function (path) {
-  let pathStr = 'm';
-  path.forEach((idx) => {
-    if (idx >= HARDENED_OFFSET) {
-      pathStr += `/${idx - HARDENED_OFFSET}'`;
-    } else {
-      pathStr += `/${idx}`;
-    }
-  });
-  return pathStr;
 };
 
 //---------------------------------------------------

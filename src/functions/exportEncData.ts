@@ -2,6 +2,8 @@
  * Export encrypted data from the Lattice. Data must conform
  * to known schema, e.g. EIP2335 derived privkey export.
  */
+import { v4 as uuidV4 } from 'uuid';
+
 import {
   decResLengths,
   EXTERNAL,
@@ -11,6 +13,7 @@ import {
   encryptRequest,
   request,
 } from '../shared/functions';
+import { getPathStr } from '../shared/utilities';
 import {
   validateFwVersion,
   validateSharedSecret,
@@ -28,6 +31,7 @@ const ENC_DATA_RESP_SZ = {
     SALT: 32,
     CHECKSUM: 32,
     IV: 16,
+    PUBKEY: 48,
   }
 }
 
@@ -48,7 +52,7 @@ export async function exportEncData (req: ExportEncDataRequestFunctionParams): P
     req.client.sharedSecret,
   );
   req.client.ephemeralPub = newEphemeralPub;
-  return decodeExportEncData(decryptedData, req.schema);
+  return decodeExportEncData(decryptedData, req);
 }
 
 export const validateExportEncDataRequest = (req: ExportEncDataRequestFunctionParams): EIP2335KeyExportReq => {
@@ -64,11 +68,9 @@ export const validateExportEncDataRequest = (req: ExportEncDataRequestFunctionPa
     throw new Error('Firmware version >=v0.17.0 is required for encrypted data export.');
   }
   // Validate params depending on what type of data is being exported
-  if (schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335) {
+  if (schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
     // EIP2335 key export
     validateStartPath(params.path);
-    // Set the kdf to the only currently allowable type
-    params.kdf = ENC_DATA.KDF.PBKDF;
     // Set the wallet UID to the client's current active wallet
     params.walletUID = wallet.uid;
     // Return updated params
@@ -86,20 +88,20 @@ export const encodeExportEncDataRequest = (
   let off = 0;
   payload.writeUInt8(schema, off);
   off += 1;
-  if (schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335) {
+  if (schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
     params.walletUID.copy(payload, off);
     off += params.walletUID.length;
     payload.writeUInt8(params.path.length, off);
     off += 1;
     for (let i = 0; i < 5; i++) {
       if (i <= params.path.length) {
-        payload.writeUInt32LE(params.path[i] ?? 0, off);
+        payload.writeUInt32LE(params.path[i], off);
       }
       off += 4;
     }
-    payload.writeUInt8(params.kdf, off);
-    off += 1;
-    payload.writeUint32LE(params.c, off);
+    if (params.c) {
+      payload.writeUInt32LE(params.c, off)
+    }
     off += 4;
     return payload;
   } else {
@@ -118,14 +120,14 @@ export const encryptExportEncDataRequest = ({
   });
 }
 
-export const decodeExportEncData = (data: Buffer, schema: number): ExportEncDataResponseData => {
+export const decodeExportEncData = (data: Buffer, req: ExportEncDataRequestFunctionParams): any => {
   let off = 65; // Skip 65 byte pubkey prefix
   const resp = {} as ExportEncDataResponseData;
-  if (schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335) {
+  if (req.schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
     const respData = {} as EIP2335KeyExportData;
-    const { CIPHERTEXT, SALT, CHECKSUM, IV } = ENC_DATA_RESP_SZ.EIP2335;
+    const { CIPHERTEXT, SALT, CHECKSUM, IV, PUBKEY } = ENC_DATA_RESP_SZ.EIP2335;
     const expectedSz =  4 + // iterations = u32
-                        CIPHERTEXT +  SALT + CHECKSUM + IV;
+                        CIPHERTEXT +  SALT + CHECKSUM + IV + PUBKEY;
     const dataSz = data.readUInt32LE(off);
     off += 4;
     if (dataSz !== expectedSz) {
@@ -141,9 +143,50 @@ export const decodeExportEncData = (data: Buffer, schema: number): ExportEncData
     off += CHECKSUM;
     respData.iv = data.slice(off, off + IV);
     off += IV;
+    respData.pubkey = data.slice(off, off + PUBKEY);
+    off += PUBKEY;
     resp.data = respData;
-    return resp;
+    return formatEIP2335ExportData(resp, req.params.path);
   } else {
     throw new Error(ENC_DATA_ERR_STR);
+  }
+}
+
+const formatEIP2335ExportData = (resp: EIP2335KeyExportData, path: number[]): any => {
+  try {
+    const { iterations, salt, checksum, iv, cipherText, pubkey } = resp.data;
+    return {
+      'version': 4,
+      'uuid': uuidV4(),
+      'path': getPathStr(path),
+      'pubkey': pubkey.toString('hex'),
+      'crypto': {
+        'kdf': {
+          'function': 'pbkdf2',
+          'params': {
+            'dklen': 32,
+            'c': iterations,
+            'prf': 'hmac-sha256',
+            'salt': salt.toString('hex'),
+          },
+          'message': ''
+        },
+        'checksum': {
+          'function': 'sha256',
+          'params': {},
+          'message': checksum.toString('hex'),
+        },
+        'cipher': {
+          'function': 'aes-128-ctr',
+          'params': {
+            'iv': iv.toString('hex'),
+          },
+          'message': cipherText.toString('hex')
+        }
+      }
+    };
+  } catch (err) {
+    console.log('err?', err)
+    throw Error('Failed to format EIP2335 return data: ', err);
   }
 }

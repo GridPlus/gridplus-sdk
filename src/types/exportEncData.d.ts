@@ -20,8 +20,5 @@ interface EIP2335KeyExportData {
   salt: Buffer;
   checksum: Buffer;
   iv: Buffer;
-}
-
-interface ExportEncDataResponseData {
-  data: EIP2335KeyExportData; // NOTE: This is a union, but only one type of request exists currently
+  pubkey: Buffer;
 }

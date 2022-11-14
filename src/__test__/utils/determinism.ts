@@ -6,9 +6,8 @@ import { keccak256 } from 'js-sha3';
 import { Client } from '../../client';
 import { TestRequestPayload } from '../../types/utils';
 import { buildTestRequestPayload } from './builders';
-import {
-  ethPersonalSignMsg, getPathStr, getSigStr, jobTypes
-} from './helpers';
+import { ethPersonalSignMsg, getSigStr, jobTypes } from './helpers';
+import { getPathStr } from '../../shared/utilities';
 
 
 const TEST_MNEMONIC =

@@ -373,11 +373,8 @@ export const EXTERNAL = {
   // Options for exporting encrypted data
   ENC_DATA: {
     SCHEMAS: {
-      BLS_KEYSTORE_EIP2335: 0,
+      BLS_KEYSTORE_EIP2335_PBKDF_V4: 0,
     },
-    KDF: {
-      PBKDF: 0,
-    }
   }
 };
 
