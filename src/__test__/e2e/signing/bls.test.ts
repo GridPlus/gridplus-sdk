@@ -98,7 +98,7 @@ describe('[BLS]', () => {
   it('Should get the current wallet seed', async () => {
     seed = await initializeSeed(client);
   })
-/*
+
   // Test first 5 deposit keys
   for (let i = 0; i < N; i++) {
     const pathIdx = DEPOSIT_PATH_IDX;
@@ -115,7 +115,7 @@ describe('[BLS]', () => {
       await testBLSDerivationAndSig(pathIdx);
     })
   }
-*/
+
   it('Should export encrypted withdrawal private keys', async () => {
     const req = {
       schema: Constants.ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4,
@@ -124,11 +124,13 @@ describe('[BLS]', () => {
         c: 999, // if this is not specified, the default value will be used
       }
     }
+    // Get the device's encryption password
+    const pw = await question(
+      'Enter your Lattice encryption password: '
+    );
+
     let encData;
     // Test custom iteration count (c)
-    const pw = await question(
-      'Enter the password you wish to use for the next 4 tests: '
-    )
     encData = await client.exportEncryptedData(req);
     await validateExportedKeystore(req.params.path, pw, encData);
     // Test different paths
@@ -142,11 +144,5 @@ describe('[BLS]', () => {
     req.params.c = undefined;
     encData = await client.exportEncryptedData(req);
     await validateExportedKeystore(req.params.path, pw, encData);
-    // Test absence of password
-    req.params.c = 1000;
-    question('Do NOT use a password for the next request. Press enter to continue.')
-    encData = await client.exportEncryptedData(req);
-    await validateExportedKeystore(req.params.path, '', encData);
-
   })
 })
