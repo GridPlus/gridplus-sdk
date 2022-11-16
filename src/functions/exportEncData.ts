@@ -35,7 +35,7 @@ const ENC_DATA_RESP_SZ = {
   }
 }
 
-export async function exportEncData (req: ExportEncDataRequestFunctionParams): Promise<ExportEncDataResponseData> {
+export async function exportEncData (req: ExportEncDataRequestFunctionParams): Promise<Buffer> {
   const params = validateExportEncDataRequest(req);
   const payload = encodeExportEncDataRequest(req.schema, params);
   const encryptedPayload = encryptExportEncDataRequest({
@@ -120,9 +120,8 @@ export const encryptExportEncDataRequest = ({
   });
 }
 
-export const decodeExportEncData = (data: Buffer, req: ExportEncDataRequestFunctionParams): any => {
+export const decodeExportEncData = (data: Buffer, req: ExportEncDataRequestFunctionParams): Buffer => {
   let off = 65; // Skip 65 byte pubkey prefix
-  const resp = {} as ExportEncDataResponseData;
   if (req.schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
     const respData = {} as EIP2335KeyExportData;
     const { CIPHERTEXT, SALT, CHECKSUM, IV, PUBKEY } = ENC_DATA_RESP_SZ.EIP2335;
@@ -145,17 +144,16 @@ export const decodeExportEncData = (data: Buffer, req: ExportEncDataRequestFunct
     off += IV;
     respData.pubkey = data.slice(off, off + PUBKEY);
     off += PUBKEY;
-    resp.data = respData;
-    return formatEIP2335ExportData(resp, req.params.path);
+    return formatEIP2335ExportData(respData, req.params.path);
   } else {
     throw new Error(ENC_DATA_ERR_STR);
   }
 }
 
-const formatEIP2335ExportData = (resp: EIP2335KeyExportData, path: number[]): any => {
+const formatEIP2335ExportData = (resp: EIP2335KeyExportData, path: number[]): Buffer => {
   try {
-    const { iterations, salt, checksum, iv, cipherText, pubkey } = resp.data;
-    return {
+    const { iterations, salt, checksum, iv, cipherText, pubkey } = resp;
+    return Buffer.from(JSON.stringify({
       'version': 4,
       'uuid': uuidV4(),
       'path': getPathStr(path),
@@ -184,9 +182,8 @@ const formatEIP2335ExportData = (resp: EIP2335KeyExportData, path: number[]): an
           'message': cipherText.toString('hex')
         }
       }
-    };
+    }));
   } catch (err) {
-    console.log('err?', err)
-    throw Error('Failed to format EIP2335 return data: ', err);
+    throw Error(`Failed to format EIP2335 return data: ${err.toString()}`);
   }
 }

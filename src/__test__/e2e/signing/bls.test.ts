@@ -59,7 +59,8 @@ async function testBLSDerivationAndSig(signerPath) {
   );
 }
 
-async function validateExportedKeystore(path, pw, exportedKeystore) {
+async function validateExportedKeystore(path, pw, expKeystoreBuffer) {
+  const exportedKeystore = JSON.parse(expKeystoreBuffer.toString());
   const priv = deriveSeedTree(seed, buildPath(path));
   const pub = getPublicKey(priv);
 

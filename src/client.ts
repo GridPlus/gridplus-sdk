@@ -210,7 +210,7 @@ export class Client {
    */
   public async exportEncryptedData (
     params: ExportEncDataRequest
-  ): Promise<ExportEncDataResponseData> {
+  ): Promise<Buffer> {
     return this.retryWrapper(exportEncData, params)
   }
 
