@@ -23,6 +23,8 @@
         "0xc33308ca105630b99a0c24ddde4f4506aa4115ec6f1a25f1138f3bd8cfa32b49",
         //  proveAndClaimWithResolver(bytes,(bytes,bytes)[],bytes,address,address)
         "0xe15e6205c6696d444fc426468defdf08e89a0f5b3b8a17c68428f7aeefd53ca1",
+        // bulkTransfer(((uint8,address,uint256,uint256)[],address,bool)[],bytes32)
+        "0x6f0ba3cb3c08e0ee443e4b7a78e1397413762e63287e348829c18f287c5a457f",
         // RECURSIVE DEFS
         // multicall(bytes[])
         "0xf4c48f0300acb2982fe8861ffd9291634115a33dc4107a66b4f9f43efb66896b",
