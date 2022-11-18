@@ -8,6 +8,7 @@ You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
  */
 import { readFileSync } from 'fs';
 import { jsonc } from 'jsonc';
+import { NETWORKS_BY_CHAIN_ID} from '../../../constants'
 import { fetchCalldataDecoder } from '../../../util';
 import { buildEncDefs, buildEvmReq, DEFAULT_SIGNER } from '../../utils/builders';
 import { getEtherscanKey } from '../../utils/getters';
@@ -89,22 +90,24 @@ describe('[EVM ABI]', () => {
 
     describe('Test ABI decoding on real (mainnet) tx vectors', async () => {
       // Validate that we can decode using Etherscan ABI info as well as 4byte canonical names.
-      for (let i = 0; i < vectors.etherscanTxHashes.length; i++) {
+      for (let i = 0; i < vectors.publicTxHashes.length; i++) {
         // Hashes on ETH mainnet that we will use to fetch full tx and ABI data with
+        const info = vectors.publicTxHashes[i];
+        const chainInfo = NETWORKS_BY_CHAIN_ID[info.chainID];
         const getTxBase =
-          'https://api.etherscan.io/api?module=proxy&action=eth_getTransactionByHash&txhash=';
+          `${chainInfo.baseUrl}/api?module=proxy&action=eth_getTransactionByHash&txhash=`;
         // 1. First fetch the transaction details from etherscan. This is just to get
         // the calldata, so it would not be needed in a production environment
         // (since we already have the calldata).
-        const txHash = vectors.etherscanTxHashes[i];
+        const txHash = info.hash;
         let getTxUrl = `${getTxBase}${txHash}`;
         const etherscanKey = getEtherscanKey();
-        if (etherscanKey) {
+        if (etherscanKey && info.chainID === 1) {
           getTxUrl += `&apiKey=${etherscanKey}`;
         }
         const tx = await fetch(getTxUrl).then(res => res.json()).then((res) => res.result);
         const txData = { data: tx.input, ...tx };
-        let etherscanFailed = false;
+        const blockExplorerReqFailed = false;
         if (!etherscanKey) {
           // Need a timeout between requests if we don't have a key
           console.warn(
@@ -117,34 +120,45 @@ describe('[EVM ABI]', () => {
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
 
-        it(`Etherscan #${i} ${txHash.slice(0, 8)}...`, async () => {
-          // 2. Fetch the full ABI of the contract that the transaction interacted with.
+        it(`Public tx #${i} (${chainInfo.name}: ${txHash.slice(0, 8)}...)`, async () => {
+          // Some requests are marked such that we should skip pinging
+          // the relevant block explorer and should instead force a fallback
+          // to 4byte.
+          if (info.skipBlockExplorerReq) {
+            return;
+          }
+          // Fetch the full ABI of the contract that the transaction interacted with.
           const { def } = await fetchCalldataDecoder(
             tx.input,
             tx.to,
-            1,
+            info.chainID,
             true
           );
           if (!def) {
-            etherscanFailed = true;
+            if (info.ignoreBlockExplorerError) {
+              console.log('ignoring error')
+              return;
+            }
+            blockExplorerReqFailed = true;
             throw new Error(
               `ERROR: Failed to decode ABI definition (${txHash}). Skipping.`,
             );
           }
-          // 3. Test decoding using Etherscan ABI info
+          // Test decoding using Etherscan (or equivalent) ABI info
           await runAbiDecoderTest({ txData, data: { decoder: def } });
         });
 
-        it(`4byte #${i} ${txHash.slice(0, 8)}...`, async () => {
-          if (etherscanFailed) {
+        it(`Public tx #${i} q(4byte)`, async () => {
+          if (blockExplorerReqFailed) {
             throw new Error(
               'ERROR: Etherscan request failed. Cannot execute corresponding 4byte test. Skipping.'
-            )
-          }
-          // 4. Get the canonical name from 4byte by using an unsupported chainId
-          const { def } = await fetchCalldataDecoder(tx.input, tx.to, -1, true);
-          await runAbiDecoderTest({ txData, data: { decoder: def } });
-        });
+              )
+            }
+            // 4. Get the canonical name from 4byte by using an unsupported chainId
+            const { def } = await fetchCalldataDecoder(tx.input, tx.to, -1, true);
+            await runAbiDecoderTest({ txData, data: { decoder: def } });
+          });
+
       }
     })
 
@@ -158,6 +172,7 @@ describe('[EVM ABI]', () => {
           const idx = (i * setSz) + j;
           if (idx < maxVec) {
             it(`(Canonical #${idx}/${maxVec}) ${vectors.canonicalNames[idx]}`, async () => {
+              encDefsCalldata[idx] = '0x7a8555b900000000000000000000000038a1e0bf2745740c303fe4140397d157818a6e3c000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000026000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004d0200000000000000000000000000000000000000000000000000000000000000410000000000000000000000000000000000000000000000000000000000003a95000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000175800000000000000000000000000000000000000000000000000000000000000041254e600d62d2023c81f092c2f95951cc1e540c572230eb00d57e2ee613e44fb34ca84461f23fc8be1eea17a4c3c95c6c08fe1ba2c9cb55de326919947c9b947b1b00000000000000000000000000000000000000000000000000000000000000'
               const req = buildEvmReq({
                 data: { decoder: encDefs[idx] },
                 txData: { data: encDefsCalldata[idx] },
