@@ -48,7 +48,7 @@ export async function exportEncData (req: ExportEncDataRequestFunctionParams): P
   });
   const { decryptedData, newEphemeralPub } = decryptResponse(
     encryptedResponse,
-    decResLengths.exportEncryptedData,
+    decResLengths.fetchEncryptedData,
     req.client.sharedSecret,
   );
   req.client.ephemeralPub = newEphemeralPub;

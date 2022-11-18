@@ -132,18 +132,18 @@ describe('[BLS]', () => {
 
     let encData;
     // Test custom iteration count (c)
-    encData = await client.exportEncryptedData(req);
+    encData = await client.fetchEncryptedData(req);
     await validateExportedKeystore(req.params.path, pw, encData);
     // Test different paths
     req.params.path = DEPOSIT_PATH_IDX;
-    encData = await client.exportEncryptedData(req);
+    encData = await client.fetchEncryptedData(req);
     await validateExportedKeystore(req.params.path, pw, encData);
     req.params.path[4] = 1847;
-    encData = await client.exportEncryptedData(req);
+    encData = await client.fetchEncryptedData(req);
     await validateExportedKeystore(req.params.path, pw, encData);
     // Test default iteration count
     req.params.c = undefined;
-    encData = await client.exportEncryptedData(req);
+    encData = await client.fetchEncryptedData(req);
     await validateExportedKeystore(req.params.path, pw, encData);
   })
 })

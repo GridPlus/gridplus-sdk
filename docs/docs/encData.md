@@ -31,7 +31,7 @@ const req = {
   }
 }
 
-const encryptedData = await client.exportEncryptedData(req);
+const encryptedData = await client.fetchEncryptedData(req);
 ```
 
 # Supported Types of Exported Data

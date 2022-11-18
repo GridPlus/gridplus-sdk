@@ -205,10 +205,12 @@ export class Client {
   }
 
   /**
-   * Takes a starting path and a number to get the addresses associated with the active wallet.
+   * Fetch a record of encrypted data from the Lattice.
+   * Must specify a data type. Returns a Buffer containing
+   * data formatted according to the specified type.
    * @category Lattice
    */
-  public async exportEncryptedData (
+  public async fetchEncryptedData (
     params: ExportEncDataRequest
   ): Promise<Buffer> {
     return this.retryWrapper(exportEncData, params)

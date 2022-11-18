@@ -1,11 +1,3 @@
-// import { 
-//   GET_ADDR_FLAG, 
-//   ENC_DATA_SCHEMA,
-//   SIGNING_HASH, 
-//   SIGNING_CURVE, 
-//   SIGNING_ENCODING 
-// } from './types/enums';
-
 /** @internal Consistent with Lattice's IV */
 const AES_IV = [
   0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73, 0x73, 0x77,
@@ -30,7 +22,7 @@ const decResLengths = {
   getWallets: 142, // 71 bytes per wallet record (response contains internal and external)
   getKvRecords: 1395,
   getDecoders: 1608,
-  exportEncryptedData: 1608,
+  fetchEncryptedData: 1608,
   removeDecoders: 4,
   test: 1646, // Max size of test response payload
 };
