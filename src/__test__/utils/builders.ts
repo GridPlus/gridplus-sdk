@@ -258,6 +258,20 @@ export const buildEvmReq = (overrides?: {
   txData?: any;
   common?: any;
 }) => {
+  let chainInfo = null;
+  if (overrides?.common) {
+    chainInfo = overrides.common;
+  } else if (overrides?.txData?.chainId !== '0x1') {
+    chainInfo = Common.custom(
+      { chainId: 137 }, 
+      { hardfork: Hardfork.London }
+    );
+  } else {
+    chainInfo = new Common({
+      chain: Chain.Mainnet,
+      hardfork: Hardfork.London,
+    })
+  }
   const req = {
     data: {
       signerPath: DEFAULT_SIGNER,
@@ -278,12 +292,7 @@ export const buildEvmReq = (overrides?: {
       data: '0xdeadbeef',
       ...overrides?.txData,
     },
-    common: overrides?.common
-      ? overrides.common
-      : new Common({
-        chain: Chain.Mainnet,
-        hardfork: Hardfork.London,
-      }),
+    common: chainInfo,
   };
   return req;
 };
