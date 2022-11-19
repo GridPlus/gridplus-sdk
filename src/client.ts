@@ -7,6 +7,7 @@ import {
 import {
   addKvRecords,
   connect,
+  exportEncData,
   fetchActiveWallet,
   getAddresses,
   getKvRecords,
@@ -201,6 +202,18 @@ export class Client {
     ids = [],
   }: RemoveKvRecordsRequestParams): Promise<Buffer> {
     return this.retryWrapper(removeKvRecords, { type, ids, })
+  }
+
+  /**
+   * Fetch a record of encrypted data from the Lattice.
+   * Must specify a data type. Returns a Buffer containing
+   * data formatted according to the specified type.
+   * @category Lattice
+   */
+  public async fetchEncryptedData (
+    params: ExportEncDataRequest
+  ): Promise<Buffer> {
+    return this.retryWrapper(exportEncData, params)
   }
 
   /** Get the active wallet */

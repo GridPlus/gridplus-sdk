@@ -22,6 +22,7 @@ const decResLengths = {
   getWallets: 142, // 71 bytes per wallet record (response contains internal and external)
   getKvRecords: 1395,
   getDecoders: 1608,
+  fetchEncryptedData: 1608,
   removeDecoders: 4,
   test: 1646, // Max size of test response payload
 };
@@ -81,7 +82,8 @@ const encReqCodes = {
   REMOVE_KV_RECORDS: 9,
   GET_DECODERS: 10,
   REMOVE_DECODERS: 11,
-  TEST: 12,
+  EXPORT_ENC_DATA: 12,
+  TEST: 13,
 } as const;
 
 /** @internal */
@@ -356,10 +358,16 @@ export const EXTERNAL = {
     ENCODINGS: {
       NONE: 1,
       SOLANA: 2,
-      // TERRA: 3, // DEPRECATED
+      // TERRA: 3, // Deprecated
       EVM: 4,
     },
   },
+  // Options for exporting encrypted data
+  ENC_DATA: {
+    SCHEMAS: {
+      BLS_KEYSTORE_EIP2335_PBKDF_V4: 0,
+    },
+  }
 };
 
 /** @internal */
