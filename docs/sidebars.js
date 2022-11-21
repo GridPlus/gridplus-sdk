@@ -33,6 +33,10 @@ const sidebars = {
     },
     {
       type: 'doc',
+      id: 'encData',
+    },
+    {
+      type: 'doc',
       id: 'testing',
     },
     {
