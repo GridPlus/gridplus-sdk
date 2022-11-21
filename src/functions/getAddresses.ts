@@ -101,15 +101,7 @@ export const encodeGetAddressesRequest = ({
   flag,
 }: EncodeGetAddressesRequestParams) => {
   const fwConstants = getFwVersionConst(fwVersion);
-  const flags = fwConstants.getAddressFlags || [] as any[];
-  const isPubkeyOnly =
-    flags.indexOf(flag) > -1 &&
-    (
-      flag === EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB ||
-      flag === EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB ||
-      flag === EXTERNAL.GET_ADDR_FLAGS.BLS12_381_G1_PUB
-    );
-  if (!isPubkeyOnly && !isValidAssetPath(startPath, fwConstants)) {
+  if (!isPubkeyOnlyFlag(flag) && !isValidAssetPath(startPath, fwConstants)) {
     throw new Error('Derivation path or flag is not supported. Try updating Lattice firmware.');
   }
   let sz = 32 + 20 + 1; // walletUID + 5 u32 indices + count/flag
@@ -185,8 +177,7 @@ export const decodeGetAddresses = (data: any, flag: number): Buffer[] => {
   // Look for addresses until we reach the end (a 4 byte checksum)
   const addrs: any[] = [];
   // Pubkeys are formatted differently in the response
-  const { ED25519_PUB, SECP256K1_PUB, BLS12_381_G1_PUB } = EXTERNAL.GET_ADDR_FLAGS;
-  const arePubkeys = flag === ED25519_PUB || flag === SECP256K1_PUB || flag === BLS12_381_G1_PUB;
+  const arePubkeys = isPubkeyOnlyFlag(flag);
   if (arePubkeys) {
     off += 1; // skip uint8 representing pubkey type
   }
@@ -233,3 +224,12 @@ export const decryptGetAddressesResponse = (
   );
   return { decryptedData, newEphemeralPub };
 };
+
+function isPubkeyOnlyFlag(flag) {
+  const flags = fwConstants.getAddressFlags || [] as any[];
+  return flags.indexOf(flag) > -1 && (
+    flag === EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB ||
+    flag === EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB ||
+    flag === EXTERNAL.GET_ADDR_FLAGS.BLS12_381_G1_PUB
+  );
+}
