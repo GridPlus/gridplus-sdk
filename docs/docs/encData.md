@@ -3,19 +3,19 @@ id: "encData"
 sidebar_position: 4
 ---
 
-# 🔒 Exporting Encrypted Data
+# 🔒 Fetching Encrypted Data
 
-:::note
-Firmware v0.17.0 is required to export encrypted data.
+:::caution
+Firmware v0.17.0 is required to fetch encrypted data.
 :::
 
-You can use this SDK to export certain pieces of secure data from your Lattice in encrypted format.
+You can use this SDK to fetch certain pieces of secure data from your Lattice in an encrypted format.
 
 :::note
-Before you can export any encrypted data, you need to set an encryption password on your Lattice. You will be asked to do this automatically if you request encrypted data without a password set, but you can always go to `System Preferences -> Security & Privacy -> Encryption Password` to set, delete, or change your device's encryption password.
+Before you can fetch encrypted data, you need to set an encryption password on your Lattice. You will be asked to do this automatically if you request encrypted data without a password set, but you can always go to `System Preferences -> Security & Privacy -> Encryption Password` to set, delete, or change your device's encryption password.
 :::
 
-All encrypted data export requests follow the general format:
+All requests for encrypted data follow the general format:
 
 ```ts
 import { Constants } from `gridplus-sdk`
@@ -27,23 +27,23 @@ const schemas = Constants.ENC_DATA.SCHEMAS;
 const req = {
   schema: // Specify which schema to use
   params: {
-    // Params specific to the type of data being exported
+    // Params specific to the type of data being requested
   }
 }
 
 const encryptedData = await client.fetchEncryptedData(req);
 ```
 
-# Supported Types of Exported Data
+## Supported Types of Data
 
 The following types of data may be requested. You should specify params.
 
-## Exporting BLS Private Keys (EIP2335)
+### BLS Private Keys (EIP2335)
 
-You may request an encrypted BLS private key of your Lattice's current wallet by providing the BIP39 derivation path. The data format follows [EIP2335](https://eips.ethereum.org/EIPS/eip-2335).
+You may request an encrypted BLS private key of your Lattice's current wallet by providing the BIP39 derivation path. The data format follows [EIP-2335](https://eips.ethereum.org/EIPS/eip-2335).
 
 :::note
-Currently, the only available schema is `BLS_KEYSTORE_EIP2335_PBKDF_V4`. As implied by the name, keys may only be exported with kdf `pbkdf2` and returned data is of format V4. See [this module](https://github.com/ChainSafe/bls-keystore) for more info on EIP2335 data format.
+Currently, the only available schema is `BLS_KEYSTORE_EIP2335_PBKDF_V4`. As implied by the name, keys may only be fetched with kdf `pbkdf2` and returned data is of format V4. See [this module](https://github.com/ChainSafe/bls-keystore) for more info on EIP-2335 data format.
 :::
 
 **Request data:**
@@ -57,4 +57,3 @@ const req = {
   }
 }
 ```
-

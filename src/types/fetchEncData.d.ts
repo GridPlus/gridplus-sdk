@@ -5,12 +5,12 @@ interface EIP2335KeyExportReq {
   walletUID?: Buffer;
 }
 
-interface ExportEncDataRequest {
+interface FetchEncDataRequest {
   schema: number;
   params: EIP2335KeyExportReq; // NOTE: This is a union, but only one type of request exists currently
 }
 
-interface ExportEncDataRequestFunctionParams extends ExportEncDataRequest {
+interface FetchEncDataRequestFunctionParams extends FetchEncDataRequest {
   client: Client;
 }
 
