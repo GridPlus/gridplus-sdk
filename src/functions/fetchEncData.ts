@@ -35,10 +35,10 @@ const ENC_DATA_RESP_SZ = {
   }
 }
 
-export async function exportEncData (req: ExportEncDataRequestFunctionParams): Promise<Buffer> {
-  const params = validateExportEncDataRequest(req);
-  const payload = encodeExportEncDataRequest(req.schema, params);
-  const encryptedPayload = encryptExportEncDataRequest({
+export async function fetchEncData (req: FetchEncDataRequestFunctionParams): Promise<Buffer> {
+  const params = validateFetchEncDataRequest(req);
+  const payload = encodeFetchEncDataRequest(req.schema, params);
+  const encryptedPayload = encryptFetchEncDataRequest({
     payload,
     sharedSecret: req.client.sharedSecret,
   });
@@ -52,10 +52,10 @@ export async function exportEncData (req: ExportEncDataRequestFunctionParams): P
     req.client.sharedSecret,
   );
   req.client.ephemeralPub = newEphemeralPub;
-  return decodeExportEncData(decryptedData, req);
+  return decodeFetchEncData(decryptedData, req);
 }
 
-export const validateExportEncDataRequest = (req: ExportEncDataRequestFunctionParams): EIP2335KeyExportReq => {
+export const validateFetchEncDataRequest = (req: FetchEncDataRequestFunctionParams): EIP2335KeyExportReq => {
   const { schema, params, client } = req;
   // Validate client state
   const wallet = client.getActiveWallet();
@@ -80,7 +80,7 @@ export const validateExportEncDataRequest = (req: ExportEncDataRequestFunctionPa
   }
 }
 
-export const encodeExportEncDataRequest = (
+export const encodeFetchEncDataRequest = (
   schema: number,
   params: EIP2335KeyExportReq,
 ) => {
@@ -109,7 +109,7 @@ export const encodeExportEncDataRequest = (
   }
 }
 
-export const encryptExportEncDataRequest = ({
+export const encryptFetchEncDataRequest = ({
   payload,
   sharedSecret,
 }: EncrypterParams) => {
@@ -120,7 +120,7 @@ export const encryptExportEncDataRequest = ({
   });
 }
 
-export const decodeExportEncData = (data: Buffer, req: ExportEncDataRequestFunctionParams): Buffer => {
+export const decodeFetchEncData = (data: Buffer, req: FetchEncDataRequestFunctionParams): Buffer => {
   let off = 65; // Skip 65 byte pubkey prefix
   if (req.schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
     const respData = {} as EIP2335KeyExportData;

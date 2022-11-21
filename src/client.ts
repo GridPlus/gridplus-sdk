@@ -7,7 +7,7 @@ import {
 import {
   addKvRecords,
   connect,
-  exportEncData,
+  fetchEncData,
   fetchActiveWallet,
   getAddresses,
   getKvRecords,
@@ -211,9 +211,9 @@ export class Client {
    * @category Lattice
    */
   public async fetchEncryptedData (
-    params: ExportEncDataRequest
+    params: FetchEncDataRequest
   ): Promise<Buffer> {
-    return this.retryWrapper(exportEncData, params)
+    return this.retryWrapper(fetchEncData, params)
   }
 
   /** Get the active wallet */
