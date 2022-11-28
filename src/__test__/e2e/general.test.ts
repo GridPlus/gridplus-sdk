@@ -70,10 +70,11 @@ describe('General', () => {
       startPath: [BTC_PURPOSE_P2SH_P2WPKH, BTC_COIN, HARDENED_OFFSET, 0, 0],
       n: 5,
     };
+    let addrs;
     // Bitcoin addresses
     // NOTE: The format of address will be based on the user's Lattice settings
     //       By default, this will be P2SH(P2WPKH), i.e. addresses that start with `3`
-    let addrs = await client.getAddresses(addrData);
+    addrs = await client.getAddresses(addrData);
     expect(addrs.length).toEqual(5);
     expect(addrs[0]?.[0]).toEqual('3');
 
@@ -95,9 +96,14 @@ describe('General', () => {
       expect(addrs[0]?.slice(0, 2)).toEqual('0x');
     }
     // Should fail for non-EVM purpose and non-matching coin_type
-    addrData.startPath[0] = BTC_PURPOSE_P2WPKH;
     addrData.n = 1;
-    await client.getAddresses(addrData);
+    try {
+      addrData.startPath[0] = BTC_PURPOSE_P2WPKH;
+      await client.getAddresses(addrData);
+      throw new Error(null);
+    } catch (err: any) {
+      expect(err.message).not.toEqual(null);
+    }
     // Switch to BTC coin. Should work now.
     addrData.startPath[1] = BTC_COIN;
     // Bech32
@@ -127,7 +133,7 @@ describe('General', () => {
     addrData.startPath[1] = HARDENED_OFFSET + 5; // 5' currency - aka unknown
     try {
       addrs = await client.getAddresses(addrData);
-      throw new Error('Expected failure but got success.');
+      throw new Error(null);
     } catch (err: any) {
       expect(err.message).not.toEqual(null);
     }
@@ -136,7 +142,7 @@ describe('General', () => {
     addrData.n = 11;
     try {
       addrs = await client.getAddresses(addrData);
-      throw new Error('Expected failure but got success.');
+      throw new Error(null);
     } catch (err: any) {
       expect(err.message).not.toEqual(null);
     }

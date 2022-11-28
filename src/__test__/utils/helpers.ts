@@ -17,9 +17,9 @@ import {
 } from '../../constants';
 import { Constants } from '../..';
 
-// import { Client } from '../../../client/index';
 import { getV, parseDER, randomBytes } from '../../util';
 import { Client } from '../../client';
+import { getPathStr } from '../../shared/utilities'
 import { TypedTransaction } from '@ethereumjs/tx';
 import { getEnv } from './getters';
 const SIGHASH_ALL = 0x01;
@@ -69,10 +69,12 @@ export const unharden = (x) => {
   return x >= HARDENED_OFFSET ? x - HARDENED_OFFSET : x;
 };
 
-export const buildPath = (purpose, currencyIdx, signerIdx, change = 0) => {
-  return `m/${unharden(purpose)}'/${unharden(
-    currencyIdx,
-  )}'/0'/${change}/${signerIdx}`;
+export const buildPath = (indices) => {
+  let path = 'm'
+  indices.forEach((idx) => {
+    path += `/${unharden(idx)}${idx >= HARDENED_OFFSET ? '\'' : ''}`;
+  })
+  return path;
 };
 
 export function _getSumInputs (inputs) {
@@ -115,7 +117,7 @@ export function _start_tx_builder (
   const changeValue = inputSum - value - fee;
   if (changeValue > 0) {
     const networkIdx = network === bitcoin.networks.testnet ? 1 : 0;
-    const path = buildPath(purpose, harden(networkIdx), 0, 1);
+    const path = buildPath([purpose, harden(networkIdx), 0, 1]);
     const btc_0_change = wallet.derivePath(path);
     const btc_0_change_pub = bitcoin.ECPair.fromPublicKey(
       btc_0_change.publicKey,
@@ -132,7 +134,7 @@ export function _start_tx_builder (
       // For native segwit we need to add a scriptSig to the input
       const coin =
         network === bitcoin.networks.testnet ? BTC_TESTNET_COIN : BTC_COIN;
-      const path = buildPath(purpose, coin, input.signerIdx);
+      const path = buildPath([purpose, coin, input.signerIdx]);
       const keyPair = wallet.derivePath(path);
       const p2wpkh = bitcoin.payments.p2wpkh({
         pubkey: keyPair.publicKey,
@@ -187,7 +189,7 @@ function _get_reference_sighashes (
     purpose,
   );
   inputs.forEach((input, i) => {
-    const path = buildPath(purpose, coin, input.signerIdx);
+    const path = buildPath([purpose, coin, input.signerIdx]);
     const keyPair = wallet.derivePath(path);
     const priv = bitcoin.ECPair.fromPrivateKey(keyPair.privateKey, { network });
     if (purpose === BTC_PURPOSE_P2SH_P2WPKH) {
@@ -255,7 +257,7 @@ function _get_signing_keys (wallet, inputs, isTestnet, purpose) {
   const currencyIdx = isTestnet === true ? 1 : 0;
   const keys: any = [];
   inputs.forEach((input) => {
-    const path = buildPath(purpose, currencyIdx, input.signerIdx);
+    const path = buildPath([purpose, currencyIdx, input.signerIdx]);
     keys.push(wallet.derivePath(path));
   });
   return keys;
@@ -467,6 +469,15 @@ export const stringifyPath = (parent) => {
       ? `${parent - HARDENED_OFFSET}'`
       : `${parent}`;
   };
+  if (parent.idx) {
+    // BIP32 style encoding
+    let s = 'm';
+    for (let i = 0; i < parent.pathDepth; i++) {
+      s += `/${convert(parent.idx[i])}`
+    }
+    return s;
+  }
+
   let d = parent.pathDepth;
   let s = 'm';
   if (d <= 0) return s;
@@ -495,37 +506,19 @@ export const stringifyPath = (parent) => {
   return s;
 };
 
-export const getPathStr = function (path) {
-  let pathStr = 'm';
-  path.forEach((idx) => {
-    if (idx >= HARDENED_OFFSET) {
-      pathStr += `/${idx - HARDENED_OFFSET}'`;
-    } else {
-      pathStr += `/${idx}`;
-    }
-  });
-  return pathStr;
-};
-
 //---------------------------------------------------
 // Get Addresses helpers
 //---------------------------------------------------
 export const serializeGetAddressesJobData = function (data) {
   const req = Buffer.alloc(33);
   let off = 0;
-  req.writeUInt32LE(data.parent.pathDepth, off);
+  req.writeUInt32LE(data.path.pathDepth, off);
   off += 4;
-  req.writeUInt32LE(data.parent.purpose, off);
-  off += 4;
-  req.writeUInt32LE(data.parent.coin, off);
-  off += 4;
-  req.writeUInt32LE(data.parent.account, off);
-  off += 4;
-  req.writeUInt32LE(data.parent.change, off);
-  off += 4;
-  req.writeUInt32LE(data.parent.addr, off);
-  off += 4;
-  req.writeUInt32LE(data.first, off);
+  for (let i = 0; i < 5; i++) {
+    req.writeUInt32LE(i < data.path.pathDepth ? data.path.idx[i] : 0, off);
+    off += 4;
+  }
+  req.writeUInt32LE(data.iterIdx, off);
   off += 4;
   req.writeUInt32LE(data.count, off);
   off += 4;
@@ -565,14 +558,13 @@ export const validateBTCAddresses = function (
 ) {
   expect(resp.count).toEqual(jobData.count);
   const wallet = bip32.fromSeed(seed);
-  const path = JSON.parse(JSON.stringify(jobData.parent));
-  path.pathDepth = jobData.parent.pathDepth + 1;
+  const path = JSON.parse(JSON.stringify(jobData.path));
   const network =
     useTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.mainnet;
-  for (let i = jobData.first; i < jobData.first + jobData.count; i++) {
-    path.addr = i;
+  for (let i = 0; i < jobData.count; i++) {
+    path.idx[jobData.iterIdx] = jobData.path.idx[jobData.iterIdx] + i;
     // Validate the address
-    const purpose = jobData.parent.purpose;
+    const purpose = jobData.path.idx[0];
     const pubkey = wallet.derivePath(stringifyPath(path)).publicKey;
     let address;
     if (purpose === BTC_PURPOSE_P2WPKH) {
@@ -588,7 +580,7 @@ export const validateBTCAddresses = function (
       // This is the default and any unrecognized purpose will yield a legacy address.
       address = bitcoin.payments.p2pkh({ pubkey, network }).address;
     }
-    expect(address).toEqual(resp.addresses[i - jobData.first]);
+    expect(address).toEqual(resp.addresses[i]);
   }
 };
 
@@ -599,13 +591,12 @@ export const validateETHAddresses = function (resp, jobData, seed) {
   expect(resp.addresses[0].length).toEqual(42);
   // Confirm we can derive the same address from the previously exported seed
   const wallet = bip32.fromSeed(seed);
-  const path = JSON.parse(JSON.stringify(jobData.parent));
-  path.pathDepth = jobData.parent.pathDepth + 1;
-  for (let i = jobData.first; i < jobData.first + jobData.count; i++) {
-    path.addr = i;
+  const path = JSON.parse(JSON.stringify(jobData.path));
+  for (let i = 0; i < jobData.count; i++) {
+    path.idx[jobData.iterIdx] = jobData.path.idx[jobData.iterIdx] + i;
     const priv = wallet.derivePath(stringifyPath(path)).privateKey;
     const addr = `0x${privateToAddress(priv).toString('hex')}`;
-    expect(addr).toEqual(resp.addresses[i - jobData.first]);
+    expect(addr).toEqual(resp.addresses[i]);
   }
 };
 

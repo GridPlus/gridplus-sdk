@@ -7,6 +7,7 @@ import {
 import {
   addKvRecords,
   connect,
+  fetchEncData,
   fetchActiveWallet,
   getAddresses,
   getKvRecords,
@@ -203,6 +204,18 @@ export class Client {
     return this.retryWrapper(removeKvRecords, { type, ids, })
   }
 
+  /**
+   * Fetch a record of encrypted data from the Lattice.
+   * Must specify a data type. Returns a Buffer containing
+   * data formatted according to the specified type.
+   * @category Lattice
+   */
+  public async fetchEncryptedData (
+    params: FetchEncDataRequest
+  ): Promise<Buffer> {
+    return this.retryWrapper(fetchEncData, params)
+  }
+
   /** Get the active wallet */
   public getActiveWallet () {
     if (
@@ -324,13 +337,17 @@ export class Client {
       // Attempt to parse the data
       const internalWallet = {
         uid: Buffer.from(unpacked.activeWallets.internal.uid, 'hex'),
-        name: Buffer.from(unpacked.activeWallets.internal.name),
+        name: unpacked.activeWallets.internal.name ? 
+              Buffer.from(unpacked.activeWallets.internal.name) :
+              null,
         capabilities: unpacked.activeWallets.internal.capabilities,
         external: false,
       };
       const externalWallet = {
         uid: Buffer.from(unpacked.activeWallets.external.uid, 'hex'),
-        name: Buffer.from(unpacked.activeWallets.external.name),
+        name: unpacked.activeWallets.external.name ? 
+              Buffer.from(unpacked.activeWallets.external.name) :
+              null,
         capabilities: unpacked.activeWallets.external.capabilities,
         external: true,
       };

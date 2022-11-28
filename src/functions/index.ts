@@ -1,5 +1,6 @@
 export * from './addKvRecords';
 export * from './connect';
+export * from './fetchEncData';
 export * from './fetchActiveWallet';
 export * from './getAddresses';
 export * from './getKvRecords';

@@ -166,6 +166,8 @@ function coerceSig (sig: string): string {
 /**
  * Convert calldata param definitions into an array of their
  * canonical string names.
+ * Returns an array of string names that are consumable by 
+ * the @ethersproject/abi AbiCoder decoder instance.
  * @param defParams - Array of def params
  * @internal
  */
@@ -185,6 +187,11 @@ function getParamStrNames(defParams) {
           s = `${s}[${param[3][d]}]`
         }
       })
+    }
+    if (param[4]) {
+      // Tuple - get nested type names
+      const nested = getParamStrNames(param[4])
+      s = `${s}(${nested.join(',')})`;
     }
     strNames.push(s);
   }

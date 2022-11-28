@@ -22,6 +22,7 @@ const decResLengths = {
   getWallets: 142, // 71 bytes per wallet record (response contains internal and external)
   getKvRecords: 1395,
   getDecoders: 1608,
+  fetchEncryptedData: 1608,
   removeDecoders: 4,
   test: 1646, // Max size of test response payload
 };
@@ -81,7 +82,8 @@ const encReqCodes = {
   REMOVE_KV_RECORDS: 9,
   GET_DECODERS: 10,
   REMOVE_DECODERS: 11,
-  TEST: 12,
+  EXPORT_ENC_DATA: 12,
+  TEST: 13,
 } as const;
 
 /** @internal */
@@ -339,6 +341,7 @@ export const EXTERNAL = {
   GET_ADDR_FLAGS: {
     SECP256K1_PUB: 3,
     ED25519_PUB: 4,
+    BLS12_381_G1_PUB: 5,
   },
   // Options for building general signing requests
   SIGNING: {
@@ -350,14 +353,21 @@ export const EXTERNAL = {
     CURVES: {
       SECP256K1: 0,
       ED25519: 1,
+      BLS12_381_G2: 2,
     },
     ENCODINGS: {
       NONE: 1,
       SOLANA: 2,
-      // TERRA: 3, // DEPRECATED
+      // TERRA: 3, // Deprecated
       EVM: 4,
     },
   },
+  // Options for exporting encrypted data
+  ENC_DATA: {
+    SCHEMAS: {
+      BLS_KEYSTORE_EIP2335_PBKDF_V4: 0,
+    },
+  }
 };
 
 /** @internal */
@@ -527,6 +537,12 @@ function getFwVersionConst (v: Buffer): FirmwareConstants {
       reserved: 2895728,
       maxSz: 1024,
     };
+  }
+
+  // --- V0.17.X ---
+  // V0.17.0 added support for BLS12-381-G1 pubkeys and G2 sigs
+  if (!legacy && gte(v, [0, 17, 0])) {
+    c.getAddressFlags.push(EXTERNAL.GET_ADDR_FLAGS.BLS12_381_G1_PUB);
   }
 
   return c;

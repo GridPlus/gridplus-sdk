@@ -1,3 +1,5 @@
+import { HARDENED_OFFSET } from '../constants';
+
 /**
  * Get 64 bytes representing the public key This is the uncompressed key without the leading 04
  * byte
@@ -56,20 +58,24 @@ export const parseWallets = (walletData): ActiveWallets => {
     },
   };
   activeWallets.internal.uid = walletData.slice(off, off + 32);
-  activeWallets.internal.capabilities = walletData.readUInt32BE(off + 32);
-  activeWallets.internal.name = walletData.slice(
-    off + 36,
-    off + walletDescriptorLen,
-  );
+  // NOTE: `capabilities` and `name` were deprecated in Lattice firmware.
+  // They never provided any real information, but have been archived here
+  // since the response size has been preserved and we may bring them back
+  // in a different form.
+  // activeWallets.internal.capabilities = walletData.readUInt32BE(off + 32);
+  // activeWallets.internal.name = walletData.slice(
+    // off + 36,
+    // off + walletDescriptorLen,
+  // );
   // Offset the first item
   off += walletDescriptorLen;
   // External
   activeWallets.external.uid = walletData.slice(off, off + 32);
-  activeWallets.external.capabilities = walletData.readUInt32BE(off + 32);
-  activeWallets.external.name = walletData.slice(
-    off + 36,
-    off + walletDescriptorLen,
-  );
+  // activeWallets.external.capabilities = walletData.readUInt32BE(off + 32);
+  // activeWallets.external.name = walletData.slice(
+    // off + 36,
+    // off + walletDescriptorLen,
+  // );
   return activeWallets;
 };
 
@@ -85,4 +91,20 @@ export const isFWSupported = (
     (major >= _major && minor > _minor) ||
     (major >= _major && minor >= _minor && fix >= _fix)
   );
+};
+
+/**
+ * Convert a set of BIP39 path indices to a string
+ * @param path - Set of indices
+ */
+export const getPathStr = function (path) {
+  let pathStr = 'm';
+  path.forEach((idx) => {
+    if (idx >= HARDENED_OFFSET) {
+      pathStr += `/${idx - HARDENED_OFFSET}'`;
+    } else {
+      pathStr += `/${idx}`;
+    }
+  });
+  return pathStr;
 };
