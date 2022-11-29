@@ -332,6 +332,23 @@ const ethMsgProtocol = {
   },
 };
 
+/** @internal */
+const ETH_CONSENSUS_SPEC = {
+  NETWORKS: {
+    MAINNET: {
+      GENESIS: {
+          FORK_VERSION: Buffer.alloc(4),
+          // Empty root because there were no validators at genesis
+          VALIDATORS_ROOT: Buffer.alloc(32),
+      },
+    },
+  },
+  DOMAINS: {
+    DEPOSIT: Buffer.from('03000000', 'hex'),
+    VOLUNTARY_EXIT: Buffer.from('04000000', 'hex'),
+  }
+}
+
 /**
  * Externally exported constants used for building requests
  * @public
@@ -367,7 +384,8 @@ export const EXTERNAL = {
     SCHEMAS: {
       BLS_KEYSTORE_EIP2335_PBKDF_V4: 0,
     },
-  }
+  },
+  ETH_CONSENSUS_SPEC,
 };
 
 /** @internal */
@@ -629,4 +647,5 @@ export {
   HANDLE_LARGER_CHAIN_ID,
   MAX_CHAIN_ID_BYTES,
   ETH_ABI_LATTICE_FW_TYPE_MAP,
+  ETH_CONSENSUS_SPEC,
 };

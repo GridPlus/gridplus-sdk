@@ -5,47 +5,180 @@ import {
   verifyPassword,
   isValidKeystore,
 } from '@chainsafe/bls-keystore';
+import { mnemonicToSeedSync } from 'bip39';
 import { deriveSeedTree } from 'bls12-381-keygen';
+import { readFileSync } from 'fs';
+import { jsonc } from 'jsonc';
 import { question } from 'readline-sync';
 
+import { getEncPw } from '../../utils/getters';
 import { 
   initializeClient, 
   initializeSeed, 
 } from '../../utils/initializeClient';
-import { buildPath } from '../../utils/helpers'
-import { Constants } from '../../../index'
-import { getPathStr } from '../../../shared/utilities'
+import { 
+  buildPath, 
+  copyBuffer,
+  getCodeMsg,
+  gpErrors, 
+  jobTypes, 
+  parseWalletJobResp, 
+  serializeJobData 
+} from '../../utils/helpers';
+import { testRequest } from '../../utils/testRequest';
+import { Constants, Utils } from '../../../index';
+import { getPathStr } from '../../../shared/utilities';
 
-let client, seed;
-const WITHDRAWAL_PATH_IDX = [
-  12381, 3600, 0, 0
-];
-const DEPOSIT_PATH_IDX = [
-  12381, 3600, 0, 0, 0
-];
-const N = 1;
+const globalVectors = jsonc.parse(
+  readFileSync(`${process.cwd()}/src/__test__/vectors.jsonc`).toString(),
+);
 
-async function testBLSDerivationAndSig(signerPath) {
+let client, origWalletSeed, encPw;
+const keystores = [];
+const WITHDRAWAL_PATH = globalVectors.ethDeposit.depositData[0].withdrawalPath;
+const DEPOSIT_PATH = globalVectors.ethDeposit.depositData[1].depositPath;
+// Number of signers to test for each of deposit and withdrawal paths
+const N_TEST_SIGS = 1;
+// Number of deposit keys against which to validate deposit data
+const N_TEST_DEPOSIT_DATA = 1;
+const KNOWN_MNEMONIC = globalVectors.ethDeposit.mnemonic;
+const KNOWN_SEED = mnemonicToSeedSync(KNOWN_MNEMONIC);
+
+describe('[BLS keys]', () => {
+  client = initializeClient();
+  it('Should get the device encryption password', async () => {
+    encPw = getEncPw();
+    if (!encPw) {
+      encPw = await question(
+        'Enter your Lattice encryption password: '
+      );
+    }
+  })
+
+  /*
+  it('Should get the current wallet seed', async () => {
+    origWalletSeed = await initializeSeed(client);
+  })
+
+  it('Should remove the current seed and load a known one', async () => {
+    // 1. Remove seed
+    await removeSeed(client);
+    // 2. Load known seed
+    await loadSeed(client, KNOWN_SEED, KNOWN_MNEMONIC);
+  })
+
+  for (let i = 0; i < N_TEST_SIGS; i++) {
+    const pathIdx = DEPOSIT_PATH;
+    pathIdx[2] = i;
+    it(`Should validate EIP2333 and signing at deposit index #${i}`, async () => {
+      await testBLSDerivationAndSig(KNOWN_SEED, pathIdx);
+    })
+  }
+
+  for (let i = 0; i < N_TEST_SIGS; i++) {
+    const pathIdx = WITHDRAWAL_PATH;
+    pathIdx[2] = i;
+    it(`Should validate EIP2333 and signing at withdrawal index #${i}`, async () => {
+      await testBLSDerivationAndSig(KNOWN_SEED, pathIdx);
+    })
+  }
+
+  it('Should export encrypted withdrawal private keys', async () => {
+    const req = {
+      schema: Constants.ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4,
+      params: {
+        path: WITHDRAWAL_PATH,
+        c: 999, // if this is not specified, the default value will be used
+      }
+    }
+    let encData;
+    // Test custom iteration count (c)
+    encData = await client.fetchEncryptedData(req);
+    await validateExportedKeystore(KNOWN_SEED, req.params.path, encPw, encData);
+    // Test different paths
+    req.params.path = DEPOSIT_PATH;
+    encData = await client.fetchEncryptedData(req);
+    await validateExportedKeystore(KNOWN_SEED, req.params.path, encPw, encData);
+    req.params.path[4] = 1847;
+    encData = await client.fetchEncryptedData(req);
+    await validateExportedKeystore(KNOWN_SEED, req.params.path, encPw, encData);
+    // Test default values
+    req.params.path = DEPOSIT_PATH;
+    req.params.c = undefined;
+    encData = await client.fetchEncryptedData(req);
+    await validateExportedKeystore(KNOWN_SEED, req.params.path, encPw, encData);
+   
+    req.params.path[2] = 1;
+
+  })
+*/
+  for (let i = 0; i < N_TEST_DEPOSIT_DATA; i++) {
+    it(`Should get encrypted keystore #${i+1}/${N_TEST_DEPOSIT_DATA}`, async () => {
+      const path = globalVectors.ethDeposit.depositData[i].depositPath; 
+      const encData = await client.fetchEncryptedData({
+        schema: Constants.ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4,
+        params: {
+          path,
+          c: 1000, // This should not affect deposit data but will make deriv faster
+        }
+      });
+      await validateExportedKeystore(KNOWN_SEED, path, encPw, encData);
+      keystores.push(encData);
+    })
+
+    it(`Should validate deposit data for keystore #${i+1}/${N_TEST_DEPOSIT_DATA} w/ BLS withdrawal`, async () => {
+      const vec = globalVectors.ethDeposit.depositData[i];
+      // Fetch withdrawal pubkey and convert to withdrawal credentials
+      const depositPub = await getBLSPub(vec.depositPath);
+      const withdrawalPub = await getBLSPub(vec.withdrawalPath);
+      // Get deposit message root and validate against reference
+      const depositMsgRoot = Utils.getEthDepositMessageRoot(depositPub, withdrawalPub);
+      expect(depositMsgRoot.toString('hex').toLowerCase()).to.equal(vec.messageRoot);
+      // Get signing root
+      const signingRoot = Utils.getEthDepositSigningRoot(depositMsgRoot);
+      console.log('signingRoot', signingRoot)
+      // Sign root and validate against reference
+      const sig = await signBLS(vec.depositPath, signingRoot);
+      console.log('sig', sig)
+    })
+
+  }
+})
+
+//=========================================================
+// INTERNAL HELPERS
+//=========================================================
+async function getBLSPub(startPath) {
+  const pubs = await client.getAddresses({ 
+    startPath, 
+    flag: Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB 
+  });
+  return pubs[0];
+}
+
+async function signBLS(signerPath, message) {
   const signReq = {
     data: {
       signerPath,
       curveType: Constants.SIGNING.CURVES.BLS12_381_G2,
       hashType: Constants.SIGNING.HASHES.NONE,
       encodingType: Constants.SIGNING.ENCODINGS.NONE,
-      payload: null,
+      payload: message,
     }
-  }
+  };
+  return await client.sign(signReq);
+}
+
+async function testBLSDerivationAndSig(seed, signerPath) {
   const msg = Buffer.from('64726e3da8', 'hex')
-  signReq.data.payload = msg;
-  const flag = Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB;
-  const latticePubs = await client.getAddresses({ startPath: signerPath, flag });
-  const latticeSig = await client.sign(signReq)
   const priv = deriveSeedTree(seed, buildPath(signerPath));
+  const latticePub = await getBLSPub(signerPath);
+  const latticeSig = await signBLS(signerPath, msg);
   const refPub = getPublicKey(priv);
   const refPubStr = Buffer.from(refPub).toString('hex')
   const refSig = await sign(msg, priv);
   const refSigStr = Buffer.from(refSig).toString('hex')
-  expect(latticePubs[0].toString('hex')).to.equal(
+  expect(latticePub.toString('hex')).to.equal(
     refPubStr, 
     'Deposit public key mismatch'
   );
@@ -59,7 +192,7 @@ async function testBLSDerivationAndSig(signerPath) {
   );
 }
 
-async function validateExportedKeystore(path, pw, expKeystoreBuffer) {
+async function validateExportedKeystore(seed, path, pw, expKeystoreBuffer) {
   const exportedKeystore = JSON.parse(expKeystoreBuffer.toString());
   const priv = deriveSeedTree(seed, buildPath(path));
   const pub = getPublicKey(priv);
@@ -93,57 +226,43 @@ async function validateExportedKeystore(path, pw, expKeystoreBuffer) {
   );
 }
 
-describe('[BLS]', () => {
-  client = initializeClient();
+async function loadSeed(client, seed, mnemonic=undefined) {
+  const res = await testRequest({
+    client,
+    testID: 0,
+    payload: serializeJobData(
+      jobTypes.WALLET_JOB_LOAD_SEED,
+      copyBuffer(client.getActiveWallet()?.uid), 
+      {
+        iface: 1, // external SafeCard interface
+        mnemonic,
+        seed,
+        exportability: 2, // always exportable
+      },
+    ),
+  });
+  //@ts-expect-error - accessing private property
+  const parsedRes = parseWalletJobResp(res, client.fwVersion);
+  expect(parsedRes.resultStatus).toEqualElseLog(
+    gpErrors.GP_SUCCESS,
+    getCodeMsg(parsedRes.resultStatus, gpErrors.GP_SUCCESS),
+  );
+}
 
-  it('Should get the current wallet seed', async () => {
-    seed = await initializeSeed(client);
-  })
-
-  // Test first 5 deposit keys
-  for (let i = 0; i < N; i++) {
-    const pathIdx = DEPOSIT_PATH_IDX;
-    pathIdx[2] = i;
-    it(`Should validate EIP2333 and signing at deposit index #${i}`, async () => {
-      await testBLSDerivationAndSig(pathIdx);
-    })
-  }
-  // Test first 5 withdrawal keys
-  for (let i = 0; i < N; i++) {
-    const pathIdx = WITHDRAWAL_PATH_IDX;
-    pathIdx[2] = i;
-    it(`Should validate EIP2333 and signing at withdrawal index #${i}`, async () => {
-      await testBLSDerivationAndSig(pathIdx);
-    })
-  }
-
-  it('Should export encrypted withdrawal private keys', async () => {
-    const req = {
-      schema: Constants.ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4,
-      params: {
-        path: WITHDRAWAL_PATH_IDX,
-        c: 999, // if this is not specified, the default value will be used
-      }
-    }
-    // Get the device's encryption password
-    const pw = await question(
-      'Enter your Lattice encryption password: '
-    );
-
-    let encData;
-    // Test custom iteration count (c)
-    encData = await client.fetchEncryptedData(req);
-    await validateExportedKeystore(req.params.path, pw, encData);
-    // Test different paths
-    req.params.path = DEPOSIT_PATH_IDX;
-    encData = await client.fetchEncryptedData(req);
-    await validateExportedKeystore(req.params.path, pw, encData);
-    req.params.path[4] = 1847;
-    encData = await client.fetchEncryptedData(req);
-    await validateExportedKeystore(req.params.path, pw, encData);
-    // Test default iteration count
-    req.params.c = undefined;
-    encData = await client.fetchEncryptedData(req);
-    await validateExportedKeystore(req.params.path, pw, encData);
-  })
-})
+async function removeSeed(client) {
+  const res = await testRequest({
+    client,
+    testID: 0,
+    payload: serializeJobData(
+      jobTypes.WALLET_JOB_DELETE_SEED, 
+      copyBuffer(client.getActiveWallet()?.uid), 
+      { iface: 1},
+    ),
+  });
+  //@ts-expect-error - accessing private property
+  const parsedRes = parseWalletJobResp(res, client.fwVersion);
+  expect(parsedRes.resultStatus).toEqualElseLog(
+    gpErrors.GP_SUCCESS,
+    getCodeMsg(parsedRes.resultStatus, gpErrors.GP_SUCCESS),
+  );
+}
