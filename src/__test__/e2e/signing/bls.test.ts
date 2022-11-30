@@ -40,7 +40,7 @@ const WITHDRAWAL_PATH = [ 12381, 3600, 0, 0];
 // Number of signers to test for each of deposit and withdrawal paths
 const N_TEST_SIGS = 1;
 // Number of deposit keys against which to validate deposit data
-const N_TEST_DEPOSIT_DATA = 1;
+const N_TEST_DEPOSIT_DATA = 2;
 const KNOWN_MNEMONIC = globalVectors.ethDeposit.mnemonic;
 const KNOWN_SEED = mnemonicToSeedSync(KNOWN_MNEMONIC);
 
@@ -54,7 +54,6 @@ describe('[BLS keys]', () => {
       );
     }
   })
-  
   it('Should get the current wallet seed', async () => {
     origWalletSeed = await initializeSeed(client);
   })
@@ -125,17 +124,47 @@ describe('[BLS keys]', () => {
       const resp = await Utils.getEthDepositData(client, vec.depositPath);
       // Validate components of response
       const dd = JSON.parse(resp.depositData);
-      expect(dd.pubkey).to.equal(vec.ref.pubkey, '`pubkey` mismatch.');
-      expect(dd.withdrawal_credentials).to.equal(vec.ref.withdrawal_credentials, '`withdrawal_credentials` mismatch.');
-      expect(dd.amount).to.equal(vec.ref.amount, '`amount` mismatch.');
-      expect(dd.signature).to.equal(vec.ref.signature, '`signature` mismatch');
-      expect(dd.deposit_message_root).to.equal(vec.ref.deposit_message_root, '`deposit_message_root` mismatch.');
-      expect(dd.deposit_data_root).to.equal(vec.ref.deposit_data_root, '`deposit_data_root` mismatch.');
-      expect(dd.fork_version).to.equal(vec.ref.fork_version, '`fork_version` mismatch.');
-      expect(dd.network_name).to.equal(vec.ref.network_name, '`network_name` mismatch.');
-      expect(dd.deposit_cli_version).to.equal(vec.ref.deposit_cli_version, '`deposit_cli_version` mismatch.');
+      expect(dd.pubkey).to.equal(
+        vec.ref.pubkey, 
+        '`pubkey` mismatch.'
+      );
+      expect(dd.withdrawal_credentials).to.equal(
+        vec.ref.withdrawal_credentials, 
+        '`withdrawal_credentials` mismatch.'
+      );
+      expect(dd.amount).to.equal(
+        vec.ref.amount, 
+        '`amount` mismatch.'
+      );
+      expect(dd.signature).to.equal(
+        vec.ref.signature, 
+        '`signature` mismatch'
+      );
+      expect(dd.deposit_message_root).to.equal(
+        vec.ref.deposit_message_root, 
+        '`deposit_message_root` mismatch.'
+      );
+      expect(dd.deposit_data_root).to.equal(
+        vec.ref.deposit_data_root, 
+        '`deposit_data_root` mismatch.'
+      );
+      expect(dd.fork_version).to.equal(
+        vec.ref.fork_version, 
+        '`fork_version` mismatch.'
+      );
+      expect(dd.network_name).to.equal(
+        vec.ref.network_name, 
+        '`network_name` mismatch.'
+      );
+      expect(dd.deposit_cli_version).to.equal(
+        vec.ref.deposit_cli_version, 
+        '`deposit_cli_version` mismatch.'
+      );
       // Validate the full JSON string
-      expect(resp.depositData).to.equal(JSON.stringify(vec.ref), 'Full JSON string did not match.');
+      expect(resp.depositData).to.equal(
+        JSON.stringify(vec.ref), 
+        'Full JSON string did not match.'
+      );
     })
   }
 
@@ -143,7 +172,6 @@ describe('[BLS keys]', () => {
     await removeSeed(client);
     await loadSeed(client, origWalletSeed);
   })
-
 })
 
 //=========================================================
@@ -157,7 +185,7 @@ async function getBLSPub(startPath) {
   return pubs[0];
 }
 
-async function signBLS(signerPath, message, blsDst=null) {
+async function signBLS(signerPath, message) {
   const signReq = {
     data: {
       signerPath,
@@ -165,7 +193,6 @@ async function signBLS(signerPath, message, blsDst=null) {
       hashType: Constants.SIGNING.HASHES.NONE,
       encodingType: Constants.SIGNING.ENCODINGS.NONE,
       payload: message,
-      blsDst,
     }
   };
   return await client.sign(signReq);
@@ -228,7 +255,7 @@ async function validateExportedKeystore(seed, path, pw, expKeystoreBuffer) {
   );
 }
 
-async function loadSeed(client, seed, mnemonic=undefined) {
+async function loadSeed(client, seed, mnemonic=null) {
   const res = await testRequest({
     client,
     testID: 0,
