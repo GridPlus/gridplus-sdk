@@ -35,8 +35,8 @@ const globalVectors = jsonc.parse(
 
 let client, origWalletSeed, encPw;
 const keystores = [];
-const WITHDRAWAL_PATH = globalVectors.ethDeposit.depositData[0].withdrawalPath;
-const DEPOSIT_PATH = globalVectors.ethDeposit.depositData[1].depositPath;
+const DEPOSIT_PATH = [ 12381, 3600, 0, 0, 0];
+const WITHDRAWAL_PATH = [ 12381, 3600, 0, 0];
 // Number of signers to test for each of deposit and withdrawal paths
 const N_TEST_SIGS = 1;
 // Number of deposit keys against which to validate deposit data
@@ -54,16 +54,13 @@ describe('[BLS keys]', () => {
       );
     }
   })
-
-  /*
+  
   it('Should get the current wallet seed', async () => {
     origWalletSeed = await initializeSeed(client);
   })
-
+  
   it('Should remove the current seed and load a known one', async () => {
-    // 1. Remove seed
     await removeSeed(client);
-    // 2. Load known seed
     await loadSeed(client, KNOWN_SEED, KNOWN_MNEMONIC);
   })
 
@@ -107,11 +104,8 @@ describe('[BLS keys]', () => {
     req.params.c = undefined;
     encData = await client.fetchEncryptedData(req);
     await validateExportedKeystore(KNOWN_SEED, req.params.path, encPw, encData);
-   
-    req.params.path[2] = 1;
-
   })
-*/
+
   for (let i = 0; i < N_TEST_DEPOSIT_DATA; i++) {
     it(`Should get encrypted keystore #${i+1}/${N_TEST_DEPOSIT_DATA}`, async () => {
       const path = globalVectors.ethDeposit.depositData[i].depositPath; 
@@ -128,21 +122,28 @@ describe('[BLS keys]', () => {
 
     it(`Should validate deposit data for keystore #${i+1}/${N_TEST_DEPOSIT_DATA} w/ BLS withdrawal`, async () => {
       const vec = globalVectors.ethDeposit.depositData[i];
-      // Fetch withdrawal pubkey and convert to withdrawal credentials
-      const depositPub = await getBLSPub(vec.depositPath);
-      const withdrawalPub = await getBLSPub(vec.withdrawalPath);
-      // Get deposit message root and validate against reference
-      const depositMsgRoot = Utils.getEthDepositMessageRoot(depositPub, withdrawalPub);
-      expect(depositMsgRoot.toString('hex').toLowerCase()).to.equal(vec.messageRoot);
-      // Get signing root
-      const signingRoot = Utils.getEthDepositSigningRoot(depositMsgRoot);
-      console.log('signingRoot', signingRoot)
-      // Sign root and validate against reference
-      const sig = await signBLS(vec.depositPath, signingRoot);
-      console.log('sig', sig)
+      const resp = await Utils.getEthDepositData(client, vec.depositPath);
+      // Validate components of response
+      const dd = JSON.parse(resp.depositData);
+      expect(dd.pubkey).to.equal(vec.ref.pubkey, '`pubkey` mismatch.');
+      expect(dd.withdrawal_credentials).to.equal(vec.ref.withdrawal_credentials, '`withdrawal_credentials` mismatch.');
+      expect(dd.amount).to.equal(vec.ref.amount, '`amount` mismatch.');
+      expect(dd.signature).to.equal(vec.ref.signature, '`signature` mismatch');
+      expect(dd.deposit_message_root).to.equal(vec.ref.deposit_message_root, '`deposit_message_root` mismatch.');
+      expect(dd.deposit_data_root).to.equal(vec.ref.deposit_data_root, '`deposit_data_root` mismatch.');
+      expect(dd.fork_version).to.equal(vec.ref.fork_version, '`fork_version` mismatch.');
+      expect(dd.network_name).to.equal(vec.ref.network_name, '`network_name` mismatch.');
+      expect(dd.deposit_cli_version).to.equal(vec.ref.deposit_cli_version, '`deposit_cli_version` mismatch.');
+      // Validate the full JSON string
+      expect(resp.depositData).to.equal(JSON.stringify(vec.ref), 'Full JSON string did not match.');
     })
-
   }
+
+  it('Should restore the original seed', async () => {
+    await removeSeed(client);
+    await loadSeed(client, origWalletSeed);
+  })
+
 })
 
 //=========================================================
@@ -156,7 +157,7 @@ async function getBLSPub(startPath) {
   return pubs[0];
 }
 
-async function signBLS(signerPath, message) {
+async function signBLS(signerPath, message, blsDst=null) {
   const signReq = {
     data: {
       signerPath,
@@ -164,6 +165,7 @@ async function signBLS(signerPath, message) {
       hashType: Constants.SIGNING.HASHES.NONE,
       encodingType: Constants.SIGNING.ENCODINGS.NONE,
       payload: message,
+      blsDst,
     }
   };
   return await client.sign(signReq);

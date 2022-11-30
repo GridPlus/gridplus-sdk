@@ -20,9 +20,9 @@ import {
   HARDENED_OFFSET,
   responseCodes,
   responseMsgs,
+  PUBLIC,
   VERSION_BYTE,
   EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
-  ETH_CONSENSUS_SPEC,
 } from './constants';
 import { isValidBlockExplorerResponse, isValid4ByteResponse } from './shared/validators';
 
@@ -586,19 +586,52 @@ function getEthDepositDomain(
   }
   const forkDataType = new ContainerType({
     current_version: new ByteVectorType(4),
-    validators_root: new ByteVectorType(32),
+    genesis_validators_root: new ByteVectorType(32),
   });
   const forkDataRoot = Buffer.from(forkDataType.hashTreeRoot({
     current_version: forkVersion,
-    validators_root: validatorsRoot,
+    genesis_validators_root: validatorsRoot,
   }));
   // Construct the domain, see:
   // https://github.com/ethereum/staking-deposit-cli/blob/
   // e2a7c942408f7fc446b889097f176238e4a10a76/staking_deposit/utils/ssz.py#L42
   const depositDomain = Buffer.alloc(32);
-  ETH_CONSENSUS_SPEC.DOMAINS.DEPOSIT.copy(depositDomain, 0);
+  PUBLIC.ETH_CONSENSUS_SPEC.DOMAINS.DEPOSIT.copy(depositDomain, 0);
   forkDataRoot.slice(0, 28).copy(depositDomain, 4);
   return depositDomain;
+}
+
+//--------------------------------------------------
+// ETH DEPOSIT UTILS
+//--------------------------------------------------
+/**
+ * Get the withdrawal credentials given a key.
+ * There are currently two supported types of withdrawal:
+ * - 0x00: BLS key used to withdraw
+ * - 0x11: ETH1 key used to withdraw
+ * 
+ * @param withdrawalKey - Buffer containing either BLS withdrawal pubkey (48 bytes)
+ *                        or Ethereum address (20 bytes)
+ * @return 32-byte Buffer containing withdrawal credentials
+ */
+function getEthDepositWithdrawalCredentials(
+  withdrawalKey: Buffer, // BLS pubkey of mapped withdrawal key OR ETH1 address
+): Buffer {
+  const creds = Buffer.alloc(32);
+  const keyBuf =  ensureHexBuffer(withdrawalKey);
+  if (keyBuf.length === 48) {
+    // BLS key - must be hashed first
+    creds[0] = 0;
+    const h = sha256().update(keyBuf).digest('hex');
+    Buffer.from(h, 'hex').slice(1).copy(creds, 1);
+  } else if (keyBuf.length === 20) {
+    // ETH1 key - added raw to buffer, left padded
+    creds[1] = 1;
+    keyBuf.copy(creds, 12);
+  } else {
+    throw new Error('`withdrawalKey` must be 48 byte BLS pubkey or Ethereum address.');
+  }
+  return creds;
 }
 
 //--------------------------------------------------
@@ -693,97 +726,146 @@ export const generateAppSecret = (
 };
 
 /**
- * Generate an ETH deposit message root for a given depositor.
- * This root is needed for deposit data, which is used to create a validator.
+ * Generate ETH deposit data for a given validator.
+ * This requires a secure connection with a Lattice via `client`.
+ * A signing request will be made on the signing root, which is needed
+ * before deposit data can be formed.
  * 
- * Deposit Message definition:
- * https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#depositmessage
- * Deposit Data definition:
- * https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#depositdata
- * 
- * @param pubkey        - Buffer containing BLS deposit pubkey (48 bytes)
- * @param withdrawalKey - Buffer containing either BLS withdrawal pubkey (48 bytes)
- *                        or Ethereum address (20 bytes)
- * @param amountGwei    - Amount to be deposited in GWei (default=32000000000, i.e. 32 ETH)
- * @return 32 byte Buffer containing DepositMessage root
+ * @param client - Instance of GridPlus SDK, which is already connected/paired to a target Lattice.
+ * @param depositPath - Array with up to five u32 indices representing BIP39 path.
+ * @param req - Instance of `EthDepositDataReq` containing params to build the deposit data.
+ * @return JSON string containing deposit data for this validator.
  */
-function getEthDepositMessageRoot(
-  pubkey: Buffer, // BLS pubkey of depositor (48 bytes)
-  withdrawalKey: Buffer, // BLS pubkey of mapped withdrawal key OR ETH1 address
-  amountGwei = 32000000000 // Amount to be deposited in GWei (10**9 wei)
-): Buffer {
-  let _withdrawalKey;
-  const tree = {
+async function getEthDepositData(
+  client,
+  depositPath: number[],
+  params: EthDepositDataReq = {
+    amountGwei: 32000000000,
+    info: PUBLIC.ETH_CONSENSUS_SPEC.NETWORKS.MAINNET_GENESIS,
+    depositCliVersion: '2.3.0',
+  }
+) : Promise<EthDepositDataResp> {
+  const { withdrawalKey, amountGwei, info, depositCliVersion } = params;
+  // Sanity checks
+  if (!depositPath || !amountGwei || !info || !depositCliVersion) {
+    throw new Error(
+      'One or more params missing from `req`: `depositPath`, `amountGwei`, `info`, `depositCliVersion`.'
+    );
+  }
+  if (amountGwei < 0 || new BN(amountGwei).gte(new BN(2).pow(new BN(64)))) {
+    throw new Error('`amountGwei` must be >0 and <UINT64_MAX')
+  }
+  const { networkName, forkVersion, validatorsRoot } = info;
+  if (!networkName) {
+    throw new Error('No `info.network` value found.');
+  }
+  if (!forkVersion) {
+    throw new Error('No `info.forkVersion` value found.');
+  } else if (forkVersion.length !== 4) {
+    throw new Error('`info.forkVersion` must be a 4 byte Buffer.')
+  }
+  if (!validatorsRoot) {
+    throw new Error('No `info.validatorsRoot` value found.');
+  } else if (validatorsRoot.length !== 32) {
+    throw new Error('`info.validatorsRoot` must be a 32 byte Buffer.');
+  }
+  // Start building data. Items should be strings. Some can be copied directly.
+  const depositData = {
     pubkey: null,
     withdrawal_credentials: null,
     amount: amountGwei,
+    signature: null,
+    deposit_message_root: null,
+    deposit_data_root: null,
+    fork_version: forkVersion.toString('hex'),
+    network_name: networkName,
+    deposit_cli_version: depositCliVersion,
   };
-  try {
-    tree.pubkey = ensureHexBuffer(pubkey);
-    _withdrawalKey = ensureHexBuffer(withdrawalKey);
-  } catch (err) {
-    throw new Error('Failed to parse `pubkey` and/or `withdrawalKey` param.');
-  }
-  // Sanity check pubkey length 
-  if (tree.pubkey.length !== 48) {
-    throw new Error('48 byte `pubkey` must be used.');
-  }
-  // Sanity check amount
-  if (tree.amount < 0 || new BN(tree.amount).gte(new BN(2).pow(new BN(64)))) {
-    throw new Error('`amount` must be >0 and <UINT64_MAX')
-  }
-  // Generate withdrawalCredentials
-  tree.withdrawal_credentials = Buffer.alloc(32);
-  if (_withdrawalKey.length === 48) {
-    // BLS key - must be hashed first
-    tree.withdrawal_credentials[0] = 0;
-    const h = sha256().update(_withdrawalKey).digest('hex');
-    Buffer.from(h, 'hex').slice(1).copy(tree.withdrawal_credentials, 1);
-  } else if (_withdrawalKey.length === 20) {
-    // ETH1 key - added raw to buffer
-    tree.withdrawal_credentials[1] = 1;
-    _withdrawalKey.copy(tree.withdrawal_credentials, 12);
+
+  // Get the depositor pubkey
+  const getAddrFlag = PUBLIC.GET_ADDR_FLAGS.BLS12_381_G1_PUB;
+  const depositPubs = await client.getAddresses({ startPath: depositPath, flag: getAddrFlag });
+  const depositKey = depositPubs[0];
+  depositData.pubkey = depositKey.toString('hex');
+
+  // If no withdrawalKey was passed, fetch the BLS one
+  let withdrawalKeyBuf;
+  if (withdrawalKey) {
+    // If a withdrawal key was provided, capture it here
+    withdrawalKeyBuf = ensureHexBuffer(withdrawalKey);
   } else {
-    throw new Error('`withdrawalKey` must be 48 byte BLS pubkey or Ethereum address.');
+    // Otherwise we should derive the corresponding withdrawal key.
+    // The withdrawal path is just up one derivation index relative to deposit path.
+    // See: https://eips.ethereum.org/EIPS/eip-2334
+    const withdrawalPath = depositPath.slice(0, depositPath.length-1);
+    const withdrawalPubs = await client.getAddresses({ startPath: withdrawalPath, flag: getAddrFlag});
+    withdrawalKeyBuf = withdrawalPubs[0];
   }
-  // Define the message type using the ssz spec
+  // We can now generate the withdrawal credentials
+  const withdrawalCreds = getEthDepositWithdrawalCredentials(withdrawalKeyBuf);
+  depositData.withdrawal_credentials = withdrawalCreds.toString('hex');
+
+  // Build the message root
+  // https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#depositmessage
   const depositMessageType = new ContainerType({
     pubkey: new ByteVectorType(48),
     withdrawal_credentials: new ByteVectorType(32),
     amount: new UintNumberType(8),
   });
-  // Return the Merkle root of the deposit message
-  return Buffer.from(depositMessageType.hashTreeRoot(tree));
-}
-
-/**
- * Generate an ETH deposit signing root, which must be signed by the depositing
- * key in order to build a valid deposit.
- * 
- * @param messageRoot     - 32 byte Buffer containing the output of `getEthDepositMessageRoot`
- * @param forkVersion     - 4 byte Buffer containing fork version (default=mainnet genesis)
- * @param validatorsRoot  - 32 byte Buffer containing validators state root (default=mainnet genesis) 
- */
-function getEthDepositSigningRoot(
-  messageRoot: Buffer,
-  forkVersion: Buffer = ETH_CONSENSUS_SPEC.NETWORKS.MAINNET.GENESIS.FORK_VERSION,
-  validatorsRoot: Buffer = ETH_CONSENSUS_SPEC.NETWORKS.MAINNET.GENESIS.VALIDATORS_ROOT
-): Buffer {
-  // Sanity check message root
-  if (messageRoot.length !== 32) {
-    throw new Error('`messageRoot` must be a 32 byte Buffer.');
-  }
-  // Get the domain
-  const domain = getEthDepositDomain(forkVersion, validatorsRoot);
-  // Construct the signing root
+  const depositMessageRoot = Buffer.from(depositMessageType.hashTreeRoot({
+    pubkey: depositKey,
+    withdrawal_credentials: withdrawalCreds,
+    amount: amountGwei,
+  }));
+  depositData.deposit_message_root = depositMessageRoot.toString('hex');
+  
+  // Build the signing root
+  // https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_signing_root
   const signingType = new ContainerType({
     object_root: new ByteVectorType(32),
     domain: new ByteVectorType(32),
   });
-  return Buffer.from(signingType.hashTreeRoot({
-    object_root: messageRoot,
-    domain,
+  const signingRoot = Buffer.from(signingType.hashTreeRoot({
+    object_root: depositMessageRoot,
+    domain: getEthDepositDomain(forkVersion, validatorsRoot),
   }));
+  // Sign the root
+  const signReq = {
+    data: {
+      signerPath: depositPath,
+      curveType: PUBLIC.SIGNING.CURVES.BLS12_381_G2,
+      hashType: PUBLIC.SIGNING.HASHES.NONE,
+      encodingType: PUBLIC.SIGNING.ENCODINGS.ETH_DEPOSIT,
+      payload: signingRoot,
+      blsDst: PUBLIC.SIGNING.BLS_DST.BLS_DST_POP,
+    }
+  };
+  const sig = await client.sign(signReq);
+  if (sig.pubkey.toString('hex') !== depositData.pubkey) {
+    throw new Error('Incorrect signer returned. Deposit data generation failed.');
+  }
+  depositData.signature = sig.sig.toString('hex');
+
+  // Build the deposit data root
+  // https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#depositdata
+  const depositDataType = new ContainerType({
+    pubkey: new ByteVectorType(48),
+    withdrawal_credentials: new ByteVectorType(32),
+    amount: new UintNumberType(8),
+    signature: new ByteVectorType(96),
+  });
+  const depositDataRoot = Buffer.from(depositDataType.hashTreeRoot({
+    pubkey: depositKey,
+    withdrawal_credentials: withdrawalCreds,
+    amount: amountGwei,
+    signature: sig.sig,
+  }));
+  depositData.deposit_data_root = depositDataRoot.toString('hex');
+
+  return {
+    pubkey: depositData.pubkey,
+    depositData: JSON.stringify(depositData),
+  };
 }
 
 /**
@@ -871,7 +953,6 @@ export const getV = function (tx, resp) {
 export const EXTERNAL = {
   fetchCalldataDecoder,
   generateAppSecret,
-  getEthDepositMessageRoot,
-  getEthDepositSigningRoot,
+  getEthDepositData,
   getV,
 }

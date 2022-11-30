@@ -332,23 +332,6 @@ const ethMsgProtocol = {
   },
 };
 
-/** @internal */
-const ETH_CONSENSUS_SPEC = {
-  NETWORKS: {
-    MAINNET: {
-      GENESIS: {
-          FORK_VERSION: Buffer.alloc(4),
-          // Empty root because there were no validators at genesis
-          VALIDATORS_ROOT: Buffer.alloc(32),
-      },
-    },
-  },
-  DOMAINS: {
-    DEPOSIT: Buffer.from('03000000', 'hex'),
-    VOLUNTARY_EXIT: Buffer.from('04000000', 'hex'),
-  }
-}
-
 /**
  * Externally exported constants used for building requests
  * @public
@@ -377,6 +360,11 @@ export const EXTERNAL = {
       SOLANA: 2,
       // TERRA: 3, // Deprecated
       EVM: 4,
+      ETH_DEPOSIT: 5,
+    },
+    BLS_DST: {
+      BLS_DST_NUL: 1,
+      BLS_DST_POP: 2,
     },
   },
   // Options for exporting encrypted data
@@ -385,7 +373,20 @@ export const EXTERNAL = {
       BLS_KEYSTORE_EIP2335_PBKDF_V4: 0,
     },
   },
-  ETH_CONSENSUS_SPEC,
+  ETH_CONSENSUS_SPEC: {
+    NETWORKS: {
+      MAINNET_GENESIS: {
+        networkName: 'mainnet',
+        forkVersion: Buffer.alloc(4),
+        // Empty root because there were no validators at genesis
+        validatorsRoot: Buffer.alloc(32),
+      },
+    },
+    DOMAINS: {
+      DEPOSIT: Buffer.from('03000000', 'hex'),
+      VOLUNTARY_EXIT: Buffer.from('04000000', 'hex'),
+    }
+  },
 };
 
 /** @internal */
@@ -561,6 +562,7 @@ function getFwVersionConst (v: Buffer): FirmwareConstants {
   // V0.17.0 added support for BLS12-381-G1 pubkeys and G2 sigs
   if (!legacy && gte(v, [0, 17, 0])) {
     c.getAddressFlags.push(EXTERNAL.GET_ADDR_FLAGS.BLS12_381_G1_PUB);
+    c.genericSigning.encodingTypes.ETH_DEPOSIT = EXTERNAL.SIGNING.ENCODINGS.ETH_DEPOSIT;
   }
 
   return c;
@@ -647,5 +649,6 @@ export {
   HANDLE_LARGER_CHAIN_ID,
   MAX_CHAIN_ID_BYTES,
   ETH_ABI_LATTICE_FW_TYPE_MAP,
-  ETH_CONSENSUS_SPEC,
+
+  EXTERNAL as PUBLIC,
 };
