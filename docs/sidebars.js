@@ -38,6 +38,14 @@ const sidebars = {
       items: [
         {
           type: 'doc',
+          id: 'tutorials/intro',
+        },
+        {
+          type: 'doc',
+          id: 'tutorials/addressTags',
+        },
+        {
+          type: 'doc',
           id: 'tutorials/ethDeposits',
         }
       ]

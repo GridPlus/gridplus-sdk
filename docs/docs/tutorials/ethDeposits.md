@@ -30,7 +30,7 @@ You must pass a JSON file containing this information to the [Ethereum Launchpad
 
 ## Connecting to Your Lattice
 
-Before exporting keys, you need to [establish a connection](../getting-started) with your Lattice:
+Before exporting keys, you need to [establish a connection](./intro#setting-up-a-connection) with your Lattice:
 
 ```ts
 import { Client, Constants, Utils } from 'gridplus-sdk';
