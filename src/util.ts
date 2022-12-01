@@ -736,7 +736,7 @@ export const generateAppSecret = (
  * @param req - Instance of `EthDepositDataReq` containing params to build the deposit data.
  * @return JSON string containing deposit data for this validator.
  */
-async function getEthDepositData(
+export async function getEthDepositData(
   client,
   depositPath: number[],
   params: EthDepositDataReq = {

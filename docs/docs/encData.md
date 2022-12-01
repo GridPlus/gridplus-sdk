@@ -5,7 +5,7 @@ sidebar_position: 4
 
 # 🔒 Fetching Encrypted Data
 
-:::caution
+:::info
 Firmware v0.17.0 is required to fetch encrypted data.
 :::
 

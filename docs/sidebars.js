@@ -37,6 +37,10 @@ const sidebars = {
     },
     {
       type: 'doc',
+      id: 'ethDeposits',
+    },
+    {
+      type: 'doc',
       id: 'testing',
     },
     {
