@@ -20,16 +20,19 @@ const sidebars = {
       id: 'index',
     },
     {
-      type: 'doc',
-      id: 'getting-started',
-    },
-    {
-      type: 'doc',
-      id: 'addresses',
-    },
-    {
-      type: 'doc',
-      id: 'signing',
+      type: 'category',
+      label: 'Basic Functionality',
+      collapsible: false,
+      items: [
+        {
+          type: 'doc',
+          id: 'addresses',
+        },
+        {
+          type: 'doc',
+          id: 'signing',
+        },
+      ]
     },
     {
       type: 'category',
@@ -38,7 +41,7 @@ const sidebars = {
       items: [
         {
           type: 'doc',
-          id: 'tutorials/intro',
+          id: 'tutorials/calldataDecoding'
         },
         {
           type: 'doc',
@@ -47,7 +50,7 @@ const sidebars = {
         {
           type: 'doc',
           id: 'tutorials/ethDeposits',
-        }
+        },
       ]
     },
     {
