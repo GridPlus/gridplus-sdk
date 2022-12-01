@@ -54,6 +54,7 @@ describe('[BLS keys]', () => {
       );
     }
   })
+  
   it('Should get the current wallet seed', async () => {
     origWalletSeed = await initializeSeed(client);
   })
@@ -78,7 +79,7 @@ describe('[BLS keys]', () => {
       await testBLSDerivationAndSig(KNOWN_SEED, pathIdx);
     })
   }
-
+  
   it('Should export encrypted withdrawal private keys', async () => {
     const req = {
       schema: Constants.ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4,
@@ -104,9 +105,9 @@ describe('[BLS keys]', () => {
     encData = await client.fetchEncryptedData(req);
     await validateExportedKeystore(KNOWN_SEED, req.params.path, encPw, encData);
   })
-
+  
   for (let i = 0; i < N_TEST_DEPOSIT_DATA; i++) {
-    it(`Should get encrypted keystore #${i+1}/${N_TEST_DEPOSIT_DATA}`, async () => {
+    it(`[Encrypted Export] Should get keystore #${i+1}/${N_TEST_DEPOSIT_DATA}`, async () => {
       const path = globalVectors.ethDeposit.depositData[i].depositPath; 
       const encData = await client.fetchEncryptedData({
         schema: Constants.ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4,
@@ -119,52 +120,14 @@ describe('[BLS keys]', () => {
       keystores.push(encData);
     })
 
-    it(`Should validate deposit data for keystore #${i+1}/${N_TEST_DEPOSIT_DATA} w/ BLS withdrawal`, async () => {
+    it(`[BLS Withdrawal] Should validate deposit data for keystore #${i+1}/${N_TEST_DEPOSIT_DATA}`, async () => {
       const vec = globalVectors.ethDeposit.depositData[i];
-      const resp = await Utils.getEthDepositData(client, vec.depositPath);
-      // Validate components of response
-      const dd = JSON.parse(resp.depositData);
-      expect(dd.pubkey).to.equal(
-        vec.ref.pubkey, 
-        '`pubkey` mismatch.'
-      );
-      expect(dd.withdrawal_credentials).to.equal(
-        vec.ref.withdrawal_credentials, 
-        '`withdrawal_credentials` mismatch.'
-      );
-      expect(dd.amount).to.equal(
-        vec.ref.amount, 
-        '`amount` mismatch.'
-      );
-      expect(dd.signature).to.equal(
-        vec.ref.signature, 
-        '`signature` mismatch'
-      );
-      expect(dd.deposit_message_root).to.equal(
-        vec.ref.deposit_message_root, 
-        '`deposit_message_root` mismatch.'
-      );
-      expect(dd.deposit_data_root).to.equal(
-        vec.ref.deposit_data_root, 
-        '`deposit_data_root` mismatch.'
-      );
-      expect(dd.fork_version).to.equal(
-        vec.ref.fork_version, 
-        '`fork_version` mismatch.'
-      );
-      expect(dd.network_name).to.equal(
-        vec.ref.network_name, 
-        '`network_name` mismatch.'
-      );
-      expect(dd.deposit_cli_version).to.equal(
-        vec.ref.deposit_cli_version, 
-        '`deposit_cli_version` mismatch.'
-      );
-      // Validate the full JSON string
-      expect(resp.depositData).to.equal(
-        JSON.stringify(vec.ref), 
-        'Full JSON string did not match.'
-      );
+      await validateDepositData(client, vec.depositPath, vec.blsWithdrawalRef);
+    })
+
+    it(`[ETH1 Withdrawal] Should validate deposit data for keystore #${i+1}/${N_TEST_DEPOSIT_DATA}`, async () => {
+      const vec = globalVectors.ethDeposit.depositData[i];
+      await validateDepositData(client, vec.depositPath, vec.eth1WithdrawalRef, vec.eth1WithdrawalKey);
     })
   }
 
@@ -293,5 +256,53 @@ async function removeSeed(client) {
   expect(parsedRes.resultStatus).toEqualElseLog(
     gpErrors.GP_SUCCESS,
     getCodeMsg(parsedRes.resultStatus, gpErrors.GP_SUCCESS),
+  );
+}
+
+async function validateDepositData(client, depositPath, ref, withdrawalKey=null) {
+  // Generate the deposit data
+  const resp = await Utils.getEthDepositData(client, depositPath, { withdrawalKey });
+  // Validate components of response against the reference object
+  const dd = JSON.parse(resp.depositData);
+  expect(dd.pubkey).to.equal(
+    ref.pubkey, 
+    '`pubkey` mismatch.'
+  );
+  expect(dd.withdrawal_credentials).to.equal(
+    ref.withdrawal_credentials, 
+    '`withdrawal_credentials` mismatch.'
+  );
+  expect(dd.amount).to.equal(
+    ref.amount, 
+    '`amount` mismatch.'
+  );
+  expect(dd.signature).to.equal(
+    ref.signature, 
+    '`signature` mismatch'
+  );
+  expect(dd.deposit_message_root).to.equal(
+    ref.deposit_message_root, 
+    '`deposit_message_root` mismatch.'
+  );
+  expect(dd.deposit_data_root).to.equal(
+    ref.deposit_data_root, 
+    '`deposit_data_root` mismatch.'
+  );
+  expect(dd.fork_version).to.equal(
+    ref.fork_version, 
+    '`fork_version` mismatch.'
+  );
+  expect(dd.network_name).to.equal(
+    ref.network_name, 
+    '`network_name` mismatch.'
+  );
+  expect(dd.deposit_cli_version).to.equal(
+    ref.deposit_cli_version, 
+    '`deposit_cli_version` mismatch.'
+  );
+  // Validate the full JSON string
+  expect(resp.depositData).to.equal(
+    JSON.stringify(ref), 
+    'Full JSON string did not match.'
   );
 }

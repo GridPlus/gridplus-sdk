@@ -96,6 +96,23 @@ for (let i = 0; i < numValidators; i++) {
 }
 ```
 
+### BLS vs ETH1 Withdrawals
+
+When creating deposit data, one must define a key that can **withdraw** from the validator (a.k.a. deposit key). This is called the "withdrawal key". Currently, there are two options: BLS and ETH1 withdrawal keys.
+
+* By default, a BLS withdrawal key corresponding to the deposit key will be generated. Per [EIP2334](https://eips.ethereum.org/EIPS/eip-2334), the generic paths are `m/12381/3600/i/0/0` for deposit keys and `m/12381/3600/i/0` for withdrawal keys. This means that for a given `i`, the withdrawal key is one index up the BIP39 derivation path.
+* If you would prefer to give an ETH1 address (i.e. a key derived on the `secp256k1` curve) the power to withdraw for your depositor at `m/12381/3600/i/0/0`, you may pass that address as an optional param, as shown below.
+
+```ts
+const eth1Addr = '0xf2f5c73fa04406b1995e397b55c24ab1f3ea726c';
+
+// Get deposit data with default BLS withdrawal:
+const depositDataBLS = await Utils.getEthDepositData(client, path);
+// Get deposit data with ETH1 withdrawal key:
+const depositDataETH1 = await Utils.getEthDepositData(client, path, { withdrawalKey: eth1Addr });
+```
+
+
 ## Putting it Together
 
 With your keystores and deposit data in hand, we are ready to start validating! Let's just export the data into JSON files. Here is the full script with a few modifications, including JSON file export:

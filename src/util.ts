@@ -626,7 +626,7 @@ function getEthDepositWithdrawalCredentials(
     Buffer.from(h, 'hex').slice(1).copy(creds, 1);
   } else if (keyBuf.length === 20) {
     // ETH1 key - added raw to buffer, left padded
-    creds[1] = 1;
+    creds[0] = 1;
     keyBuf.copy(creds, 12);
   } else {
     throw new Error('`withdrawalKey` must be 48 byte BLS pubkey or Ethereum address.');
@@ -739,13 +739,14 @@ export const generateAppSecret = (
 export async function getEthDepositData(
   client,
   depositPath: number[],
-  params: EthDepositDataReq = {
-    amountGwei: 32000000000,
-    info: PUBLIC.ETH_CONSENSUS_SPEC.NETWORKS.MAINNET_GENESIS,
-    depositCliVersion: '2.3.0',
-  }
+  params: EthDepositDataReq
 ) : Promise<EthDepositDataResp> {
-  const { withdrawalKey, amountGwei, info, depositCliVersion } = params;
+  const { 
+    amountGwei=32000000000, 
+    depositCliVersion='2.3.0',
+    info=PUBLIC.ETH_CONSENSUS_SPEC.NETWORKS.MAINNET_GENESIS,
+    withdrawalKey, 
+  } = params;
   // Sanity checks
   if (!depositPath || !amountGwei || !info || !depositCliVersion) {
     throw new Error(
