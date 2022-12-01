@@ -32,10 +32,6 @@ const sidebars = {
       id: 'signing',
     },
     {
-      type: 'doc',
-      id: 'encData',
-    },
-    {
       type: 'category',
       label: 'Tutorials',
       collapsible: false,

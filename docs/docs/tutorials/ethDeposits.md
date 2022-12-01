@@ -52,7 +52,7 @@ if (!isPaired) {
 It is important to understand that your Lattice **cannot** function as a validator. You must set up a staking node running a consensus client in order to function as a validator.
 :::
 
-The first step to setting up your validator(s) is to export the private key(s) so that your consensus client software can fulfill your validator duties, such as signing attestations and signing block proposals. Of course, we do not want to export private keys in plain text, as key leakage can result in attacks on your validator. Therefore, we export **encrypted** validator private keys from your Lattice using the format defined by [EIP2335](https://eips.ethereum.org/EIPS/eip-2335). This is done by [fetching encrypted data](../encData). You may request **one** encrypted private key at a time, corresponding to the specified `path`.
+The first step to setting up your validator(s) is to export the private key(s) so that your consensus client software can fulfill your validator duties, such as signing attestations and signing block proposals. Of course, we do not want to export private keys in plain text, as key leakage can result in attacks on your validator. Therefore, we export **encrypted** validator private keys from your Lattice using the format defined by [EIP2335](https://eips.ethereum.org/EIPS/eip-2335). This is done with [`fetchEncryptedData`](../api/classes/client.Client#fetchencrypteddata). You may request **one** encrypted private key at a time, corresponding to the specified `path`.
 
 :::note
 1. Only `pbkdf2` format is supported, meaning `scrypt` is **not** supported. Both formats are valid for staking purposes.
