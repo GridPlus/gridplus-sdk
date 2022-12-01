@@ -9,7 +9,7 @@ sidebar_position: 4
 Firmware v0.17.0 is required to fetch encrypted data.
 :::
 
-You can use this SDK to fetch certain pieces of secure data from your Lattice in an encrypted format.
+You can use this SDK to fetch certain pieces of secure data from your Lattice in an encrypted format using [`fetchEncryptedData`](./api/classes/client.Client#fetchencrypteddata).
 
 :::note
 Before you can fetch encrypted data, you need to set an encryption password on your Lattice. You will be asked to do this automatically if you request encrypted data without a password set, but you can always go to `System Preferences -> Security & Privacy -> Encryption Password` to set, delete, or change your device's encryption password.

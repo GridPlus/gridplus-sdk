@@ -3,11 +3,11 @@ id: "testing"
 sidebar_position: 6
 ---
 
-# 🧪 Testing
+# Testing
 
 All functionality is tested in some script in `/test`. Please see those scripts for examples on functionality not documented.
 
-:::caution
+:::info
 
 Testing is only possible with a development Lattice, which GridPlus does not distribute publicly. Therefore, if you do not have a development Lattice, you will not be able to run many of these tests.**
 
