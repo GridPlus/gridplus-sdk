@@ -3,7 +3,7 @@ id: "ethDeposits"
 sidebar_position: 5
 ---
 
-#  💽 Managing ETH Staking Keys
+#  🖥️ ETH Staking Keys
 
 :::danger
 ETH staking key management on the Lattice is alpha software and may contain bugs. Please exercise caution when using it.
@@ -13,18 +13,29 @@ ETH staking key management on the Lattice is alpha software and may contain bugs
 Firmware v0.17.0 or above is required for all validator key management functionality.
 :::
 
+:::caution
+Your Lattice **cannot** function as a validator - it can only serve as a **key management system**. In order to participate in the daily activities of Ethereum staking, you must set up a [staking node](https://ethereum.org/en/staking/).
+:::
+
 If you are interested in staking on Ethereum, you can manage your staking keys using your Lattice as a secure key storage device. There are two components to this:
 
-1. [Export Encrypted Keystores](#exporting-encrypted-keystores): These are your validator private keys, which can be decrypted and used to sign attestations and block proposals using your preferred [consensus layer client](https://ethereum.org/en/developers/docs/nodes-and-clients/#consensus-clients).
+1. [Generate Keystores](#generating-keystores): These are your **encrypted** validator private keys, which can be decrypted and used to sign attestations and block proposals using your preferred [consensus layer client](https://ethereum.org/en/developers/docs/nodes-and-clients/#consensus-clients).
 
 2. [Generate Geposit Data](#generating-deposit-data): You must pass a JSON file containing validator(s) information to the [Ethereum Launchpad](https://launchpad.ethereum.org/en/) if you wish to create validators using that mechanism, which is the most common and well tested method of starting validators.
 
-## Exporting Encrypted Keystores
-:::caution
-It is important to understand that your Lattice **cannot** function as a validator. You must set up a [staking node](https://ethereum.org/en/staking/) running a consensus client in order to function as a validator.
-:::
+## Generating Keystores
 
-The first step to setting up your validator(s) is to export the private key(s) so that your consensus client software can fulfill your validator duties, such as signing attestations and signing block proposals. Of course, we do not want to export private keys in plain text, as key leakage can result in attacks on your validator. Therefore, we export **encrypted** validator private keys from your Lattice using the format defined by [EIP2335](https://eips.ethereum.org/EIPS/eip-2335). These encrypted files can be loaded directly into any consensus layer client of your choosing. Exporting encrypted keystores is done with [`fetchEncryptedData`](../api/classes/client.Client#fetchencrypteddata). You may request **one** encrypted private key at a time, corresponding to the specified `path`.
+The first step to setting up your validator(s) is to export the private key(s) so that your consensus client software can fulfill your validator duties, such as signing attestations and signing block proposals. Of course, we do not want to export private keys in plain text, as key leakage can result in attacks on your validator. Therefore, we export **encrypted** validator private keys from your Lattice.
+
+### Setting up an Encryption Password
+
+Before you can export keystores, you need to setup an encryption password on your Lattice. You may remove or change this at any time. All exported data will be encrypted using the Lattice's current encryption password, if one exists. If one does not exist, encrypted data export requests will fail and you will be prompted to setup a password.
+
+If you would like to manage your device encryption password at any time, go to `System Preferences -> Security & Privacy -> Encryption Password` on your Lattice's screen.
+
+### Exporting Encrypted Keystores
+
+Encrypted keystores are exported using the format defined by [EIP2335](https://eips.ethereum.org/EIPS/eip-2335). These encrypted files can be loaded directly into any consensus layer client of your choosing. Exporting encrypted keystores is done with [`fetchEncryptedData`](../api/classes/client.Client#fetchencrypteddata). You may request **one** encrypted private key at a time, corresponding to the specified `path`.
 
 :::note
 1. Only `pbkdf2` format is supported, meaning `scrypt` is **not** supported. Both formats are valid for staking purposes.
@@ -89,7 +100,7 @@ const depositDataETH1 = await Utils.getEthDepositData(client, path, { withdrawal
 ```
 
 
-## Putting it Together
+## Example
 
 With your keystores and deposit data in hand, we are ready to start validating! Let's just export the data into JSON files. Here is the full script with a few modifications, including JSON file export:
 

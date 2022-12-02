@@ -3,161 +3,105 @@ id: "signing"
 sidebar_position: 3
 ---
 
-# 🧾 Signing Transactions and Messages
+# 🧾 Signing Messages
 
-The Lattice1 is capable of signing messages on supported curves. For certain message types, it is capable of decoding and displaying the requests in more readable ways.
+The Lattice1 is capable of signing messages (e.g. Ethereum transactions) on supported elliptic curves. For certain message types, Lattice firmware is capable of decoding and displaying the requests in more readable ways. All requests must include a **derivation path** and must be made against the **current active wallet** on the target Lattice; if a [SafeCard](https://gridplus.io/safe-cards) is inserted and unlocked, it is considered the active wallet.
 
 # ✍️ General Signing
 
-***This new signing mode was introduced Lattice firmare `v0.14.0`. GridPlus plans on deprecating the legacy signing mode and replacing it with general signing decoders. This document will be updated as that happens.***
+:::info
+General signing was introduced Lattice firmare `v0.14.0`. GridPlus plans on deprecating the legacy signing mode and replacing it with corresponding [Encoding Types](#encoding-types). This document will be updated as that happens.
+:::
 
-You should import `Constants` when using general signing:
+General signing allows you to request a signature on **any message** from a private key derived on **any supported curve**. You will need to specify, at a minimum, a `Curve` and a `Hash` for your signing request. Options can be found in [`Constants`](./api/modules/constants#external):
 
 ```ts
 import { Constants } from `gridplus-sdk`
 ```
 
-## 🖊️ Requesting Signatures
-
-General signing allows you to request a signature on any message from a private key derived on any supported curve. Some curves (e.g. `secp256k1`) require a hashing algorithm to be specified in order to hash the message before signing. Other curves (e.g. `ed25519`, `bls12_381`) do not expect hashed messages prior to signing.
+:::note
+Some curves (e.g. `SECP256K1`) require a hashing algorithm to be specified so that Lattice firmware can hash the message before signing. Other curves (e.g. `ED25519`, `BLS12_381_G2`) hash the message as part of the signing process and require `curveType=NONE`.
+:::
 
 | Param | Location in `Constants` | Options | Description |
 |:------|:------------------------|:--------|:------------|
 | Curve | `Constants.SIGNING.CURVES` | `SECP256K1`, `ED25519`, `BLS12_381_G2` | Curve on which to derive the signer's private key |
-| Hash | `Constants.SIGNING.HASHES` | `KECCAK256`, `SHA256`, `NONE` | Hash to use prior to signing. Note that `ED25519` and `BLS12_381_G2` require `NONE` as messages are not prehashed. |
+| Hash | `Constants.SIGNING.HASHES` | `KECCAK256`, `SHA256`, `NONE` | Hash to use prior to signing. Note that `ED25519` and `BLS12_381_G2` require `NONE` as messages cannot be prehashed. |
 
-### Example: using generic signing
+### Example: General Signing
 
 ```ts
-const msg = "I am the message to sign"
+const msg = "I am the captain now"
 const req = {
-  signerPath: [
-    0x80000000 + 44,
-    0x80000000 + 60,
-    0x80000000,
-  ]
+  signerPath: [ 0x80000000 + 44, 0x80000000 + 60, 0x80000000, ];
   curveType: Constants.SIGNING.CURVES.SECP256K1,
   hashType: Constants.SIGNING.HASHES.KECCAK256,
   payload: msg
 };
-
 const sig = await client.sign(req)
 ```
 
-:::note
-When using the `gridplus-sdk` in a Node.js application with a version of Node lower than v18, you will need to patch the `fetch()` API in the global scope. One solution is to use the `node-fetch` package. See [the `node-fetch` README](https://github.com/node-fetch/node-fetch#installation) for instructions. Other options are available on NPM.
-:::
 
-## 📃 Message Decoders
+## 📃 Encoding Types
 
-By default, the message will be displayed on the Lattice's screen in either ASCII or hex -- if the message contains only ASCII, it will be displayed as such; otherwise it will get printed as a hex string. This means the Lattice can produce a signature for any message you like. However, there are additional decoders that make the request more readable on the Lattice. These decoders can be accessed inside of `Constants`:
+You may specify an **Encoding Type** in your signing request if you want the message to render in a **formatted** way, such as for an EVM transaction. If no Message Decoder is specified, the message will be displayed on the Lattice in full as either a hex or ASCII string, depending on the contents of the message. If you do specify an `encodingType`, the message **must** conform to its format (e.g. EVM transaction) or else Lattice firmware will reject the request. 
+
+Encoding Types can be accessed inside of `Constants`:
 
 ```ts
-const encodings = Constants.SIGNING.ENCODINGS
+const encodings = Constants.SIGNING.ENCODINGS;
 ```
 
 | Encoding | Description |
 |:---------|:------------|
 | `NONE` | Can also use `null` or not specify the `encodingType`. Lattice will display either an ASCII or a hex string depending on the payload. |
+| `EVM` | Used to decode an EVM contract function call. To deploy a contract, set `to` as `null`. |
 | `SOLANA` | Used to decode a Solana transaction. Transactions that cannot be decoded will be rejected. |
-| `EVM` | Used to decode an EVM contract function call. May also be combined with ABI encoding data. To deploy a contract, set `to` as `null`. |
 
-If you do not wish to specify a decoder, you can leave this field empty and the message will display either as ASCII or a hex string on the device.
-
-### Example: Using the EVM Decoder
+### Example: EVM Encoding
 
 ```ts
-const tx = EthTxFactory.fromTxData(txData, { common: req.common });
+// Create an `@ethereumjs/tx` object. Contents of `txData` are out of scope
+// for this example.
+import { TransactionFactory } from '@ethereumjs/tx';
+const tx = TransactionFactory.fromTxData(txData, { common: req.common });
+// Full, serialized EVM transaction
+const msg = tx.getMessageToSign(false);
+
+// Build the request with the EVM encoding
 const req = {
-  signerPath: [   // Derivation path of the first requested pubkey
-    0x80000000 + 44,
-    0x80000000 + 60,
-    0x80000000,
-    0,
-    0
-  ]
+  signerPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
   curveType: Constants.SIGNING.CURVES.SECP256K1,
   hashType: Constants.SIGNING.HASHES.KECCAK256,
   encodingType: Constants.SIGNING.ENCODINGS.EVM,
-  payload: tx.getMessageToSign(false), // Pass serialized transaction
+  payload: msg,
 };
-
 const sig = await client.sign(req)
 ```
 
-### Example: Using the Solana Decoder
+### Example: SOLANA Encoding
 
 ```ts
-const msg = solTx.compileMessage().serialize()
+// Setup the Solana transaction using `@solana/web3.js`.
+// The specifics are out of scope for this example.
+import { Transaction, SystemProgram } from '@solana/web3.js';
+const transfer = SystemProgram.transfer({
+  fromPubkey: "...",
+  toPubkey: "...",
+  lamports: 1234,
+})
+const recentBlockhash = "...";
+const tx = new Transaction({ recentBlockhash }).add(transfer);
+// Full, serialized Solana transaction
+const msg = tx.compileMessage().serialize();
+
+// Build the request with the SOLANA encoding
 const req = {
-  signerPath: [   // Derivation path of the first requested pubkey
-    0x80000000 + 44,
-    0x80000000 + 60,
-    0x80000000,
-  ]
+  signerPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000],
   curveType: Constants.SIGNING.CURVES.ED25519,
   hashType: Constants.SIGNING.HASHES.NONE,
   encodingType: Constants.SIGNING.ENCODINGS.SOLANA,
   payload: msg
-};
-
-const sig = await client.sign(req)
-```
-
-## 💾 Calldata Decoding
-
-:::note
-All available calldata decoding options will be documented in this section. More may be added as time goes on.
-:::
-
-Certain transaction decoder types may support calldata decoding for request data. You can use this feature by including "calldata decoder data" (explained shortly) in a general signing request using the `decoder` request param:
-
-```ts
-req.data = {
-  payload: <Raw message to be signed, e.g. serialized transaction>,
-  decoder: <Optional serialized information about decoding the payload>
-}
-await client.sign(req);
-```
-
-If you include a valid calldata decoder, the appearance of the transaction's data on the user's Lattice should transform from a raw hex string to a markdown-style version which displays the function name, parameter names, and values.
-
-### 1️⃣ EVM Calldata Decoding
-
-EVM transactions serialize calldata according to the [Ethereum ABI specification](https://docs.soliditylang.org/en/latest/abi-spec.html). The first four bytes of a transaction's `data` represent the "function selector", which is (sort of) a unique identifier for a given function. 
-
-:::note
-We do not support 100% of all edge cases in the ABI specification, but we do support the vast majority of types.  Please open a pull request or an issue if your request fails to decode on a Lattice.
-:::
-
-We expose a method `Utils.fetchCalldataDecoder`, which will attempt to search [Etherscan](https://etherscan.io) (or the relevant clone, depending on `chainId`) for the function definition. If none is found it will try [4byte](https://4byte.directory) instead. If a function definition is found, `fetchCalldataDecoder` will parse and serialize it for the Lattice. `fetchCalldataDecoder` will return `{ abi, def }` and you will need to pass `def` into the signing request.
-
-:::note
-`fetchCalldataDecoder` takes in params `(tx.input, tx.to, tx.chainId, shouldRecurse)`. The first 3 come from the transaction object (note that `chainId` must be a regular integer), while `shouldRecurse` is used to flag whether to look up nested definitions, as is typical with contract patterns like `multicall`. You can only use `shouldRecurse` with Lattice firmware v0.16.0 and above.
-:::
-
-#### Example Usage (see `test/signing/evm-abi.ts` for more examples)
-
-```ts
-import { Calldata, Utils } from 'gridplus-sdk';
-const EVMCalldata = Calldata.EVM;
-const tx = {an @ethereumjs/tx object}
-
-// Get the decoder data. This will attempt to look up an ABI using Etherscan
-// and, if that fails, 4byte.directory.
-// Arguments are: [`data`, `to`, `chainId`, recurse]
-// NOTE: Setting `recurse = true` may result in additional requests. It is 
-// used for nested contract patterns such as `multicall`. It is only suppored
-// by Lattice firmware v0.16.0 and up.
-const { def } = await Utils.fetchCalldataDecoder(tx.input, tx.to, tx.chainId, true);
-// Add the decoder to the request and the transaction should get marked down
-const req = {
-  signerPath,
-  curveType: Constants.SIGNING.CURVES.SECP256K1,
-  hashType: Constants.SIGNING.HASHES.KECCAK256,
-  encodingType: Constants.SIGNING.ENCODINGS.EVM,
-  payload: tx.getMessageToSign(false), // will serialize the transaction
-  decoder: def
 };
 const sig = await client.sign(req)
 ```
@@ -185,13 +129,7 @@ const txData = {
 const reqData = {
   currency: 'ETH',
   data: {
-    signerPath: [
-      0x80000000 + 44,
-      0x80000000 + 60,
-      0x80000000,
-      0,
-      0,
-    ],
+    signerPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
     ...txData,
     chain: 5, // Defaults to 1 (i.e. mainnet)
   }
@@ -216,13 +154,7 @@ This is a protocol to display a simple, human readable message. It includes a pr
 const reqData = {
   currency: 'ETH_MSG',
   data: {
-    signerPath: [
-      0x80000000 + 44,
-      0x80000000 + 60,
-      0x80000000,
-      0,
-      0,
-    ],
+    signerPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
     protocol: 'signPersonal' // You must use this string to specify this protocol
     payload: 'my message to sign'
   }
@@ -233,7 +165,7 @@ const sig = await client.sign(reqData)
 
 ### `sign_typed_data`
 
-This is used in protocols such as EIP712. It is meant to be an encoding for JSON-like data that can be more human readable.
+This is used in protocols such as [EIP712](https://eips.ethereum.org/EIPS/eip-712). It is meant to be an encoding for JSON-like data that can be more human readable.
 
 :::note
 Only `sign_typed_data` V3 and V4 are supported.
@@ -249,13 +181,7 @@ const message = {
 const reqData = {
   currency: 'ETH_MSG',
   data: {
-    signerPath: [
-      0x80000000 + 44,
-      0x80000000 + 60,
-      0x80000000,
-      0,
-      0,
-    ],
+    signerPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
     protocol: 'eip712' // You must use this string to specify this protocol
     payload: message
   }
@@ -287,13 +213,7 @@ const p2wpkhInputs = [
     index: 3,
     // Owner of this UTXO. Since `purpose` is 84' this will be spent with p2wpkh,
     // meaning this is assumed to be a segwit address (starting with bc1)
-    signerPath: [
-      0x80000000 + 84,
-      0x80000000,
-      0x80000000,
-      0,
-      12
-    ]
+    signerPath: [0x80000000 + 84, 0x80000000, 0x80000000, 0, 12],
   }
 ]
 
@@ -311,13 +231,7 @@ const reqData = {
     // address derived in the same wallet. Again, the `purpose` in this path 
     // determines what address the BTC will be sent to, or more accurately how 
     // the UTXO is locked -- e.g., p2wpkh unlocks differently than p2sh-p2wpkh
-    changePath: [
-      0x80000000 + 84,
-      0x80000000,
-      0x80000000,
-      1, // Typically the change path includes a `1` here
-      0
-    ]
+    changePath: [0x80000000 + 84, 0x80000000, 0x80000000, 1, 0],
   }
 }
 

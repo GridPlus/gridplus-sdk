@@ -1,4 +1,4 @@
-# 🏷️ Managing Addresses Tags
+# 🏷️ Addresses Tags
 
 To make signing requests even more readable, you can "tag" addresses ahead of time. After that, any transaction requests referencing the tagged address will display your human-readable name instead of the raw address string. Tagging is done using what we call the "KV" API, which stands for key-value associations. You may add any mapping where the **key** and **value** are each **up to 64 bytes**.
 
@@ -12,7 +12,7 @@ There are three methods used to manage tags:
 * [`getKvRecords`](../api/classes/client.Client#getkvrecords): Fetch `n` tags, starting at index `start`
 * [`removeKvRecords`](../api/classes/client.Client#removekvrecords): Remove a set of tags based on the passed `id`s
 
-## Walkthrough
+## Example
 
 The following code snippet and accompanying comments should show you how to manage address tags. We will be replacing an address tag if it exists on the Lattice already, or adding a new tag if an existing one does not exist:
 

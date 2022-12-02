@@ -10,8 +10,11 @@ custom_edit_url: null
 
 The [GridPlus SDK](https://github.com/GridPlus/gridplus-sdk) is designed to facilitate communication between an app or service and a user's [Lattice1 hardware wallet](https://gridplus.io/lattice).
 
-:::info
-The Lattice1 is an internet connected device which listens for requests and fills them in firmware. Web requests originate from this SDK and responses are returned **asynchronously**. Some requests require user authorization and may time out if the user does not approve them.
+:::note
+The [Lattice1](https://gridplus.io/lattice) is an Internet-connected device which listens for end-to-end encrypted requests. HTTPS requests originate from this SDK and responses are returned **asynchronously**. Some requests require user authorization and will time out if the user does not approve them.
+
+If you are using the `gridplus-sdk` in a Node.js application with a version of Node lower than v18, you will need to patch the `fetch()` API in the global scope. One solution is to use the `node-fetch` package. See [the `node-fetch` README](https://github.com/node-fetch/node-fetch#installation) for instructions. Other options are available on NPM.
+
 :::
 
 ## Installing
@@ -24,7 +27,7 @@ npm install --save gridplus-sdk
 
 ## Connecting to a Lattice
 
-You first need to instantiate a new [`Client`](../api/classes/client.Client) object with, at a minimum, the name of your requesting app (see [`Client` doc](../api/classes/client.Client) for a full list of options). The `name` used to instantiate `Client` will show up on the desired Lattice when pairing, so you should name it something relevant to your app/service.
+You first need to instantiate a new [`Client`](./api/classes/client.Client) object with, at a minimum, the name of your requesting app (see [`Client` doc](./api/classes/client.Client) for a full list of options). The `name` used to instantiate `Client` will show up on the desired Lattice when pairing, so you should name it something relevant to your app/service.
 
 ```ts
 import { Client } from 'gridplus-sdk';
@@ -48,11 +51,7 @@ The connection process depends on whether your app/service is already **paired**
 `Client` has a `privKey` attribute (a 32-byte buffer or hex string), which is used to encrypt/decrypt messages. By default, `privKey` is generated randomly, but it is **highly recommended** you generate your own private key deterministically or [stash and rehydrate](#stashing-and-rehydrating-an-sdk-instance) the instance if you wish to re-use the app/service with the target Lattice(s). If you naively create a new `Client` instance with a random `privKey`, it will force a re-pairing with the target Lattice(s).
 :::
 
-If you are **not** paired to the target Lattice already, the connection request will cause the Lattice to generate a new *pairing code* and display that on the device's screen. That code must be entered into the `Client` instance within 60 seconds, i.e. before it expires. This process only happens **once per pairing**, so subsequent `connect` requests should reach the target Lattice without having to re-pair.
-
-:::note
-Any Lattice user may remove any pairing from their device at any time. If this happens, you will need to re-pair with the device in order to make any new requests.
-:::
+If you are **not** paired to the target Lattice already, the connection request will cause the Lattice to generate a new **pairing code** and display that on the device's screen. That code must be entered into the `Client` instance within 60 seconds, i.e. before it expires. This process only happens **once per pairing**, so subsequent `connect` requests should reach the target Lattice without having to re-pair. However, any Lattice user may remove any pairing from their device at any time. If this happens, you will need to re-pair with the device in order to make any new requests.
 
 ```ts
 import { Client, Constants, Utils } from 'gridplus-sdk';
@@ -73,6 +72,7 @@ if (!isPaired) {
   await client.pair(secret);
 }
 ```
+
 
 ### Stashing and Rehydrating an SDK Instance
 
