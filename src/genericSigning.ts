@@ -30,6 +30,7 @@ export const buildGenericSigningMsgRequest = function (req) {
     decoder = null,
     omitPubkey = false,
     fwConstants,
+    blsDst = Constants.SIGNING.BLS_DST.BLS_DST_NUL,
   } = req;
   const {
     extraDataFrameSz,
@@ -54,7 +55,7 @@ export const buildGenericSigningMsgRequest = function (req) {
   const { encoding } = encodedPayload;
   let { payloadBuf } = encodedPayload;
   const origPayloadBuf = payloadBuf;
-  const payloadDataSz = payloadBuf.length;
+  let payloadDataSz = payloadBuf.length;
   // Size of data payload that can be included in the first/base request
   const maxExpandedSz = baseDataSz + extraDataMaxFrames * extraDataFrameSz;
   // Sanity checks
@@ -102,6 +103,16 @@ export const buildGenericSigningMsgRequest = function (req) {
         );
       }
     });
+  }
+  // BLS12_381 specific processing
+  else if (curveType === curveTypes.BLS12_381_G2) {
+    // For BLS signing we need to prefix 4 bytes to represent the
+    // domain separator (DST). If none is provided, we use the default
+    // value of DST_NUL.
+    const blsDstBuf = Buffer.alloc(4);
+    blsDstBuf.writeUInt32LE(blsDst);
+    payloadBuf = Buffer.concat([blsDstBuf, payloadBuf]);
+    payloadDataSz += blsDstBuf.length;
   }
 
   // Build the request buffer with metadata and then the payload to sign.

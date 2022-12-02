@@ -9,6 +9,7 @@ export const getN = (): number => parseInt(getEnv()['N'] ?? '5');
 export const getSeed = (): string => getEnv()['SEED'] ?? 'myrandomseed';
 export const getTestnet = (): string => getEnv()['TESTNET'] ?? '';
 export const getEtherscanKey = (): string => getEnv()['ETHERSCAN_KEY'] ?? '';
+export const getEncPw = (): string => getEnv()['ENC_PW'] ?? null;
 
 export const getPrng = (seed?: string) => {
   // @ts-expect-error -- @types/seedrandom is inaccurate

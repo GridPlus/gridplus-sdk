@@ -172,5 +172,74 @@
         // "nestedTup(bytes,(uint256,(bool,bytes)[][],bool)[2][])", // too large
       ]
     }
+  },
+  "ethDeposit": {
+    "mnemonic": "winner much erosion weird rubber onion diagram mandate assist fluid slush theory",
+    "depositData": [
+      {
+        "depositPath": [
+          12381,
+          3600,
+          0,
+          0,
+          0
+        ],
+        "eth1WithdrawalKey": "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5",
+        "blsWithdrawalRef": {
+          "pubkey": "b77d6918d5edb4073a4ea4408073b698f00df478ff2726cdb8190e3be1fe5496f22b089f6ae4cf7cafaccb74683be5e4",
+          "withdrawal_credentials": "001cdf4c156742da500ed24475b8afd9a8b5a06f3a7ce8521bd3a23d6982ad7a",
+          "amount": 32000000000,
+          "signature": "8313af52b8822e9d8e66718e37eb8f14ca4cf25b7ab727dd9858c55667dd2a7fdbec9ed16c50911fbfee50eaeda76e1a026ebbf141b050ea94b203ff6b45d175cc33be26d65795e8cff02373ae68a2c3c94c261a0a7b45a897c5f4cead8cbf6e",
+          "deposit_message_root": "011f25b8a533635297ca36c97320aeb2644d7784f16b6dc668dc5acf3f17751c",
+          "deposit_data_root": "aa95cc7b31056cbc524fb82bc5641f60a0f3592bf960bdc875d24b332cd730ca",
+          "fork_version": "00000000",
+          "network_name": "mainnet",
+          "deposit_cli_version": "2.3.0"
+        },
+        "eth1WithdrawalRef": {
+          "pubkey": "b77d6918d5edb4073a4ea4408073b698f00df478ff2726cdb8190e3be1fe5496f22b089f6ae4cf7cafaccb74683be5e4",
+          "withdrawal_credentials": "01000000000000000000000095222290dd7278aa3ddd389cc1e1d165cc4bafe5",
+          "amount": 32000000000,
+          "signature": "88dc6055732e97a2cd4524b658ef62f67daf12f03b0334fd72de4feeb7c44c681fb39ec6a27aee8d3a458a63642ef75711966581ec9dac56572973511c993560c52855d261e47476f970ffd76868c56e9a4d0f37bf23f05268ff73ddb686efeb",
+          "deposit_message_root": "e2b6b2dbc2f1a9cdd4a111f396c009490c67dfa08582c7c4ea18379adde6148f",
+          "deposit_data_root": "603160dc42fe11f2e2c057c85179cc008dd64c9d11ae20b8ffc9a5ceecece847",
+          "fork_version": "00000000",
+          "network_name": "mainnet",
+          "deposit_cli_version": "2.3.0"
+        }
+      },
+      {
+        "depositPath": [
+          12381,
+          3600,
+          1,
+          0,
+          0
+        ],
+        "eth1WithdrawalKey": "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5",
+        "blsWithdrawalRef": {
+          "pubkey": "a0aa536f68981cb705e506036e40b4373f67e10ff66f64835d63ffb3ca5e5eeea5396b2569315b060f0b90a2862a740c",
+          "withdrawal_credentials": "00783f5f1c25faa1282bbd1be67c0da48e5fbb9a21cf7bb95819b37a9a545429",
+          "amount": 32000000000,
+          "signature": "a54d6e949f359aaa9c5ec7ea078bff59a8a747ff8c1518963434d0090ee53dd4c87540d9cd7456a370b3db9d29491abe0413eda2384affa87c7b377b995ad617f5dc4c420593066a8b83345956b44ca0235344d1478e8500f9731dfae7128f4c",
+          "deposit_message_root": "3bd64fca376ba66a9b7428872f143e6e222e411af05401eba760722683a2cd47",
+          "deposit_data_root": "2dd6d49609584c73ec12194cb9a5f39841b6854e04e0df043bdb9eaa5b65bb86",
+          "fork_version": "00000000",
+          "network_name": "mainnet",
+          "deposit_cli_version": "2.3.0"
+        },
+        "eth1WithdrawalRef": {
+          "pubkey": "a0aa536f68981cb705e506036e40b4373f67e10ff66f64835d63ffb3ca5e5eeea5396b2569315b060f0b90a2862a740c",
+          "withdrawal_credentials": "01000000000000000000000095222290dd7278aa3ddd389cc1e1d165cc4bafe5",
+          "amount": 32000000000,
+          "signature": "b1e98e44f1a8a550afeeaac839f93e74d07651c1fa1d12cf857787e20939d346f44a41997682b93a7d51267f77bd979406a7e42c4531abd23ee0d65e1ccc5432313714c1abd92fbebbbde798a9e6b875b4f59cb7a76d7d07094b66e102918248",
+          "deposit_message_root": "f4b94882da58e71f4557620c35b2c16c975b50093ae9a8041aaa67e840aba9aa",
+          "deposit_data_root": "1cc71b9a34ef5730154985c36ac2f9e4f9017959c144e9083d0e8f79311eed59",
+          "fork_version": "00000000",
+          "network_name": "mainnet",
+          "deposit_cli_version": "2.3.0"
+        }
+      }
+    ]
   }
 }

@@ -1,9 +1,12 @@
+---
+id: "testing"
+---
 
-# 🧪 Testing
+# Testing
 
 All functionality is tested in some script in `/test`. Please see those scripts for examples on functionality not documented.
 
-:::caution
+:::info
 
 Testing is only possible with a development Lattice, which GridPlus does not distribute publicly. Therefore, if you do not have a development Lattice, you will not be able to run many of these tests.**
 
@@ -32,7 +35,8 @@ The following options can be used after `env` with any test.
 | Param | Options | Description |
 |:------|:--------|:------------|
 | `REUSE_KEY` | Must be `1` | Indicates we will be creating a new pairing with a Lattice and stashing that connection |
-| `DEVICE_ID` | A six character string | The device ID of the target Lattice |
+| `DEVICE_ID` | A six character string | The device ID of the target Lattice. |
+| `ENC_PW` | Device-level password set by the user, used when exporting encrypted data. |
 | `ETHERSCAN_KEY` | Any string | API key for making requests to Etherscan. This is needed specifically for `e2e-sign-evm-abi`. |
 | `name` | Any 5-25 character string (default="SDK Test") | The name of the pairing you will create |
 | `baseUrl` | Any URL (default="https://signing.gridpl.us") | URL describing where to send HTTP requests. Should be changed if your Lattice is on non-default message routing infrastructure. |
