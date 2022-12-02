@@ -22,10 +22,18 @@ You can use the following options:
 | Param | Type | Required | Description |
 |:------|:-----|:---------|:------------|
 | `name` | string | Y | A human readable name for your app. This will be displayed with your app's pairing on the user's Lattice. |
+| `baseUrl` | string | N | If you are using your own [message routing infrastructure](https://github.com/GridPlus/lattice-connect-v2), put its url here. |
 | `privKey` | `Buffer` | N | 32-byte buffer, not required but highly recommended. If none is specified, a random one will be created at initialization. This is used to build the encrypted channel. If you want to manually restart a connection with a new `Client` instance, you will need to use the same `privKey` in the constructor. |
 | `retryCount` | number | N | Default is 3. Number of automatic retries allowed per request. Covers timeouts and certain device errors. |
 | `timeout` | number | N | Milliseconds to timeout HTTP request. Defaults to 60s. |
 | `stateData` | string | N | Used to rehydrate a session without other params. Result of call to `getStateData()`. |
+
+Only `name` is required:
+
+```
+const client = new Client({ name: 'GridPlus SDKooor' });
+```
+
 
 ## 🔗 Connecting to a Lattice
 

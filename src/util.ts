@@ -1,4 +1,5 @@
 // Static utility functions
+import { ByteVectorType, ContainerType, UintNumberType, } from '@chainsafe/ssz';
 import { Capability, TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import aes from 'aes-js';
 import BigNum from 'bignumber.js';
@@ -19,6 +20,7 @@ import {
   HARDENED_OFFSET,
   responseCodes,
   responseMsgs,
+  PUBLIC,
   VERSION_BYTE,
   EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
 } from './constants';
@@ -312,116 +314,6 @@ export const randomBytes = function (n) {
 export const isUInt4 = (n: number) => isInteger(n) && inRange(n, 0, 16)
 
 /**
- * Generates an application secret for use in maintaining connection to device.
- * @param deviceId - The device ID of the device you want to generate a token for.
- * @param password - The password entered when connecting to the device.
- * @param appName - The name of the application.
- * @returns an application secret as a Buffer
- * @public
- */
-export const generateAppSecret = (
-  deviceId: Buffer | string,
-  password: Buffer | string,
-  appName: Buffer | string,
-): Buffer => {
-  const deviceIdBuffer =
-    typeof deviceId === 'string' ? Buffer.from(deviceId) : deviceId;
-  const passwordBuffer =
-    typeof password === 'string' ? Buffer.from(password) : password;
-  const appNameBuffer =
-    typeof appName === 'string' ? Buffer.from(appName) : appName;
-
-  const preImage = Buffer.concat([
-    deviceIdBuffer,
-    passwordBuffer,
-    appNameBuffer,
-  ]);
-
-  return Buffer.from(sha256().update(preImage).digest('hex'), 'hex');
-};
-
-/**
- * Generic signing does not return a `v` value like legacy ETH signing requests did.
- * Get the `v` component of the signature as well as an `initV`
- * parameter, which is what you need to use to re-create an `@ethereumjs/tx`
- * object. There is a lot of tech debt in `@ethereumjs/tx` which also
- * inherits the tech debt of ethereumjs-util.
- * 1.  The legacy `Transaction` type can call `_processSignature` with the regular
- *     `v` value.
- * 2.  Newer transaction types such as `FeeMarketEIP1559Transaction` will subtract
- *     27 from the `v` that gets passed in, so we need to add `27` to create `initV`
- * @param tx - An @ethereumjs/tx Transaction object or Buffer (serialized tx)
- * @param resp - response from Lattice. Can be either legacy or generic signing variety
- * @returns bn.js BN object containing the `v` param
- */
-export const getV = function (tx, resp) {
-  let chainId, hash, type;
-  const txIsBuf = Buffer.isBuffer(tx);
-  if (txIsBuf) {
-    hash = Buffer.from(keccak256(tx), 'hex');
-    try {
-      const legacyTxArray = rlpDecode(tx);
-      if (legacyTxArray.length === 6) {
-        // Six item array means this is a pre-EIP155 transaction
-        chainId = null;
-      } else {
-        // Otherwise the `v` param is the `chainId`
-        chainId = new BN(legacyTxArray[6] as Uint8Array);
-      }
-      // Legacy tx = type 0
-      type = 0;
-    } catch (err) {
-      // This is likely a typed transaction
-      try {
-        const txObj = EthTxFactory.fromSerializedData(tx);
-        //@ts-expect-error -- Accessing private property
-        type = txObj._type;
-      } catch (err) {
-        // If we can't RLP decode and can't hydrate an @ethereumjs/tx object,
-        // we don't know what this is and should abort.
-        throw new Error('Could not recover V. Bad transaction data.');
-      }
-    }
-  } else {
-    // @ethereumjs/tx object passed in
-    type = tx._type;
-    hash = type ?
-      tx.getMessageToSign(true) :             // newer tx types
-      rlpEncode(tx.getMessageToSign(false));  // legacy tx
-    if (tx.supports(Capability.EIP155ReplayProtection)) {
-      chainId = tx.common.chainIdBN().toNumber();
-    }
-  }
-  const rs = new Uint8Array(Buffer.concat([resp.sig.r, resp.sig.s]));
-  const pubkey = new Uint8Array(resp.pubkey);
-  const recovery0 = ecdsaRecover(rs, 0, hash, false);
-  const recovery1 = ecdsaRecover(rs, 1, hash, false);
-  const pubkeyStr = Buffer.from(pubkey).toString('hex');
-  const recovery0Str = Buffer.from(recovery0).toString('hex');
-  const recovery1Str = Buffer.from(recovery1).toString('hex');
-  let recovery;
-  if (pubkeyStr === recovery0Str) {
-    recovery = 0;
-  } else if (pubkeyStr === recovery1Str) {
-    recovery = 1;
-  } else {
-    // If we fail a second time, exit here.
-    throw new Error('Failed to recover V parameter. Bad signature or transaction data.');
-  }
-  // Newer transaction types just use the [0, 1] value
-  if (type) {
-    return new BN(recovery);
-  }
-  // If there is no chain ID, this is a pre-EIP155 tx
-  if (!chainId) {
-    return new BN(recovery).addn(27);
-  }
-  // EIP155 replay protection is included in the `v` param
-  // and uses the chainId value.
-  return chainId.muln(2).addn(35).addn(recovery);
-}
-
-/**
  * Fetches an external JSON file containing networks indexed by chain id from a GridPlus repo, and
  * returns the parsed JSON.
  */
@@ -577,63 +469,6 @@ function encodeDef (def: any) {
 }
 
 /**
- *  Fetches calldata from a remote scanner based on the transaction's `chainId`
- */
-export async function fetchCalldataDecoder (_data: Uint8Array | string, to: string, _chainId: number | string, recurse = false) {
-  try {
-    // Exit if there is no data. The 2 comes from the 0x prefix, but a later
-    // check will confirm that there are at least 4 bytes of data in the buffer.
-    if (!_data || _data.length < 2) {
-      throw new Error('Data is either undefined or less than two bytes')
-    }
-    const isHexString = typeof _data === 'string' && _data.slice(0, 2) === '0x'
-    const data = isHexString ?
-      Buffer.from(_data.slice(2), 'hex') :
-      //@ts-expect-error - Buffer doesn't recognize Uint8Array type properly
-      Buffer.from(_data, 'hex');
-
-    if (data.length < 4) {
-      throw new Error('Data must contain at least 4 bytes of data to define the selector')
-    }
-    const selector = Buffer.from(data.slice(0, 4)).toString('hex');
-    // Convert the chainId to a number and use it to determine if we can call out to
-    // an etherscan-like explorer for richer data.
-    const chainId = Number(_chainId);
-    const cachedNetwork = NETWORKS_BY_CHAIN_ID[chainId];
-    const supportedChain = cachedNetwork
-      ? cachedNetwork
-      : await fetchExternalNetworkForChainId(chainId);
-    try {
-      if (supportedChain) {
-        const abi = await fetchSupportedChainData(to, supportedChain)
-        const parsedAbi = Calldata.EVM.parsers.parseSolidityJSONABI(selector, abi)
-        let def = parsedAbi.def;
-        if (recurse) {
-          def = await postProcessDef(def, data);
-        }
-        return { abi, def: encodeDef(def) }
-      } else {
-        throw new Error(`Chain (id: ${chainId}) is not supported`)
-      }
-    } catch (err) {
-      console.warn(err.message, '\n', 'Falling back to 4byte');
-    }
-
-    // Fallback to checking 4byte
-    const abi = await fetch4byteData(selector)
-    let def = selectDefFrom4byteABI(abi, selector)
-    if (recurse) {
-      def = await postProcessDef(def, data);
-    }
-    return { abi, def: encodeDef(def) }
-  } catch (err) {
-    console.warn(`Fetching calldata failed: ${err.message}`)
-  }
-
-  return { def: null, abi: null }
-}
-
-/**
  * Post-process fetched ABI definition.
  * @param def - Calldata decoder data definition for calling function
  * @param calldata - Raw transaction calldata
@@ -730,9 +565,395 @@ async function replaceNestedDefs (possNestedDefs) {
   return nestedDefs;
 }
 
+/**
+ * Generate domain data for an ETH deposit.
+ * This is constructed out of a domain type (DEPOSIT) and a ForkData root.
+ * 
+ * ForkData definition:
+ * https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#forkdata
+ * 
+ * @param forkVersion - A four byte version constant (default=00000000)
+ * @return 32 byte Buffer containing domain data
+ */
+function getEthDepositDomain(
+  forkVersion: Buffer,
+  validatorsRoot: Buffer,
+): Buffer {
+  if (forkVersion.length !== 4) {
+    throw new Error('`forkVersion` must be a 4-byte Buffer.');
+  } else if (validatorsRoot.length !== 32) {
+    throw new Error('`validatorsRoot` must be a 32-byte Buffer.');
+  }
+  const forkDataType = new ContainerType({
+    current_version: new ByteVectorType(4),
+    genesis_validators_root: new ByteVectorType(32),
+  });
+  const forkDataRoot = Buffer.from(forkDataType.hashTreeRoot({
+    current_version: forkVersion,
+    genesis_validators_root: validatorsRoot,
+  }));
+  // Construct the domain, see:
+  // https://github.com/ethereum/staking-deposit-cli/blob/
+  // e2a7c942408f7fc446b889097f176238e4a10a76/staking_deposit/utils/ssz.py#L42
+  const depositDomain = Buffer.alloc(32);
+  PUBLIC.ETH_CONSENSUS_SPEC.DOMAINS.DEPOSIT.copy(depositDomain, 0);
+  forkDataRoot.slice(0, 28).copy(depositDomain, 4);
+  return depositDomain;
+}
+
+//--------------------------------------------------
+// ETH DEPOSIT UTILS
+//--------------------------------------------------
+/**
+ * Get the withdrawal credentials given a key.
+ * There are currently two supported types of withdrawal:
+ * - 0x00: BLS key used to withdraw
+ * - 0x11: ETH1 key used to withdraw
+ * 
+ * @param withdrawalKey - Buffer containing either BLS withdrawal pubkey (48 bytes)
+ *                        or Ethereum address (20 bytes)
+ * @return 32-byte Buffer containing withdrawal credentials
+ */
+function getEthDepositWithdrawalCredentials(
+  withdrawalKey: Buffer, // BLS pubkey of mapped withdrawal key OR ETH1 address
+): Buffer {
+  const creds = Buffer.alloc(32);
+  const keyBuf =  ensureHexBuffer(withdrawalKey);
+  if (keyBuf.length === 48) {
+    // BLS key - must be hashed first
+    creds[0] = 0;
+    const h = sha256().update(keyBuf).digest('hex');
+    Buffer.from(h, 'hex').slice(1).copy(creds, 1);
+  } else if (keyBuf.length === 20) {
+    // ETH1 key - added raw to buffer, left padded
+    creds[0] = 1;
+    keyBuf.copy(creds, 12);
+  } else {
+    throw new Error('`withdrawalKey` must be 48 byte BLS pubkey or Ethereum address.');
+  }
+  return creds;
+}
+
+//--------------------------------------------------
+//--------------------------------------------------
+// EXTERNAL UTILS
+//--------------------------------------------------
+//--------------------------------------------------
+/**
+ *  Fetches calldata from a remote scanner based on the transaction's `chainId`
+ */
+export async function fetchCalldataDecoder (_data: Uint8Array | string, to: string, _chainId: number | string, recurse = false) {
+  try {
+    // Exit if there is no data. The 2 comes from the 0x prefix, but a later
+    // check will confirm that there are at least 4 bytes of data in the buffer.
+    if (!_data || _data.length < 2) {
+      throw new Error('Data is either undefined or less than two bytes')
+    }
+    const isHexString = typeof _data === 'string' && _data.slice(0, 2) === '0x'
+    const data = isHexString ?
+      Buffer.from(_data.slice(2), 'hex') :
+      //@ts-expect-error - Buffer doesn't recognize Uint8Array type properly
+      Buffer.from(_data, 'hex');
+
+    if (data.length < 4) {
+      throw new Error('Data must contain at least 4 bytes of data to define the selector')
+    }
+    const selector = Buffer.from(data.slice(0, 4)).toString('hex');
+    // Convert the chainId to a number and use it to determine if we can call out to
+    // an etherscan-like explorer for richer data.
+    const chainId = Number(_chainId);
+    const cachedNetwork = NETWORKS_BY_CHAIN_ID[chainId];
+    const supportedChain = cachedNetwork
+      ? cachedNetwork
+      : await fetchExternalNetworkForChainId(chainId);
+    try {
+      if (supportedChain) {
+        const abi = await fetchSupportedChainData(to, supportedChain)
+        const parsedAbi = Calldata.EVM.parsers.parseSolidityJSONABI(selector, abi)
+        let def = parsedAbi.def;
+        if (recurse) {
+          def = await postProcessDef(def, data);
+        }
+        return { abi, def: encodeDef(def) }
+      } else {
+        throw new Error(`Chain (id: ${chainId}) is not supported`)
+      }
+    } catch (err) {
+      console.warn(err.message, '\n', 'Falling back to 4byte');
+    }
+
+    // Fallback to checking 4byte
+    const abi = await fetch4byteData(selector)
+    let def = selectDefFrom4byteABI(abi, selector)
+    if (recurse) {
+      def = await postProcessDef(def, data);
+    }
+    return { abi, def: encodeDef(def) }
+  } catch (err) {
+    console.warn(`Fetching calldata failed: ${err.message}`)
+  }
+
+  return { def: null, abi: null }
+}
+
+/**
+ * Generates an application secret for use in maintaining connection to device.
+ * @param deviceId - The device ID of the device you want to generate a token for.
+ * @param password - The password entered when connecting to the device.
+ * @param appName - The name of the application.
+ * @returns an application secret as a Buffer
+ * @public
+ */
+export const generateAppSecret = (
+   deviceId: Buffer | string,
+   password: Buffer | string,
+  appName: Buffer | string,
+): Buffer => {
+  const deviceIdBuffer =
+    typeof deviceId === 'string' ? Buffer.from(deviceId) : deviceId;
+  const passwordBuffer =
+    typeof password === 'string' ? Buffer.from(password) : password;
+  const appNameBuffer =
+    typeof appName === 'string' ? Buffer.from(appName) : appName;
+
+  const preImage = Buffer.concat([
+    deviceIdBuffer,
+    passwordBuffer,
+    appNameBuffer,
+  ]);
+
+  return Buffer.from(sha256().update(preImage).digest('hex'), 'hex');
+};
+
+/**
+ * Generate ETH deposit data for a given validator.
+ * This requires a secure connection with a Lattice via `client`.
+ * A signing request will be made on the signing root, which is needed
+ * before deposit data can be formed.
+ * 
+ * @param client - Instance of GridPlus SDK, which is already connected/paired to a target Lattice.
+ * @param depositPath - Array with up to five u32 indices representing BIP39 path.
+ * @param req - Instance of `EthDepositDataReq` containing params to build the deposit data.
+ * @return JSON string containing deposit data for this validator.
+ */
+export async function getEthDepositData(
+  client,
+  depositPath: number[],
+  params: EthDepositDataReq
+) : Promise<EthDepositDataResp> {
+  const { 
+    amountGwei=32000000000, 
+    depositCliVersion='2.3.0',
+    info=PUBLIC.ETH_CONSENSUS_SPEC.NETWORKS.MAINNET_GENESIS,
+    withdrawalKey, 
+  } = params;
+  // Sanity checks
+  if (!depositPath || !amountGwei || !info || !depositCliVersion) {
+    throw new Error(
+      'One or more params missing from `req`: `depositPath`, `amountGwei`, `info`, `depositCliVersion`.'
+    );
+  }
+  if (amountGwei < 0 || new BN(amountGwei).gte(new BN(2).pow(new BN(64)))) {
+    throw new Error('`amountGwei` must be >0 and <UINT64_MAX')
+  }
+  const { networkName, forkVersion, validatorsRoot } = info;
+  if (!networkName) {
+    throw new Error('No `info.network` value found.');
+  }
+  if (!forkVersion) {
+    throw new Error('No `info.forkVersion` value found.');
+  } else if (forkVersion.length !== 4) {
+    throw new Error('`info.forkVersion` must be a 4 byte Buffer.')
+  }
+  if (!validatorsRoot) {
+    throw new Error('No `info.validatorsRoot` value found.');
+  } else if (validatorsRoot.length !== 32) {
+    throw new Error('`info.validatorsRoot` must be a 32 byte Buffer.');
+  }
+  // Start building data. Items should be strings. Some can be copied directly.
+  const depositData = {
+    pubkey: null,
+    withdrawal_credentials: null,
+    amount: amountGwei,
+    signature: null,
+    deposit_message_root: null,
+    deposit_data_root: null,
+    fork_version: forkVersion.toString('hex'),
+    network_name: networkName,
+    deposit_cli_version: depositCliVersion,
+  };
+
+  // Get the depositor pubkey
+  const getAddrFlag = PUBLIC.GET_ADDR_FLAGS.BLS12_381_G1_PUB;
+  const depositPubs = await client.getAddresses({ startPath: depositPath, flag: getAddrFlag });
+  const depositKey = depositPubs[0];
+  depositData.pubkey = depositKey.toString('hex');
+
+  // If no withdrawalKey was passed, fetch the BLS one
+  let withdrawalKeyBuf;
+  if (withdrawalKey) {
+    // If a withdrawal key was provided, capture it here
+    withdrawalKeyBuf = ensureHexBuffer(withdrawalKey);
+  } else {
+    // Otherwise we should derive the corresponding withdrawal key.
+    // The withdrawal path is just up one derivation index relative to deposit path.
+    // See: https://eips.ethereum.org/EIPS/eip-2334
+    const withdrawalPath = depositPath.slice(0, depositPath.length-1);
+    const withdrawalPubs = await client.getAddresses({ startPath: withdrawalPath, flag: getAddrFlag});
+    withdrawalKeyBuf = withdrawalPubs[0];
+  }
+  // We can now generate the withdrawal credentials
+  const withdrawalCreds = getEthDepositWithdrawalCredentials(withdrawalKeyBuf);
+  depositData.withdrawal_credentials = withdrawalCreds.toString('hex');
+
+  // Build the message root
+  // https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#depositmessage
+  const depositMessageType = new ContainerType({
+    pubkey: new ByteVectorType(48),
+    withdrawal_credentials: new ByteVectorType(32),
+    amount: new UintNumberType(8),
+  });
+  const depositMessageRoot = Buffer.from(depositMessageType.hashTreeRoot({
+    pubkey: depositKey,
+    withdrawal_credentials: withdrawalCreds,
+    amount: amountGwei,
+  }));
+  depositData.deposit_message_root = depositMessageRoot.toString('hex');
+  
+  // Build the signing root
+  // https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_signing_root
+  const signingType = new ContainerType({
+    object_root: new ByteVectorType(32),
+    domain: new ByteVectorType(32),
+  });
+  const signingRoot = Buffer.from(signingType.hashTreeRoot({
+    object_root: depositMessageRoot,
+    domain: getEthDepositDomain(forkVersion, validatorsRoot),
+  }));
+  // Sign the root
+  const signReq = {
+    data: {
+      signerPath: depositPath,
+      curveType: PUBLIC.SIGNING.CURVES.BLS12_381_G2,
+      hashType: PUBLIC.SIGNING.HASHES.NONE,
+      encodingType: PUBLIC.SIGNING.ENCODINGS.ETH_DEPOSIT,
+      payload: signingRoot,
+      blsDst: PUBLIC.SIGNING.BLS_DST.BLS_DST_POP,
+    }
+  };
+  const sig = await client.sign(signReq);
+  if (sig.pubkey.toString('hex') !== depositData.pubkey) {
+    throw new Error('Incorrect signer returned. Deposit data generation failed.');
+  }
+  depositData.signature = sig.sig.toString('hex');
+
+  // Build the deposit data root
+  // https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#depositdata
+  const depositDataType = new ContainerType({
+    pubkey: new ByteVectorType(48),
+    withdrawal_credentials: new ByteVectorType(32),
+    amount: new UintNumberType(8),
+    signature: new ByteVectorType(96),
+  });
+  const depositDataRoot = Buffer.from(depositDataType.hashTreeRoot({
+    pubkey: depositKey,
+    withdrawal_credentials: withdrawalCreds,
+    amount: amountGwei,
+    signature: sig.sig,
+  }));
+  depositData.deposit_data_root = depositDataRoot.toString('hex');
+
+  return {
+    pubkey: depositData.pubkey,
+    depositData: JSON.stringify(depositData),
+  };
+}
+
+/**
+ * Generic signing does not return a `v` value like legacy ETH signing requests did.
+ * Get the `v` component of the signature as well as an `initV`
+ * parameter, which is what you need to use to re-create an `@ethereumjs/tx`
+ * object. There is a lot of tech debt in `@ethereumjs/tx` which also
+ * inherits the tech debt of ethereumjs-util.
+ * 1.  The legacy `Transaction` type can call `_processSignature` with the regular
+ *     `v` value.
+ * 2.  Newer transaction types such as `FeeMarketEIP1559Transaction` will subtract
+ *     27 from the `v` that gets passed in, so we need to add `27` to create `initV`
+ * @param tx - An @ethereumjs/tx Transaction object or Buffer (serialized tx)
+ * @param resp - response from Lattice. Can be either legacy or generic signing variety
+ * @returns bn.js BN object containing the `v` param
+ */
+export const getV = function (tx, resp) {
+  let chainId, hash, type;
+  const txIsBuf = Buffer.isBuffer(tx);
+  if (txIsBuf) {
+    hash = Buffer.from(keccak256(tx), 'hex');
+    try {
+      const legacyTxArray = rlpDecode(tx);
+      if (legacyTxArray.length === 6) {
+        // Six item array means this is a pre-EIP155 transaction
+        chainId = null;
+      } else {
+        // Otherwise the `v` param is the `chainId`
+        chainId = new BN(legacyTxArray[6] as Uint8Array);
+      }
+      // Legacy tx = type 0
+      type = 0;
+    } catch (err) {
+      // This is likely a typed transaction
+      try {
+        const txObj = EthTxFactory.fromSerializedData(tx);
+        //@ts-expect-error -- Accessing private property
+        type = txObj._type;
+      } catch (err) {
+        // If we can't RLP decode and can't hydrate an @ethereumjs/tx object,
+        // we don't know what this is and should abort.
+        throw new Error('Could not recover V. Bad transaction data.');
+      }
+    }
+  } else {
+    // @ethereumjs/tx object passed in
+    type = tx._type;
+    hash = type ?
+      tx.getMessageToSign(true) :             // newer tx types
+      rlpEncode(tx.getMessageToSign(false));  // legacy tx
+    if (tx.supports(Capability.EIP155ReplayProtection)) {
+      chainId = tx.common.chainIdBN().toNumber();
+    }
+  }
+  const rs = new Uint8Array(Buffer.concat([resp.sig.r, resp.sig.s]));
+  const pubkey = new Uint8Array(resp.pubkey);
+  const recovery0 = ecdsaRecover(rs, 0, hash, false);
+  const recovery1 = ecdsaRecover(rs, 1, hash, false);
+  const pubkeyStr = Buffer.from(pubkey).toString('hex');
+  const recovery0Str = Buffer.from(recovery0).toString('hex');
+  const recovery1Str = Buffer.from(recovery1).toString('hex');
+  let recovery;
+  if (pubkeyStr === recovery0Str) {
+    recovery = 0;
+  } else if (pubkeyStr === recovery1Str) {
+    recovery = 1;
+  } else {
+    // If we fail a second time, exit here.
+    throw new Error('Failed to recover V parameter. Bad signature or transaction data.');
+  }
+  // Newer transaction types just use the [0, 1] value
+  if (type) {
+    return new BN(recovery);
+  }
+  // If there is no chain ID, this is a pre-EIP155 tx
+  if (!chainId) {
+    return new BN(recovery).addn(27);
+  }
+  // EIP155 replay protection is included in the `v` param
+  // and uses the chainId value.
+  return chainId.muln(2).addn(35).addn(recovery);
+}
+
 /** @internal */
 export const EXTERNAL = {
-  getV,
+  fetchCalldataDecoder,
   generateAppSecret,
-  fetchCalldataDecoder
+  getEthDepositData,
+  getV,
 }

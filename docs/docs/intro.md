@@ -2,7 +2,7 @@
 id: "index"
 title: "Introduction"
 slug: "/"
-sidebar_label: "Introduction"
+sidebar_label: "Basic Functionality"
 sidebar_position: 0
 custom_edit_url: null
 ---
