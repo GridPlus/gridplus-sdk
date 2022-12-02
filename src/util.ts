@@ -642,7 +642,7 @@ function getEthDepositWithdrawalCredentials(
 /**
  *  Fetches calldata from a remote scanner based on the transaction's `chainId`
  */
-export async function fetchCalldataDecoder (_data: Uint8Array | string, to: string, _chainId: number | string, recurse = false) {
+export async function fetchCalldataDecoder (_data: Uint8Array | string, to: string, _chainId: number | string, recurse = true) {
   try {
     // Exit if there is no data. The 2 comes from the 0x prefix, but a later
     // check will confirm that there are at least 4 bytes of data in the buffer.
