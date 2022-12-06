@@ -8,6 +8,7 @@ import {
 import { mnemonicToSeedSync } from 'bip39';
 import { deriveSeedTree } from 'bls12-381-keygen';
 import { readFileSync } from 'fs';
+import { DepositData, Constants as ETH2Constants } from 'lattice-eth2-utils';
 import { jsonc } from 'jsonc';
 import { question } from 'readline-sync';
 
@@ -26,7 +27,7 @@ import {
   serializeJobData 
 } from '../../utils/helpers';
 import { testRequest } from '../../utils/testRequest';
-import { Constants, Utils } from '../../../index';
+import { Constants } from '../../../index';
 import { getPathStr } from '../../../shared/utilities';
 
 const globalVectors = jsonc.parse(
@@ -40,7 +41,7 @@ const WITHDRAWAL_PATH = [ 12381, 3600, 0, 0];
 // Number of signers to test for each of deposit and withdrawal paths
 const N_TEST_SIGS = 1;
 // Number of deposit keys against which to validate deposit data
-const N_TEST_DEPOSIT_DATA = 2;
+const N_TEST_DEPOSIT_DATA = 1//2;
 const KNOWN_MNEMONIC = globalVectors.ethDeposit.mnemonic;
 const KNOWN_SEED = mnemonicToSeedSync(KNOWN_MNEMONIC);
 
@@ -261,9 +262,14 @@ async function removeSeed(client) {
 
 async function validateDepositData(client, depositPath, ref, withdrawalKey=null) {
   // Generate the deposit data
-  const resp = await Utils.getEthDepositData(client, depositPath, { withdrawalKey });
+  const opts = {
+    ...ETH2Constants.NETWORKS.MAINNET_GENESIS,
+    withdrawalKey,
+  };
+  const resp = await DepositData.generate(client, depositPath, opts);
+  // const resp = await DepositData.generate(client, depositPath, { withdrawalKey });
   // Validate components of response against the reference object
-  const dd = JSON.parse(resp.depositData);
+  const dd = JSON.parse(resp);
   expect(dd.pubkey).to.equal(
     ref.pubkey, 
     '`pubkey` mismatch.'
@@ -301,7 +307,7 @@ async function validateDepositData(client, depositPath, ref, withdrawalKey=null)
     '`deposit_cli_version` mismatch.'
   );
   // Validate the full JSON string
-  expect(resp.depositData).to.equal(
+  expect(resp).to.equal(
     JSON.stringify(ref), 
     'Full JSON string did not match.'
   );

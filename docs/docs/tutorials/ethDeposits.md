@@ -62,14 +62,19 @@ for (let i = 0; i < numValidators; i++) {
 ## Generating Deposit Data
 
 :::note
-The following funtionality was developed for the Ethereum network at beacon chain phase 0. Newer network functionality may not be supported.
+Generating deposit data requires use of a secondary mode: [`lattice-eth2-utils`](https://github.com/GridPlus/lattice-eth2-utils)
 :::
 
 With our keystores in hand, we need one more piece of data before we can stake: the deposit data. Whereas your keystores are needed by your consensus client, your deposit data is needed by the network to process activation for your validator(s). Deposit data is generated in a JSON format that can be consumed by the popular, official [Ethereum Launchpad](https://launchpad.ethereum.org/en/). This is the same file you would get from the official [Ethereum Staking CLI](https://github.com/ethereum/staking-deposit-cli).
 
-As with the encrypted data export, you may only generate data for a single validator at a time, though you can do so in a loop as will be demonstrated. Each deposit data export requires a signature by the corresponding validator. This operation is quite simple and uses the [`getEthDepositData` util](../api/modules/util#getethdepositdata).
+As with the encrypted data export, you may only generate data for a single validator at a time, though you can do so in a loop as will be demonstrated. Each deposit data export requires a signature by the corresponding validator. 
+
+Here is an example requesting deposit data from the first `numValidators` on a `baseDepositPath` and then writing that deposit data to a JSON file:
 
 ```ts
+import { DepositData, Constants as ETH2Constants } from 'lattice-eth2-utils';
+import { writeFilesync } from 'fs'; 
+
 const depositData = [];
 for (let i = 0; i < numValidators; i++) {
   // Set the path for this specific validator, where path[2] is the
@@ -78,9 +83,19 @@ for (let i = 0; i < numValidators; i++) {
   path[2] = i;
   
   // Export the deposit data for this path. This involves a signature.
-  const data = await Utils.getEthDepositData(client, path);
-  depositData.push(data.depositData);
+  // Note that `opts` (the third param) is optional and its default value
+  // is currently `MAINNET_GENESIS`. These params will change with each
+  // future Ethereum fork, so you may need to specify them if the latest
+  // options are not yet specifyed in `lattice-eth2-utils`.
+  const opts = ETH2Constants.NETWORKS.MAINNET_GENESIS;
+  const data = await DepositData.generate(client, path, opts);
+  
+  // Parse the JSON string result and add it to the array
+  depositData.push(JSON.parse(data));
 }
+
+// Re-JSONify all deposit records
+writeFileSync('deposit-data.json', JSON.stringify(depositData));
 ```
 
 ### BLS vs ETH1 Withdrawals
@@ -96,6 +111,12 @@ const eth1Addr = '0xf2f5c73fa04406b1995e397b55c24ab1f3ea726c';
 // Get deposit data with default BLS withdrawal:
 const depositDataBLS = await Utils.getEthDepositData(client, path);
 // Get deposit data with ETH1 withdrawal key:
+const opts = {
+  ...ETH2Constants.NETWORKS.MAINNET_GENESIS,
+  withdrawalKey: eth1Addr,
+};
+const depositDataETH1 = await Utils.getEthDepositData(client, path, opts);
+// You can also just do it this way, i.e. without the MAINNET_GENESIS opts (which are the default)
 const depositDataETH1 = await Utils.getEthDepositData(client, path, { withdrawalKey: eth1Addr });
 ```
 
