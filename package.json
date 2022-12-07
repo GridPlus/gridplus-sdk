@@ -1,6 +1,6 @@
 {
   "name": "gridplus-sdk",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
     "build": "NODE_ENV=production tsc -p tsconfig.json",
@@ -44,7 +44,6 @@
     "url": "https://github.com/GridPlus/gridplus-sdk.git"
   },
   "dependencies": {
-    "@chainsafe/ssz": "^0.9.2",
     "@ethereumjs/common": "2.4.0",
     "@ethereumjs/tx": "3.3.0",
     "@ethersproject/abi": "^5.5.0",
@@ -94,6 +93,7 @@
     "eslint-plugin-prettier": "^4.0.0",
     "ethereumjs-util": "^7.1.4",
     "jsonc": "^2.0.0",
+    "lattice-eth2-utils": "^0.1.0",
     "lodash": ">=4.17.21",
     "minimist": ">=0.2.1",
     "msw": "^0.42.0",
