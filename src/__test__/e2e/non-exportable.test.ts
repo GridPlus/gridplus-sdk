@@ -11,6 +11,13 @@
  * different, but cryptographically validate on the secp256k1 curve.
  *
  * You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
+ * 
+ * NOTE: If you do not have a SafeCard with a non-exportable seed, you can
+ * wipe a SafeCard, program Lattice firmware v0.10.6, and then setup the card
+ * with a non-exportable seed. You will probably need to set `FEATURE_CLONE_CARD=0`
+ * in order to build the firmware because 0.10.6 had a very large code size. Also
+ * make sure you set `CONFIG:DEBUG>:ENABLE_A90=0` or else you will probably brick
+ * your A90 chip.
  */
 import Common, { Chain, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
