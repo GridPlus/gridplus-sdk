@@ -40,7 +40,7 @@ You can now use your `client` object to connect to a specific Lattice1 device, w
 :::info
 Lattices are discoverable over a combination of `deviceID` and `baseUrl`. By default, `baseUrl` (an attribute of `Client` and a config option when creating an instance) points to the GridPlus routing cloud service, but you can also create your own endpoint using [Lattice Connect](https://github.com/GridPlus/lattice-connect-v2). 
 
-When a Lattice connects to a routing service (located at some `baseUrl`) for the first time, that server should generate a `deviceID` for the connecting Lattice. At this point, the Lattice will save the newly issued `deviceID` and will listen for corresponding messages coming from `baseUrl` (these message are always **end-to-end encrypted**). The Lattice should be permanently discoverable at this `baseUrl`/`deviceID` combination unless/until its user resets the Lattice Router or switches the device to a new routing service.
+When a Lattice connects to a routing service (located at some `baseUrl`) for the first time, that server should generate a `deviceID` for the connecting Lattice. At this point, the Lattice will save the newly issued `deviceID` and will listen for corresponding messages coming from `baseUrl` (these messages are always **end-to-end encrypted**). The Lattice should be permanently discoverable at this `baseUrl`/`deviceID` combination unless/until its user resets the Lattice Router or switches the device to a new routing service.
 :::
 
 ### Pairing vs Connecting 
