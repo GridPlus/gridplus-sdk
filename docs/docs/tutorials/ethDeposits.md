@@ -86,7 +86,7 @@ for (let i = 0; i < numValidators; i++) {
   // Note that `opts` (the third param) is optional and its default value
   // is currently `MAINNET_GENESIS`. These params will change with each
   // future Ethereum fork, so you may need to specify them if the latest
-  // options are not yet specifyed in `lattice-eth2-utils`.
+  // options are not yet specified in `lattice-eth2-utils`.
   const opts = ETH2Constants.NETWORKS.MAINNET_GENESIS;
   const data = await DepositData.generate(client, path, opts);
   
