@@ -5,7 +5,7 @@ sidebar_position: 2
 
 # 🔑 Addresses and Public Keys
 
-Once your `Client` instance is connected, you can request a few different address and key types from the Lattice.
+Once your `Client` instance is connected, you can request a few different addresses and key types from the Lattice.
 
 :::note
 
@@ -50,7 +50,7 @@ The Lattice can also export Bitcoin formatted addresses. There are three types o
 
 Keep in mind that `coin_type` `0'` is required when requesting BTC addresses.
 
-### Example: requesting BTC segwit addresse
+### Example: requesting BTC segwit addresses
 
 ```ts
 const reqData = {
