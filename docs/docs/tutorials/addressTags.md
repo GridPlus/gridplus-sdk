@@ -22,7 +22,7 @@ import { question } from 'readline-sync';
 const deviceID = 'XXXXXX';
 
 // Set up your client and connect to the Lattice
-const client = new Client({ name: 'ETH Depositooor' });
+const client = new Client({ name: 'ETH Tagooor' });
 const isPaired = await client.connect(deviceID);
 if (!isPaired) {
   const secret = await question('Enter pairing secret: ');

@@ -1,14 +1,23 @@
-import { getPublicKey, sign } from '@noble/bls12-381';
+/**
+ * Test BLS key derivation and signatures as well as EIP2335
+ * keystore export.
+ * Note that all signingtests use the NUL DST, which is not used
+ * for ETH2 stuff (that uses POP). However, we are just trying to
+ * validate the BLS cryptography.
+ * 
+ * For ETH2-specific operations, see `lattice-eth2-utils`:
+ * https://github.com/GridPlus/lattice-eth2-utils
+ */
 import {
   create as createKeystore,
   decrypt as decryptKeystore,
   verifyPassword,
   isValidKeystore,
 } from '@chainsafe/bls-keystore';
+import { getPublicKey, sign } from '@noble/bls12-381';
 import { mnemonicToSeedSync } from 'bip39';
 import { deriveSeedTree } from 'bls12-381-keygen';
 import { readFileSync } from 'fs';
-import { DepositData, Constants as ETH2Constants } from 'lattice-eth2-utils';
 import { jsonc } from 'jsonc';
 import { question } from 'readline-sync';
 
@@ -35,13 +44,10 @@ const globalVectors = jsonc.parse(
 );
 
 let client, origWalletSeed, encPw;
-const keystores = [];
 const DEPOSIT_PATH = [ 12381, 3600, 0, 0, 0];
 const WITHDRAWAL_PATH = [ 12381, 3600, 0, 0];
 // Number of signers to test for each of deposit and withdrawal paths
-const N_TEST_SIGS = 1;
-// Number of deposit keys against which to validate deposit data
-const N_TEST_DEPOSIT_DATA = 1//2;
+const N_TEST_SIGS = 5;
 const KNOWN_MNEMONIC = globalVectors.ethDeposit.mnemonic;
 const KNOWN_SEED = mnemonicToSeedSync(KNOWN_MNEMONIC);
 
@@ -65,23 +71,7 @@ describe('[BLS keys]', () => {
     await loadSeed(client, KNOWN_SEED, KNOWN_MNEMONIC);
   })
 
-  for (let i = 0; i < N_TEST_SIGS; i++) {
-    const pathIdx = DEPOSIT_PATH;
-    pathIdx[2] = i;
-    it(`Should validate EIP2333 and signing at deposit index #${i}`, async () => {
-      await testBLSDerivationAndSig(KNOWN_SEED, pathIdx);
-    })
-  }
-
-  for (let i = 0; i < N_TEST_SIGS; i++) {
-    const pathIdx = WITHDRAWAL_PATH;
-    pathIdx[2] = i;
-    it(`Should validate EIP2333 and signing at withdrawal index #${i}`, async () => {
-      await testBLSDerivationAndSig(KNOWN_SEED, pathIdx);
-    })
-  }
-  
-  it('Should export encrypted withdrawal private keys', async () => {
+  it('Should validate exported EIP2335 keystores', async () => {
     const req = {
       schema: Constants.ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4,
       params: {
@@ -106,29 +96,20 @@ describe('[BLS keys]', () => {
     encData = await client.fetchEncryptedData(req);
     await validateExportedKeystore(KNOWN_SEED, req.params.path, encPw, encData);
   })
-  
-  for (let i = 0; i < N_TEST_DEPOSIT_DATA; i++) {
-    it(`[Encrypted Export] Should get keystore #${i+1}/${N_TEST_DEPOSIT_DATA}`, async () => {
-      const path = globalVectors.ethDeposit.depositData[i].depositPath; 
-      const encData = await client.fetchEncryptedData({
-        schema: Constants.ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4,
-        params: {
-          path,
-          c: 1000, // This should not affect deposit data but will make deriv faster
-        }
-      });
-      await validateExportedKeystore(KNOWN_SEED, path, encPw, encData);
-      keystores.push(encData);
-    })
 
-    it(`[BLS Withdrawal] Should validate deposit data for keystore #${i+1}/${N_TEST_DEPOSIT_DATA}`, async () => {
-      const vec = globalVectors.ethDeposit.depositData[i];
-      await validateDepositData(client, vec.depositPath, vec.blsWithdrawalRef);
-    })
+  for (let i = 0; i < N_TEST_SIGS; i++) {
+    describe(`[Validate Derived Signature #${i+1}/${N_TEST_SIGS}]`, () => {
+      it(`Should validate derivation and signing at deposit index #${i+1}`, async () => {
+        const depositPath = JSON.parse(JSON.stringify(DEPOSIT_PATH));
+        depositPath[2] = i;
+        await testBLSDerivationAndSig(KNOWN_SEED, depositPath);
+      })
 
-    it(`[ETH1 Withdrawal] Should validate deposit data for keystore #${i+1}/${N_TEST_DEPOSIT_DATA}`, async () => {
-      const vec = globalVectors.ethDeposit.depositData[i];
-      await validateDepositData(client, vec.depositPath, vec.eth1WithdrawalRef, vec.eth1WithdrawalKey);
+      it(`Should validate derivation and signing at withdrawal index #${i+1}`, async () => {
+        const withdrawalPath = JSON.parse(JSON.stringify(WITHDRAWAL_PATH));
+        withdrawalPath[2] = i;
+        await testBLSDerivationAndSig(KNOWN_SEED, withdrawalPath);
+      })
     })
   }
 
@@ -185,40 +166,6 @@ async function testBLSDerivationAndSig(seed, signerPath) {
   );
 }
 
-async function validateExportedKeystore(seed, path, pw, expKeystoreBuffer) {
-  const exportedKeystore = JSON.parse(expKeystoreBuffer.toString());
-  const priv = deriveSeedTree(seed, buildPath(path));
-  const pub = getPublicKey(priv);
-
-  // Validate the keystore in isolation
-  expect(isValidKeystore(exportedKeystore)).to.equal(true, 'Exported keystore invalid!');
-  const expPwVerified = await verifyPassword(exportedKeystore, pw);
-  expect(expPwVerified).to.equal(
-    true, 
-    `Password could not be verified in exported keystore. Expected "${pw}"`
-  );
-  const expDec = await decryptKeystore(exportedKeystore, pw);
-  expect(Buffer.from(expDec).toString('hex')).to.equal(
-    Buffer.from(priv).toString('hex'),
-    'Exported keystore did not properly encrypt key!'
-  );
-  expect(exportedKeystore.pubkey).to.equal(
-    Buffer.from(pub).toString('hex'),
-    'Wrong public key exported from Lattice'
-  );
-
-  // Generate an independent keystore and compare decrypted contents
-  const genKeystore = await createKeystore(pw, priv, pub, getPathStr(path));
-  expect(isValidKeystore(genKeystore)).to.equal(true, 'Generated keystore invalid?');
-  const genPwVerified = await verifyPassword(genKeystore, pw);
-  expect(genPwVerified).to.equal(true, 'Password could not be verified in generated keystore?');
-  const genDec = await decryptKeystore(genKeystore, pw);
-  expect(Buffer.from(expDec).toString('hex')).to.equal(
-    Buffer.from(genDec).toString('hex'),
-    'Exported encrypted privkey did not match factory test example...'
-  );
-}
-
 async function loadSeed(client, seed, mnemonic=null) {
   const res = await testRequest({
     client,
@@ -260,55 +207,36 @@ async function removeSeed(client) {
   );
 }
 
-async function validateDepositData(client, depositPath, ref, withdrawalKey=null) {
-  // Generate the deposit data
-  const opts = {
-    ...ETH2Constants.NETWORKS.MAINNET_GENESIS,
-    withdrawalKey,
-  };
-  const resp = await DepositData.generate(client, depositPath, opts);
-  // const resp = await DepositData.generate(client, depositPath, { withdrawalKey });
-  // Validate components of response against the reference object
-  const dd = JSON.parse(resp);
-  expect(dd.pubkey).to.equal(
-    ref.pubkey, 
-    '`pubkey` mismatch.'
+async function validateExportedKeystore(seed, path, pw, expKeystoreBuffer) {
+  const exportedKeystore = JSON.parse(expKeystoreBuffer.toString());
+  const priv = deriveSeedTree(seed, buildPath(path));
+  const pub = getPublicKey(priv);
+
+  // Validate the keystore in isolation
+  expect(isValidKeystore(exportedKeystore)).to.equal(true, 'Exported keystore invalid!');
+  const expPwVerified = await verifyPassword(exportedKeystore, pw);
+  expect(expPwVerified).to.equal(
+    true, 
+    `Password could not be verified in exported keystore. Expected "${pw}"`
   );
-  expect(dd.withdrawal_credentials).to.equal(
-    ref.withdrawal_credentials, 
-    '`withdrawal_credentials` mismatch.'
+  const expDec = await decryptKeystore(exportedKeystore, pw);
+  expect(Buffer.from(expDec).toString('hex')).to.equal(
+    Buffer.from(priv).toString('hex'),
+    'Exported keystore did not properly encrypt key!'
   );
-  expect(dd.amount).to.equal(
-    ref.amount, 
-    '`amount` mismatch.'
+  expect(exportedKeystore.pubkey).to.equal(
+    Buffer.from(pub).toString('hex'),
+    'Wrong public key exported from Lattice'
   );
-  expect(dd.signature).to.equal(
-    ref.signature, 
-    '`signature` mismatch'
-  );
-  expect(dd.deposit_message_root).to.equal(
-    ref.deposit_message_root, 
-    '`deposit_message_root` mismatch.'
-  );
-  expect(dd.deposit_data_root).to.equal(
-    ref.deposit_data_root, 
-    '`deposit_data_root` mismatch.'
-  );
-  expect(dd.fork_version).to.equal(
-    ref.fork_version, 
-    '`fork_version` mismatch.'
-  );
-  expect(dd.network_name).to.equal(
-    ref.network_name, 
-    '`network_name` mismatch.'
-  );
-  expect(dd.deposit_cli_version).to.equal(
-    ref.deposit_cli_version, 
-    '`deposit_cli_version` mismatch.'
-  );
-  // Validate the full JSON string
-  expect(resp).to.equal(
-    JSON.stringify(ref), 
-    'Full JSON string did not match.'
+
+  // Generate an independent keystore and compare decrypted contents
+  const genKeystore = await createKeystore(pw, priv, pub, getPathStr(path));
+  expect(isValidKeystore(genKeystore)).to.equal(true, 'Generated keystore invalid?');
+  const genPwVerified = await verifyPassword(genKeystore, pw);
+  expect(genPwVerified).to.equal(true, 'Password could not be verified in generated keystore?');
+  const genDec = await decryptKeystore(genKeystore, pw);
+  expect(Buffer.from(expDec).toString('hex')).to.equal(
+    Buffer.from(genDec).toString('hex'),
+    'Exported encrypted privkey did not match factory test example...'
   );
 }

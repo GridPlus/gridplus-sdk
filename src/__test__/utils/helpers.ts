@@ -117,7 +117,7 @@ export function _start_tx_builder (
   const changeValue = inputSum - value - fee;
   if (changeValue > 0) {
     const networkIdx = network === bitcoin.networks.testnet ? 1 : 0;
-    const path = buildPath([purpose, harden(networkIdx), 0, 1]);
+    const path = buildPath([purpose, harden(networkIdx), harden(0), 1, 0]);
     const btc_0_change = wallet.derivePath(path);
     const btc_0_change_pub = bitcoin.ECPair.fromPublicKey(
       btc_0_change.publicKey,
@@ -134,7 +134,7 @@ export function _start_tx_builder (
       // For native segwit we need to add a scriptSig to the input
       const coin =
         network === bitcoin.networks.testnet ? BTC_TESTNET_COIN : BTC_COIN;
-      const path = buildPath([purpose, coin, input.signerIdx]);
+      const path = buildPath([purpose, coin, harden(0), 0, input.signerIdx]);
       const keyPair = wallet.derivePath(path);
       const p2wpkh = bitcoin.payments.p2wpkh({
         pubkey: keyPair.publicKey,
@@ -189,7 +189,7 @@ function _get_reference_sighashes (
     purpose,
   );
   inputs.forEach((input, i) => {
-    const path = buildPath([purpose, coin, input.signerIdx]);
+    const path = buildPath([purpose, coin, harden(0), 0, input.signerIdx]);
     const keyPair = wallet.derivePath(path);
     const priv = bitcoin.ECPair.fromPrivateKey(keyPair.privateKey, { network });
     if (purpose === BTC_PURPOSE_P2SH_P2WPKH) {
@@ -257,7 +257,7 @@ function _get_signing_keys (wallet, inputs, isTestnet, purpose) {
   const currencyIdx = isTestnet === true ? 1 : 0;
   const keys: any = [];
   inputs.forEach((input) => {
-    const path = buildPath([purpose, currencyIdx, input.signerIdx]);
+    const path = buildPath([purpose, harden(currencyIdx), harden(0), 0, input.signerIdx]);
     keys.push(wallet.derivePath(path));
   });
   return keys;

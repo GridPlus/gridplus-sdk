@@ -44,7 +44,7 @@ const sig = await client.sign(req)
 
 ## 📃 Encoding Types
 
-You may specify an **Encoding Type** in your signing request if you want the message to render in a **formatted** way, such as for an EVM transaction. If no Message Decoder is specified, the message will be displayed on the Lattice in full as either a hex or ASCII string, depending on the contents of the message. If you do specify an `encodingType`, the message **must** conform to its format (e.g. EVM transaction) or else Lattice firmware will reject the request. 
+You may specify an **Encoding Type** in your signing request if you want the message to render the signing request in a **formatted** way, such as for an EVM transaction. If no encoding type is specified, the message will be displayed on the Lattice in full as either a hex or ASCII string, depending on the contents of the message. If you do specify an encoding type, the message **must** conform to the expected format (e.g. EVM transaction) or else Lattice firmware will reject the request.
 
 Encoding Types can be accessed inside of `Constants`:
 
@@ -57,6 +57,7 @@ const encodings = Constants.SIGNING.ENCODINGS;
 | `NONE` | Can also use `null` or not specify the `encodingType`. Lattice will display either an ASCII or a hex string depending on the payload. |
 | `EVM` | Used to decode an EVM contract function call. To deploy a contract, set `to` as `null`. |
 | `SOLANA` | Used to decode a Solana transaction. Transactions that cannot be decoded will be rejected. |
+| `ETH_DEPOSIT` | Can be used to display a [`DepositData`](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#depositdata) signing root and associated validator public key in order to build deposit data for a new ETH2 validator. |
 
 ### Example: EVM Encoding
 

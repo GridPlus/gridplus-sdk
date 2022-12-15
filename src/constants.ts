@@ -596,6 +596,11 @@ const NETWORKS_BY_CHAIN_ID = {
     baseUrl: 'https://api.bscscan.com',
     apiRoute: 'api?module=contract&action=getabi',
   },
+  42220: {
+    name: 'celo',
+    baseUrl: 'https://api.celoscan.io',
+    apiRoute: 'api?module=contract&action=getabi',
+  },
   43114: {
     name: 'avalanche',
     baseUrl: 'https://api.snowtrace.io',

@@ -1,5 +1,196 @@
 // Vitest Snapshot v1
 
+exports[`fetchCalldataDecoder > decode Celo calldata 1`] = `
+{
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address",
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address",
+        },
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event",
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "_to",
+          "type": "address",
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "_asset",
+          "type": "address",
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256",
+        },
+      ],
+      "name": "WithdrawTo",
+      "type": "event",
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_contract",
+          "type": "address",
+        },
+      ],
+      "name": "claim",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function",
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_to",
+          "type": "address",
+        },
+        {
+          "internalType": "uint256",
+          "name": "_value",
+          "type": "uint256",
+        },
+        {
+          "internalType": "bytes",
+          "name": "_data",
+          "type": "bytes",
+        },
+      ],
+      "name": "execute",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool",
+        },
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes",
+        },
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function",
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address",
+        },
+      ],
+      "stateMutability": "view",
+      "type": "function",
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function",
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address",
+        },
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function",
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_to",
+          "type": "address",
+        },
+        {
+          "internalType": "address",
+          "name": "_asset",
+          "type": "address",
+        },
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256",
+        },
+      ],
+      "name": "withdrawTo",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function",
+    },
+  ],
+  "def": {
+    "data": [
+      223,
+      145,
+      116,
+      114,
+      97,
+      110,
+      115,
+      102,
+      101,
+      114,
+      79,
+      119,
+      110,
+      101,
+      114,
+      115,
+      104,
+      105,
+      112,
+      204,
+      136,
+      110,
+      101,
+      119,
+      79,
+      119,
+      110,
+      101,
+      114,
+      1,
+      128,
+      192,
+    ],
+    "type": "Buffer",
+  },
+}
+`;
+
 exports[`fetchCalldataDecoder > decode calldata 1`] = `
 {
   "abi": [
