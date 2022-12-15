@@ -47,10 +47,6 @@ const sidebars = {
           type: 'doc',
           id: 'tutorials/addressTags',
         },
-        {
-          type: 'doc',
-          id: 'tutorials/ethDeposits',
-        },
       ]
     },
     {
