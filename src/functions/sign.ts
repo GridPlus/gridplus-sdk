@@ -35,7 +35,7 @@ export async function sign ({
     wallet: client.getActiveWallet(),
     sharedSecret: client.sharedSecret,
   });
-
+  
   const { request, isGeneric } = buildTransaction({
     data,
     currency,
