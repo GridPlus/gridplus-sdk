@@ -49,80 +49,76 @@ const BTC_SCRIPT_TYPE_P2WPKH_V0 = 0x04;
 // `version`:   Transaction version of the inputs. All inputs must be of the same version!
 // `isSegwit`: a boolean which determines how we serialize the data and parameterize txb
 const buildBitcoinTxRequest = function (data) {
-  try {
-    const { prevOuts, recipient, value, changePath, fee } = data;
-    if (!changePath) throw new Error('No changePath provided.');
-    if (changePath.length !== 5)
-      throw new Error('Please provide a full change path.');
-    // Serialize the request
-    const payload = Buffer.alloc(59 + 69 * prevOuts.length);
-    let off = 0;
-    // Change version byte (a.k.a. address format byte)
-    const changeFmt = getAddressFormat(changePath);
-    payload.writeUInt8(changeFmt, 0);
-    off++;
+  const { prevOuts, recipient, value, changePath, fee } = data;
+  if (!changePath) throw new Error('No changePath provided.');
+  if (changePath.length !== 5)
+    throw new Error('Please provide a full change path.');
+  // Serialize the request
+  const payload = Buffer.alloc(59 + 69 * prevOuts.length);
+  let off = 0;
+  // Change version byte (a.k.a. address format byte)
+  const changeFmt = getAddressFormat(changePath);
+  payload.writeUInt8(changeFmt, 0);
+  off++;
 
-    // Build the change data
-    payload.writeUInt32LE(changePath.length, off);
+  // Build the change data
+  payload.writeUInt32LE(changePath.length, off);
+  off += 4;
+  for (let i = 0; i < changePath.length; i++) {
+    payload.writeUInt32LE(changePath[i], off);
     off += 4;
-    for (let i = 0; i < changePath.length; i++) {
-      payload.writeUInt32LE(changePath[i], off);
+  }
+
+  // Fee is a param
+  payload.writeUInt32LE(fee, off);
+  off += 4;
+  const dec = decodeAddress(recipient);
+  // Parameterize the recipient output
+  payload.writeUInt8(dec.versionByte, off);
+  off++;
+  dec.pkh.copy(payload, off);
+  off += dec.pkh.length;
+  writeUInt64LE(value, payload, off);
+  off += 8;
+
+  // Build the inputs from the previous outputs
+  payload.writeUInt8(prevOuts.length, off);
+  off++;
+  let inputSum = 0;
+
+  prevOuts.forEach((input) => {
+    if (!input.signerPath || input.signerPath.length !== 5) {
+      throw new Error('Full recipient path not specified ');
+    }
+    payload.writeUInt32LE(input.signerPath.length, off);
+    off += 4;
+    for (let i = 0; i < input.signerPath.length; i++) {
+      payload.writeUInt32LE(input.signerPath[i], off);
       off += 4;
     }
-
-    // Fee is a param
-    payload.writeUInt32LE(fee, off);
+    payload.writeUInt32LE(input.index, off);
     off += 4;
-    const dec = decodeAddress(recipient);
-    // Parameterize the recipient output
-    payload.writeUInt8(dec.versionByte, off);
-    off++;
-    dec.pkh.copy(payload, off);
-    off += dec.pkh.length;
-    writeUInt64LE(value, payload, off);
+    writeUInt64LE(input.value, payload, off);
     off += 8;
-
-    // Build the inputs from the previous outputs
-    payload.writeUInt8(prevOuts.length, off);
+    inputSum += input.value;
+    const scriptType = getScriptType(input);
+    payload.writeUInt8(scriptType, off);
     off++;
-    let inputSum = 0;
-
-    prevOuts.forEach((input) => {
-      if (!input.signerPath || input.signerPath.length !== 5) {
-        throw new Error('Full recipient path not specified ');
-      }
-      payload.writeUInt32LE(input.signerPath.length, off);
-      off += 4;
-      for (let i = 0; i < input.signerPath.length; i++) {
-        payload.writeUInt32LE(input.signerPath[i], off);
-        off += 4;
-      }
-      payload.writeUInt32LE(input.index, off);
-      off += 4;
-      writeUInt64LE(input.value, payload, off);
-      off += 8;
-      inputSum += input.value;
-      const scriptType = getScriptType(input);
-      payload.writeUInt8(scriptType, off);
-      off++;
-      if (!Buffer.isBuffer(input.txHash))
-        input.txHash = Buffer.from(input.txHash, 'hex');
-      input.txHash.copy(payload, off);
-      off += input.txHash.length;
-    });
-    // Send them back!
-    return {
-      payload,
-      schema: signingSchema.BTC_TRANSFER,
-      origData: data, // We will need the original data for serializing the tx
-      changeData: {
-        // This data helps fill in the change output
-        value: inputSum - (value + fee),
-      },
-    };
-  } catch (err) {
-    return { err };
-  }
+    if (!Buffer.isBuffer(input.txHash))
+      input.txHash = Buffer.from(input.txHash, 'hex');
+    input.txHash.copy(payload, off);
+    off += input.txHash.length;
+  });
+  // Send them back!
+  return {
+    payload,
+    schema: signingSchema.BTC_TRANSFER,
+    origData: data, // We will need the original data for serializing the tx
+    changeData: {
+      // This data helps fill in the change output
+      value: inputSum - (value + fee),
+    },
+  };
 };
 
 // Serialize a transaction consisting of inputs, outputs, and some
@@ -389,20 +385,39 @@ function writeUInt64LE(n, buf, off) {
 function decodeAddress(address) {
   let versionByte, pkh;
   try {
+    // Attempt to base58 decode the address. This will work for older
+    // P2PKH, P2SH, and P2SH-P2WPKH addresses
     versionByte = bs58check.decode(address)[0];
     pkh = bs58check.decode(address).slice(1);
   } catch (err) {
+    // If we could not base58 decode, the address must be bech32 encoded.
+    // If neither decoding method works, the address is invalid.
     try {
       const bech32Dec = bech32.decode(address);
-      if (bech32Dec.prefix === SEGWIT_NATIVE_V0_PREFIX)
+      if (bech32Dec.prefix === SEGWIT_NATIVE_V0_PREFIX) {
         versionByte = FMT_SEGWIT_NATIVE_V0;
-      else if (bech32Dec.prefix === SEGWIT_NATIVE_V0_TESTNET_PREFIX)
+      } else if (bech32Dec.prefix === SEGWIT_NATIVE_V0_TESTNET_PREFIX) {
         versionByte = FMT_SEGWIT_NATIVE_V0_TESTNET;
-      else throw new Error('Unsupported prefix: must be bc or tb.');
-      if (bech32Dec.words[0] !== 0)
+      } else {
+        throw new Error('Unsupported prefix: must be bc or tb.');
+      }
+      // Make sure we decoded
+      if (bech32Dec.words[0] !== 0) {
         throw new Error(
           `Unsupported segwit version: must be 0, got ${bech32Dec.words[0]}`
         );
+      }
+      // Make sure address type is supported.
+      // We currently only support P2WPKH addresses, which bech-32decode to 33 words.
+      // P2WSH addresses are 53 words, but we do not support them.
+      // Not sure what other address types could exist, but if they exist we don't
+      // support them either.
+      if (bech32Dec.words.length !== 33) {
+        const isP2wpsh = bech32Dec.words.length === 53;
+        throw new Error(
+          `Unsupported address${isP2wpsh ? ' (P2WSH not supported)' : ''}: ${address}`
+        );
+      }
 
       pkh = Buffer.from(bech32.fromWords(bech32Dec.words.slice(1)));
     } catch (err) {
