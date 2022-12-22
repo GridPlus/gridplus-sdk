@@ -1,123 +1,91 @@
-import { decResLengths } from '../constants';
-import { decryptResponse, encryptRequest, request } from '../shared/functions';
 import {
-  validateFwConstants,
-  validateSharedSecret,
-  validateUrl
+  decryptEncryptedLatticeResponseData,
+  deserializeResponseMsgPayloadData,
+  serializeSecureRequestMsg,
+  serializeSecureRequestEncryptedPayloadData,
+  LatticeSecureEncryptedRequestType,
+  LatticeSecureMsgType,
+} from '../protocol';
+import { request } from '../shared/functions';
+import {
+  validateConnectedClient
 } from '../shared/validators';
+import { randomBytes } from '../util';
 
 /**
  * `removeKvRecords` takes in an array of ids and sends a request to remove them from the Lattice.
  * @category Lattice
  * @returns A callback with an error or null.
  */
-export async function removeKvRecords ({
-  type: _type,
-  ids: _ids,
-  client,
-}: RemoveKvRecordsRequestFunctionParams): Promise<Buffer> {
-  const { url, sharedSecret, fwConstants, type, ids } = validateRemoveKvRequest(
-    {
-      url: client.url,
-      fwConstants: client.getFwConstants(),
-      sharedSecret: client.sharedSecret,
-      type: _type,
-      ids: _ids,
-    },
+export async function removeKvRecords (
+  req: RemoveKvRecordsRequestFunctionParams
+): Promise<Buffer> {
+  // Validate request params
+  validateRemoveKvRequest(req);
+  // Build data for this request
+  const data = encodeRemoveKvRecordsRequest(req);
+  // Build the secure request message
+  const msgId = randomBytes(4);
+  const payloadData = serializeSecureRequestEncryptedPayloadData(
+    req.client,
+    data,
+    LatticeSecureEncryptedRequestType.fetchEncryptedData
   );
-
-  const payload = encodeRemoveKvRecordsRequest({ type, ids, fwConstants });
-
-  const encryptedPayload = encryptRemoveKvRecordsRequest({
-    payload,
-    sharedSecret,
+  const msg = serializeSecureRequestMsg(
+    req.client,
+    msgId,
+    LatticeSecureMsgType.encrypted,
+    payloadData
+  );
+  // Send request to Lattice
+  const resp = await request({ 
+    url: req.client.url, 
+    payload: msg 
   });
-
-  const encryptedResponse = await requestRemoveKvRecords(encryptedPayload, url);
-
-  const { decryptedData, newEphemeralPub } = decryptRemoveKvRecordsResponse(
-    encryptedResponse,
-    sharedSecret,
+  // Deserialize the response payload data
+  const encRespPayloadData = deserializeResponseMsgPayloadData(
+    req.client,
+    msgId,
+    resp
   );
-
-  client.ephemeralPub = newEphemeralPub;
-
-  return decryptedData;
+  // Decrypt and return data
+  return decryptEncryptedLatticeResponseData(
+    req.client, 
+    encRespPayloadData
+  );
 }
 
-export const validateRemoveKvRequest = ({
-  url,
-  fwConstants,
-  sharedSecret,
-  ids,
-  type,
-}: ValidateRemoveKvRequestParams): ValidatedRemoveKvRequest => {
-  const validUrl = validateUrl(url);
-  const validFwConstants = validateFwConstants(fwConstants);
-  const validSharedSecret = validateSharedSecret(sharedSecret);
-
-  if (!validFwConstants.kvActionsAllowed) {
+export const validateRemoveKvRequest = (
+  req: RemoveKvRecordsRequestFunctionParams
+) => {
+  validateConnectedClient(req.client);
+  const fwConstants = req.client.getFwConstants();
+  if (!fwConstants.kvActionsAllowed) {
     throw new Error('Unsupported. Please update firmware.');
   }
-  if (!Array.isArray(ids) || ids.length < 1) {
+  if (!Array.isArray(req.ids) || req.ids.length < 1) {
     throw new Error('You must include one or more `ids` to removed.');
   }
-  if (ids.length > validFwConstants.kvRemoveMaxNum) {
+  if (req.ids.length > fwConstants.kvRemoveMaxNum) {
     throw new Error(
-      `Only up to ${validFwConstants.kvRemoveMaxNum} records may be removed at once.`,
+      `Only up to ${fwConstants.kvRemoveMaxNum} records may be removed at once.`,
     );
   }
-  if (type !== 0 && !type) {
+  if (req.type !== 0 && !req.type) {
     throw new Error('You must specify a type.');
   }
-
-  return {
-    url: validUrl,
-    fwConstants: validFwConstants,
-    sharedSecret: validSharedSecret,
-    type,
-    ids,
-  };
 };
 
-export const encodeRemoveKvRecordsRequest = ({
-  type,
-  ids,
-  fwConstants,
-}: EncodeRemoveKvRecordsRequestParams) => {
+export const encodeRemoveKvRecordsRequest = (
+  req: RemoveKvRecordsRequestFunctionParams
+) => {
+  const fwConstants = req.client.getFwConstants();
   const payload = Buffer.alloc(5 + 4 * fwConstants.kvRemoveMaxNum);
-  payload.writeUInt32LE(type, 0);
-  payload.writeUInt8(ids.length, 4);
-  for (let i = 0; i < ids.length; i++) {
-    const id = parseInt(ids[i] as string);
+  payload.writeUInt32LE(req.type, 0);
+  payload.writeUInt8(req.ids.length, 4);
+  for (let i = 0; i < req.ids.length; i++) {
+    const id = parseInt(req.ids[i] as string);
     payload.writeUInt32LE(id, 5 + 4 * i);
   }
   return payload;
-};
-
-export const encryptRemoveKvRecordsRequest = ({
-  payload,
-  sharedSecret,
-}: EncrypterParams) => {
-  return encryptRequest({
-    requestCode: 'REMOVE_KV_RECORDS',
-    payload,
-    sharedSecret,
-  });
-};
-
-export const requestRemoveKvRecords = async (payload: Buffer, url: string) => {
-  return request({ payload, url });
-};
-
-export const decryptRemoveKvRecordsResponse = (
-  response: Buffer,
-  sharedSecret: Buffer,
-) => {
-  const { decryptedData, newEphemeralPub } = decryptResponse(
-    response,
-    decResLengths.empty,
-    sharedSecret,
-  );
-  return { decryptedData, newEphemeralPub };
 };

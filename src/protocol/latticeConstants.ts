@@ -39,7 +39,7 @@ export enum LatticeSecureEncryptedRequestType {
   getKvRecords = 7,
   addKvRecords = 8,
   removeKvRecords = 9,
-  getEncryptedData = 12,
+  fetchEncryptedData = 12,
   test = 13,
 }
 
@@ -56,19 +56,6 @@ export const ProtocolConstants = {
   // Note that this size also captures public keys returned
   // by the Lattice (addresses = strings, pubkeys = buffers)
   addrStrLen: 129,
-  // Encrypted request types
-  // Some have been deprecated and are not enumerated here
-  encryptedRequestTypes: {
-    finalizePairing: 0,
-    getAddresses: 1,
-    sign: 3,
-    getWallets: 4,
-    getKvRecords: 7,
-    addKvRecords: 8,
-    removeKvRecords: 9,
-    exportEncData: 12,
-    test: 13,
-  },
   // Status of the client's pairing with the target Lattice
   pairingStatus: {
     notPaired: 0x00,
@@ -142,16 +129,17 @@ export const ProtocolConstants = {
         response: {
           // Once decrypted, the data size of the response
           // payload will be determined by the request type.
+          // NOTE: Data sizes should mostly correspond to specific
+          // encrypted request types, though some responses are
+          // empty, so we re-use the "empty" size.
           data: {
             empty: 0,
-            getAddresses: 1290,
-            sign: 1090,
-            getWallets: 142,
-            getKvRecords: 1395,
-            getDecoders: 1608,
-            fetchEncryptedData: 1608,
-            removeDecoders: 4,
-            test: 1646,
+            [LatticeSecureEncryptedRequestType.getAddresses]: 1290,
+            [LatticeSecureEncryptedRequestType.sign]: 1090,
+            [LatticeSecureEncryptedRequestType.getWallets]: 142,
+            [LatticeSecureEncryptedRequestType.getKvRecords]: 1395,
+            [LatticeSecureEncryptedRequestType.fetchEncryptedData]: 1608,
+            [LatticeSecureEncryptedRequestType.test]: 1646,
           }
         }
       }

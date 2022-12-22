@@ -1,14 +1,18 @@
-import { decResLengths, EMPTY_WALLET_UID } from '../constants';
+import { EMPTY_WALLET_UID } from '../constants';
 import {
-  decryptResponse,
-  encryptRequest,
-  request,
-} from '../shared/functions';
+  decryptEncryptedLatticeResponseData,
+  deserializeResponseMsgPayloadData,
+  serializeSecureRequestMsg,
+  serializeSecureRequestEncryptedPayloadData,
+  LatticeSecureEncryptedRequestType,
+  LatticeSecureMsgType,
+} from '../protocol';
+import { request } from '../shared/functions';
 import {
   validateActiveWallets,
-  validateSharedSecret,
-  validateUrl,
+  validateConnectedClient,
 } from '../shared/validators';
+import { randomBytes } from '../util';
 
 /**
  * Fetch the active wallet in the device. 
@@ -17,66 +21,52 @@ import {
  * unlocked, the external interface is considered "active" and this will return its {@link Wallet}
  * data. Otherwise it will return the info for the internal Lattice wallet.
  */
-export async function fetchActiveWallet ({
-  client,
-}: FetchActiveWalletRequestFunctionParams): Promise<ActiveWallets> {
-  const { url, sharedSecret } = validateFetchActiveWallet({
-    url: client.url,
-    sharedSecret: client.sharedSecret,
+export async function fetchActiveWallet (
+  req: FetchActiveWalletRequestFunctionParams
+): Promise<ActiveWallets> {
+  // Validate request params
+  validateFetchActiveWallet(req);
+  // Build the secure request message
+  const msgId = randomBytes(4);
+  const payloadData = serializeSecureRequestEncryptedPayloadData(
+    req.client,
+    Buffer.alloc(0), // empty request data
+    LatticeSecureEncryptedRequestType.getWallets
+  );
+  const msg = serializeSecureRequestMsg(
+    req.client,
+    msgId,
+    LatticeSecureMsgType.encrypted,
+    payloadData
+  );
+  // Send request to Lattice
+  const resp = await request({ 
+    url: req.client.url, 
+    payload: msg 
   });
-
-  const payload = encryptFetchActiveWalletRequest({ sharedSecret });
-
-  const encryptedResponse = await requestFetchActiveWallet(payload, url).catch(
-    (err) => {
-      client.resetActiveWallets();
-      throw err;
-    },
+  // Deserialize the response payload data
+  const encRespPayloadData = deserializeResponseMsgPayloadData(
+    req.client,
+    msgId,
+    resp
   );
-
-  const { decryptedData, newEphemeralPub } = decryptFetchActiveWalletResponse(
-    encryptedResponse,
-    sharedSecret,
+  // Decrypt data and update active wallets before returning
+  const decRespPayloadData = decryptEncryptedLatticeResponseData(
+    req.client, 
+    encRespPayloadData
   );
-
-  const activeWallets = decodeFetchActiveWalletResponse(decryptedData);
-
+  const activeWallets = decodeFetchActiveWalletResponse(
+    decRespPayloadData
+  );
   const validActiveWallets = validateActiveWallets(activeWallets);
-
-  client.activeWallets = validActiveWallets;
-  client.ephemeralPub = newEphemeralPub;
-
+  req.client.activeWallets = validActiveWallets;
   return validActiveWallets;
 }
 
-export const validateFetchActiveWallet = ({
-  url,
-  sharedSecret,
-}: ValidateFetchActiveWalletRequestParams) => {
-  const validUrl = validateUrl(url);
-  const validSharedSecret = validateSharedSecret(sharedSecret);
-
-  return {
-    url: validUrl,
-    sharedSecret: validSharedSecret,
-  };
-};
-
-export const encryptFetchActiveWalletRequest = ({
-  sharedSecret,
-}: ValidatedFetchActiveWalletRequest) => {
-  return encryptRequest({
-    requestCode: 'GET_WALLETS',
-    payload: Buffer.alloc(0),
-    sharedSecret,
-  });
-};
-
-export const requestFetchActiveWallet = async (
-  payload: Buffer,
-  url: string,
+export const validateFetchActiveWallet = (
+  req: FetchActiveWalletRequestFunctionParams
 ) => {
-  return request({ payload, url });
+  validateConnectedClient(req.client);
 };
 
 export const decodeFetchActiveWalletResponse = (data: Buffer) => {
@@ -119,16 +109,4 @@ export const decodeFetchActiveWalletResponse = (data: Buffer) => {
     off + walletDescriptorLen,
   );
   return activeWallets;
-};
-
-export const decryptFetchActiveWalletResponse = (
-  response: Buffer,
-  sharedSecret: Buffer,
-) => {
-  const { decryptedData, newEphemeralPub } = decryptResponse(
-    response,
-    decResLengths.getWallets,
-    sharedSecret,
-  );
-  return { decryptedData, newEphemeralPub };
 };

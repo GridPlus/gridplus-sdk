@@ -8,11 +8,9 @@ import {
 } from '../protocol';
 import { request } from '../shared/functions';
 import {
-  validateFwConstants,
+  validateConnectedClient,
   validateKvRecord,
   validateKvRecords,
-  validateSharedSecret,
-  validateUrl,
 } from '../shared/validators';
 import { randomBytes } from '../util';
 
@@ -22,67 +20,55 @@ import { randomBytes } from '../util';
  * @category Lattice
  * @returns A callback with an error or null.
  */
-export async function addKvRecords ({
-  type = 0,
-  records,
-  caseSensitive = false,
-  client,
-}: AddKvRecordsRequestFunctionParams): Promise<Buffer> {
-  // Make sure we have a valid shared secret
-  validateSharedSecret(client.sharedSecret);
+export async function addKvRecords (
+  req: AddKvRecordsRequestFunctionParams
+): Promise<Buffer> {
+  const { type = 0, caseSensitive = false } = req;
   // Validate request params
-  const params = validateAddKvRequest({
-    url: client.url,
-    fwConstants: client.getFwConstants(),
-    records,
-  });
-  // Build the secure request message
-  const msgId = randomBytes(4);
+  validateAddKvRequest(req);
+  // Build the data for this request
   const data = encodeAddKvRecordsRequest({
-    records: params.records,
-    fwConstants: params.fwConstants,
+    records: req.records,
+    fwConstants: req.client.getFwConstants(),
     type,
     caseSensitive,
   });
+  // Build the secure request message
+  const msgId = randomBytes(4);
   const payloadData = serializeSecureRequestEncryptedPayloadData(
-    client,
+    req.client,
     data,
     LatticeSecureEncryptedRequestType.addKvRecords
   );
   const msg = serializeSecureRequestMsg(
-    client,
+    req.client,
     msgId,
     LatticeSecureMsgType.encrypted,
     payloadData
   );
   // Send request to Lattice
   const resp = await request({ 
-    url: params.url, 
+    url: req.client.url, 
     payload: msg 
   });
   // Deserialize the response payload data
   const encRespPayloadData = deserializeResponseMsgPayloadData(
-    client,
+    req.client,
     msgId,
     resp
   );
   // Decrypt and return data
-  return decryptEncryptedLatticeResponseData(client, encRespPayloadData);
+  return decryptEncryptedLatticeResponseData(
+    req.client, 
+    encRespPayloadData
+  );
 }
 
-export const validateAddKvRequest = ({
-  url,
-  fwConstants,
-  records,
-}: ValidateAddKvRequestParams) => {
-  const validUrl = validateUrl(url);
-  const validFwConstants = validateFwConstants(fwConstants);
-  const validRecords = validateKvRecords(records, validFwConstants);
-  return {
-    url: validUrl,
-    fwConstants: validFwConstants,
-    records: validRecords,
-  };
+export const validateAddKvRequest = (
+  req: AddKvRecordsRequestFunctionParams
+) => {
+  validateConnectedClient(req.client);
+  validateKvRecords(req.records, req.client.getFwConstants())
 };
 
 export const encodeAddKvRecordsRequest = ({

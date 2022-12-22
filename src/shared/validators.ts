@@ -1,4 +1,5 @@
 import { UInt4 } from 'bitwise/types';
+import { Client } from '../client'
 import { MAX_ADDR, encReqCodes, EMPTY_WALLET_UID, ASCII_REGEX } from '../constants';
 import { isUInt4, checksum } from '../util';
 import isEmpty from 'lodash/isEmpty'
@@ -83,6 +84,7 @@ export const validateFwConstants = (fwConstants?: FirmwareConstants) => {
   }
   return fwConstants;
 };
+
 export const validateFwVersion = (fwVersion?: Buffer) => {
   if (!fwVersion || fwVersion.byteLength > 4) {
     throw new Error('Firmware version does not exist. Please reconnect.');
@@ -121,6 +123,15 @@ export const validateWallet = (wallet?: Wallet): Wallet => {
   }
   return wallet;
 };
+
+export const validateConnectedClient = (client: Client) => {
+  validateAppName(client.appName);
+  validateEphemeralPub(client.ephemeralPub);
+  validateSharedSecret(client.sharedSecret);
+  validateUrl(client.url);
+  validateWallet(client.getActiveWallet());
+  validateFwConstants(client.getFwConstants());
+}
 
 export const validateEphemeralPub = (ephemeralPub?: Buffer) => {
   if (!ephemeralPub) {

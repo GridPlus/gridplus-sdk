@@ -1,8 +1,19 @@
-import { decResLengths } from '../constants';
-import { encryptRequest, decryptResponse, request } from '../shared/functions';
+import {
+  decryptEncryptedLatticeResponseData,
+  deserializeResponseMsgPayloadData,
+  serializeSecureRequestMsg,
+  serializeSecureRequestEncryptedPayloadData,
+  LatticeSecureEncryptedRequestType,
+  LatticeSecureMsgType,
+} from '../protocol';
+import { request } from '../shared/functions';
 import { getPubKeyBytes } from '../shared/utilities';
-import { validateAppName, validateUrl } from '../shared/validators';
-import { generateAppSecret, toPaddedDER } from '../util';
+import { validateConnectedClient } from '../shared/validators';
+import { 
+  generateAppSecret, 
+  toPaddedDER, 
+  randomBytes 
+} from '../util';
 
 /**
  * If a pairing secret is provided, `pair` uses it to sign a hash of the public key, name, and
@@ -11,30 +22,48 @@ import { generateAppSecret, toPaddedDER } from '../util';
  * @category Lattice
  * @returns The active wallet object.
  */
-export async function pair ({ pairingSecret, client }: PairRequestParams) {
-  //TODO: Add pair validator
-  const name = validateAppName(client.name);
-  const url = validateUrl(client.url);
-
-  const payload = encodePairRequest(client.key, pairingSecret, name);
-
-  const encryptedPayload = encryptPairRequest({
-    payload,
-    sharedSecret: client.sharedSecret,
-  });
-  const encryptedResponse = await requestPair(encryptedPayload, url);
-
-  const { newEphemeralPub } = decryptPairResponse(
-    encryptedResponse,
-    client.sharedSecret,
+export async function pair (req: PairRequestParams) {
+  // Validate request params
+  validateConnectedClient(req.client);
+  // Build data for this request
+  const data = encodePairRequest(
+    req.client.key, 
+    req.pairingSecret, 
+    req.client.name
   );
-
-  client.isPaired = true
-  client.ephemeralPub = newEphemeralPub;
-
-  // Try to get the active wallet once pairing is successful
-  await client.fetchActiveWallet();
-  return client.hasActiveWallet();
+  // Build the secure message request
+  const msgId = randomBytes(4);
+  const payloadData = serializeSecureRequestEncryptedPayloadData(
+    req.client,
+    data,
+    LatticeSecureEncryptedRequestType.finalizePairing
+  );
+  const msg = serializeSecureRequestMsg(
+    req.client,
+    msgId,
+    LatticeSecureMsgType.encrypted,
+    payloadData
+  );
+  // Send request to Lattice
+  const resp = await request({ 
+    url: req.client.url, 
+    payload: msg 
+  });
+  // Deserialize the response payload data
+  const encRespPayloadData = deserializeResponseMsgPayloadData(
+    req.client,
+    msgId,
+    resp
+  );
+  // Decrypt response. It has no data to capture for this request.
+  decryptEncryptedLatticeResponseData(
+    req.client, 
+    encRespPayloadData
+  );
+  // Update client state, sync wallet, and return success if there is a wallet
+  req.client.isPaired = true;
+  await req.client.fetchActiveWallet();
+  return req.client.hasActiveWallet();
 }
 
 export const encodePairRequest = (
@@ -60,34 +89,4 @@ export const encodePairRequest = (
   const derSig = toPaddedDER(sig);
   const payload = Buffer.concat([nameBuf, derSig]);
   return payload;
-};
-
-export const encryptPairRequest = ({
-  payload,
-  sharedSecret,
-}: EncrypterParams) => {
-  return encryptRequest({
-    requestCode: 'FINALIZE_PAIRING',
-    payload,
-    sharedSecret,
-  });
-};
-
-export const requestPair = async (payload: Buffer, url: string) => {
-  return request({ payload, url });
-};
-
-/**
- * Pair will create a new pairing if the user successfully enters the secret into the device in
- * time. If successful (`status=0`), the device will return a new ephemeral public key, which is
- * used to derive a shared secret for the next request
- * @category Device Response
- * @internal
- * @returns error (or null)
- */
-export const decryptPairResponse = (
-  encryptedResponse: any,
-  sharedSecret: Buffer,
-) => {
-  return decryptResponse(encryptedResponse, decResLengths.empty, sharedSecret);
 };

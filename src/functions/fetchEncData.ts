@@ -3,24 +3,22 @@
  * to known schema, e.g. EIP2335 derived privkey export.
  */
 import { v4 as uuidV4 } from 'uuid';
-
+import { EXTERNAL } from '../constants';
 import {
-  decResLengths,
-  EXTERNAL,
-} from '../constants';
-import {
-  decryptResponse,
-  encryptRequest,
-  request,
-} from '../shared/functions';
+  decryptEncryptedLatticeResponseData,
+  deserializeResponseMsgPayloadData,
+  serializeSecureRequestMsg,
+  serializeSecureRequestEncryptedPayloadData,
+  LatticeSecureEncryptedRequestType,
+  LatticeSecureMsgType,
+} from '../protocol';
+import { request } from '../shared/functions';
 import { getPathStr } from '../shared/utilities';
 import {
-  validateFwVersion,
-  validateSharedSecret,
+  validateConnectedClient,
   validateStartPath,
-  validateUrl,
-  validateWallet,
 } from '../shared/validators';
+import { randomBytes } from '../util';
 
 const { ENC_DATA } = EXTERNAL;
 const ENC_DATA_ERR_STR = 'Unknown encrypted data export type requested. Exiting.';
@@ -35,34 +33,51 @@ const ENC_DATA_RESP_SZ = {
   }
 }
 
-export async function fetchEncData (req: FetchEncDataRequestFunctionParams): Promise<Buffer> {
+export async function fetchEncData (
+  req: FetchEncDataRequestFunctionParams,
+): Promise<Buffer> {
+  // Validate request params
   const params = validateFetchEncDataRequest(req);
-  const payload = encodeFetchEncDataRequest(req.schema, params);
-  const encryptedPayload = encryptFetchEncDataRequest({
-    payload,
-    sharedSecret: req.client.sharedSecret,
-  });
-  const encryptedResponse = await request({ 
-    payload: encryptedPayload, 
-    url: req.client.url 
-  });
-  const { decryptedData, newEphemeralPub } = decryptResponse(
-    encryptedResponse,
-    decResLengths.fetchEncryptedData,
-    req.client.sharedSecret,
+  // Build data for this request
+  const data = encodeFetchEncDataRequest(req.schema, params);
+  // Build the secure request message
+  const msgId = randomBytes(4);
+  const payloadData = serializeSecureRequestEncryptedPayloadData(
+    req.client,
+    data,
+    LatticeSecureEncryptedRequestType.fetchEncryptedData
   );
-  req.client.ephemeralPub = newEphemeralPub;
-  return decodeFetchEncData(decryptedData, req);
+  const msg = serializeSecureRequestMsg(
+    req.client,
+    msgId,
+    LatticeSecureMsgType.encrypted,
+    payloadData
+  );
+  // Send request to Lattice
+  const resp = await request({ 
+    url: req.client.url, 
+    payload: msg 
+  });
+  // Deserialize the response payload data
+  const encRespPayloadData = deserializeResponseMsgPayloadData(
+    req.client,
+    msgId,
+    resp
+  );
+  // Decrypt and return data
+  const decRespPayloadData = decryptEncryptedLatticeResponseData(
+    req.client, 
+    encRespPayloadData
+  );
+  return decodeFetchEncData(decRespPayloadData, req);
 }
 
-export const validateFetchEncDataRequest = (req: FetchEncDataRequestFunctionParams): EIP2335KeyExportReq => {
+export const validateFetchEncDataRequest = (
+  req: FetchEncDataRequestFunctionParams
+): EIP2335KeyExportReq => {
   const { schema, params, client } = req;
   // Validate client state
-  const wallet = client.getActiveWallet();
-  validateFwVersion(client.fwVersion);
-  validateWallet(wallet);
-  validateSharedSecret(client.sharedSecret);
-  validateUrl(client.url);
+  validateConnectedClient(client);
   // Check firmware version
   if (client.fwVersion.major < 1 && client.fwVersion.minor < 17) {
     throw new Error('Firmware version >=v0.17.0 is required for encrypted data export.');
@@ -72,7 +87,7 @@ export const validateFetchEncDataRequest = (req: FetchEncDataRequestFunctionPara
     // EIP2335 key export
     validateStartPath(params.path);
     // Set the wallet UID to the client's current active wallet
-    params.walletUID = wallet.uid;
+    params.walletUID = client.getActiveWallet().uid;
     // Return updated params
     return params;
   } else {
@@ -107,17 +122,6 @@ export const encodeFetchEncDataRequest = (
   } else {
     throw new Error(ENC_DATA_ERR_STR)
   }
-}
-
-export const encryptFetchEncDataRequest = ({
-  payload,
-  sharedSecret,
-}: EncrypterParams) => {
-  return encryptRequest({
-    requestCode: 'EXPORT_ENC_DATA',
-    payload,
-    sharedSecret,
-  });
 }
 
 export const decodeFetchEncData = (data: Buffer, req: FetchEncDataRequestFunctionParams): Buffer => {

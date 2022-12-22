@@ -110,6 +110,13 @@ export class Client {
   }
 
   /**
+   * Get the pairing name for this client instance
+   */
+  public get appName () {
+    return this.name;
+  }
+
+  /**
    * Get the shared secret, derived via ECDH from the local private key and the ephemeral public key
    * @internal
    * @returns Buffer
