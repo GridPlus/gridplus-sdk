@@ -16,8 +16,13 @@ import {
   sign
 } from './functions/index';
 import { buildRetryWrapper } from './shared/functions';
+import { getPubKeyBytes } from './shared/utilities';
 import { validateEphemeralPub } from './shared/validators';
-import { getP256KeyPair, getP256KeyPairFromPub, randomBytes } from './util';
+import { 
+  getP256KeyPair, 
+  getP256KeyPairFromPub, 
+  randomBytes 
+} from './util';
 
 /**
  * `Client` is a class-based interface for managing a Lattice device.
@@ -92,6 +97,16 @@ export class Client {
     if (stateData) {
       this.unpackAndApplyStateData(stateData);
     }
+  }
+  
+  /**
+   * Get the public key associated with the client's static keypair.
+   * The public key is used for identifying the client to the Lattice.
+   * @internal
+   * @returns Buffer
+   */
+  public get publicKey () {
+    return getPubKeyBytes(this.key);
   }
 
   /**
