@@ -31,7 +31,19 @@ export enum LatticeMsgType {
   secure = 0x02,
 }
 
-export const LATTICE_CONSTANTS = {
+export enum LatticeSecureEncryptedRequestType {
+  finalizePairing = 0,
+  getAddresses = 1,
+  sign = 3,
+  getWallets = 4,
+  getKvRecords = 7,
+  addKvRecords = 8,
+  removeKvRecords = 9,
+  getEncryptedData = 12,
+  test = 13,
+}
+
+export const ProtocolConstants = {
   // Lattice firmware uses a static initialization vector for
   // message encryption/decryption. This is generally considered
   // fine because each encryption/decryption uses a unique encryption
@@ -117,18 +129,17 @@ export const LATTICE_CONSTANTS = {
       responsePayloadDataUsed: 1696,
       connect: {
         request: {
-          payloadData: 65,
+          data: 65,
         },
         response: {
-          payload: 215,
+          data: 215,
         },
       },
       encrypted: {
         request: {
-          payloadData: 1700,
+          data: 1700,
         },
         response: {
-          payload: 1697,
           // Once decrypted, the data size of the response
           // payload will be determined by the request type.
           data: {

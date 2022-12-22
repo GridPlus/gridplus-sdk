@@ -1,8 +1,13 @@
-import { deviceCodes, messageConstants } from '../constants';
-import { buildRequest, request } from '../shared/functions';
+import { messageConstants } from '../constants';
+import { request } from '../shared/functions';
 import { doesFetchWalletsOnLoad } from '../shared/predicates';
+import { 
+  deserializeResponseMsgPayloadData,
+  serializeSecureRequestMsg,
+  serializeSecureRequestConnectPayloadData,
+  LatticeSecureMsgType,
+} from '../protocol';
 import {
-  getPubKeyBytes,
   getSharedSecret,
   parseWallets,
 } from '../shared/utilities';
@@ -11,26 +16,44 @@ import {
   validateDeviceId,
   validateKey,
 } from '../shared/validators';
-import { aes256_decrypt, getP256KeyPairFromPub } from '../util';
+import { 
+  aes256_decrypt, 
+  getP256KeyPairFromPub, 
+  randomBytes 
+} from '../util';
 
 export async function connect ({
   id,
   client,
 }: ConnectRequestFunctionParams): Promise<boolean> {
+  // Validate request params
   const { deviceId, key, baseUrl } = validateConnectRequest({
     deviceId: id,
     key: client.key,
     baseUrl: client.baseUrl,
   });
   const url = `${baseUrl}/${deviceId}`;
-
-  const payload = await encodeConnectRequest(key);
-
-  const response = await requestConnect(payload, url);
-
+  // Build the secure request message
+  const payloadData = serializeSecureRequestConnectPayloadData(client);
+  const msgId = randomBytes(4);
+  const msg = serializeSecureRequestMsg(
+    client, 
+    msgId, 
+    LatticeSecureMsgType.connect, 
+    payloadData
+  );
+  // Send request to the Lattice
+  const resp = await request({ url, payload: msg });
+  // Deserialize the response payload data
+  const respPayloadData = deserializeResponseMsgPayloadData(
+    client, 
+    msgId, 
+    resp
+  );
+  // Decode response data params. Response payload data is *not* encrypted.
   const { isPaired, fwVersion, activeWallets, ephemeralPub } =
-    await decodeConnectResponse(response, key);
-
+    await decodeConnectResponsePayloadData(respPayloadData, key);
+  // Update client state with response data
   client.deviceId = deviceId;
   client.ephemeralPub = ephemeralPub;
   client.url = `${client.baseUrl}/${deviceId}`;
@@ -39,16 +62,19 @@ export async function connect ({
   if (activeWallets) {
     client.activeWallets = activeWallets;
   }
-
-  // If we are paired and are on older firmware (<0.14.1), we need a follow up request to sync
-  // wallet state.
+  // If we are paired and are on older firmware (<0.14.1), we need a 
+  // follow up request to sync wallet state.
   if (isPaired && !doesFetchWalletsOnLoad(client.getFwVersion())) {
     await client.fetchActiveWallet();
   }
-
+  // Return flag indicating whether we are paired or not.
+  // If we are *not* already paired, the Lattice is now in
+  // pairing mode and expects a `finalizePairing` encrypted
+  // request as a follow up.
   return isPaired;
 }
 
+// Validate request params
 export const validateConnectRequest = ({
   deviceId,
   key,
@@ -64,20 +90,6 @@ export const validateConnectRequest = ({
   };
 };
 
-export const encodeConnectRequest = (key: KeyPair) => {
-  const deviceCode = deviceCodes.CONNECT;
-  const pubKeyBytes = getPubKeyBytes(key);
-  const payload = buildRequest(deviceCode, pubKeyBytes);
-  return payload;
-};
-
-export const requestConnect = async (
-  payload: Buffer,
-  url: string,
-): Promise<Buffer> => {
-  return request({ payload, url });
-};
-
 /**
  * `decodeConnectResponse` will call `StartPairingMode` on the device, which gives the user 60 seconds to
  * finalize the pairing. This will return an ephemeral public key, which is needed for the next
@@ -88,7 +100,7 @@ export const requestConnect = async (
  * @internal
  * @returns true if we are paired to the device already
  */
-export const decodeConnectResponse = (
+export const decodeConnectResponsePayloadData = (
   response: Buffer,
   key: KeyPair,
 ): {

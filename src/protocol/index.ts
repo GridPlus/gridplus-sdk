@@ -1,1 +1,2 @@
-export { LATTICE_CONSTANTS as ProtocolConstants } from './latticeConstants';
+export * from './latticeConstants';
+export * from './secureRequests'

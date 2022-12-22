@@ -82,3 +82,15 @@ interface LatticeSecureEncryptedRequestPayloadData {
   // [1696 bytes]
   encryptedData: Buffer;
 }
+
+interface LatticeSecureDecryptedResponse {
+  // ECDSA public key that should replace the client's ephemeral key
+  // [65 bytes]
+  ephemeralPub: Buffer;
+  // Decrypted response data
+  // [Variable size]
+  data: Buffer;
+  // Checksum on response data (ephemeralKey | data)
+  // [uint32]
+  checksum: number;
+}
