@@ -33,15 +33,70 @@ import {
   aes256_decrypt,
   aes256_encrypt,
   checksum,
+  randomBytes,
 } from '../util';
 import {
   getEphemeralId,
+  request,
 } from '../shared/functions';
 import {
   validateEphemeralPub,
 } from '../shared/validators';
 
 const { secure: msgSizes } = Constants.msgSizes;
+
+/**
+ * Build an encrypted secure request using raw data,
+ * then send that request to the target Lattice, handle
+ * the response, and return the *decrypted* response
+ * payload data.
+ * Also updates ephemeral public key in the client.
+ * This is a wrapper around several local util functions.
+ * @param client - Instance of Client
+ * @param data - Unencrypted raw calldata for function
+ * @param requestType - Type of encrypted reques to make
+ * @return {Buffer} Decrypted response data (excluding metadata)
+ */
+export async function encryptedSecureRequest(
+  client: Client,
+  data: Buffer,
+  requestType: LatticeSecureEncryptedRequestType
+): Promise<Buffer> {
+  // Generate a random message id for internal tracking
+  // of this specific request (internal on both sides).
+  const msgId = randomBytes(4);
+  // Serialize the request data into encrypted request
+  // payload data.
+  const payloadData = serializeSecureRequestEncryptedPayloadData(
+    client,
+    data,
+    requestType
+  );
+  // Serialize the payload data into an encrypted secure
+  // request message.
+  const msg = serializeSecureRequestMsg(
+    client,
+    msgId,
+    LatticeSecureMsgType.encrypted,
+    payloadData
+  );
+  // Send request to Lattice
+  const resp = await request({ 
+    url: client.url, 
+    payload: msg 
+  });
+  // Deserialize the response payload data
+  const encRespPayloadData = deserializeResponseMsgPayloadData(
+    client,
+    msgId,
+    resp
+  );
+  // Return decrypted response payload data
+  return decryptEncryptedLatticeResponseData(
+    client, 
+    encRespPayloadData
+  );
+}
 
 /**
  * Serialize a Secure Request message for the Lattice.

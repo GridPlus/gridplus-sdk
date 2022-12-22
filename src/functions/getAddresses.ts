@@ -7,21 +7,16 @@ import {
   getFwVersionConst,
 } from '../constants';
 import {
-  decryptEncryptedLatticeResponseData,
-  deserializeResponseMsgPayloadData,
-  serializeSecureRequestMsg,
-  serializeSecureRequestEncryptedPayloadData,
+  encryptedSecureRequest,
   LatticeSecureEncryptedRequestType,
-  LatticeSecureMsgType,
 } from '../protocol';
-import { request } from '../shared/functions';
 import {
   validateConnectedClient,
   validateIsUInt4,
   validateNAddresses,
   validateStartPath,
 } from '../shared/validators';
-import { isValidAssetPath, randomBytes } from '../util';
+import { isValidAssetPath } from '../util';
 
 /**
  * `getAddresses` takes a starting path and a number to get the addresses or public keys associated
@@ -36,35 +31,13 @@ export async function getAddresses (
   validateGetAddressesRequest(req);
   // Build data for this request
   const data = encodeGetAddressesRequest(req);
-  // Build the secure request message
-  const msgId = randomBytes(4);
-  const payloadData = serializeSecureRequestEncryptedPayloadData(
+  // Make the request
+  const decRespPayloadData = await encryptedSecureRequest(
     req.client,
     data,
     LatticeSecureEncryptedRequestType.getAddresses
   );
-  const msg = serializeSecureRequestMsg(
-    req.client,
-    msgId,
-    LatticeSecureMsgType.encrypted,
-    payloadData
-  );
-  // Send request to Lattice
-  const resp = await request({ 
-    url: req.client.url, 
-    payload: msg 
-  });
-  // Deserialize the response payload data
-  const encRespPayloadData = deserializeResponseMsgPayloadData(
-    req.client,
-    msgId,
-    resp
-  );
-  // Decrypt and return data
-  const decRespPayloadData = decryptEncryptedLatticeResponseData(
-    req.client, 
-    encRespPayloadData
-  );
+  // Decode the response data and return
   return decodeGetAddresses(decRespPayloadData, req.flag)
 }
 

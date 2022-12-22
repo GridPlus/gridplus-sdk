@@ -1,18 +1,12 @@
 import { EMPTY_WALLET_UID } from '../constants';
 import {
-  decryptEncryptedLatticeResponseData,
-  deserializeResponseMsgPayloadData,
-  serializeSecureRequestMsg,
-  serializeSecureRequestEncryptedPayloadData,
+  encryptedSecureRequest,
   LatticeSecureEncryptedRequestType,
-  LatticeSecureMsgType,
 } from '../protocol';
-import { request } from '../shared/functions';
 import {
   validateActiveWallets,
   validateConnectedClient,
 } from '../shared/validators';
-import { randomBytes } from '../util';
 
 /**
  * Fetch the active wallet in the device. 
@@ -26,35 +20,13 @@ export async function fetchActiveWallet (
 ): Promise<ActiveWallets> {
   // Validate request params
   validateFetchActiveWallet(req);
-  // Build the secure request message
-  const msgId = randomBytes(4);
-  const payloadData = serializeSecureRequestEncryptedPayloadData(
+  // Make the request
+  const decRespPayloadData = await encryptedSecureRequest(
     req.client,
     Buffer.alloc(0), // empty request data
     LatticeSecureEncryptedRequestType.getWallets
-  );
-  const msg = serializeSecureRequestMsg(
-    req.client,
-    msgId,
-    LatticeSecureMsgType.encrypted,
-    payloadData
-  );
-  // Send request to Lattice
-  const resp = await request({ 
-    url: req.client.url, 
-    payload: msg 
-  });
-  // Deserialize the response payload data
-  const encRespPayloadData = deserializeResponseMsgPayloadData(
-    req.client,
-    msgId,
-    resp
-  );
-  // Decrypt data and update active wallets before returning
-  const decRespPayloadData = decryptEncryptedLatticeResponseData(
-    req.client, 
-    encRespPayloadData
-  );
+  )
+  // Decode response data, update state, and return
   const activeWallets = decodeFetchActiveWalletResponse(
     decRespPayloadData
   );

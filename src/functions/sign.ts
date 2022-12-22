@@ -9,12 +9,8 @@ import {
   parseGenericSigningResponse 
 } from '../genericSigning';
 import {
-  decryptEncryptedLatticeResponseData,
-  deserializeResponseMsgPayloadData,
-  serializeSecureRequestMsg,
-  serializeSecureRequestEncryptedPayloadData,
+  encryptedSecureRequest,
   LatticeSecureEncryptedRequestType,
-  LatticeSecureMsgType,
 } from '../protocol';
 import {
   buildTransaction,
@@ -24,7 +20,7 @@ import {
   validateConnectedClient,
   validateWallet,
 } from '../shared/validators';
-import { parseDER, randomBytes } from '../util';
+import { parseDER } from '../util';
 
 /**
  * `sign` builds and sends a request for signing to the device.
@@ -51,34 +47,11 @@ export async function sign (
     cachedData: req.cachedData,
     nextCode: req.nextCode,
   });
-  // Build the secure request message
-  const msgId = randomBytes(4);
-  const payloadData = serializeSecureRequestEncryptedPayloadData(
+  // Make the request
+  const decRespPayloadData = await encryptedSecureRequest(
     req.client,
     data,
-    LatticeSecureEncryptedRequestType.fetchEncryptedData
-  );
-  const msg = serializeSecureRequestMsg(
-    req.client,
-    msgId,
-    LatticeSecureMsgType.encrypted,
-    payloadData
-  );
-  // Send request to Lattice
-  const resp = await request({ 
-    url: req.client.url, 
-    payload: msg 
-  });
-  // Deserialize the response payload data
-  const encRespPayloadData = deserializeResponseMsgPayloadData(
-    req.client,
-    msgId,
-    resp
-  );
-  // Decrypt and return data
-  const decRespPayloadData = decryptEncryptedLatticeResponseData(
-    req.client, 
-    encRespPayloadData
+    LatticeSecureEncryptedRequestType.addKvRecords
   );
   // If this request has multiple payloads, we need to recurse
   // so that we can make the next request.
@@ -91,8 +64,8 @@ export async function sign (
       nextCode: decRespPayloadData.slice(65, 73),
     });
   }
-  // If this is the only (or final) request, decode response 
-  // into a transaction object and return
+  // If this is the only (or final) request,
+  // decode response data and return
   return decodeSignResponse({
     data: decRespPayloadData,
     request: requestData,

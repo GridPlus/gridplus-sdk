@@ -1,16 +1,10 @@
 import {
-  decryptEncryptedLatticeResponseData,
-  deserializeResponseMsgPayloadData,
-  serializeSecureRequestMsg,
-  serializeSecureRequestEncryptedPayloadData,
+  encryptedSecureRequest,
   LatticeSecureEncryptedRequestType,
-  LatticeSecureMsgType,
 } from '../protocol';
-import { request } from '../shared/functions';
 import {
   validateConnectedClient
 } from '../shared/validators';
-import { randomBytes } from '../util';
 
 /**
  * `removeKvRecords` takes in an array of ids and sends a request to remove them from the Lattice.
@@ -24,34 +18,11 @@ export async function removeKvRecords (
   validateRemoveKvRequest(req);
   // Build data for this request
   const data = encodeRemoveKvRecordsRequest(req);
-  // Build the secure request message
-  const msgId = randomBytes(4);
-  const payloadData = serializeSecureRequestEncryptedPayloadData(
+  // Make the request
+  return await encryptedSecureRequest(
     req.client,
     data,
-    LatticeSecureEncryptedRequestType.fetchEncryptedData
-  );
-  const msg = serializeSecureRequestMsg(
-    req.client,
-    msgId,
-    LatticeSecureMsgType.encrypted,
-    payloadData
-  );
-  // Send request to Lattice
-  const resp = await request({ 
-    url: req.client.url, 
-    payload: msg 
-  });
-  // Deserialize the response payload data
-  const encRespPayloadData = deserializeResponseMsgPayloadData(
-    req.client,
-    msgId,
-    resp
-  );
-  // Decrypt and return data
-  return decryptEncryptedLatticeResponseData(
-    req.client, 
-    encRespPayloadData
+    LatticeSecureEncryptedRequestType.removeKvRecords
   );
 }
 

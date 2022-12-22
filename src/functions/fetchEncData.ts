@@ -5,20 +5,14 @@
 import { v4 as uuidV4 } from 'uuid';
 import { EXTERNAL } from '../constants';
 import {
-  decryptEncryptedLatticeResponseData,
-  deserializeResponseMsgPayloadData,
-  serializeSecureRequestMsg,
-  serializeSecureRequestEncryptedPayloadData,
+  encryptedSecureRequest,
   LatticeSecureEncryptedRequestType,
-  LatticeSecureMsgType,
 } from '../protocol';
-import { request } from '../shared/functions';
 import { getPathStr } from '../shared/utilities';
 import {
   validateConnectedClient,
   validateStartPath,
 } from '../shared/validators';
-import { randomBytes } from '../util';
 
 const { ENC_DATA } = EXTERNAL;
 const ENC_DATA_ERR_STR = 'Unknown encrypted data export type requested. Exiting.';
@@ -40,35 +34,13 @@ export async function fetchEncData (
   const params = validateFetchEncDataRequest(req);
   // Build data for this request
   const data = encodeFetchEncDataRequest(req.schema, params);
-  // Build the secure request message
-  const msgId = randomBytes(4);
-  const payloadData = serializeSecureRequestEncryptedPayloadData(
+  // Make the request
+  const decRespPayloadData = await encryptedSecureRequest(
     req.client,
     data,
-    LatticeSecureEncryptedRequestType.fetchEncryptedData
+    LatticeSecureEncryptedRequestType.getWallets
   );
-  const msg = serializeSecureRequestMsg(
-    req.client,
-    msgId,
-    LatticeSecureMsgType.encrypted,
-    payloadData
-  );
-  // Send request to Lattice
-  const resp = await request({ 
-    url: req.client.url, 
-    payload: msg 
-  });
-  // Deserialize the response payload data
-  const encRespPayloadData = deserializeResponseMsgPayloadData(
-    req.client,
-    msgId,
-    resp
-  );
-  // Decrypt and return data
-  const decRespPayloadData = decryptEncryptedLatticeResponseData(
-    req.client, 
-    encRespPayloadData
-  );
+  // Decode response data and return
   return decodeFetchEncData(decRespPayloadData, req);
 }
 

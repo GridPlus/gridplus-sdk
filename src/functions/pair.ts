@@ -1,18 +1,12 @@
 import {
-  decryptEncryptedLatticeResponseData,
-  deserializeResponseMsgPayloadData,
-  serializeSecureRequestMsg,
-  serializeSecureRequestEncryptedPayloadData,
+  encryptedSecureRequest,
   LatticeSecureEncryptedRequestType,
-  LatticeSecureMsgType,
 } from '../protocol';
-import { request } from '../shared/functions';
 import { getPubKeyBytes } from '../shared/utilities';
 import { validateConnectedClient } from '../shared/validators';
 import { 
   generateAppSecret, 
   toPaddedDER, 
-  randomBytes 
 } from '../util';
 
 /**
@@ -31,34 +25,11 @@ export async function pair (req: PairRequestParams) {
     req.pairingSecret, 
     req.client.name
   );
-  // Build the secure message request
-  const msgId = randomBytes(4);
-  const payloadData = serializeSecureRequestEncryptedPayloadData(
+  // Make the request. There is no response data to consume.
+  await encryptedSecureRequest(
     req.client,
     data,
     LatticeSecureEncryptedRequestType.finalizePairing
-  );
-  const msg = serializeSecureRequestMsg(
-    req.client,
-    msgId,
-    LatticeSecureMsgType.encrypted,
-    payloadData
-  );
-  // Send request to Lattice
-  const resp = await request({ 
-    url: req.client.url, 
-    payload: msg 
-  });
-  // Deserialize the response payload data
-  const encRespPayloadData = deserializeResponseMsgPayloadData(
-    req.client,
-    msgId,
-    resp
-  );
-  // Decrypt response. It has no data to capture for this request.
-  decryptEncryptedLatticeResponseData(
-    req.client, 
-    encRespPayloadData
   );
   // Update client state, sync wallet, and return success if there is a wallet
   req.client.isPaired = true;

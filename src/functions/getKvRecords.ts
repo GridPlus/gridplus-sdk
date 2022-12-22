@@ -1,86 +1,57 @@
-import { decResLengths } from '../constants';
-import { decryptResponse, encryptRequest, request } from '../shared/functions';
 import {
-  validateFwConstants,
-  validateSharedSecret,
-  validateUrl,
+  encryptedSecureRequest,
+  LatticeSecureEncryptedRequestType,
+} from '../protocol';
+import {
+  validateConnectedClient
 } from '../shared/validators';
 
-export async function getKvRecords ({
-  type: _type,
-  n: _n,
-  start: _start,
-  client,
-}: GetKvRecordsRequestFunctionParams): Promise<GetKvRecordsData> {
-  const { url, sharedSecret, fwConstants, type, n, start } =
-    validateGetKvRequest({
-      url: client.url,
-      fwConstants: client.getFwConstants(),
-      sharedSecret: client.sharedSecret,
-      type: _type,
-      n: _n,
-      start: _start,
-    });
-
-  const payload = encodeGetKvRecordsRequest({ type, n, start });
-
-  const encryptedPayload = encryptGetKvRecordsRequest({
-    payload,
-    sharedSecret,
+export async function getKvRecords (
+  req: GetKvRecordsRequestFunctionParams
+): Promise<GetKvRecordsData> {
+  // Validate request params
+  validateGetKvRequest(req);
+  // Build data for this request
+  const data = encodeGetKvRecordsRequest({ 
+    type: req.type, 
+    n: req.n, 
+    start: req.start 
   });
-
-  const encryptedResponse = await requestGetKvRecords(encryptedPayload, url);
-
-  const { decryptedData, newEphemeralPub } = decryptGetKvRecordsResponse(
-    encryptedResponse,
-    sharedSecret,
+  // Make the request
+  const decRespPayloadData = await encryptedSecureRequest(
+    req.client,
+    data,
+    LatticeSecureEncryptedRequestType.getKvRecords
   );
-
-  client.ephemeralPub = newEphemeralPub;
-
-  const records = decodeGetKvRecordsResponse(decryptedData, fwConstants);
-
-  return records;
+  // Decode the response data and return
+  return decodeGetKvRecordsResponse(
+    decRespPayloadData, 
+    req.client.getFwConstants()
+  );
 }
 
-export const validateGetKvRequest = ({
-  url,
-  fwConstants,
-  sharedSecret,
-  n,
-  type,
-  start,
-}: ValidateGetKvRequestParams) => {
-  const validUrl = validateUrl(url);
-  const validFwConstants = validateFwConstants(fwConstants);
-  const validSharedSecret = validateSharedSecret(sharedSecret);
-
-  if (!validFwConstants.kvActionsAllowed) {
+export const validateGetKvRequest = (
+  req: GetKvRecordsRequestFunctionParams
+) => {
+  validateConnectedClient(req.client)
+  const fwConstants = req.client.getFwConstants();
+  if (!fwConstants.kvActionsAllowed) {
     throw new Error('Unsupported. Please update firmware.');
   }
-  if (!n || n < 1) {
+  if (!req.n || req.n < 1) {
     throw new Error('You must request at least one record.');
   }
-  if (n > validFwConstants.kvActionMaxNum) {
+  if (req.n > fwConstants.kvActionMaxNum) {
     throw new Error(
-      `You may only request up to ${validFwConstants.kvActionMaxNum} records at once.`,
+      `You may only request up to ${fwConstants.kvActionMaxNum} records at once.`,
     );
   }
-  if (type !== 0 && !type) {
+  if (req.type !== 0 && !req.type) {
     throw new Error('You must specify a type.');
   }
-  if (start !== 0 && !start) {
+  if (req.start !== 0 && !req.start) {
     throw new Error('You must specify a type.');
   }
-
-  return {
-    url: validUrl,
-    fwConstants: validFwConstants,
-    sharedSecret: validSharedSecret,
-    type,
-    n,
-    start,
-  };
 };
 
 export const encodeGetKvRecordsRequest = ({
@@ -93,33 +64,6 @@ export const encodeGetKvRecordsRequest = ({
   payload.writeUInt8(n, 4);
   payload.writeUInt32LE(start, 5);
   return payload;
-};
-
-export const encryptGetKvRecordsRequest = ({
-  payload,
-  sharedSecret,
-}: EncrypterParams) => {
-  return encryptRequest({
-    requestCode: 'GET_KV_RECORDS',
-    payload,
-    sharedSecret,
-  });
-};
-
-export const requestGetKvRecords = async (payload: Buffer, url: string) => {
-  return request({ payload, url });
-};
-
-export const decryptGetKvRecordsResponse = (
-  response: Buffer,
-  sharedSecret: Buffer,
-) => {
-  const { decryptedData, newEphemeralPub } = decryptResponse(
-    response,
-    decResLengths.getKvRecords,
-    sharedSecret,
-  );
-  return { decryptedData, newEphemeralPub };
 };
 
 export const decodeGetKvRecordsResponse = (

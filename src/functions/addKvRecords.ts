@@ -1,18 +1,12 @@
 import {
-  decryptEncryptedLatticeResponseData,
-  deserializeResponseMsgPayloadData,
-  serializeSecureRequestMsg,
-  serializeSecureRequestEncryptedPayloadData,
+  encryptedSecureRequest,
   LatticeSecureEncryptedRequestType,
-  LatticeSecureMsgType,
 } from '../protocol';
-import { request } from '../shared/functions';
 import {
   validateConnectedClient,
   validateKvRecord,
   validateKvRecords,
 } from '../shared/validators';
-import { randomBytes } from '../util';
 
 /**
  * `addKvRecords` takes in a set of key-value records and sends a request to add them to the
@@ -33,34 +27,11 @@ export async function addKvRecords (
     type,
     caseSensitive,
   });
-  // Build the secure request message
-  const msgId = randomBytes(4);
-  const payloadData = serializeSecureRequestEncryptedPayloadData(
+  // Make the request
+  return await encryptedSecureRequest(
     req.client,
     data,
     LatticeSecureEncryptedRequestType.addKvRecords
-  );
-  const msg = serializeSecureRequestMsg(
-    req.client,
-    msgId,
-    LatticeSecureMsgType.encrypted,
-    payloadData
-  );
-  // Send request to Lattice
-  const resp = await request({ 
-    url: req.client.url, 
-    payload: msg 
-  });
-  // Deserialize the response payload data
-  const encRespPayloadData = deserializeResponseMsgPayloadData(
-    req.client,
-    msgId,
-    resp
-  );
-  // Decrypt and return data
-  return decryptEncryptedLatticeResponseData(
-    req.client, 
-    encRespPayloadData
   );
 }
 
