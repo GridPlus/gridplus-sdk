@@ -127,7 +127,8 @@ export async function encryptedSecureRequest(
   // Return decrypted response payload data
   return decryptEncryptedLatticeResponseData(
     client, 
-    encRespPayloadData
+    encRespPayloadData,
+    requestType
   );
 }
 
@@ -350,6 +351,7 @@ function serializeSecureRequestEncryptedPayloadData(
 function decryptEncryptedLatticeResponseData(
   client: Client,
   encPayloadData: Buffer,
+  requestType: LatticeSecureEncryptedRequestType
 ): Buffer {
   // Decrypt data using the *current* shared secret
   const decData = aes256_decrypt(encPayloadData, client.sharedSecret);
@@ -361,8 +363,15 @@ function decryptEncryptedLatticeResponseData(
     checksum: decData.readUInt32LE(checksumOffset)
   };
   // Validate the checksum
-  if (respData.checksum !== checksum(decData.slice(0, checksumOffset))) {
+  const validChecksum = checksum(decData.slice(0, checksumOffset));
+  if (respData.checksum !== validChecksum) {
     throw new Error('Checksum mismatch in decrypted Lattice data');
+  }
+  // Validate the response data size
+  const validSz = Constants.msgSizes.secure
+                    .encrypted.response.data[requestType];
+  if (respData.data.length !== validSz) {
+    throw new Error('Incorrect response data returned from Lattice');
   }
   // Update client's ephemeral key
   client.ephemeralPub = respData.ephemeralPub;

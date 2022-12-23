@@ -1,4 +1,7 @@
-import { encryptedSecureRequest } from '../../protocol';
+import { 
+  encryptedSecureRequest, 
+  LatticeSecureEncryptedRequestType 
+} from '../../protocol';
 import { TestRequestPayload } from '../../types/utils';
 
 /**
@@ -20,5 +23,9 @@ export const testRequest = async ({
   _payload.writeUInt32BE(testID, 0);
   _payload.writeUInt16BE(payload.length, 4);
   payload.copy(_payload, 6);
-  return await encryptedSecureRequest(client, _payload);
+  return await encryptedSecureRequest(
+    client, 
+    _payload,
+    LatticeSecureEncryptedRequestType.test
+  );
 };
