@@ -10,7 +10,7 @@ import { decode as rlpDecode, encode as rlpEncode } from 'rlp';
 import { Client } from '../../client';
 import { Calldata, Constants } from '../..';
 import { CURRENCIES, HARDENED_OFFSET } from '../../constants';
-import { getP256KeyPair, randomBytes } from '../../util';
+import { randomBytes } from '../../util';
 import { TestRequestPayload } from '../../types/utils';
 import { MSG_PAYLOAD_METADATA_SZ } from './constants';
 import { convertDecoderToEthers } from './ethers';
@@ -20,6 +20,7 @@ import {
   buildRandomEip712Object,
   copyBuffer,
   ETH_COIN,
+  getTestVectors,
   serializeJobData
 } from './helpers';
 const prng = getPrng();
@@ -79,16 +80,7 @@ export const buildGetAddressesObject = ({ ...overrides }) => ({
   startPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
   n: 1,
   flag: 1,
-  url: 'asdf',
-  fwVersion: Buffer.from([0, 12, 0]),
-  wallet: {
-    uid: Buffer.from('test'),
-    name: Buffer.from('test'),
-    capabilities: 1,
-    external: true,
-  },
-  ephemeralPub: Buffer.from('test'),
-  sharedSecret: Buffer.from('test'),
+  client: getMockConnectedClient(),
   ...overrides,
 });
 
@@ -105,16 +97,7 @@ export const buildTransactionObject = ({
     gasLimit: 0x80000000,
     gasPrice: 0x80000000,
   },
-  request: { payload: Buffer.from('test') },
-  fwConstants: buildFirmwareConstants({ reqMaxDataSz: 10 }),
   currency: CURRENCIES.ETH as Currency,
-  fwVersion: Buffer.from([0, 0, 0]),
-  wallet: {
-    uid: Buffer.from('test'),
-    name: Buffer.from('test'),
-    capabilities: 1,
-    external: true,
-  },
   ...overrides,
 });
 
@@ -348,16 +331,25 @@ export function buildEthMsgReq (
   };
 }
 
-export const buildValidateConnectObject = ({ ...overrides }) => ({
-  deviceId: 'test',
-  key: getP256KeyPair(Buffer.from('test')),
-  baseUrl: 'https://gridpl.us',
-  ...overrides,
+export const buildValidateConnectObject = (overrides) => ({
+  id: 'test',
+  client: new Client({
+    name: 'test',
+    baseUrl: 'https://gridpl.us',
+    privKey: Buffer.from(keccak256('foo'), 'hex'),
+    ...overrides,
+  }),
 });
 
 export const buildValidateRequestObject = ({ ...overrides }) => ({
-  url: 'test.com',
-  fwConstants: { kvActionsAllowed: true },
-  sharedSecret: Buffer.from('test'),
+  client: getMockConnectedClient(),
   ...overrides,
 });
+
+
+// Most of the endpoint validators (for encrypted requests)
+// will require a connected client instance.
+function getMockConnectedClient() {
+  const stateData = getTestVectors().dehydratedClientState;
+  return new Client({ stateData });
+}

@@ -17,14 +17,10 @@ import {
  * @returns The active wallet object.
  */
 export async function pair (req: PairRequestParams) {
-  // Validate request params
-  validateConnectedClient(req.client);
+  // Validate reequest params
+  validatePairRequest(req);
   // Build data for this request
-  const data = encodePairRequest(
-    req.client.key, 
-    req.pairingSecret, 
-    req.client.name
-  );
+  const data = encodePairRequest(req);
   // Make the request. There is no response data to consume.
   await encryptedSecureRequest(
     req.client,
@@ -37,26 +33,31 @@ export async function pair (req: PairRequestParams) {
   return req.client.hasActiveWallet();
 }
 
-export const encodePairRequest = (
-  key: KeyPair,
-  pairingSecret: string,
-  name: string,
+export const validatePairRequest = (
+  req: PairRequestParams
 ) => {
-  const pubKeyBytes = getPubKeyBytes(key);
+  validateConnectedClient(req.client);
+}
+
+export const encodePairRequest = (
+  req: PairRequestParams
+) => {
+  // Build the payload data
+  const pubKeyBytes = getPubKeyBytes(req.client.key);
   const nameBuf = Buffer.alloc(25);
-  if (pairingSecret.length > 0) {
+  if (req.pairingSecret.length > 0) {
     // If a pairing secret of zero length is passed in, it usually indicates we want to cancel
     // the pairing attempt. In this case we pass a zero-length name buffer so the firmware can
     // know not to draw the error screen. Note that we still expect an error to come back
     // (RESP_ERR_PAIR_FAIL)
-    nameBuf.write(name);
+    nameBuf.write(req.client.name);
   }
   const hash = generateAppSecret(
     pubKeyBytes,
     nameBuf,
-    Buffer.from(pairingSecret),
+    Buffer.from(req.pairingSecret),
   );
-  const sig = key.sign(hash); // returns an array, not a buffer
+  const sig = req.client.key.sign(hash); // returns an array, not a buffer
   const derSig = toPaddedDER(sig);
   const payload = Buffer.concat([nameBuf, derSig]);
   return payload;

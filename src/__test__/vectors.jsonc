@@ -1,4 +1,4 @@
-// Vectors for signing tests
+// Constant test vectors for various things
 {
   "evm": {
     // We use these vectors to test just-in-type calldata decoding for EVM transactions.
@@ -241,5 +241,7 @@
         }
       }
     ]
-  }
+  },
+  // Dehydrated state for unit/integration tests
+  "dehydratedClientState": "{\"activeWallets\":{\"internal\":{\"uid\":\"7465737400000000000000000000000000000000000000000000000000000000\"},\"external\":{\"uid\":\"0000000000000000000000000000000000000000000000000000000000000000\"}},\"ephemeralPub\":\"04627c74680bee7907c07fdea2bde0ab1ac17c95213f379ccc1dce87f3586babe8ba0ed02688fd5539a54ea1b7b8ab0860d1853006f55f22a2e3ea4e190a17ab30\",\"fwVersion\":\"00110000\",\"deviceId\":\"Cd3dtg\",\"name\":\"SDK Test\",\"baseUrl\":\"https: //signing.gridpl.us\",\"privKey\":\"3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca\",\"retryCount\":3,\"timeout\":120000}"
 }

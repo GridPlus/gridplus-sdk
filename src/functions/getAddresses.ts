@@ -1,9 +1,6 @@
 import bitwise from 'bitwise';
 import { Byte, UInt4 } from 'bitwise/types';
-import {
-  EXTERNAL,
-  getFwVersionConst,
-} from '../constants';
+import { EXTERNAL } from '../constants';
 import {
   encryptedSecureRequest,
   LatticeSecureEncryptedRequestType,
@@ -52,7 +49,7 @@ export const validateGetAddressesRequest = (
 export const encodeGetAddressesRequest = (
   req: GetAddressesRequestFunctionParams
 ) => {
-  const fwConstants = getFwVersionConst(req.client.getFwVersion());
+  const fwConstants = req.client.getFwConstants();
   const flags = fwConstants.getAddressFlags || [] as any[];
   const isPubkeyOnly =
     flags.indexOf(req.flag) > -1 &&
@@ -76,7 +73,6 @@ export const encodeGetAddressesRequest = (
   }
   const payload = Buffer.alloc(sz);
   let off = 0;
-
   req.client.getActiveWallet().uid.copy(payload, off);
   off += 32;
   // Build the start path (5x u32 indices)

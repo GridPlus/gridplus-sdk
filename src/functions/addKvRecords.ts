@@ -22,8 +22,8 @@ export async function addKvRecords (
   validateAddKvRequest(req);
   // Build the data for this request
   const data = encodeAddKvRecordsRequest({
+    client: req.client,
     records: req.records,
-    fwConstants: req.client.getFwConstants(),
     type,
     caseSensitive,
   });
@@ -42,16 +42,14 @@ export const validateAddKvRequest = (
   validateKvRecords(req.records, req.client.getFwConstants())
 };
 
-export const encodeAddKvRecordsRequest = ({
-  records,
-  fwConstants,
-  type,
-  caseSensitive,
-}: EncodeAddKvRecordsRequestParams) => {
+export const encodeAddKvRecordsRequest = (
+  req: AddKvRecordsRequestFunctionParams
+) => {
+  const fwConstants = req.client.getFwConstants();
   const payload = Buffer.alloc(1 + 139 * fwConstants.kvActionMaxNum);
-  payload.writeUInt8(Object.keys(records).length, 0);
+  payload.writeUInt8(Object.keys(req.records).length, 0);
   let off = 1;
-  Object.entries(records).forEach(([_key, _val]) => {
+  Object.entries(req.records).forEach(([_key, _val]) => {
     const { key, val } = validateKvRecord(
       { key: _key, val: _val },
       fwConstants,
@@ -59,9 +57,9 @@ export const encodeAddKvRecordsRequest = ({
     // Skip the ID portion. This will get added by firmware.
     payload.writeUInt32LE(0, off);
     off += 4;
-    payload.writeUInt32LE(type, off);
+    payload.writeUInt32LE(req.type, off);
     off += 4;
-    payload.writeUInt8(caseSensitive ? 1 : 0, off);
+    payload.writeUInt8(req.caseSensitive ? 1 : 0, off);
     off += 1;
     payload.writeUInt8(String(key).length + 1, off);
     off += 1;

@@ -31,9 +31,9 @@ export async function fetchEncData (
   req: FetchEncDataRequestFunctionParams,
 ): Promise<Buffer> {
   // Validate request params
-  const params = validateFetchEncDataRequest(req);
+  validateFetchEncDataRequest(req);
   // Build data for this request
-  const data = encodeFetchEncDataRequest(req.schema, params);
+  const data = encodeFetchEncDataRequest(req);
   // Make the request
   const decRespPayloadData = await encryptedSecureRequest(
     req.client,
@@ -46,48 +46,45 @@ export async function fetchEncData (
 
 export const validateFetchEncDataRequest = (
   req: FetchEncDataRequestFunctionParams
-): EIP2335KeyExportReq => {
-  const { schema, params, client } = req;
+) => {
   // Validate client state
-  validateConnectedClient(client);
-  // Check firmware version
-  if (client.fwVersion.major < 1 && client.fwVersion.minor < 17) {
-    throw new Error('Firmware version >=v0.17.0 is required for encrypted data export.');
-  }
-  // Validate params depending on what type of data is being exported
-  if (schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
-    // EIP2335 key export
-    validateStartPath(params.path);
-    // Set the wallet UID to the client's current active wallet
-    params.walletUID = client.getActiveWallet().uid;
-    // Return updated params
-    return params;
-  } else {
-    throw new Error(ENC_DATA_ERR_STR);
-  }
+  validateConnectedClient(req.client);
+  // Validate derivation path
+  validateStartPath(req.params.path);
 }
 
 export const encodeFetchEncDataRequest = (
-  schema: number,
-  params: EIP2335KeyExportReq,
+  req: FetchEncDataRequestFunctionParams
 ) => {
+  // Check firmware version
+  if (req.client.fwVersion.major < 1 && req.client.fwVersion.minor < 17) {
+    throw new Error('Firmware version >=v0.17.0 is required for encrypted data export.');
+  }
+  // Update params depending on what type of data is being exported
+  if (req.schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
+    // Set the wallet UID to the client's current active wallet
+    req.params.walletUID = req.client.getActiveWallet().uid;
+  } else {
+    throw new Error(ENC_DATA_ERR_STR);
+  }
+  // Build the payload data
   const payload = Buffer.alloc(ENC_DATA_REQ_DATA_SZ);
   let off = 0;
-  payload.writeUInt8(schema, off);
+  payload.writeUInt8(req.schema, off);
   off += 1;
-  if (schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
-    params.walletUID.copy(payload, off);
-    off += params.walletUID.length;
-    payload.writeUInt8(params.path.length, off);
+  if (req.schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
+    req.params.walletUID.copy(payload, off);
+    off += req.params.walletUID.length;
+    payload.writeUInt8(req.params.path.length, off);
     off += 1;
     for (let i = 0; i < 5; i++) {
-      if (i <= params.path.length) {
-        payload.writeUInt32LE(params.path[i], off);
+      if (i <= req.params.path.length) {
+        payload.writeUInt32LE(req.params.path[i], off);
       }
       off += 4;
     }
-    if (params.c) {
-      payload.writeUInt32LE(params.c, off)
+    if (req.params.c) {
+      payload.writeUInt32LE(req.params.c, off)
     }
     off += 4;
     return payload;

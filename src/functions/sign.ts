@@ -33,17 +33,15 @@ export async function sign (
   // Validate request params
   validateConnectedClient(req.client);
   // Build the transaction request
-  const fwConstants = req.client.getFwConstants();
   const { request: requestData, isGeneric } = buildTransaction({
     data: req.data,
     currency: req.currency,
-    fwConstants,
+    fwConstants: req.client.getFwConstants(),
   });
   // Build data for this request
   const { payload: data, hasExtraPayloads } = encodeSignRequest({
+    client: req.client,
     request: requestData,
-    fwConstants,
-    wallet: req.client.getActiveWallet(),
     cachedData: req.cachedData,
     nextCode: req.nextCode,
   });
@@ -75,12 +73,14 @@ export async function sign (
 }
 
 export const encodeSignRequest = ({
+  client,
   request,
-  fwConstants,
-  wallet,
   cachedData,
   nextCode,
 }: EncodeSignRequestParams) => {
+  // Build payload data
+  const wallet = client.getActiveWallet();
+  const fwConstants = client.getFwConstants();
   let reqPayload, schema;
   if (cachedData && nextCode) {
     request = cachedData;

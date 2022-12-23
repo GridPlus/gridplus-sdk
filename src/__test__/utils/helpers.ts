@@ -7,6 +7,7 @@ import {
 } from 'ed25519-hd-key';
 import { ec as EC, eddsa as EdDSA } from 'elliptic';
 import { privateToAddress } from 'ethereumjs-util';
+import { readFileSync } from 'fs';
 import { sha256 } from 'hash.js/lib/hash/sha';
 import { keccak256 } from 'js-sha3';
 import {
@@ -14,8 +15,8 @@ import {
   ethMsgProtocol,
   HARDENED_OFFSET,
 } from '../../constants';
+import { jsonc } from 'jsonc';
 import { Constants } from '../..';
-
 import { getV, parseDER, randomBytes } from '../../util';
 import { Client } from '../../client';
 import { ProtocolConstants } from '../../protocol';
@@ -982,3 +983,8 @@ export const compressPubKey = function (pub) {
   return compressed;
 }
 
+export const getTestVectors = function () {
+  return jsonc.parse(
+    readFileSync(`${process.cwd()}/src/__test__/vectors.jsonc`).toString()
+  );
+}

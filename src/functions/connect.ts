@@ -27,7 +27,7 @@ export async function connect (
   // Decode response data params. 
   // Response payload data is *not* encrypted.
   const { isPaired, fwVersion, activeWallets, ephemeralPub } =
-    await decodeConnectResponsePayloadData(
+    await decodeConnectResponse(
       respPayloadData, 
       req.client.key
     );
@@ -71,7 +71,7 @@ export const validateConnectRequest = (
  * @internal
  * @returns true if we are paired to the device already
  */
-export const decodeConnectResponsePayloadData = (
+export const decodeConnectResponse = (
   response: Buffer,
   key: KeyPair,
 ): {

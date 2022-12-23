@@ -17,8 +17,6 @@ import {
 import { getPublicKey, sign } from '@noble/bls12-381';
 import { mnemonicToSeedSync } from 'bip39';
 import { deriveSeedTree } from 'bls12-381-keygen';
-import { readFileSync } from 'fs';
-import { jsonc } from 'jsonc';
 import { question } from 'readline-sync';
 
 import { getEncPw } from '../../utils/getters';
@@ -30,7 +28,8 @@ import {
   buildPath, 
   copyBuffer,
   getCodeMsg,
-  gpErrors, 
+  gpErrors,
+  getTestVectors,
   jobTypes, 
   parseWalletJobResp, 
   serializeJobData 
@@ -39,9 +38,7 @@ import { testRequest } from '../../utils/testRequest';
 import { Constants } from '../../../index';
 import { getPathStr } from '../../../shared/utilities';
 
-const globalVectors = jsonc.parse(
-  readFileSync(`${process.cwd()}/src/__test__/vectors.jsonc`).toString(),
-);
+const globalVectors = getTestVectors();
 
 let client, origWalletSeed, encPw;
 const DEPOSIT_PATH = [ 12381, 3600, 0, 0, 0];

@@ -10,23 +10,9 @@ interface SignRequestFunctionParams extends SignRequestParams {
   client: Client;
 }
 
-interface ValidateSignRequestParams {
-  url?: string;
-  fwConstants?: FirmwareConstants;
-  wallet?: Wallet;
-  sharedSecret?: Buffer;
-}
-
-interface ValidatedSignRequest {
-  deviceId: string;
-  key: KeyPair;
-  baseUrl: string;
-}
-
 interface EncodeSignRequestParams {
   request: any;
-  fwConstants: FirmwareConstants;
-  wallet: Wallet;
+  client: Client;
   cachedData?: any;
   nextCode?: Buffer;
 }

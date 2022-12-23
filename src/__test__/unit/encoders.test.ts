@@ -27,17 +27,6 @@ describe('encoders', () => {
     mockRandom.mockRestore();
   });
 
-  describe('connect', () => {
-    test('connect encoder', () => {
-      const privKey = Buffer.alloc(32, '1');
-      expect(privKey.toString()).toMatchSnapshot();
-      const key = getP256KeyPair(privKey);
-      const payload = encodeConnectRequest(key);
-      const payloadAsString = payload.toString('hex');
-      expect(payloadAsString).toMatchSnapshot();
-    });
-  });
-
   describe('pair', () => {
     test('pair encoder', () => {
       const privKey = Buffer.alloc(32, '1');
@@ -48,6 +37,7 @@ describe('encoders', () => {
       expect(payloadAsString).toMatchSnapshot();
     });
   });
+
   describe('getAddresses', () => {
     test('encodeGetAddressesRequest with default flag', () => {
       const mockObject = buildGetAddressesObject({});
@@ -74,6 +64,8 @@ describe('encoders', () => {
       expect(payloadAsString).toMatchSnapshot();
     });
 
+    /*
+    THIS SHOULD BE A VALIDATOR TEST
     test('encodeGetAddressesRequest should throw with invalid startPath on old firmware', () => {
       const startPath = [0x80000000 + 44, 0x80000000 + 60, 0, 0, 0, 0, 0];
       const fwVersion = Buffer.from([0, 0, 0]);
@@ -81,12 +73,11 @@ describe('encoders', () => {
         encodeGetAddressesRequest(
           buildGetAddressesObject({ startPath, fwVersion }),
         );
-      expect(testEncodingFunction).toThrowError(
-        'derivation paths with 5 indices',
-      );
+      expect(testEncodingFunction).toThrowError();
     });
+    */
   });
-
+/*
   describe('sign', () => {
     test.each(getFwVersionsList())(
       'should test sign encoder with firmware v%d.%d.%d',
@@ -133,4 +124,5 @@ describe('encoders', () => {
       expect(payloadAsString).toMatchSnapshot();
     });
   });
+*/
 });

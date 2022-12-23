@@ -20,8 +20,8 @@ export const validateStartPath = (startPath: number[]) => {
   if (!startPath) {
     throw new Error('Start path is required');
   }
-  if (startPath.length < 2 || startPath.length > 5)
-    throw new Error('Path must include between 2 and 5 indices');
+  if (startPath.length < 1 || startPath.length > 5)
+    throw new Error('Path must include between 1 and 5 indices');
 };
 
 export const validateDeviceId = (deviceId?: string) => {

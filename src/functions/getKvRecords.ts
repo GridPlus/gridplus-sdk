@@ -12,11 +12,7 @@ export async function getKvRecords (
   // Validate request params
   validateGetKvRequest(req);
   // Build data for this request
-  const data = encodeGetKvRecordsRequest({ 
-    type: req.type, 
-    n: req.n, 
-    start: req.start 
-  });
+  const data = encodeGetKvRecordsRequest(req);
   // Make the request
   const decRespPayloadData = await encryptedSecureRequest(
     req.client,
@@ -54,15 +50,14 @@ export const validateGetKvRequest = (
   }
 };
 
-export const encodeGetKvRecordsRequest = ({
-  type,
-  n,
-  start,
-}: EncodeGetKvRecordsRequestParams) => {
+export const encodeGetKvRecordsRequest = (
+  req: GetKvRecordsRequestFunctionParams
+) => {
+  // Build teh payload
   const payload = Buffer.alloc(9);
-  payload.writeUInt32LE(type, 0);
-  payload.writeUInt8(n, 4);
-  payload.writeUInt32LE(start, 5);
+  payload.writeUInt32LE(req.type, 0);
+  payload.writeUInt8(req.n, 4);
+  payload.writeUInt32LE(req.start, 5);
   return payload;
 };
 
