@@ -1,15 +1,8 @@
 import { UInt4 } from 'bitwise/types';
 import { Client } from '../client'
 import { MAX_ADDR, EMPTY_WALLET_UID, ASCII_REGEX } from '../constants';
-import { isUInt4, checksum } from '../util';
+import { isUInt4 } from '../util';
 import isEmpty from 'lodash/isEmpty'
-
-export const validateValueExists = (arg: { [key: string]: any }) => {
-  const [key, [, value]] = Object.entries(arg);
-  if (!value) {
-    throw new Error(`${key} must be provided`);
-  }
-};
 
 export const validateIsUInt4 = (n?: number) => {
   if (typeof n !== 'number' || !isUInt4(n)) {
@@ -52,12 +45,6 @@ export const validateAppName = (name?: string) => {
   return name;
 };
 
-export const validateResponse = (res: Buffer) => {
-  if (!res) {
-    throw new Error('Error decrypting response');
-  }
-};
-
 export const validateUrl = (url?: string) => {
   if (!url) {
     throw new Error('Url does not exist. Please reconnect.');
@@ -79,27 +66,6 @@ export const validateFwConstants = (fwConstants?: FirmwareConstants) => {
   return fwConstants;
 };
 
-export const validateFwVersion = (fwVersion?: Buffer) => {
-  if (!fwVersion || fwVersion.byteLength > 4) {
-    throw new Error('Firmware version does not exist. Please reconnect.');
-  }
-  return fwVersion;
-};
-
-/**
- * Validate checksum. It will be the last 4 bytes of the decrypted payload. The length of the
- * decrypted payload will be fixed for each given message type.
- */
-export const validateChecksum = (res: Buffer, length: number) => {
-  const toCheck = res.slice(0, length);
-  const cs = parseInt(`0x${res.slice(length, length + 4).toString('hex')}`);
-  const csCheck = checksum(toCheck);
-  if (cs !== csCheck) {
-    throw new Error(
-      `Checksum mismatch in response from Lattice (calculated ${csCheck}, wanted ${cs})`,
-    );
-  }
-};
 
 export const validateRequestError = (err: LatticeError) => {
   const isTimeout = err.code === 'ECONNABORTED' && err.errno === 'ETIME';
@@ -204,12 +170,6 @@ export const validateKvRecord = (
   }
   return { key, val };
 };
-
-export const validateRequestLength = (req: any, fwConstants: FirmwareConstants) => {
-  if (req.payload.length > fwConstants.reqMaxDataSz) {
-    throw new Error('Transaction is too large');
-  }
-}
 
 export const isValidBlockExplorerResponse = (data: any) => {
   try {

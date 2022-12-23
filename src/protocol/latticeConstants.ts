@@ -121,14 +121,27 @@ export const ProtocolConstants = {
       },
       encrypted: {
         request: {
-          data: 1700,
+          // Prior to encrypting the payload, unencrypted data will be written
+          // with size depending on the type of request being made.
+          // NOTE: All requests also have requestType (1 byte) and checksum
+          // (4 bytes), which are excluded from these sizes.
+          data: {
+            [LatticeSecureEncryptedRequestType.finalizePairing]: 99,
+            [LatticeSecureEncryptedRequestType.getAddresses]: 58,
+            [LatticeSecureEncryptedRequestType.sign]: 1680,
+            [LatticeSecureEncryptedRequestType.getWallets]: 0,
+            [LatticeSecureEncryptedRequestType.getKvRecords]: 9,
+            [LatticeSecureEncryptedRequestType.addKvRecords]: 1391,
+            [LatticeSecureEncryptedRequestType.removeKvRecords]: 405,
+            [LatticeSecureEncryptedRequestType.fetchEncryptedData]: 98,
+            [LatticeSecureEncryptedRequestType.test]: 506,
+          }
         },
         response: {
           // Once decrypted, the data size of the response
           // payload will be determined by the request type.
-          // Note that these lengths exclude ephemeralPublicKey (65 bytes)
-          // and checksum (4 bytes), which all encrypted response types
-          // contain.
+          // NOTE: All requests also have ephemeralPublicKey (65 bytes) and
+          // checksum (4 bytes), which are excluded from these sizes.
           data: {
             [LatticeSecureEncryptedRequestType.finalizePairing]: 0,
             [LatticeSecureEncryptedRequestType.getAddresses]: 1290,
