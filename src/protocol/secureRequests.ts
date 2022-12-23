@@ -46,6 +46,39 @@ import {
 const { secure: msgSizes } = Constants.msgSizes;
 
 /**
+ * Build and make a request to connect to a specific Lattice
+ * based on its `deviceId`.
+ * @param client - Instance of (unconnected) client
+ * @param deviceId - Device ID for the target Lattice. Must be in
+ *                   the same `client.baseUrl` domain to be found.
+ * @return {Buffer} - Connection response payload data, which contains
+ *                    information about the connected Lattice.
+ */
+export async function connectSecureRequest(
+  client: Client,
+  deviceId: string,
+): Promise<Buffer> {
+  // Build the secure request message
+  const payloadData = serializeSecureRequestConnectPayloadData(client);
+  const msgId = randomBytes(4);
+  const msg = serializeSecureRequestMsg(
+    client, 
+    msgId, 
+    LatticeSecureMsgType.connect, 
+    payloadData
+  );
+  // Send request to the Lattice
+  const url = `${client.baseUrl}/${deviceId}`;
+  const resp = await request({ url, payload: msg });
+  // Deserialize the response payload data
+  return deserializeResponseMsgPayloadData(
+    client, 
+    msgId, 
+    resp
+  );
+}
+
+/**
  * Build an encrypted secure request using raw data,
  * then send that request to the target Lattice, handle
  * the response, and return the *decrypted* response
@@ -99,6 +132,7 @@ export async function encryptedSecureRequest(
 }
 
 /**
+ * @internal
  * Serialize a Secure Request message for the Lattice.
  * All outgoing SDK requests are of this form.
  * @param client - Instance of the Client
@@ -107,7 +141,7 @@ export async function encryptedSecureRequest(
  * @param payloadData - Request data
  * @return {Buffer} Serialized message to be sent to Lattice
  */
-export function serializeSecureRequestMsg(
+function serializeSecureRequestMsg(
   client: Client,
   msgId: Buffer,
   secureRequestType: LatticeSecureMsgType,
@@ -185,13 +219,14 @@ export function serializeSecureRequestMsg(
 }
 
 /**
+ * @internal
  * Deserialize a Lattice response and get the payload data
  * @param client - Instance of Client
  * @param msgId - 4 byte ID from the request; should match response
  * @param msg - Buffer received from the Lattice
  * @return {Buffer} 1696 bytes of payload data (may be encrypted)
  */
-export function deserializeResponseMsgPayloadData(
+function deserializeResponseMsgPayloadData(
   client: Client,
   msgId: Buffer,
   msg: Buffer,
@@ -245,11 +280,12 @@ export function deserializeResponseMsgPayloadData(
 }
 
 /**
+ * @internal
  * Serialize payload data for a Lattice secure request: connect
  * @param client - Instance of Client
  * @return {Buffer} - 1700 bytes, of which only 65 are used
  */
-export function serializeSecureRequestConnectPayloadData(
+function serializeSecureRequestConnectPayloadData(
   client: Client
 ): Buffer {
   const payloadData: LatticeSecureConnectRequestPayloadData = {
@@ -261,12 +297,13 @@ export function serializeSecureRequestConnectPayloadData(
 }
 
 /**
+ * @internal
  * Serialize payload data for Lattice secure request: encrypted
  * @param client - Instance of Client
  * @param data - Raw (unencrypted) request data
  * @return {Buffer} - 1701 bytes, all of which should be used
  */
-export function serializeSecureRequestEncryptedPayloadData(
+function serializeSecureRequestEncryptedPayloadData(
   client: Client,
   data: Buffer,
   requestType: LatticeSecureEncryptedRequestType
@@ -303,13 +340,14 @@ export function serializeSecureRequestEncryptedPayloadData(
 }
 
 /**
+ * @internal
  * Decrypt the response data from an encrypted request.
  * This will update the client's ephemeral public key.
  * @param client - Instance of Client
  * @param encPayloadData - Encrypted payload data in response
  * @return {Buffer} Decrypted response data (excluding metadata)
  */
-export function decryptEncryptedLatticeResponseData(
+function decryptEncryptedLatticeResponseData(
   client: Client,
   encPayloadData: Buffer,
 ): Buffer {
