@@ -5,14 +5,10 @@ import { DEFAULT_SIGNER } from '../utils/builders';
  * at the time of writing is address tags.
  */
 import { question } from 'readline-sync';
-import {
-  HARDENED_OFFSET,
-  responseCodes,
-  responseMsgs
-} from '../../constants';
+import { HARDENED_OFFSET } from '../../constants';
+import { ProtocolConstants, LatticeResponseCode } from '../../protocol';
 import { BTC_PURPOSE_P2PKH, ETH_COIN } from '../utils/helpers';
 import { initializeClient } from '../utils/initializeClient';
-
 
 // Random address to test the screen with.
 // IMPORTANT NOTE: For Ethereum addresses you should always add the lower case variety since
@@ -72,7 +68,7 @@ describe('key-value', () => {
   it('Should make a request to an unknown address', async () => {
     await client.sign(ETH_REQ).catch((err) => {
       expect(err.message).toContain(
-        responseMsgs[responseCodes.RESP_ERR_USER_DECLINED],
+        ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined],
       );
     });
   });
@@ -211,7 +207,7 @@ describe('key-value', () => {
   it('Should make another request to make sure case sensitivity is enforced', async () => {
     await client.sign(ETH_REQ).catch((err) => {
       expect(err.message).toContain(
-        responseMsgs[responseCodes.RESP_ERR_USER_DECLINED],
+        ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined],
       );
     });
   });

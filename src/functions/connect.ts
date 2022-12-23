@@ -1,7 +1,7 @@
-import { messageConstants } from '../constants';
 import { doesFetchWalletsOnLoad } from '../shared/predicates';
 import { 
-  connectSecureRequest
+  connectSecureRequest,
+  ProtocolConstants,
 } from '../protocol';
 import {
   getSharedSecret,
@@ -81,7 +81,7 @@ export const decodeConnectResponsePayloadData = (
   ephemeralPub: Buffer;
 } => {
   let off = 0;
-  const isPaired = response.readUInt8(off) === messageConstants.PAIRED;
+  const isPaired = response.readUInt8(off) === ProtocolConstants.pairingStatus.paired;
   off++;
   // If we are already paired, we get the next ephemeral key
   const pub = response.slice(off, off + 65).toString('hex');

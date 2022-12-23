@@ -269,7 +269,7 @@ function deserializeResponseMsgPayloadData(
   // Throw an error if response is not successful
   if (resp.payload.responseCode !== LatticeResponseCode.success) {
     throw new Error(
-      `Error from Lattice: ${Constants.responses.messages[resp.payload.responseCode]}`
+      `Error from Lattice: ${Constants.responseMsg[resp.payload.responseCode]}`
     );
   }
 

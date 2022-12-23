@@ -2,9 +2,6 @@ import { sha256 } from 'hash.js/lib/hash/sha';
 import { Client } from '..';
 import bitcoin from '../bitcoin';
 import {
-  deviceCodes,
-  encReqCodes,
-  ENC_MSG_LEN,
   EXTERNAL,
   REQUEST_TYPE_BYTE,
   VERSION_BYTE,
@@ -12,11 +9,8 @@ import {
 import ethereum from '../ethereum';
 import { buildGenericSigningMsgRequest } from '../genericSigning';
 import {
-  aes256_decrypt,
-  aes256_encrypt,
   checksum,
   fetchWithTimeout,
-  getP256KeyPairFromPub,
   parseLattice1Response,
   randomBytes,
 } from '../util';
@@ -28,9 +22,10 @@ import {
   shouldUseEVMLegacyConverter,
 } from './predicates';
 import {
-  validateChecksum,
+  LatticeSecureMsgType,
+} from '../protocol';
+import {
   validateRequestError,
-  validateResponse,
 } from './validators';
 
 /**
@@ -44,7 +39,7 @@ import {
 export const buildRequest = (request_code: number, payload: Buffer) => {
   // Length of payload; we add 1 to the payload length to account for the request_code byte
   let L = payload && Buffer.isBuffer(payload) ? payload.length + 1 : 1;
-  if (request_code === deviceCodes.ENCRYPTED_REQUEST) {
+  if (request_code === LatticeSecureMsgType.encrypted) {
     L = 1 + payload.length;
   }
   let i = 0;
@@ -64,43 +59,6 @@ export const buildRequest = (request_code: number, payload: Buffer) => {
   i = preReq.copy(req);
   req.writeUInt32BE(cs, i);
   return req;
-};
-
-/**
- * Builds an encrypted request
- * @internal
- */
-export const encryptRequest = ({
-  payload,
-  requestCode,
-  sharedSecret,
-}: EncryptRequestParams) => {
-  // Get the ephemeral id - all encrypted requests require there to be an ephemeral public key in
-  // order to send
-  const ephemeralId = getEphemeralId(sharedSecret);
-  const requestCodeValue = encReqCodes[requestCode];
-  // Build the payload and checksum
-  const payloadPreCs = Buffer.concat([
-    Buffer.from([requestCodeValue]),
-    payload,
-  ]);
-  const cs = checksum(payloadPreCs);
-  const payloadBuf = Buffer.alloc(payloadPreCs.length + 4);
-
-  // Lattice validates checksums in little endian
-  payloadPreCs.copy(payloadBuf, 0);
-  payloadBuf.writeUInt32LE(cs, payloadPreCs.length);
-  // Encrypt this payload
-  const newEncPayload = aes256_encrypt(payloadBuf, sharedSecret);
-
-  // Write to the overall payload. We must use the same length for every encrypted request and
-  // must include a 32-bit ephemId along with the encrypted data
-  const newPayload = Buffer.alloc(ENC_MSG_LEN + 4);
-  // First 4 bytes are the ephemeral id (in little endian)
-  newPayload.writeUInt32LE(ephemeralId, 0);
-  // Next N bytes
-  newEncPayload.copy(newPayload, 4);
-  return buildRequest(deviceCodes.ENCRYPTED_REQUEST, newPayload);
 };
 
 export const buildTransaction = ({
@@ -271,37 +229,6 @@ export const retryWrapper = async ({ fn, params, retries, client }) => {
 
     throw err;
   });
-};
-
-/**
- * All encrypted responses must be decrypted with the previous shared secret. Per specification,
- * decrypted responses will all contain a 65-byte public key as the prefix, which becomes the new
- * `ephemeralPub`.
- * @category Device Response
- * @internal
- */
-export const decryptResponse = (
-  encryptedResponse: Buffer,
-  length: number,
-  sharedSecret: Buffer,
-): DecryptedResponse => {
-  if (!encryptedResponse || encryptedResponse.length < length) {
-    return { decryptedData: null, newEphemeralPub: null };
-  }
-  const encData = encryptedResponse.slice(0, ENC_MSG_LEN);
-  const decryptedData = aes256_decrypt(encData, sharedSecret);
-
-  validateResponse(decryptedData);
-
-  // length does not include a 65-byte pubkey that prefixes each response
-  length += 65;
-
-  validateChecksum(decryptedData, length);
-
-  // First 65 bytes is the next ephemeral pubkey
-  const pub = decryptedData.slice(0, 65).toString('hex');
-  const newEphemeralPub = getP256KeyPairFromPub(pub);
-  return { decryptedData, newEphemeralPub };
 };
 
 /**

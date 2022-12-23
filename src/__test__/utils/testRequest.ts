@@ -1,6 +1,4 @@
-import { decResLengths } from '../../constants';
-import { encryptRequest, decryptResponse, request } from '../../shared/functions';
-
+import { encryptedSecureRequest } from '../../protocol';
 import { TestRequestPayload } from '../../types/utils';
 
 /**
@@ -22,17 +20,5 @@ export const testRequest = async ({
   _payload.writeUInt32BE(testID, 0);
   _payload.writeUInt16BE(payload.length, 4);
   payload.copy(_payload, 6);
-  const encryptedPayload = encryptRequest({
-    requestCode: 'TEST',
-    payload: _payload,
-    sharedSecret: client.sharedSecret,
-  });
-  const res = await request({ payload: encryptedPayload, url: client.url ?? '' });
-  const { decryptedData, newEphemeralPub } = decryptResponse(
-    res,
-    decResLengths.test,
-    client.sharedSecret,
-  );
-  client.ephemeralPub = newEphemeralPub;
-  return decryptedData.slice(65); // remove ephem pub
+  return await encryptedSecureRequest(client, _payload);
 };

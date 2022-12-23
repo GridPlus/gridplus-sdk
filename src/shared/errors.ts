@@ -1,9 +1,9 @@
-import { responseMsgs } from '../constants';
+import { ProtocolConstants } from '../protocol';
 
 const buildLatticeResponseErrorMessage = ({ responseCode, errorMessage }) => {
   const msg: string[] = [];
   if (responseCode) {
-    msg.push(`${responseMsgs[responseCode]}`);
+    msg.push(`${ProtocolConstants.responseMsg[responseCode]}`);
   }
   if (errorMessage) {
     msg.push('Error Message: ');

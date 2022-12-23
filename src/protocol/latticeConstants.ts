@@ -62,42 +62,39 @@ export const ProtocolConstants = {
     paired: 0x01,
   },
   // Response types, codes, and error messages
-  responses: {
-    codes: LatticeResponseCode,
-    messages: {
-      [LatticeResponseCode.success]: 
-        '',
-      [LatticeResponseCode.invalidMsg]: 
-        'Invalid Request',
-      [LatticeResponseCode.unsupportedVersion]: 
-        'Unsupported Version',
-      [LatticeResponseCode.deviceBusy]: 
-        'Device Busy',
-      [LatticeResponseCode.userTimeout]: 
-        'Timeout waiting for user',
-      [LatticeResponseCode.userDeclined]: 
-        'Request declined by user',
-      [LatticeResponseCode.pairFailed]: 
-        'Pairing failed',
-      [LatticeResponseCode.pairDisabled]: 
-        'Pairing is currently disabled',
-      [LatticeResponseCode.permissionDisabled]: 
-        'Automated signing is currently disabled',
-      [LatticeResponseCode.internalError]: 
-        'Device Error',
-      [LatticeResponseCode.gceTimeout]: 
-        'Device Timeout',
-      [LatticeResponseCode.wrongWallet]: 
-        'Active wallet does not match request',
-      [LatticeResponseCode.deviceLocked]: 
-        'Device Locked',
-      [LatticeResponseCode.disabled]: 
-        'Feature Disabled',
-      [LatticeResponseCode.already]: 
-        'Record already exists on device',
-      [LatticeResponseCode.invalidEphemId]: 
-        'Request failed - needs resync',
-    },
+  responseMsg: {
+    [LatticeResponseCode.success]: 
+      '',
+    [LatticeResponseCode.invalidMsg]: 
+      'Invalid Request',
+    [LatticeResponseCode.unsupportedVersion]: 
+      'Unsupported Version',
+    [LatticeResponseCode.deviceBusy]: 
+      'Device Busy',
+    [LatticeResponseCode.userTimeout]: 
+      'Timeout waiting for user',
+    [LatticeResponseCode.userDeclined]: 
+      'Request declined by user',
+    [LatticeResponseCode.pairFailed]: 
+      'Pairing failed',
+    [LatticeResponseCode.pairDisabled]: 
+      'Pairing is currently disabled',
+    [LatticeResponseCode.permissionDisabled]: 
+      'Automated signing is currently disabled',
+    [LatticeResponseCode.internalError]: 
+      'Device Error',
+    [LatticeResponseCode.gceTimeout]: 
+      'Device Timeout',
+    [LatticeResponseCode.wrongWallet]: 
+      'Active wallet does not match request',
+    [LatticeResponseCode.deviceLocked]: 
+      'Device Locked',
+    [LatticeResponseCode.disabled]: 
+      'Feature Disabled',
+    [LatticeResponseCode.already]: 
+      'Record already exists on device',
+    [LatticeResponseCode.invalidEphemId]: 
+      'Request failed - needs resync',
   },
   msgSizes: {
     secure: {

@@ -1,14 +1,13 @@
 import bitwise from 'bitwise';
 import { Byte, UInt4 } from 'bitwise/types';
 import {
-  ADDR_STR_LEN,
-  decResLengths,
   EXTERNAL,
   getFwVersionConst,
 } from '../constants';
 import {
   encryptedSecureRequest,
   LatticeSecureEncryptedRequestType,
+  ProtocolConstants
 } from '../protocol';
 import {
   validateConnectedClient,
@@ -130,7 +129,10 @@ export const decodeGetAddresses = (data: any, flag: number): Buffer[] => {
   if (arePubkeys) {
     off += 1; // skip uint8 representing pubkey type
   }
-  while (off + 4 < decResLengths.getAddresses) {
+  const respDataLength = ProtocolConstants.msgSizes.secure.encrypted.response.data[
+    LatticeSecureEncryptedRequestType.getAddresses
+  ];
+  while (off + 4 < respDataLength) {
     if (arePubkeys) {
       // Pubkeys are shorter and are returned as buffers
       const pubBytes = data.slice(off, off + 65);
@@ -149,8 +151,8 @@ export const decodeGetAddresses = (data: any, flag: number): Buffer[] => {
       off += 65;
     } else {
       // Otherwise we are dealing with address strings
-      const addrBytes = data.slice(off, off + ADDR_STR_LEN);
-      off += ADDR_STR_LEN;
+      const addrBytes = data.slice(off, off + ProtocolConstants.addrStrLen);
+      off += ProtocolConstants.addrStrLen;
       // Return the UTF-8 representation
       const len = addrBytes.indexOf(0); // First 0 is the null terminator
       if (len > 0) {

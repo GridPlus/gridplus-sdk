@@ -1,6 +1,6 @@
 import { UInt4 } from 'bitwise/types';
 import { Client } from '../client'
-import { MAX_ADDR, encReqCodes, EMPTY_WALLET_UID, ASCII_REGEX } from '../constants';
+import { MAX_ADDR, EMPTY_WALLET_UID, ASCII_REGEX } from '../constants';
 import { isUInt4, checksum } from '../util';
 import isEmpty from 'lodash/isEmpty'
 
@@ -38,12 +38,6 @@ export const validateDeviceId = (deviceId?: string) => {
     );
   }
   return deviceId;
-};
-
-export const validateEncryptRequestCode = (code: keyof typeof encReqCodes) => {
-  if (code && encReqCodes[code] === undefined) {
-    throw new Error('Unknown encrypted request code.');
-  }
 };
 
 export const validateAppName = (name?: string) => {
