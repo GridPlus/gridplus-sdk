@@ -80,11 +80,11 @@ export const buildGetAddressesObject = ({ ...overrides }) => ({
   startPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
   n: 1,
   flag: 1,
-  client: getMockConnectedClient(),
+  client: buildMockConnectedClient(),
   ...overrides,
 });
 
-export const buildTransactionObject = ({
+export const buildSignObject = ({
   ...overrides
 }) => ({
   data: {
@@ -98,7 +98,7 @@ export const buildTransactionObject = ({
     gasPrice: 0x80000000,
   },
   currency: CURRENCIES.ETH as Currency,
-  ...overrides,
+  client: buildMockConnectedClient({ ...overrides }),
 });
 
 export const buildSharedSecret = () => {
@@ -342,14 +342,20 @@ export const buildValidateConnectObject = (overrides) => ({
 });
 
 export const buildValidateRequestObject = ({ ...overrides }) => ({
-  client: getMockConnectedClient(),
+  client: buildMockConnectedClient(),
   ...overrides,
 });
 
 
 // Most of the endpoint validators (for encrypted requests)
 // will require a connected client instance.
-function getMockConnectedClient() {
-  const stateData = getTestVectors().dehydratedClientState;
-  return new Client({ stateData });
+export function buildMockConnectedClient(opts) {
+  const _stateData = JSON.parse(getTestVectors().dehydratedClientState);
+  const stateData = {
+    ..._stateData,
+    ...opts,
+  };
+  return new Client({ 
+    stateData: JSON.stringify(stateData), 
+  });
 }

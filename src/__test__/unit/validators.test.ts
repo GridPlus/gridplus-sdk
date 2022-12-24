@@ -13,6 +13,7 @@ import {
 } from '../../shared/validators';
 import {
   buildGetAddressesObject,
+  buildSignObject,
   buildValidateConnectObject,
   buildValidateRequestObject,
 } from '../utils/builders';
@@ -34,29 +35,30 @@ describe('validators', () => {
     });
   });
 
-  /*
-  ALL BELOW REQUESTS NEED getMockConnectedClient TO BE IMPLEMENTED
-  
   describe('getAddresses', () => {
     test('should successfully validate', () => {
       const getAddressesBundle = buildGetAddressesObject({});
-      expect(validateGetAddressesRequest(getAddressesBundle)).toMatchSnapshot();
+      validateGetAddressesRequest(getAddressesBundle);
     });
 
-    test('should throw errors on validation failure', () => {
-      const getAddressesBundle = buildGetAddressesObject({ url: '' });
-      expect(() =>
-        validateGetAddressesRequest(getAddressesBundle),
-      ).toThrowError();
+    test('encodeGetAddressesRequest should throw with invalid startPath', () => {
+      const startPath = [0x80000000 + 44, 0x80000000 + 60, 0, 0, 0, 0, 0];
+      const fwVersion = Buffer.from([0, 0, 0]);
+      const testEncodingFunction = () =>
+        encodeGetAddressesRequest(
+          buildGetAddressesObject({ startPath, fwVersion }),
+        );
+      expect(testEncodingFunction).toThrowError();
     });
   });
+  
   describe('KvRecords', () => {
     describe('addKvRecords', () => {
       test('should successfully validate', () => {
         const validateAddKvBundle: any = buildValidateRequestObject({
           records: { key: 'value' },
         });
-        expect(validateAddKvRequest(validateAddKvBundle)).toMatchSnapshot();
+        validateAddKvRequest(validateAddKvBundle);
       });
 
       test('should throw errors on validation failure', () => {
@@ -72,7 +74,7 @@ describe('validators', () => {
           type: 1,
           start: 0,
         });
-        expect(validateGetKvRequest(validateGetKvBundle)).toMatchSnapshot();
+        validateGetKvRequest(validateGetKvBundle);
       });
 
       test('should throw errors on validation failure', () => {
@@ -87,16 +89,12 @@ describe('validators', () => {
           ids: [1],
           type: 1,
         });
-        expect(
-          validateRemoveKvRequest(validateRemoveKvBundle),
-        ).toMatchSnapshot();
+        validateRemoveKvRequest(validateRemoveKvBundle);
       });
 
       test('should throw errors on validation failure', () => {
         const validateRemoveKvBundle: any = buildValidateRequestObject({});
-        expect(() =>
-          validateRemoveKvRequest(validateRemoveKvBundle),
-        ).toThrowError();
+        expect (() => validateRemoveKvRequest(validateRemoveKvBundle)).toThrowError();
       });
     });
   });
@@ -106,29 +104,28 @@ describe('validators', () => {
       const validateFetchActiveWalletBundle: any = buildValidateRequestObject(
         {},
       );
-      expect(
-        validateFetchActiveWallet(validateFetchActiveWalletBundle),
-      ).toMatchSnapshot();
+      validateFetchActiveWallet(validateFetchActiveWalletBundle);
     });
 
     test('should throw errors on validation failure', () => {
+      // Will fail because no `client` instance is included
       const validateFetchActiveWalletBundle: any = { url: '' };
       expect(() =>
-        validateFetchActiveWallet(validateFetchActiveWalletBundle),
+        validateFetchActiveWallet(validateFetchActiveWalletBundle)
       ).toThrowError();
     });
   });
 
   describe('sign', () => {
     test('should successfully validate', () => {
-      const validateSignRequestBundle: any = buildValidateRequestObject({
-        wallet: 'wallet',
-      });
-      expect(validateSignRequest(validateSignRequestBundle)).toMatchSnapshot();
+      const validateSignRequestBundle: any = buildSignObject({});
+      validateSignRequest(validateSignRequestBundle);
     });
 
     test('should throw errors on validation failure', () => {
-      const validateSignRequestBundle: any = buildValidateRequestObject({});
+      // No tx data included
+      const validateSignRequestBundle: any = buildSignObject({});
+      validateSignRequestBundle.data = undefined;
       expect(() =>
         validateSignRequest(validateSignRequestBundle),
       ).toThrowError();
@@ -178,5 +175,4 @@ describe('validators', () => {
       });
     });
   });
-  */
 });

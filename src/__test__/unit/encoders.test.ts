@@ -1,18 +1,17 @@
 import { EXTERNAL } from '../../constants';
 import {
   encodeAddKvRecordsRequest,
-  encodeConnectRequest,
   encodeGetAddressesRequest,
   encodeGetKvRecordsRequest,
   encodePairRequest,
   encodeRemoveKvRecordsRequest,
   encodeSignRequest,
 } from '../../functions';
-import { getP256KeyPair } from '../../util';
+import { buildTransaction } from '../../shared/functions'
 import {
-  buildFirmwareConstants,
   buildGetAddressesObject,
-  buildTransactionObject,
+  buildMockConnectedClient,
+  buildSignObject,
   getFwVersionsList,
 } from '../utils/builders';
 
@@ -31,8 +30,14 @@ describe('encoders', () => {
     test('pair encoder', () => {
       const privKey = Buffer.alloc(32, '1');
       expect(privKey.toString()).toMatchSnapshot();
-      const key = getP256KeyPair(privKey);
-      const payload = encodePairRequest(key, 'testtest', 'testtest');
+      const client = buildMockConnectedClient({ 
+        privKey,
+        name: 'testtest'
+      });
+      const payload = encodePairRequest({
+        client, 
+        pairingSecret: 'testtest'
+      });
       const payloadAsString = payload.toString('hex');
       expect(payloadAsString).toMatchSnapshot();
     });
@@ -63,35 +68,31 @@ describe('encoders', () => {
       const payloadAsString = payload.toString('hex');
       expect(payloadAsString).toMatchSnapshot();
     });
-
-    /*
-    THIS SHOULD BE A VALIDATOR TEST
-    test('encodeGetAddressesRequest should throw with invalid startPath on old firmware', () => {
-      const startPath = [0x80000000 + 44, 0x80000000 + 60, 0, 0, 0, 0, 0];
-      const fwVersion = Buffer.from([0, 0, 0]);
-      const testEncodingFunction = () =>
-        encodeGetAddressesRequest(
-          buildGetAddressesObject({ startPath, fwVersion }),
-        );
-      expect(testEncodingFunction).toThrowError();
-    });
-    */
   });
-/*
+
   describe('sign', () => {
     test.each(getFwVersionsList())(
       'should test sign encoder with firmware v%d.%d.%d',
       (major, minor, patch) => {
-        const { payload } = encodeSignRequest(
-          buildTransactionObject({
-            fwVersion: Buffer.from([patch, minor, major]),
-          }),
-        );
+        const txObj = buildSignObject({
+          fwVersion: Buffer.from([patch, minor, major]),
+        });
+        const fwConstants = txObj.client.getFwConstants();
+        const tx = buildTransaction({
+          ...txObj,
+          fwConstants,
+        });
+        const req = {
+          ...txObj,
+          request: tx.request,
+        }
+        const { payload } = encodeSignRequest(req);
         const payloadAsString = payload.toString('hex');
         expect(payloadAsString).toMatchSnapshot();
       },
     );
   });
+
   describe('KvRecords', () => {
     test('getKvRecords', () => {
       const mockObject = { type: 0, n: 1, start: 0 };
@@ -102,9 +103,9 @@ describe('encoders', () => {
 
     test('addKvRecords', () => {
       const mockObject = {
+        client: buildMockConnectedClient(),
         type: 0,
         records: { key: 'value' },
-        fwConstants: buildFirmwareConstants(),
         caseSensitive: false,
       };
       const payload = encodeAddKvRecordsRequest(mockObject);
@@ -114,9 +115,9 @@ describe('encoders', () => {
 
     test('removeKvRecords', () => {
       const mockObject = {
+        client: buildMockConnectedClient(),
         type: 0,
         ids: [0],
-        fwConstants: buildFirmwareConstants(),
         caseSensitive: false,
       };
       const payload = encodeRemoveKvRecordsRequest(mockObject);
@@ -124,5 +125,4 @@ describe('encoders', () => {
       expect(payloadAsString).toMatchSnapshot();
     });
   });
-*/
 });

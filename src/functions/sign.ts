@@ -18,7 +18,6 @@ import {
 } from '../shared/functions';
 import {
   validateConnectedClient,
-  validateWallet,
 } from '../shared/validators';
 import { parseDER } from '../util';
 
@@ -31,7 +30,8 @@ export async function sign (
   req: SignRequestFunctionParams
 ): Promise<SignData> {
   // Validate request params
-  validateConnectedClient(req.client);
+  validateSignRequest(req);
+
   // Build the transaction request
   const { request: requestData, isGeneric } = buildTransaction({
     data: req.data,
@@ -72,6 +72,19 @@ export async function sign (
   });
 }
 
+export const validateSignRequest = (
+  req: SignRequestFunctionParams
+) => {
+  validateConnectedClient(req.client);
+  // Build the transaction request. An error will be thrown
+  // if the request cannot be built.
+  buildTransaction({
+    data: req.data,
+    currency: req.currency,
+    fwConstants: req.client.getFwConstants(),
+  });
+}
+
 export const encodeSignRequest = ({
   client,
   request,
@@ -79,7 +92,6 @@ export const encodeSignRequest = ({
   nextCode,
 }: EncodeSignRequestParams) => {
   // Build payload data
-  const wallet = client.getActiveWallet();
   const fwConstants = client.getFwConstants();
   let reqPayload, schema;
   if (cachedData && nextCode) {
@@ -102,10 +114,10 @@ export const encodeSignRequest = ({
   // Copy request schema (e.g. ETH or BTC transfer)
   payload.writeUInt8(schema, off);
   off += 1;
-  const validWallet = validateWallet(wallet);
   // Copy the wallet UID
-  validWallet.uid?.copy(payload, off);
-  off += validWallet.uid?.length ?? 0;
+  const wallet = client.getActiveWallet();
+  wallet.uid?.copy(payload, off);
+  off += wallet.uid?.length ?? 0;
   // Build data based on the type of request
   reqPayload.copy(payload, off);
   return { payload, hasExtraPayloads };

@@ -290,6 +290,9 @@ export const getEncodedPayload = function (
     );
   }
   let payloadBuf;
+  if (!payload) {
+    throw new Error('No payload included');
+  }
   if (typeof payload === 'string' && payload.slice(0, 2) === '0x') {
     payloadBuf = Buffer.from(payload.slice(2), 'hex');
   } else {
