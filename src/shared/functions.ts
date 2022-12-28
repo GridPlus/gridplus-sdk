@@ -3,16 +3,12 @@ import { Client } from '..';
 import bitcoin from '../bitcoin';
 import {
   EXTERNAL,
-  REQUEST_TYPE_BYTE,
-  VERSION_BYTE,
 } from '../constants';
 import ethereum from '../ethereum';
 import { buildGenericSigningMsgRequest } from '../genericSigning';
 import {
-  checksum,
   fetchWithTimeout,
   parseLattice1Response,
-  randomBytes,
 } from '../util';
 import { LatticeResponseError } from './errors';
 import {
@@ -22,44 +18,8 @@ import {
   shouldUseEVMLegacyConverter,
 } from './predicates';
 import {
-  LatticeSecureMsgType,
-} from '../protocol';
-import {
   validateRequestError,
 } from './validators';
-
-/**
- * Build a request to send to the device.
- * @internal
- * @param request_code {uint8} - 8-bit unsigned integer representing the message request code
- * @param id {buffer} - 4 byte identifier (comes from HSM for subsequent encrypted reqs)
- * @param payload {buffer} - serialized payload
- * @returns {buffer}
- */
-export const buildRequest = (request_code: number, payload: Buffer) => {
-  // Length of payload; we add 1 to the payload length to account for the request_code byte
-  let L = payload && Buffer.isBuffer(payload) ? payload.length + 1 : 1;
-  if (request_code === LatticeSecureMsgType.encrypted) {
-    L = 1 + payload.length;
-  }
-  let i = 0;
-  const preReq = Buffer.alloc(L + 8);
-  // Build the header
-  i = preReq.writeUInt8(VERSION_BYTE, i);
-  i = preReq.writeUInt8(REQUEST_TYPE_BYTE, i);
-  const id = randomBytes(4);
-  i = preReq.writeUInt32BE(parseInt(`0x${id.toString('hex')}`), i);
-  i = preReq.writeUInt16BE(L, i);
-  // Build the payload
-  i = preReq.writeUInt8(request_code, i);
-  if (L > 1) i = payload.copy(preReq, i);
-  // Add the checksum
-  const cs = checksum(preReq);
-  const req = Buffer.alloc(preReq.length + 4); // 4-byte checksum
-  i = preReq.copy(req);
-  req.writeUInt32BE(cs, i);
-  return req;
-};
 
 export const buildTransaction = ({
   data,

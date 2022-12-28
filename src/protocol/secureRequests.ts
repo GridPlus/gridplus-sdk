@@ -330,6 +330,8 @@ function serializeSecureRequestEncryptedPayloadData(
   const rawData = Buffer.alloc(szs.requestPayloadData);
   rawData[0] = requestType;
   data.copy(rawData, 1);
+  const rawDataChecksum = checksum(rawData);
+  rawData.writeUInt32LE(rawDataChecksum, data.length + 1);
   const encryptedData = aes256_encrypt(rawData, client.sharedSecret);
 
   // Calculate ephemeral ID
