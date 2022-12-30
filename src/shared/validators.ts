@@ -85,7 +85,7 @@ export const validateWallet = (wallet?: Wallet): Wallet => {
 };
 
 export const validateConnectedClient = (client: Client) => {
-  validateAppName(client.appName);
+  validateAppName(client.pairingName);
   validateEphemeralPub(client.ephemeralPub);
   validateSharedSecret(client.sharedSecret);
   validateUrl(client.url);

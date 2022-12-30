@@ -1,2 +1,2 @@
 export * from './latticeConstants';
-export * from './secureRequests'
+export * from './secureMessages';

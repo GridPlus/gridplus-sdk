@@ -43,6 +43,40 @@ export enum LatticeSecureEncryptedRequestType {
   test = 13,
 }
 
+export enum LatticeGetAddressesFlag {
+  secp256k1Pubkey = 3,
+  ed25519Pubkey = 4,
+  bls12_381Pubkey = 5,
+}
+
+export enum LatticeSignHashe {
+  none = 0,
+  keccak256 = 1,
+  sha256 = 2,
+}
+
+export enum LatticeSignCurve {
+  secp256k1 = 0,
+  ed25519 = 1,
+  bls12_381 = 2,
+}
+
+export enum LatticeSignEncoding {
+  none = 1,
+  solana = 2,
+  evm = 4,
+  eth_deposit = 5,
+}
+
+export enum LatticeSignBlsDst {
+  NUL = 1,
+  POP = 2,
+}
+
+export enum LatticeEncDataSchema {
+  eip2335 = 0,
+}
+
 export const ProtocolConstants = {
   // Lattice firmware uses a static initialization vector for
   // message encryption/decryption. This is generally considered

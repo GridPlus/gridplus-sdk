@@ -112,7 +112,7 @@ export class Client {
   /**
    * Get the pairing name for this client instance
    */
-  public get appName () {
+  public get pairingName () {
     return this.name;
   }
 
@@ -303,13 +303,6 @@ export class Client {
       };
     }
     return { fix: 0, minor: 0, major: 0 };
-  }
-
-  /**
-   * `getAppName` returns the name of the application to which this device is currently paired.
-   */
-  public getAppName (): string {
-    return this.name;
   }
 
   /**

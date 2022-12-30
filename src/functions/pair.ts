@@ -50,7 +50,7 @@ export const encodePairRequest = (
     // the pairing attempt. In this case we pass a zero-length name buffer so the firmware can
     // know not to draw the error screen. Note that we still expect an error to come back
     // (RESP_ERR_PAIR_FAIL)
-    nameBuf.write(req.client.name);
+    nameBuf.write(req.client.pairingName);
   }
   const hash = generateAppSecret(
     pubKeyBytes,

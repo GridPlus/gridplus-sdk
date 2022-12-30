@@ -1,3 +1,12 @@
+import { 
+  LatticeGetAddressesFlag,
+  LatticeEncDataSchema,
+  LatticeSignBlsDst,
+  LatticeSignCurve,
+  LatticeSignEncoding,
+  LatticeSignHashe,
+} from './protocol/latticeConstants';
+
 /**
  * Externally exported constants used for building requests
  * @public
@@ -5,38 +14,37 @@
 export const EXTERNAL = {
   // Optional flags for `getAddresses`
   GET_ADDR_FLAGS: {
-    SECP256K1_PUB: 3,
-    ED25519_PUB: 4,
-    BLS12_381_G1_PUB: 5,
+    SECP256K1_PUB: LatticeGetAddressesFlag.secp256k1Pubkey,
+    ED25519_PUB: LatticeGetAddressesFlag.ed25519Pubkey,
+    BLS12_381_G1_PUB: LatticeGetAddressesFlag.bls12_381Pubkey,
   },
   // Options for building general signing requests
   SIGNING: {
     HASHES: {
-      NONE: 0,
-      KECCAK256: 1,
-      SHA256: 2,
+      NONE: LatticeSignHashe.none,
+      KECCAK256: LatticeSignHashe.keccak256,
+      SHA256: LatticeSignHashe.sha256,
     },
     CURVES: {
-      SECP256K1: 0,
-      ED25519: 1,
-      BLS12_381_G2: 2,
+      SECP256K1: LatticeSignCurve.secp256k1,
+      ED25519: LatticeSignCurve.ed25519,
+      BLS12_381_G2: LatticeSignCurve.bls12_381,
     },
     ENCODINGS: {
-      NONE: 1,
-      SOLANA: 2,
-      // TERRA: 3, // Deprecated
-      EVM: 4,
-      ETH_DEPOSIT: 5,
+      NONE: LatticeSignEncoding.none,
+      SOLANA: LatticeSignEncoding.solana,
+      EVM: LatticeSignEncoding.evm,
+      ETH_DEPOSIT: LatticeSignEncoding.eth_deposit,
     },
     BLS_DST: {
-      BLS_DST_NUL: 1,
-      BLS_DST_POP: 2,
+      BLS_DST_NUL: LatticeSignBlsDst.NUL,
+      BLS_DST_POP: LatticeSignBlsDst.POP,
     },
   },
   // Options for exporting encrypted data
   ENC_DATA: {
     SCHEMAS: {
-      BLS_KEYSTORE_EIP2335_PBKDF_V4: 0,
+      BLS_KEYSTORE_EIP2335_PBKDF_V4: LatticeEncDataSchema.eip2335,
     },
   },
   ETH_CONSENSUS_SPEC: {

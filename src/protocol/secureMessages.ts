@@ -184,36 +184,35 @@ function serializeSecureRequestMsg(
     payload = _payload;
   }
 
-  // Construct the object first
+  // Construct the request in object form
+  const header: LatticeMessageHeader = {
+    version: LatticeProtocolVersion.v1,
+    type: LatticeMsgType.secure,
+    id: msgId,
+    len: payload.length,
+  };
   const req: LatticeSecureRequest = {
-    protocolVersion: LatticeProtocolVersion.v1,
-    msgType: LatticeMsgType.secure,
-    msgId,
-    payloadLen: payload.length,
+    header,
     payload,
-    checksum: checksum(payload),
   };
 
   // Now serialize the whole message
   const msg = Buffer.alloc(szs.requestMsg);
   let off = 0;
   // Header
-  msg.writeUInt8(req.protocolVersion, off);
+  msg.writeUInt8(req.header.version, off);
   off += 1;
-  msg.writeUInt8(req.msgType, off);
+  msg.writeUInt8(req.header.type, off);
   off += 1;
-  req.msgId.copy(msg, off);
-  off += req.msgId.length;
-  msg.writeUInt16LE(req.payloadLen, off);
+  req.header.id.copy(msg, off);
+  off += req.header.id.length;
+  msg.writeUInt16LE(req.header.len, off);
   off += 2;
   // Payload
   msg.writeUInt8(req.payload.requestType, off);
   off += 1;
   req.payload.data.copy(msg, off);
   off += req.payload.data.length;
-  // Footer
-  msg.writeUInt32LE(req.checksum, off);
-  off += 4;
 
   // We have our serialized secure message!
   return msg;
@@ -239,33 +238,32 @@ function deserializeResponseMsgPayloadData(
 
   // Deserialize the message
   const checksumOffset = 9 + szs.responsePayloadData;
+  const respHeader: LatticeMessageHeader = {
+    version: msg.readUInt8(0),
+    type: msg.readUInt8(1),
+    id: msg.slice(2, 6),
+    len: msg.readUInt16LE(6),
+  };
   const resp: LatticeSecureResponse = {
-    protocolVersion: msg.readUInt8(0),
-    msgType: msg.readUInt8(1),
-    msgId: msg.slice(2, 6),
-    payloadLen: msg.readUInt16LE(6),
+    header: respHeader,
     payload: {
       responseCode: msg.readUInt8(8),
       data: msg.slice(9, checksumOffset),
-    },
-    checksum: msg.readUInt32LE(checksumOffset)
+    }
   }
 
   // Validate message
-  if (resp.protocolVersion !== LatticeProtocolVersion.v1) {
+  if (resp.header.version !== LatticeProtocolVersion.v1) {
     throw new Error('Wrong protocol version in Lattice response');
   }
-  if (resp.msgType !== LatticeMsgType.response) {
+  if (resp.header.type !== LatticeMsgType.response) {
     throw new Error('Wrong message code in Lattice response')
   }
-  if (!resp.msgId.equals(msgId)) {
+  if (!resp.header.id.equals(msgId)) {
     throw new Error('Mismatch in Lattice response message id - need resync');
   }
-  if (resp.payloadLen > 1 + resp.payload.data.length) {
+  if (resp.header.len > 1 + resp.payload.data.length) {
     throw new Error('Wrong payload length returned from Lattice');
-  }
-  if (resp.checksum !== checksum(msg.slice(0, checksumOffset))) {
-    throw new Error('Checksum mismatch in Lattice response');
   }
   // Throw an error if response is not successful
   if (resp.payload.responseCode !== LatticeResponseCode.success) {
