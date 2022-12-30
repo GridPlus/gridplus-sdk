@@ -42,8 +42,6 @@ export const validateFetchActiveWallet = (
 };
 
 export const decodeFetchActiveWalletResponse = (data: Buffer) => {
-  // Skip 65byte pubkey prefix. WalletDescriptor contains 32byte id + 4byte flag + 35byte name
-  const walletData = data.slice(65);
   // Read the external wallet data first. If it is non-null, the external wallet will be the
   // active wallet of the device and we should save it. If the external wallet is blank, it means
   // there is no card present and we should save and use the interal wallet. If both wallets are
@@ -65,18 +63,18 @@ export const decodeFetchActiveWalletResponse = (data: Buffer) => {
     },
   };
   let off = 0;
-  activeWallets.internal.uid = walletData.slice(off, off + 32);
-  activeWallets.internal.capabilities = walletData.readUInt32BE(off + 32);
-  activeWallets.internal.name = walletData.slice(
+  activeWallets.internal.uid = data.slice(off, off + 32);
+  activeWallets.internal.capabilities = data.readUInt32BE(off + 32);
+  activeWallets.internal.name = data.slice(
     off + 36,
     off + walletDescriptorLen,
   );
   // Offset the first item
   off += walletDescriptorLen;
   // External
-  activeWallets.external.uid = walletData.slice(off, off + 32);
-  activeWallets.external.capabilities = walletData.readUInt32BE(off + 32);
-  activeWallets.external.name = walletData.slice(
+  activeWallets.external.uid = data.slice(off, off + 32);
+  activeWallets.external.capabilities = data.readUInt32BE(off + 32);
+  activeWallets.external.name = data.slice(
     off + 36,
     off + walletDescriptorLen,
   );

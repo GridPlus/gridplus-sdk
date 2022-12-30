@@ -36,7 +36,9 @@ export async function pair (req: PairRequestParams) {
 export const validatePairRequest = (
   req: PairRequestParams
 ) => {
-  validateConnectedClient(req.client);
+  // If we are calling `pair`, we can assume there is no wallet and we do not
+  // need to validate it.
+  validateConnectedClient(req.client, false);
 }
 
 export const encodePairRequest = (

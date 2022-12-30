@@ -1,8 +1,8 @@
 import bitwise from 'bitwise';
 import { Byte, UInt4 } from 'bitwise/types';
-import { EXTERNAL } from '../constants';
 import {
   encryptedSecureRequest,
+  LatticeGetAddressesFlag,
   LatticeSecureEncryptedRequestType,
   ProtocolConstants
 } from '../protocol';
@@ -34,7 +34,7 @@ export async function getAddresses (
     LatticeSecureEncryptedRequestType.getAddresses
   );
   // Decode the response data and return
-  return decodeGetAddresses(decRespPayloadData, req.flag)
+  return decodeGetAddressesResponse(decRespPayloadData, req.flag)
 }
 
 export const validateGetAddressesRequest = (
@@ -54,9 +54,9 @@ export const encodeGetAddressesRequest = (
   const isPubkeyOnly =
     flags.indexOf(req.flag) > -1 &&
     (
-      req.flag === EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB ||
-      req.flag === EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB ||
-      req.flag === EXTERNAL.GET_ADDR_FLAGS.BLS12_381_G1_PUB
+      req.flag === LatticeGetAddressesFlag.ed25519Pubkey ||
+      req.flag === LatticeGetAddressesFlag.secp256k1Pubkey ||
+      req.flag === LatticeGetAddressesFlag.bls12_381Pubkey
     );
   if (!isPubkeyOnly && !isValidAssetPath(req.startPath, fwConstants)) {
     throw new Error(
@@ -115,28 +115,31 @@ export const encodeGetAddressesRequest = (
  * @internal
  * @return an array of address strings or pubkey buffers
  */
-export const decodeGetAddresses = (data: any, flag: number): Buffer[] => {
-  let off = 65; // Skip 65 byte pubkey prefix
+export const decodeGetAddressesResponse = (data: any, flag: number): Buffer[] => {
+  let off = 0;
   // Look for addresses until we reach the end (a 4 byte checksum)
   const addrs: any[] = [];
   // Pubkeys are formatted differently in the response
-  const { ED25519_PUB, SECP256K1_PUB, BLS12_381_G1_PUB } = EXTERNAL.GET_ADDR_FLAGS;
-  const arePubkeys = flag === ED25519_PUB || flag === SECP256K1_PUB || flag === BLS12_381_G1_PUB;
+  const arePubkeys = (
+    flag === LatticeGetAddressesFlag.secp256k1Pubkey ||
+    flag === LatticeGetAddressesFlag.ed25519Pubkey ||
+    flag === LatticeGetAddressesFlag.bls12_381Pubkey
+  );
   if (arePubkeys) {
     off += 1; // skip uint8 representing pubkey type
   }
-  const respDataLength = ProtocolConstants.msgSizes.secure.encrypted.response.data[
+  const respDataLength = ProtocolConstants.msgSizes.secure.data.response.encrypted[
     LatticeSecureEncryptedRequestType.getAddresses
   ];
-  while (off + 4 < respDataLength) {
+  while (off < respDataLength) {
     if (arePubkeys) {
       // Pubkeys are shorter and are returned as buffers
       const pubBytes = data.slice(off, off + 65);
       const isEmpty = pubBytes.every((byte: number) => byte === 0x00);
-      if (!isEmpty && flag === ED25519_PUB) {
+      if (!isEmpty && flag === LatticeGetAddressesFlag.ed25519Pubkey) {
         // ED25519 pubkeys are 32 bytes
         addrs.push(pubBytes.slice(0, 32));
-      } else if (!isEmpty && flag === BLS12_381_G1_PUB) {
+      } else if (!isEmpty && flag === LatticeGetAddressesFlag.bls12_381Pubkey) {
         // BLS12_381_G1 keys are 48 bytes
         addrs.push(pubBytes.slice(0, 48));
       } else if (!isEmpty) {

@@ -114,6 +114,7 @@ describe('[BLS keys]', () => {
     await removeSeed(client);
     await loadSeed(client, origWalletSeed);
   })
+
 })
 
 //=========================================================

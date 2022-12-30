@@ -2,7 +2,6 @@ import { sha256 } from 'hash.js';
 import bitcoin from '../bitcoin';
 import { 
   CURRENCIES, 
-  signingSchema 
 } from '../constants';
 import ethereum from '../ethereum';
 import { 
@@ -11,6 +10,7 @@ import {
 import {
   encryptedSecureRequest,
   LatticeSecureEncryptedRequestType,
+  LatticeSignSchema,
 } from '../protocol';
 import {
   buildTransaction,
@@ -49,7 +49,7 @@ export async function sign (
   const decRespPayloadData = await encryptedSecureRequest(
     req.client,
     data,
-    LatticeSecureEncryptedRequestType.addKvRecords
+    LatticeSecureEncryptedRequestType.sign
   );
   // If this request has multiple payloads, we need to recurse
   // so that we can make the next request.
@@ -97,7 +97,7 @@ export const encodeSignRequest = ({
   if (cachedData && nextCode) {
     request = cachedData;
     reqPayload = Buffer.concat([nextCode, request.extraDataPayloads.shift()]);
-    schema = signingSchema.EXTRA_DATA;
+    schema = LatticeSignSchema.extraData;
   } else {
     reqPayload = request.payload;
     schema = request.schema;
@@ -129,22 +129,16 @@ export const decodeSignResponse = ({
   isGeneric,
   currency,
 }: DecodeSignResponseParams): SignData => {
-  const PUBKEY_PREFIX_LEN = 65;
-  const PKH_PREFIX_LEN = 20;
-  let off = PUBKEY_PREFIX_LEN; // Skip past pubkey prefix
-
-  const DERLength = 74; // max size of a DER signature -- all Lattice sigs are this long
-  const SIGS_OFFSET = 10 * DERLength; // 10 signature slots precede 10 pubkey slots
-  const PUBKEYS_OFFSET = PUBKEY_PREFIX_LEN + PKH_PREFIX_LEN + SIGS_OFFSET;
-
-  // Get the change data if we are making a BTC transaction
-  let changeRecipient;
+  let off = 0;
+  const derSigLen = 74; // DER signatures are 74 bytes
   if (currency === CURRENCIES.BTC) {
     const btcRequest = request as BitcoinSignRequest;
+    const pkhLen = 20; // Pubkeyhashes are 20 bytes
+    const sigsLen = 740; // Up to 10x DER signatures
     const changeVersion = bitcoin.getAddressFormat(btcRequest.origData.changePath);
-    const changePubKeyHash = data.slice(off, off + PKH_PREFIX_LEN);
-    off += PKH_PREFIX_LEN;
-    changeRecipient = bitcoin.getBitcoinAddress(
+    const changePubKeyHash = data.slice(off, off + pkhLen);
+    off += pkhLen;
+    const changeRecipient = bitcoin.getBitcoinAddress(
       changePubKeyHash,
       changeVersion,
     );
@@ -163,13 +157,13 @@ export const decodeSignResponse = ({
       const sigStart = off;
       const sigEnd = off + 2 + data[off + 1];
       sigs.push(data.slice(sigStart, sigEnd));
+      off += derSigLen;
       // Next, shift by the full set of signatures to hit the respective pubkey NOTE: The data
       // returned is: [<sig0>, <sig1>, ... <sig9>][<pubkey0>, <pubkey1>, ... <pubkey9>]
-      const pubStart = n * compressedPubLength + PUBKEYS_OFFSET;
-      const pubEnd = (n + 1) * compressedPubLength + PUBKEYS_OFFSET;
+      const pubStart = n * compressedPubLength + sigsLen;
+      const pubEnd = (n + 1) * compressedPubLength + sigsLen;
       pubkeys.push(data.slice(pubStart, pubEnd));
       // Update offset to hit the next signature slot
-      off += DERLength;
       n += 1;
     }
     // Build the transaction data to be serialized
@@ -219,7 +213,7 @@ export const decodeSignResponse = ({
     };
   } else if (currency === CURRENCIES.ETH && !isGeneric) {
     const sig = parseDER(data.slice(off, off + 2 + data[off + 1]));
-    off += DERLength;
+    off += derSigLen;
     const ethAddr = data.slice(off, off + 20);
     // Determine the `v` param and add it to the sig before returning
     const { rawTx, sigWithV } = ethereum.buildEthRawTx(request, sig, ethAddr);
@@ -235,7 +229,7 @@ export const decodeSignResponse = ({
     };
   } else if (currency === CURRENCIES.ETH_MSG) {
     const sig = parseDER(data.slice(off, off + 2 + data[off + 1]));
-    off += DERLength;
+    off += derSigLen;
     const signer = data.slice(off, off + 20);
     const validatedSig = ethereum.validateEthereumMsgResponse(
       { signer, sig },

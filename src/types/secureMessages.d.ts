@@ -11,19 +11,16 @@ interface LatticeSecureRequestPayload {
   // [uint8]
   requestType: LatticeSecureMsgType;
   // Request data
-  // [1700 bytes]
+  // [connect = 65 bytes, encrypted = 1732] 
   data: Buffer;
 }
 
-interface LatticeSecureResponse {
-  // Message header
-  header: LatticeMessageHeader;
-  // Response data
-  // [3393 bytes]
-  payload: LatticeSecureResponsePayload;
+interface LatticeSecureConnectResponsePayload {
+  // [214 bytes]
+  data: Buffer;
 }
 
-interface LatticeSecureResponsePayload {
+interface LatticeSecureEncryptedResponsePayload {
   // Error code
   responseCode: LatticeResponseCode;
   // Response data
@@ -42,7 +39,7 @@ interface LatticeSecureEncryptedRequestPayloadData {
   // [uint32]
   ephemeralId: number;
   // Encrypted data envelope
-  // [1696 bytes]
+  // [1728 bytes]
   encryptedData: Buffer;
 }
 

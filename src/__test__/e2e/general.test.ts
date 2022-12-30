@@ -153,6 +153,7 @@ describe('General', () => {
       const { req } = await buildEthSignRequest(client);
       await client.sign(req);
     });
+    
     it('should sign newer transactions', async () => {
       const { txData, req, common } = await buildEthSignRequest(
         client,
@@ -187,6 +188,7 @@ describe('General', () => {
         `${ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined]}`,
       );
     });
+
   });
 
   describe('Should sign Bitcoin transactions', () => {
@@ -346,4 +348,5 @@ describe('General', () => {
       expect(sigResp.changeRecipient?.slice(0, 2)).toEqual('tb');
     });
   });
+
 });

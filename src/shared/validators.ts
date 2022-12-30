@@ -84,13 +84,15 @@ export const validateWallet = (wallet?: Wallet): Wallet => {
   return wallet;
 };
 
-export const validateConnectedClient = (client: Client) => {
+export const validateConnectedClient = (client: Client, hasWallet = true) => {
   validateAppName(client.pairingName);
   validateEphemeralPub(client.ephemeralPub);
   validateSharedSecret(client.sharedSecret);
   validateUrl(client.url);
-  validateWallet(client.getActiveWallet());
   validateFwConstants(client.getFwConstants());
+  if (hasWallet) {
+    validateWallet(client.getActiveWallet());
+  }
 }
 
 export const validateEphemeralPub = (ephemeralPub?: Buffer) => {

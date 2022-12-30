@@ -4,7 +4,7 @@ import {
   LatticeSignBlsDst,
   LatticeSignCurve,
   LatticeSignEncoding,
-  LatticeSignHashe,
+  LatticeSignHash,
 } from './protocol/latticeConstants';
 
 /**
@@ -21,9 +21,9 @@ export const EXTERNAL = {
   // Options for building general signing requests
   SIGNING: {
     HASHES: {
-      NONE: LatticeSignHashe.none,
-      KECCAK256: LatticeSignHashe.keccak256,
-      SHA256: LatticeSignHashe.sha256,
+      NONE: LatticeSignHash.none,
+      KECCAK256: LatticeSignHash.keccak256,
+      SHA256: LatticeSignHash.sha256,
     },
     CURVES: {
       SECP256K1: LatticeSignCurve.secp256k1,
@@ -80,6 +80,7 @@ const CURRENCIES = {
 }
 
 /** @internal */
+// THIS NEEDS TO BE A PROTOCOL CONSTANT TOO
 const signingSchema = {
   BTC_TRANSFER: 0,
   ETH_TRANSFER: 1,

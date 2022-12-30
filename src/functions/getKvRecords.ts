@@ -65,8 +65,8 @@ export const decodeGetKvRecordsResponse = (
   data: Buffer,
   fwConstants: FirmwareConstants,
 ) => {
-  let off = 65; // Skip 65 byte pubkey prefix
-  const nTotal = parseInt(data.slice(off, off + 4).toString('hex'), 16);
+  let off = 0;
+  const nTotal = data.readUInt32BE(off);
   off += 4;
   const nFetched = parseInt(data.slice(off, off + 1).toString('hex'), 16);
   off += 1;
@@ -75,9 +75,9 @@ export const decodeGetKvRecordsResponse = (
   const records: any = [];
   for (let i = 0; i < nFetched; i++) {
     const r: any = {};
-    r.id = parseInt(data.slice(off, off + 4).toString('hex'), 16);
+    r.id = data.readUInt32BE(off);
     off += 4;
-    r.type = parseInt(data.slice(off, off + 4).toString('hex'), 16);
+    r.type = data.readUInt32BE(off);
     off += 4;
     r.caseSensitive =
       parseInt(data.slice(off, off + 1).toString('hex'), 16) === 1

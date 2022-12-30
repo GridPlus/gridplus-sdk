@@ -38,7 +38,7 @@ export async function fetchEncData (
   const decRespPayloadData = await encryptedSecureRequest(
     req.client,
     data,
-    LatticeSecureEncryptedRequestType.getWallets
+    LatticeSecureEncryptedRequestType.fetchEncryptedData
   );
   // Decode response data and return
   return decodeFetchEncData(decRespPayloadData, req);
@@ -94,7 +94,7 @@ export const encodeFetchEncDataRequest = (
 }
 
 export const decodeFetchEncData = (data: Buffer, req: FetchEncDataRequestFunctionParams): Buffer => {
-  let off = 65; // Skip 65 byte pubkey prefix
+  let off = 0;
   if (req.schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
     const respData = {} as EIP2335KeyExportData;
     const { CIPHERTEXT, SALT, CHECKSUM, IV, PUBKEY } = ENC_DATA_RESP_SZ.EIP2335;

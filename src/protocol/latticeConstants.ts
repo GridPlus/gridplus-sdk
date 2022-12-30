@@ -44,12 +44,21 @@ export enum LatticeSecureEncryptedRequestType {
 }
 
 export enum LatticeGetAddressesFlag {
+  none = 0, // For formatted addresses
   secp256k1Pubkey = 3,
   ed25519Pubkey = 4,
   bls12_381Pubkey = 5,
 }
 
-export enum LatticeSignHashe {
+export enum LatticeSignSchema {
+  bitcoin = 0,
+  ethereum = 1, // Deprecated
+  ethereumMsg = 3,
+  extraData = 4,
+  generic = 5,
+}
+
+export enum LatticeSignHash {
   none = 0,
   keccak256 = 1,
   sha256 = 2,
@@ -131,52 +140,59 @@ export const ProtocolConstants = {
       'Request failed - needs resync',
   },
   msgSizes: {
+    // General message header size. Valid for all Lattice messages
+    header: 8,
+    // Checksum must be appended to each message
+    checksum: 4,
+    // Lattice secure message constants. All requests from this SDK
+    // are secure messages.
     secure: {
-      requestMsg: 1713,
-      requestPayload: 1701,
-      requestPayloadData: 1700,
-      responseMsg: 3405,
-      responsePayload: 3393,
-      // NOTE: Only the first 1696 of these bytes are used
-      // by firmware. The data is larger due to a bug
-      // in a firmware type which causes the type to be
-      // twice as large as it should be. The latter half
-      // of the response data is always empty.
-      // https://github.com/GridPlus/lattice-firmware/issues/2636
-      responsePayloadData: 3392,
-      responsePayloadDataUsed: 1696,
-      connect: {
+      // Sizes of full payloads for secure messages
+      payload: {
         request: {
-          data: 65,
-        },
-        response: {
-          data: 215,
-        },
+          // [ requestType (1 byte) | pubkey (65 bytes) ]
+          connect: 66,
+          // [ requestType (1 byte) | ephemeralId (4 bytes) | encryptedData (1728 bytes) ]
+          encrypted: 1733,
+        }
       },
-      encrypted: {
+      // Sizes for data inside secure message payloads
+      data: {
+        // All requests also have a `requestCode`, which is omitted 
+        // from these constants.
         request: {
-          // Prior to encrypting the payload, unencrypted data will be written
-          // with size depending on the type of request being made.
-          // NOTE: All requests also have requestType (1 byte) and checksum
-          // (4 bytes), which are excluded from these sizes.
-          data: {
+          connect: 65,
+          encrypted: {
+            // All encrypted requests are encrypted into a 1728 byte buffer
+            encryptedData: 1728,
+            // Individual request types have different data sizes.
             [LatticeSecureEncryptedRequestType.finalizePairing]: 99,
-            [LatticeSecureEncryptedRequestType.getAddresses]: 58,
+            [LatticeSecureEncryptedRequestType.getAddresses]: 54,
             [LatticeSecureEncryptedRequestType.sign]: 1680,
             [LatticeSecureEncryptedRequestType.getWallets]: 0,
             [LatticeSecureEncryptedRequestType.getKvRecords]: 9,
             [LatticeSecureEncryptedRequestType.addKvRecords]: 1391,
             [LatticeSecureEncryptedRequestType.removeKvRecords]: 405,
-            [LatticeSecureEncryptedRequestType.fetchEncryptedData]: 98,
+            [LatticeSecureEncryptedRequestType.fetchEncryptedData]: 1025,
             [LatticeSecureEncryptedRequestType.test]: 506,
           }
         },
+        // All responses also have a `responseCode`, which is omitted
+        // from these constants.
         response: {
-          // Once decrypted, the data size of the response
-          // payload will be determined by the request type.
-          // NOTE: All requests also have ephemeralPublicKey (65 bytes) and
-          // checksum (4 bytes), which are excluded from these sizes.
-          data: {
+          connect: 214,
+          encrypted: {
+            // Encrypted responses are as follows:
+            // encryptedData (1728) | empty (1728)
+            // The latter half is empty due to an invalid type definition
+            // in Lattice firmware. (Someone made a C `struct` instead of
+            // a `union`, oops).
+            payload: 3456,
+            encryptedData: 1728,
+            // Once decrypted, the data size of the response
+            // payload will be determined by the request type.
+            // NOTE: All requests also have ephemeralPublicKey (65 bytes) and
+            // checksum (4 bytes), which are excluded from these sizes.
             [LatticeSecureEncryptedRequestType.finalizePairing]: 0,
             [LatticeSecureEncryptedRequestType.getAddresses]: 1290,
             [LatticeSecureEncryptedRequestType.sign]: 1090,
@@ -185,7 +201,7 @@ export const ProtocolConstants = {
             [LatticeSecureEncryptedRequestType.addKvRecords]: 0,
             [LatticeSecureEncryptedRequestType.removeKvRecords]: 0,
             [LatticeSecureEncryptedRequestType.fetchEncryptedData]: 1608,
-            [LatticeSecureEncryptedRequestType.test]: 1446,
+            [LatticeSecureEncryptedRequestType.test]: 1646,
           }
         }
       }
