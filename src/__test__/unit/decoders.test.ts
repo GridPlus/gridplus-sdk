@@ -67,8 +67,14 @@ describe('decoders', () => {
   });
 
   test('fetchEncryptedData', () => {
+    // This test is different than the others because one part of the data is
+    // randomly generated (UUID) before the response is returned. 
+    // We will just zero it out for testing purposes.
+    const decoded = decodeFetchEncData(fetchEncryptedDataDecoderData, fetchEncryptedDataRequest);
+    const decodedDerp = JSON.parse(decoded.toString())
+    decodedDerp.uuid = '00000000-0000-0000-0000-000000000000';
     expect(
-      decodeFetchEncData(fetchEncryptedDataDecoderData, fetchEncryptedDataRequest),
+      Buffer.from(JSON.stringify(decodedDerp))
     ).toMatchSnapshot();
   });
 
