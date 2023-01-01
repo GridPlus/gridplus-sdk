@@ -55,12 +55,9 @@ export async function sign (
   // so that we can make the next request.
   // It is chained to the first request using `nextCode`
   if (hasExtraPayloads) {
-    return await req.client.sign({
-      data: req.data,
-      currency: req.currency,
-      cachedData: request,
-      nextCode: decRespPayloadData.slice(65, 73),
-    });
+    req.cachedData = requestData;
+    req.nextCode = decRespPayloadData.slice(0, 8);
+    return await sign(req);
   }
   // If this is the only (or final) request,
   // decode response data and return
