@@ -38,7 +38,7 @@ export async function fetchActiveWallet (
 export const validateFetchActiveWallet = (
   req: FetchActiveWalletRequestFunctionParams
 ) => {
-  validateConnectedClient(req.client);
+  validateConnectedClient(req.client, false);
 };
 
 export const decodeFetchActiveWalletResponse = (data: Buffer) => {
