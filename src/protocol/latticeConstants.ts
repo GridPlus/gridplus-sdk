@@ -154,6 +154,19 @@ export const ProtocolConstants = {
           connect: 66,
           // [ requestType (1 byte) | ephemeralId (4 bytes) | encryptedData (1728 bytes) ]
           encrypted: 1733,
+        },
+        // Note that the response payload always has status code as the
+        // first byte. This byte is removed as part of `request`, inside
+        // `parseLattice1Response`. These constants include the status 
+        // code byte.
+        response: {
+          connect: 215,
+          // Encrypted responses are as follows:
+          // encryptedData (1728) | empty (1728)
+          // The latter half is empty due to an invalid type definition
+          // in Lattice firmware. (Someone made a C `struct` instead of
+          // a `union`, oops).
+          encrypted: 3457,
         }
       },
       // Sizes for data inside secure message payloads
@@ -180,14 +193,7 @@ export const ProtocolConstants = {
         // All responses also have a `responseCode`, which is omitted
         // from these constants.
         response: {
-          connect: 214,
           encrypted: {
-            // Encrypted responses are as follows:
-            // encryptedData (1728) | empty (1728)
-            // The latter half is empty due to an invalid type definition
-            // in Lattice firmware. (Someone made a C `struct` instead of
-            // a `union`, oops).
-            payload: 3456,
             encryptedData: 1728,
             // Once decrypted, the data size of the response
             // payload will be determined by the request type.

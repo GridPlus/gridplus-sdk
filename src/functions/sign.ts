@@ -14,7 +14,6 @@ import {
 } from '../protocol';
 import {
   buildTransaction,
-  request
 } from '../shared/functions';
 import {
   validateConnectedClient,

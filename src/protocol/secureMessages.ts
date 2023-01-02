@@ -71,7 +71,7 @@ export async function connectSecureRequest(
   // Send request to the Lattice
   const url = `${client.baseUrl}/${deviceId}`;
   const resp = await request({ url, payload: msg });
-  if (resp.length !== szs.data.response.connect) {
+  if (resp.length !== szs.payload.response.connect - 1) {
     throw new Error('Wrong Lattice response message size.');
   }
   // Pack into struct and return data
@@ -126,7 +126,7 @@ export async function encryptedSecureRequest(
   });
   
   // Deserialize the response payload data
-  if (resp.length !== szs.data.response.encrypted.payload) {
+  if (resp.length !== szs.payload.response.encrypted - 1) {
     throw new Error('Wrong Lattice response message size.');
   }
   
