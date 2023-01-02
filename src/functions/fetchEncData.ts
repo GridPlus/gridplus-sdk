@@ -12,6 +12,7 @@ import { getPathStr } from '../shared/utilities';
 import {
   validateConnectedClient,
   validateStartPath,
+  validateWallet,
 } from '../shared/validators';
 
 const { ENC_DATA } = EXTERNAL;
@@ -32,8 +33,9 @@ export async function fetchEncData({
   schema,
   params,
 }: FetchEncDataRequestFunctionParams): Promise<Buffer> {
-  const { url, sharedSecret, ephemeralPub, activeWallet, fwVersion } =
+  const { url, sharedSecret, ephemeralPub, fwVersion } =
     validateConnectedClient(client);
+  const activeWallet = validateWallet(client.getActiveWallet());
   validateFetchEncDataRequest({ params });
 
   const data = encodeFetchEncDataRequest({

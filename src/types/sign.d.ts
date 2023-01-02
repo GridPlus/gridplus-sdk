@@ -1,5 +1,13 @@
+interface SigningPayload {
+  signerPath: SigningPath;
+  payload: (Uint8Array | Buffer | Buffer[]) | string;
+  curveType: number;
+  hashType: number;
+  encodingType?: number;
+}
+
 interface SignRequestParams {
-  data: SigningPayload;
+  data: SigningPayload | BitcoinSignPayload;
   currency?: Currency;
   cachedData?: any;
   nextCode?: Buffer;
@@ -42,7 +50,7 @@ interface EthMsgSignRequest extends SignRequest {
 
 interface BitcoinSignRequest extends SignRequest {
   origData: {
-    prevOuts: any;
+    prevOuts: PreviousOutput[];
     recipient: string;
     value: number;
     fee: number;
@@ -51,6 +59,21 @@ interface BitcoinSignRequest extends SignRequest {
   };
   changeData?: { value: number };
 }
+
+type PreviousOutput = {
+  txHash: string;
+  value: number;
+  index: number;
+  signerPath: number[];
+};
+
+type BitcoinSignPayload = {
+  prevOuts: PreviousOutput[];
+  recipient: string;
+  value: number;
+  fee: number;
+  changePath: number[];
+};
 
 interface DecodeSignResponseParams {
   data: Buffer;

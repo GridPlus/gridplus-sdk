@@ -1,6 +1,6 @@
 type Currency = keyof typeof CURRENCIES;
 
-type SigningPath = [number, number, number, number, number];
+type SigningPath = number[];
 
 interface SignData {
   tx?: string;
@@ -28,14 +28,6 @@ interface TransactionPayload {
   data: string;
   maxFeePerGas: number;
   maxPriorityFeePerGas: number;
-}
-
-interface SigningPayload {
-  signerPath: SigningPath;
-  payload: TransactionPayload;
-  curveType: number;
-  hashType: number;
-  encodingType: number;
 }
 
 interface Wallet {

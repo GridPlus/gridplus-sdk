@@ -502,6 +502,49 @@ export const DEFAULT_ACTIVE_WALLETS: ActiveWallets = {
   },
 };
 
+/** @internal */
+export const DEFAULT_ETH_DERIVATION = [
+  HARDENED_OFFSET + 44,
+  HARDENED_OFFSET + 60,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
+
+/** @internal */
+export const BTC_LEGACY_DERIVATION = [
+  HARDENED_OFFSET + 44,
+  HARDENED_OFFSET + 0,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
+
+/** @internal */
+export const BTC_SEGWIT_DERIVATION = [
+  HARDENED_OFFSET + 84,
+  HARDENED_OFFSET,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
+
+/** @internal */
+export const BTC_WRAPPED_SEGWIT_DERIVATION = [
+  HARDENED_OFFSET + 49,
+  HARDENED_OFFSET,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
+
+/** @internal */
+export const SOLANA_DERIVATION = [
+  0x80000000 + 44,
+  0x80000000 + 501,
+  0x80000000,
+];
+
 export {
   ASCII_REGEX,
   getFwVersionConst,
