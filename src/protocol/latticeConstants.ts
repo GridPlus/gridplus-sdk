@@ -92,8 +92,8 @@ export const ProtocolConstants = {
   // fine because each encryption/decryption uses a unique encryption
   // secret (derived from the per-message ephemeral key pair).
   aesIv: [
-    0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 
-    0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64,
+    0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73, 0x73,
+    0x77, 0x6f, 0x72, 0x64,
   ],
   // Constant size of address buffers from the Lattice.
   // Note that this size also captures public keys returned
@@ -106,38 +106,23 @@ export const ProtocolConstants = {
   },
   // Response types, codes, and error messages
   responseMsg: {
-    [LatticeResponseCode.success]: 
-      '',
-    [LatticeResponseCode.invalidMsg]: 
-      'Invalid Request',
-    [LatticeResponseCode.unsupportedVersion]: 
-      'Unsupported Version',
-    [LatticeResponseCode.deviceBusy]: 
-      'Device Busy',
-    [LatticeResponseCode.userTimeout]: 
-      'Timeout waiting for user',
-    [LatticeResponseCode.userDeclined]: 
-      'Request declined by user',
-    [LatticeResponseCode.pairFailed]: 
-      'Pairing failed',
-    [LatticeResponseCode.pairDisabled]: 
-      'Pairing is currently disabled',
-    [LatticeResponseCode.permissionDisabled]: 
+    [LatticeResponseCode.success]: '',
+    [LatticeResponseCode.invalidMsg]: 'Invalid Request',
+    [LatticeResponseCode.unsupportedVersion]: 'Unsupported Version',
+    [LatticeResponseCode.deviceBusy]: 'Device Busy',
+    [LatticeResponseCode.userTimeout]: 'Timeout waiting for user',
+    [LatticeResponseCode.userDeclined]: 'Request declined by user',
+    [LatticeResponseCode.pairFailed]: 'Pairing failed',
+    [LatticeResponseCode.pairDisabled]: 'Pairing is currently disabled',
+    [LatticeResponseCode.permissionDisabled]:
       'Automated signing is currently disabled',
-    [LatticeResponseCode.internalError]: 
-      'Device Error',
-    [LatticeResponseCode.gceTimeout]: 
-      'Device Timeout',
-    [LatticeResponseCode.wrongWallet]: 
-      'Active wallet does not match request',
-    [LatticeResponseCode.deviceLocked]: 
-      'Device Locked',
-    [LatticeResponseCode.disabled]: 
-      'Feature Disabled',
-    [LatticeResponseCode.already]: 
-      'Record already exists on device',
-    [LatticeResponseCode.invalidEphemId]: 
-      'Request failed - needs resync',
+    [LatticeResponseCode.internalError]: 'Device Error',
+    [LatticeResponseCode.gceTimeout]: 'Device Timeout',
+    [LatticeResponseCode.wrongWallet]: 'Active wallet does not match request',
+    [LatticeResponseCode.deviceLocked]: 'Device Locked',
+    [LatticeResponseCode.disabled]: 'Feature Disabled',
+    [LatticeResponseCode.already]: 'Record already exists on device',
+    [LatticeResponseCode.invalidEphemId]: 'Request failed - needs resync',
   },
   msgSizes: {
     // General message header size. Valid for all Lattice messages
@@ -157,7 +142,7 @@ export const ProtocolConstants = {
         },
         // Note that the response payload always has status code as the
         // first byte. This byte is removed as part of `request`, inside
-        // `parseLattice1Response`. These constants include the status 
+        // `parseLattice1Response`. These constants include the status
         // code byte.
         response: {
           connect: 215,
@@ -167,11 +152,11 @@ export const ProtocolConstants = {
           // in Lattice firmware. (Someone made a C `struct` instead of
           // a `union`, oops).
           encrypted: 3457,
-        }
+        },
       },
       // Sizes for data inside secure message payloads
       data: {
-        // All requests also have a `requestCode`, which is omitted 
+        // All requests also have a `requestCode`, which is omitted
         // from these constants.
         request: {
           connect: 65,
@@ -188,7 +173,7 @@ export const ProtocolConstants = {
             [LatticeSecureEncryptedRequestType.removeKvRecords]: 405,
             [LatticeSecureEncryptedRequestType.fetchEncryptedData]: 1025,
             [LatticeSecureEncryptedRequestType.test]: 506,
-          }
+          },
         },
         // All responses also have a `responseCode`, which is omitted
         // from these constants.
@@ -208,9 +193,9 @@ export const ProtocolConstants = {
             [LatticeSecureEncryptedRequestType.removeKvRecords]: 0,
             [LatticeSecureEncryptedRequestType.fetchEncryptedData]: 1608,
             [LatticeSecureEncryptedRequestType.test]: 1646,
-          }
-        }
-      }
-    }
-  }
-}
+          },
+        },
+      },
+    },
+  },
+} as const;

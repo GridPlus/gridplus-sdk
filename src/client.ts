@@ -38,7 +38,7 @@ export class Client {
   public url?: string;
   /** `name` is a human readable string associated with this app on the Lattice */
   private name: string;
-  private key: KeyPair;
+  public key: KeyPair;
   /**`privKey` is used to generate a keypair, which is used for maintaining an encrypted messaging channel with the target Lattice  */
   private privKey: Buffer | string;
   private retryCount: number;
@@ -112,7 +112,7 @@ export class Client {
   /**
    * Get the pairing name for this client instance
    */
-  public get pairingName () {
+  public getAppName() {
     return this.name;
   }
 
@@ -303,6 +303,32 @@ export class Client {
       };
     }
     return { fix: 0, minor: 0, major: 0 };
+  }
+
+  /**
+   * Handles the mutation of Client state in the primary functions.
+   */
+  public mutate({
+    deviceId,
+    ephemeralPub,
+    url,
+    isPaired,
+    fwVersion,
+    activeWallets,
+  }: {
+    deviceId?: string;
+    ephemeralPub?: Buffer;
+    url?: string;
+    isPaired?: boolean;
+    fwVersion?: Buffer;
+    activeWallets?: ActiveWallets;
+  }) {
+    if (deviceId !== undefined) this.deviceId = deviceId;
+    if (ephemeralPub !== undefined) this.ephemeralPub = ephemeralPub;
+    if (url !== undefined) this.url = url;
+    if (isPaired !== undefined) this.isPaired = isPaired;
+    if (fwVersion !== undefined) this.fwVersion = fwVersion;
+    if (activeWallets !== undefined) this.activeWallets = activeWallets;
   }
 
   /**

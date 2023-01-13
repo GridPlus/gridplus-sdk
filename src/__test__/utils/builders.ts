@@ -7,11 +7,14 @@ import { AbiCoder } from '@ethersproject/abi';
 import { keccak256 } from 'js-sha3';
 import randomWords from 'random-words';
 import { decode as rlpDecode, encode as rlpEncode } from 'rlp';
-import { Client } from '../../client';
 import { Calldata, Constants } from '../..';
-import { CURRENCIES, HARDENED_OFFSET } from '../../constants';
+import { Client } from '../../client';
+import {
+  CURRENCIES,
+  getFwVersionConst,
+  HARDENED_OFFSET
+} from '../../constants';
 import { randomBytes } from '../../util';
-import { TestRequestPayload } from '../../types/utils';
 import { MSG_PAYLOAD_METADATA_SZ } from './constants';
 import { convertDecoderToEthers } from './ethers';
 import { getN, getPrng } from './getters';
@@ -76,30 +79,48 @@ export const buildFirmwareConstants = (...overrides: any) => {
   } as FirmwareConstants;
 };
 
-export const buildGetAddressesObject = ({ ...overrides }) => ({
-  startPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
-  n: 1,
-  flag: 1,
-  client: buildMockConnectedClient(),
+export const buildWallet = (overrides?) => ({
+  uid: Buffer.from(
+    '162b56efe561c12bc93f703dc7026b3ec3d53923270c9259e2b08015fb9defd2',
+    'hex',
+  ),
+  name: Buffer.from('test'),
+  capabilities: 1,
+  external: true,
   ...overrides,
 });
 
-export const buildSignObject = ({
-  ...overrides
-}) => ({
-  data: {
-    to: '0xc0c8f96C2fE011cc96770D2e37CfbfeAFB585F0e',
-    from: '0xc0c8f96C2fE011cc96770D2e37CfbfeAFB585F0e',
-    value: 0x80000000,
-    data: 0x0,
-    signerPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
-    nonce: 0x80000000,
-    gasLimit: 0x80000000,
-    gasPrice: 0x80000000,
-  },
-  currency: CURRENCIES.ETH as Currency,
-  client: buildMockConnectedClient({ ...overrides }),
+export const buildGetAddressesObject = (overrides?) => ({
+  startPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
+  n: 1,
+  flag: 1,
+  fwConstants: buildFirmwareConstants(),
+  url: 'asdf',
+  fwVersion: Buffer.from([0, 12, 0]),
+  wallet: buildWallet(),
+  ephemeralPub: Buffer.from('test'),
+  sharedSecret: Buffer.from('test'),
+  ...overrides,
 });
+
+export const buildSignObject = (fwVersion, overrides?) => {
+  const fwConstants = getFwVersionConst(fwVersion);
+  return {
+    data: {
+      to: '0xc0c8f96C2fE011cc96770D2e37CfbfeAFB585F0e',
+      from: '0xc0c8f96C2fE011cc96770D2e37CfbfeAFB585F0e',
+      value: 0x80000000,
+      data: 0x0,
+      signerPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
+      nonce: 0x80000000,
+      gasLimit: 0x80000000,
+      gasPrice: 0x80000000,
+    },
+    currency: CURRENCIES.ETH as Currency,
+    fwConstants,
+    ...overrides,
+  };
+};
 
 export const buildSharedSecret = () => {
   return Buffer.from([
@@ -166,7 +187,8 @@ export const buildTx = (data = '0xdeadbeef') => {
 };
 
 export const buildEthSignRequest = async (
-  client: Client, txDataOverrides?: any
+  client: Client,
+  txDataOverrides?: any,
 ): Promise<any> => {
   if (client.getFwVersion()?.major === 0 && client.getFwVersion()?.minor < 15) {
     console.warn('Please update firmware. Skipping ETH signing tests.');
@@ -188,7 +210,7 @@ export const buildEthSignRequest = async (
     to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
     value: 1000000000000,
     data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
-    ...txDataOverrides
+    ...txDataOverrides,
   };
   const tx = EthTxFactory.fromTxData(txData, { common });
   const req = {
@@ -245,15 +267,12 @@ export const buildEvmReq = (overrides?: {
   if (overrides?.common) {
     chainInfo = overrides.common;
   } else if (overrides?.txData?.chainId !== '0x1') {
-    chainInfo = Common.custom(
-      { chainId: 137 }, 
-      { hardfork: Hardfork.London }
-    );
+    chainInfo = Common.custom({ chainId: 137 }, { hardfork: Hardfork.London });
   } else {
     chainInfo = new Common({
       chain: Chain.Mainnet,
       hardfork: Hardfork.London,
-    })
+    });
   }
   const req = {
     data: {
@@ -298,8 +317,8 @@ export const buildEncDefs = (vectors: any) => {
   return { encDefs, encDefsCalldata };
 };
 
-export function buildRandomMsg (type = 'signPersonal', client: Client) {
-  function randInt (n: number) {
+export function buildRandomMsg(type = 'signPersonal', client: Client) {
+  function randInt(n: number) {
     return Math.floor(n * prng.quick());
   }
 
@@ -316,10 +335,16 @@ export function buildRandomMsg (type = 'signPersonal', client: Client) {
   }
 }
 
-export function buildEthMsgReq (
+export function buildEthMsgReq(
   payload: any,
   protocol: string,
-  signerPath = [BTC_PURPOSE_P2PKH, ETH_COIN, HARDENED_OFFSET, 0, 0] as SigningPath,
+  signerPath = [
+    BTC_PURPOSE_P2PKH,
+    ETH_COIN,
+    HARDENED_OFFSET,
+    0,
+    0,
+  ] as SigningPath,
 ): SignRequestParams {
   return {
     currency: CURRENCIES.ETH_MSG,
@@ -331,21 +356,20 @@ export function buildEthMsgReq (
   };
 }
 
-export const buildValidateConnectObject = (overrides) => ({
-  id: 'test',
-  client: new Client({
-    name: 'test',
-    baseUrl: 'https://gridpl.us',
-    privKey: Buffer.from(keccak256('foo'), 'hex'),
-    ...overrides,
-  }),
-});
-
-export const buildValidateRequestObject = ({ ...overrides }) => ({
-  client: buildMockConnectedClient(),
+export const buildValidateConnectObject = (overrides?) => ({
+  deviceId: 'test',
+  key: 'test',
+  baseUrl: 'test',
   ...overrides,
 });
 
+export const buildValidateRequestObject = (overrides?) => {
+  const fwConstants = buildFirmwareConstants();
+  return {
+    fwConstants,
+    ...overrides,
+  };
+};
 
 // Most of the endpoint validators (for encrypted requests)
 // will require a connected client instance.
@@ -355,7 +379,7 @@ export function buildMockConnectedClient(opts) {
     ..._stateData,
     ...opts,
   };
-  return new Client({ 
-    stateData: JSON.stringify(stateData), 
+  return new Client({
+    stateData: JSON.stringify(stateData),
   });
 }

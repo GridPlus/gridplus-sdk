@@ -1,15 +1,10 @@
 import { sha256 } from 'hash.js/lib/hash/sha';
 import { Client } from '..';
 import bitcoin from '../bitcoin';
-import {
-  EXTERNAL,
-} from '../constants';
+import { EXTERNAL } from '../constants';
 import ethereum from '../ethereum';
 import { buildGenericSigningMsgRequest } from '../genericSigning';
-import {
-  fetchWithTimeout,
-  parseLattice1Response,
-} from '../util';
+import { fetchWithTimeout, parseLattice1Response } from '../util';
 import { LatticeResponseError } from './errors';
 import {
   isDeviceBusy,
@@ -17,9 +12,7 @@ import {
   isWrongWallet,
   shouldUseEVMLegacyConverter,
 } from './predicates';
-import {
-  validateRequestError,
-} from './validators';
+import { validateRequestError } from './validators';
 
 export const buildTransaction = ({
   data,
@@ -43,7 +36,7 @@ export const buildTransaction = ({
   if (currency === 'ETH' && shouldUseEVMLegacyConverter(fwConstants)) {
     console.log(
       'Using the legacy ETH signing path. This will soon be deprecated. ' +
-      'Please switch to general signing request.',
+        'Please switch to general signing request.',
     );
     let payload;
     try {
@@ -51,7 +44,7 @@ export const buildTransaction = ({
     } catch (err) {
       throw new Error(
         'Could not convert legacy request. Please switch to a general signing ' +
-        'request. See gridplus-sdk docs for more information.',
+          'request. See gridplus-sdk docs for more information.',
       );
     }
     data = {
@@ -63,28 +56,28 @@ export const buildTransaction = ({
       payload,
     };
     return {
-      request: buildGenericSigningMsgRequest({ ...data, fwConstants }),
+      requestData: buildGenericSigningMsgRequest({ ...data, fwConstants }),
       isGeneric: true,
     };
   } else if (currency === 'ETH') {
     // Legacy signing pathway -- should deprecate in the future
     return {
-      request: ethereum.buildEthereumTxRequest({ ...data, fwConstants }),
+      requestData: ethereum.buildEthereumTxRequest({ ...data, fwConstants }),
       isGeneric: false,
     };
   } else if (currency === 'ETH_MSG') {
     return {
-      request: ethereum.buildEthereumMsgRequest({ ...data, fwConstants }),
+      requestData: ethereum.buildEthereumMsgRequest({ ...data, fwConstants }),
       isGeneric: false,
     };
   } else if (currency === 'BTC') {
     return {
-      request: bitcoin.buildBitcoinTxRequest({ ...data, fwConstants }),
+      requestData: bitcoin.buildBitcoinTxRequest({ ...data, fwConstants }),
       isGeneric: false,
     };
   }
   return {
-    request: buildGenericSigningMsgRequest({ ...data, fwConstants }),
+    requestData: buildGenericSigningMsgRequest({ ...data, fwConstants }),
     isGeneric: true,
   };
 };
@@ -127,7 +120,7 @@ export const request = async ({
 /**
  * `sleep()` returns a Promise that resolves after a given number of milliseconds.
  */
-function sleep (ms) {
+function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 

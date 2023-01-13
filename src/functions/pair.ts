@@ -4,10 +4,7 @@ import {
 } from '../protocol';
 import { getPubKeyBytes } from '../shared/utilities';
 import { validateConnectedClient } from '../shared/validators';
-import { 
-  generateAppSecret, 
-  toPaddedDER, 
-} from '../util';
+import { generateAppSecret, toPaddedDER } from '../util';
 
 /**
  * If a pairing secret is provided, `pair` uses it to sign a hash of the public key, name, and
@@ -16,50 +13,56 @@ import {
  * @category Lattice
  * @returns The active wallet object.
  */
-export async function pair (req: PairRequestParams) {
-  // Validate reequest params
-  validatePairRequest(req);
-  // Build data for this request
-  const data = encodePairRequest(req);
-  // Make the request. There is no response data to consume.
-  await encryptedSecureRequest(
-    req.client,
+export async function pair({
+  client,
+  pairingSecret,
+}: PairRequestParams): Promise<boolean> {
+  const { url, sharedSecret, ephemeralPub, appName, key } =
+    validateConnectedClient(client);
+  const data = encodePairRequest({ pairingSecret, key, appName });
+
+  const { newEphemeralPub } = await encryptedSecureRequest({
     data,
-    LatticeSecureEncryptedRequestType.finalizePairing
-  );
-  // Update client state, sync wallet, and return success if there is a wallet
-  req.client.isPaired = true;
-  await req.client.fetchActiveWallet();
-  return req.client.hasActiveWallet();
+    requestType: LatticeSecureEncryptedRequestType.finalizePairing,
+    sharedSecret,
+    ephemeralPub,
+    url,
+  });
+
+  client.mutate({
+    ephemeralPub: newEphemeralPub,
+    isPaired: true,
+  });
+
+  await client.fetchActiveWallet();
+  return client.hasActiveWallet();
 }
 
-export const validatePairRequest = (
-  req: PairRequestParams
-) => {
-  // If we are calling `pair`, we can assume there is no wallet and we do not
-  // need to validate it.
-  validateConnectedClient(req.client, false);
-}
-
-export const encodePairRequest = (
-  req: PairRequestParams
-) => {
+export const encodePairRequest = ({
+  key,
+  pairingSecret,
+  appName,
+}: {
+  key: KeyPair;
+  pairingSecret: string;
+  appName: string;
+}) => {
   // Build the payload data
-  const pubKeyBytes = getPubKeyBytes(req.client.key);
+  const pubKeyBytes = getPubKeyBytes(key);
   const nameBuf = Buffer.alloc(25);
-  if (req.pairingSecret.length > 0) {
+  if (pairingSecret.length > 0) {
     // If a pairing secret of zero length is passed in, it usually indicates we want to cancel
     // the pairing attempt. In this case we pass a zero-length name buffer so the firmware can
     // know not to draw the error screen. Note that we still expect an error to come back
     // (RESP_ERR_PAIR_FAIL)
-    nameBuf.write(req.client.pairingName);
+    nameBuf.write(appName);
   }
   const hash = generateAppSecret(
     pubKeyBytes,
     nameBuf,
-    Buffer.from(req.pairingSecret),
+    Buffer.from(pairingSecret),
   );
-  const sig = req.client.key.sign(hash); // returns an array, not a buffer
+  const sig = key.sign(hash); // returns an array, not a buffer
   const derSig = toPaddedDER(sig);
   const payload = Buffer.concat([nameBuf, derSig]);
   return payload;

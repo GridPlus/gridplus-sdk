@@ -1,7 +1,6 @@
 
 import { Client } from '../../client';
 import { getEncodedPayload } from '../../genericSigning';
-import { TestRequestPayload } from '../../types/utils';
 import { deriveSECP256K1Key, parseWalletJobResp, validateGenericSig } from './helpers';
 import { initializeSeed } from './initializeClient';
 import { testRequest } from './testRequest';

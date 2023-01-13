@@ -3,7 +3,6 @@ interface SignRequestParams {
   currency?: Currency;
   cachedData?: any;
   nextCode?: Buffer;
-  retries?: number;
 }
 
 interface SignRequestFunctionParams extends SignRequestParams {
@@ -11,8 +10,9 @@ interface SignRequestFunctionParams extends SignRequestParams {
 }
 
 interface EncodeSignRequestParams {
-  request: any;
-  client: Client;
+  fwConstants: FirmwareConstants;
+  wallet: Wallet;
+  requestData: any;
   cachedData?: any;
   nextCode?: Buffer;
 }
@@ -55,7 +55,7 @@ interface BitcoinSignRequest extends SignRequest {
 interface DecodeSignResponseParams {
   data: Buffer;
   /** The original request data */
-  request: EthSignRequest | EthMsgSignRequest | BitcoinSignRequest;
+  request: SignRequest;
   isGeneric: boolean;
   currency?: Currency;
 }

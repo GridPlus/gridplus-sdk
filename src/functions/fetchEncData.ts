@@ -24,86 +24,125 @@ const ENC_DATA_RESP_SZ = {
     CHECKSUM: 32,
     IV: 16,
     PUBKEY: 48,
-  }
-}
+  },
+} as const;
 
-export async function fetchEncData (
-  req: FetchEncDataRequestFunctionParams,
-): Promise<Buffer> {
-  // Validate request params
-  validateFetchEncDataRequest(req);
-  // Build data for this request
-  const data = encodeFetchEncDataRequest(req);
-  // Make the request
-  const decRespPayloadData = await encryptedSecureRequest(
-    req.client,
+export async function fetchEncData({
+  client,
+  schema,
+  params,
+}: FetchEncDataRequestFunctionParams): Promise<Buffer> {
+  const { url, sharedSecret, ephemeralPub, activeWallet, fwVersion } =
+    validateConnectedClient(client);
+  validateFetchEncDataRequest({ params });
+
+  const data = encodeFetchEncDataRequest({
+    schema,
+    params,
+    fwVersion,
+    activeWallet,
+  });
+
+  const { decryptedData, newEphemeralPub } = await encryptedSecureRequest({
     data,
-    LatticeSecureEncryptedRequestType.fetchEncryptedData
-  );
-  // Decode response data and return
-  return decodeFetchEncData(decRespPayloadData, req);
+    requestType: LatticeSecureEncryptedRequestType.fetchEncryptedData,
+    sharedSecret,
+    ephemeralPub,
+    url,
+  });
+
+  client.mutate({
+    ephemeralPub: newEphemeralPub,
+  });
+
+  return decodeFetchEncData({ data: decryptedData, schema, params });
 }
 
-export const validateFetchEncDataRequest = (
-  req: FetchEncDataRequestFunctionParams
-) => {
-  // Validate client state
-  validateConnectedClient(req.client);
+export const validateFetchEncDataRequest = ({
+  params,
+}: {
+  params: EIP2335KeyExportReq;
+}) => {
   // Validate derivation path
-  validateStartPath(req.params.path);
-}
+  validateStartPath(params.path);
+};
 
-export const encodeFetchEncDataRequest = (
-  req: FetchEncDataRequestFunctionParams
-) => {
+export const encodeFetchEncDataRequest = ({
+  schema,
+  params,
+  fwVersion,
+  activeWallet,
+}: {
+  schema: number;
+  params: EIP2335KeyExportReq;
+  fwVersion: FirmwareVersion;
+  activeWallet: Wallet;
+}) => {
   // Check firmware version
-  if (req.client.fwVersion.major < 1 && req.client.fwVersion.minor < 17) {
-    throw new Error('Firmware version >=v0.17.0 is required for encrypted data export.');
+  if (fwVersion.major < 1 && fwVersion.minor < 17) {
+    throw new Error(
+      'Firmware version >=v0.17.0 is required for encrypted data export.',
+    );
   }
   // Update params depending on what type of data is being exported
-  if (req.schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
+  if (schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
     // Set the wallet UID to the client's current active wallet
-    req.params.walletUID = req.client.getActiveWallet().uid;
+    params.walletUID = activeWallet.uid;
   } else {
     throw new Error(ENC_DATA_ERR_STR);
   }
   // Build the payload data
   const payload = Buffer.alloc(ENC_DATA_REQ_DATA_SZ);
   let off = 0;
-  payload.writeUInt8(req.schema, off);
+  payload.writeUInt8(schema, off);
   off += 1;
-  if (req.schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
-    req.params.walletUID.copy(payload, off);
-    off += req.params.walletUID.length;
-    payload.writeUInt8(req.params.path.length, off);
+  if (schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
+    params.walletUID.copy(payload, off);
+    off += params.walletUID.length;
+    payload.writeUInt8(params.path.length, off);
     off += 1;
     for (let i = 0; i < 5; i++) {
-      if (i <= req.params.path.length) {
-        payload.writeUInt32LE(req.params.path[i], off);
+      if (i <= params.path.length) {
+        payload.writeUInt32LE(params.path[i], off);
       }
       off += 4;
     }
-    if (req.params.c) {
-      payload.writeUInt32LE(req.params.c, off)
+    if (params.c) {
+      payload.writeUInt32LE(params.c, off);
     }
     off += 4;
     return payload;
   } else {
-    throw new Error(ENC_DATA_ERR_STR)
+    throw new Error(ENC_DATA_ERR_STR);
   }
-}
+};
 
-export const decodeFetchEncData = (data: Buffer, req: FetchEncDataRequestFunctionParams): Buffer => {
+export const decodeFetchEncData = ({
+  data,
+  schema,
+  params,
+}: {
+  schema: number;
+  params: EIP2335KeyExportReq;
+  data: Buffer;
+}): Buffer => {
   let off = 0;
-  if (req.schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
+  if (schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
     const respData = {} as EIP2335KeyExportData;
     const { CIPHERTEXT, SALT, CHECKSUM, IV, PUBKEY } = ENC_DATA_RESP_SZ.EIP2335;
-    const expectedSz =  4 + // iterations = u32
-                        CIPHERTEXT +  SALT + CHECKSUM + IV + PUBKEY;
+    const expectedSz =
+      4 + // iterations = u32
+      CIPHERTEXT +
+      SALT +
+      CHECKSUM +
+      IV +
+      PUBKEY;
     const dataSz = data.readUInt32LE(off);
     off += 4;
     if (dataSz !== expectedSz) {
-      throw new Error('Invalid data returned from Lattice. Expected EIP2335 data.');
+      throw new Error(
+        'Invalid data returned from Lattice. Expected EIP2335 data.',
+      );
     }
     respData.iterations = data.readUInt32LE(off);
     off += 4;
@@ -117,7 +156,7 @@ export const decodeFetchEncData = (data: Buffer, req: FetchEncDataRequestFunctio
     off += IV;
     respData.pubkey = data.slice(off, off + PUBKEY);
     off += PUBKEY;
-    return formatEIP2335ExportData(respData, req.params.path);
+    return formatEIP2335ExportData(respData, params.path);
   } else {
     throw new Error(ENC_DATA_ERR_STR);
   }

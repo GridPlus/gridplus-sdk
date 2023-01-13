@@ -2,62 +2,86 @@ import {
   encryptedSecureRequest,
   LatticeSecureEncryptedRequestType,
 } from '../protocol';
-import {
-  validateConnectedClient
-} from '../shared/validators';
+import { validateConnectedClient } from '../shared/validators';
 
-export async function getKvRecords (
-  req: GetKvRecordsRequestFunctionParams
-): Promise<GetKvRecordsData> {
-  // Validate request params
-  validateGetKvRequest(req);
-  // Build data for this request
-  const data = encodeGetKvRecordsRequest(req);
-  // Make the request
-  const decRespPayloadData = await encryptedSecureRequest(
-    req.client,
+export async function getKvRecords({
+  client,
+  type: _type,
+  n: _n,
+  start: _start,
+}: GetKvRecordsRequestFunctionParams): Promise<GetKvRecordsData> {
+  const { url, sharedSecret, ephemeralPub, fwConstants } =
+    validateConnectedClient(client);
+
+  const { type, n, start } = validateGetKvRequest({
+    type: _type,
+    n: _n,
+    start: _start,
+    fwConstants,
+  });
+
+  const data = encodeGetKvRecordsRequest({ type, n, start });
+
+  const { decryptedData, newEphemeralPub } = await encryptedSecureRequest({
     data,
-    LatticeSecureEncryptedRequestType.getKvRecords
-  );
-  // Decode the response data and return
-  return decodeGetKvRecordsResponse(
-    decRespPayloadData, 
-    req.client.getFwConstants()
-  );
+    requestType: LatticeSecureEncryptedRequestType.getKvRecords,
+    sharedSecret,
+    ephemeralPub,
+    url,
+  });
+
+  client.mutate({
+    ephemeralPub: newEphemeralPub,
+  });
+
+  return decodeGetKvRecordsResponse(decryptedData, fwConstants);
 }
 
-export const validateGetKvRequest = (
-  req: GetKvRecordsRequestFunctionParams
-) => {
-  validateConnectedClient(req.client)
-  const fwConstants = req.client.getFwConstants();
+export const validateGetKvRequest = ({
+  fwConstants,
+  n,
+  type,
+  start,
+}: {
+  fwConstants: FirmwareConstants;
+  n?: number;
+  type?: number;
+  start?: number;
+}) => {
   if (!fwConstants.kvActionsAllowed) {
     throw new Error('Unsupported. Please update firmware.');
   }
-  if (!req.n || req.n < 1) {
+  if (!n || n < 1) {
     throw new Error('You must request at least one record.');
   }
-  if (req.n > fwConstants.kvActionMaxNum) {
+  if (n > fwConstants.kvActionMaxNum) {
     throw new Error(
       `You may only request up to ${fwConstants.kvActionMaxNum} records at once.`,
     );
   }
-  if (req.type !== 0 && !req.type) {
+  if (type !== 0 && !type) {
     throw new Error('You must specify a type.');
   }
-  if (req.start !== 0 && !req.start) {
+  if (start !== 0 && !start) {
     throw new Error('You must specify a type.');
   }
+
+  return { fwConstants, n, type, start };
 };
 
-export const encodeGetKvRecordsRequest = (
-  req: GetKvRecordsRequestFunctionParams
-) => {
-  // Build teh payload
+export const encodeGetKvRecordsRequest = ({
+  type,
+  n,
+  start,
+}: {
+  type: number;
+  n: number;
+  start: number;
+}) => {
   const payload = Buffer.alloc(9);
-  payload.writeUInt32LE(req.type, 0);
-  payload.writeUInt8(req.n, 4);
-  payload.writeUInt32LE(req.start, 5);
+  payload.writeUInt32LE(type, 0);
+  payload.writeUInt8(n, 4);
+  payload.writeUInt32LE(start, 5);
   return payload;
 };
 
