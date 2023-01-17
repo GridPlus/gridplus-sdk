@@ -7,11 +7,13 @@ import {
   encodeRemoveKvRecordsRequest,
   encodeSignRequest,
 } from '../../functions';
-import { buildTransaction } from '../../shared/functions'
+import { buildTransaction } from '../../shared/functions';
+import { getP256KeyPair } from '../../util';
 import {
+  buildFirmwareConstants,
   buildGetAddressesObject,
-  buildMockConnectedClient,
   buildSignObject,
+  buildWallet,
   getFwVersionsList,
 } from '../utils/builders';
 
@@ -30,13 +32,11 @@ describe('encoders', () => {
     test('pair encoder', () => {
       const privKey = Buffer.alloc(32, '1');
       expect(privKey.toString()).toMatchSnapshot();
-      const client = buildMockConnectedClient({ 
-        privKey,
-        name: 'testtest'
-      });
+      const key = getP256KeyPair(privKey);
       const payload = encodePairRequest({
-        client, 
-        pairingSecret: 'testtest'
+        key,
+        pairingSecret: 'testtest',
+        appName: 'testtest',
       });
       const payloadAsString = payload.toString('hex');
       expect(payloadAsString).toMatchSnapshot();
@@ -45,8 +45,7 @@ describe('encoders', () => {
 
   describe('getAddresses', () => {
     test('encodeGetAddressesRequest with default flag', () => {
-      const mockObject = buildGetAddressesObject({});
-      const payload = encodeGetAddressesRequest(mockObject);
+      const payload = encodeGetAddressesRequest(buildGetAddressesObject());
       const payloadAsString = payload.toString('hex');
       expect(payloadAsString).toMatchSnapshot();
     });
@@ -74,18 +73,14 @@ describe('encoders', () => {
     test.each(getFwVersionsList())(
       'should test sign encoder with firmware v%d.%d.%d',
       (major, minor, patch) => {
-        const txObj = buildSignObject({
-          fwVersion: Buffer.from([patch, minor, major]),
-        });
-        const fwConstants = txObj.client.getFwConstants();
-        const tx = buildTransaction({
-          ...txObj,
-          fwConstants,
-        });
+        const fwVersion = Buffer.from([patch, minor, major]);
+        const txObj = buildSignObject(fwVersion);
+        const tx = buildTransaction(txObj);
         const req = {
           ...txObj,
-          request: tx.request,
-        }
+          ...tx,
+          wallet: buildWallet(),
+        };
         const { payload } = encodeSignRequest(req);
         const payloadAsString = payload.toString('hex');
         expect(payloadAsString).toMatchSnapshot();
@@ -102,11 +97,12 @@ describe('encoders', () => {
     });
 
     test('addKvRecords', () => {
+      const fwConstants = buildFirmwareConstants();
       const mockObject = {
-        client: buildMockConnectedClient(),
         type: 0,
         records: { key: 'value' },
         caseSensitive: false,
+        fwConstants,
       };
       const payload = encodeAddKvRecordsRequest(mockObject);
       const payloadAsString = payload.toString('hex');
@@ -114,11 +110,12 @@ describe('encoders', () => {
     });
 
     test('removeKvRecords', () => {
+      const fwConstants = buildFirmwareConstants();
       const mockObject = {
-        client: buildMockConnectedClient(),
         type: 0,
-        ids: [0],
+        ids: ['0'],
         caseSensitive: false,
+        fwConstants,
       };
       const payload = encodeRemoveKvRecordsRequest(mockObject);
       const payloadAsString = payload.toString('hex');

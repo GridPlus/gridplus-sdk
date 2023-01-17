@@ -1,7 +1,7 @@
 /**
  * All messages sent to the Lattice from this SDK will be
  * "secure messages", of which there are two types:
- * 
+ *
  * 1. Connect requests are *unencrypted* and serve to establish
  *    a connection between the SDK Client instance and the target
  *    Lattice. If the client is already paired to the target Lattice,
@@ -19,9 +19,6 @@
  *    key, which you will need for the next encrypted request.
  */
 import {
-  Client
-} from '../index'
-import {
   ProtocolConstants as Constants,
   LatticeSecureMsgType,
   LatticeMsgType,
@@ -35,13 +32,8 @@ import {
   getP256KeyPairFromPub,
   randomBytes,
 } from '../util';
-import {
-  getEphemeralId,
-  request,
-} from '../shared/functions';
-import {
-  validateEphemeralPub,
-} from '../shared/validators';
+import { getEphemeralId, request } from '../shared/functions';
+import { validateEphemeralPub } from '../shared/validators';
 
 const { msgSizes } = Constants;
 const { secure: szs } = msgSizes;
@@ -49,36 +41,35 @@ const { secure: szs } = msgSizes;
 /**
  * Build and make a request to connect to a specific Lattice
  * based on its `deviceId`.
- * @param client - Instance of (unconnected) client
  * @param deviceId - Device ID for the target Lattice. Must be in
  *                   the same `client.baseUrl` domain to be found.
  * @return {Buffer} - Connection response payload data, which contains
  *                    information about the connected Lattice.
  */
-export async function connectSecureRequest(
-  client: Client,
-  deviceId: string,
-): Promise<Buffer> {
+export async function connectSecureRequest({
+  url,
+  pubkey,
+}: {
+  url: string;
+  pubkey: Buffer;
+}): Promise<Buffer> {
   // Build the secure request message
-  const payloadData = serializeSecureRequestConnectPayloadData(client);
+  const payloadData = serializeSecureRequestConnectPayloadData({
+    pubkey: pubkey,
+  });
   const msgId = randomBytes(4);
   const msg = serializeSecureRequestMsg(
-    client, 
-    msgId, 
-    LatticeSecureMsgType.connect, 
-    payloadData
+    msgId,
+    LatticeSecureMsgType.connect,
+    payloadData,
   );
   // Send request to the Lattice
-  const url = `${client.baseUrl}/${deviceId}`;
   const resp = await request({ url, payload: msg });
   if (resp.length !== szs.payload.response.connect - 1) {
     throw new Error('Wrong Lattice response message size.');
   }
-  // Pack into struct and return data
-  const respStruct: LatticeSecureConnectResponsePayload = {
-    data: resp,
-  }
-  return respStruct.data;
+
+  return resp;
 }
 
 /**
@@ -88,68 +79,78 @@ export async function connectSecureRequest(
  * payload data.
  * Also updates ephemeral public key in the client.
  * This is a wrapper around several local util functions.
- * @param client - Instance of Client
  * @param data - Unencrypted raw calldata for function
  * @param requestType - Type of encrypted reques to make
  * @return {Buffer} Decrypted response data (excluding metadata)
  */
-export async function encryptedSecureRequest(
-  client: Client,
-  data: Buffer,
-  requestType: LatticeSecureEncryptedRequestType
-): Promise<Buffer> {
+export async function encryptedSecureRequest({
+  data,
+  requestType,
+  sharedSecret,
+  ephemeralPub,
+  url,
+}: {
+  data: Buffer;
+  requestType: LatticeSecureEncryptedRequestType;
+  sharedSecret: Buffer;
+  ephemeralPub: Buffer;
+  url: string;
+}): Promise<DecryptedResponse> {
   // Generate a random message id for internal tracking
   // of this specific request (internal on both sides).
   const msgId = randomBytes(4);
 
   // Serialize the request data into encrypted request
   // payload data.
-  const payloadData = serializeSecureRequestEncryptedPayloadData(
-    client,
+  const payloadData = serializeSecureRequestEncryptedPayloadData({
     data,
-    requestType
-  );
-  
+    requestType,
+    ephemeralPub,
+    sharedSecret,
+  });
+
   // Serialize the payload data into an encrypted secure
   // request message.
   const msg = serializeSecureRequestMsg(
-    client,
     msgId,
     LatticeSecureMsgType.encrypted,
-    payloadData
+    payloadData,
   );
-  
+
   // Send request to Lattice
-  const resp = await request({ 
-    url: client.url, 
-    payload: msg 
+  const resp = await request({
+    url,
+    payload: msg,
   });
-  
+
   // Deserialize the response payload data
   if (resp.length !== szs.payload.response.encrypted - 1) {
     throw new Error('Wrong Lattice response message size.');
   }
-  
-  // Return decrypted response payload data
-  return decryptEncryptedLatticeResponseData(
-    client, 
-    resp.slice(0, szs.data.response.encrypted.encryptedData),
-    requestType
+
+  const encPayloadData = resp.slice(
+    0,
+    szs.data.response.encrypted.encryptedData,
   );
+
+  // Return decrypted response payload data
+  return decryptEncryptedLatticeResponseData({
+    encPayloadData,
+    requestType,
+    sharedSecret,
+  });
 }
 
 /**
  * @internal
  * Serialize a Secure Request message for the Lattice.
  * All outgoing SDK requests are of this form.
- * @param client - Instance of the Client
  * @param msgId - Random 4 bytes of data for internally tracking this message
  * @param secureRequestType - 0x01 for connect, 0x02 for encrypted
  * @param payloadData - Request data
  * @return {Buffer} Serialized message to be sent to Lattice
  */
 function serializeSecureRequestMsg(
-  client: Client,
   msgId: Buffer,
   secureRequestType: LatticeSecureMsgType,
   payloadData: Buffer,
@@ -168,14 +169,12 @@ function serializeSecureRequestMsg(
   // Validate the incoming payload data size. Note that the payload
   // data is prepended with a secure request type byte, so the
   // payload data size is one less than the expected size.
-  const isValidConnectPayloadDataSz = (
+  const isValidConnectPayloadDataSz =
     secureRequestType === LatticeSecureMsgType.connect &&
-    payloadData.length === szs.payload.request.connect - 1
-  );
-  const isValidEncryptedPayloadDataSz = (
-    secureRequestType === LatticeSecureMsgType.encrypted && 
-    payloadData.length === szs.payload.request.encrypted - 1
-  ); 
+    payloadData.length === szs.payload.request.connect - 1;
+  const isValidEncryptedPayloadDataSz =
+    secureRequestType === LatticeSecureMsgType.encrypted &&
+    payloadData.length === szs.payload.request.encrypted - 1;
 
   // Build payload and size
   let msgSz = msgSizes.header + msgSizes.checksum;
@@ -183,7 +182,7 @@ function serializeSecureRequestMsg(
   const payload: LatticeSecureRequestPayload = {
     requestType: secureRequestType,
     data: payloadData,
-  }
+  };
   if (isValidConnectPayloadDataSz) {
     payloadLen = szs.payload.request.connect;
   } else if (isValidEncryptedPayloadDataSz) {
@@ -192,7 +191,7 @@ function serializeSecureRequestMsg(
     throw new Error('Invalid Lattice secure request payload size');
   }
   msgSz += payloadLen;
-  
+
   // Construct the request in object form
   const header: LatticeMessageHeader = {
     version: LatticeProtocolVersion.v1,
@@ -204,7 +203,7 @@ function serializeSecureRequestMsg(
     header,
     payload,
   };
-  
+
   // Now serialize the whole message
   // Header | requestType | payloadData | checksum
   const msg = Buffer.alloc(msgSz);
@@ -237,15 +236,11 @@ function serializeSecureRequestMsg(
 /**
  * @internal
  * Serialize payload data for a Lattice secure request: connect
- * @param client - Instance of Client
  * @return {Buffer} - 1700 bytes, of which only 65 are used
  */
 function serializeSecureRequestConnectPayloadData(
-  client: Client
+  payloadData: LatticeSecureConnectRequestPayloadData,
 ): Buffer {
-  const payloadData: LatticeSecureConnectRequestPayloadData = {
-    pubkey: client.publicKey,
-  };
   const serPayloadData = Buffer.alloc(szs.data.request.connect);
   payloadData.pubkey.copy(serPayloadData, 0);
   return serPayloadData;
@@ -254,35 +249,40 @@ function serializeSecureRequestConnectPayloadData(
 /**
  * @internal
  * Serialize payload data for Lattice secure request: encrypted
- * @param client - Instance of Client
  * @param data - Raw (unencrypted) request data
  * @return {Buffer} - 1700 bytes, all of which should be used
  */
-function serializeSecureRequestEncryptedPayloadData(
-  client: Client,
-  data: Buffer,
-  encryptedRequestType: LatticeSecureEncryptedRequestType
-): Buffer {
+function serializeSecureRequestEncryptedPayloadData({
+  data,
+  requestType,
+  ephemeralPub,
+  sharedSecret,
+}: {
+  data: Buffer;
+  requestType: LatticeSecureEncryptedRequestType;
+  ephemeralPub: Buffer;
+  sharedSecret: Buffer;
+}): Buffer {
   // Sanity checks request size
   if (data.length > szs.data.request.encrypted.encryptedData) {
     throw new Error('Encrypted request data too large');
   }
   // Make sure we have a shared secret. An error will be thrown
   // if there is no ephemeral pub, indicating we need to reconnect.
-  validateEphemeralPub(client.ephemeralPub);
-  
+  validateEphemeralPub(ephemeralPub);
+
   // Validate the request data size matches the desired request
-  const validSz = szs.data.request.encrypted[encryptedRequestType];
-  if (data.length !== validSz) {
+  const requestDataSize = szs.data.request.encrypted[requestType];
+  if (data.length !== requestDataSize) {
     throw new Error(
-      `Invalid request datasize (wanted ${validSz}, got ${data.length})`
+      `Invalid request datasize (wanted ${requestDataSize}, got ${data.length})`,
     );
   }
 
   // Build the pre-encrypted data payload, which variable sized and of form:
   // encryptedRequestType | data | checksum
-  const preEncryptedData = Buffer.alloc(1 + szs.data.request.encrypted[encryptedRequestType]);
-  preEncryptedData[0] = encryptedRequestType;
+  const preEncryptedData = Buffer.alloc(1 + requestDataSize);
+  preEncryptedData[0] = requestType;
   data.copy(preEncryptedData, 1);
   const preEncryptedDataChecksum = checksum(preEncryptedData);
 
@@ -290,21 +290,18 @@ function serializeSecureRequestEncryptedPayloadData(
   // equal to the full message request less the 4-byte ephemeral id.
   const _encryptedData = Buffer.alloc(szs.data.request.encrypted.encryptedData);
   preEncryptedData.copy(_encryptedData, 0);
-  _encryptedData.writeUInt32LE(preEncryptedDataChecksum, preEncryptedData.length);
-  const encryptedData = aes256_encrypt(_encryptedData, client.sharedSecret);
+  _encryptedData.writeUInt32LE(
+    preEncryptedDataChecksum,
+    preEncryptedData.length,
+  );
+  const encryptedData = aes256_encrypt(_encryptedData, sharedSecret);
 
   // Calculate ephemeral ID
-  const ephemeralId = getEphemeralId(client.sharedSecret);
-
-  // Form the object
-  const payloadData: LatticeSecureEncryptedRequestPayloadData = {
-    ephemeralId,
-    encryptedData,
-  };
+  const ephemeralId = getEphemeralId(sharedSecret);
 
   // Now we will serialize the payload data.
   const serPayloadData = Buffer.alloc(szs.payload.request.encrypted - 1);
-  serPayloadData.writeUInt32LE(payloadData.ephemeralId);
+  serPayloadData.writeUInt32LE(ephemeralId);
   encryptedData.copy(serPayloadData, 4);
   return serPayloadData;
 }
@@ -312,45 +309,45 @@ function serializeSecureRequestEncryptedPayloadData(
 /**
  * @internal
  * Decrypt the response data from an encrypted request.
- * This will update the client's ephemeral public key.
- * @param client - Instance of Client
  * @param encPayloadData - Encrypted payload data in response
  * @return {Buffer} Decrypted response data (excluding metadata)
  */
-function decryptEncryptedLatticeResponseData(
-  client: Client,
-  encPayloadData: Buffer,
-  encryptedRequestType: LatticeSecureEncryptedRequestType
-): Buffer {
+function decryptEncryptedLatticeResponseData({
+  encPayloadData,
+  requestType,
+  sharedSecret,
+}: {
+  encPayloadData: Buffer;
+  requestType: LatticeSecureEncryptedRequestType;
+  sharedSecret: Buffer;
+}) {
   // Decrypt data using the *current* shared secret
-  const decData = aes256_decrypt(encPayloadData, client.sharedSecret);
+  const decData = aes256_decrypt(encPayloadData, sharedSecret);
 
   // Bulid the object
   const ephemeralPubSz = 65; // secp256r1 pubkey
-  const checksumOffset = (
-    ephemeralPubSz + szs.data.response.encrypted[encryptedRequestType]
-  );
+  const checksumOffset =
+    ephemeralPubSz + szs.data.response.encrypted[requestType];
   const respData: LatticeSecureDecryptedResponse = {
     ephemeralPub: decData.slice(0, ephemeralPubSz),
     data: decData.slice(ephemeralPubSz, checksumOffset),
-    checksum: decData.readUInt32BE(checksumOffset)
+    checksum: decData.readUInt32BE(checksumOffset),
   };
-  
+
   // Validate the checksum
   const validChecksum = checksum(decData.slice(0, checksumOffset));
-if (respData.checksum !== validChecksum) {
+  if (respData.checksum !== validChecksum) {
     throw new Error('Checksum mismatch in decrypted Lattice data');
   }
-  
+
   // Validate the response data size
-  const validSz = szs.data.response.encrypted[encryptedRequestType];
+  const validSz = szs.data.response.encrypted[requestType];
   if (respData.data.length !== validSz) {
     throw new Error('Incorrect response data returned from Lattice');
   }
-  
-  // Update client's ephemeral key
-  client.ephemeralPub = getP256KeyPairFromPub(respData.ephemeralPub);
-  
+
+  const newEphemeralPub = getP256KeyPairFromPub(respData.ephemeralPub);
+
   // Returned the decrypted data
-  return respData.data;
+  return { decryptedData: respData.data, newEphemeralPub };
 }

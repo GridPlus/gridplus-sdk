@@ -4,7 +4,7 @@ import {
   encryptedSecureRequest,
   LatticeGetAddressesFlag,
   LatticeSecureEncryptedRequestType,
-  ProtocolConstants
+  ProtocolConstants,
 } from '../protocol';
 import {
   validateConnectedClient,
@@ -20,69 +20,104 @@ import { isValidAssetPath } from '../util';
  * @category Lattice
  * @returns An array of addresses or public keys.
  */
-export async function getAddresses (
-  req: GetAddressesRequestFunctionParams
-): Promise<Buffer[]> {
-  // Validate request params
-  validateGetAddressesRequest(req);
-  // Build data for this request
-  const data = encodeGetAddressesRequest(req);
-  // Make the request
-  const decRespPayloadData = await encryptedSecureRequest(
-    req.client,
+export async function getAddresses({
+  client,
+  startPath: _startPath,
+  n: _n,
+  flag: _flag,
+}: GetAddressesRequestFunctionParams): Promise<Buffer[]> {
+  const { url, sharedSecret, ephemeralPub, fwConstants, activeWallet } =
+    validateConnectedClient(client);
+
+  const { startPath, n, flag } = validateGetAddressesRequest({
+    startPath: _startPath,
+    n: _n,
+    flag: _flag,
+  });
+
+  const data = encodeGetAddressesRequest({
+    startPath,
+    n,
+    flag,
+    fwConstants,
+    wallet: activeWallet,
+  });
+
+  const { decryptedData, newEphemeralPub } = await encryptedSecureRequest({
     data,
-    LatticeSecureEncryptedRequestType.getAddresses
-  );
-  // Decode the response data and return
-  return decodeGetAddressesResponse(decRespPayloadData, req.flag)
+    requestType: LatticeSecureEncryptedRequestType.getAddresses,
+    sharedSecret,
+    ephemeralPub,
+    url,
+  });
+
+  client.mutate({
+    ephemeralPub: newEphemeralPub,
+  });
+
+  return decodeGetAddressesResponse(decryptedData, flag);
 }
 
-export const validateGetAddressesRequest = (
-  req: GetAddressesRequestFunctionParams
-) => {
-  validateStartPath(req.startPath);
-  validateNAddresses(req.n);
-  validateIsUInt4(req.flag);
-  validateConnectedClient(req.client);
+export const validateGetAddressesRequest = ({
+  startPath,
+  n,
+  flag,
+}: {
+  startPath?: number[];
+  n?: number;
+  flag?: number;
+}) => {
+  return {
+    startPath: validateStartPath(startPath),
+    n: validateNAddresses(n),
+    flag: validateIsUInt4(flag),
+  };
 };
 
-export const encodeGetAddressesRequest = (
-  req: GetAddressesRequestFunctionParams
-) => {
-  const fwConstants = req.client.getFwConstants();
-  const flags = fwConstants.getAddressFlags || [] as any[];
+export const encodeGetAddressesRequest = ({
+  startPath,
+  n,
+  flag,
+  fwConstants,
+  wallet,
+}: {
+  startPath: number[];
+  n: number;
+  flag: number;
+  fwConstants: FirmwareConstants;
+  wallet: Wallet;
+}) => {
+  const flags = fwConstants.getAddressFlags || ([] as any[]);
   const isPubkeyOnly =
-    flags.indexOf(req.flag) > -1 &&
-    (
-      req.flag === LatticeGetAddressesFlag.ed25519Pubkey ||
-      req.flag === LatticeGetAddressesFlag.secp256k1Pubkey ||
-      req.flag === LatticeGetAddressesFlag.bls12_381Pubkey
-    );
-  if (!isPubkeyOnly && !isValidAssetPath(req.startPath, fwConstants)) {
+    flags.indexOf(flag) > -1 &&
+    (flag === LatticeGetAddressesFlag.ed25519Pubkey ||
+      flag === LatticeGetAddressesFlag.secp256k1Pubkey ||
+      flag === LatticeGetAddressesFlag.bls12_381Pubkey);
+  if (!isPubkeyOnly && !isValidAssetPath(startPath, fwConstants)) {
     throw new Error(
-      'Derivation path or flag is not supported. Try updating Lattice firmware.'
+      'Derivation path or flag is not supported. Try updating Lattice firmware.',
     );
   }
   let sz = 32 + 20 + 1; // walletUID + 5 u32 indices + count/flag
   if (fwConstants.varAddrPathSzAllowed) {
     sz += 1; // pathDepth
-  } else if (req.startPath.length !== 5) {
+  } else if (startPath.length !== 5) {
     throw new Error(
       'Your Lattice firmware only supports derivation paths with 5 indices. Please upgrade.',
     );
   }
   const payload = Buffer.alloc(sz);
   let off = 0;
-  req.client.getActiveWallet().uid.copy(payload, off);
+  wallet.uid.copy(payload, off);
   off += 32;
   // Build the start path (5x u32 indices)
   if (fwConstants.varAddrPathSzAllowed) {
-    payload.writeUInt8(req.startPath.length, off);
+    payload.writeUInt8(startPath.length, off);
     off += 1;
   }
   for (let i = 0; i < 5; i++) {
-    if (i <= req.startPath.length) {
-      const val = req.startPath[i] ?? 0;
+    if (i <= startPath.length) {
+      const val = startPath[i] ?? 0;
       payload.writeUInt32BE(val, off);
     }
     off += 4;
@@ -96,15 +131,15 @@ export const encodeGetAddressesRequest = (
     // `n` as a 4 bit value
     flagVal =
       fwConstants.getAddressFlags &&
-        fwConstants.getAddressFlags.indexOf(req.flag) > -1
-        ? (req.flag as UInt4)
+      fwConstants.getAddressFlags.indexOf(flag) > -1
+        ? (flag as UInt4)
         : 0;
     const flagBits = bitwise.nibble.read(flagVal);
-    const countBits = bitwise.nibble.read(req.n as UInt4);
+    const countBits = bitwise.nibble.read(n as UInt4);
     val = bitwise.byte.write(flagBits.concat(countBits) as Byte);
   } else {
     // Very old firmware does not support client flag. We can deprecate client soon.
-    val = req.n;
+    val = n;
   }
   payload.writeUInt8(val, off);
   off++;
@@ -115,22 +150,25 @@ export const encodeGetAddressesRequest = (
  * @internal
  * @return an array of address strings or pubkey buffers
  */
-export const decodeGetAddressesResponse = (data: any, flag: number): Buffer[] => {
+export const decodeGetAddressesResponse = (
+  data: Buffer,
+  flag: number,
+): Buffer[] => {
   let off = 0;
   // Look for addresses until we reach the end (a 4 byte checksum)
   const addrs: any[] = [];
   // Pubkeys are formatted differently in the response
-  const arePubkeys = (
+  const arePubkeys =
     flag === LatticeGetAddressesFlag.secp256k1Pubkey ||
     flag === LatticeGetAddressesFlag.ed25519Pubkey ||
-    flag === LatticeGetAddressesFlag.bls12_381Pubkey
-  );
+    flag === LatticeGetAddressesFlag.bls12_381Pubkey;
   if (arePubkeys) {
     off += 1; // skip uint8 representing pubkey type
   }
-  const respDataLength = ProtocolConstants.msgSizes.secure.data.response.encrypted[
-    LatticeSecureEncryptedRequestType.getAddresses
-  ];
+  const respDataLength =
+    ProtocolConstants.msgSizes.secure.data.response.encrypted[
+      LatticeSecureEncryptedRequestType.getAddresses
+    ];
   while (off < respDataLength) {
     if (arePubkeys) {
       // Pubkeys are shorter and are returned as buffers

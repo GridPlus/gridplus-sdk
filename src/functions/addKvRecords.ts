@@ -14,42 +14,64 @@ import {
  * @category Lattice
  * @returns A callback with an error or null.
  */
-export async function addKvRecords (
-  req: AddKvRecordsRequestFunctionParams
-): Promise<Buffer> {
-  const { type = 0, caseSensitive = false } = req;
-  // Validate request params
-  validateAddKvRequest(req);
+export async function addKvRecords({
+  client,
+  records,
+  type,
+  caseSensitive,
+}: AddKvRecordsRequestFunctionParams): Promise<Buffer> {
+  const { url, sharedSecret, ephemeralPub, fwConstants } =
+    validateConnectedClient(client);
+  validateAddKvRequest({ records, fwConstants });
+
   // Build the data for this request
   const data = encodeAddKvRecordsRequest({
-    client: req.client,
-    records: req.records,
+    records,
     type,
     caseSensitive,
+    fwConstants,
   });
-  // Make the request
-  return await encryptedSecureRequest(
-    req.client,
+
+  const { decryptedData, newEphemeralPub } = await encryptedSecureRequest({
     data,
-    LatticeSecureEncryptedRequestType.addKvRecords
-  );
+    requestType: LatticeSecureEncryptedRequestType.addKvRecords,
+    sharedSecret,
+    ephemeralPub,
+    url,
+  });
+
+  client.mutate({
+    ephemeralPub: newEphemeralPub,
+  });
+
+  return decryptedData;
 }
 
-export const validateAddKvRequest = (
-  req: AddKvRecordsRequestFunctionParams
-) => {
-  validateConnectedClient(req.client);
-  validateKvRecords(req.records, req.client.getFwConstants())
+export const validateAddKvRequest = ({
+  records,
+  fwConstants,
+}: {
+  records: KVRecords;
+  fwConstants: FirmwareConstants;
+}) => {
+  validateKvRecords(records, fwConstants);
 };
 
-export const encodeAddKvRecordsRequest = (
-  req: AddKvRecordsRequestFunctionParams
-) => {
-  const fwConstants = req.client.getFwConstants();
+export const encodeAddKvRecordsRequest = ({
+  records,
+  type,
+  caseSensitive,
+  fwConstants,
+}: {
+  records: KVRecords;
+  type: number;
+  caseSensitive: boolean;
+  fwConstants: FirmwareConstants;
+}) => {
   const payload = Buffer.alloc(1 + 139 * fwConstants.kvActionMaxNum);
-  payload.writeUInt8(Object.keys(req.records).length, 0);
+  payload.writeUInt8(Object.keys(records).length, 0);
   let off = 1;
-  Object.entries(req.records).forEach(([_key, _val]) => {
+  Object.entries(records).forEach(([_key, _val]) => {
     const { key, val } = validateKvRecord(
       { key: _key, val: _val },
       fwConstants,
@@ -57,9 +79,9 @@ export const encodeAddKvRecordsRequest = (
     // Skip the ID portion. This will get added by firmware.
     payload.writeUInt32LE(0, off);
     off += 4;
-    payload.writeUInt32LE(req.type, off);
+    payload.writeUInt32LE(type, off);
     off += 4;
-    payload.writeUInt8(req.caseSensitive ? 1 : 0, off);
+    payload.writeUInt8(caseSensitive ? 1 : 0, off);
     off += 1;
     payload.writeUInt8(String(key).length + 1, off);
     off += 1;

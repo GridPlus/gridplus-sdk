@@ -1,11 +1,9 @@
 import {
   validateAddKvRequest,
   validateConnectRequest,
-  validateFetchActiveWallet,
   validateGetAddressesRequest,
   validateGetKvRequest,
   validateRemoveKvRequest,
-  validateSignRequest,
 } from '../../functions';
 import {
   isValidBlockExplorerResponse,
@@ -13,7 +11,6 @@ import {
 } from '../../shared/validators';
 import {
   buildGetAddressesObject,
-  buildSignObject,
   buildValidateConnectObject,
   buildValidateRequestObject,
 } from '../utils/builders';
@@ -45,13 +42,13 @@ describe('validators', () => {
       const startPath = [0x80000000 + 44, 0x80000000 + 60, 0, 0, 0, 0, 0];
       const fwVersion = Buffer.from([0, 0, 0]);
       const testEncodingFunction = () =>
-        encodeGetAddressesRequest(
+        validateGetAddressesRequest(
           buildGetAddressesObject({ startPath, fwVersion }),
         );
       expect(testEncodingFunction).toThrowError();
     });
   });
-  
+
   describe('KvRecords', () => {
     describe('addKvRecords', () => {
       test('should successfully validate', () => {
@@ -96,39 +93,6 @@ describe('validators', () => {
         const validateRemoveKvBundle: any = buildValidateRequestObject({});
         expect (() => validateRemoveKvRequest(validateRemoveKvBundle)).toThrowError();
       });
-    });
-  });
-
-  describe('fetchActiveWallet', () => {
-    test('should successfully validate', () => {
-      const validateFetchActiveWalletBundle: any = buildValidateRequestObject(
-        {},
-      );
-      validateFetchActiveWallet(validateFetchActiveWalletBundle);
-    });
-
-    test('should throw errors on validation failure', () => {
-      // Will fail because no `client` instance is included
-      const validateFetchActiveWalletBundle: any = { url: '' };
-      expect(() =>
-        validateFetchActiveWallet(validateFetchActiveWalletBundle)
-      ).toThrowError();
-    });
-  });
-
-  describe('sign', () => {
-    test('should successfully validate', () => {
-      const validateSignRequestBundle: any = buildSignObject({});
-      validateSignRequest(validateSignRequestBundle);
-    });
-
-    test('should throw errors on validation failure', () => {
-      // No tx data included
-      const validateSignRequestBundle: any = buildSignObject({});
-      validateSignRequestBundle.data = undefined;
-      expect(() =>
-        validateSignRequest(validateSignRequestBundle),
-      ).toThrowError();
     });
   });
 

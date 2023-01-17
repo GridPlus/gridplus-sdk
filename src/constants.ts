@@ -1,4 +1,4 @@
-import { 
+import {
   LatticeGetAddressesFlag,
   LatticeEncDataSchema,
   LatticeSignBlsDst,
@@ -59,9 +59,9 @@ export const EXTERNAL = {
     DOMAINS: {
       DEPOSIT: Buffer.from('03000000', 'hex'),
       VOLUNTARY_EXIT: Buffer.from('04000000', 'hex'),
-    }
+    },
   },
-};
+} as const;
 
 //===============================
 // INTERNAL CONSTANTS
@@ -70,14 +70,14 @@ export const EXTERNAL = {
 const addressSizes = {
   BTC: 20, // 20 byte pubkeyhash
   ETH: 20, // 20 byte address not including 0x prefix
-};
+} as const;
 
 /** @internal */
 const CURRENCIES = {
   ETH: 'ETH',
   BTC: 'BTC',
   ETH_MSG: 'ETH_MSG',
-}
+} as const;
 
 /** @internal */
 // THIS NEEDS TO BE A PROTOCOL CONSTANT TOO
@@ -88,7 +88,7 @@ const signingSchema = {
   ETH_MSG: 3,
   EXTRA_DATA: 4,
   GENERAL_SIGNING: 5,
-};
+} as const;
 
 /** @internal */
 const HARDENED_OFFSET = 0x80000000; // Hardened offset
@@ -106,7 +106,7 @@ const BIP_CONSTANTS = {
     BTC: HARDENED_OFFSET,
     BTC_TESTNET: HARDENED_OFFSET + 1,
   },
-};
+} as const;
 
 /** @internal For all HSM-bound requests */
 const REQUEST_TYPE_BYTE = 0x02;
@@ -520,6 +520,5 @@ export {
   HANDLE_LARGER_CHAIN_ID,
   MAX_CHAIN_ID_BYTES,
   ETH_ABI_LATTICE_FW_TYPE_MAP,
-
   EXTERNAL as PUBLIC,
 };

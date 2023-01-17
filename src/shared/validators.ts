@@ -1,8 +1,8 @@
 import { UInt4 } from 'bitwise/types';
-import { Client } from '../client'
+import { Client } from '../client';
 import { MAX_ADDR, EMPTY_WALLET_UID, ASCII_REGEX } from '../constants';
 import { isUInt4 } from '../util';
-import isEmpty from 'lodash/isEmpty'
+import isEmpty from 'lodash/isEmpty';
 
 export const validateIsUInt4 = (n?: number) => {
   if (typeof n !== 'number' || !isUInt4(n)) {
@@ -11,17 +11,24 @@ export const validateIsUInt4 = (n?: number) => {
   return n as UInt4;
 };
 
-export const validateNAddresses = (n: number) => {
-  if (n > MAX_ADDR)
+export const validateNAddresses = (n?: number) => {
+  if (!n) {
+    throw new Error('The number of addresses is required.');
+  }
+  if (n > MAX_ADDR) {
     throw new Error(`You may only request ${MAX_ADDR} addresses at once.`);
+  }
+  return n;
 };
 
-export const validateStartPath = (startPath: number[]) => {
+export const validateStartPath = (startPath?: number[]) => {
   if (!startPath) {
     throw new Error('Start path is required');
   }
   if (startPath.length < 1 || startPath.length > 5)
     throw new Error('Path must include between 1 and 5 indices');
+
+  return startPath;
 };
 
 export const validateDeviceId = (deviceId?: string) => {
@@ -47,7 +54,12 @@ export const validateAppName = (name?: string) => {
 
 export const validateUrl = (url?: string) => {
   if (!url) {
-    throw new Error('Url does not exist. Please reconnect.');
+    throw new Error('URL does not exist. Please reconnect.');
+  }
+  try {
+    new URL(url);
+  } catch (err) {
+    throw new Error('Invalid URL provided. Please use a valid URL.');
   }
   return url;
 };
@@ -55,6 +67,11 @@ export const validateUrl = (url?: string) => {
 export const validateBaseUrl = (baseUrl?: string) => {
   if (!baseUrl) {
     throw new Error('Base URL is required.');
+  }
+  try {
+    new URL(baseUrl);
+  } catch (err) {
+    throw new Error('Invalid Base URL provided. Please use a valid URL.');
   }
   return baseUrl;
 };
@@ -66,6 +83,19 @@ export const validateFwConstants = (fwConstants?: FirmwareConstants) => {
   return fwConstants;
 };
 
+export const validateFwVersion = (fwVersion?: FirmwareVersion) => {
+  if (!fwVersion) {
+    throw new Error('Firmware version does not exist. Please reconnect.');
+  }
+  if (
+    typeof fwVersion.fix !== 'number' ||
+    typeof fwVersion.minor !== 'number' ||
+    typeof fwVersion.major !== 'number'
+  ) {
+    throw new Error('Firmware version improperly formatted. Please reconnect.');
+  }
+  return fwVersion;
+};
 
 export const validateRequestError = (err: LatticeError) => {
   const isTimeout = err.code === 'ECONNABORTED' && err.errno === 'ETIME';
@@ -77,23 +107,35 @@ export const validateRequestError = (err: LatticeError) => {
   throw new Error(`Failed to make request to device:\n${err.message}`);
 };
 
-export const validateWallet = (wallet?: Wallet): Wallet => {
+export const validateWallet = (wallet?: Wallet) => {
   if (!wallet || wallet === null) {
     throw new Error('No active wallet.');
   }
   return wallet;
 };
 
-export const validateConnectedClient = (client: Client, hasWallet = true) => {
-  validateAppName(client.pairingName);
-  validateEphemeralPub(client.ephemeralPub);
-  validateSharedSecret(client.sharedSecret);
-  validateUrl(client.url);
-  validateFwConstants(client.getFwConstants());
-  if (hasWallet) {
-    validateWallet(client.getActiveWallet());
-  }
-}
+export const validateConnectedClient = (client: Client) => {
+  const appName = validateAppName(client.getAppName());
+  const ephemeralPub = validateEphemeralPub(client.ephemeralPub);
+  const sharedSecret = validateSharedSecret(client.sharedSecret);
+  const url = validateUrl(client.url);
+  const fwConstants = validateFwConstants(client.getFwConstants());
+  const fwVersion = validateFwVersion(client.getFwVersion());
+  const activeWallet = validateWallet(client.getActiveWallet());
+  // @ts-expect-error - Key is private
+  const key = validateKey(client.key);
+
+  return {
+    appName,
+    ephemeralPub,
+    sharedSecret,
+    url,
+    fwConstants,
+    fwVersion,
+    activeWallet,
+    key,
+  };
+};
 
 export const validateEphemeralPub = (ephemeralPub?: Buffer) => {
   if (!ephemeralPub) {
