@@ -38,7 +38,7 @@ export class Client {
   public url?: string;
   /** `name` is a human readable string associated with this app on the Lattice */
   private name: string;
-  public key: KeyPair;
+  private key: KeyPair;
   /**`privKey` is used to generate a keypair, which is used for maintaining an encrypted messaging channel with the target Lattice  */
   private privKey: Buffer | string;
   private retryCount: number;

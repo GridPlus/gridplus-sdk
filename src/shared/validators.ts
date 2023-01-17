@@ -54,7 +54,12 @@ export const validateAppName = (name?: string) => {
 
 export const validateUrl = (url?: string) => {
   if (!url) {
-    throw new Error('Url does not exist. Please reconnect.');
+    throw new Error('URL does not exist. Please reconnect.');
+  }
+  try {
+    new URL(url);
+  } catch (err) {
+    throw new Error('Invalid URL provided. Please use a valid URL.');
   }
   return url;
 };
@@ -62,6 +67,11 @@ export const validateUrl = (url?: string) => {
 export const validateBaseUrl = (baseUrl?: string) => {
   if (!baseUrl) {
     throw new Error('Base URL is required.');
+  }
+  try {
+    new URL(baseUrl);
+  } catch (err) {
+    throw new Error('Invalid Base URL provided. Please use a valid URL.');
   }
   return baseUrl;
 };
@@ -73,11 +83,18 @@ export const validateFwConstants = (fwConstants?: FirmwareConstants) => {
   return fwConstants;
 };
 
-export const validateFwVersion = (fwConstants?: FirmwareVersion) => {
-  if (!fwConstants) {
+export const validateFwVersion = (fwVersion?: FirmwareVersion) => {
+  if (!fwVersion) {
     throw new Error('Firmware version does not exist. Please reconnect.');
   }
-  return fwConstants;
+  if (
+    typeof fwVersion.fix !== 'number' ||
+    typeof fwVersion.minor !== 'number' ||
+    typeof fwVersion.major !== 'number'
+  ) {
+    throw new Error('Firmware version improperly formatted. Please reconnect.');
+  }
+  return fwVersion;
 };
 
 export const validateRequestError = (err: LatticeError) => {
@@ -105,6 +122,7 @@ export const validateConnectedClient = (client: Client) => {
   const fwConstants = validateFwConstants(client.getFwConstants());
   const fwVersion = validateFwVersion(client.getFwVersion());
   const activeWallet = validateWallet(client.getActiveWallet());
+  // @ts-expect-error - Key is private
   const key = validateKey(client.key);
 
   return {

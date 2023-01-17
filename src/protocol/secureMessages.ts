@@ -299,15 +299,9 @@ function serializeSecureRequestEncryptedPayloadData({
   // Calculate ephemeral ID
   const ephemeralId = getEphemeralId(sharedSecret);
 
-  // Form the object
-  const payloadData = {
-    ephemeralId,
-    encryptedData,
-  };
-
   // Now we will serialize the payload data.
   const serPayloadData = Buffer.alloc(szs.payload.request.encrypted - 1);
-  serPayloadData.writeUInt32LE(payloadData.ephemeralId);
+  serPayloadData.writeUInt32LE(ephemeralId);
   encryptedData.copy(serPayloadData, 4);
   return serPayloadData;
 }

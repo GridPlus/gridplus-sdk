@@ -1,7 +1,7 @@
 import Common, { Chain, Hardfork } from '@ethereumjs/common';
 import {
   TransactionFactory as EthTxFactory,
-  TypedTransaction
+  TypedTransaction,
 } from '@ethereumjs/tx';
 import { AbiCoder } from '@ethersproject/abi';
 import { keccak256 } from 'js-sha3';
@@ -12,7 +12,7 @@ import { Client } from '../../client';
 import {
   CURRENCIES,
   getFwVersionConst,
-  HARDENED_OFFSET
+  HARDENED_OFFSET,
 } from '../../constants';
 import { randomBytes } from '../../util';
 import { MSG_PAYLOAD_METADATA_SZ } from './constants';
@@ -24,7 +24,7 @@ import {
   copyBuffer,
   ETH_COIN,
   getTestVectors,
-  serializeJobData
+  serializeJobData,
 } from './helpers';
 const prng = getPrng();
 
@@ -84,7 +84,6 @@ export const buildWallet = (overrides?) => ({
     '162b56efe561c12bc93f703dc7026b3ec3d53923270c9259e2b08015fb9defd2',
     'hex',
   ),
-  name: Buffer.from('test'),
   capabilities: 1,
   external: true,
   ...overrides,
@@ -95,11 +94,7 @@ export const buildGetAddressesObject = (overrides?) => ({
   n: 1,
   flag: 1,
   fwConstants: buildFirmwareConstants(),
-  url: 'asdf',
-  fwVersion: Buffer.from([0, 12, 0]),
   wallet: buildWallet(),
-  ephemeralPub: Buffer.from('test'),
-  sharedSecret: Buffer.from('test'),
   ...overrides,
 });
 
@@ -359,7 +354,7 @@ export function buildEthMsgReq(
 export const buildValidateConnectObject = (overrides?) => ({
   deviceId: 'test',
   key: 'test',
-  baseUrl: 'test',
+  baseUrl: 'https://www.test.com',
   ...overrides,
 });
 
