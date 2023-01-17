@@ -1,154 +1,86 @@
-/** @internal Consistent with Lattice's IV */
-const AES_IV = [
-  0x6d, 0x79, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x70, 0x61, 0x73, 0x73, 0x77,
-  0x6f, 0x72, 0x64,
-];
-
-/** @internal 128-char strings (null terminated) */
-const ADDR_STR_LEN = 129;
-
-/**
- * Decrypted response lengths will be fixed for any given message type.
- * These are defined in the Lattice spec.
- * Every decrypted response should have a 65-byte pubkey prefixing it (and a 4-byte request ID)
- * These are NOT counted in `decResLengths`, meaning these values are 69-bytes smaller than the
- * corresponding structs in firmware.
- * @internal
- */
-const decResLengths = {
-  empty: 0, // Only contains the pubkey
-  getAddresses: 10 * ADDR_STR_LEN, // 10x 129 byte strings (128 bytes + null terminator)
-  sign: 1090, // 1 DER signature for ETH, 10 for BTC + change pubkeyhash
-  getWallets: 142, // 71 bytes per wallet record (response contains internal and external)
-  getKvRecords: 1395,
-  getDecoders: 1608,
-  fetchEncryptedData: 1608,
-  removeDecoders: 4,
-  test: 1646, // Max size of test response payload
-};
+import {
+  LatticeGetAddressesFlag,
+  LatticeEncDataSchema,
+  LatticeSignBlsDst,
+  LatticeSignCurve,
+  LatticeSignEncoding,
+  LatticeSignHash,
+} from './protocol/latticeConstants';
 
 /**
- * Every corresponding decrypted response struct in firmware has a pubkey
- * and checksum added. These are not included in `decResLengths`
- * @internal
+ * Externally exported constants used for building requests
+ * @public
  */
-const DES_RES_EXTRADATA_LEN = 69;
-
-/**
- * Encrypted responses also have metadata
- * - Prefix:
- *   - protocol version (1 byte)
- *   - response type, reserved (1 byte) -- not used
- *   - response id (4 bytes) -- not used
- *   - payload length (2 bytes)
- *   - response code (1 byte)
- * - Suffix:
- *   - checksum (4 bytes) -- NOT the same checksum as inside the decrypted msg
- * @internal
- */
-const ENC_MSG_METADATA_LEN = 13;
-
-/** @internal */
-const ENC_MSG_EXTRA_LEN = DES_RES_EXTRADATA_LEN + ENC_MSG_METADATA_LEN;
-/**
- * Per Lattice spec, all encrypted messages must fit in a buffer of this size.
- * The length comes from the largest request/response data type size
- * We also add the prefix length
- * @internal
- */
-let ENC_MSG_LEN = 0;
-Object.keys(decResLengths).forEach((k) => {
-  if (decResLengths[k] + ENC_MSG_EXTRA_LEN > ENC_MSG_LEN)
-    ENC_MSG_LEN = decResLengths[k] + ENC_MSG_EXTRA_LEN;
-});
-
-/** @internal */
-const deviceCodes = {
-  CONNECT: 1,
-  ENCRYPTED_REQUEST: 2,
-};
-
-/** @internal */
-const encReqCodes = {
-  FINALIZE_PAIRING: 0,
-  GET_ADDRESSES: 1,
-  ADD_PERMISSION: 2,
-  SIGN_TRANSACTION: 3,
-  GET_WALLETS: 4,
-  ADD_PERMISSION_V0: 5,
-  ADD_DECODERS: 6,
-  GET_KV_RECORDS: 7,
-  ADD_KV_RECORDS: 8,
-  REMOVE_KV_RECORDS: 9,
-  GET_DECODERS: 10,
-  REMOVE_DECODERS: 11,
-  EXPORT_ENC_DATA: 12,
-  TEST: 13,
+export const EXTERNAL = {
+  // Optional flags for `getAddresses`
+  GET_ADDR_FLAGS: {
+    SECP256K1_PUB: LatticeGetAddressesFlag.secp256k1Pubkey,
+    ED25519_PUB: LatticeGetAddressesFlag.ed25519Pubkey,
+    BLS12_381_G1_PUB: LatticeGetAddressesFlag.bls12_381Pubkey,
+  },
+  // Options for building general signing requests
+  SIGNING: {
+    HASHES: {
+      NONE: LatticeSignHash.none,
+      KECCAK256: LatticeSignHash.keccak256,
+      SHA256: LatticeSignHash.sha256,
+    },
+    CURVES: {
+      SECP256K1: LatticeSignCurve.secp256k1,
+      ED25519: LatticeSignCurve.ed25519,
+      BLS12_381_G2: LatticeSignCurve.bls12_381,
+    },
+    ENCODINGS: {
+      NONE: LatticeSignEncoding.none,
+      SOLANA: LatticeSignEncoding.solana,
+      EVM: LatticeSignEncoding.evm,
+      ETH_DEPOSIT: LatticeSignEncoding.eth_deposit,
+    },
+    BLS_DST: {
+      BLS_DST_NUL: LatticeSignBlsDst.NUL,
+      BLS_DST_POP: LatticeSignBlsDst.POP,
+    },
+  },
+  // Options for exporting encrypted data
+  ENC_DATA: {
+    SCHEMAS: {
+      BLS_KEYSTORE_EIP2335_PBKDF_V4: LatticeEncDataSchema.eip2335,
+    },
+  },
+  ETH_CONSENSUS_SPEC: {
+    NETWORKS: {
+      MAINNET_GENESIS: {
+        networkName: 'mainnet',
+        forkVersion: Buffer.alloc(4),
+        // Empty root because there were no validators at genesis
+        validatorsRoot: Buffer.alloc(32),
+      },
+    },
+    DOMAINS: {
+      DEPOSIT: Buffer.from('03000000', 'hex'),
+      VOLUNTARY_EXIT: Buffer.from('04000000', 'hex'),
+    },
+  },
 } as const;
 
-/** @internal */
-const messageConstants = {
-  NOT_PAIRED: 0x00,
-  PAIRED: 0x01,
-};
-
+//===============================
+// INTERNAL CONSTANTS
+//===============================
 /** @internal */
 const addressSizes = {
   BTC: 20, // 20 byte pubkeyhash
   ETH: 20, // 20 byte address not including 0x prefix
-};
-
-/** @internal */
-const responseCodes = {
-  RESP_SUCCESS: 0x00,
-  RESP_ERR_INVALID_MSG: 0x80,
-  RESP_ERR_UNSUPPORTED_VER: 0x81,
-  RESP_ERR_DEV_BUSY: 0x82,
-  RESP_ERR_USER_TIMEOUT: 0x83,
-  RESP_ERR_USER_DECLINED: 0x84,
-  RESP_ERR_PAIR_FAIL: 0x85,
-  RESP_ERR_PAIR_DISABLED: 0x86,
-  RESP_ERR_PERMISSION_DISABLED: 0x87,
-  RESP_ERR_INTERNAL: 0x88,
-  RESP_ERR_GCE_TIMEOUT: 0x89,
-  RESP_ERR_WRONG_WALLET: 0x8a,
-  RESP_ERR_DEV_LOCKED: 0x8b,
-  RESP_ERR_DISABLED: 0x8c,
-  RESP_ERR_ALREADY: 0x8d,
-  RESP_ERR_INVALID_EPHEM_ID: 0x8e,
-};
+} as const;
 
 /** @internal */
 const CURRENCIES = {
   ETH: 'ETH',
   BTC: 'BTC',
   ETH_MSG: 'ETH_MSG',
-}
+} as const;
 
 /** @internal */
-const responseMsgs = {
-  [responseCodes.RESP_SUCCESS]: 0x00,
-  [responseCodes.RESP_ERR_INVALID_MSG]: 'Invalid request',
-  [responseCodes.RESP_ERR_UNSUPPORTED_VER]: 'Unsupported version',
-  [responseCodes.RESP_ERR_DEV_BUSY]: 'Device busy',
-  [responseCodes.RESP_ERR_USER_TIMEOUT]: 'Timeout waiting for user',
-  [responseCodes.RESP_ERR_USER_DECLINED]: 'Request declined by user',
-  [responseCodes.RESP_ERR_PAIR_FAIL]: 'Pairing failed',
-  [responseCodes.RESP_ERR_PAIR_DISABLED]: 'Pairing is currently disabled',
-  [responseCodes.RESP_ERR_PERMISSION_DISABLED]:
-    'Automated signing is currently disabled',
-  [responseCodes.RESP_ERR_INTERNAL]: 'Device error',
-  [responseCodes.RESP_ERR_GCE_TIMEOUT]: 'Timeout',
-  [responseCodes.RESP_ERR_WRONG_WALLET]: 'Active wallet does not match request',
-  [responseCodes.RESP_ERR_DEV_LOCKED]: 'Device locked',
-  [responseCodes.RESP_ERR_DISABLED]: 'Disabled',
-  [responseCodes.RESP_ERR_ALREADY]:
-    'Record already exists. You must first remove it on your device.',
-  [responseCodes.RESP_ERR_INVALID_EPHEM_ID]:
-    'Could not find requester. Please reconnect.',
-};
-
-/** @internal */
+// THIS NEEDS TO BE A PROTOCOL CONSTANT TOO
 const signingSchema = {
   BTC_TRANSFER: 0,
   ETH_TRANSFER: 1,
@@ -156,7 +88,7 @@ const signingSchema = {
   ETH_MSG: 3,
   EXTRA_DATA: 4,
   GENERAL_SIGNING: 5,
-};
+} as const;
 
 /** @internal */
 const HARDENED_OFFSET = 0x80000000; // Hardened offset
@@ -174,7 +106,7 @@ const BIP_CONSTANTS = {
     BTC: HARDENED_OFFSET,
     BTC_TESTNET: HARDENED_OFFSET + 1,
   },
-};
+} as const;
 
 /** @internal For all HSM-bound requests */
 const REQUEST_TYPE_BYTE = 0x02;
@@ -329,63 +261,6 @@ const ethMsgProtocol = {
     enumIdx: 1,
     rawDataMaxLen: 1629, // Max size of raw data payload in bytes
     typeCodes: EIP712_ABI_LATTICE_FW_TYPE_MAP, // Enum indices of data types in Lattice firmware
-  },
-};
-
-/**
- * Externally exported constants used for building requests
- * @public
- */
-export const EXTERNAL = {
-  // Optional flags for `getAddresses`
-  GET_ADDR_FLAGS: {
-    SECP256K1_PUB: 3,
-    ED25519_PUB: 4,
-    BLS12_381_G1_PUB: 5,
-  },
-  // Options for building general signing requests
-  SIGNING: {
-    HASHES: {
-      NONE: 0,
-      KECCAK256: 1,
-      SHA256: 2,
-    },
-    CURVES: {
-      SECP256K1: 0,
-      ED25519: 1,
-      BLS12_381_G2: 2,
-    },
-    ENCODINGS: {
-      NONE: 1,
-      SOLANA: 2,
-      // TERRA: 3, // Deprecated
-      EVM: 4,
-      ETH_DEPOSIT: 5,
-    },
-    BLS_DST: {
-      BLS_DST_NUL: 1,
-      BLS_DST_POP: 2,
-    },
-  },
-  // Options for exporting encrypted data
-  ENC_DATA: {
-    SCHEMAS: {
-      BLS_KEYSTORE_EIP2335_PBKDF_V4: 0,
-    },
-  },
-  ETH_CONSENSUS_SPEC: {
-    NETWORKS: {
-      MAINNET_GENESIS: {
-        networkName: 'mainnet',
-        forkVersion: Buffer.alloc(4),
-        // Empty root because there were no validators at genesis
-        validatorsRoot: Buffer.alloc(32),
-      },
-    },
-    DOMAINS: {
-      DEPOSIT: Buffer.from('03000000', 'hex'),
-      VOLUNTARY_EXIT: Buffer.from('04000000', 'hex'),
-    }
   },
 };
 
@@ -630,23 +505,14 @@ export const DEFAULT_ACTIVE_WALLETS: ActiveWallets = {
 export {
   ASCII_REGEX,
   getFwVersionConst,
-  ADDR_STR_LEN,
-  AES_IV,
   BIP_CONSTANTS,
   BASE_URL,
   CURRENCIES,
   MAX_ADDR,
   NETWORKS_BY_CHAIN_ID,
   EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
-  ENC_MSG_LEN,
   addressSizes,
-  decResLengths,
-  deviceCodes,
-  encReqCodes,
   ethMsgProtocol,
-  messageConstants,
-  responseCodes,
-  responseMsgs,
   signingSchema,
   REQUEST_TYPE_BYTE,
   VERSION_BYTE,
@@ -654,6 +520,5 @@ export {
   HANDLE_LARGER_CHAIN_ID,
   MAX_CHAIN_ID_BYTES,
   ETH_ABI_LATTICE_FW_TYPE_MAP,
-
   EXTERNAL as PUBLIC,
 };

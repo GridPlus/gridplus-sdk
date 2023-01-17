@@ -3,30 +3,16 @@ interface SignRequestParams {
   currency?: Currency;
   cachedData?: any;
   nextCode?: Buffer;
-  retries?: number;
 }
 
 interface SignRequestFunctionParams extends SignRequestParams {
   client: Client;
 }
 
-interface ValidateSignRequestParams {
-  url?: string;
-  fwConstants?: FirmwareConstants;
-  wallet?: Wallet;
-  sharedSecret?: Buffer;
-}
-
-interface ValidatedSignRequest {
-  deviceId: string;
-  key: KeyPair;
-  baseUrl: string;
-}
-
 interface EncodeSignRequestParams {
-  request: any;
   fwConstants: FirmwareConstants;
   wallet: Wallet;
+  requestData: any;
   cachedData?: any;
   nextCode?: Buffer;
 }
@@ -69,7 +55,7 @@ interface BitcoinSignRequest extends SignRequest {
 interface DecodeSignResponseParams {
   data: Buffer;
   /** The original request data */
-  request: EthSignRequest | EthMsgSignRequest | BitcoinSignRequest;
+  request: SignRequest;
   isGeneric: boolean;
   currency?: Currency;
 }

@@ -1,11 +1,9 @@
 import {
   validateAddKvRequest,
   validateConnectRequest,
-  validateFetchActiveWallet,
   validateGetAddressesRequest,
   validateGetKvRequest,
   validateRemoveKvRequest,
-  validateSignRequest,
 } from '../../functions';
 import {
   isValidBlockExplorerResponse,
@@ -20,28 +18,34 @@ import {
 describe('validators', () => {
   describe('connect', () => {
     test('should successfully validate', () => {
-      const connectBundle = buildValidateConnectObject({});
-      const validConnectRequest = validateConnectRequest(connectBundle);
-      expect(validConnectRequest.deviceId).toMatchSnapshot();
+      validateConnectRequest(buildValidateConnectObject());
     });
 
+    // NOTE: There aren't many possible error conditions because
+    // the Client constructor has lots of fallback values. However,
+    // we should validate that you can't set a null ephemeral pub.
     test('should throw errors on validation failure', () => {
-      const connectBundle = buildValidateConnectObject({ baseUrl: '' });
-      expect(() => validateConnectRequest(connectBundle)).toThrowError();
+      const req = buildValidateConnectObject({ name: '' });
+      expect(() => {
+        req.client.ephemeralPub = null;
+      }).toThrowError();
     });
   });
 
   describe('getAddresses', () => {
     test('should successfully validate', () => {
       const getAddressesBundle = buildGetAddressesObject({});
-      expect(validateGetAddressesRequest(getAddressesBundle)).toMatchSnapshot();
+      validateGetAddressesRequest(getAddressesBundle);
     });
 
-    test('should throw errors on validation failure', () => {
-      const getAddressesBundle = buildGetAddressesObject({ url: '' });
-      expect(() =>
-        validateGetAddressesRequest(getAddressesBundle),
-      ).toThrowError();
+    test('encodeGetAddressesRequest should throw with invalid startPath', () => {
+      const startPath = [0x80000000 + 44, 0x80000000 + 60, 0, 0, 0, 0, 0];
+      const fwVersion = Buffer.from([0, 0, 0]);
+      const testEncodingFunction = () =>
+        validateGetAddressesRequest(
+          buildGetAddressesObject({ startPath, fwVersion }),
+        );
+      expect(testEncodingFunction).toThrowError();
     });
   });
 
@@ -51,7 +55,7 @@ describe('validators', () => {
         const validateAddKvBundle: any = buildValidateRequestObject({
           records: { key: 'value' },
         });
-        expect(validateAddKvRequest(validateAddKvBundle)).toMatchSnapshot();
+        validateAddKvRequest(validateAddKvBundle);
       });
 
       test('should throw errors on validation failure', () => {
@@ -67,7 +71,7 @@ describe('validators', () => {
           type: 1,
           start: 0,
         });
-        expect(validateGetKvRequest(validateGetKvBundle)).toMatchSnapshot();
+        validateGetKvRequest(validateGetKvBundle);
       });
 
       test('should throw errors on validation failure', () => {
@@ -82,51 +86,13 @@ describe('validators', () => {
           ids: [1],
           type: 1,
         });
-        expect(
-          validateRemoveKvRequest(validateRemoveKvBundle),
-        ).toMatchSnapshot();
+        validateRemoveKvRequest(validateRemoveKvBundle);
       });
 
       test('should throw errors on validation failure', () => {
         const validateRemoveKvBundle: any = buildValidateRequestObject({});
-        expect(() =>
-          validateRemoveKvRequest(validateRemoveKvBundle),
-        ).toThrowError();
+        expect (() => validateRemoveKvRequest(validateRemoveKvBundle)).toThrowError();
       });
-    });
-  });
-
-  describe('fetchActiveWallet', () => {
-    test('should successfully validate', () => {
-      const validateFetchActiveWalletBundle: any = buildValidateRequestObject(
-        {},
-      );
-      expect(
-        validateFetchActiveWallet(validateFetchActiveWalletBundle),
-      ).toMatchSnapshot();
-    });
-
-    test('should throw errors on validation failure', () => {
-      const validateFetchActiveWalletBundle: any = { url: '' };
-      expect(() =>
-        validateFetchActiveWallet(validateFetchActiveWalletBundle),
-      ).toThrowError();
-    });
-  });
-
-  describe('sign', () => {
-    test('should successfully validate', () => {
-      const validateSignRequestBundle: any = buildValidateRequestObject({
-        wallet: 'wallet',
-      });
-      expect(validateSignRequest(validateSignRequestBundle)).toMatchSnapshot();
-    });
-
-    test('should throw errors on validation failure', () => {
-      const validateSignRequestBundle: any = buildValidateRequestObject({});
-      expect(() =>
-        validateSignRequest(validateSignRequestBundle),
-      ).toThrowError();
     });
   });
 

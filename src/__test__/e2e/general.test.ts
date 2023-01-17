@@ -20,9 +20,9 @@ import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { question } from 'readline-sync';
 import {
   HARDENED_OFFSET,
-  responseCodes,
-  responseMsgs,
+  LatticeResponseCode,
 } from '../../constants';
+import { ProtocolConstants, LatticeResponseCode } from '../../protocol';
 import { randomBytes } from '../../util';
 import { buildEthSignRequest } from '../utils/builders';
 import { getDeviceId } from '../utils/getters';
@@ -153,6 +153,7 @@ describe('General', () => {
       const { req } = await buildEthSignRequest(client);
       await client.sign(req);
     });
+    
     it('should sign newer transactions', async () => {
       const { txData, req, common } = await buildEthSignRequest(
         client,
@@ -184,9 +185,10 @@ describe('General', () => {
       const tx = EthTxFactory.fromTxData(txData, { common });
       req.data.payload = tx.getMessageToSign(false);
       await expect(client.sign(req)).rejects.toThrow(
-        `${responseMsgs[responseCodes.RESP_ERR_USER_DECLINED]}`,
+        `${ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined]}`,
       );
     });
+
   });
 
   describe('Should sign Bitcoin transactions', () => {
@@ -346,4 +348,5 @@ describe('General', () => {
       expect(sigResp.changeRecipient?.slice(0, 2)).toEqual('tb');
     });
   });
+
 });

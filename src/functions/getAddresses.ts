@@ -1,20 +1,16 @@
 import bitwise from 'bitwise';
 import { Byte, UInt4 } from 'bitwise/types';
 import {
-  ADDR_STR_LEN,
-  decResLengths,
-  EXTERNAL,
-  getFwVersionConst,
-} from '../constants';
-import { decryptResponse, encryptRequest, request } from '../shared/functions';
+  encryptedSecureRequest,
+  LatticeGetAddressesFlag,
+  LatticeSecureEncryptedRequestType,
+  ProtocolConstants,
+} from '../protocol';
 import {
-  validateFwVersion,
+  validateConnectedClient,
   validateIsUInt4,
   validateNAddresses,
-  validateSharedSecret,
   validateStartPath,
-  validateUrl,
-  validateWallet,
 } from '../shared/validators';
 import { isValidAssetPath } from '../util';
 
@@ -24,93 +20,83 @@ import { isValidAssetPath } from '../util';
  * @category Lattice
  * @returns An array of addresses or public keys.
  */
-export async function getAddresses ({
-  startPath,
-  n,
-  flag,
+export async function getAddresses({
   client,
+  startPath: _startPath,
+  n: _n,
+  flag: _flag,
 }: GetAddressesRequestFunctionParams): Promise<Buffer[]> {
-  const { url, fwVersion, wallet, sharedSecret } =
-    validateGetAddressesRequest({
-      startPath,
-      n,
-      flag,
-      url: client.url,
-      fwVersion: client.fwVersion,
-      wallet: client.getActiveWallet(),
-      sharedSecret: client.sharedSecret,
-    });
+  const { url, sharedSecret, ephemeralPub, fwConstants, activeWallet } =
+    validateConnectedClient(client);
 
-  const payload = encodeGetAddressesRequest({
+  const { startPath, n, flag } = validateGetAddressesRequest({
+    startPath: _startPath,
+    n: _n,
+    flag: _flag,
+  });
+
+  const data = encodeGetAddressesRequest({
     startPath,
     n,
     flag,
-    fwVersion,
-    wallet,
+    fwConstants,
+    wallet: activeWallet,
   });
 
-  const encryptedPayload = encryptGetAddressesRequest({
-    payload,
+  const { decryptedData, newEphemeralPub } = await encryptedSecureRequest({
+    data,
+    requestType: LatticeSecureEncryptedRequestType.getAddresses,
     sharedSecret,
+    ephemeralPub,
+    url,
   });
 
-  const encryptedResponse = await requestGetAddresses(encryptedPayload, url);
+  client.mutate({
+    ephemeralPub: newEphemeralPub,
+  });
 
-  const { decryptedData, newEphemeralPub } = decryptGetAddressesResponse(
-    encryptedResponse,
-    sharedSecret,
-  );
-
-  client.ephemeralPub = newEphemeralPub;
-
-  const data = decodeGetAddresses(decryptedData, flag);
-
-  return data;
+  return decodeGetAddressesResponse(decryptedData, flag);
 }
 
 export const validateGetAddressesRequest = ({
   startPath,
   n,
   flag,
-  url,
-  fwVersion,
-  wallet,
-  sharedSecret,
-}: ValidateGetAddressesRequestParams) => {
-  validateStartPath(startPath);
-  validateNAddresses(n);
-  validateIsUInt4(flag);
-  const validUrl = validateUrl(url);
-  const validFwVersion = validateFwVersion(fwVersion);
-  const validWallet = validateWallet(wallet);
-  const validSharedSecret = validateSharedSecret(sharedSecret);
-
+}: {
+  startPath?: number[];
+  n?: number;
+  flag?: number;
+}) => {
   return {
-    url: validUrl,
-    fwVersion: validFwVersion,
-    wallet: validWallet,
-    sharedSecret: validSharedSecret,
+    startPath: validateStartPath(startPath),
+    n: validateNAddresses(n),
+    flag: validateIsUInt4(flag),
   };
 };
 
 export const encodeGetAddressesRequest = ({
-  fwVersion,
   startPath,
   n,
-  wallet,
   flag,
-}: EncodeGetAddressesRequestParams) => {
-  const fwConstants = getFwVersionConst(fwVersion);
-  const flags = fwConstants.getAddressFlags || [] as any[];
+  fwConstants,
+  wallet,
+}: {
+  startPath: number[];
+  n: number;
+  flag: number;
+  fwConstants: FirmwareConstants;
+  wallet: Wallet;
+}) => {
+  const flags = fwConstants.getAddressFlags || ([] as any[]);
   const isPubkeyOnly =
     flags.indexOf(flag) > -1 &&
-    (
-      flag === EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB ||
-      flag === EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB ||
-      flag === EXTERNAL.GET_ADDR_FLAGS.BLS12_381_G1_PUB
-    );
+    (flag === LatticeGetAddressesFlag.ed25519Pubkey ||
+      flag === LatticeGetAddressesFlag.secp256k1Pubkey ||
+      flag === LatticeGetAddressesFlag.bls12_381Pubkey);
   if (!isPubkeyOnly && !isValidAssetPath(startPath, fwConstants)) {
-    throw new Error('Derivation path or flag is not supported. Try updating Lattice firmware.');
+    throw new Error(
+      'Derivation path or flag is not supported. Try updating Lattice firmware.',
+    );
   }
   let sz = 32 + 20 + 1; // walletUID + 5 u32 indices + count/flag
   if (fwConstants.varAddrPathSzAllowed) {
@@ -122,7 +108,6 @@ export const encodeGetAddressesRequest = ({
   }
   const payload = Buffer.alloc(sz);
   let off = 0;
-
   wallet.uid.copy(payload, off);
   off += 32;
   // Build the start path (5x u32 indices)
@@ -146,7 +131,7 @@ export const encodeGetAddressesRequest = ({
     // `n` as a 4 bit value
     flagVal =
       fwConstants.getAddressFlags &&
-        fwConstants.getAddressFlags.indexOf(flag) > -1
+      fwConstants.getAddressFlags.indexOf(flag) > -1
         ? (flag as UInt4)
         : 0;
     const flagBits = bitwise.nibble.read(flagVal);
@@ -161,44 +146,38 @@ export const encodeGetAddressesRequest = ({
   return payload;
 };
 
-export const encryptGetAddressesRequest = ({
-  payload,
-  sharedSecret,
-}: EncrypterParams) => {
-  return encryptRequest({
-    requestCode: 'GET_ADDRESSES',
-    payload,
-    sharedSecret,
-  });
-};
-
-export const requestGetAddresses = async (payload: Buffer, url: string) => {
-  return request({ payload, url });
-};
-
 /**
  * @internal
  * @return an array of address strings or pubkey buffers
  */
-export const decodeGetAddresses = (data: any, flag: number): Buffer[] => {
-  let off = 65; // Skip 65 byte pubkey prefix
+export const decodeGetAddressesResponse = (
+  data: Buffer,
+  flag: number,
+): Buffer[] => {
+  let off = 0;
   // Look for addresses until we reach the end (a 4 byte checksum)
   const addrs: any[] = [];
   // Pubkeys are formatted differently in the response
-  const { ED25519_PUB, SECP256K1_PUB, BLS12_381_G1_PUB } = EXTERNAL.GET_ADDR_FLAGS;
-  const arePubkeys = flag === ED25519_PUB || flag === SECP256K1_PUB || flag === BLS12_381_G1_PUB;
+  const arePubkeys =
+    flag === LatticeGetAddressesFlag.secp256k1Pubkey ||
+    flag === LatticeGetAddressesFlag.ed25519Pubkey ||
+    flag === LatticeGetAddressesFlag.bls12_381Pubkey;
   if (arePubkeys) {
     off += 1; // skip uint8 representing pubkey type
   }
-  while (off + 4 < decResLengths.getAddresses) {
+  const respDataLength =
+    ProtocolConstants.msgSizes.secure.data.response.encrypted[
+      LatticeSecureEncryptedRequestType.getAddresses
+    ];
+  while (off < respDataLength) {
     if (arePubkeys) {
       // Pubkeys are shorter and are returned as buffers
       const pubBytes = data.slice(off, off + 65);
       const isEmpty = pubBytes.every((byte: number) => byte === 0x00);
-      if (!isEmpty && flag === ED25519_PUB) {
+      if (!isEmpty && flag === LatticeGetAddressesFlag.ed25519Pubkey) {
         // ED25519 pubkeys are 32 bytes
         addrs.push(pubBytes.slice(0, 32));
-      } else if (!isEmpty && flag === BLS12_381_G1_PUB) {
+      } else if (!isEmpty && flag === LatticeGetAddressesFlag.bls12_381Pubkey) {
         // BLS12_381_G1 keys are 48 bytes
         addrs.push(pubBytes.slice(0, 48));
       } else if (!isEmpty) {
@@ -209,8 +188,8 @@ export const decodeGetAddresses = (data: any, flag: number): Buffer[] => {
       off += 65;
     } else {
       // Otherwise we are dealing with address strings
-      const addrBytes = data.slice(off, off + ADDR_STR_LEN);
-      off += ADDR_STR_LEN;
+      const addrBytes = data.slice(off, off + ProtocolConstants.addrStrLen);
+      off += ProtocolConstants.addrStrLen;
       // Return the UTF-8 representation
       const len = addrBytes.indexOf(0); // First 0 is the null terminator
       if (len > 0) {
@@ -220,16 +199,4 @@ export const decodeGetAddresses = (data: any, flag: number): Buffer[] => {
   }
 
   return addrs;
-};
-
-export const decryptGetAddressesResponse = (
-  response: Buffer,
-  sharedSecret: Buffer,
-) => {
-  const { decryptedData, newEphemeralPub } = decryptResponse(
-    response,
-    decResLengths.getAddresses,
-    sharedSecret,
-  );
-  return { decryptedData, newEphemeralPub };
 };

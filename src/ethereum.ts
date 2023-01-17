@@ -14,8 +14,8 @@ import {
   ethMsgProtocol,
   HANDLE_LARGER_CHAIN_ID,
   MAX_CHAIN_ID_BYTES,
-  signingSchema
 } from './constants';
+import { LatticeSignSchema } from './protocol';
 import {
   buildSignerPathBuf,
   ensureHexBuffer,
@@ -32,7 +32,7 @@ const buildEthereumMsgRequest = function (input) {
   if (input.signerPath.length > 5 || input.signerPath.length < 2)
     throw new Error('Please provide a signer path with 2-5 indices');
   const req = {
-    schema: signingSchema.ETH_MSG,
+    schema: LatticeSignSchema.ethereumMsg,
     payload: null,
     input, // Save the input for later
     msg: null, // Save the buffered message for later
@@ -374,7 +374,7 @@ const buildEthereumTxRequest = function (data) {
       type,
       payload: txReqPayload.slice(0, off),
       extraDataPayloads,
-      schema: signingSchema.ETH_TRANSFER, // We will use eth transfer for all ETH txs for v1
+      schema: LatticeSignSchema.ethereum, // We will use eth transfer for all ETH txs for v1
       chainId,
       useEIP155,
       signerPath,

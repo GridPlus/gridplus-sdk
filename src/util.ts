@@ -13,15 +13,16 @@ import { decode as rlpDecode, encode as rlpEncode } from 'rlp';
 import { ecdsaRecover } from 'secp256k1';
 import { Calldata } from '.';
 import {
-  AES_IV,
   BIP_CONSTANTS,
   NETWORKS_BY_CHAIN_ID,
   HARDENED_OFFSET,
-  responseCodes,
-  responseMsgs,
   VERSION_BYTE,
   EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
 } from './constants';
+import { 
+  LatticeResponseCode,
+  ProtocolConstants
+} from './protocol';
 import { isValidBlockExplorerResponse, isValid4ByteResponse } from './shared/validators';
 
 const { COINS, PURPOSES } = BIP_CONSTANTS;
@@ -72,9 +73,9 @@ export const parseLattice1Response = function (r): {
 
   // Get response code
   const responseCode = payload.readUInt8(0);
-  if (responseCode !== responseCodes.RESP_SUCCESS) {
-    parsed.errorMessage = `${responseMsgs[responseCode] ? responseMsgs[responseCode] : 'Unknown Error'
-      } (Lattice)`;
+  if (responseCode !== LatticeResponseCode.success) {
+    const errMsg = ProtocolConstants.responseMsg[responseCode];
+    parsed.errorMessage = `[Lattice] ${errMsg ? errMsg : 'Unknown Error'}`;
     parsed.responseCode = responseCode;
     return parsed;
   } else {
@@ -209,7 +210,7 @@ export const fixLen = function (msg, length) {
 //--------------------------------------------------
 /** @internal */
 export const aes256_encrypt = function (data, key) {
-  const iv = Buffer.from(AES_IV);
+  const iv = Buffer.from(ProtocolConstants.aesIv);
   const aesCbc = new aes.ModeOfOperation.cbc(key, iv);
   const paddedData =
     data.length % 16 === 0 ? data : aes.padding.pkcs7.pad(data);
@@ -218,7 +219,7 @@ export const aes256_encrypt = function (data, key) {
 
 /** @internal */
 export const aes256_decrypt = function (data, key) {
-  const iv = Buffer.from(AES_IV);
+  const iv = Buffer.from(ProtocolConstants.aesIv);
   const aesCbc = new aes.ModeOfOperation.cbc(key, iv);
   return Buffer.from(aesCbc.decrypt(data));
 }

@@ -1,14 +1,8 @@
 import { UInt4 } from 'bitwise/types';
-import { MAX_ADDR, encReqCodes, EMPTY_WALLET_UID, ASCII_REGEX } from '../constants';
-import { isUInt4, checksum } from '../util';
-import isEmpty from 'lodash/isEmpty'
-
-export const validateValueExists = (arg: { [key: string]: any }) => {
-  const [key, [, value]] = Object.entries(arg);
-  if (!value) {
-    throw new Error(`${key} must be provided`);
-  }
-};
+import { Client } from '../client';
+import { MAX_ADDR, EMPTY_WALLET_UID, ASCII_REGEX } from '../constants';
+import { isUInt4 } from '../util';
+import isEmpty from 'lodash/isEmpty';
 
 export const validateIsUInt4 = (n?: number) => {
   if (typeof n !== 'number' || !isUInt4(n)) {
@@ -17,17 +11,24 @@ export const validateIsUInt4 = (n?: number) => {
   return n as UInt4;
 };
 
-export const validateNAddresses = (n: number) => {
-  if (n > MAX_ADDR)
+export const validateNAddresses = (n?: number) => {
+  if (!n) {
+    throw new Error('The number of addresses is required.');
+  }
+  if (n > MAX_ADDR) {
     throw new Error(`You may only request ${MAX_ADDR} addresses at once.`);
+  }
+  return n;
 };
 
-export const validateStartPath = (startPath: number[]) => {
+export const validateStartPath = (startPath?: number[]) => {
   if (!startPath) {
     throw new Error('Start path is required');
   }
-  if (startPath.length < 2 || startPath.length > 5)
-    throw new Error('Path must include between 2 and 5 indices');
+  if (startPath.length < 1 || startPath.length > 5)
+    throw new Error('Path must include between 1 and 5 indices');
+
+  return startPath;
 };
 
 export const validateDeviceId = (deviceId?: string) => {
@@ -37,12 +38,6 @@ export const validateDeviceId = (deviceId?: string) => {
     );
   }
   return deviceId;
-};
-
-export const validateEncryptRequestCode = (code: keyof typeof encReqCodes) => {
-  if (code && encReqCodes[code] === undefined) {
-    throw new Error('Unknown encrypted request code.');
-  }
 };
 
 export const validateAppName = (name?: string) => {
@@ -57,15 +52,14 @@ export const validateAppName = (name?: string) => {
   return name;
 };
 
-export const validateResponse = (res: Buffer) => {
-  if (!res) {
-    throw new Error('Error decrypting response');
-  }
-};
-
 export const validateUrl = (url?: string) => {
   if (!url) {
-    throw new Error('Url does not exist. Please reconnect.');
+    throw new Error('URL does not exist. Please reconnect.');
+  }
+  try {
+    new URL(url);
+  } catch (err) {
+    throw new Error('Invalid URL provided. Please use a valid URL.');
   }
   return url;
 };
@@ -73,6 +67,11 @@ export const validateUrl = (url?: string) => {
 export const validateBaseUrl = (baseUrl?: string) => {
   if (!baseUrl) {
     throw new Error('Base URL is required.');
+  }
+  try {
+    new URL(baseUrl);
+  } catch (err) {
+    throw new Error('Invalid Base URL provided. Please use a valid URL.');
   }
   return baseUrl;
 };
@@ -83,26 +82,19 @@ export const validateFwConstants = (fwConstants?: FirmwareConstants) => {
   }
   return fwConstants;
 };
-export const validateFwVersion = (fwVersion?: Buffer) => {
-  if (!fwVersion || fwVersion.byteLength > 4) {
+
+export const validateFwVersion = (fwVersion?: FirmwareVersion) => {
+  if (!fwVersion) {
     throw new Error('Firmware version does not exist. Please reconnect.');
   }
-  return fwVersion;
-};
-
-/**
- * Validate checksum. It will be the last 4 bytes of the decrypted payload. The length of the
- * decrypted payload will be fixed for each given message type.
- */
-export const validateChecksum = (res: Buffer, length: number) => {
-  const toCheck = res.slice(0, length);
-  const cs = parseInt(`0x${res.slice(length, length + 4).toString('hex')}`);
-  const csCheck = checksum(toCheck);
-  if (cs !== csCheck) {
-    throw new Error(
-      `Checksum mismatch in response from Lattice (calculated ${csCheck}, wanted ${cs})`,
-    );
+  if (
+    typeof fwVersion.fix !== 'number' ||
+    typeof fwVersion.minor !== 'number' ||
+    typeof fwVersion.major !== 'number'
+  ) {
+    throw new Error('Firmware version improperly formatted. Please reconnect.');
   }
+  return fwVersion;
 };
 
 export const validateRequestError = (err: LatticeError) => {
@@ -115,11 +107,34 @@ export const validateRequestError = (err: LatticeError) => {
   throw new Error(`Failed to make request to device:\n${err.message}`);
 };
 
-export const validateWallet = (wallet?: Wallet): Wallet => {
+export const validateWallet = (wallet?: Wallet) => {
   if (!wallet || wallet === null) {
     throw new Error('No active wallet.');
   }
   return wallet;
+};
+
+export const validateConnectedClient = (client: Client) => {
+  const appName = validateAppName(client.getAppName());
+  const ephemeralPub = validateEphemeralPub(client.ephemeralPub);
+  const sharedSecret = validateSharedSecret(client.sharedSecret);
+  const url = validateUrl(client.url);
+  const fwConstants = validateFwConstants(client.getFwConstants());
+  const fwVersion = validateFwVersion(client.getFwVersion());
+  const activeWallet = validateWallet(client.getActiveWallet());
+  // @ts-expect-error - Key is private
+  const key = validateKey(client.key);
+
+  return {
+    appName,
+    ephemeralPub,
+    sharedSecret,
+    url,
+    fwConstants,
+    fwVersion,
+    activeWallet,
+    key,
+  };
 };
 
 export const validateEphemeralPub = (ephemeralPub?: Buffer) => {
@@ -199,12 +214,6 @@ export const validateKvRecord = (
   }
   return { key, val };
 };
-
-export const validateRequestLength = (req: any, fwConstants: FirmwareConstants) => {
-  if (req.payload.length > fwConstants.reqMaxDataSz) {
-    throw new Error('Transaction is too large');
-  }
-}
 
 export const isValidBlockExplorerResponse = (data: any) => {
   try {

@@ -1,4 +1,3 @@
-
 type Currency = keyof typeof CURRENCIES;
 
 type SigningPath = [number, number, number, number, number];
@@ -16,6 +15,8 @@ interface SignData {
   signer?: Buffer;
   err?: string;
 }
+
+type SigningRequestResponse = SignData | { pubkey: null; sig: null };
 
 interface TransactionPayload {
   type: number;
@@ -37,14 +38,11 @@ interface SigningPayload {
   encodingType: number;
 }
 
-type EncryptionRequestCodeKeys = keyof typeof encReqCodes;
-type EncryptionRequestCodes = typeof encReqCodes[EncryptionRequestCodeKeys];
-
 interface Wallet {
   /** 32 byte id */
   uid: Buffer;
   /** 20 char (max) string */
-  name: Buffer;
+  name: Buffer | null;
   /** 4 byte flag */
   capabilities: number;
   /** External or internal wallet */
@@ -54,12 +52,6 @@ interface Wallet {
 interface ActiveWallets {
   internal: Wallet;
   external: Wallet;
-}
-
-interface EncryptRequestParams {
-  payload: Buffer;
-  requestCode: EncryptionRequestCodeKeys;
-  sharedSecret: Buffer;
 }
 
 interface RequestParams {
@@ -81,5 +73,3 @@ interface ClientStateData {
   retryCount: number;
   timeout: number;
 }
-
-type RequestTypes = 'connect' | 'getAddresses' | 'sign' | 'fetchActiveWallet' | 'addKvRecords' | 'getKvRecords' | 'removeKvRecords'

@@ -25,19 +25,6 @@
         "no-console": ["off"],
         "quotes": ["error", "single"],
         "react/react-in-jsx-scope": "off",
-        "@typescript-eslint/no-explicit-any": "off",
-        "@typescript-eslint/member-delimiter-style": [
-            "warn",
-            {
-                "multiline": {
-                    "delimiter": "semi",
-                    "requireLast": true
-                },
-                "singleline": {
-                    "delimiter": "comma",
-                    "requireLast": false
-                }
-            }
-        ]
-    }
+        "@typescript-eslint/no-explicit-any": "off"
+  }
 }

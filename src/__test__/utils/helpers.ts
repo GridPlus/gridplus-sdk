@@ -7,18 +7,19 @@ import {
 } from 'ed25519-hd-key';
 import { ec as EC, eddsa as EdDSA } from 'elliptic';
 import { privateToAddress } from 'ethereumjs-util';
+import { readFileSync } from 'fs';
 import { sha256 } from 'hash.js/lib/hash/sha';
 import { keccak256 } from 'js-sha3';
 import {
-  ADDR_STR_LEN,
   BIP_CONSTANTS,
   ethMsgProtocol,
   HARDENED_OFFSET,
 } from '../../constants';
+import { jsonc } from 'jsonc';
 import { Constants } from '../..';
-
 import { getV, parseDER, randomBytes } from '../../util';
 import { Client } from '../../client';
+import { ProtocolConstants } from '../../protocol';
 import { getPathStr } from '../../shared/utilities'
 import { TypedTransaction } from '@ethereumjs/tx';
 import { getEnv } from './getters';
@@ -539,8 +540,8 @@ export const deserializeGetAddressesJobResult = function (res) {
   getAddrResult.count = res.readUInt8(off);
   off += 3; // Skip a 2-byte empty shim value (for backwards compatibility)
   for (let i = 0; i < getAddrResult.count; i++) {
-    const _addr = res.slice(off, off + ADDR_STR_LEN);
-    off += ADDR_STR_LEN;
+    const _addr = res.slice(off, off + ProtocolConstants.addrStrLen);
+    off += ProtocolConstants.addrStrLen;
     for (let j = 0; j < _addr.length; j++)
       if (_addr[j] === 0x00) {
         getAddrResult.addresses.push(_addr.slice(0, j).toString('utf8'));
@@ -982,3 +983,8 @@ export const compressPubKey = function (pub) {
   return compressed;
 }
 
+export const getTestVectors = function () {
+  return jsonc.parse(
+    readFileSync(`${process.cwd()}/src/__test__/vectors.jsonc`).toString()
+  );
+}
