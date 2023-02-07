@@ -17,13 +17,7 @@ type AddressTag = {
 };
 
 interface GetKvRecordsData {
-  records: {
-    caseSensitive: boolean;
-    id: number;
-    key: string;
-    type: number;
-    val: string;
-  }[];
+  records: AddressTag[];
   fetched: number;
   total: number;
 }

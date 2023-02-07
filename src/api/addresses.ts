@@ -3,9 +3,12 @@ import {
   BTC_SEGWIT_DERIVATION,
   BTC_WRAPPED_SEGWIT_DERIVATION,
   DEFAULT_ETH_DERIVATION,
-  HARDENED_OFFSET,
+  LEDGER_LEGACY_DERIVATION,
+  LEDGER_LIVE_DERIVATION,
+  MAX_ADDR,
+  SOLANA_DERIVATION,
 } from '../constants';
-import { queue } from './utilities';
+import { getStartPath, queue } from './utilities';
 
 export const fetchAddresses = async (
   overrides?: GetAddressesRequestParams,
@@ -14,53 +17,95 @@ export const fetchAddresses = async (
     client
       .getAddresses({
         startPath: DEFAULT_ETH_DERIVATION,
-        n: 10,
+        n: MAX_ADDR,
         ...overrides,
       })
       .then((addrs) => addrs.map((addr) => `${addr}`)),
   );
 };
 
-export const fetchBtcLegacyAddresses = async (n = 10): Promise<string[]> => {
+export const fetchBtcLegacyAddresses = async (
+  n = MAX_ADDR,
+  startPathIndex?: number,
+): Promise<string[]> => {
   return fetchAddresses({
-    startPath: BTC_LEGACY_DERIVATION,
+    startPath: getStartPath(BTC_LEGACY_DERIVATION, startPathIndex),
     n,
   });
 };
 
-export const fetchBtCSegwitAddresses = async (n = 10): Promise<string[]> => {
+export const fetchBtCSegwitAddresses = async (
+  n = MAX_ADDR,
+  startPathIndex?: number,
+): Promise<string[]> => {
   return fetchAddresses({
-    startPath: BTC_SEGWIT_DERIVATION,
+    startPath: getStartPath(BTC_SEGWIT_DERIVATION, startPathIndex),
     n,
   });
 };
 
 export const fetchBtcWrappedSegwitAddresses = async (
-  n = 10,
+  n = MAX_ADDR,
+  startPathIndex?: number,
 ): Promise<string[]> => {
   return fetchAddresses({
-    startPath: BTC_WRAPPED_SEGWIT_DERIVATION,
+    startPath: getStartPath(BTC_WRAPPED_SEGWIT_DERIVATION, startPathIndex),
     n,
   });
 };
 
-export const fetchLedgerLiveAddresses = async (n = 10): Promise<string[]> => {
+export const fetchSolanaAddresses = async (
+  n = MAX_ADDR,
+  startPathIndex?: number,
+): Promise<string[]> => {
+  return fetchAddresses({
+    startPath: getStartPath(SOLANA_DERIVATION, startPathIndex, 2),
+    n,
+  });
+};
+
+export const fetchLedgerLiveAddresses = async (
+  n = MAX_ADDR,
+  startPathIndex?: number,
+): Promise<string[]> => {
   const addresses = [];
   for (let i = 0; i < n; i++) {
     addresses.push(
       queue((client) =>
         client
           .getAddresses({
-            startPath: [
-              HARDENED_OFFSET + 49,
-              HARDENED_OFFSET + 60,
-              HARDENED_OFFSET,
-              i,
-              0,
-            ],
+            startPath: getStartPath(
+              LEDGER_LIVE_DERIVATION,
+              startPathIndex + i,
+              2,
+            ),
             n: 1,
           })
-          .then((addresses) => addresses.map((address) => address.toString())),
+          .then((addresses) => addresses.map((address) => `${address}`)),
+      ),
+    );
+  }
+  return Promise.all(addresses);
+};
+
+export const fetchLedgerLegacyAddresses = async (
+  n = MAX_ADDR,
+  startPathIndex?: number,
+): Promise<string[]> => {
+  const addresses = [];
+  for (let i = 0; i < n; i++) {
+    addresses.push(
+      queue((client) =>
+        client
+          .getAddresses({
+            startPath: getStartPath(
+              LEDGER_LEGACY_DERIVATION,
+              startPathIndex + i,
+              3,
+            ),
+            n: 1,
+          })
+          .then((addresses) => addresses.map((address) => `${address}`)),
       ),
     );
   }

@@ -540,9 +540,26 @@ export const BTC_WRAPPED_SEGWIT_DERIVATION = [
 
 /** @internal */
 export const SOLANA_DERIVATION = [
-  0x80000000 + 44,
-  0x80000000 + 501,
-  0x80000000,
+  HARDENED_OFFSET + 44,
+  HARDENED_OFFSET + 501,
+  HARDENED_OFFSET,
+];
+
+/** @internal */
+export const LEDGER_LIVE_DERIVATION = [
+  HARDENED_OFFSET + 49,
+  HARDENED_OFFSET + 60,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
+
+/** @internal */
+export const LEDGER_LEGACY_DERIVATION = [
+  HARDENED_OFFSET + 49,
+  HARDENED_OFFSET + 60,
+  HARDENED_OFFSET,
+  0,
 ];
 
 export {

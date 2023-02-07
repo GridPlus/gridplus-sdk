@@ -1,3 +1,4 @@
+import { getClient } from './../../api/utilities';
 import Common, { Chain, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory } from '@ethereumjs/tx';
 import { question } from 'readline-sync';
@@ -23,6 +24,7 @@ import {
   signSolanaTx,
 } from '../../api/index';
 import { setupClient } from '../utils/setup';
+import { buildRandomMsg } from '../utils/builders';
 
 describe('API', () => {
   test('pair', async () => {
@@ -76,43 +78,51 @@ describe('API', () => {
     });
 
     describe('ethereum', () => {
-      const txData = {
-        type: 1,
-        maxFeePerGas: 1200000000,
-        maxPriorityFeePerGas: 1200000000,
-        nonce: 0,
-        gasLimit: 50000,
-        to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-        value: 1000000000000,
-        data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
-        gasPrice: 1200000000,
-      };
-
-      test('message', async () => {
-        await signMessage('test message');
-      });
-
-      test('generic', async () => {
-        const common = new Common({
-          chain: Chain.Mainnet,
-          hardfork: Hardfork.London,
+      describe('messages', () => {
+        test('signPersonal', async () => {
+          await signMessage('test message');
         });
-        const tx = TransactionFactory.fromTxData(txData, { common });
-        const payload = tx.getMessageToSign(false);
 
-        await sign(payload);
+        test('eip712', async () => {
+          await signMessage(buildRandomMsg('eip712', getClient()));
+        });
       });
 
-      test('legacy', async () => {
-        const rawTx = encode([
-          txData.nonce,
-          txData.gasPrice,
-          txData.gasLimit,
-          txData.to,
-          txData.value,
-          txData.data,
-        ]);
-        await sign(rawTx);
+      describe('transactions', () => {
+        const txData = {
+          type: 1,
+          maxFeePerGas: 1200000000,
+          maxPriorityFeePerGas: 1200000000,
+          nonce: 0,
+          gasLimit: 50000,
+          to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+          value: 1000000000000,
+          data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
+          gasPrice: 1200000000,
+        };
+
+        test('generic', async () => {
+          const common = new Common({
+            chain: Chain.Mainnet,
+            hardfork: Hardfork.London,
+          });
+          const tx = TransactionFactory.fromTxData(txData, { common });
+          const payload = tx.getMessageToSign(false);
+
+          await sign(payload);
+        });
+
+        test('legacy', async () => {
+          const rawTx = encode([
+            txData.nonce,
+            txData.gasPrice,
+            txData.gasLimit,
+            txData.to,
+            txData.value,
+            txData.data,
+          ]);
+          await sign(rawTx);
+        });
       });
     });
 

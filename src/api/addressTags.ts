@@ -1,4 +1,5 @@
 import { Client } from '../client';
+import { MAX_ADDR } from '../constants';
 import { queue } from './utilities';
 
 export const addAddressTags = async (
@@ -14,26 +15,28 @@ export const addAddressTags = async (
   return queue((client) => client.addKvRecords({ records }));
 };
 
-export const fetchAddressTags = async () => {
-  const addresses: AddressTag[] = [];
-  let remainingToFetch = 10;
-  let fetched = 0;
+export const fetchAddressTags = async (
+  { n, start } = { n: MAX_ADDR, start: 0 },
+) => {
+  const addressTags: AddressTag[] = [];
+  let remainingToFetch = n;
+  let fetched = start;
 
   while (remainingToFetch > 0) {
     await queue((client) =>
       client
         .getKvRecords({
           start: fetched,
-          n: remainingToFetch > 10 ? 10 : remainingToFetch,
+          n: remainingToFetch > MAX_ADDR ? MAX_ADDR : remainingToFetch,
         })
         .then(async (res) => {
-          addresses.push(...res.records);
+          addressTags.push(...res.records);
           fetched = res.fetched + fetched;
           remainingToFetch = res.total - fetched;
         }),
     );
   }
-  return addresses;
+  return addressTags;
 };
 
 export const removeAddressTags = async (

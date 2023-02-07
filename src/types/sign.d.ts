@@ -1,9 +1,10 @@
 interface SigningPayload {
   signerPath: SigningPath;
-  payload: (Uint8Array | Buffer | Buffer[]) | string;
+  payload: Uint8Array | Buffer | Buffer[] | string | EIP712MessagePayload;
   curveType: number;
   hashType: number;
   encodingType?: number;
+  protocol?: ETH_MESSAGE_PROTOCOL;
 }
 
 interface SignRequestParams {
@@ -81,4 +82,18 @@ interface DecodeSignResponseParams {
   request: SignRequest;
   isGeneric: boolean;
   currency?: Currency;
+}
+
+type ETH_MESSAGE_PROTOCOLS = 'eip712' | 'signPersonal';
+
+interface EIP712MessagePayload {
+  types: {
+    [key: string]: {
+      name: string;
+      type: string;
+    }[];
+  };
+  domain: any;
+  primaryType: string;
+  message: any;
 }

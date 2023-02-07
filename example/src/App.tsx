@@ -10,11 +10,11 @@ function App() {
     window.localStorage.getItem('storedClient') || '';
 
   const setStoredClient = (storedClient: string | null) => {
-    const client = getClient();
-    setLabel(client?.getDeviceId() || 'No Device');
-
     if (!storedClient) return;
     window.localStorage.setItem('storedClient', storedClient);
+
+    const client = getClient();
+    setLabel(client?.getDeviceId() || 'No Device');
   };
 
   useEffect(() => {
@@ -61,13 +61,12 @@ function App() {
             onSubmit={submitInit}
             style={{ display: 'flex', flexDirection: 'column' }}
           >
-            <input type="text" placeholder="deviceid" />
-            <input type="text" placeholder="pw" />
+            <input type="text" placeholder="Device Id" />
+            <input type="password" placeholder="Password" />
             <input
               type="text"
-              placeholder="app name"
-              defaultValue="test app"
-              disabled
+              placeholder="App Name"
+              defaultValue="Example App"
             />
             <button type="submit">Submit</button>
           </form>
