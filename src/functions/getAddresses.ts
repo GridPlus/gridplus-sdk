@@ -11,6 +11,7 @@ import {
   validateIsUInt4,
   validateNAddresses,
   validateStartPath,
+  validateWallet,
 } from '../shared/validators';
 import { isValidAssetPath } from '../util';
 
@@ -26,8 +27,9 @@ export async function getAddresses({
   n: _n,
   flag: _flag,
 }: GetAddressesRequestFunctionParams): Promise<Buffer[]> {
-  const { url, sharedSecret, ephemeralPub, fwConstants, activeWallet } =
+  const { url, sharedSecret, ephemeralPub, fwConstants } =
     validateConnectedClient(client);
+  const activeWallet = validateWallet(client.getActiveWallet());
 
   const { startPath, n, flag } = validateGetAddressesRequest({
     startPath: _startPath,

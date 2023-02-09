@@ -1,5 +1,14 @@
+interface SigningPayload {
+  signerPath: SigningPath;
+  payload: Uint8Array | Buffer | Buffer[] | string | EIP712MessagePayload;
+  curveType: number;
+  hashType: number;
+  encodingType?: number;
+  protocol?: ETH_MESSAGE_PROTOCOL;
+}
+
 interface SignRequestParams {
-  data: SigningPayload;
+  data: SigningPayload | BitcoinSignPayload;
   currency?: Currency;
   cachedData?: any;
   nextCode?: Buffer;
@@ -42,7 +51,7 @@ interface EthMsgSignRequest extends SignRequest {
 
 interface BitcoinSignRequest extends SignRequest {
   origData: {
-    prevOuts: any;
+    prevOuts: PreviousOutput[];
     recipient: string;
     value: number;
     fee: number;
@@ -52,10 +61,39 @@ interface BitcoinSignRequest extends SignRequest {
   changeData?: { value: number };
 }
 
+type PreviousOutput = {
+  txHash: string;
+  value: number;
+  index: number;
+  signerPath: number[];
+};
+
+type BitcoinSignPayload = {
+  prevOuts: PreviousOutput[];
+  recipient: string;
+  value: number;
+  fee: number;
+  changePath: number[];
+};
+
 interface DecodeSignResponseParams {
   data: Buffer;
   /** The original request data */
   request: SignRequest;
   isGeneric: boolean;
   currency?: Currency;
+}
+
+type ETH_MESSAGE_PROTOCOLS = 'eip712' | 'signPersonal';
+
+interface EIP712MessagePayload {
+  types: {
+    [key: string]: {
+      name: string;
+      type: string;
+    }[];
+  };
+  domain: any;
+  primaryType: string;
+  message: any;
 }

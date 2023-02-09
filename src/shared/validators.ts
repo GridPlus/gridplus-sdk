@@ -121,7 +121,6 @@ export const validateConnectedClient = (client: Client) => {
   const url = validateUrl(client.url);
   const fwConstants = validateFwConstants(client.getFwConstants());
   const fwVersion = validateFwVersion(client.getFwVersion());
-  const activeWallet = validateWallet(client.getActiveWallet());
   // @ts-expect-error - Key is private
   const key = validateKey(client.key);
 
@@ -132,7 +131,6 @@ export const validateConnectedClient = (client: Client) => {
     url,
     fwConstants,
     fwVersion,
-    activeWallet,
     key,
   };
 };

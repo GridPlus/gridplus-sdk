@@ -8,11 +8,16 @@ interface GetKvRecordsRequestFunctionParams extends GetKvRecordsRequestParams {
   client: Client;
 }
 
+type AddressTag = {
+  caseSensitive: boolean;
+  id: number;
+  key: string;
+  type: number;
+  val: string;
+};
+
 interface GetKvRecordsData {
-  records: {
-    id: string;
-    [key: string]: string;
-  }[];
+  records: AddressTag[];
   fetched: number;
   total: number;
 }
