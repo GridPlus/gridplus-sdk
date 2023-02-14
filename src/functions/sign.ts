@@ -1,20 +1,15 @@
 import { sha256 } from 'hash.js';
 import bitcoin from '../bitcoin';
-import { CURRENCIES, decResLengths, signingSchema } from '../constants';
+import { CURRENCIES } from '../constants';
 import ethereum from '../ethereum';
 import { parseGenericSigningResponse } from '../genericSigning';
 import {
-  buildTransaction,
-  decryptResponse,
-  encryptRequest,
-  request
-} from '../shared/functions';
-import {
-  validateFwConstants,
-  validateSharedSecret,
-  validateUrl,
-  validateWallet
-} from '../shared/validators';
+  encryptedSecureRequest,
+  LatticeSecureEncryptedRequestType,
+  LatticeSignSchema,
+} from '../protocol';
+import { buildTransaction } from '../shared/functions';
+import { validateConnectedClient, validateWallet } from '../shared/validators';
 import { parseDER } from '../util';
 
 /**
@@ -22,142 +17,105 @@ import { parseDER } from '../util';
  * @category Lattice
  * @returns The response from the device.
  */
-export async function sign ({
+export async function sign({
+  client,
   data,
   currency,
   cachedData,
   nextCode,
-  client,
-}: SignRequestFunctionParams): Promise<SignData> {
-  const { url, wallet, sharedSecret, fwConstants } = validateSignRequest({
-    url: client.url,
-    fwConstants: client.getFwConstants(),
-    wallet: client.getActiveWallet(),
-    sharedSecret: client.sharedSecret,
-  });
-  
-  const { request, isGeneric } = buildTransaction({
+}: SignRequestFunctionParams): Promise<SigningRequestResponse> {
+  const { url, sharedSecret, ephemeralPub, fwConstants } =
+    validateConnectedClient(client);
+  const wallet = validateWallet(client.getActiveWallet());
+
+  const { requestData, isGeneric } = buildTransaction({
     data,
     currency,
     fwConstants,
   });
 
   const { payload, hasExtraPayloads } = encodeSignRequest({
-    request,
     fwConstants,
     wallet,
+    requestData,
     cachedData,
     nextCode,
   });
 
-  const encryptedPayload = encryptSignRequest({
-    payload,
+  const { decryptedData, newEphemeralPub } = await encryptedSecureRequest({
+    data: payload,
+    requestType: LatticeSecureEncryptedRequestType.sign,
     sharedSecret,
+    ephemeralPub,
+    url,
   });
 
-  const encryptedResponse = await requestSign(encryptedPayload, url);
+  client.mutate({
+    ephemeralPub: newEphemeralPub,
+  });
 
+  // If this request has multiple payloads, we need to recurse
+  // so that we can make the next request.
+  // It is chained to the first request using `nextCode`
   if (hasExtraPayloads) {
-    const { decryptedData, newEphemeralPub } = decryptSignResponse(
-      encryptedResponse,
-      sharedSecret,
-    );
-
-    client.ephemeralPub = newEphemeralPub;
-
     return client.sign({
       data,
       currency,
-      cachedData: request,
-      nextCode: decryptedData.slice(65, 73),
+      cachedData: requestData,
+      nextCode: decryptedData.slice(0, 8),
     });
   }
-
-  const { decryptedData, newEphemeralPub } = decryptSignResponse(
-    encryptedResponse,
-    sharedSecret,
-  );
-
-  client.ephemeralPub = newEphemeralPub;
-  const transaction = decodeSignResponse({
+  // If this is the only (or final) request,
+  // decode response data and return
+  const decodedResponse = decodeSignResponse({
     data: decryptedData,
-    request,
+    request: requestData,
     isGeneric,
     currency,
   });
 
-  return transaction;
+  return decodedResponse;
 }
 
-export const validateSignRequest = ({
-  url,
-  fwConstants,
-  sharedSecret,
-  wallet,
-}: ValidateSignRequestParams) => {
-  const validUrl = validateUrl(url);
-  const validFwConstants = validateFwConstants(fwConstants);
-  const validSharedSecret = validateSharedSecret(sharedSecret);
-  const validWallet = validateWallet(wallet);
-
-  return {
-    url: validUrl,
-    fwConstants: validFwConstants,
-    sharedSecret: validSharedSecret,
-    wallet: validWallet,
-  };
-};
-
 export const encodeSignRequest = ({
-  request,
   fwConstants,
   wallet,
+  requestData,
   cachedData,
   nextCode,
 }: EncodeSignRequestParams) => {
   let reqPayload, schema;
+
   if (cachedData && nextCode) {
-    request = cachedData;
-    reqPayload = Buffer.concat([nextCode, request.extraDataPayloads.shift()]);
-    schema = signingSchema.EXTRA_DATA;
+    requestData = cachedData;
+    reqPayload = Buffer.concat([
+      nextCode,
+      requestData.extraDataPayloads.shift(),
+    ]);
+    schema = LatticeSignSchema.extraData;
   } else {
-    reqPayload = request.payload;
-    schema = request.schema;
+    reqPayload = requestData.payload;
+    schema = requestData.schema;
   }
 
   const payload = Buffer.alloc(2 + fwConstants.reqMaxDataSz);
   let off = 0;
 
   const hasExtraPayloads =
-    request.extraDataPayloads && Number(request.extraDataPayloads.length > 0);
+    requestData.extraDataPayloads &&
+    Number(requestData.extraDataPayloads.length > 0);
 
   payload.writeUInt8(hasExtraPayloads, off);
   off += 1;
   // Copy request schema (e.g. ETH or BTC transfer)
   payload.writeUInt8(schema, off);
   off += 1;
-  const validWallet = validateWallet(wallet);
   // Copy the wallet UID
-  validWallet.uid?.copy(payload, off);
-  off += validWallet.uid?.length ?? 0;
+  wallet.uid?.copy(payload, off);
+  off += wallet.uid?.length ?? 0;
   // Build data based on the type of request
   reqPayload.copy(payload, off);
   return { payload, hasExtraPayloads };
-};
-
-export const encryptSignRequest = ({
-  payload,
-  sharedSecret,
-}: EncrypterParams) => {
-  return encryptRequest({
-    requestCode: 'SIGN_TRANSACTION',
-    payload,
-    sharedSecret,
-  });
-};
-
-export const requestSign = async (payload: Buffer, url: string) => {
-  return request({ payload, url });
 };
 
 export const decodeSignResponse = ({
@@ -166,28 +124,24 @@ export const decodeSignResponse = ({
   isGeneric,
   currency,
 }: DecodeSignResponseParams): SignData => {
-  const PUBKEY_PREFIX_LEN = 65;
-  const PKH_PREFIX_LEN = 20;
-  let off = PUBKEY_PREFIX_LEN; // Skip past pubkey prefix
-
-  const DERLength = 74; // max size of a DER signature -- all Lattice sigs are this long
-  const SIGS_OFFSET = 10 * DERLength; // 10 signature slots precede 10 pubkey slots
-  const PUBKEYS_OFFSET = PUBKEY_PREFIX_LEN + PKH_PREFIX_LEN + SIGS_OFFSET;
-
-  // Get the change data if we are making a BTC transaction
-  let changeRecipient;
+  let off = 0;
+  const derSigLen = 74; // DER signatures are 74 bytes
   if (currency === CURRENCIES.BTC) {
     const btcRequest = request as BitcoinSignRequest;
-    const changeVersion = bitcoin.getAddressFormat(btcRequest.origData.changePath);
-    const changePubKeyHash = data.slice(off, off + PKH_PREFIX_LEN);
-    off += PKH_PREFIX_LEN;
-    changeRecipient = bitcoin.getBitcoinAddress(
+    const pkhLen = 20; // Pubkeyhashes are 20 bytes
+    const sigsLen = 740; // Up to 10x DER signatures
+    const changeVersion = bitcoin.getAddressFormat(
+      btcRequest.origData.changePath,
+    );
+    const changePubKeyHash = data.slice(off, off + pkhLen);
+    off += pkhLen;
+    const changeRecipient = bitcoin.getBitcoinAddress(
       changePubKeyHash,
       changeVersion,
     );
     const compressedPubLength = 33; // Size of compressed public key
-    const pubkeys = [];
-    const sigs = [];
+    const pubkeys = [] as any[];
+    const sigs = [] as any[];
     let n = 0;
     // Parse the signature for each output -- they are returned in the serialized payload in form
     // [pubkey, sig] There is one signature per output
@@ -200,13 +154,13 @@ export const decodeSignResponse = ({
       const sigStart = off;
       const sigEnd = off + 2 + data[off + 1];
       sigs.push(data.slice(sigStart, sigEnd));
+      off += derSigLen;
       // Next, shift by the full set of signatures to hit the respective pubkey NOTE: The data
       // returned is: [<sig0>, <sig1>, ... <sig9>][<pubkey0>, <pubkey1>, ... <pubkey9>]
-      const pubStart = n * compressedPubLength + PUBKEYS_OFFSET;
-      const pubEnd = (n + 1) * compressedPubLength + PUBKEYS_OFFSET;
+      const pubStart = n * compressedPubLength + sigsLen;
+      const pubEnd = (n + 1) * compressedPubLength + sigsLen;
       pubkeys.push(data.slice(pubStart, pubEnd));
       // Update offset to hit the next signature slot
-      off += DERLength;
       n += 1;
     }
     // Build the transaction data to be serialized
@@ -220,7 +174,7 @@ export const decodeSignResponse = ({
       value: btcRequest.origData.value,
       recipient: btcRequest.origData.recipient,
     });
-    if (btcRequest.changeData.value > 0) {
+    if (btcRequest.changeData?.value && btcRequest.changeData.value > 0) {
       // Second output comes from change data
       preSerializedData.outputs.push({
         value: btcRequest.changeData.value,
@@ -256,7 +210,7 @@ export const decodeSignResponse = ({
     };
   } else if (currency === CURRENCIES.ETH && !isGeneric) {
     const sig = parseDER(data.slice(off, off + 2 + data[off + 1]));
-    off += DERLength;
+    off += derSigLen;
     const ethAddr = data.slice(off, off + 20);
     // Determine the `v` param and add it to the sig before returning
     const { rawTx, sigWithV } = ethereum.buildEthRawTx(request, sig, ethAddr);
@@ -272,7 +226,7 @@ export const decodeSignResponse = ({
     };
   } else if (currency === CURRENCIES.ETH_MSG) {
     const sig = parseDER(data.slice(off, off + 2 + data[off + 1]));
-    off += DERLength;
+    off += derSigLen;
     const signer = data.slice(off, off + 20);
     const validatedSig = ethereum.validateEthereumMsgResponse(
       { signer, sig },
@@ -290,13 +244,4 @@ export const decodeSignResponse = ({
     // Generic signing request
     return parseGenericSigningResponse(data, off, request);
   }
-};
-
-export const decryptSignResponse = (response: Buffer, sharedSecret: Buffer) => {
-  const { decryptedData, newEphemeralPub } = decryptResponse(
-    response,
-    decResLengths.sign,
-    sharedSecret,
-  );
-  return { decryptedData, newEphemeralPub };
 };

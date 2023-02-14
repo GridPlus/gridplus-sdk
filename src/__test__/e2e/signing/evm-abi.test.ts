@@ -6,18 +6,15 @@ This includes:
 
 You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
  */
-import { readFileSync } from 'fs';
-import { jsonc } from 'jsonc';
 import { NETWORKS_BY_CHAIN_ID} from '../../../constants'
 import { fetchCalldataDecoder } from '../../../util';
+import { getTestVectors } from '../../utils/helpers';
 import { buildEncDefs, buildEvmReq, DEFAULT_SIGNER } from '../../utils/builders';
 import { getEtherscanKey } from '../../utils/getters';
 import { runEvm } from '../../utils/runners';
 import { initializeClient, initializeSeed } from '../../utils/initializeClient';
 
-const globalVectors = jsonc.parse(
-  readFileSync(`${process.cwd()}/src/__test__/vectors.jsonc`).toString(),
-);
+const globalVectors = getTestVectors();
 const vectors = globalVectors.evm.calldata;
 
 //---------------------------------------

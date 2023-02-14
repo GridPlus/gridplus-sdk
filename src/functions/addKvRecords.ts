@@ -1,11 +1,11 @@
-import { decResLengths } from '../constants';
-import { decryptResponse, encryptRequest, request } from '../shared/functions';
 import {
-  validateFwConstants,
+  encryptedSecureRequest,
+  LatticeSecureEncryptedRequestType,
+} from '../protocol';
+import {
+  validateConnectedClient,
   validateKvRecord,
   validateKvRecords,
-  validateSharedSecret,
-  validateUrl,
 } from '../shared/validators';
 
 /**
@@ -14,70 +14,60 @@ import {
  * @category Lattice
  * @returns A callback with an error or null.
  */
-export async function addKvRecords ({
-  type = 0,
-  records,
-  caseSensitive = false,
+export async function addKvRecords({
   client,
+  records,
+  type,
+  caseSensitive,
 }: AddKvRecordsRequestFunctionParams): Promise<Buffer> {
-  const { url, sharedSecret, fwConstants, validRecords } = validateAddKvRequest(
-    {
-      url: client.url,
-      fwConstants: client.getFwConstants(),
-      sharedSecret: client.sharedSecret,
-      records,
-    },
-  );
+  const { url, sharedSecret, ephemeralPub, fwConstants } =
+    validateConnectedClient(client);
+  validateAddKvRequest({ records, fwConstants });
 
-  const payload = encodeAddKvRecordsRequest({
-    records: validRecords,
-    fwConstants,
+  // Build the data for this request
+  const data = encodeAddKvRecordsRequest({
+    records,
     type,
     caseSensitive,
+    fwConstants,
   });
 
-  const encryptedPayload = encryptAddKvRecordsRequest({
-    payload,
+  const { decryptedData, newEphemeralPub } = await encryptedSecureRequest({
+    data,
+    requestType: LatticeSecureEncryptedRequestType.addKvRecords,
     sharedSecret,
+    ephemeralPub,
+    url,
   });
 
-  const encryptedResponse = await requestAddKvRecords(encryptedPayload, url);
-
-  const { decryptedData, newEphemeralPub } = decryptAddKvRecordsResponse(
-    encryptedResponse,
-    sharedSecret,
-  );
-
-  client.ephemeralPub = newEphemeralPub;
+  client.mutate({
+    ephemeralPub: newEphemeralPub,
+  });
 
   return decryptedData;
 }
 
 export const validateAddKvRequest = ({
-  url,
-  fwConstants,
-  sharedSecret,
   records,
-}: ValidateAddKvRequestParams) => {
-  const validUrl = validateUrl(url);
-  const validFwConstants = validateFwConstants(fwConstants);
-  const validSharedSecret = validateSharedSecret(sharedSecret);
-  const validRecords = validateKvRecords(records, validFwConstants);
-
-  return {
-    url: validUrl,
-    fwConstants: validFwConstants,
-    sharedSecret: validSharedSecret,
-    validRecords,
-  };
+  fwConstants,
+}: {
+  records: KVRecords;
+  fwConstants: FirmwareConstants;
+}) => {
+  validateKvRecords(records, fwConstants);
 };
 
 export const encodeAddKvRecordsRequest = ({
   records,
-  fwConstants,
   type,
   caseSensitive,
-}: EncodeAddKvRecordsRequestParams) => {
+  fwConstants,
+}: {
+  records: KVRecords;
+  type: number;
+  caseSensitive: boolean;
+  fwConstants: FirmwareConstants;
+}) => {
   const payload = Buffer.alloc(1 + 139 * fwConstants.kvActionMaxNum);
   payload.writeUInt8(Object.keys(records).length, 0);
   let off = 1;
@@ -103,31 +93,4 @@ export const encodeAddKvRecordsRequest = ({
     off += fwConstants.kvValMaxStrSz + 1;
   });
   return payload;
-};
-
-export const encryptAddKvRecordsRequest = ({
-  payload,
-  sharedSecret,
-}: EncrypterParams) => {
-  return encryptRequest({
-    requestCode: 'ADD_KV_RECORDS',
-    payload,
-    sharedSecret,
-  });
-};
-
-export const requestAddKvRecords = async (payload: Buffer, url: string) => {
-  return request({ payload, url });
-};
-
-export const decryptAddKvRecordsResponse = (
-  response: Buffer,
-  sharedSecret: Buffer,
-) => {
-  const { decryptedData, newEphemeralPub } = decryptResponse(
-    response,
-    decResLengths.empty,
-    sharedSecret,
-  );
-  return { decryptedData, newEphemeralPub };
 };

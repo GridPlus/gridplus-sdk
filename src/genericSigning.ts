@@ -10,8 +10,9 @@ This payload should be coupled with:
 */
 import { sha256 } from 'hash.js/lib/hash/sha';
 import { keccak256 } from 'js-sha3';
-import { HARDENED_OFFSET, signingSchema } from './constants';
+import { HARDENED_OFFSET } from './constants';
 import { Constants } from './index';
+import { LatticeSignSchema } from './protocol';
 import {
   buildSignerPathBuf,
   existsIn,
@@ -192,7 +193,7 @@ export const buildGenericSigningMsgRequest = function (req) {
   return {
     payload: buf,
     extraDataPayloads,
-    schema: signingSchema.GENERAL_SIGNING,
+    schema: LatticeSignSchema.generic,
     curveType,
     encodingType,
     hashType,
@@ -290,6 +291,9 @@ export const getEncodedPayload = function (
     );
   }
   let payloadBuf;
+  if (!payload) {
+    throw new Error('No payload included');
+  }
   if (typeof payload === 'string' && payload.slice(0, 2) === '0x') {
     payloadBuf = Buffer.from(payload.slice(2), 'hex');
   } else {

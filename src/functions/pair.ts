@@ -1,7 +1,9 @@
-import { decResLengths } from '../constants';
-import { encryptRequest, decryptResponse, request } from '../shared/functions';
+import {
+  encryptedSecureRequest,
+  LatticeSecureEncryptedRequestType,
+} from '../protocol';
 import { getPubKeyBytes } from '../shared/utilities';
-import { validateAppName, validateUrl } from '../shared/validators';
+import { validateConnectedClient } from '../shared/validators';
 import { generateAppSecret, toPaddedDER } from '../util';
 
 /**
@@ -11,37 +13,41 @@ import { generateAppSecret, toPaddedDER } from '../util';
  * @category Lattice
  * @returns The active wallet object.
  */
-export async function pair ({ pairingSecret, client }: PairRequestParams) {
-  //TODO: Add pair validator
-  const name = validateAppName(client.name);
-  const url = validateUrl(client.url);
+export async function pair({
+  client,
+  pairingSecret,
+}: PairRequestParams): Promise<boolean> {
+  const { url, sharedSecret, ephemeralPub, appName, key } =
+    validateConnectedClient(client);
+  const data = encodePairRequest({ pairingSecret, key, appName });
 
-  const payload = encodePairRequest(client.key, pairingSecret, name);
-
-  const encryptedPayload = encryptPairRequest({
-    payload,
-    sharedSecret: client.sharedSecret,
+  const { newEphemeralPub } = await encryptedSecureRequest({
+    data,
+    requestType: LatticeSecureEncryptedRequestType.finalizePairing,
+    sharedSecret,
+    ephemeralPub,
+    url,
   });
-  const encryptedResponse = await requestPair(encryptedPayload, url);
 
-  const { newEphemeralPub } = decryptPairResponse(
-    encryptedResponse,
-    client.sharedSecret,
-  );
+  client.mutate({
+    ephemeralPub: newEphemeralPub,
+    isPaired: true,
+  });
 
-  client.isPaired = true
-  client.ephemeralPub = newEphemeralPub;
-
-  // Try to get the active wallet once pairing is successful
   await client.fetchActiveWallet();
   return client.hasActiveWallet();
 }
 
-export const encodePairRequest = (
-  key: KeyPair,
-  pairingSecret: string,
-  name: string,
-) => {
+export const encodePairRequest = ({
+  key,
+  pairingSecret,
+  appName,
+}: {
+  key: KeyPair;
+  pairingSecret: string;
+  appName: string;
+}) => {
+  // Build the payload data
   const pubKeyBytes = getPubKeyBytes(key);
   const nameBuf = Buffer.alloc(25);
   if (pairingSecret.length > 0) {
@@ -49,7 +55,7 @@ export const encodePairRequest = (
     // the pairing attempt. In this case we pass a zero-length name buffer so the firmware can
     // know not to draw the error screen. Note that we still expect an error to come back
     // (RESP_ERR_PAIR_FAIL)
-    nameBuf.write(name);
+    nameBuf.write(appName);
   }
   const hash = generateAppSecret(
     pubKeyBytes,
@@ -60,34 +66,4 @@ export const encodePairRequest = (
   const derSig = toPaddedDER(sig);
   const payload = Buffer.concat([nameBuf, derSig]);
   return payload;
-};
-
-export const encryptPairRequest = ({
-  payload,
-  sharedSecret,
-}: EncrypterParams) => {
-  return encryptRequest({
-    requestCode: 'FINALIZE_PAIRING',
-    payload,
-    sharedSecret,
-  });
-};
-
-export const requestPair = async (payload: Buffer, url: string) => {
-  return request({ payload, url });
-};
-
-/**
- * Pair will create a new pairing if the user successfully enters the secret into the device in
- * time. If successful (`status=0`), the device will return a new ephemeral public key, which is
- * used to derive a shared secret for the next request
- * @category Device Response
- * @internal
- * @returns error (or null)
- */
-export const decryptPairResponse = (
-  encryptedResponse: any,
-  sharedSecret: Buffer,
-) => {
-  return decryptResponse(encryptedResponse, decResLengths.empty, sharedSecret);
 };

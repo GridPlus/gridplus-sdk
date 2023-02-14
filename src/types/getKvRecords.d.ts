@@ -8,27 +8,16 @@ interface GetKvRecordsRequestFunctionParams extends GetKvRecordsRequestParams {
   client: Client;
 }
 
-interface ValidateGetKvRequestParams {
-  url?: string;
-  fwConstants?: FirmwareConstants;
-  sharedSecret?: Buffer;
-  records?: KVRecords;
-  n?: number;
-  type?: number;
-  start?: number;
-}
-
-interface EncodeGetKvRecordsRequestParams {
+type AddressTag = {
+  caseSensitive: boolean;
+  id: number;
+  key: string;
   type: number;
-  n: number;
-  start: number;
-}
+  val: string;
+};
 
 interface GetKvRecordsData {
-  records: {
-    id: string;
-    [key: string]: string;
-  }[];
+  records: AddressTag[];
   fetched: number;
   total: number;
 }

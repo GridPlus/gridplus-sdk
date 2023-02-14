@@ -1,69 +1,62 @@
-import { decResLengths } from '../constants';
-import { decryptResponse, encryptRequest, request } from '../shared/functions';
 import {
-  validateFwConstants,
-  validateSharedSecret,
-  validateUrl,
-} from '../shared/validators';
+  encryptedSecureRequest,
+  LatticeSecureEncryptedRequestType,
+} from '../protocol';
+import { validateConnectedClient } from '../shared/validators';
 
-export async function getKvRecords ({
+export async function getKvRecords({
+  client,
   type: _type,
   n: _n,
   start: _start,
-  client,
 }: GetKvRecordsRequestFunctionParams): Promise<GetKvRecordsData> {
-  const { url, sharedSecret, fwConstants, type, n, start } =
-    validateGetKvRequest({
-      url: client.url,
-      fwConstants: client.getFwConstants(),
-      sharedSecret: client.sharedSecret,
-      type: _type,
-      n: _n,
-      start: _start,
-    });
+  const { url, sharedSecret, ephemeralPub, fwConstants } =
+    validateConnectedClient(client);
 
-  const payload = encodeGetKvRecordsRequest({ type, n, start });
-
-  const encryptedPayload = encryptGetKvRecordsRequest({
-    payload,
-    sharedSecret,
+  const { type, n, start } = validateGetKvRequest({
+    type: _type,
+    n: _n,
+    start: _start,
+    fwConstants,
   });
 
-  const encryptedResponse = await requestGetKvRecords(encryptedPayload, url);
+  const data = encodeGetKvRecordsRequest({ type, n, start });
 
-  const { decryptedData, newEphemeralPub } = decryptGetKvRecordsResponse(
-    encryptedResponse,
+  const { decryptedData, newEphemeralPub } = await encryptedSecureRequest({
+    data,
+    requestType: LatticeSecureEncryptedRequestType.getKvRecords,
     sharedSecret,
-  );
+    ephemeralPub,
+    url,
+  });
 
-  client.ephemeralPub = newEphemeralPub;
+  client.mutate({
+    ephemeralPub: newEphemeralPub,
+  });
 
-  const records = decodeGetKvRecordsResponse(decryptedData, fwConstants);
-
-  return records;
+  return decodeGetKvRecordsResponse(decryptedData, fwConstants);
 }
 
 export const validateGetKvRequest = ({
-  url,
   fwConstants,
-  sharedSecret,
   n,
   type,
   start,
-}: ValidateGetKvRequestParams) => {
-  const validUrl = validateUrl(url);
-  const validFwConstants = validateFwConstants(fwConstants);
-  const validSharedSecret = validateSharedSecret(sharedSecret);
-
-  if (!validFwConstants.kvActionsAllowed) {
+}: {
+  fwConstants: FirmwareConstants;
+  n?: number;
+  type?: number;
+  start?: number;
+}) => {
+  if (!fwConstants.kvActionsAllowed) {
     throw new Error('Unsupported. Please update firmware.');
   }
   if (!n || n < 1) {
     throw new Error('You must request at least one record.');
   }
-  if (n > validFwConstants.kvActionMaxNum) {
+  if (n > fwConstants.kvActionMaxNum) {
     throw new Error(
-      `You may only request up to ${validFwConstants.kvActionMaxNum} records at once.`,
+      `You may only request up to ${fwConstants.kvActionMaxNum} records at once.`,
     );
   }
   if (type !== 0 && !type) {
@@ -73,21 +66,18 @@ export const validateGetKvRequest = ({
     throw new Error('You must specify a type.');
   }
 
-  return {
-    url: validUrl,
-    fwConstants: validFwConstants,
-    sharedSecret: validSharedSecret,
-    type,
-    n,
-    start,
-  };
+  return { fwConstants, n, type, start };
 };
 
 export const encodeGetKvRecordsRequest = ({
   type,
   n,
   start,
-}: EncodeGetKvRecordsRequestParams) => {
+}: {
+  type: number;
+  n: number;
+  start: number;
+}) => {
   const payload = Buffer.alloc(9);
   payload.writeUInt32LE(type, 0);
   payload.writeUInt8(n, 4);
@@ -95,39 +85,12 @@ export const encodeGetKvRecordsRequest = ({
   return payload;
 };
 
-export const encryptGetKvRecordsRequest = ({
-  payload,
-  sharedSecret,
-}: EncrypterParams) => {
-  return encryptRequest({
-    requestCode: 'GET_KV_RECORDS',
-    payload,
-    sharedSecret,
-  });
-};
-
-export const requestGetKvRecords = async (payload: Buffer, url: string) => {
-  return request({ payload, url });
-};
-
-export const decryptGetKvRecordsResponse = (
-  response: Buffer,
-  sharedSecret: Buffer,
-) => {
-  const { decryptedData, newEphemeralPub } = decryptResponse(
-    response,
-    decResLengths.getKvRecords,
-    sharedSecret,
-  );
-  return { decryptedData, newEphemeralPub };
-};
-
 export const decodeGetKvRecordsResponse = (
   data: Buffer,
   fwConstants: FirmwareConstants,
 ) => {
-  let off = 65; // Skip 65 byte pubkey prefix
-  const nTotal = parseInt(data.slice(off, off + 4).toString('hex'), 16);
+  let off = 0;
+  const nTotal = data.readUInt32BE(off);
   off += 4;
   const nFetched = parseInt(data.slice(off, off + 1).toString('hex'), 16);
   off += 1;
@@ -136,9 +99,9 @@ export const decodeGetKvRecordsResponse = (
   const records: any = [];
   for (let i = 0; i < nFetched; i++) {
     const r: any = {};
-    r.id = parseInt(data.slice(off, off + 4).toString('hex'), 16);
+    r.id = data.readUInt32BE(off);
     off += 4;
-    r.type = parseInt(data.slice(off, off + 4).toString('hex'), 16);
+    r.type = data.readUInt32BE(off);
     off += 4;
     r.caseSensitive =
       parseInt(data.slice(off, off + 1).toString('hex'), 16) === 1

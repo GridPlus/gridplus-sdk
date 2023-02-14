@@ -3,7 +3,8 @@ import { bech32 } from 'bech32';
 import bs58check from 'bs58check';
 import { ripemd160 } from 'hash.js/lib/hash/ripemd';
 import { sha256 } from 'hash.js/lib/hash/sha';
-import { BIP_CONSTANTS, signingSchema } from './constants';
+import { BIP_CONSTANTS } from './constants';
+import { LatticeSignSchema } from './protocol';
 const DEFAULT_SEQUENCE = 0xffffffff;
 const DEFAULT_SIGHASH_BUFFER = Buffer.from('01', 'hex'); // SIGHASH_ALL = 0x01
 const { PURPOSES, COINS } = BIP_CONSTANTS;
@@ -112,7 +113,7 @@ const buildBitcoinTxRequest = function (data) {
   // Send them back!
   return {
     payload,
-    schema: signingSchema.BTC_TRANSFER,
+    schema: LatticeSignSchema.bitcoin,
     origData: data, // We will need the original data for serializing the tx
     changeData: {
       // This data helps fill in the change output

@@ -16,5 +16,5 @@ export default defineConfig(() => {
       exclude: ['./src/__test__/integration/connect.test.ts'],
       watchExclude: ['**/*.json'],
     },
-  }
+  };
 });

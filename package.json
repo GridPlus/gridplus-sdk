@@ -1,6 +1,6 @@
 {
   "name": "gridplus-sdk",
-  "version": "2.4.3",
+  "version": "2.5.0",
   "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
     "build": "NODE_ENV=production tsc -p tsconfig.json",
@@ -13,9 +13,7 @@
     "test": "vitest /src/__test__/unit /src/__test__/integration",
     "test-unit": "vitest src/__test__/unit",
     "unit-decode": "vitest src/__test__/unit/decoders.test.ts",
-    "unit-decrypt": "vitest src/__test__/unit/decrypters.test.ts",
     "unit-encode": "vitest src/__test__/unit/encoders.test.ts",
-    "unit-encrypt": "vitest src/__test__/unit/encrypters.test.ts",
     "unit-validators": "vitest src/__test__/unit/validators.test.ts",
     "test-int": "vitest src/__test__/integration/",
     "test-utils": "vitest src/__test__/utils/__test__/",
@@ -32,7 +30,8 @@
     "e2e-sign-evm-tx": "vitest src/__test__/e2e/signing/evm-tx.test.ts",
     "e2e-sign-solana": "vitest src/__test__/e2e/signing/solana*",
     "e2e-sign-unformatted": "vitest src/__test__/e2e/signing/unformatted.test.ts",
-    "e2e-wj": "vitest src/__test__/e2e/wallet-jobs.test.ts"
+    "e2e-wj": "vitest src/__test__/e2e/wallet-jobs.test.ts",
+    "e2e-api": "vitest src/__test__/e2e/api.test.ts"
   },
   "files": [
     "dist"
@@ -47,6 +46,7 @@
     "@ethereumjs/common": "2.4.0",
     "@ethereumjs/tx": "3.3.0",
     "@ethersproject/abi": "^5.5.0",
+    "@types/uuid": "^9.0.0",
     "aes-js": "^3.1.1",
     "bech32": "^2.0.0",
     "bignumber.js": "^9.0.1",

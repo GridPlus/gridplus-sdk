@@ -1,18 +1,19 @@
 import { EXTERNAL } from '../../constants';
 import {
   encodeAddKvRecordsRequest,
-  encodeConnectRequest,
   encodeGetAddressesRequest,
   encodeGetKvRecordsRequest,
   encodePairRequest,
   encodeRemoveKvRecordsRequest,
   encodeSignRequest,
 } from '../../functions';
+import { buildTransaction } from '../../shared/functions';
 import { getP256KeyPair } from '../../util';
 import {
   buildFirmwareConstants,
   buildGetAddressesObject,
-  buildTransactionObject,
+  buildSignObject,
+  buildWallet,
   getFwVersionsList,
 } from '../utils/builders';
 
@@ -27,31 +28,24 @@ describe('encoders', () => {
     mockRandom.mockRestore();
   });
 
-  describe('connect', () => {
-    test('connect encoder', () => {
-      const privKey = Buffer.alloc(32, '1');
-      expect(privKey.toString()).toMatchSnapshot();
-      const key = getP256KeyPair(privKey);
-      const payload = encodeConnectRequest(key);
-      const payloadAsString = payload.toString('hex');
-      expect(payloadAsString).toMatchSnapshot();
-    });
-  });
-
   describe('pair', () => {
     test('pair encoder', () => {
       const privKey = Buffer.alloc(32, '1');
       expect(privKey.toString()).toMatchSnapshot();
       const key = getP256KeyPair(privKey);
-      const payload = encodePairRequest(key, 'testtest', 'testtest');
+      const payload = encodePairRequest({
+        key,
+        pairingSecret: 'testtest',
+        appName: 'testtest',
+      });
       const payloadAsString = payload.toString('hex');
       expect(payloadAsString).toMatchSnapshot();
     });
   });
+
   describe('getAddresses', () => {
     test('encodeGetAddressesRequest with default flag', () => {
-      const mockObject = buildGetAddressesObject({});
-      const payload = encodeGetAddressesRequest(mockObject);
+      const payload = encodeGetAddressesRequest(buildGetAddressesObject());
       const payloadAsString = payload.toString('hex');
       expect(payloadAsString).toMatchSnapshot();
     });
@@ -73,34 +67,27 @@ describe('encoders', () => {
       const payloadAsString = payload.toString('hex');
       expect(payloadAsString).toMatchSnapshot();
     });
-
-    test('encodeGetAddressesRequest should throw with invalid startPath on old firmware', () => {
-      const startPath = [0x80000000 + 44, 0x80000000 + 60, 0, 0, 0, 0, 0];
-      const fwVersion = Buffer.from([0, 0, 0]);
-      const testEncodingFunction = () =>
-        encodeGetAddressesRequest(
-          buildGetAddressesObject({ startPath, fwVersion }),
-        );
-      expect(testEncodingFunction).toThrowError(
-        'derivation paths with 5 indices',
-      );
-    });
   });
 
   describe('sign', () => {
     test.each(getFwVersionsList())(
       'should test sign encoder with firmware v%d.%d.%d',
       (major, minor, patch) => {
-        const { payload } = encodeSignRequest(
-          buildTransactionObject({
-            fwVersion: Buffer.from([patch, minor, major]),
-          }),
-        );
+        const fwVersion = Buffer.from([patch, minor, major]);
+        const txObj = buildSignObject(fwVersion);
+        const tx = buildTransaction(txObj);
+        const req = {
+          ...txObj,
+          ...tx,
+          wallet: buildWallet(),
+        };
+        const { payload } = encodeSignRequest(req);
         const payloadAsString = payload.toString('hex');
         expect(payloadAsString).toMatchSnapshot();
       },
     );
   });
+
   describe('KvRecords', () => {
     test('getKvRecords', () => {
       const mockObject = { type: 0, n: 1, start: 0 };
@@ -110,11 +97,12 @@ describe('encoders', () => {
     });
 
     test('addKvRecords', () => {
+      const fwConstants = buildFirmwareConstants();
       const mockObject = {
         type: 0,
         records: { key: 'value' },
-        fwConstants: buildFirmwareConstants(),
         caseSensitive: false,
+        fwConstants,
       };
       const payload = encodeAddKvRecordsRequest(mockObject);
       const payloadAsString = payload.toString('hex');
@@ -122,11 +110,12 @@ describe('encoders', () => {
     });
 
     test('removeKvRecords', () => {
+      const fwConstants = buildFirmwareConstants();
       const mockObject = {
         type: 0,
-        ids: [0],
-        fwConstants: buildFirmwareConstants(),
+        ids: ['0'],
         caseSensitive: false,
+        fwConstants,
       };
       const payload = encodeRemoveKvRecordsRequest(mockObject);
       const payloadAsString = payload.toString('hex');

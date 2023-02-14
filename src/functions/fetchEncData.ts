@@ -3,22 +3,15 @@
  * to known schema, e.g. EIP2335 derived privkey export.
  */
 import { v4 as uuidV4 } from 'uuid';
-
+import { EXTERNAL } from '../constants';
 import {
-  decResLengths,
-  EXTERNAL,
-} from '../constants';
-import {
-  decryptResponse,
-  encryptRequest,
-  request,
-} from '../shared/functions';
+  encryptedSecureRequest,
+  LatticeSecureEncryptedRequestType,
+} from '../protocol';
 import { getPathStr } from '../shared/utilities';
 import {
-  validateFwVersion,
-  validateSharedSecret,
+  validateConnectedClient,
   validateStartPath,
-  validateUrl,
   validateWallet,
 } from '../shared/validators';
 
@@ -32,58 +25,75 @@ const ENC_DATA_RESP_SZ = {
     CHECKSUM: 32,
     IV: 16,
     PUBKEY: 48,
-  }
+  },
+} as const;
+
+export async function fetchEncData({
+  client,
+  schema,
+  params,
+}: FetchEncDataRequestFunctionParams): Promise<Buffer> {
+  const { url, sharedSecret, ephemeralPub, fwVersion } =
+    validateConnectedClient(client);
+  const activeWallet = validateWallet(client.getActiveWallet());
+  validateFetchEncDataRequest({ params });
+
+  const data = encodeFetchEncDataRequest({
+    schema,
+    params,
+    fwVersion,
+    activeWallet,
+  });
+
+  const { decryptedData, newEphemeralPub } = await encryptedSecureRequest({
+    data,
+    requestType: LatticeSecureEncryptedRequestType.fetchEncryptedData,
+    sharedSecret,
+    ephemeralPub,
+    url,
+  });
+
+  client.mutate({
+    ephemeralPub: newEphemeralPub,
+  });
+
+  return decodeFetchEncData({ data: decryptedData, schema, params });
 }
 
-export async function fetchEncData (req: FetchEncDataRequestFunctionParams): Promise<Buffer> {
-  const params = validateFetchEncDataRequest(req);
-  const payload = encodeFetchEncDataRequest(req.schema, params);
-  const encryptedPayload = encryptFetchEncDataRequest({
-    payload,
-    sharedSecret: req.client.sharedSecret,
-  });
-  const encryptedResponse = await request({ 
-    payload: encryptedPayload, 
-    url: req.client.url 
-  });
-  const { decryptedData, newEphemeralPub } = decryptResponse(
-    encryptedResponse,
-    decResLengths.fetchEncryptedData,
-    req.client.sharedSecret,
-  );
-  req.client.ephemeralPub = newEphemeralPub;
-  return decodeFetchEncData(decryptedData, req);
-}
+export const validateFetchEncDataRequest = ({
+  params,
+}: {
+  params: EIP2335KeyExportReq;
+}) => {
+  // Validate derivation path
+  validateStartPath(params.path);
+};
 
-export const validateFetchEncDataRequest = (req: FetchEncDataRequestFunctionParams): EIP2335KeyExportReq => {
-  const { schema, params, client } = req;
-  // Validate client state
-  const wallet = client.getActiveWallet();
-  validateFwVersion(client.fwVersion);
-  validateWallet(wallet);
-  validateSharedSecret(client.sharedSecret);
-  validateUrl(client.url);
+export const encodeFetchEncDataRequest = ({
+  schema,
+  params,
+  fwVersion,
+  activeWallet,
+}: {
+  schema: number;
+  params: EIP2335KeyExportReq;
+  fwVersion: FirmwareVersion;
+  activeWallet: Wallet;
+}) => {
   // Check firmware version
-  if (client.fwVersion.major < 1 && client.fwVersion.minor < 17) {
-    throw new Error('Firmware version >=v0.17.0 is required for encrypted data export.');
+  if (fwVersion.major < 1 && fwVersion.minor < 17) {
+    throw new Error(
+      'Firmware version >=v0.17.0 is required for encrypted data export.',
+    );
   }
-  // Validate params depending on what type of data is being exported
+  // Update params depending on what type of data is being exported
   if (schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
-    // EIP2335 key export
-    validateStartPath(params.path);
     // Set the wallet UID to the client's current active wallet
-    params.walletUID = wallet.uid;
-    // Return updated params
-    return params;
+    params.walletUID = activeWallet.uid;
   } else {
     throw new Error(ENC_DATA_ERR_STR);
   }
-}
-
-export const encodeFetchEncDataRequest = (
-  schema: number,
-  params: EIP2335KeyExportReq,
-) => {
+  // Build the payload data
   const payload = Buffer.alloc(ENC_DATA_REQ_DATA_SZ);
   let off = 0;
   payload.writeUInt8(schema, off);
@@ -100,37 +110,41 @@ export const encodeFetchEncDataRequest = (
       off += 4;
     }
     if (params.c) {
-      payload.writeUInt32LE(params.c, off)
+      payload.writeUInt32LE(params.c, off);
     }
     off += 4;
     return payload;
   } else {
-    throw new Error(ENC_DATA_ERR_STR)
+    throw new Error(ENC_DATA_ERR_STR);
   }
-}
+};
 
-export const encryptFetchEncDataRequest = ({
-  payload,
-  sharedSecret,
-}: EncrypterParams) => {
-  return encryptRequest({
-    requestCode: 'EXPORT_ENC_DATA',
-    payload,
-    sharedSecret,
-  });
-}
-
-export const decodeFetchEncData = (data: Buffer, req: FetchEncDataRequestFunctionParams): Buffer => {
-  let off = 65; // Skip 65 byte pubkey prefix
-  if (req.schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
+export const decodeFetchEncData = ({
+  data,
+  schema,
+  params,
+}: {
+  schema: number;
+  params: EIP2335KeyExportReq;
+  data: Buffer;
+}): Buffer => {
+  let off = 0;
+  if (schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
     const respData = {} as EIP2335KeyExportData;
     const { CIPHERTEXT, SALT, CHECKSUM, IV, PUBKEY } = ENC_DATA_RESP_SZ.EIP2335;
-    const expectedSz =  4 + // iterations = u32
-                        CIPHERTEXT +  SALT + CHECKSUM + IV + PUBKEY;
+    const expectedSz =
+      4 + // iterations = u32
+      CIPHERTEXT +
+      SALT +
+      CHECKSUM +
+      IV +
+      PUBKEY;
     const dataSz = data.readUInt32LE(off);
     off += 4;
     if (dataSz !== expectedSz) {
-      throw new Error('Invalid data returned from Lattice. Expected EIP2335 data.');
+      throw new Error(
+        'Invalid data returned from Lattice. Expected EIP2335 data.',
+      );
     }
     respData.iterations = data.readUInt32LE(off);
     off += 4;
@@ -144,7 +158,7 @@ export const decodeFetchEncData = (data: Buffer, req: FetchEncDataRequestFunctio
     off += IV;
     respData.pubkey = data.slice(off, off + PUBKEY);
     off += PUBKEY;
-    return formatEIP2335ExportData(respData, req.params.path);
+    return formatEIP2335ExportData(respData, params.path);
   } else {
     throw new Error(ENC_DATA_ERR_STR);
   }
