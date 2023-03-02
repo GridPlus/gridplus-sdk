@@ -1,5 +1,5 @@
 import { getClient } from './../../api/utilities';
-import Common, { Chain, Hardfork } from '@ethereumjs/common';
+import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory } from '@ethereumjs/tx';
 import { question } from 'readline-sync';
 import { encode } from 'rlp';

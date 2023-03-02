@@ -3,7 +3,7 @@ Test various EVM transaction types.
 
 You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
  */
-import Common, { Chain, Hardfork } from '@ethereumjs/common';
+import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { BN } from 'bn.js';
 import { encode as rlpEncode } from 'rlp';
@@ -34,7 +34,7 @@ describe('[EVM TX]', () => {
       CURRENT_SEED,
       bypassSetPayload,
       shouldFail,
-      useLegacySigning
+      useLegacySigning,
     ).catch((err) => {
       if (err.responseCode === 128) {
         err.message =
@@ -45,9 +45,9 @@ describe('[EVM TX]', () => {
     });
   };
 
-  it('Should get the current wallet seed',  async () => {
+  it('Should get the current wallet seed', async () => {
     CURRENT_SEED = await initializeSeed(client);
-  })
+  });
 
   describe('[EVM] Test transactions', () => {
     describe('EIP1559', () => {
@@ -190,9 +190,8 @@ describe('[EVM TX]', () => {
           ),
         ).rejects.toThrow();
       });
-      
+
       it('Should test other chains', async () => {
-        
         // Polygon
         await runBoundaryTest({ common: Common.custom({ chainId: 137 }) });
         // BSC
@@ -210,7 +209,7 @@ describe('[EVM TX]', () => {
           // @ts-expect-error - Common.custom() expects a number
           common: Common.custom({ chainId: '18446744073709551615' }),
         });
-        
+
         // Unknown chain - bypass set payload
         await expect(
           runBoundaryTest(
@@ -220,7 +219,7 @@ describe('[EVM TX]', () => {
           ),
         ).rejects.toThrow();
       });
-      
+
       it('Should test range of `value`', async () => {
         // Should display as 1e-18
         await runBoundaryTest({ txData: { value: 1 } });
@@ -265,13 +264,13 @@ describe('[EVM TX]', () => {
           txData: { data: `0x${randomBytes(maxDataSz + 1).toString('hex')}` },
         });
       });
-      
+
       it('Should test contract deployment', async () => {
         await runBoundaryTest({
           txData: { to: null, data: `0x${randomBytes(96).toString('hex')}` },
         });
       });
-      
+
       it('Should test direct RLP-encoded payloads with bad params', async () => {
         const req = buildEvmReq();
         const tx = EthTxFactory.fromTxData(req.txData, {
@@ -290,22 +289,22 @@ describe('[EVM TX]', () => {
         // ---
         // Nonce
         await expect(
-          runBoundaryTest(getParamPayloadReq(0), true, true)
+          runBoundaryTest(getParamPayloadReq(0), true, true),
         ).rejects.toThrow();
 
         // Gas
         await expect(
-          runBoundaryTest(getParamPayloadReq(1), true, true)
+          runBoundaryTest(getParamPayloadReq(1), true, true),
         ).rejects.toThrow();
 
         // Gas Price
         await expect(
-          runBoundaryTest(getParamPayloadReq(2), true, true)
+          runBoundaryTest(getParamPayloadReq(2), true, true),
         ).rejects.toThrow();
 
         // Value
         await expect(
-          runBoundaryTest(getParamPayloadReq(4), true, true)
+          runBoundaryTest(getParamPayloadReq(4), true, true),
         ).rejects.toThrow();
 
         // Test wrong sized addresses
@@ -325,10 +324,7 @@ describe('[EVM TX]', () => {
           runBoundaryTest(
             getParamPayloadReq(
               3,
-              Buffer.from(
-                'e242e54155b1abc71fc118065270cecaaf8b770102',
-                'hex',
-              ),
+              Buffer.from('e242e54155b1abc71fc118065270cecaaf8b770102', 'hex'),
             ),
             true,
             true,
@@ -336,7 +332,7 @@ describe('[EVM TX]', () => {
         ).rejects.toThrow();
       });
     });
-    
+
     describe('Random Transactions', () => {
       for (let i = 0; i < getNumIter(); i++) {
         it(`Should test random transactions: #${i}`, async () => {
@@ -357,7 +353,7 @@ describe('[EVM TX]', () => {
               type: undefined,
             },
             common: Common.custom({
-              chainId: parseInt(randIntStr(4)),
+              chainId: parseInt(randIntStr(4)) + 1, // Ensure chainID >0
             }),
           });
         });
@@ -432,4 +428,3 @@ describe('[EVM TX]', () => {
     });
   });
 });
-
