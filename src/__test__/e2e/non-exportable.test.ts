@@ -19,7 +19,7 @@
  * make sure you set `CONFIG:DEBUG>:ENABLE_A90=0` or else you will probably brick
  * your A90 chip.
  */
-import Common, { Chain, Hardfork } from '@ethereumjs/common';
+import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { question } from 'readline-sync';
 import { ecdsaRecover } from 'secp256k1';

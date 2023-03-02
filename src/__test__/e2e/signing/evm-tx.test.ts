@@ -3,7 +3,7 @@ Test various EVM transaction types.
 
 You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
  */
-import Common, { Chain, Hardfork } from '@ethereumjs/common';
+import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { BN } from 'bn.js';
 import { encode as rlpEncode } from 'rlp';
