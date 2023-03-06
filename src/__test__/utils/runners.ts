@@ -115,6 +115,15 @@ export async function runEvm (
     latticeS.length !== refS.length
       ? latticeS.slice(latticeS.length - refS.length)
       : latticeS;
+
+  console.log({
+    rToCheck,
+    refR,
+    sToCheck: sToCheck.toString('hex'),
+    refS: refS.toString('hex'),
+    latticeV,
+    refV,
+  });
   // Validate the signature
   expect(rToCheck.equals(refR)).toEqualElseLog(
     true,
