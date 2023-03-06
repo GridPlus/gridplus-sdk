@@ -27,11 +27,12 @@ export const testRequest = async ({
   data.writeUInt16BE(payload.length, 4);
   payload.copy(data, 6);
 
-  return await encryptedSecureRequest({
+  const { decryptedData } = await encryptedSecureRequest({
     data,
     requestType: LatticeSecureEncryptedRequestType.test,
     sharedSecret,
     ephemeralPub,
     url,
   });
+  return decryptedData;
 };
