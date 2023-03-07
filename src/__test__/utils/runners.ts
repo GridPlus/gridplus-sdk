@@ -9,6 +9,7 @@ import { Constants } from '../..';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { encode as rlpEncode } from 'rlp';
 import { getDeviceId } from './getters';
+import { ensureHexBuffer } from '../../util';
 
 
 export async function runTestCase (
@@ -98,29 +99,20 @@ export async function runEvm (
     true,
     'Signature failed to verify',
   );
-  const refR = Buffer.from(signedTx.r?.toBuffer());
-  const refS = Buffer.from(signedTx.s?.toBuffer());
-  const refV = signedTx.v;
+  const refR = ensureHexBuffer(signedTx.r?.toString(16));
+  const refS = ensureHexBuffer(signedTx.s?.toString(16));
+  const refV = signedTx.v?.toString();
   // Get params from Lattice sig
   const latticeR = Buffer.from(sig.r);
   const latticeS = Buffer.from(sig.s);
   const latticeV = new BN(sig.v);
-  // Strip off leading zeros to do an exact componenet check.
-  // We will still validate the original lattice sig in a tx.
-  const rToCheck =
-    latticeR.length !== refR.length
-      ? latticeR.slice(latticeR.length - refR.length)
-      : latticeR;
-  const sToCheck =
-    latticeS.length !== refS.length
-      ? latticeS.slice(latticeS.length - refS.length)
-      : latticeS;
+
   // Validate the signature
-  expect(rToCheck.equals(refR)).toEqualElseLog(
+  expect(latticeR.equals(refR)).toEqualElseLog(
     true,
     'Signature R component does not match reference',
   );
-  expect(sToCheck.equals(refS)).toEqualElseLog(
+  expect(latticeS.equals(refS)).toEqualElseLog(
     true,
     'Signature S component does not match reference',
   );
