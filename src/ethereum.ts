@@ -1,6 +1,6 @@
 // Utils for Ethereum transactions. This is effecitvely a shim of ethereumjs-util, which
 // does not have browser (or, by proxy, React-Native) support.
-import Common, { Chain, Hardfork } from '@ethereumjs/common';
+import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory } from '@ethereumjs/tx';
 import BN from 'bignumber.js';
 import cbor from 'borc';
