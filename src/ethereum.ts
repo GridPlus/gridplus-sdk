@@ -870,8 +870,25 @@ function parseEIP712Item(data, type, forJSParser = false) {
     }
   } else if (
     ethMsgProtocol.TYPED_DATA.typeCodes[type] &&
+    (type.indexOf('uint') === -1 && type.indexOf('int') > -1)
+  ) {
+    // Handle signed integers using bignumber.js directly
+    // `bignumber.js` is needed for `cbor` encoding, which gets sent to the Lattice and plays
+    // nicely with its firmware cbor lib.
+    // NOTE: If we instantiate a `bignumber.js` object, it will not match what `borc` creates
+    // when run inside of the browser (i.e. MetaMask). Thus we introduce this hack to make sure
+    // we are creating a compatible type.
+    // TODO: Find another cbor lib that is compataible with the firmware's lib in a browser
+    // context. This is surprisingly difficult - I tried several libs and only cbor/borc have
+    // worked (borc is a supposedly "browser compatible" version of cbor)
+    data = new cbor.Encoder().semanticTypes[1][0](data);
+  } else if (
+    ethMsgProtocol.TYPED_DATA.typeCodes[type] &&
     (type.indexOf('uint') > -1 || type.indexOf('int') > -1)
   ) {
+    // For uints, convert to a buffer and do some sanity checking.
+    // Note that we could probably just use bignumber.js directly as we do with
+    // signed ints, but this code is battle tested and we don't want to change it.
     let b = ensureHexBuffer(data);
     // Edge case to handle 0-value bignums
     if (b.length === 0) {
@@ -882,14 +899,7 @@ function parseEIP712Item(data, type, forJSParser = false) {
       // For EIP712 encoding in this module we need strings to represent the numbers
       data = `0x${b.toString('hex')}`;
     } else {
-      // `bignumber.js` is needed for `cbor` encoding, which gets sent to the Lattice and plays
-      // nicely with its firmware cbor lib.
-      // NOTE: If we instantiate a `bignumber.js` object, it will not match what `borc` creates
-      // when run inside of the browser (i.e. MetaMask). Thus we introduce this hack to make sure
-      // we are creating a compatible type.
-      // TODO: Find another cbor lib that is compataible with the firmware's lib in a browser
-      // context. This is surprisingly difficult - I tried several libs and only cbor/borc have
-      // worked (borc is a supposedly "browser compatible" version of cbor)
+      // Load into bignumber.js used by cbor lib
       data = new cbor.Encoder().semanticTypes[1][0](b.toString('hex'), 16);
     }
   } else if (type === 'bool') {
