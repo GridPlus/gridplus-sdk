@@ -52,7 +52,7 @@
     "bignumber.js": "^9.1.1",
     "bitwise": "^2.0.4",
     "borc": "^2.1.2",
-    "bs58check": "^3.0.1",
+    "bs58check": "^2.1.2",
     "buffer": "^6.0.3",
     "crc-32": "^1.2.0",
     "elliptic": "6.5.4",
