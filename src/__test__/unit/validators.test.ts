@@ -6,8 +6,8 @@ import {
   validateRemoveKvRequest,
 } from '../../functions';
 import {
-  isValidBlockExplorerResponse,
   isValid4ByteResponse,
+  isValidBlockExplorerResponse,
 } from '../../shared/validators';
 import {
   buildGetAddressesObject,
@@ -91,7 +91,9 @@ describe('validators', () => {
 
       test('should throw errors on validation failure', () => {
         const validateRemoveKvBundle: any = buildValidateRequestObject({});
-        expect (() => validateRemoveKvRequest(validateRemoveKvBundle)).toThrowError();
+        expect(() =>
+          validateRemoveKvRequest(validateRemoveKvBundle),
+        ).toThrowError();
       });
     });
   });

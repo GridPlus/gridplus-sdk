@@ -1,7 +1,7 @@
 import { EMPTY_WALLET_UID } from '../constants';
 import {
-  encryptedSecureRequest,
   LatticeSecureEncryptedRequestType,
+  encryptedSecureRequest,
 } from '../protocol';
 import {
   validateActiveWallets,

@@ -1,6 +1,6 @@
 import {
-  LatticeGetAddressesFlag,
   LatticeEncDataSchema,
+  LatticeGetAddressesFlag,
   LatticeSignBlsDst,
   LatticeSignCurve,
   LatticeSignEncoding,
@@ -265,13 +265,13 @@ const ethMsgProtocol = {
 };
 
 /** @internal */
-function getFwVersionConst (v: Buffer): FirmwareConstants {
+function getFwVersionConst(v: Buffer): FirmwareConstants {
   const c: any = {
     extraDataFrameSz: 0,
     extraDataMaxFrames: 0,
     genericSigning: {} as any,
   };
-  function gte (v: Buffer, exp: FirmwareArr): boolean {
+  function gte(v: Buffer, exp: FirmwareArr): boolean {
     // Note that `v` fields come in as [fix|minor|major]
     return (
       v[2] > exp[0] ||
@@ -437,7 +437,8 @@ function getFwVersionConst (v: Buffer): FirmwareConstants {
   // V0.17.0 added support for BLS12-381-G1 pubkeys and G2 sigs
   if (!legacy && gte(v, [0, 17, 0])) {
     c.getAddressFlags.push(EXTERNAL.GET_ADDR_FLAGS.BLS12_381_G1_PUB);
-    c.genericSigning.encodingTypes.ETH_DEPOSIT = EXTERNAL.SIGNING.ENCODINGS.ETH_DEPOSIT;
+    c.genericSigning.encodingTypes.ETH_DEPOSIT =
+      EXTERNAL.SIGNING.ENCODINGS.ETH_DEPOSIT;
   }
 
   return c;

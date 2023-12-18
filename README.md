@@ -2,8 +2,8 @@
 
 # GridPlus Lattice1 SDK
 
-* **For help with this SDK, see the [GridPlus SDK Documentation](https://gridplus.github.io/gridplus-sdk)**
-* **For help with your Lattice1 hardware, see the [Lattice1 Documentation](https://docs.gridplus.io)**
+- **For help with this SDK, see the [GridPlus SDK Documentation](https://gridplus.github.io/gridplus-sdk)**
+- **For help with your Lattice1 hardware, see the [Lattice1 Documentation](https://docs.gridplus.io)**
 
 This SDK is designed to facilitate communication with a user's [Lattice1 hardware wallet](https://gridplus.io/lattice). Once paired to a given Lattice, an instance of this SDK is used to make encrypted requests for things like getting addresses/public keys and making signatures.
 

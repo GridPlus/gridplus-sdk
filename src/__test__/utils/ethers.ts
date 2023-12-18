@@ -9,9 +9,9 @@ const EVM_TYPES = [
   'tuple',
 ];
 
-export function convertDecoderToEthers (def) {
+export function convertDecoderToEthers(def) {
   const converted = getConvertedDef(def);
-  const types: any[] = []
+  const types: any[] = [];
   const data: any[] = [];
   converted.forEach((i: any) => {
     types.push(i.type);
@@ -20,12 +20,11 @@ export function convertDecoderToEthers (def) {
   return { types, data };
 }
 
-
 // Convert an encoded def into a combination of ethers-compatable
 // type names and data fields. The data should be random but it
 // doesn't matter much for these tests, which mainly just test
 // structure of the definitions
-function getConvertedDef (def) {
+function getConvertedDef(def) {
   const converted: any[] = [];
   def.forEach((param) => {
     const arrSzs = param[3];
@@ -73,7 +72,7 @@ function getConvertedDef (def) {
   return converted;
 }
 
-function genTupleData (tupleParam) {
+function genTupleData(tupleParam) {
   const nestedData: any = [];
   tupleParam.forEach((nestedParam) => {
     nestedData.push(
@@ -86,13 +85,13 @@ function genTupleData (tupleParam) {
   return nestedData;
 }
 
-function genParamData (param: any[]) {
+function genParamData(param: any[]) {
   const evmType = EVM_TYPES[parseInt(param[1].toString('hex'), 16)] ?? '';
   const baseData = genData(evmType, param);
   return getArrayData(param, baseData);
 }
 
-function getArrayData (param: any, baseData: any) {
+function getArrayData(param: any, baseData: any) {
   let arrayData, data;
   const arrSzs = param[3];
   for (let i = 0; i < arrSzs.length; i++) {
@@ -121,7 +120,7 @@ function getArrayData (param: any, baseData: any) {
   return data;
 }
 
-function genData (type: string, param: any[]) {
+function genData(type: string, param: any[]) {
   switch (type) {
     case 'address':
       return '0xdead00000000000000000000000000000000beef';

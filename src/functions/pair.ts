@@ -1,6 +1,6 @@
 import {
-  encryptedSecureRequest,
   LatticeSecureEncryptedRequestType,
+  encryptedSecureRequest,
 } from '../protocol';
 import { getPubKeyBytes } from '../shared/utilities';
 import { validateConnectedClient } from '../shared/validators';

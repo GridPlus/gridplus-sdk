@@ -64,8 +64,8 @@ export const parseWallets = (walletData): ActiveWallets => {
   // in a different form.
   // activeWallets.internal.capabilities = walletData.readUInt32BE(off + 32);
   // activeWallets.internal.name = walletData.slice(
-    // off + 36,
-    // off + walletDescriptorLen,
+  // off + 36,
+  // off + walletDescriptorLen,
   // );
   // Offset the first item
   off += walletDescriptorLen;
@@ -73,8 +73,8 @@ export const parseWallets = (walletData): ActiveWallets => {
   activeWallets.external.uid = walletData.slice(off, off + 32);
   // activeWallets.external.capabilities = walletData.readUInt32BE(off + 32);
   // activeWallets.external.name = walletData.slice(
-    // off + 36,
-    // off + walletDescriptorLen,
+  // off + 36,
+  // off + walletDescriptorLen,
   // );
   return activeWallets;
 };

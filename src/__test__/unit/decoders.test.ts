@@ -1,23 +1,23 @@
 import {
   decodeConnectResponse,
+  decodeFetchEncData,
   decodeGetAddressesResponse,
   decodeGetKvRecordsResponse,
-  decodeFetchEncData,
   decodeSignResponse,
 } from '../../functions';
 import {
   clientKeyPair,
-  decoderTestsFwConstants,
   connectDecoderData,
-  getAddressesFlag,
-  getAddressesDecoderData,
-  signBitcoinRequest,
-  signBitcoinDecoderData,
-  signGenericRequest,
-  signGenericDecoderData,
-  getKvRecordsDecoderData,
-  fetchEncryptedDataRequest,
+  decoderTestsFwConstants,
   fetchEncryptedDataDecoderData,
+  fetchEncryptedDataRequest,
+  getAddressesDecoderData,
+  getAddressesFlag,
+  getKvRecordsDecoderData,
+  signBitcoinDecoderData,
+  signBitcoinRequest,
+  signGenericDecoderData,
+  signGenericRequest,
 } from './__mocks__/decoderData';
 
 describe('decoders', () => {

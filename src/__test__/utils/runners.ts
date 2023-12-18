@@ -1,7 +1,10 @@
-
 import { Client } from '../../client';
 import { getEncodedPayload } from '../../genericSigning';
-import { deriveSECP256K1Key, parseWalletJobResp, validateGenericSig } from './helpers';
+import {
+  deriveSECP256K1Key,
+  parseWalletJobResp,
+  validateGenericSig,
+} from './helpers';
 import { initializeSeed } from './initializeClient';
 import { testRequest } from './testRequest';
 import BN from 'bn.js';
@@ -11,8 +14,7 @@ import { encode as rlpEncode } from 'rlp';
 import { getDeviceId } from './getters';
 import { ensureHexBuffer } from '../../util';
 
-
-export async function runTestCase (
+export async function runTestCase(
   payload: TestRequestPayload,
   expectedCode: number,
 ) {
@@ -24,7 +26,7 @@ export async function runTestCase (
   return parsedRes;
 }
 
-export async function runGeneric (request: SignRequestParams, client: Client) {
+export async function runGeneric(request: SignRequestParams, client: Client) {
   const response = await client.sign(request);
   // If no encoding type is specified we encode in hex or ascii
   const encodingType = request.data.encodingType || null;
@@ -39,7 +41,7 @@ export async function runGeneric (request: SignRequestParams, client: Client) {
   return response;
 }
 
-export async function runEvm (
+export async function runEvm(
   req: any,
   client: Client,
   seed: any,
@@ -67,9 +69,9 @@ export async function runEvm (
     req.data.payload = tx.getMessageToSign(false);
   }
   // Request signature and validate it
-  await client.connect(getDeviceId())
+  await client.connect(getDeviceId());
   const resp = await client.sign(req);
-  const sig = resp.sig ? resp.sig : null
+  const sig = resp.sig ? resp.sig : null;
   if (shouldFail || !sig) {
     // Exit here without continuing tests. If this block is reached it indicates
     // the Lattice did not throw an error when we expected it to do so.
@@ -89,7 +91,7 @@ export async function runEvm (
     req.data.encodingType = Constants.SIGNING.ENCODINGS.EVM;
   }
   if (!seed) {
-    seed = await initializeSeed(client)
+    seed = await initializeSeed(client);
   }
   validateGenericSig(seed, resp.sig, payloadBuf, req.data);
   // Sign the original tx and compare
@@ -119,7 +121,7 @@ export async function runEvm (
   expect(latticeV.toString()).toEqualElseLog(
     refV.toString(),
     'Signature V component does not match reference',
-  )
+  );
   // One more check -- create a new tx with the signatre params and verify it
   const signedTxData = JSON.parse(JSON.stringify(txData));
   signedTxData.v = latticeV;
@@ -137,4 +139,4 @@ export async function runEvm (
 export const runEthMsg = async (req: SignRequestParams, client: Client) => {
   const sig = await client.sign(req);
   expect(sig.sig).not.toEqual(null);
-}
+};

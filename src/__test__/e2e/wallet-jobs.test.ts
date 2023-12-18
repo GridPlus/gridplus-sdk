@@ -25,19 +25,20 @@ import {
   BTC_PURPOSE_P2SH_P2WPKH,
   BTC_PURPOSE_P2WPKH,
   BTC_TESTNET_COIN,
+  ETH_COIN,
   copyBuffer,
   deserializeExportSeedJobResult,
   deserializeGetAddressesJobResult,
   deserializeSignTxJobResult,
-  ETH_COIN,
   getCodeMsg,
   gpErrors,
   jobTypes,
   parseWalletJobResp,
-  serializeJobData, stringifyPath,
+  serializeJobData,
+  stringifyPath,
   validateBTCAddresses,
   validateDerivedPublicKeys,
-  validateETHAddresses
+  validateETHAddresses,
 } from '../utils/helpers';
 import { initializeClient } from '../utils/initializeClient';
 import { testRequest } from '../utils/testRequest';
@@ -143,7 +144,7 @@ describe('Test Wallet Jobs', () => {
             BTC_PARENT_PATH.account,
             BTC_PARENT_PATH.change,
             BTC_PARENT_PATH.addr,
-          ]
+          ],
         },
         iterIdx: 4,
         count: 1,
@@ -154,24 +155,24 @@ describe('Test Wallet Jobs', () => {
         payload: null,
       };
     });
-  
+
     it('Should get GP_SUCCESS for active wallet', async () => {
       jobReq.payload = serializeJobData(jobType, currentWalletUID, jobData);
       await runTestCase(gpErrors.GP_SUCCESS);
     });
-    
+
     it('Should get GP_EWALLET for unknown (random) wallet', async () => {
       const dummyWalletUID = randomBytes(32);
       jobReq.payload = serializeJobData(jobType, dummyWalletUID, jobData);
       await runTestCase(gpErrors.GP_EWALLET);
     });
-    
+
     it('Should get GP_EINVAL if `count` exceeds the max request size', async () => {
       jobData.count = 11;
       jobReq.payload = serializeJobData(jobType, currentWalletUID, jobData);
       await runTestCase(gpErrors.GP_EINVAL);
     });
-    
+
     it('Should validate first ETH', async () => {
       jobData.path.idx[0] = BTC_PURPOSE_P2PKH;
       jobData.path.idx[1] = ETH_COIN;
@@ -189,7 +190,7 @@ describe('Test Wallet Jobs', () => {
       const res = deserializeGetAddressesJobResult(_res.result);
       validateETHAddresses(res, jobData, origWalletSeed);
     });
-    
+
     it('Should validate the first BTC address', async () => {
       jobReq.payload = serializeJobData(jobType, currentWalletUID, jobData);
       const _res = await runTestCase(gpErrors.GP_SUCCESS);
@@ -366,7 +367,7 @@ describe('Test Wallet Jobs', () => {
 
     it('Should validate random Bitcoin addresses of all types', async () => {
       const prng = getPrng('btctestseed');
-      async function testRandomBtcAddrs (purpose: number) {
+      async function testRandomBtcAddrs(purpose: number) {
         const account = Math.floor((HARDENED_OFFSET + 100000) * prng.quick());
         const addr = Math.floor((HARDENED_OFFSET + 100000) * prng.quick());
         const req = {
@@ -442,12 +443,14 @@ describe('Test Wallet Jobs', () => {
         );
       }
     });
-
   });
 
   describe('signTx', () => {
     beforeEach(() => {
-      expect(origWalletSeed).not.toEqualElseLog(null, 'Prior test failed. Aborting.');
+      expect(origWalletSeed).not.toEqualElseLog(
+        null,
+        'Prior test failed. Aborting.',
+      );
       jobType = jobTypes.WALLET_JOB_SIGN_TX;
       const path = JSON.parse(JSON.stringify(BTC_PARENT_PATH));
       path.pathDepth = 5;
@@ -539,10 +542,9 @@ describe('Test Wallet Jobs', () => {
         currentWalletUID.toString('hex'),
         ERR_MSG,
       );
-      expect(copyBuffer(wallets.internal.uid).toString('hex')).not.toEqualElseLog(
-        EMPTY_WALLET_UID.toString('hex'),
-        ERR_MSG,
-      );
+      expect(
+        copyBuffer(wallets.internal.uid).toString('hex'),
+      ).not.toEqualElseLog(EMPTY_WALLET_UID.toString('hex'), ERR_MSG);
       const incurrentWalletUID = copyBuffer(wallets.internal.uid);
       jobReq.payload = serializeJobData(jobType, incurrentWalletUID, jobData);
       await runTestCase(gpErrors.GP_EWALLET);
@@ -582,24 +584,27 @@ describe('Test Wallet Jobs', () => {
   // NOTE: These tests will only pass for SafeCard applets >=v2.3
   describe('SafeCard applet `extraData` operations', () => {
     const mnemonic_12 =
-    'need flight merit nation wolf cannon leader convince law shift cotton crouch';
-    const mnemonic_24 = 
-    'silly actress ice spot noise unlock adjust clog verify idle chicken venue arrest ' +
-    'bitter output task file awesome language viable dolphin artist dismiss into';
+      'need flight merit nation wolf cannon leader convince law shift cotton crouch';
+    const mnemonic_24 =
+      'silly actress ice spot noise unlock adjust clog verify idle chicken venue arrest ' +
+      'bitter output task file awesome language viable dolphin artist dismiss into';
     beforeEach(() => {
-      expect(origWalletSeed).not.toEqualElseLog(null, 'Prior test failed. Aborting.');
+      expect(origWalletSeed).not.toEqualElseLog(
+        null,
+        'Prior test failed. Aborting.',
+      );
       jobReq = {
         client,
         testID: 0, // wallet_job test ID
         payload: null,
       };
-    })
+    });
 
     it('Should remove the current seed', async () => {
       jobReq.payload = serializeJobData(
         jobTypes.WALLET_JOB_DELETE_SEED,
         currentWalletUID,
-        { iface: 1 }
+        { iface: 1 },
       );
       await runTestCase(gpErrors.GP_SUCCESS);
     });
@@ -627,7 +632,7 @@ describe('Test Wallet Jobs', () => {
       jobReq.payload = serializeJobData(
         jobTypes.WALLET_JOB_EXPORT_SEED,
         currentWalletUID,
-        {}
+        {},
       );
       const res = await runTestCase(gpErrors.GP_SUCCESS);
       const { mnemonic } = deserializeExportSeedJobResult(res.result);
@@ -638,7 +643,7 @@ describe('Test Wallet Jobs', () => {
       jobReq.payload = serializeJobData(
         jobTypes.WALLET_JOB_DELETE_SEED,
         currentWalletUID,
-        { iface: 1 }
+        { iface: 1 },
       );
       await runTestCase(gpErrors.GP_SUCCESS);
     });
@@ -666,7 +671,7 @@ describe('Test Wallet Jobs', () => {
       jobReq.payload = serializeJobData(
         jobTypes.WALLET_JOB_EXPORT_SEED,
         currentWalletUID,
-        {}
+        {},
       );
       const res = await runTestCase(gpErrors.GP_SUCCESS);
       const { mnemonic } = deserializeExportSeedJobResult(res.result);
@@ -676,7 +681,10 @@ describe('Test Wallet Jobs', () => {
 
   describe('Test leading zeros', () => {
     beforeEach(() => {
-      expect(origWalletSeed).not.toEqualElseLog(null, 'Prior test failed. Aborting.');
+      expect(origWalletSeed).not.toEqualElseLog(
+        null,
+        'Prior test failed. Aborting.',
+      );
     });
     let basePath = DEFAULT_SIGNER;
     let parentPathStr = 'm/44\'/60\'/0\'/0';
@@ -721,7 +729,7 @@ describe('Test Wallet Jobs', () => {
       jobReq.payload = serializeJobData(
         jobTypes.WALLET_JOB_EXPORT_SEED,
         currentWalletUID,
-        {}
+        {},
       );
       const res = await runTestCase(gpErrors.GP_SUCCESS);
       const { mnemonic } = deserializeExportSeedJobResult(res.result);
@@ -734,7 +742,10 @@ describe('Test Wallet Jobs', () => {
       )
         .toString('hex')
         .toLowerCase()}`;
-      const addrs = await client.getAddresses({ startPath: basePath, n: 1 }) as string[];
+      const addrs = (await client.getAddresses({
+        startPath: basePath,
+        n: 1,
+      })) as string[];
       if (addrs[0]?.toLowerCase() !== ref) {
         expect(addrs[0]?.toLowerCase()).toEqualElseLog(
           ref,
@@ -817,7 +828,10 @@ describe('Test Wallet Jobs', () => {
 
   describe('deleteSeed', () => {
     beforeEach(() => {
-      expect(origWalletSeed).not.toEqualElseLog(null, 'Prior test failed. Aborting.');
+      expect(origWalletSeed).not.toEqualElseLog(
+        null,
+        'Prior test failed. Aborting.',
+      );
       jobType = jobTypes.WALLET_JOB_DELETE_SEED;
       jobData = {
         iface: 1,
@@ -843,7 +857,10 @@ describe('Test Wallet Jobs', () => {
 
   describe('Load Original Seed Back', () => {
     beforeEach(() => {
-      expect(origWalletSeed).not.toEqualElseLog(null, 'Prior test failed. Aborting.');
+      expect(origWalletSeed).not.toEqualElseLog(
+        null,
+        'Prior test failed. Aborting.',
+      );
       jobType = jobTypes.WALLET_JOB_LOAD_SEED;
       jobData = {
         iface: 1, // external SafeCard interface
@@ -896,7 +913,7 @@ describe('Test Wallet Jobs', () => {
     it('Should get GP_EAGAIN when trying to load seed into SafeCard when none exists', async () => {
       question(
         'Please remove your SafeCard to run this test.\n' +
-        'Press enter to continue.',
+          'Press enter to continue.',
       );
       jobReq.payload = serializeJobData(jobType, currentWalletUID, jobData);
       await runTestCase(gpErrors.GP_EAGAIN);
@@ -905,7 +922,7 @@ describe('Test Wallet Jobs', () => {
     it('Should wait for the card to be re-inserted', async () => {
       question(
         '\nPlease re-insert and unlock your SafeCard to continue.\n' +
-        'Press enter to continue.',
+          'Press enter to continue.',
       );
       jobType = jobTypes.WALLET_JOB_EXPORT_SEED;
       jobData = {};
@@ -922,7 +939,7 @@ describe('Test Wallet Jobs', () => {
   //---------------------------------------
   // HELPERS
   //---------------------------------------
-  async function runTestCase (expectedCode: any) {
+  async function runTestCase(expectedCode: any) {
     const res = await testRequest(jobReq);
     //@ts-expect-error - accessing private property
     const parsedRes = parseWalletJobResp(res, client.fwVersion);
@@ -933,11 +950,17 @@ describe('Test Wallet Jobs', () => {
     return parsedRes;
   }
 
-  function getCurrentWalletUID () {
+  function getCurrentWalletUID() {
     return copyBuffer(client.getActiveWallet()?.uid);
   }
 
-  async function runZerosTest (path: Array, parentPathStr: string, idx: any, numZeros: number, testPub = false) {
+  async function runZerosTest(
+    path: Array,
+    parentPathStr: string,
+    idx: any,
+    numZeros: number,
+    testPub = false,
+  ) {
     const w = wallet.derivePath(`${parentPathStr}/${idx}`);
     const refPriv = w.privateKey;
     const refPub = privateToPublic(refPriv);
@@ -958,7 +981,10 @@ describe('Test Wallet Jobs', () => {
     // Validate the exported address
     path[path.length - 1] = idx;
     const ref = `0x${privateToAddress(refPriv).toString('hex').toLowerCase()}`;
-    const addrs = await client.getAddresses({ startPath: path, n: 1 }) as string[];
+    const addrs = (await client.getAddresses({
+      startPath: path,
+      n: 1,
+    })) as string[];
     if (addrs[0]?.toLowerCase() !== ref) {
       expect(addrs[0]?.toLowerCase()).toEqualElseLog(
         ref,
@@ -975,9 +1001,9 @@ describe('Test Wallet Jobs', () => {
       addr: path.length > 4 ? path[4] : 0,
     };
     const randomTxHash = Buffer.from(
-      '704229f2128653abd86fbec078e4c50a28d1ce059bb26222c40a5cb0bc45733b', 
-      'hex'
-    )
+      '704229f2128653abd86fbec078e4c50a28d1ce059bb26222c40a5cb0bc45733b',
+      'hex',
+    );
     jobType = jobTypes.WALLET_JOB_SIGN_TX;
     jobData = {
       numRequests: 1,
@@ -991,27 +1017,30 @@ describe('Test Wallet Jobs', () => {
     jobReq = {
       client,
       testID: 0, // wallet_job test ID
-      payload: serializeJobData(
-        jobType, 
-        currentWalletUID, 
-        jobData
-      ),
+      payload: serializeJobData(jobType, currentWalletUID, jobData),
     };
     const _res = await runTestCase(gpErrors.GP_SUCCESS);
     const res = deserializeSignTxJobResult(_res.result);
     expect(res.numOutputs).to.equal(1);
-    const signerPubStr = res.outputs[0].pubkey.getPublic().encode('hex').toString('hex');
+    const signerPubStr = res.outputs[0].pubkey
+      .getPublic()
+      .encode('hex')
+      .toString('hex');
     // Make sure the exported signer matches expected
     expect(signerPubStr).toEqualElseLog(refPubStr, 'Incorrect signer');
     // Make sure we can recover the same signer from the sig.
-    const {r, s} = parseDER(res.outputs[0].sig);
+    const { r, s } = parseDER(res.outputs[0].sig);
     // Concatenate the R|S components. Note that sometimes these get
     // prefixed with a `00` byte which we need to slice off.
     const rs = Buffer.concat([r.slice(-32), s.slice(-32)]);
-    const r0 = Buffer.from(ecdsaRecover(rs, 0, randomTxHash, false)).toString('hex');
-    const r1 = Buffer.from(ecdsaRecover(rs, 1, randomTxHash, false)).toString('hex');
-    const isR0 = (r0 === signerPubStr) && (r0 === refPubStr);
-    const isR1 = (r1 === signerPubStr) && (r1 === refPubStr);
+    const r0 = Buffer.from(ecdsaRecover(rs, 0, randomTxHash, false)).toString(
+      'hex',
+    );
+    const r1 = Buffer.from(ecdsaRecover(rs, 1, randomTxHash, false)).toString(
+      'hex',
+    );
+    const isR0 = r0 === signerPubStr && r0 === refPubStr;
+    const isR1 = r1 === signerPubStr && r1 === refPubStr;
     expect(isR0 || isR1, 'Incorrect signer');
   }
 });

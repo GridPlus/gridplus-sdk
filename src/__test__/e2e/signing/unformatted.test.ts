@@ -1,6 +1,6 @@
 import { Constants } from '../../..';
 import { getNumIter } from '../../utils/builders';
-import { prandomBuf, ethPersonalSignMsg } from '../../utils/helpers';
+import { ethPersonalSignMsg, prandomBuf } from '../../utils/helpers';
 import { runGeneric } from '../../utils/runners';
 import { HARDENED_OFFSET } from '../../../constants';
 import { getPrng } from '../../utils/getters';

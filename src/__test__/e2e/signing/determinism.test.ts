@@ -2,24 +2,24 @@ import { getDeviceId } from '../../utils/getters';
 import { HARDENED_OFFSET } from '../../../constants';
 import { randomBytes } from '../../../util';
 import {
+  DEFAULT_SIGNER,
   buildMsgReq,
   buildRandomVectors,
   buildTx,
   buildTxReq,
-  DEFAULT_SIGNER,
 } from '../../utils/builders';
 import {
+  TEST_SEED,
   deriveAddress,
   setupJob,
   signPersonalJS,
   testUniformSigs,
-  TEST_SEED,
 } from '../../utils/determinism';
 import {
   BTC_PURPOSE_P2PKH,
+  ETH_COIN,
   copyBuffer,
   deserializeExportSeedJobResult,
-  ETH_COIN,
   getSigStr,
   gpErrors,
   jobTypes,
@@ -84,11 +84,29 @@ describe('[Determinism]', () => {
     it('Should validate some Ledger addresses derived from the test seed', async () => {
       // These addresses were all fetched using MetaMask with a real ledger loaded with TEST_MNEOMNIC
       // NOTE: These are 0-indexed indices whereas MetaMask shows 1-indexed (addr0 -> metamask1)
-      const path0 = [BTC_PURPOSE_P2PKH, ETH_COIN, HARDENED_OFFSET, 0, 0] as WalletPath;
+      const path0 = [
+        BTC_PURPOSE_P2PKH,
+        ETH_COIN,
+        HARDENED_OFFSET,
+        0,
+        0,
+      ] as WalletPath;
       const addr0 = '0x17E43083812d45040E4826D2f214601bc730F60C';
-      const path1 = [BTC_PURPOSE_P2PKH, ETH_COIN, HARDENED_OFFSET + 1, 0, 0] as WalletPath;
+      const path1 = [
+        BTC_PURPOSE_P2PKH,
+        ETH_COIN,
+        HARDENED_OFFSET + 1,
+        0,
+        0,
+      ] as WalletPath;
       const addr1 = '0xfb25a9D4472A55083042672e42309056763B667E';
-      const path8 = [BTC_PURPOSE_P2PKH, ETH_COIN, HARDENED_OFFSET + 8, 0, 0] as WalletPath;
+      const path8 = [
+        BTC_PURPOSE_P2PKH,
+        ETH_COIN,
+        HARDENED_OFFSET + 8,
+        0,
+        0,
+      ] as WalletPath;
       const addr8 = '0x8A520d7f70906Ebe00F40131791eFF414230Ea5c';
       // Derive these from the seed as a sanity check
       expect(deriveAddress(TEST_SEED, path0).toLowerCase()).toEqualElseLog(
@@ -188,10 +206,7 @@ describe('[Determinism]', () => {
       const res = await client.sign(msgReq);
       const sig = getSigStr(res);
       expect(sig).toEqualElseLog(expected, 'Lattice sig does not match');
-      const jsSig = signPersonalJS(
-        msgReq.data.payload,
-        msgReq.data.signerPath,
-      );
+      const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).toEqualElseLog(jsSig, 'JS sig does not match');
     });
 
@@ -205,10 +220,7 @@ describe('[Determinism]', () => {
       const res = await client.sign(msgReq);
       const sig = getSigStr(res);
       expect(sig).toEqualElseLog(expected, 'Lattice sig does not match');
-      const jsSig = signPersonalJS(
-        msgReq.data.payload,
-        msgReq.data.signerPath,
-      );
+      const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).toEqualElseLog(jsSig, 'JS sig does not match');
     });
 
@@ -222,10 +234,7 @@ describe('[Determinism]', () => {
       const res = await client.sign(msgReq);
       const sig = getSigStr(res);
       expect(sig).toEqualElseLog(expected, 'Lattice sig does not match');
-      const jsSig = signPersonalJS(
-        msgReq.data.payload,
-        msgReq.data.signerPath,
-      );
+      const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).toEqualElseLog(jsSig, 'JS sig does not match');
     });
   });
@@ -241,10 +250,7 @@ describe('[Determinism]', () => {
       const res = await client.sign(msgReq);
       const sig = getSigStr(res);
       expect(sig).toEqualElseLog(expected, 'Lattice sig does not match');
-      const jsSig = signPersonalJS(
-        msgReq.data.payload,
-        msgReq.data.signerPath,
-      );
+      const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).toEqualElseLog(jsSig, 'JS sig does not match');
     });
 
@@ -258,10 +264,7 @@ describe('[Determinism]', () => {
       const res = await client.sign(msgReq);
       const sig = getSigStr(res);
       expect(sig).toEqualElseLog(expected, 'Lattice sig does not match');
-      const jsSig = signPersonalJS(
-        msgReq.data.payload,
-        msgReq.data.signerPath,
-      );
+      const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).toEqualElseLog(jsSig, 'JS sig does not match');
     });
 
@@ -275,10 +278,7 @@ describe('[Determinism]', () => {
       const res = await client.sign(msgReq);
       const sig = getSigStr(res);
       expect(sig).toEqualElseLog(expected, 'Lattice sig does not match');
-      const jsSig = signPersonalJS(
-        msgReq.data.payload,
-        msgReq.data.signerPath,
-      );
+      const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).toEqualElseLog(jsSig, 'JS sig does not match');
     });
   });
@@ -294,10 +294,7 @@ describe('[Determinism]', () => {
       const res = await client.sign(msgReq);
       const sig = getSigStr(res);
       expect(sig).toEqualElseLog(expected, 'Lattice sig does not match');
-      const jsSig = signPersonalJS(
-        msgReq.data.payload,
-        msgReq.data.signerPath,
-      );
+      const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).toEqualElseLog(jsSig, 'JS sig does not match');
     });
 
@@ -311,10 +308,7 @@ describe('[Determinism]', () => {
       const res = await client.sign(msgReq);
       const sig = getSigStr(res);
       expect(sig).toEqualElseLog(expected, 'Lattice sig does not match');
-      const jsSig = signPersonalJS(
-        msgReq.data.payload,
-        msgReq.data.signerPath,
-      );
+      const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).toEqualElseLog(jsSig, 'JS sig does not match');
     });
 
@@ -328,10 +322,7 @@ describe('[Determinism]', () => {
       const res = await client.sign(msgReq);
       const sig = getSigStr(res);
       expect(sig).toEqualElseLog(expected, 'Lattice sig does not match');
-      const jsSig = signPersonalJS(
-        msgReq.data.payload,
-        msgReq.data.signerPath,
-      );
+      const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath);
       expect(sig).toEqualElseLog(jsSig, 'JS sig does not match');
     });
   });

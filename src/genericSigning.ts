@@ -16,8 +16,8 @@ import { LatticeSignSchema } from './protocol';
 import {
   buildSignerPathBuf,
   existsIn,
-  getV,
   fixLen,
+  getV,
   parseDER,
   splitFrames,
 } from './util';
@@ -77,11 +77,13 @@ export const buildGenericSigningMsgRequest = function (req) {
 
   // If there is a decoder attached to our payload, add it to
   // the data field of the request.
-  const hasDecoder = (decoder && calldataDecoding && decoder.length <= calldataDecoding.maxSz);
+  const hasDecoder =
+    decoder && calldataDecoding && decoder.length <= calldataDecoding.maxSz;
   // Make sure the payload AND decoder data fits in the firmware buffer.
   // If it doesn't, we can't include the decoder because the payload will likely
   // be pre-hashed and the decoder data isn't part of the message to sign.
-  const decoderFits = (hasDecoder && payloadBuf.length + decoder.length <= maxExpandedSz);
+  const decoderFits =
+    hasDecoder && payloadBuf.length + decoder.length <= maxExpandedSz;
   if (hasDecoder && decoderFits) {
     const decoderBuf = Buffer.alloc(8 + decoder.length);
     // First write th reserved word
@@ -268,7 +270,7 @@ export const parseGenericSigningResponse = function (res, off, req) {
     }
     off += 48;
     // Handle `GpBLS12_381_G2Sig_t`
-    parsed.sig = Buffer.alloc(96)
+    parsed.sig = Buffer.alloc(96);
     res.slice(off, off + 96).copy(parsed.sig);
   } else {
     throw new Error('Unsupported curve.');
