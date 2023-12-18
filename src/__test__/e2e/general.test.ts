@@ -18,11 +18,8 @@
  */
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { question } from 'readline-sync';
-import {
-  HARDENED_OFFSET,
-  LatticeResponseCode,
-} from '../../constants';
-import { ProtocolConstants, LatticeResponseCode } from '../../protocol';
+import { HARDENED_OFFSET, LatticeResponseCode } from '../../constants';
+import { LatticeResponseCode, ProtocolConstants } from '../../protocol';
 import { randomBytes } from '../../util';
 import { buildEthSignRequest } from '../utils/builders';
 import { getDeviceId } from '../utils/getters';
@@ -50,14 +47,14 @@ describe('General', () => {
 
     const client1 = setupTestClient();
     await client1.connect(id);
-    expect(client1.isPaired).toBeTruthy()
+    expect(client1.isPaired).toBeTruthy();
     const addrs1 = await client1.getAddresses(addrData);
 
     const stateData = client1.getStateData();
 
     const client2 = setupTestClient(null, stateData);
     await client2.connect(id);
-    expect(client2.isPaired).toBeTruthy()
+    expect(client2.isPaired).toBeTruthy();
     const addrs2 = await client2.getAddresses(addrData);
 
     expect(addrs1).toEqual(addrs2);
@@ -153,20 +150,17 @@ describe('General', () => {
       const { req } = await buildEthSignRequest(client);
       await client.sign(req);
     });
-    
+
     it('should sign newer transactions', async () => {
-      const { txData, req, common } = await buildEthSignRequest(
-        client,
-        {
-          type: 1,
-          gasPrice: 1200000000,
-          nonce: 0,
-          gasLimit: 50000,
-          to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-          value: 1000000000000,
-          data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
-        }
-      );
+      const { txData, req, common } = await buildEthSignRequest(client, {
+        type: 1,
+        gasPrice: 1200000000,
+        nonce: 0,
+        gasLimit: 50000,
+        to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+        value: 1000000000000,
+        data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
+      });
       // NOTE: This will display a prehashed payload for bridged general signing
       // requests because `ethMaxDataSz` represents the `data` field for legacy
       // requests, but it represents the entire payload for general signing requests.
@@ -176,11 +170,13 @@ describe('General', () => {
     });
 
     it('should sign bad transactions', async () => {
-      const { txData, req, maxDataSz, common } = await buildEthSignRequest(client);
+      const { txData, req, maxDataSz, common } = await buildEthSignRequest(
+        client,
+      );
       await question(
         'Please REJECT the next request if the warning screen displays. Press enter to continue.',
       );
-      txData.data = randomBytes(maxDataSz)
+      txData.data = randomBytes(maxDataSz);
       req.data.data = randomBytes(maxDataSz + 1);
       const tx = EthTxFactory.fromTxData(txData, { common });
       req.data.payload = tx.getMessageToSign(false);
@@ -188,7 +184,6 @@ describe('General', () => {
         `${ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined]}`,
       );
     });
-
   });
 
   describe('Should sign Bitcoin transactions', () => {
@@ -348,5 +343,4 @@ describe('General', () => {
       expect(sigResp.changeRecipient?.slice(0, 2)).toEqual('tb');
     });
   });
-
 });

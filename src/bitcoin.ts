@@ -228,7 +228,7 @@ const getBitcoinAddress = function (pubkeyhash, version) {
     return bech32.encode(bech32Prefix, words);
   } else {
     return bs58check.encode(
-      Buffer.concat([Buffer.from([version]), pubkeyhash])
+      Buffer.concat([Buffer.from([version]), pubkeyhash]),
     );
   }
 };
@@ -238,7 +238,10 @@ const getBitcoinAddress = function (pubkeyhash, version) {
 function buildRedeemScript(pubkey) {
   const redeemScript = Buffer.alloc(22);
   const shaHash = Buffer.from(sha256().update(pubkey).digest('hex'), 'hex');
-  const pubkeyhash = Buffer.from(ripemd160().update(shaHash).digest('hex'), 'hex');
+  const pubkeyhash = Buffer.from(
+    ripemd160().update(shaHash).digest('hex'),
+    'hex',
+  );
   redeemScript.writeUInt8(OP.ZERO, 0);
   redeemScript.writeUInt8(pubkeyhash.length, 1);
   pubkeyhash.copy(redeemScript, 2);
@@ -288,7 +291,7 @@ function buildLockingScript(address) {
       return buildP2pkhLockingScript(dec.pkh);
     default:
       throw new Error(
-        `Unknown version byte: ${dec.versionByte}. Cannot build BTC transaction.`
+        `Unknown version byte: ${dec.versionByte}. Cannot build BTC transaction.`,
       );
   }
 }
@@ -351,7 +354,7 @@ function getU32LE(x) {
   return buffer;
 }
 
-function getVarInt (x) {
+function getVarInt(x) {
   let buffer: Buffer;
   if (x < 0xfd) {
     buffer = Buffer.alloc(1);
@@ -405,7 +408,7 @@ function decodeAddress(address) {
       // Make sure we decoded
       if (bech32Dec.words[0] !== 0) {
         throw new Error(
-          `Unsupported segwit version: must be 0, got ${bech32Dec.words[0]}`
+          `Unsupported segwit version: must be 0, got ${bech32Dec.words[0]}`,
         );
       }
       // Make sure address type is supported.
@@ -416,7 +419,9 @@ function decodeAddress(address) {
       if (bech32Dec.words.length !== 33) {
         const isP2wpsh = bech32Dec.words.length === 53;
         throw new Error(
-          `Unsupported address${isP2wpsh ? ' (P2WSH not supported)' : ''}: ${address}`
+          `Unsupported address${
+            isP2wpsh ? ' (P2WSH not supported)' : ''
+          }: ${address}`,
         );
       }
 
@@ -451,7 +456,7 @@ function getAddressFormat(path) {
     return FMT_LEGACY_TESTNET;
   } else {
     throw new Error(
-      'Invalid Bitcoin path provided. Cannot determine address format.'
+      'Invalid Bitcoin path provided. Cannot determine address format.',
     );
   }
 }
@@ -470,7 +475,7 @@ function getScriptType(input) {
       return BTC_SCRIPT_TYPE_P2WPKH_V0;
     default:
       throw new Error(
-        `Unsupported path purpose (${input.signerPath[0]}): cannot determine BTC script type.`
+        `Unsupported path purpose (${input.signerPath[0]}): cannot determine BTC script type.`,
       );
   }
 }
@@ -496,4 +501,4 @@ export default {
   serializeTx,
   getBitcoinAddress,
   getAddressFormat,
-}
+};

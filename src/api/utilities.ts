@@ -1,12 +1,12 @@
-import { connect, Utils } from '..';
+import { Utils, connect } from '..';
 import { Client } from '../client';
 import {
-  saveClient,
-  loadClient,
-  setSaveClient,
-  setLoadClient,
   getFunctionQueue,
+  loadClient,
+  saveClient,
   setFunctionQueue,
+  setLoadClient,
+  setSaveClient,
 } from './state';
 
 /**

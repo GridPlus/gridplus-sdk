@@ -2,8 +2,8 @@ import seedrandom from 'seedrandom';
 
 export const getEnv = () => {
   if (!process.env) throw new Error('env cannot be found');
-  return process.env
-}
+  return process.env;
+};
 export const getDeviceId = (): string => getEnv()['DEVICE_ID'] ?? '';
 export const getN = (): number => parseInt(getEnv()['N'] ?? '5');
 export const getSeed = (): string => getEnv()['SEED'] ?? 'myrandomseed';

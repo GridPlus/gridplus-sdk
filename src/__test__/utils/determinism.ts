@@ -9,7 +9,6 @@ import { buildTestRequestPayload } from './builders';
 import { ethPersonalSignMsg, getSigStr, jobTypes } from './helpers';
 import { getPathStr } from '../../shared/utilities';
 
-
 const TEST_MNEMONIC =
   'nose elder baby marriage frequent list ' +
   'cargo swallow memory universe smooth involve ' +
@@ -18,7 +17,7 @@ const TEST_MNEMONIC =
 
 export const TEST_SEED = mnemonicToSeedSync(TEST_MNEMONIC);
 
-export function setupJob (
+export function setupJob(
   type: number,
   client: Client,
   seed?: Buffer,
@@ -39,7 +38,7 @@ export function setupJob (
   return buildTestRequestPayload(client, type, {});
 }
 
-export async function testUniformSigs (
+export async function testUniformSigs(
   payload: any,
   tx: TypedTransaction,
   client: Client,
@@ -76,14 +75,13 @@ export async function testUniformSigs (
   expect(getSigStr(tx5Resp, tx)).toEqual(getSigStr(tx4Resp, tx));
 }
 
-
-export function deriveAddress (seed: Buffer, path: WalletPath) {
+export function deriveAddress(seed: Buffer, path: WalletPath) {
   const wallet = bip32.fromSeed(seed);
   const priv = wallet.derivePath(getPathStr(path)).privateKey;
   return `0x${privateToAddress(priv).toString('hex')}`;
 }
 
-export function signPersonalJS (_msg: string, path: WalletPath) {
+export function signPersonalJS(_msg: string, path: WalletPath) {
   const wallet = bip32.fromSeed(TEST_SEED);
   const priv = wallet.derivePath(getPathStr(path)).privateKey;
   const msg = ethPersonalSignMsg(_msg);

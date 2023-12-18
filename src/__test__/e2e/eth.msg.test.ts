@@ -117,7 +117,6 @@ describe('ETH Messages', () => {
   });
 
   describe('Test ETH EIP712', function () {
-    
     it('Should test a message that needs to be prehashed', async () => {
       const msg = {
         types: {
@@ -144,7 +143,7 @@ describe('ETH Messages', () => {
       };
       await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
     });
-    
+
     it('Should test an example from Blur NFT w/ 0 fees', async () => {
       const msg = {
         types: {
@@ -173,7 +172,7 @@ describe('ETH Messages', () => {
             { name: 'salt', type: 'uint256' },
             { name: 'extraParams', type: 'bytes' },
             { name: 'nonce', type: 'uint256' },
-            { name: 'fees', type: 'Fee[]'},
+            { name: 'fees', type: 'Fee[]' },
           ],
         },
         domain: {
@@ -189,7 +188,8 @@ describe('ETH Messages', () => {
           side: '1',
           matchingPolicy: '0x00000000006411739da1c40b106f8511de5d1fac',
           collection: '0x7a15b36cb834aea88553de69077d3777460d73ac',
-          tokenId: '5280336779268220421569573059971679349075200194886069432279714075018412552192',
+          tokenId:
+            '5280336779268220421569573059971679349075200194886069432279714075018412552192',
           amount: '1',
           paymentToken: '0x0000000000000000000000000000000000000000',
           price: '990000000000000000',
@@ -275,38 +275,39 @@ describe('ETH Messages', () => {
 
     it('Should test Vertex message', async () => {
       const msg = {
-        'types': {
-            'EIP712Domain': [
-                {'name': 'name', 'type': 'string'},
-                {'name': 'version', 'type': 'string'},
-                {'name': 'chainId', 'type': 'uint256'},
-                {'name': 'verifyingContract', 'type': 'address'}
-            ],
-            'Order': [
-                {'name': 'sender', 'type': 'bytes32'},
-                {'name': 'priceX18', 'type': 'int128'},
-                {'name': 'amount', 'type': 'int128'},
-                {'name': 'expiration', 'type': 'uint64'},
-                {'name': 'nonce', 'type': 'uint64'},
-            ],
+        types: {
+          EIP712Domain: [
+            { name: 'name', type: 'string' },
+            { name: 'version', type: 'string' },
+            { name: 'chainId', type: 'uint256' },
+            { name: 'verifyingContract', type: 'address' },
+          ],
+          Order: [
+            { name: 'sender', type: 'bytes32' },
+            { name: 'priceX18', type: 'int128' },
+            { name: 'amount', type: 'int128' },
+            { name: 'expiration', type: 'uint64' },
+            { name: 'nonce', type: 'uint64' },
+          ],
         },
-        'primaryType': 'Order',
-        'domain': {
-            'name': 'Vertex',
-            'version': '0.0.1',
-            'chainId': '42161',  
-            'verifyingContract': '0xf03f457a30e598d5020164a339727ef40f2b8fbc'
+        primaryType: 'Order',
+        domain: {
+          name: 'Vertex',
+          version: '0.0.1',
+          chainId: '42161',
+          verifyingContract: '0xf03f457a30e598d5020164a339727ef40f2b8fbc',
         },
-        'message': {
-            'sender': '0x841fe4876763357975d60da128d8a54bb045d76a64656661756c740000000000',
-            'priceX18': '28898000000000000000000',
-            'amount': '-10000000000000000',
-            'expiration': '4611687701117784255',
-            'nonce': '1764428860167815857',
+        message: {
+          sender:
+            '0x841fe4876763357975d60da128d8a54bb045d76a64656661756c740000000000',
+          priceX18: '28898000000000000000000',
+          amount: '-10000000000000000',
+          expiration: '4611687701117784255',
+          nonce: '1764428860167815857',
         },
       };
       await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
-    })
+    });
 
     it('Should test a large 1inch transaction', async () => {
       const msg = {
@@ -1305,6 +1306,5 @@ describe('ETH Messages', () => {
         });
       }
     });
-
   });
 });

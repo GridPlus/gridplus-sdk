@@ -11,7 +11,7 @@
  * different, but cryptographically validate on the secp256k1 curve.
  *
  * You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
- * 
+ *
  * NOTE: If you do not have a SafeCard with a non-exportable seed, you can
  * wipe a SafeCard, program Lattice firmware v0.10.6, and then setup the card
  * with a non-exportable seed. You will probably need to set `FEATURE_CLONE_CARD=0`
@@ -48,10 +48,10 @@ describe('Non-Exportable Seed', () => {
   describe('Test non-exportable seed on SafeCard', () => {
     beforeEach(() => {
       expect(runTests).to.equal(
-        true, 
-        'Skipping tests due to lack of non-exportable seed SafeCard.'
+        true,
+        'Skipping tests due to lack of non-exportable seed SafeCard.',
       );
-    })
+    });
     it('Should test that ETH transaction sigs differ and validate on secp256k1', async () => {
       // Test ETH transactions
       const tx = EthTxFactory.fromTxData(
@@ -66,7 +66,10 @@ describe('Non-Exportable Seed', () => {
           data: '0xdeadbeef',
         },
         {
-          common: new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London }),
+          common: new Common({
+            chain: Chain.Mainnet,
+            hardfork: Hardfork.London,
+          }),
         },
       );
       const txReq = {
@@ -90,70 +93,30 @@ describe('Non-Exportable Seed', () => {
       const tx5Resp = await client.sign(txReq);
       validateSig(tx5Resp, tx.getMessageToSign(true));
       // Check sig 1
-      expect(getSigStr(tx1Resp, tx)).not.toEqual(
-        getSigStr(tx2Resp, tx),
-      );
-      expect(getSigStr(tx1Resp, tx)).not.toEqual(
-        getSigStr(tx3Resp, tx),
-      );
-      expect(getSigStr(tx1Resp, tx)).not.toEqual(
-        getSigStr(tx4Resp, tx),
-      );
-      expect(getSigStr(tx1Resp, tx)).not.toEqual(
-        getSigStr(tx5Resp, tx),
-      );
+      expect(getSigStr(tx1Resp, tx)).not.toEqual(getSigStr(tx2Resp, tx));
+      expect(getSigStr(tx1Resp, tx)).not.toEqual(getSigStr(tx3Resp, tx));
+      expect(getSigStr(tx1Resp, tx)).not.toEqual(getSigStr(tx4Resp, tx));
+      expect(getSigStr(tx1Resp, tx)).not.toEqual(getSigStr(tx5Resp, tx));
       // Check sig 2
-      expect(getSigStr(tx2Resp, tx)).not.toEqual(
-        getSigStr(tx1Resp, tx),
-      );
-      expect(getSigStr(tx2Resp, tx)).not.toEqual(
-        getSigStr(tx3Resp, tx),
-      );
-      expect(getSigStr(tx2Resp, tx)).not.toEqual(
-        getSigStr(tx4Resp, tx),
-      );
-      expect(getSigStr(tx2Resp, tx)).not.toEqual(
-        getSigStr(tx5Resp, tx),
-      );
+      expect(getSigStr(tx2Resp, tx)).not.toEqual(getSigStr(tx1Resp, tx));
+      expect(getSigStr(tx2Resp, tx)).not.toEqual(getSigStr(tx3Resp, tx));
+      expect(getSigStr(tx2Resp, tx)).not.toEqual(getSigStr(tx4Resp, tx));
+      expect(getSigStr(tx2Resp, tx)).not.toEqual(getSigStr(tx5Resp, tx));
       // Check sig 3
-      expect(getSigStr(tx3Resp, tx)).not.toEqual(
-        getSigStr(tx1Resp, tx),
-      );
-      expect(getSigStr(tx3Resp, tx)).not.toEqual(
-        getSigStr(tx2Resp, tx),
-      );
-      expect(getSigStr(tx3Resp, tx)).not.toEqual(
-        getSigStr(tx4Resp, tx),
-      );
-      expect(getSigStr(tx3Resp, tx)).not.toEqual(
-        getSigStr(tx5Resp, tx),
-      );
+      expect(getSigStr(tx3Resp, tx)).not.toEqual(getSigStr(tx1Resp, tx));
+      expect(getSigStr(tx3Resp, tx)).not.toEqual(getSigStr(tx2Resp, tx));
+      expect(getSigStr(tx3Resp, tx)).not.toEqual(getSigStr(tx4Resp, tx));
+      expect(getSigStr(tx3Resp, tx)).not.toEqual(getSigStr(tx5Resp, tx));
       // Check sig 4
-      expect(getSigStr(tx4Resp, tx)).not.toEqual(
-        getSigStr(tx1Resp, tx),
-      );
-      expect(getSigStr(tx4Resp, tx)).not.toEqual(
-        getSigStr(tx2Resp, tx),
-      );
-      expect(getSigStr(tx4Resp, tx)).not.toEqual(
-        getSigStr(tx3Resp, tx),
-      );
-      expect(getSigStr(tx4Resp, tx)).not.toEqual(
-        getSigStr(tx5Resp, tx),
-      );
+      expect(getSigStr(tx4Resp, tx)).not.toEqual(getSigStr(tx1Resp, tx));
+      expect(getSigStr(tx4Resp, tx)).not.toEqual(getSigStr(tx2Resp, tx));
+      expect(getSigStr(tx4Resp, tx)).not.toEqual(getSigStr(tx3Resp, tx));
+      expect(getSigStr(tx4Resp, tx)).not.toEqual(getSigStr(tx5Resp, tx));
       // Check sig 5
-      expect(getSigStr(tx5Resp, tx)).not.toEqual(
-        getSigStr(tx1Resp, tx),
-      );
-      expect(getSigStr(tx5Resp, tx)).not.toEqual(
-        getSigStr(tx2Resp, tx),
-      );
-      expect(getSigStr(tx5Resp, tx)).not.toEqual(
-        getSigStr(tx3Resp, tx),
-      );
-      expect(getSigStr(tx5Resp, tx)).not.toEqual(
-        getSigStr(tx4Resp, tx),
-      );
+      expect(getSigStr(tx5Resp, tx)).not.toEqual(getSigStr(tx1Resp, tx));
+      expect(getSigStr(tx5Resp, tx)).not.toEqual(getSigStr(tx2Resp, tx));
+      expect(getSigStr(tx5Resp, tx)).not.toEqual(getSigStr(tx3Resp, tx));
+      expect(getSigStr(tx5Resp, tx)).not.toEqual(getSigStr(tx4Resp, tx));
     });
 
     it('Should test that ETH message sigs differ and validate on secp256k1', async () => {
@@ -174,75 +137,35 @@ describe('Non-Exportable Seed', () => {
       const msg4Resp = await client.sign(msgReq);
       const msg5Resp = await client.sign(msgReq);
       // Check sig 1
-      expect(getSigStr(msg1Resp)).not.toEqual(
-        getSigStr(msg2Resp),
-      );
-      expect(getSigStr(msg1Resp)).not.toEqual(
-        getSigStr(msg3Resp),
-      );
-      expect(getSigStr(msg1Resp)).not.toEqual(
-        getSigStr(msg4Resp),
-      );
-      expect(getSigStr(msg1Resp)).not.toEqual(
-        getSigStr(msg5Resp),
-      );
+      expect(getSigStr(msg1Resp)).not.toEqual(getSigStr(msg2Resp));
+      expect(getSigStr(msg1Resp)).not.toEqual(getSigStr(msg3Resp));
+      expect(getSigStr(msg1Resp)).not.toEqual(getSigStr(msg4Resp));
+      expect(getSigStr(msg1Resp)).not.toEqual(getSigStr(msg5Resp));
       // Check sig 2
-      expect(getSigStr(msg2Resp)).not.toEqual(
-        getSigStr(msg1Resp),
-      );
-      expect(getSigStr(msg2Resp)).not.toEqual(
-        getSigStr(msg3Resp),
-      );
-      expect(getSigStr(msg2Resp)).not.toEqual(
-        getSigStr(msg4Resp),
-      );
-      expect(getSigStr(msg2Resp)).not.toEqual(
-        getSigStr(msg5Resp),
-      );
+      expect(getSigStr(msg2Resp)).not.toEqual(getSigStr(msg1Resp));
+      expect(getSigStr(msg2Resp)).not.toEqual(getSigStr(msg3Resp));
+      expect(getSigStr(msg2Resp)).not.toEqual(getSigStr(msg4Resp));
+      expect(getSigStr(msg2Resp)).not.toEqual(getSigStr(msg5Resp));
       // Check sig 3
-      expect(getSigStr(msg3Resp)).not.toEqual(
-        getSigStr(msg1Resp),
-      );
-      expect(getSigStr(msg3Resp)).not.toEqual(
-        getSigStr(msg2Resp),
-      );
-      expect(getSigStr(msg3Resp)).not.toEqual(
-        getSigStr(msg4Resp),
-      );
-      expect(getSigStr(msg3Resp)).not.toEqual(
-        getSigStr(msg5Resp),
-      );
+      expect(getSigStr(msg3Resp)).not.toEqual(getSigStr(msg1Resp));
+      expect(getSigStr(msg3Resp)).not.toEqual(getSigStr(msg2Resp));
+      expect(getSigStr(msg3Resp)).not.toEqual(getSigStr(msg4Resp));
+      expect(getSigStr(msg3Resp)).not.toEqual(getSigStr(msg5Resp));
       // Check sig 4
-      expect(getSigStr(msg4Resp)).not.toEqual(
-        getSigStr(msg1Resp),
-      );
-      expect(getSigStr(msg4Resp)).not.toEqual(
-        getSigStr(msg2Resp),
-      );
-      expect(getSigStr(msg4Resp)).not.toEqual(
-        getSigStr(msg3Resp),
-      );
-      expect(getSigStr(msg4Resp)).not.toEqual(
-        getSigStr(msg5Resp),
-      );
+      expect(getSigStr(msg4Resp)).not.toEqual(getSigStr(msg1Resp));
+      expect(getSigStr(msg4Resp)).not.toEqual(getSigStr(msg2Resp));
+      expect(getSigStr(msg4Resp)).not.toEqual(getSigStr(msg3Resp));
+      expect(getSigStr(msg4Resp)).not.toEqual(getSigStr(msg5Resp));
       // Check sig 5
-      expect(getSigStr(msg5Resp)).not.toEqual(
-        getSigStr(msg1Resp),
-      );
-      expect(getSigStr(msg5Resp)).not.toEqual(
-        getSigStr(msg2Resp),
-      );
-      expect(getSigStr(msg5Resp)).not.toEqual(
-        getSigStr(msg3Resp),
-      );
-      expect(getSigStr(msg5Resp)).not.toEqual(
-        getSigStr(msg4Resp),
-      );
+      expect(getSigStr(msg5Resp)).not.toEqual(getSigStr(msg1Resp));
+      expect(getSigStr(msg5Resp)).not.toEqual(getSigStr(msg2Resp));
+      expect(getSigStr(msg5Resp)).not.toEqual(getSigStr(msg3Resp));
+      expect(getSigStr(msg5Resp)).not.toEqual(getSigStr(msg4Resp));
     });
   });
-})
+});
 
-function validateSig (resp: any, hash: Buffer) {
+function validateSig(resp: any, hash: Buffer) {
   const rs = new Uint8Array(Buffer.concat([resp.sig.r, resp.sig.s]));
   const pubkeyA = Buffer.from(ecdsaRecover(rs, 0, hash, false)).toString('hex');
   const pubkeyB = Buffer.from(ecdsaRecover(rs, 1, hash, false)).toString('hex');

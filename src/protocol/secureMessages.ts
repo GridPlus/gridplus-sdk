@@ -20,10 +20,10 @@
  */
 import {
   ProtocolConstants as Constants,
-  LatticeSecureMsgType,
   LatticeMsgType,
   LatticeProtocolVersion,
   LatticeSecureEncryptedRequestType,
+  LatticeSecureMsgType,
 } from './latticeConstants';
 import {
   aes256_decrypt,

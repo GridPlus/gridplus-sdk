@@ -4,9 +4,9 @@ import { CURRENCIES } from '../constants';
 import ethereum from '../ethereum';
 import { parseGenericSigningResponse } from '../genericSigning';
 import {
-  encryptedSecureRequest,
   LatticeSecureEncryptedRequestType,
   LatticeSignSchema,
+  encryptedSecureRequest,
 } from '../protocol';
 import { buildTransaction } from '../shared/functions';
 import { validateConnectedClient, validateWallet } from '../shared/validators';

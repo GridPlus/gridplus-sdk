@@ -11,7 +11,7 @@ interface LatticeSecureRequestPayload {
   // [uint8]
   requestType: LatticeSecureMsgType;
   // Request data
-  // [connect = 65 bytes, encrypted = 1732] 
+  // [connect = 65 bytes, encrypted = 1732]
   data: Buffer;
 }
 
