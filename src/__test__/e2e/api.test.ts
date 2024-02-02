@@ -5,6 +5,7 @@ import { question } from 'readline-sync';
 import { encode } from 'rlp';
 import {
   fetchActiveWallets,
+  fetchAddress,
   fetchAddresses,
   pair,
   signBtcLegacyTx,
@@ -156,14 +157,19 @@ describe('API', () => {
       expect(addresses).toHaveLength(10);
     });
 
+    test('fetchAddress', async () => {
+      const address = await fetchAddress();
+      expect(address).toBeTruthy();
+    });
+
     test('fetchLedgerLiveAddresses', async () => {
       const addresses = await fetchLedgerLiveAddresses();
       expect(addresses).toHaveLength(10);
     });
   });
 
-  describe('fetchActiveWallet', () => {
-    test('fetchActiveWallet', async () => {
+  describe('fetchActiveWallets', () => {
+    test('fetchActiveWallets', async () => {
       const wallet = await fetchActiveWallets();
       expect(wallet).toBeTruthy();
     });
