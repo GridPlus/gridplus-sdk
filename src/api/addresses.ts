@@ -24,6 +24,24 @@ export const fetchAddresses = async (
   );
 };
 
+/**
+ * Fetches a single address from the device.
+ *
+ * @note By default, this function fetches m/44'/60'/0'/0/0
+ * @param path - either the index of ETH signing path or the derivation path to fetch
+ */
+export const fetchAddress = async (
+  path: number | WalletPath = 0,
+): Promise<string> => {
+  return fetchAddresses({
+    startPath:
+      typeof path === 'number'
+        ? getStartPath(DEFAULT_ETH_DERIVATION, path)
+        : path,
+    n: 1,
+  }).then((addrs) => addrs[0]);
+};
+
 export const fetchBtcLegacyAddresses = async (
   n = MAX_ADDR,
   startPathIndex?: number,
