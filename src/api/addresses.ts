@@ -37,8 +37,6 @@ export const fetchAddresses = async (overrides?: GetAddressesRequestParams) => {
           }
         }),
     );
-    // Exit loop if we've fetched the requested number of addresses
-    if (totalFetched >= totalToFetch) break;
   }
 
   return allAddresses;
