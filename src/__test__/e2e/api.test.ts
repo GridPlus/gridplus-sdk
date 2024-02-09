@@ -7,6 +7,8 @@ import {
   fetchActiveWallets,
   fetchAddress,
   fetchAddresses,
+  fetchBtcLegacyAddresses,
+  fetchBtcSegwitAddresses,
   pair,
   signBtcLegacyTx,
   signBtcSegwitTx,
@@ -152,19 +154,43 @@ describe('API', () => {
   });
 
   describe('addresses', () => {
-    test('fetchAddresses', async () => {
-      const addresses = await fetchAddresses();
-      expect(addresses).toHaveLength(10);
+    describe('fetchAddresses', () => {
+      test('fetchAddresses', async () => {
+        const addresses = await fetchAddresses();
+        expect(addresses).toHaveLength(10);
+      });
+
+      test('fetchAddresses[1]', async () => {
+        const addresses = await fetchAddresses({ n: 1 });
+        expect(addresses).toHaveLength(1);
+      });
+
+      test('fetchAddresses[12]', async () => {
+        const addresses = await fetchAddresses({ n: 12 });
+        expect(addresses).toHaveLength(12);
+      });
+
+      test('fetchBtcLegacyAddresses', async () => {
+        const addresses = await fetchBtcLegacyAddresses();
+        expect(addresses).toHaveLength(10);
+      });
+
+      test('fetchBtcSegwitAddresses[12]', async () => {
+        const addresses = await fetchBtcSegwitAddresses({ n: 12 });
+        expect(addresses).toHaveLength(12);
+      });
+
+      test('fetchLedgerLiveAddresses', async () => {
+        const addresses = await fetchLedgerLiveAddresses();
+        expect(addresses).toHaveLength(10);
+      });
     });
 
-    test('fetchAddress', async () => {
-      const address = await fetchAddress();
-      expect(address).toBeTruthy();
-    });
-
-    test('fetchLedgerLiveAddresses', async () => {
-      const addresses = await fetchLedgerLiveAddresses();
-      expect(addresses).toHaveLength(10);
+    describe('fetchAddress', () => {
+      test('fetchAddress', async () => {
+        const address = await fetchAddress();
+        expect(address).toBeTruthy();
+      });
     });
   });
 
