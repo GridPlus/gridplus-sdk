@@ -105,6 +105,7 @@ export const fetchSolanaAddresses = async (
   return fetchAddresses({
     startPath: getStartPath(SOLANA_DERIVATION, startPathIndex, 2),
     n,
+    flag: 4,
   });
 };
 
