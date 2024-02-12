@@ -1,4 +1,5 @@
 import {
+  AddressLookupTableProgram,
   Connection,
   Keypair,
   LAMPORTS_PER_SOL,
@@ -23,7 +24,7 @@ const fetchSigningWallet = async () => {
 
 describe('solana.versioned', () => {
   let SOLANA_RPC: Connection;
-  let SIGNING_WALLET: PublicKey;
+  let SIGNER_WALLET: PublicKey;
   let DESTINATION_WALLET_1: Keypair;
   let DESTINATION_WALLET_2: Keypair;
   let latestBlockhash: { blockhash: string; lastValidBlockHeight: number };
@@ -34,24 +35,24 @@ describe('solana.versioned', () => {
       const secret = question('Please enter the pairing secret: ');
       await pair(secret.toUpperCase());
     }
-    SOLANA_RPC = new Connection('https://api.devnet.solana.com', 'confirmed');
-    SIGNING_WALLET = await fetchSigningWallet();
+    SOLANA_RPC = new Connection('https://api.testnet.solana.com', 'confirmed');
+    SIGNER_WALLET = await fetchSigningWallet();
     DESTINATION_WALLET_1 = Keypair.generate();
     DESTINATION_WALLET_2 = Keypair.generate();
     latestBlockhash = await SOLANA_RPC.getLatestBlockhash('confirmed');
   });
 
   test('sign solana', async () => {
-    SIGNING_WALLET = await fetchSigningWallet();
+    SIGNER_WALLET = await fetchSigningWallet();
     const txInstructions: TransactionInstruction[] = [
       SystemProgram.transfer({
-        fromPubkey: SIGNING_WALLET,
+        fromPubkey: SIGNER_WALLET,
         toPubkey: DESTINATION_WALLET_1.publicKey,
         lamports: 0.01 * LAMPORTS_PER_SOL,
       }),
     ];
     const messageV0 = new TransactionMessage({
-      payerKey: SIGNING_WALLET,
+      payerKey: SIGNER_WALLET,
       recentBlockhash: latestBlockhash.blockhash,
       instructions: txInstructions,
     }).compileToV0Message();
@@ -63,18 +64,18 @@ describe('solana.versioned', () => {
   test('sign solana multiple instructions', async () => {
     const txInstructions = [
       SystemProgram.transfer({
-        fromPubkey: SIGNING_WALLET,
+        fromPubkey: SIGNER_WALLET,
         toPubkey: DESTINATION_WALLET_1.publicKey,
         lamports: 0.005 * LAMPORTS_PER_SOL,
       }),
       SystemProgram.transfer({
-        fromPubkey: SIGNING_WALLET,
+        fromPubkey: SIGNER_WALLET,
         toPubkey: DESTINATION_WALLET_2.publicKey,
         lamports: 0.005 * LAMPORTS_PER_SOL,
       }),
     ];
     const message = new TransactionMessage({
-      payerKey: SIGNING_WALLET,
+      payerKey: SIGNER_WALLET,
       recentBlockhash: latestBlockhash.blockhash,
       instructions: txInstructions,
     }).compileToV0Message();
@@ -85,12 +86,12 @@ describe('solana.versioned', () => {
 
   test('sign solana zero lamport transfer', async () => {
     const txInstruction = SystemProgram.transfer({
-      fromPubkey: SIGNING_WALLET,
+      fromPubkey: SIGNER_WALLET,
       toPubkey: DESTINATION_WALLET_1.publicKey,
       lamports: 0,
     });
     const message = new TransactionMessage({
-      payerKey: SIGNING_WALLET,
+      payerKey: SIGNER_WALLET,
       recentBlockhash: latestBlockhash.blockhash,
       instructions: [txInstruction],
     }).compileToV0Message();
@@ -99,17 +100,13 @@ describe('solana.versioned', () => {
     expect(signedTx).toBeTruthy();
   });
 
-  /**
-   * TODO:
-   *
-   * This test expects the address to exist on the network, which apparently it does not exist until
-   * it is in a transaction. We need to figure out how to handle that in the test suite. It would be
-   * really nice to be able to simulate txs and test our signed payload against them.
-   *
-   */
-  test.todo('simulate versioned solana transaction', async () => {
+  test('simulate versioned solana transaction', async () => {
+    // Request airdrop to fund account
+    await SOLANA_RPC.requestAirdrop(SIGNER_WALLET, 2 * LAMPORTS_PER_SOL);
+    await new Promise((resolve) => setTimeout(resolve, 20000));
+
     const txInstruction = SystemProgram.transfer({
-      fromPubkey: SIGNING_WALLET,
+      fromPubkey: SIGNER_WALLET,
       toPubkey: DESTINATION_WALLET_1.publicKey,
       lamports: 0.01 * LAMPORTS_PER_SOL,
     });
@@ -117,7 +114,7 @@ describe('solana.versioned', () => {
     const transaction = new Transaction();
     transaction.add(txInstruction);
     transaction.recentBlockhash = latestBlockhash.blockhash;
-    transaction.feePayer = SIGNING_WALLET;
+    transaction.feePayer = SIGNER_WALLET;
 
     // Serialize the transaction to get the wire format
     const serializedTransaction = transaction.serialize({
@@ -141,5 +138,39 @@ describe('solana.versioned', () => {
       Buffer.from(versionedTransaction.serialize()),
     );
     expect(signedTx).toBeTruthy();
+  });
+
+  test('simulate versioned solana transaction with multiple instructions', async () => {
+    const payer = Keypair.generate();
+    // Request airdrop to fund account
+    await SOLANA_RPC.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
+    await new Promise((resolve) => setTimeout(resolve, 20000));
+
+    const [transactionInstruction, pubkey] =
+      await AddressLookupTableProgram.createLookupTable({
+        payer: payer.publicKey,
+        authority: payer.publicKey,
+        recentSlot: await SOLANA_RPC.getSlot(),
+      });
+
+    await AddressLookupTableProgram.extendLookupTable({
+      payer: payer.publicKey,
+      authority: payer.publicKey,
+      lookupTable: pubkey,
+      addresses: [
+        DESTINATION_WALLET_1.publicKey,
+        DESTINATION_WALLET_2.publicKey,
+      ],
+    });
+
+    const messageV0 = new TransactionMessage({
+      payerKey: SIGNER_WALLET,
+      recentBlockhash: latestBlockhash.blockhash,
+      instructions: [transactionInstruction],
+    }).compileToV0Message();
+
+    const signedTx = await signSolanaTx(Buffer.from(messageV0.serialize()));
+
+    expect(signedTx).toBeDefined();
   });
 });
