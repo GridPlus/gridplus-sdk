@@ -40,7 +40,7 @@ export const getStoredClient = () => {
 export const setupClient = async () => {
   const deviceId = process.env.DEVICE_ID;
   const password = process.env.PASSWORD || 'password';
-  const name = process.env.name || 'api-test';
+  const name = process.env.APP_NAME || 'SDK Test';
   return setup({
     deviceId,
     password,

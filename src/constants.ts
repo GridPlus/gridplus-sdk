@@ -544,6 +544,7 @@ export const SOLANA_DERIVATION = [
   HARDENED_OFFSET + 44,
   HARDENED_OFFSET + 501,
   HARDENED_OFFSET,
+  HARDENED_OFFSET,
 ];
 
 /** @internal */

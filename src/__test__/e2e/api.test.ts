@@ -9,6 +9,7 @@ import {
   fetchAddresses,
   fetchBtcLegacyAddresses,
   fetchBtcSegwitAddresses,
+  fetchSolanaAddresses,
   pair,
   signBtcLegacyTx,
   signBtcSegwitTx,
@@ -182,6 +183,11 @@ describe('API', () => {
 
       test('fetchLedgerLiveAddresses', async () => {
         const addresses = await fetchLedgerLiveAddresses();
+        expect(addresses).toHaveLength(10);
+      });
+
+      test('fetchSolanaAddresses', async () => {
+        const addresses = await fetchSolanaAddresses();
         expect(addresses).toHaveLength(10);
       });
     });
