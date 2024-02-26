@@ -31,7 +31,7 @@ export const setup = async ({
   setSaveClient(buildSaveClientFn(setStoredClient));
 
   if (!setStoredClient) throw new Error('Client data setter required');
-  setLoadClient(await buildLoadClientFn(getStoredClient));
+  setLoadClient(buildLoadClientFn(getStoredClient));
 
   if (deviceId && password && name) {
     const privKey = Utils.generateAppSecret(deviceId, password, name);
