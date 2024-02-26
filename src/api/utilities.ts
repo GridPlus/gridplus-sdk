@@ -24,14 +24,14 @@ export const setup = async ({
   deviceId?: string;
   password?: string;
   name?: string;
-  getStoredClient: () => string;
-  setStoredClient: (clientData: string | null) => void;
+  getStoredClient: () => Promise<string>;
+  setStoredClient: (clientData: string | null) => Promise<void>;
 }) => {
   if (!getStoredClient) throw new Error('Client data getter required');
   setSaveClient(buildSaveClientFn(setStoredClient));
 
   if (!setStoredClient) throw new Error('Client data setter required');
-  setLoadClient(buildLoadClientFn(getStoredClient));
+  setLoadClient(await buildLoadClientFn(getStoredClient));
 
   if (deviceId && password && name) {
     const privKey = Utils.generateAppSecret(deviceId, password, name);
@@ -41,7 +41,7 @@ export const setup = async ({
       return isPaired;
     });
   } else {
-    const client = loadClient();
+    const client = await loadClient();
     if (!client) throw new Error('Client not initialized');
     const deviceId = client.getDeviceId();
     if (!client.ephemeralPub && deviceId) {
@@ -60,8 +60,8 @@ export const setup = async ({
  * and two concurrent requests could result in the same key being used twice or the wrong key being
  * written to memory locally.
  */
-export const queue = (fn: (client: Client) => Promise<any>) => {
-  const client = loadClient();
+export const queue = async (fn: (client: Client) => Promise<any>) => {
+  const client = await loadClient();
   if (!client) throw new Error('Client not initialized');
   if (!getFunctionQueue()) {
     setFunctionQueue(Promise.resolve());
@@ -103,9 +103,9 @@ const buildSaveClientFn = (
   };
 };
 
-const buildLoadClientFn = (getStoredClient: () => string) => {
-  return () => {
-    const clientData = getStoredClient();
+const buildLoadClientFn = (getStoredClient: () => Promise<string>) => {
+  return async () => {
+    const clientData = await getStoredClient();
     if (!clientData) return undefined;
     const stateData = decodeClientData(clientData);
     if (!stateData) return undefined;

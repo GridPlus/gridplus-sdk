@@ -6,9 +6,9 @@ export const setSaveClient = (fn: (clientData: string | null) => void) => {
   saveClient = fn;
 };
 
-export let loadClient: () => Client | undefined;
+export let loadClient: () => Promise<Client | undefined>;
 
-export const setLoadClient = (fn: () => Client | undefined) => {
+export const setLoadClient = (fn: () => Promise<Client | undefined>) => {
   loadClient = fn;
 };
 

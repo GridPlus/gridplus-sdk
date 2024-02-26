@@ -6,21 +6,24 @@ import { Lattice } from './Lattice';
 function App() {
   const [label, setLabel] = useState('No Device');
 
-  const getStoredClient = () =>
+  const getStoredClient = async () =>
     window.localStorage.getItem('storedClient') || '';
 
-  const setStoredClient = (storedClient: string | null) => {
+  const setStoredClient = async (storedClient: string | null) => {
     if (!storedClient) return;
     window.localStorage.setItem('storedClient', storedClient);
 
-    const client = getClient();
-    setLabel(client?.getDeviceId() || 'No Device');
+    getClient()?.then((client) => {
+      setLabel(client?.getDeviceId() || 'No Device');
+    });
   };
 
   useEffect(() => {
-    if (getStoredClient()) {
-      setup({ getStoredClient, setStoredClient });
-    }
+    getStoredClient().then((storedClient) => {
+      if (storedClient) {
+        setup({ getStoredClient, setStoredClient });
+      }
+    });
   }, []);
 
   const submitInit = (e: any) => {
