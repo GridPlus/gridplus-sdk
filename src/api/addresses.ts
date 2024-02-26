@@ -1,6 +1,9 @@
 import {
+  BTC_LEGACY_CHANGE_DERIVATION,
   BTC_LEGACY_DERIVATION,
+  BTC_SEGWIT_CHANGE_DERIVATION,
   BTC_SEGWIT_DERIVATION,
+  BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION,
   BTC_WRAPPED_SEGWIT_DERIVATION,
   DEFAULT_ETH_DERIVATION,
   LEDGER_LEGACY_DERIVATION,
@@ -60,41 +63,36 @@ export const fetchAddress = async (
   }).then((addrs) => addrs[0]);
 };
 
-export const fetchBtcLegacyAddresses = async (
-  { n, startPathIndex }: FetchAddressesParams = {
-    n: MAX_ADDR,
-    startPathIndex: 0,
-  },
-) => {
-  return fetchAddresses({
-    startPath: getStartPath(BTC_LEGACY_DERIVATION, startPathIndex),
-    n,
-  });
-};
-
-export const fetchBtcSegwitAddresses = async (
-  { n, startPathIndex }: FetchAddressesParams = {
-    n: MAX_ADDR,
-    startPathIndex: 0,
-  },
-) => {
-  return fetchAddresses({
-    startPath: getStartPath(BTC_SEGWIT_DERIVATION, startPathIndex),
-    n,
-  });
-};
-
-export const fetchBtcWrappedSegwitAddresses = async (
-  { n, startPathIndex }: FetchAddressesParams = {
-    n: MAX_ADDR,
-    startPathIndex: 0,
-  },
-) => {
-  return fetchAddresses({
-    startPath: getStartPath(BTC_WRAPPED_SEGWIT_DERIVATION, startPathIndex),
-    n,
-  });
-};
+function createFetchBtcAddressesFunction(derivationPath: number[]) {
+  return async (
+    { n, startPathIndex }: FetchAddressesParams = {
+      n: MAX_ADDR,
+      startPathIndex: 0,
+    },
+  ) => {
+    return fetchAddresses({
+      startPath: getStartPath(derivationPath, startPathIndex),
+      n,
+    });
+  };
+}
+export const fetchBtcLegacyAddresses = createFetchBtcAddressesFunction(
+  BTC_LEGACY_DERIVATION,
+);
+export const fetchBtcSegwitAddresses = createFetchBtcAddressesFunction(
+  BTC_SEGWIT_DERIVATION,
+);
+export const fetchBtcWrappedSegwitAddresses = createFetchBtcAddressesFunction(
+  BTC_WRAPPED_SEGWIT_DERIVATION,
+);
+export const fetchBtcLegacyChangeAddresses = createFetchBtcAddressesFunction(
+  BTC_LEGACY_CHANGE_DERIVATION,
+);
+export const fetchBtcSegwitChangeAddresses = createFetchBtcAddressesFunction(
+  BTC_SEGWIT_CHANGE_DERIVATION,
+);
+export const fetchBtcWrappedSegwitChangeAddresses =
+  createFetchBtcAddressesFunction(BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION);
 
 export const fetchSolanaAddresses = async (
   { n, startPathIndex }: FetchAddressesParams = {

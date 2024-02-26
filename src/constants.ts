@@ -522,6 +522,15 @@ export const BTC_LEGACY_DERIVATION = [
 ];
 
 /** @internal */
+export const BTC_LEGACY_CHANGE_DERIVATION = [
+  HARDENED_OFFSET + 44,
+  HARDENED_OFFSET + 0,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
+
+/** @internal */
 export const BTC_SEGWIT_DERIVATION = [
   HARDENED_OFFSET + 84,
   HARDENED_OFFSET,
@@ -531,7 +540,25 @@ export const BTC_SEGWIT_DERIVATION = [
 ];
 
 /** @internal */
+export const BTC_SEGWIT_CHANGE_DERIVATION = [
+  HARDENED_OFFSET + 84,
+  HARDENED_OFFSET,
+  HARDENED_OFFSET,
+  1,
+  0,
+];
+
+/** @internal */
 export const BTC_WRAPPED_SEGWIT_DERIVATION = [
+  HARDENED_OFFSET + 49,
+  HARDENED_OFFSET,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
+
+/** @internal */
+export const BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION = [
   HARDENED_OFFSET + 49,
   HARDENED_OFFSET,
   HARDENED_OFFSET,
