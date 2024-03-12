@@ -20,6 +20,7 @@
     "e2e": "vitest src/__test__/e2e",
     "e2e-btc": "vitest src/__test__/e2e/btc.test.ts",
     "e2e-eth": "vitest src/__test__/e2e/eth.msg.test.ts",
+    "e2e-eth:mint": "vitest src/__test__/e2e/eth.mint.test.ts",
     "e2e-gen": "vitest src/__test__/e2e/general.test.ts",
     "e2e-kv": "vitest src/__test__/e2e/kv.test.ts",
     "e2e-ne": "vitest src/__test__/e2e/non-exportable.test.ts",
