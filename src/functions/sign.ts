@@ -157,8 +157,8 @@ export const decodeSignResponse = ({
       off += derSigLen;
       // Next, shift by the full set of signatures to hit the respective pubkey NOTE: The data
       // returned is: [<sig0>, <sig1>, ... <sig9>][<pubkey0>, <pubkey1>, ... <pubkey9>]
-      const pubStart = n * compressedPubLength + sigsLen;
-      const pubEnd = (n + 1) * compressedPubLength + sigsLen;
+      const pubStart = n * compressedPubLength + sigsLen + sigStart;
+      const pubEnd = (n + 1) * compressedPubLength + sigsLen + sigStart;
       pubkeys.push(data.slice(pubStart, pubEnd));
       // Update offset to hit the next signature slot
       n += 1;
