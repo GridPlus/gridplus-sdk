@@ -9,21 +9,8 @@ import {
 } from '../constants';
 import { isEIP712Payload, queue } from './utilities';
 
-export const sign = async (
-  payload: Uint8Array | Buffer | Buffer[],
-  overrides?: SignRequestParams,
-): Promise<SignData> => {
-  const tx: SignRequestParams = {
-    data: {
-      signerPath: DEFAULT_ETH_DERIVATION,
-      curveType: Constants.SIGNING.CURVES.SECP256K1,
-      hashType: Constants.SIGNING.HASHES.KECCAK256,
-      encodingType: Constants.SIGNING.ENCODINGS.EVM,
-      payload,
-    },
-    ...overrides,
-  };
-  return queue((client) => client.sign(tx));
+export const sign = async (data: SignRequestParams): Promise<SignData> => {
+  return queue((client) => client.sign(data));
 };
 
 export const signMessage = async (
