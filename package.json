@@ -31,7 +31,8 @@
     "e2e-sign-solana": "vitest src/__test__/e2e/signing/solana*",
     "e2e-sign-unformatted": "vitest src/__test__/e2e/signing/unformatted.test.ts",
     "e2e-wj": "vitest src/__test__/e2e/wallet-jobs.test.ts",
-    "e2e-api": "vitest src/__test__/e2e/api.test.ts"
+    "e2e-api": "vitest src/__test__/e2e/api.test.ts",
+    "contracts": "vitest src/__test__/e2e/contracts.test.ts"
   },
   "files": [
     "dist"
@@ -92,6 +93,7 @@
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-prettier": "^4.0.0",
     "ethereumjs-util": "^7.1.4",
+    "ethers": "^6.12.0",
     "jsonc": "^2.0.0",
     "lodash": ">=4.17.21",
     "minimist": ">=0.2.1",
