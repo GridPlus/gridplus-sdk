@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
+import "openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol";
+import "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
 contract NegativeAmountHandler is EIP712 {
     struct Payment {
@@ -17,14 +18,13 @@ contract NegativeAmountHandler is EIP712 {
 
     // Function to handle a negative amount logic
     function handlePayment(Payment calldata payment, bytes calldata signature) external {
-        require(_verify(_hash(payment), signature), "Invalid signature");
+        require(_verify(payment, _hash(payment), signature), "Invalid signature");
         require(payment.amount < 0, "Amount must be negative");
         
-        // Example logic for negative amount handling
-        // Here we just emit an event, but you could implement any logic you want
+        // Logic for handling negative amounts
         emit PaymentHandled(payment.to, payment.amount, msg.sender);
 
-        // Increment nonce after handling to prevent replay attacks
+        // Increment nonce to prevent replay attacks
         nonces[payment.to]++;
     }
 
@@ -39,7 +39,7 @@ contract NegativeAmountHandler is EIP712 {
     }
 
     // Verify the signature
-    function _verify(bytes32 digest, bytes calldata signature) internal view returns (bool) {
+    function _verify(Payment calldata payment, bytes32 digest, bytes calldata signature) internal view returns (bool) {
         address signer = ECDSA.recover(digest, signature);
         return signer == msg.sender && nonces[signer] == payment.nonce;
     }
