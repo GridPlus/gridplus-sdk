@@ -19,7 +19,7 @@ contract NegativeAmountHandler is EIP712 {
     // Function to handle a negative amount logic
     function handlePayment(Payment calldata payment, bytes calldata signature) external {
         require(_verify(payment, _hash(payment), signature), "Invalid signature");
-        require(payment.amount < 0, "Amount must be negative");
+        // require(payment.amount < 0, "Amount must be negative");
         
         // Logic for handling negative amounts
         emit PaymentHandled(payment.to, payment.amount, msg.sender);
@@ -46,3 +46,11 @@ contract NegativeAmountHandler is EIP712 {
 
     event PaymentHandled(address indexed to, int256 amount, address indexed executor);
 }
+cast calldata "Payment(address to,int256 amount,uint256 nonce)" \
+  0x1234567890123456789012345678901234567890 -100 0
+
+  cast wallet sign 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+  --typed-data domain "NegativeAmountHandler" 1.0.0 1 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
+  --typed-data Payment "address to" 0x1234567890123456789012345678901234567890 \
+  --typed-data Payment "int256 amount" -100 \
+  --typed-data Payment "uint256 nonce" 0

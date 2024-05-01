@@ -33,8 +33,6 @@ export const signMessage = async (
   const tx = {
     data: {
       signerPath: DEFAULT_ETH_DERIVATION,
-      curveType: Constants.SIGNING.CURVES.SECP256K1,
-      hashType: Constants.SIGNING.HASHES.KECCAK256,
       protocol: 'signPersonal',
       payload,
       ...overrides,
