@@ -73,8 +73,9 @@ const validateEthereumMsgResponse = function (res, req) {
       SignTypedDataVersion.V3,
     );
     const digest = prehash ? prehash : encoded;
+    const chainId = parseInt(input.payload.domain.chainId, 16);
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
-    return addRecoveryParam(digest, sig, signer, { useEIP155: false });
+    return addRecoveryParam(digest, sig, signer, { chainId });
   } else {
     throw new Error('Unsupported protocol');
   }
@@ -706,7 +707,10 @@ function buildEIP712Request(req, input) {
     // If this payload is too large to send, but the Lattice allows a prehashed message, do that
     req.payload.writeUInt16LE(payload.length, off);
     off += 2;
-    const prehash = TypedDataUtils.hash(req.input.payload);
+    const prehash = TypedDataUtils.eip712Hash(
+      req.input.payload,
+      SignTypedDataVersion.V3,
+    );
     const prehashBuf = Buffer.from(prehash);
     prehashBuf.copy(req.payload, off);
     req.prehash = prehash;
