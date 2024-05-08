@@ -64,6 +64,12 @@
     "typeRoots": ["node_modules/@types", "src/**/types"],
     "types": ["node", "jest", "vitest", "vitest/globals"]
   },
-  "exclude": ["node_modules", "**/__test__", "**/*.spec.ts", "**/*.test.ts"],
-  "include": ["./src"]
+  "exclude": [
+    "node_modules",
+    "**/__test__",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "forge"
+  ],
+  "include": ["./src", "forge"]
 }
