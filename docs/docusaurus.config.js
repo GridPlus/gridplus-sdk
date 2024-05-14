@@ -1,8 +1,7 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
 
-const lightCodeTheme = require('prism-react-renderer/themes/github');
-const darkCodeTheme = require('prism-react-renderer/themes/vsDark');
+import { themes } from 'prism-react-renderer';
 
 const excludedFiles = [
   'bitcoin',
@@ -26,20 +25,33 @@ const config = {
   plugins: [
     [
       'docusaurus-plugin-typedoc',
-
-      // Plugin / TypeDoc options
       {
-        entryPoints: ['../src'],
-        entryPointStrategy: 'expand',
-        exclude: [...excludedFiles, '**/__test__/**'],
+        id: 'gridplus-sdk',
         tsconfig: '../tsconfig.json',
-        watch: process.env.TYPEDOC_WATCH,
+        entryPoints: ['../src/api', '../src/constants.ts', '../src/util.ts'],
+        entryFileName: 'index',
+        out: './docs/reference',
+        outputFileStrategy: 'modules',
+        entryPointStrategy: 'expand',
+        exclude: ['**/node_modules', '**/tests'],
+        excludeNotDocumented: true,
         excludeInternal: true,
         excludePrivate: true,
+        excludeGroups: true,
         readme: 'none',
+        skipErrorChecking: true,
+        expandParameters: true,
+        expandObjects: true,
+        parametersFormat: 'table',
+        propertiesFormat: 'table',
+        enumMembersFormat: 'table',
+        typeDeclarationFormat: 'table',
+        sanitizeComments: true,
         sidebar: {
-          autoConfiguration: false,
+          autoConfiguration: true,
+          pretty: true,
         },
+        plugin: ['typedoc-plugin-markdown'],
       },
     ],
   ],
@@ -129,8 +141,8 @@ const config = {
         copyright: `Copyright © ${new Date().getFullYear()} GridPlus, Inc.`,
       },
       prism: {
-        theme: lightCodeTheme,
-        darkTheme: darkCodeTheme,
+        theme: themes.dracula,
+        darkTheme: themes.dracula,
       },
     }),
 };

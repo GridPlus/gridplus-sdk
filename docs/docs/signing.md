@@ -1,5 +1,5 @@
 ---
-id: "signing"
+id: 'signing'
 sidebar_position: 3
 ---
 
@@ -13,7 +13,7 @@ The Lattice1 is capable of signing messages (e.g. Ethereum transactions) on supp
 General signing was introduced Lattice firmare `v0.14.0`. GridPlus plans on deprecating the legacy signing mode and replacing it with corresponding [Encoding Types](#encoding-types). This document will be updated as that happens.
 :::
 
-General signing allows you to request a signature on **any message** from a private key derived on **any supported curve**. You will need to specify, at a minimum, a `Curve` and a `Hash` for your signing request. Options can be found in [`Constants`](./api/modules/constants#external):
+General signing allows you to request a signature on **any message** from a private key derived on **any supported curve**. You will need to specify, at a minimum, a `Curve` and a `Hash` for your signing request. Options can be found in [`Constants`](./reference/constants#external):
 
 ```ts
 import { Constants } from `gridplus-sdk`
@@ -23,10 +23,10 @@ import { Constants } from `gridplus-sdk`
 Some curves (e.g. `SECP256K1`) require a hashing algorithm to be specified so that Lattice firmware can hash the message before signing. Other curves (e.g. `ED25519`, `BLS12_381_G2`) hash the message as part of the signing process and require `curveType=NONE`.
 :::
 
-| Param | Location in `Constants` | Options | Description |
-|:------|:------------------------|:--------|:------------|
-| Curve | `Constants.SIGNING.CURVES` | `SECP256K1`, `ED25519`, `BLS12_381_G2` | Curve on which to derive the signer's private key |
-| Hash | `Constants.SIGNING.HASHES` | `KECCAK256`, `SHA256`, `NONE` | Hash to use prior to signing. Note that `ED25519` and `BLS12_381_G2` require `NONE` as messages cannot be prehashed. |
+| Param | Location in `Constants`    | Options                                | Description                                                                                                          |
+| :---- | :------------------------- | :------------------------------------- | :------------------------------------------------------------------------------------------------------------------- |
+| Curve | `Constants.SIGNING.CURVES` | `SECP256K1`, `ED25519`, `BLS12_381_G2` | Curve on which to derive the signer's private key                                                                    |
+| Hash  | `Constants.SIGNING.HASHES` | `KECCAK256`, `SHA256`, `NONE`          | Hash to use prior to signing. Note that `ED25519` and `BLS12_381_G2` require `NONE` as messages cannot be prehashed. |
 
 ### Example: General Signing
 
@@ -38,9 +38,8 @@ const req = {
   hashType: Constants.SIGNING.HASHES.KECCAK256,
   payload: msg
 };
-const sig = await client.sign(req)
+const sig = await sign(req)
 ```
-
 
 ## 📃 Encoding Types
 
@@ -52,11 +51,11 @@ Encoding Types can be accessed inside of `Constants`:
 const encodings = Constants.SIGNING.ENCODINGS;
 ```
 
-| Encoding | Description |
-|:---------|:------------|
-| `NONE` | Can also use `null` or not specify the `encodingType`. Lattice will display either an ASCII or a hex string depending on the payload. |
-| `EVM` | Used to decode an EVM contract function call. To deploy a contract, set `to` as `null`. |
-| `SOLANA` | Used to decode a Solana transaction. Transactions that cannot be decoded will be rejected. |
+| Encoding      | Description                                                                                                                                                                                                                                       |
+| :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `NONE`        | Can also use `null` or not specify the `encodingType`. Lattice will display either an ASCII or a hex string depending on the payload.                                                                                                             |
+| `EVM`         | Used to decode an EVM contract function call. To deploy a contract, set `to` as `null`.                                                                                                                                                           |
+| `SOLANA`      | Used to decode a Solana transaction. Transactions that cannot be decoded will be rejected.                                                                                                                                                        |
 | `ETH_DEPOSIT` | Can be used to display a [`DepositData`](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#depositdata) signing root and associated validator public key in order to build deposit data for a new ETH2 validator. |
 
 ### Example: EVM Encoding
@@ -77,7 +76,7 @@ const req = {
   encodingType: Constants.SIGNING.ENCODINGS.EVM,
   payload: msg,
 };
-const sig = await client.sign(req)
+const sig = await sign(req);
 ```
 
 ### Example: SOLANA Encoding
@@ -87,11 +86,11 @@ const sig = await client.sign(req)
 // The specifics are out of scope for this example.
 import { Transaction, SystemProgram } from '@solana/web3.js';
 const transfer = SystemProgram.transfer({
-  fromPubkey: "...",
-  toPubkey: "...",
+  fromPubkey: '...',
+  toPubkey: '...',
   lamports: 1234,
-})
-const recentBlockhash = "...";
+});
+const recentBlockhash = '...';
 const tx = new Transaction({ recentBlockhash }).add(transfer);
 // Full, serialized Solana transaction
 const msg = tx.compileMessage().serialize();
@@ -102,9 +101,9 @@ const req = {
   curveType: Constants.SIGNING.CURVES.ED25519,
   hashType: Constants.SIGNING.HASHES.NONE,
   encodingType: Constants.SIGNING.ENCODINGS.SOLANA,
-  payload: msg
+  payload: msg,
 };
-const sig = await client.sign(req)
+const sig = await sign(req);
 ```
 
 # 📜 Legacy Signing
@@ -115,7 +114,7 @@ Prior to general signing, request data was sent to the Lattice in preformatted w
 
 All six Ethereum transactions must be specified in the request data along with a signer path.
 
-*Example: requesting signature on Ethereum transaction*
+_Example: requesting signature on Ethereum transaction_
 
 ```ts
 const txData = {
@@ -125,7 +124,7 @@ const txData = {
   to: '0x1af768c0a217804cfe1a0fb739230b546a566cd6',
   value: '0x01cba1761f7ab9870c',
   data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
-}
+};
 
 const reqData = {
   currency: 'ETH',
@@ -133,10 +132,10 @@ const reqData = {
     signerPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
     ...txData,
     chain: 5, // Defaults to 1 (i.e. mainnet)
-  }
-}
+  },
+};
 
-const sig = await client.sign(reqData)
+const sig = await sign(reqData);
 ```
 
 ## Ξ Ethereum (Message)
@@ -161,7 +160,7 @@ const reqData = {
   }
 }
 
-const sig = await client.sign(reqData)
+const sig = await sign(reqData)
 ```
 
 ### `sign_typed_data`
@@ -188,16 +187,16 @@ const reqData = {
   }
 }
 
-const sig = await client.sign(reqData)
+const sig = await sign(reqData)
 ```
 
 ## ₿ Bitcoin
 
 Bitcoin transactions can be requested by including a set of UTXOs, which include the signer derivation path and spend type. The same `purpose` values are used to determine how UTXOs should be signed:
 
-* If `purpose = 44'`, the input will be signed with p2pkh
-* If `purpose = 49'`, the input will signed with p2sh-p2wpkh
-* If `purpose = 84'`, the input will be signed with p2wpkh
+- If `purpose = 44'`, the input will be signed with p2pkh
+- If `purpose = 49'`, the input will signed with p2sh-p2wpkh
+- If `purpose = 84'`, the input will be signed with p2wpkh
 
 The `purpose` of the `signerPath` in the given previous output (a.k.a. UTXO) is used to make the above determination.
 
@@ -207,7 +206,7 @@ The `purpose` of the `signerPath` in the given previous output (a.k.a. UTXO) is 
 const p2wpkhInputs = [
   {
     // Hash of transaction that produced this UTXO
-    txHash: "2aba3db3dc5b1b3ded7231d90fe333e184d24672eb0b6466dbc86228b8996112",
+    txHash: '2aba3db3dc5b1b3ded7231d90fe333e184d24672eb0b6466dbc86228b8996112',
     // Value of this UTXO in satoshis (1e8 sat = 1 BTC)
     value: 100000,
     // Index of this UTXO in the set of outputs in this transaction
@@ -215,26 +214,26 @@ const p2wpkhInputs = [
     // Owner of this UTXO. Since `purpose` is 84' this will be spent with p2wpkh,
     // meaning this is assumed to be a segwit address (starting with bc1)
     signerPath: [0x80000000 + 84, 0x80000000, 0x80000000, 0, 12],
-  }
-]
+  },
+];
 
 const reqData = {
-  currency: "BTC",
+  currency: 'BTC',
   data: {
     prevOuts: p2wpkhInputs,
     // Recipient can be any legacy, wrapped segwit, or segwit address
-    recipient: "1FKpGnhtR3ZrVcU8hfEdMe8NpweFb2sj5F",
+    recipient: '1FKpGnhtR3ZrVcU8hfEdMe8NpweFb2sj5F',
     // Value (in sats) must be <= (SUM(prevOuts) - fee)
     value: 50000,
     // Fee (in sats) goes to the miner
     fee: 20000,
     // SUM(prevOuts) - fee goes to the change recipient, which is an
-    // address derived in the same wallet. Again, the `purpose` in this path 
-    // determines what address the BTC will be sent to, or more accurately how 
+    // address derived in the same wallet. Again, the `purpose` in this path
+    // determines what address the BTC will be sent to, or more accurately how
     // the UTXO is locked -- e.g., p2wpkh unlocks differently than p2sh-p2wpkh
     changePath: [0x80000000 + 84, 0x80000000, 0x80000000, 1, 0],
-  }
-}
+  },
+};
 
-const sig = await client.sign(reqData)
+const sig = await sign(reqData);
 ```
