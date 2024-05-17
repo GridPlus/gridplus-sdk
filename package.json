@@ -32,7 +32,8 @@
     "e2e-sign-unformatted": "vitest src/__test__/e2e/signing/unformatted.test.ts",
     "e2e-wj": "vitest src/__test__/e2e/wallet-jobs.test.ts",
     "e2e-api": "vitest src/__test__/e2e/api.test.ts",
-    "contracts": "vitest src/__test__/e2e/contracts.test.ts"
+    "contracts": "vitest src/__test__/e2e/contracts.test.ts",
+    "big": "vitest src/__test__/e2e/api/eth.sign.test.ts"
   },
   "files": [
     "dist"
@@ -73,7 +74,6 @@
     "@ethersproject/transactions": "^5.5.0",
     "@noble/bls12-381": "^1.3.0",
     "@solana/web3.js": "^1.34.0",
-    "@terra-money/terra.js": "^3.0.7",
     "@types/elliptic": "^6.4.14",
     "@types/expect": "^24.3.0",
     "@types/jest": "^28.1.3",
