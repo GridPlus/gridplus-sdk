@@ -43,6 +43,9 @@
     "type": "git",
     "url": "https://github.com/GridPlus/gridplus-sdk.git"
   },
+  "overrides": {
+    "js-sha3": "^0.9.3"
+  },
   "dependencies": {
     "@ethereumjs/common": "3.1.2",
     "@ethereumjs/tx": "4.1.2",
