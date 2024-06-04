@@ -22,6 +22,14 @@ import { getP256KeyPair, getP256KeyPairFromPub, randomBytes } from './util';
 
 /**
  * `Client` is a class-based interface for managing a Lattice device.
+ *
+ * @deprecated
+ * - This class is deprecated for external use. It is used internally by the SDK to manage
+ * the state of the connection to the Lattice device. It is not recommended to use this class directly.
+ * The recommended way to interact with the Lattice is through the functional interface.
+ * - See the [`src/api` directory on GitHub](https://github.com/GridPlus/gridplus-sdk/tree/dev/src/api)
+ *  or [learn more in the docs](https://gridplus.github.io/gridplus-sdk/).
+ *
  */
 export class Client {
   /** Is the Lattice paired with this Client. */

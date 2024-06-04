@@ -1,4 +1,5 @@
 docs/_build
+docs/docs/reference
 .DS_Store
 dist
 node_modules

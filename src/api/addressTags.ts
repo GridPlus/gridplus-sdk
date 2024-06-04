@@ -2,6 +2,9 @@ import { Client } from '../client';
 import { MAX_ADDR } from '../constants';
 import { queue } from './utilities';
 
+/**
+ * Sends request to the Lattice to add Address Tags.
+ */
 export const addAddressTags = async (
   tags: [{ [key: string]: string }],
 ): Promise<Buffer> => {
@@ -15,6 +18,9 @@ export const addAddressTags = async (
   return queue((client) => client.addKvRecords({ records }));
 };
 
+/**
+ * Fetches Address Tags from the Lattice.
+ */
 export const fetchAddressTags = async (
   { n, start } = { n: MAX_ADDR, start: 0 },
 ) => {
@@ -39,6 +45,9 @@ export const fetchAddressTags = async (
   return addressTags;
 };
 
+/**
+ * Removes Address Tags from the Lattice.
+ */
 export const removeAddressTags = async (
   tags: AddressTag[],
 ): Promise<Buffer> => {
