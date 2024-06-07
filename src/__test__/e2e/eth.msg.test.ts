@@ -284,7 +284,7 @@ describe('ETH Messages', () => {
           ],
           Order: [
             { name: 'sender', type: 'bytes32' },
-            { name: 'priceX18', type: 'int128' },
+            { name: 'priceX18', type: 'uint256' },
             { name: 'amount', type: 'int128' },
             { name: 'expiration', type: 'uint64' },
             { name: 'nonce', type: 'uint64' },
