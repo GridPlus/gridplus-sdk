@@ -24,57 +24,68 @@ export async function sign({
   cachedData,
   nextCode,
 }: SignRequestFunctionParams): Promise<SigningRequestResponse> {
-  const { url, sharedSecret, ephemeralPub, fwConstants } =
-    validateConnectedClient(client);
-  const wallet = validateWallet(client.getActiveWallet());
+  try {
+    const { url, sharedSecret, ephemeralPub, fwConstants } =
+      validateConnectedClient(client);
+    const wallet = validateWallet(client.getActiveWallet());
 
-  const { requestData, isGeneric } = buildTransaction({
-    data,
-    currency,
-    fwConstants,
-  });
-
-  const { payload, hasExtraPayloads } = encodeSignRequest({
-    fwConstants,
-    wallet,
-    requestData,
-    cachedData,
-    nextCode,
-  });
-
-  const { decryptedData, newEphemeralPub } = await encryptedSecureRequest({
-    data: payload,
-    requestType: LatticeSecureEncryptedRequestType.sign,
-    sharedSecret,
-    ephemeralPub,
-    url,
-  });
-
-  client.mutate({
-    ephemeralPub: newEphemeralPub,
-  });
-
-  // If this request has multiple payloads, we need to recurse
-  // so that we can make the next request.
-  // It is chained to the first request using `nextCode`
-  if (hasExtraPayloads) {
-    return client.sign({
+    const { requestData, isGeneric } = buildTransaction({
       data,
       currency,
-      cachedData: requestData,
-      nextCode: decryptedData.slice(0, 8),
+      fwConstants,
     });
-  }
-  // If this is the only (or final) request,
-  // decode response data and return
-  const decodedResponse = decodeSignResponse({
-    data: decryptedData,
-    request: requestData,
-    isGeneric,
-    currency,
-  });
 
-  return decodedResponse;
+    const { payload, hasExtraPayloads } = encodeSignRequest({
+      fwConstants,
+      wallet,
+      requestData,
+      cachedData,
+      nextCode,
+    });
+
+    const { decryptedData, newEphemeralPub } = await encryptedSecureRequest({
+      data: payload,
+      requestType: LatticeSecureEncryptedRequestType.sign,
+      sharedSecret,
+      ephemeralPub,
+      url,
+    });
+
+    client.mutate({
+      ephemeralPub: newEphemeralPub,
+    });
+
+    // If this request has multiple payloads, we need to recurse
+    // so that we can make the next request.
+    // It is chained to the first request using `nextCode`
+    if (hasExtraPayloads) {
+      return client.sign({
+        data,
+        currency,
+        cachedData: requestData,
+        nextCode: decryptedData.slice(0, 8),
+      });
+    }
+    // If this is the only (or final) request,
+    // decode response data and return
+    const decodedResponse = decodeSignResponse({
+      data: decryptedData,
+      request: requestData,
+      isGeneric,
+      currency,
+    });
+
+    return decodedResponse;
+  } catch (err) {
+    console.error('Error signing transaction:', {
+      message: err.message,
+      payload: JSON.stringify({
+        data,
+        currency,
+      }),
+    });
+    throw err;
+  }
 }
 
 export const encodeSignRequest = ({
