@@ -1,6 +1,6 @@
 {
   "name": "gridplus-sdk",
-  "version": "2.5.2",
+  "version": "2.6.0",
   "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
     "build": "NODE_ENV=production tsc -p tsconfig.json",
