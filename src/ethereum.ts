@@ -70,7 +70,7 @@ const validateEthereumMsgResponse = function (res, req) {
   } else if (input.protocol === 'eip712') {
     const encoded = TypedDataUtils.eip712Hash(
       req.input.payload,
-      SignTypedDataVersion.V3,
+      SignTypedDataVersion.V4,
     );
     const digest = prehash ? prehash : encoded;
     const chainId = parseInt(input.payload.domain.chainId, 16);
@@ -709,7 +709,7 @@ function buildEIP712Request(req, input) {
     off += 2;
     const prehash = TypedDataUtils.eip712Hash(
       req.input.payload,
-      SignTypedDataVersion.V3,
+      SignTypedDataVersion.V4,
     );
     const prehashBuf = Buffer.from(prehash);
     prehashBuf.copy(req.payload, off);
