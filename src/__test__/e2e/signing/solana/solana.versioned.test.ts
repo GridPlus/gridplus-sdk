@@ -11,8 +11,10 @@ import {
   VersionedTransaction,
 } from '@solana/web3.js';
 import { question } from 'readline-sync';
-import { fetchSolanaAddresses, pair, signSolanaTx } from '../../..';
-import { setupClient } from '../../utils/setup';
+import { fetchSolanaAddresses, pair, signSolanaTx } from '../../../..';
+import { setupClient } from '../../../utils/setup';
+
+const SOLANA_RPC = new Connection('https://api.devnet.solana.com', 'confirmed');
 
 const fetchSigningWallet = async () => {
   const addresses = await fetchSolanaAddresses({ n: 1 });
@@ -22,8 +24,20 @@ const fetchSigningWallet = async () => {
   return pubkey;
 };
 
+const requestAirdrop = async (wallet: PublicKey, lamports: number) => {
+  try {
+    await SOLANA_RPC.requestAirdrop(wallet, lamports * LAMPORTS_PER_SOL);
+    await new Promise((resolve) => setTimeout(resolve, 20000));
+  } catch (error) {
+    /**
+     *  The faucet is flakey, so you might need to request funds manually from the faucet at https://faucet.solana.com/
+     *  Also, for Solana to work, your address must have interacted with the network previously.
+     */
+    console.log(error);
+  }
+};
+
 describe('solana.versioned', () => {
-  let SOLANA_RPC: Connection;
   let SIGNER_WALLET: PublicKey;
   let DESTINATION_WALLET_1: Keypair;
   let DESTINATION_WALLET_2: Keypair;
@@ -35,7 +49,6 @@ describe('solana.versioned', () => {
       const secret = question('Please enter the pairing secret: ');
       await pair(secret.toUpperCase());
     }
-    SOLANA_RPC = new Connection('https://api.testnet.solana.com', 'confirmed');
     SIGNER_WALLET = await fetchSigningWallet();
     DESTINATION_WALLET_1 = Keypair.generate();
     DESTINATION_WALLET_2 = Keypair.generate();
@@ -101,9 +114,7 @@ describe('solana.versioned', () => {
   });
 
   test('simulate versioned solana transaction', async () => {
-    // Request airdrop to fund account
-    await SOLANA_RPC.requestAirdrop(SIGNER_WALLET, 2 * LAMPORTS_PER_SOL);
-    await new Promise((resolve) => setTimeout(resolve, 20000));
+    await requestAirdrop(SIGNER_WALLET, 1);
 
     const txInstruction = SystemProgram.transfer({
       fromPubkey: SIGNER_WALLET,
@@ -142,9 +153,7 @@ describe('solana.versioned', () => {
 
   test('simulate versioned solana transaction with multiple instructions', async () => {
     const payer = Keypair.generate();
-    // Request airdrop to fund account
-    await SOLANA_RPC.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
-    await new Promise((resolve) => setTimeout(resolve, 20000));
+    await requestAirdrop(payer.publicKey, 1);
 
     const [transactionInstruction, pubkey] =
       await AddressLookupTableProgram.createLookupTable({
