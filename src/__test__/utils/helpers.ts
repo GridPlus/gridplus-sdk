@@ -48,7 +48,7 @@ export function setupTestClient(
     return new Client({ stateData });
   }
   const setup: any = {
-    name: env.APP_NAME || 'SDK Test',
+    name: env.name || 'SDK Test',
     baseUrl: env.baseUrl || 'https://signing.gridpl.us',
     timeout: 120000,
   };
@@ -76,7 +76,7 @@ export const unharden = (x) => {
 export const buildPath = (indices) => {
   let path = 'm';
   indices.forEach((idx) => {
-    path += `/${unharden(idx)}${idx >= HARDENED_OFFSET ? '\'' : ''}`;
+    path += `/${unharden(idx)}${idx >= HARDENED_OFFSET ? "'" : ''}`;
   });
   return path;
 };
