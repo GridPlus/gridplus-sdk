@@ -28,7 +28,7 @@
     "e2e-sign-determinism": "vitest src/__test__/e2e/signing/determinism.test.ts",
     "e2e-sign-evm-abi": "vitest src/__test__/e2e/signing/evm-abi.test.ts",
     "e2e-sign-evm-tx": "vitest src/__test__/e2e/signing/evm-tx.test.ts",
-    "e2e-sign-solana": "vitest src/__test__/e2e/signing/solana.versioned.test.ts",
+    "e2e-sign-solana": "vitest src/__test__/e2e/signing/solana*",
     "e2e-sign-unformatted": "vitest src/__test__/e2e/signing/unformatted.test.ts",
     "e2e-wj": "vitest src/__test__/e2e/wallet-jobs.test.ts",
     "e2e-api": "vitest src/__test__/e2e/api.test.ts",
