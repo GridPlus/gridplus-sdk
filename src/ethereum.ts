@@ -4,8 +4,7 @@ import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory } from '@ethereumjs/tx';
 import BN from 'bignumber.js';
 import cbor from 'borc';
-//@ts-expect-error - This third-party package is not typed properly
-import { TypedDataUtils } from 'eth-eip712-util-browser';
+import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
 import { keccak256 } from 'js-sha3';
 import { encode as rlpEncode } from 'rlp';
 import secp256k1 from 'secp256k1';
@@ -69,10 +68,14 @@ const validateEthereumMsgResponse = function (res, req) {
       useEIP155: false,
     });
   } else if (input.protocol === 'eip712') {
-    const encoded = TypedDataUtils.hash(req.input.payload);
+    const encoded = TypedDataUtils.eip712Hash(
+      req.input.payload,
+      SignTypedDataVersion.V4,
+    );
     const digest = prehash ? prehash : encoded;
+    const chainId = parseInt(input.payload.domain.chainId, 16);
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
-    return addRecoveryParam(digest, sig, signer, { useEIP155: false });
+    return addRecoveryParam(digest, sig, signer, { chainId });
   } else {
     throw new Error('Unsupported protocol');
   }
@@ -704,7 +707,10 @@ function buildEIP712Request(req, input) {
     // If this payload is too large to send, but the Lattice allows a prehashed message, do that
     req.payload.writeUInt16LE(payload.length, off);
     off += 2;
-    const prehash = TypedDataUtils.hash(req.input.payload);
+    const prehash = TypedDataUtils.eip712Hash(
+      req.input.payload,
+      SignTypedDataVersion.V4,
+    );
     const prehashBuf = Buffer.from(prehash);
     prehashBuf.copy(req.payload, off);
     req.prehash = prehash;
