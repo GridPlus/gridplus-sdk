@@ -159,3 +159,32 @@ export const fetchLedgerLegacyAddresses = async (
   }
   return Promise.all(addresses);
 };
+
+export const fetchBip44ChangeAddresses = async (
+  { n, startPathIndex }: FetchAddressesParams = {
+    n: MAX_ADDR,
+    startPathIndex: 0,
+  },
+) => {
+  const addresses = [];
+  for (let i = 0; i < n; i++) {
+    addresses.push(
+      queue((client) => {
+        const startPath = [
+          44 + HARDENED_OFFSET,
+          501 + HARDENED_OFFSET,
+          startPathIndex + i + HARDENED_OFFSET,
+          0 + HARDENED_OFFSET,
+        ];
+        return client
+          .getAddresses({
+            startPath,
+            n: 1,
+            flag: 4,
+          })
+          .then((addresses) => addresses.map((address) => `${address}`));
+      }),
+    );
+  }
+  return Promise.all(addresses);
+};

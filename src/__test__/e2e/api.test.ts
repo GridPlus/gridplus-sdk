@@ -7,8 +7,10 @@ import {
   fetchActiveWallets,
   fetchAddress,
   fetchAddresses,
+  fetchBip44ChangeAddresses,
   fetchBtcLegacyAddresses,
   fetchBtcSegwitAddresses,
+  fetchSolanaAddresses,
   pair,
   signBtcLegacyTx,
   signBtcSegwitTx,
@@ -182,6 +184,15 @@ describe('API', () => {
 
       test('fetchLedgerLiveAddresses', async () => {
         const addresses = await fetchLedgerLiveAddresses();
+        expect(addresses).toHaveLength(10);
+      });
+      test('fetchSolanaAddresses', async () => {
+        const addresses = await fetchSolanaAddresses();
+        expect(addresses).toHaveLength(10);
+      });
+
+      test('fetchBip44ChangeAddresses', async () => {
+        const addresses = await fetchBip44ChangeAddresses();
         expect(addresses).toHaveLength(10);
       });
     });
