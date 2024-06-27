@@ -1,6 +1,6 @@
 import { Utils } from '..';
 import { Client } from '../client';
-import { setSaveClient, setLoadClient, saveClient, loadClient } from './state';
+import { loadClient, saveClient, setLoadClient, setSaveClient } from './state';
 import { buildLoadClientFn, buildSaveClientFn, queue } from './utilities';
 
 /**
@@ -15,6 +15,7 @@ type SetupParameters = {
   deviceId: string;
   password: string;
   name: string;
+  appSecret?: Buffer;
   getStoredClient: () => string;
   setStoredClient: (clientData: string | null) => void;
 };
@@ -28,6 +29,7 @@ type SetupParameters = {
  * @param {string} SetupParameters.deviceId - the device id of the client
  * @param {string} SetupParameters.password - the password of the client
  * @param {string} SetupParameters.name - the name of the client
+ * @param {Buffer} SetupParameters.appSecret - if set, this app secret will be used instead of the default one
  * @param {Function} SetupParameters.getStoredClient - a function that returns the stored client data
  * @param {Function} SetupParameters.setStoredClient - a function that stores the client data
  * @returns {Promise<boolean>} - a promise that resolves to a boolean that indicates whether the Client is paired to the application to which it's attempting to connect
@@ -37,6 +39,7 @@ export const setup = async ({
   deviceId,
   password,
   name,
+  appSecret,
   getStoredClient,
   setStoredClient,
 }: SetupParameters): Promise<boolean> => {
@@ -47,7 +50,8 @@ export const setup = async ({
   setLoadClient(buildLoadClientFn(getStoredClient));
 
   if (deviceId && password && name) {
-    const privKey = Utils.generateAppSecret(deviceId, password, name);
+    const privKey =
+      appSecret ?? Utils.generateAppSecret(deviceId, password, name);
     const client = new Client({ deviceId, privKey, name });
     return client.connect(deviceId).then((isPaired) => {
       saveClient(client.getStateData());
