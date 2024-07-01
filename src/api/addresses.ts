@@ -191,13 +191,9 @@ export const fetchBip44ChangeAddresses = async (
   return Promise.all(addresses);
 };
 
-// type FetchAddressesParams = {
-//   n?: number;
-//   startPathIndex?: number;
-// };
-
 function parseDerivationPath(path: string): number[] {
   return path.split('/').map((part) => {
+    // eslint-disable-next-line quotes
     if (part.endsWith("'")) {
       return parseInt(part.slice(0, -1)) + 0x80000000;
     }
@@ -205,7 +201,7 @@ function parseDerivationPath(path: string): number[] {
   });
 }
 
-export async function fetchByDerivationPath(
+export async function fetchAddressesByDerivationPath(
   path: string,
   { n = 1, startPathIndex = 0 }: FetchAddressesParams = {},
 ): Promise<string[]> {
