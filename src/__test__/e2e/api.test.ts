@@ -42,7 +42,7 @@ describe('API', () => {
     }
   });
 
-  describe.skip('signing', () => {
+  describe('signing', () => {
     describe('bitcoin', () => {
       const btcTxData = {
         prevOuts: [
@@ -140,7 +140,7 @@ describe('API', () => {
     });
   });
 
-  describe.skip('address tags', () => {
+  describe('address tags', () => {
     test('addAddressTags', async () => {
       await addAddressTags([{ test: 'test' }]);
     });
@@ -159,32 +159,32 @@ describe('API', () => {
 
   describe('addresses', () => {
     describe('fetchAddresses', () => {
-      test.skip('fetchAddresses', async () => {
+      test('fetchAddresses', async () => {
         const addresses = await fetchAddresses();
         expect(addresses).toHaveLength(10);
       });
 
-      test.skip('fetchAddresses[1]', async () => {
+      test('fetchAddresses[1]', async () => {
         const addresses = await fetchAddresses({ n: 1 });
         expect(addresses).toHaveLength(1);
       });
 
-      test.skip('fetchAddresses[12]', async () => {
+      test('fetchAddresses[12]', async () => {
         const addresses = await fetchAddresses({ n: 12 });
         expect(addresses).toHaveLength(12);
       });
 
-      test.skip('fetchBtcLegacyAddresses', async () => {
+      test('fetchBtcLegacyAddresses', async () => {
         const addresses = await fetchBtcLegacyAddresses();
         expect(addresses).toHaveLength(10);
       });
 
-      test.skip('fetchBtcSegwitAddresses[12]', async () => {
+      test('fetchBtcSegwitAddresses[12]', async () => {
         const addresses = await fetchBtcSegwitAddresses({ n: 12 });
         expect(addresses).toHaveLength(12);
       });
 
-      test.skip('fetchLedgerLiveAddresses', async () => {
+      test('fetchLedgerLiveAddresses', async () => {
         const addresses = await fetchLedgerLiveAddresses();
         expect(addresses).toHaveLength(10);
       });
@@ -271,7 +271,7 @@ describe('API', () => {
     });
   });
 
-  describe.skip('fetchActiveWallets', () => {
+  describe('fetchActiveWallets', () => {
     test('fetchActiveWallets', async () => {
       const wallet = await fetchActiveWallets();
       expect(wallet).toBeTruthy();
