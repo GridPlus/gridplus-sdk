@@ -189,7 +189,7 @@ describe('solana.versioned', () => {
     expect(signedTx).toBeDefined();
   });
 
-  test('simulate versioned solana transaction with zero lamport transfer', async () => {
+  test('simulate versioned solana transactions from nufi', async () => {
     // sign transaction
     sign(null, {
       data: {
