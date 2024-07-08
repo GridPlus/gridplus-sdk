@@ -1,5 +1,5 @@
 import { keccak256 } from 'js-sha3';
-import { AbiCoder } from '@ethersproject/abi'
+import { AbiCoder } from '@ethersproject/abi';
 
 /**
  * Look through an ABI definition to see if there is a function that matches the signature provided.
@@ -8,19 +8,22 @@ import { AbiCoder } from '@ethersproject/abi'
  * @returns      Buffer containing RLP-serialized array of calldata info to pass to signing request
  * @public
  */
-export const parseSolidityJSONABI = function (sig: string, abi: any[]): { def: EVMDef } {
+export const parseSolidityJSONABI = function (
+  sig: string,
+  abi: any[],
+): { def: EVMDef } {
   sig = coerceSig(sig);
   // Find the first match in the ABI
   const match = abi
     .filter((item) => item.type === 'function')
     .find((item) => {
       const def = parseDef(item);
-      const funcSig = getFuncSig(def.canonicalName)
-      return funcSig === sig
-    })
+      const funcSig = getFuncSig(def.canonicalName);
+      return funcSig === sig;
+    });
   if (match) {
     const def = parseDef(match).def;
-    return { def }
+    return { def };
   }
   throw new Error('Unable to find matching function in ABI');
 };
@@ -60,7 +63,7 @@ export const parseCanonicalName = function (sig: string, name: string) {
 /**
  * Pull out nested calldata which may correspond to nested ABI definitions.
  * This is relevant for e.g. `multicall` patterns.
- * A def may be nested if the underlying type is `bytes` or `bytes[]` and 
+ * A def may be nested if the underlying type is `bytes` or `bytes[]` and
  * the calldata parm is of size (4 + 32*n).
  * @param def - calldata decoder data for a def
  * @param calldata - Buffer containing full calldata payload
@@ -68,13 +71,16 @@ export const parseCanonicalName = function (sig: string, name: string) {
  *            item has data (0x-prefixed hex string), it should be
  *            checked as a possible nested def
  */
-export const getNestedCalldata = function(def, calldata) {
-  const possibleNestedDefs = []
+export const getNestedCalldata = function (def, calldata) {
+  const possibleNestedDefs = [];
   // Skip past first item, which is the function name
-  const defParams = def.slice(1)
+  const defParams = def.slice(1);
   const strParams = getParamStrNames(defParams);
   const coder = new AbiCoder();
-  const decoded = coder.decode(strParams, '0x' + calldata.slice(4).toString('hex'))
+  const decoded = coder.decode(
+    strParams,
+    '0x' + calldata.slice(4).toString('hex'),
+  );
   function couldBeNestedDef(x) {
     return (x.length - 4) % 32 === 0;
   }
@@ -89,11 +95,14 @@ export const getNestedCalldata = function(def, calldata) {
         // in this pattern. However, we have only ever seen `bytes[]`, which
         // is typically used in `multicall` patterns
         paramData.forEach((nestedParamDatum) => {
-          const nestedParamDatumBuf = Buffer.from(nestedParamDatum.slice(2), 'hex');
+          const nestedParamDatumBuf = Buffer.from(
+            nestedParamDatum.slice(2),
+            'hex',
+          );
           if (!couldBeNestedDef(nestedParamDatumBuf)) {
             nestedDefIsPossible = false;
           }
-        })
+        });
       } else if (isBytesItem(defParams[i])) {
         // Regular `bytes` type - perform size check
         const paramDataBuf = Buffer.from(paramData.slice(2), 'hex');
@@ -109,9 +118,9 @@ export const getNestedCalldata = function(def, calldata) {
       // No nested defs for non-bytes types
       possibleNestedDefs.push(null);
     }
-  })
+  });
   return possibleNestedDefs;
-}
+};
 
 /**
  * If applicable, update decoder data to represent nested
@@ -123,7 +132,7 @@ export const getNestedCalldata = function(def, calldata) {
  *                     defs which must be added to `def`
  * @return - Possibly modified version of `def`
  */
-export const replaceNestedDefs = function(def, nestedDefs) {
+export const replaceNestedDefs = function (def, nestedDefs) {
   for (let i = 0; i < nestedDefs.length; i++) {
     const isArrItem = isBytesArrItem(def[1 + i]);
     const isItem = isBytesItem(def[1 + i]);
@@ -140,20 +149,20 @@ export const replaceNestedDefs = function(def, nestedDefs) {
     }
   }
   return def;
-}
+};
 
 /**
  * Convert a canonical name to a function selector (a.k.a. "sig")
  * @internal
  */
-function getFuncSig (canonicalName: string): string {
+function getFuncSig(canonicalName: string): string {
   return `0x${keccak256(canonicalName).slice(0, 8)}`;
 }
 
 /**
  * Ensure the sig is properly formatted
  */
-function coerceSig (sig: string): string {
+function coerceSig(sig: string): string {
   if (typeof sig !== 'string' || (sig.length !== 10 && sig.length !== 8)) {
     throw new Error('`sig` must be a hex string with 4 bytes of data.');
   }
@@ -166,7 +175,7 @@ function coerceSig (sig: string): string {
 /**
  * Convert calldata param definitions into an array of their
  * canonical string names.
- * Returns an array of string names that are consumable by 
+ * Returns an array of string names that are consumable by
  * the @ethersproject/abi AbiCoder decoder instance.
  * @param defParams - Array of def params
  * @internal
@@ -182,15 +191,15 @@ function getParamStrNames(defParams) {
     if (param[3].length > 0) {
       param[3].forEach((d) => {
         if (param[3][d] === 0) {
-          s = `${s}[]`
+          s = `${s}[]`;
         } else {
-          s = `${s}[${param[3][d]}]`
+          s = `${s}[${param[3][d]}]`;
         }
-      })
+      });
     }
     if (param[4]) {
       // Tuple - get nested type names
-      const nested = getParamStrNames(param[4])
+      const nested = getParamStrNames(param[4]);
       s = `${s}(${nested.join(',')})`;
     }
     strNames.push(s);
@@ -203,7 +212,7 @@ function getParamStrNames(defParams) {
  * tuple. NOTE: The string should start at the index after the leading '('
  * @internal
  */
-function popTypeStrFromCanonical (subName: string): string {
+function popTypeStrFromCanonical(subName: string): string {
   if (isTuple(subName)) {
     return getTupleName(subName);
   } else if (subName.indexOf(',') > -1) {
@@ -221,7 +230,7 @@ function popTypeStrFromCanonical (subName: string): string {
  * have nested structure if there are tuples.
  * @internal
  */
-function parseTypeStr (typeStr: string): any[] {
+function parseTypeStr(typeStr: string): any[] {
   // Non-tuples can be decoded without worrying about recursion
   if (!isTuple(typeStr)) {
     return [parseBasicTypeStr(typeStr)];
@@ -256,7 +265,7 @@ function parseTypeStr (typeStr: string): any[] {
  * Convert a basic type (e.g. 'uint256') from a string to EVMParamInfo type.
  * @internal
  */
-function parseBasicTypeStr (typeStr: string): EVMParamInfo {
+function parseBasicTypeStr(typeStr: string): EVMParamInfo {
   const param: EVMParamInfo = {
     szBytes: 0,
     typeIdx: 0,
@@ -290,7 +299,7 @@ function parseBasicTypeStr (typeStr: string): EVMParamInfo {
  * (EVMDef). This function may recurse if there are tuple types.
  * @internal
  */
-function parseDef (
+function parseDef(
   item,
   canonicalName = '',
   def = [],
@@ -343,7 +352,7 @@ function parseDef (
  * them
  * @internal
  */
-function parseParamDef (def: any[], prefix = ''): any[] {
+function parseParamDef(def: any[], prefix = ''): any[] {
   const parsedDef = [];
   let numTuples = 0;
   def.forEach((param, i) => {
@@ -372,7 +381,7 @@ function parseParamDef (def: any[], prefix = ''): any[] {
  * Convert a param into an EVMParamInfo object before flattening its data into an array.
  * @internal
  */
-function getFlatParam (input): any[] {
+function getFlatParam(input): any[] {
   if (!input.type) {
     throw new Error('No type in input');
   }
@@ -395,7 +404,7 @@ function getFlatParam (input): any[] {
  *                    be used in single 32 byte words.
  * @internal
  */
-function getParamTypeInfo (type: string): EVMParamInfo {
+function getParamTypeInfo(type: string): EVMParamInfo {
   const param: EVMParamInfo = {
     szBytes: 0,
     typeIdx: 0,
@@ -431,7 +440,7 @@ function getParamTypeInfo (type: string): EVMParamInfo {
  * Returns an array of sizes. Ex: uint256[][] -> [0, 0], uint256[1][3] -> [1, 3], uint256 -> []
  * @internal
  */
-function getArraySzs (type: string): number[] {
+function getArraySzs(type: string): number[] {
   if (typeof type !== 'string') {
     throw new Error('Invalid type');
   }
@@ -461,7 +470,7 @@ function getArraySzs (type: string): number[] {
 }
 
 /** @internal */
-function getTupleName (name, withArr = true) {
+function getTupleName(name, withArr = true) {
   let brackets = 0,
     addedFirstBracket = false;
   for (let i = 0; i < name.length; i++) {
@@ -484,7 +493,7 @@ function getTupleName (name, withArr = true) {
 }
 
 /** @internal */
-function isTuple (type: string): boolean {
+function isTuple(type: string): boolean {
   return type[0] === '(';
 }
 

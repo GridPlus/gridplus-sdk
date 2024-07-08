@@ -11,8 +11,8 @@ import { Calldata, Constants } from '../..';
 import { Client } from '../../client';
 import {
   CURRENCIES,
-  getFwVersionConst,
   HARDENED_OFFSET,
+  getFwVersionConst,
 } from '../../constants';
 import { randomBytes } from '../../util';
 import { MSG_PAYLOAD_METADATA_SZ } from './constants';
@@ -20,9 +20,9 @@ import { convertDecoderToEthers } from './ethers';
 import { getN, getPrng } from './getters';
 import {
   BTC_PURPOSE_P2PKH,
+  ETH_COIN,
   buildRandomEip712Object,
   copyBuffer,
-  ETH_COIN,
   getTestVectors,
   serializeJobData,
 } from './helpers';

@@ -1,4 +1,3 @@
-
 import { LatticeResponseCode } from '../protocol';
 import { isFWSupported } from './utilities';
 

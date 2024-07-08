@@ -6,7 +6,7 @@ import { DEFAULT_SIGNER } from '../utils/builders';
  */
 import { question } from 'readline-sync';
 import { HARDENED_OFFSET } from '../../constants';
-import { ProtocolConstants, LatticeResponseCode } from '../../protocol';
+import { LatticeResponseCode, ProtocolConstants } from '../../protocol';
 import { BTC_PURPOSE_P2PKH, ETH_COIN } from '../utils/helpers';
 import { initializeClient } from '../utils/initializeClient';
 
@@ -61,9 +61,9 @@ describe('key-value', () => {
   it('Should notify the user when to approve requests', async () => {
     question(
       '\nNOTE: ONLY APPROVE REQUESTS THAT RENDER TAGS FOR THIS TEST SCRIPT.\n' +
-      'Press ENTER to continue.'
-    )
-  })
+        'Press ENTER to continue.',
+    );
+  });
 
   it('Should make a request to an unknown address', async () => {
     await client.sign(ETH_REQ).catch((err) => {
@@ -150,13 +150,7 @@ describe('key-value', () => {
     const req = {
       currency: 'ETH_MSG',
       data: {
-        signerPath: [
-          BTC_PURPOSE_P2PKH,
-          ETH_COIN,
-          HARDENED_OFFSET,
-          0,
-          0,
-        ],
+        signerPath: [BTC_PURPOSE_P2PKH, ETH_COIN, HARDENED_OFFSET, 0, 0],
         protocol: 'eip712',
         payload: msg,
       },

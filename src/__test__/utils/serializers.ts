@@ -1,7 +1,7 @@
 export const serializeObjectWithBuffers = (obj: any) => {
   return Object.entries(obj).reduce((acc: any, [key, value]) => {
     if (value instanceof Buffer) {
-      acc[key] = { isBuffer: true, value: value.toString('hex') }
+      acc[key] = { isBuffer: true, value: value.toString('hex') };
     } else if (typeof value === 'object') {
       acc[key] = serializeObjectWithBuffers(value);
     } else {

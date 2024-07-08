@@ -8,8 +8,8 @@ import { Constants } from '../../..';
 import { HARDENED_OFFSET } from '../../../constants';
 import { getPrng } from '../../utils/getters';
 import { deriveED25519Key, prandomBuf } from '../../utils/helpers';
-import { runGeneric } from '../../utils/runners';
 import { initializeClient, initializeSeed } from '../../utils/initializeClient';
+import { runGeneric } from '../../utils/runners';
 
 //---------------------------------------
 // STATE DATA

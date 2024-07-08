@@ -1,6 +1,6 @@
 {
   "name": "gridplus-sdk",
-  "version": "2.5.2",
+  "version": "2.6.0",
   "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
     "build": "NODE_ENV=production tsc -p tsconfig.json",
@@ -31,7 +31,8 @@
     "e2e-sign-solana": "vitest src/__test__/e2e/signing/solana*",
     "e2e-sign-unformatted": "vitest src/__test__/e2e/signing/unformatted.test.ts",
     "e2e-wj": "vitest src/__test__/e2e/wallet-jobs.test.ts",
-    "e2e-api": "vitest src/__test__/e2e/api.test.ts"
+    "e2e-api": "vitest src/__test__/e2e/api.test.ts",
+    "contracts": "vitest src/__test__/e2e/contracts.test.ts"
   },
   "files": [
     "dist"
@@ -42,10 +43,14 @@
     "type": "git",
     "url": "https://github.com/GridPlus/gridplus-sdk.git"
   },
+  "overrides": {
+    "js-sha3": "^0.9.3"
+  },
   "dependencies": {
     "@ethereumjs/common": "3.1.2",
     "@ethereumjs/tx": "4.1.2",
     "@ethersproject/abi": "^5.7.0",
+    "@metamask/eth-sig-util": "^7.0.2",
     "@types/uuid": "^9.0.0",
     "aes-js": "^3.1.1",
     "bech32": "^2.0.0",
@@ -56,9 +61,8 @@
     "buffer": "^6.0.3",
     "crc-32": "^1.2.0",
     "elliptic": "6.5.4",
-    "eth-eip712-util-browser": "^0.0.3",
     "hash.js": "^1.1.7",
-    "js-sha3": "^0.8.0",
+    "js-sha3": "^0.9.3",
     "rlp": "^3.0.0",
     "secp256k1": "5.0.0",
     "uuid": "^9.0.0"
@@ -68,6 +72,7 @@
     "@babel/preset-env": "^7.18.2",
     "@babel/preset-typescript": "^7.17.12",
     "@chainsafe/bls-keystore": "^3.0.0",
+    "@ethersproject/providers": "^5.7.2",
     "@ethersproject/transactions": "^5.5.0",
     "@noble/bls12-381": "^1.3.0",
     "@solana/web3.js": "^1.34.0",
@@ -92,6 +97,7 @@
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-prettier": "^4.0.0",
     "ethereumjs-util": "^7.1.4",
+    "ethers": "^5.7.2",
     "jsonc": "^2.0.0",
     "lodash": ">=4.17.21",
     "minimist": ">=0.2.1",

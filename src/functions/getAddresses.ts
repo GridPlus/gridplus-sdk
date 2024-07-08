@@ -1,10 +1,10 @@
 import bitwise from 'bitwise';
 import { Byte, UInt4 } from 'bitwise/types';
 import {
-  encryptedSecureRequest,
   LatticeGetAddressesFlag,
   LatticeSecureEncryptedRequestType,
   ProtocolConstants,
+  encryptedSecureRequest,
 } from '../protocol';
 import {
   validateConnectedClient,

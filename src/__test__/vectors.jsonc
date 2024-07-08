@@ -177,13 +177,7 @@
     "mnemonic": "winner much erosion weird rubber onion diagram mandate assist fluid slush theory",
     "depositData": [
       {
-        "depositPath": [
-          12381,
-          3600,
-          0,
-          0,
-          0
-        ],
+        "depositPath": [12381, 3600, 0, 0, 0],
         "eth1WithdrawalKey": "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5",
         "blsWithdrawalRef": {
           "pubkey": "b77d6918d5edb4073a4ea4408073b698f00df478ff2726cdb8190e3be1fe5496f22b089f6ae4cf7cafaccb74683be5e4",
@@ -209,13 +203,7 @@
         }
       },
       {
-        "depositPath": [
-          12381,
-          3600,
-          1,
-          0,
-          0
-        ],
+        "depositPath": [12381, 3600, 1, 0, 0],
         "eth1WithdrawalKey": "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5",
         "blsWithdrawalRef": {
           "pubkey": "a0aa536f68981cb705e506036e40b4373f67e10ff66f64835d63ffb3ca5e5eeea5396b2569315b060f0b90a2862a740c",

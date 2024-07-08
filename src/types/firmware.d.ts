@@ -1,8 +1,4 @@
-type FirmwareArr = [
-  number,
-  number,
-  number,
-]
+type FirmwareArr = [number, number, number];
 
 interface FirmwareVersion {
   major: number;

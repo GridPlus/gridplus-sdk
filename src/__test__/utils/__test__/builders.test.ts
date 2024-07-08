@@ -1,4 +1,8 @@
-import { buildRandomVectors, getFwVersionsList, buildEvmReq } from '../builders';
+import {
+  buildEvmReq,
+  buildRandomVectors,
+  getFwVersionsList,
+} from '../builders';
 
 describe('building', () => {
   test('should test client', () => {
@@ -23,9 +27,12 @@ describe('building', () => {
     `);
   });
 
-
   test('buildEvmReq', () => {
-    const testObj = buildEvmReq({ common: 'test', data: { payload: 'test' }, txData: { data: 'test', type: undefined } });
+    const testObj = buildEvmReq({
+      common: 'test',
+      data: { payload: 'test' },
+      txData: { data: 'test', type: undefined },
+    });
     expect(testObj).toMatchInlineSnapshot(`
       {
         "common": "test",

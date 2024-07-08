@@ -5,8 +5,8 @@
 import { v4 as uuidV4 } from 'uuid';
 import { EXTERNAL } from '../constants';
 import {
-  encryptedSecureRequest,
   LatticeSecureEncryptedRequestType,
+  encryptedSecureRequest,
 } from '../protocol';
 import { getPathStr } from '../shared/utilities';
 import {
@@ -16,7 +16,8 @@ import {
 } from '../shared/validators';
 
 const { ENC_DATA } = EXTERNAL;
-const ENC_DATA_ERR_STR = 'Unknown encrypted data export type requested. Exiting.';
+const ENC_DATA_ERR_STR =
+  'Unknown encrypted data export type requested. Exiting.';
 const ENC_DATA_REQ_DATA_SZ = 1025;
 const ENC_DATA_RESP_SZ = {
   EIP2335: {
@@ -162,42 +163,47 @@ export const decodeFetchEncData = ({
   } else {
     throw new Error(ENC_DATA_ERR_STR);
   }
-}
+};
 
-const formatEIP2335ExportData = (resp: EIP2335KeyExportData, path: number[]): Buffer => {
+const formatEIP2335ExportData = (
+  resp: EIP2335KeyExportData,
+  path: number[],
+): Buffer => {
   try {
     const { iterations, salt, checksum, iv, cipherText, pubkey } = resp;
-    return Buffer.from(JSON.stringify({
-      'version': 4,
-      'uuid': uuidV4(),
-      'path': getPathStr(path),
-      'pubkey': pubkey.toString('hex'),
-      'crypto': {
-        'kdf': {
-          'function': 'pbkdf2',
-          'params': {
-            'dklen': 32,
-            'c': iterations,
-            'prf': 'hmac-sha256',
-            'salt': salt.toString('hex'),
+    return Buffer.from(
+      JSON.stringify({
+        version: 4,
+        uuid: uuidV4(),
+        path: getPathStr(path),
+        pubkey: pubkey.toString('hex'),
+        crypto: {
+          kdf: {
+            function: 'pbkdf2',
+            params: {
+              dklen: 32,
+              c: iterations,
+              prf: 'hmac-sha256',
+              salt: salt.toString('hex'),
+            },
+            message: '',
           },
-          'message': ''
-        },
-        'checksum': {
-          'function': 'sha256',
-          'params': {},
-          'message': checksum.toString('hex'),
-        },
-        'cipher': {
-          'function': 'aes-128-ctr',
-          'params': {
-            'iv': iv.toString('hex'),
+          checksum: {
+            function: 'sha256',
+            params: {},
+            message: checksum.toString('hex'),
           },
-          'message': cipherText.toString('hex')
-        }
-      }
-    }));
+          cipher: {
+            function: 'aes-128-ctr',
+            params: {
+              iv: iv.toString('hex'),
+            },
+            message: cipherText.toString('hex'),
+          },
+        },
+      }),
+    );
   } catch (err) {
     throw Error(`Failed to format EIP2335 return data: ${err.toString()}`);
   }
-}
+};

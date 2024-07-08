@@ -1,94 +1,167 @@
 ---
-id: "index"
-title: "👋 Getting Started"
-slug: "/"
+id: 'index'
+title: '👋 Getting Started'
+slug: '/'
 sidebar_position: 0
 custom_edit_url: null
 ---
 
 # GridPlus SDK
 
-The [GridPlus SDK](https://github.com/GridPlus/gridplus-sdk) is designed to facilitate communication between an app or service and a user's [Lattice1 hardware wallet](https://gridplus.io/lattice).
+The [GridPlus SDK](https://github.com/GridPlus/gridplus-sdk) is the bridge between software wallets, like MetaMask or Frame, and the [Lattice1 hardware wallet](https://gridplus.io/lattice).
 
 :::note
 The [Lattice1](https://gridplus.io/lattice) is an Internet-connected device which listens for end-to-end encrypted requests. HTTPS requests originate from this SDK and responses are returned **asynchronously**. Some requests require user authorization and will time out if the user does not approve them.
-
-If you are using the `gridplus-sdk` in a Node.js application with a version of Node lower than v18, you will need to patch the `fetch()` API in the global scope. One solution is to use the `node-fetch` package. See [the `node-fetch` README](https://github.com/node-fetch/node-fetch#installation) for instructions. Other options are available on NPM.
-
 :::
 
-## Installing
+## Getting Started
 
-First install this SDK with:
+### Installation
 
-```bash
+Install the package with your package manager. For example, with npm:
+
+```sh
 npm install --save gridplus-sdk
 ```
 
-## Connecting to a Lattice
+### Connecting to a Lattice
 
-You first need to instantiate a new [`Client`](./api/classes/client.Client) object with, at a minimum, the name of your requesting app (see [`Client` doc](./api/classes/client.Client) for a full list of options). The `name` used to instantiate `Client` will show up on the desired Lattice when pairing, so you should name it something relevant to your app/service.
+To initiate the connection, you'll call `setup`. This function takes an object with the following properties:
+
+- `name` - the name of the wallet or app you're connecting from, e.g. `MetaMask`
+- `deviceId` - the device ID of the Lattice you're connecting to
+- `password` - an arbitrary string that is used to encrypt/decrypt data for transport
+- `getStoredClient` - a function that returns the stored client data
+- `setStoredClient` - a function that stores the client data
+
+#### Setup Example
+
+`setup()` will return a `boolean` that tells you whether the device has already been paired. If it has not, you will need to pair the device by calling `pair()`.
 
 ```ts
-import { Client } from 'gridplus-sdk';
+import { setup } from 'gridplus-sdk';
 
-const client = new Client({ name: 'SDK Connectooor' });
+const isPaired = await setup({
+  name: 'My Wallet',
+  deviceId: 'XXXXXX',
+  password: 'password',
+  getStoredClient: () => localStorage.getItem('client'),
+  setStoredClient: (client) => localStorage.setItem('client', client),
+});
 ```
 
-You can now use your `client` object to connect to a specific Lattice1 device, which should have a unique `deviceID`, discoverable through the client's `baseUrl`.
+### Pairing
 
-:::info
-Lattices are discoverable over a combination of `deviceID` and `baseUrl`. By default, `baseUrl` (an attribute of `Client` and a config option when creating an instance) points to the GridPlus routing cloud service, but you can also create your own endpoint using [Lattice Connect](https://github.com/GridPlus/lattice-connect-v2). 
+To pair the device with your application, you'll call `pair` with the pairing code displayed on the Lattice screen. This code is a 6-digit number that is displayed on the Lattice screen when you attempt to connect to it.
 
-When a Lattice connects to a routing service (located at some `baseUrl`) for the first time, that server should generate a `deviceID` for the connecting Lattice. At this point, the Lattice will save the newly issued `deviceID` and will listen for corresponding messages coming from `baseUrl` (these messages are always **end-to-end encrypted**). The Lattice should be permanently discoverable at this `baseUrl`/`deviceID` combination unless/until its user resets the Lattice Router or switches the device to a new routing service.
+#### Pairing Example
+
+`pair()` also returns a `boolean` that tells you whether the pairing was successful.
+
+```ts
+import { pair } from 'gridplus-sdk';
+
+const isPaired = await pair('123456');
+```
+
+### Fetching Addresses
+
+Once you're connected to the Lattice, you can fetch addresses from it. This is done by calling `fetchAddresses()`.
+
+#### Fetch Addresses Example
+
+`fetchAddresses()` returns an array of addresses.
+
+```ts
+import { fetchAddresses } from 'gridplus-sdk';
+
+const addresses = await fetchAddresses();
+```
+
+By default, this function returns the first 10 addresses at the standard EVM derivation path. You can specify the number of addresses you want to fetch by passing a number as an argument to `fetchAddresses()`.
+
+```ts
+const addresses = await fetchAddresses(5);
+```
+
+If you're working with another blockchain, you can specify the derivation path by passing an object as an argument to `fetchAddresses()` that has the key of `startPath` which is an array that represents the derivation path.
+
+:::note
+The derivation path is an array of integers that represents the path to the address you want to fetch. The first element of the array is the purpose, the second is the coin type, the third is the account index, the fourth is the change index, and the fifth is the address index.
+
+Also, some values will need to be "hardened" by adding 0x80000000 to them. For example, the purpose for Ethereum is `44`, so the hardened value would be `44 + 0x80000000 = 2147483692`. This library exports a constant of `HARDENED_OFFSET` which is `0x80000000` for your convenience.
 :::
 
-### Pairing vs Connecting 
-
-The connection process depends on whether your app/service is already **paired** to the target Lattice. **Pairing** is a process involving key exchange and [ECDH](https://en.wikipedia.org/wiki/Elliptic-curve_Diffie%E2%80%93Hellman) shared key generation between the target Lattice and your `Client` instance, such that future messages can be end-to-end encrypted.
-
-:::caution
-`Client` has a `privKey` attribute (a 32-byte buffer or hex string), which is used to encrypt/decrypt messages. By default, `privKey` is generated randomly, but it is **highly recommended** you generate your own private key deterministically or [stash and rehydrate](#stashing-and-rehydrating-an-sdk-instance) the instance if you wish to re-use the app/service with the target Lattice(s). If you naively create a new `Client` instance with a random `privKey`, it will force a re-pairing with the target Lattice(s).
-:::
-
-If you are **not** paired to the target Lattice already, the connection request will cause the Lattice to generate a new **pairing code** and display that on the device's screen. That code must be entered into the `Client` instance within 60 seconds, i.e. before it expires. This process only happens **once per pairing**, so subsequent `connect` requests should reach the target Lattice without having to re-pair. However, any Lattice user may remove any pairing from their device at any time. If this happens, you will need to re-pair with the device in order to make any new requests.
-
 ```ts
-import { Client, Constants, Utils } from 'gridplus-sdk';
-import { question } from 'readline-sync';
-const deviceID = 'XXXXXX';
-const numValidators = 5;
+// default EVM
+const addresses = await fetchAddresses({
+  startPath: [
+    HARDENED_OFFSET + 44,
+    HARDENED_OFFSET + 60,
+    HARDENED_OFFSET,
+    0,
+    0,
+  ],
+});
 
-// Instantiate the `Client` object with a name. Here we will use the
-// default `baseUrl`, i.e. GridPlus routing service.
-const client = new Client({ name: 'SDK Connectooor' });
+// Legacy BTC
+const addresses = await fetchAddresses({
+  startPath: [HARDENED_OFFSET + 44, HARDENED_OFFSET + 0, HARDENED_OFFSET, 0, 0],
+});
 
-// Call `connect` to determine if we are already paired
-const isPaired = await client.connect(deviceID);
-
-if (!isPaired) {
-  // If not paired, the secret needs to get sent to `pair`
-  const secret = await question('Enter pairing secret: ');
-  await client.pair(secret);
-}
+// Segwit BTC
+const addresses = await fetchAddresses({
+  startPath: [HARDENED_OFFSET + 84, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0],
+});
 ```
 
-
-### Stashing and Rehydrating an SDK Instance
-
-As mentioned above, naively generating new `Client` instances without deterministically generating a `privKey` will require a pairing with target Lattice(s). If you don't want to deterministically generate and set the `privKey` attribute, you can also let `Client` generate a random one and then stash your `Client` instance:
+The library also exports convenience functions for fetching addresses for specific derivation paths:
 
 ```ts
-const clientStash = client.getStateData();
-const client2 = new Client({ stateData: clientStash, });
+import {
+  fetchBtcLegacyAddresses,
+  fetchBtcSegwitAddresses,
+  fetchBtcWrappedSegwitAddresses,
+  fetchSolanaAddresses,
+} from 'gridplus-sdk';
+
+const btcLegacyAddresses = await fetchBtcLegacyAddresses();
+const btcSegwitAddresses = await fetchBtcSegwitAddresses();
+const btcWrappedSegwitAddresses = await fetchBtcWrappedSegwitAddresses();
+const solanaAddresses = await fetchSolanaAddresses();
 ```
 
-## Now What?
+### Signing Transactions
 
-Once your `client` is paired or otherwise connected to the target Lattice, you can make full use of the SDK. 
+To sign a transaction, you'll call `sign` with the transaction data with the chain information and signing scheme. This function returns the signed transaction data.
 
-Some actions, such as requesting signatures, require **user authorization** on the device or they will time out. Other actions, such as fetching public keys, can be made as long as there is a pairing with the target Lattice.
+#### Signing Example
 
-The rest of these docs will cover basic functionality (e.g. [getting addresses](./addresses) and [making signatures](./signing)) as well as tutorials on more advanced topics, which would typically be built into a UI such as the [Lattice Manager](https://lattice.gridplus.io) or an integrated app such as [MetaMask](https://metamask.io).
+For an Ethereum transaction, sing the `ethers.js` library, version 5, to build the transaction data and sign with the `gridplus-sdk` would look like this:
 
-You can always consult the [API Docs](./api/classes/client.Client) for more specific information on options related to various SDK functions.
+```ts
+import { sign } from 'gridplus-sdk';
+
+const txData = {
+  type: 1,
+  maxFeePerGas: 1200000000,
+  maxPriorityFeePerGas: 1200000000,
+  nonce: 0,
+  gasLimit: 50000,
+  to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+  value: 1000000000000,
+  data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
+  gasPrice: 1200000000,
+};
+
+const common = new Common({
+  chain: Chain.Mainnet,
+  hardfork: Hardfork.London,
+});
+const tx = TransactionFactory.fromTxData(txData, { common });
+const payload = tx.getMessageToSign(false);
+
+const signedTx = await sign(reqData);
+```
+
+For more complex signing examples or signing for other chains, please refer to the [Signing](/signing.md) page.

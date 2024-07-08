@@ -1,3 +1,4 @@
+/* eslint-disable quotes */
 import { getClient } from './../../api/utilities';
 import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory } from '@ethereumjs/tx';
@@ -5,7 +6,13 @@ import { question } from 'readline-sync';
 import { encode } from 'rlp';
 import {
   fetchActiveWallets,
+  fetchAddress,
   fetchAddresses,
+  fetchBip44ChangeAddresses,
+  fetchBtcLegacyAddresses,
+  fetchBtcSegwitAddresses,
+  fetchByDerivationPath,
+  fetchSolanaAddresses,
   pair,
   signBtcLegacyTx,
   signBtcSegwitTx,
@@ -151,19 +158,121 @@ describe('API', () => {
   });
 
   describe('addresses', () => {
-    test('fetchAddresses', async () => {
-      const addresses = await fetchAddresses();
-      expect(addresses).toHaveLength(10);
+    describe('fetchAddresses', () => {
+      test('fetchAddresses', async () => {
+        const addresses = await fetchAddresses();
+        expect(addresses).toHaveLength(10);
+      });
+
+      test('fetchAddresses[1]', async () => {
+        const addresses = await fetchAddresses({ n: 1 });
+        expect(addresses).toHaveLength(1);
+      });
+
+      test('fetchAddresses[12]', async () => {
+        const addresses = await fetchAddresses({ n: 12 });
+        expect(addresses).toHaveLength(12);
+      });
+
+      test('fetchBtcLegacyAddresses', async () => {
+        const addresses = await fetchBtcLegacyAddresses();
+        expect(addresses).toHaveLength(10);
+      });
+
+      test('fetchBtcSegwitAddresses[12]', async () => {
+        const addresses = await fetchBtcSegwitAddresses({ n: 12 });
+        expect(addresses).toHaveLength(12);
+      });
+
+      test('fetchLedgerLiveAddresses', async () => {
+        const addresses = await fetchLedgerLiveAddresses();
+        expect(addresses).toHaveLength(10);
+      });
+
+      test('fetchSolanaAddresses', async () => {
+        const addresses = await fetchSolanaAddresses();
+        expect(addresses).toHaveLength(10);
+      });
+
+      test('fetchBip44ChangeAddresses', async () => {
+        const addresses = await fetchBip44ChangeAddresses();
+        expect(addresses).toHaveLength(10);
+      });
     });
 
-    test('fetchLedgerLiveAddresses', async () => {
-      const addresses = await fetchLedgerLiveAddresses();
-      expect(addresses).toHaveLength(10);
+    describe('fetchByDerivationPath', () => {
+      test('fetch single specific address', async () => {
+        const addresses = await fetchByDerivationPath("44'/60'/0'/0/0");
+        expect(addresses).toHaveLength(1);
+        console.log(addresses[0]);
+        expect(addresses[0]).toBeTruthy();
+      });
+
+      test('fetch multiple addresses with wildcard', async () => {
+        const addresses = await fetchByDerivationPath("44'/60'/0'/0/X", {
+          n: 5,
+        });
+        console.log(addresses[0]);
+        expect(addresses).toHaveLength(5);
+        addresses.forEach((address) => expect(address).toBeTruthy());
+      });
+
+      test('fetch addresses with offset', async () => {
+        const addresses = await fetchByDerivationPath("44'/60'/0'/0/X", {
+          n: 3,
+          startPathIndex: 10,
+        });
+        console.log(addresses[0]);
+        expect(addresses).toHaveLength(3);
+        addresses.forEach((address) => expect(address).toBeTruthy());
+      });
+
+      test('fetch addresses with lowercase x wildcard', async () => {
+        const addresses = await fetchByDerivationPath("44'/60'/0'/0/x", {
+          n: 2,
+        });
+        expect(addresses).toHaveLength(2);
+        addresses.forEach((address) => expect(address).toBeTruthy());
+      });
+
+      test('fetch addresses with wildcard in middle of path', async () => {
+        const addresses = await fetchByDerivationPath("44'/60'/X'/0/0", {
+          n: 3,
+        });
+        expect(addresses).toHaveLength(3);
+        addresses.forEach((address) => expect(address).toBeTruthy());
+      });
+
+      test('error on invalid derivation path', async () => {
+        await expect(fetchByDerivationPath('invalid/path')).rejects.toThrow();
+      });
+
+      test('fetch single address when n=1 with wildcard', async () => {
+        const addresses = await fetchByDerivationPath("44'/60'/0'/0/X", {
+          n: 1,
+        });
+        expect(addresses).toHaveLength(1);
+        expect(addresses[0]).toBeTruthy();
+      });
+
+      test('fetch no addresses when n=0', async () => {
+        const addresses = await fetchByDerivationPath("44'/60'/0'/0/X", {
+          n: 0,
+        });
+        expect(addresses).toHaveLength(0);
+      });
+    });
+
+    describe('fetchAddress', () => {
+      test('fetchAddress', async () => {
+        const address = await fetchAddress();
+        expect(address).toBeTruthy();
+      });
     });
   });
 
-  describe('fetchActiveWallet', () => {
-    test('fetchActiveWallet', async () => {
+  describe('fetchActiveWallets', () => {
+    test('fetchActiveWallets', async () => {
       const wallet = await fetchActiveWallets();
       expect(wallet).toBeTruthy();
     });

@@ -4,7 +4,7 @@ import { setup as setupMockServiceWorker } from './__mocks__/setup';
 
 describe('fetchCalldataDecoder', () => {
   // Mocks out responses from Etherscan and 4byte
-  setupMockServiceWorker()
+  setupMockServiceWorker();
 
   beforeAll(() => {
     // Disable this mock to restore console logs when updating tests

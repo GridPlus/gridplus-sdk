@@ -1,4 +1,4 @@
-import { connectSecureRequest, ProtocolConstants } from '../protocol';
+import { ProtocolConstants, connectSecureRequest } from '../protocol';
 import { doesFetchWalletsOnLoad } from '../shared/predicates';
 import { getSharedSecret, parseWallets } from '../shared/utilities';
 import {
