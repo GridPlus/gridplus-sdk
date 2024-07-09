@@ -18,7 +18,7 @@
  */
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { question } from 'readline-sync';
-import { HARDENED_OFFSET, LatticeResponseCode } from '../../constants';
+import { HARDENED_OFFSET } from '../../constants';
 import { LatticeResponseCode, ProtocolConstants } from '../../protocol';
 import { randomBytes } from '../../util';
 import { buildEthSignRequest } from '../utils/builders';
@@ -32,12 +32,17 @@ import {
   ETH_COIN,
   setupTestClient,
 } from '../utils/helpers';
-import { initializeClient } from '../utils/initializeClient';
+
+import { setupClient } from '../utils/setup';
 
 const id = getDeviceId();
 
 describe('General', () => {
-  const client = initializeClient();
+  let client;
+
+  test('pair', async () => {
+    client = await setupClient();
+  });
 
   it('Should test SDK dehydration/rehydration', async () => {
     const addrData = {

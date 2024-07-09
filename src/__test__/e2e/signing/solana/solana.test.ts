@@ -8,11 +8,9 @@ import { Constants } from '../../../..';
 import { HARDENED_OFFSET } from '../../../../constants';
 import { getPrng } from '../../../utils/getters';
 import { deriveED25519Key, prandomBuf } from '../../../utils/helpers';
-import {
-  initializeClient,
-  initializeSeed,
-} from '../../../utils/initializeClient';
+import { initializeSeed } from '../../../utils/initializeClient';
 import { runGeneric } from '../../../utils/runners';
+import { setupClient } from '../../../utils/setup';
 
 //---------------------------------------
 // STATE DATA
@@ -26,7 +24,12 @@ const DEFAULT_SOLANA_SIGNER = [
 const prng = getPrng();
 
 describe('[Solana]', () => {
-  const client = initializeClient();
+  let client;
+
+  test('pair', async () => {
+    client = await setupClient();
+  });
+
   const getReq = (overrides: any) => ({
     data: {
       curveType: Constants.SIGNING.CURVES.ED25519,

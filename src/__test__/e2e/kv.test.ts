@@ -8,7 +8,8 @@ import { question } from 'readline-sync';
 import { HARDENED_OFFSET } from '../../constants';
 import { LatticeResponseCode, ProtocolConstants } from '../../protocol';
 import { BTC_PURPOSE_P2PKH, ETH_COIN } from '../utils/helpers';
-import { initializeClient } from '../utils/initializeClient';
+
+import { setupClient } from '../utils/setup';
 
 // Random address to test the screen with.
 // IMPORTANT NOTE: For Ethereum addresses you should always add the lower case variety since
@@ -34,7 +35,11 @@ const ETH_REQ = {
 };
 
 describe('key-value', () => {
-  const client = initializeClient();
+  let client;
+
+  test('pair', async () => {
+    client = await setupClient();
+  });
 
   it('Should ask if the user wants to reset state', async () => {
     const answer = question(
