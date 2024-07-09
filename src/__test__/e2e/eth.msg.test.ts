@@ -19,11 +19,15 @@
 import { HARDENED_OFFSET } from '../../constants';
 import { randomBytes } from '../../util';
 import { buildEthMsgReq, buildRandomMsg } from '../utils/builders';
-import { initializeClient } from '../utils/initializeClient';
 import { runEthMsg } from '../utils/runners';
+import { setupClient } from '../utils/setup';
 
 describe('ETH Messages', () => {
-  const client = initializeClient();
+  let client;
+
+  test('pair', async () => {
+    client = await setupClient();
+  });
 
   describe('Test ETH personalSign', function () {
     it('Should throw error when message contains non-ASCII characters', async () => {

@@ -16,7 +16,8 @@ import {
 } from '../../utils/builders';
 import { getEtherscanKey } from '../../utils/getters';
 import { runEvm } from '../../utils/runners';
-import { initializeClient, initializeSeed } from '../../utils/initializeClient';
+import { initializeSeed } from '../../utils/initializeClient';
+import { setupClient } from '../../utils/setup';
 
 const globalVectors = getTestVectors();
 const vectors = globalVectors.evm.calldata;
@@ -31,7 +32,11 @@ const { encDefs, encDefsCalldata } = buildEncDefs(vectors);
 // TESTS
 //---------------------------------------
 describe('[EVM ABI]', () => {
-  const client = initializeClient();
+  let client;
+
+  test('pair', async () => {
+    client = await setupClient();
+  });
   const runEvmTestForReq = (
     req?: any,
     bypassSetPayload?: boolean,

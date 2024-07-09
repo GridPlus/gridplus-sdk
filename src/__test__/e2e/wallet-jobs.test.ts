@@ -40,8 +40,8 @@ import {
   validateDerivedPublicKeys,
   validateETHAddresses,
 } from '../utils/helpers';
-import { initializeClient } from '../utils/initializeClient';
 import { testRequest } from '../utils/testRequest';
+import { setupClient } from '../utils/setup';
 
 const id = getDeviceId();
 //---------------------------------------
@@ -69,7 +69,11 @@ const KNOWN_SEED = mnemonicToSeedSync(KNOWN_MNEMONIC);
 const wallet = bip32.fromSeed(KNOWN_SEED);
 
 describe('Test Wallet Jobs', () => {
-  const client = initializeClient();
+  let client;
+
+  test('pair', async () => {
+    client = await setupClient();
+  });
 
   it('Should make sure client has active wallets', async () => {
     expect(client.isPaired).toEqual(true);

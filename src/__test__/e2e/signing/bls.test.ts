@@ -19,8 +19,9 @@ import { mnemonicToSeedSync } from 'bip39';
 import { deriveSeedTree } from 'bls12-381-keygen';
 import { question } from 'readline-sync';
 
+import { Constants } from '../../../index';
+import { getPathStr } from '../../../shared/utilities';
 import { getEncPw } from '../../utils/getters';
-import { initializeClient, initializeSeed } from '../../utils/initializeClient';
 import {
   buildPath,
   copyBuffer,
@@ -31,9 +32,9 @@ import {
   parseWalletJobResp,
   serializeJobData,
 } from '../../utils/helpers';
+import { initializeSeed } from '../../utils/initializeClient';
+import { setupClient } from '../../utils/setup';
 import { testRequest } from '../../utils/testRequest';
-import { Constants } from '../../../index';
-import { getPathStr } from '../../../shared/utilities';
 
 const globalVectors = getTestVectors();
 
@@ -46,7 +47,12 @@ const KNOWN_MNEMONIC = globalVectors.ethDeposit.mnemonic;
 const KNOWN_SEED = mnemonicToSeedSync(KNOWN_MNEMONIC);
 
 describe('[BLS keys]', () => {
-  client = initializeClient();
+  let client;
+
+  test('pair', async () => {
+    client = await setupClient();
+  });
+
   it('Should get the device encryption password', async () => {
     encPw = getEncPw();
     if (!encPw) {
