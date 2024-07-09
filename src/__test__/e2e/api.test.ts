@@ -206,7 +206,6 @@ describe('API', () => {
           "44'/60'/0'/0/0",
         );
         expect(addresses).toHaveLength(1);
-        console.log(addresses[0]);
         expect(addresses[0]).toBeTruthy();
       });
 
@@ -217,7 +216,6 @@ describe('API', () => {
             n: 5,
           },
         );
-        console.log(addresses[0]);
         expect(addresses).toHaveLength(5);
         addresses.forEach((address) => expect(address).toBeTruthy());
       });
@@ -230,7 +228,6 @@ describe('API', () => {
             startPathIndex: 10,
           },
         );
-        console.log(addresses[0]);
         expect(addresses).toHaveLength(3);
         addresses.forEach((address) => expect(address).toBeTruthy());
       });
