@@ -4,12 +4,15 @@ import {
   SystemProgram as SolanaSystemProgram,
   Transaction as SolanaTransaction,
 } from '@solana/web3.js';
-import { Constants } from '../../..';
-import { HARDENED_OFFSET } from '../../../constants';
-import { getPrng } from '../../utils/getters';
-import { deriveED25519Key, prandomBuf } from '../../utils/helpers';
-import { initializeClient, initializeSeed } from '../../utils/initializeClient';
-import { runGeneric } from '../../utils/runners';
+import { Constants } from '../../../..';
+import { HARDENED_OFFSET } from '../../../../constants';
+import { getPrng } from '../../../utils/getters';
+import { deriveED25519Key, prandomBuf } from '../../../utils/helpers';
+import {
+  initializeClient,
+  initializeSeed,
+} from '../../../utils/initializeClient';
+import { runGeneric } from '../../../utils/runners';
 
 //---------------------------------------
 // STATE DATA

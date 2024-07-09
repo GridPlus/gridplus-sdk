@@ -1,5 +1,5 @@
-import { Constants } from '../../..';
-import { initializeClient } from '../../utils/initializeClient';
+import { Constants } from '../../../..';
+import { initializeClient } from '../../../utils/initializeClient';
 import { dexlabProgram, raydiumProgram } from './__mocks__/programs';
 
 describe('Solana Programs', () => {

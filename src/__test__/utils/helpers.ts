@@ -76,7 +76,8 @@ export const unharden = (x) => {
 export const buildPath = (indices) => {
   let path = 'm';
   indices.forEach((idx) => {
-    path += `/${unharden(idx)}${idx >= HARDENED_OFFSET ? '\'' : ''}`;
+    // eslint-disable-next-line quotes
+    path += `/${unharden(idx)}${idx >= HARDENED_OFFSET ? "'" : ''}`;
   });
   return path;
 };
