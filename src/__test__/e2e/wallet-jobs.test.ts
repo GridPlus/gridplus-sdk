@@ -15,7 +15,7 @@ import { mnemonicToSeedSync } from 'bip39';
 import { privateToAddress, privateToPublic } from 'ethereumjs-util';
 import { question } from 'readline-sync';
 import { ecdsaRecover } from 'secp256k1';
-import { Constants, getClient, pair } from '../..';
+import { Constants } from '../..';
 import { HARDENED_OFFSET } from '../../constants';
 import { parseDER, randomBytes } from '../../util';
 import { DEFAULT_SIGNER } from '../utils/builders';

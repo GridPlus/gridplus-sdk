@@ -157,42 +157,42 @@ describe('[Determinism]', () => {
   });
 
   describe('Test uniformity of Ethereum transaction sigs', () => {
-    it("Should validate uniformity sigs on m/44'/60'/0'/0/0", async () => {
+    it('Should validate uniformity sigs on m/44\'/60\'/0\'/0/0', async () => {
       const tx = buildTx();
       const txReq = buildTxReq(tx);
       txReq.data.signerPath[2] = HARDENED_OFFSET;
       await testUniformSigs(txReq, tx, client);
     });
 
-    it("Should validate uniformity sigs on m/44'/60'/1'/0/0", async () => {
+    it('Should validate uniformity sigs on m/44\'/60\'/1\'/0/0', async () => {
       const tx = buildTx();
       const txReq = buildTxReq(tx);
       txReq.data.signerPath[2] = HARDENED_OFFSET + 1;
       await testUniformSigs(txReq, tx, client);
     });
 
-    it("Should validate uniformity sigs on m/44'/60'/8'/0/0", async () => {
+    it('Should validate uniformity sigs on m/44\'/60\'/8\'/0/0', async () => {
       const tx = buildTx();
       const txReq = buildTxReq(tx);
       txReq.data.signerPath[2] = HARDENED_OFFSET + 8;
       await testUniformSigs(txReq, tx, client);
     });
 
-    it("Should validate uniformity sigs on m/44'/60'/0'/0/0", async () => {
+    it('Should validate uniformity sigs on m/44\'/60\'/0\'/0/0', async () => {
       const tx = buildTx(`0x${randomBytes(4000).toString('hex')}`);
       const txReq = buildTxReq(tx);
       txReq.data.signerPath[2] = HARDENED_OFFSET;
       await testUniformSigs(txReq, tx, client);
     });
 
-    it("Should validate uniformity sigs on m/44'/60'/1'/0/0", async () => {
+    it('Should validate uniformity sigs on m/44\'/60\'/1\'/0/0', async () => {
       const tx = buildTx(`0x${randomBytes(4000).toString('hex')}`);
       const txReq = buildTxReq(tx);
       txReq.data.signerPath[2] = HARDENED_OFFSET + 1;
       await testUniformSigs(txReq, tx, client);
     });
 
-    it("Should validate uniformity sigs on m/44'/60'/8'/0/0", async () => {
+    it('Should validate uniformity sigs on m/44\'/60\'/8\'/0/0', async () => {
       const tx = buildTx(`0x${randomBytes(4000).toString('hex')}`);
       const txReq = buildTxReq(tx);
       txReq.data.signerPath[2] = HARDENED_OFFSET + 8;
