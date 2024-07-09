@@ -6,6 +6,7 @@ import {
   BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION,
   BTC_WRAPPED_SEGWIT_DERIVATION,
   DEFAULT_ETH_DERIVATION,
+  HARDENED_OFFSET,
   LEDGER_LEGACY_DERIVATION,
   LEDGER_LIVE_DERIVATION,
   MAX_ADDR,
@@ -158,3 +159,80 @@ export const fetchLedgerLegacyAddresses = async (
   }
   return Promise.all(addresses);
 };
+
+export const fetchBip44ChangeAddresses = async (
+  { n, startPathIndex }: FetchAddressesParams = {
+    n: MAX_ADDR,
+    startPathIndex: 0,
+  },
+) => {
+  const addresses = [];
+  for (let i = 0; i < n; i++) {
+    addresses.push(
+      queue((client) => {
+        const startPath = [
+          44 + HARDENED_OFFSET,
+          501 + HARDENED_OFFSET,
+          startPathIndex + i + HARDENED_OFFSET,
+          0 + HARDENED_OFFSET,
+        ];
+        return client
+          .getAddresses({
+            startPath,
+            n: 1,
+            flag: 4,
+          })
+          .then((addresses) => addresses.map((address) => `${address}`));
+      }),
+    );
+  }
+  return Promise.all(addresses);
+};
+
+function parseDerivationPath(path: string): number[] {
+  return path.split('/').map((part) => {
+    // eslint-disable-next-line quotes
+    if (part.endsWith("'")) {
+      return parseInt(part.slice(0, -1)) + 0x80000000;
+    }
+    return part.toLowerCase() === 'x' ? 0 : parseInt(part);
+  });
+}
+
+export async function fetchAddressesByDerivationPath(
+  path: string,
+  { n = 1, startPathIndex = 0 }: FetchAddressesParams = {},
+): Promise<string[]> {
+  const parsedPath = parseDerivationPath(path);
+  const hasWildcard = path.toLowerCase().includes('x');
+
+  if (!hasWildcard) {
+    return queue((client) =>
+      client.getAddresses({
+        startPath: parsedPath,
+        n: 1,
+      }),
+    );
+  }
+
+  const wildcardIndex = parsedPath.findIndex((part) => part === 0);
+  const basePath = parsedPath.slice(0, wildcardIndex);
+
+  const addresses: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const currentPath = [
+      ...basePath,
+      startPathIndex + i,
+      ...parsedPath.slice(wildcardIndex + 1),
+    ];
+    const result = await queue((client) =>
+      client.getAddresses({
+        startPath: currentPath,
+        n: 1,
+      }),
+    );
+    addresses.push(...result);
+  }
+
+  return addresses;
+}
