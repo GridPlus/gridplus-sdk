@@ -691,7 +691,7 @@ describe('Test Wallet Jobs', () => {
       );
     });
     let basePath = DEFAULT_SIGNER;
-    let parentPathStr = "m/44'/60'/0'/0";
+    let parentPathStr = 'm/44\'/60\'/0\'/0';
 
     it('Should remove the current seed', async () => {
       jobType = jobTypes.WALLET_JOB_DELETE_SEED;
@@ -759,27 +759,27 @@ describe('Test Wallet Jobs', () => {
     });
 
     // One leading privKey zero -> P(1/256)
-    it("Should test address m/44'/60'/0'/0/396 (1 leading zero byte)", async () => {
+    it('Should test address m/44\'/60\'/0\'/0/396 (1 leading zero byte)', async () => {
       await runZerosTest(basePath, parentPathStr, 396, 1);
     });
-    it("Should test address m/44'/60'/0'/0/406 (1 leading zero byte)", async () => {
+    it('Should test address m/44\'/60\'/0\'/0/406 (1 leading zero byte)', async () => {
       await runZerosTest(basePath, parentPathStr, 406, 1);
     });
-    it("Should test address m/44'/60'/0'/0/668 (1 leading zero byte)", async () => {
+    it('Should test address m/44\'/60\'/0\'/0/668 (1 leading zero byte)', async () => {
       await runZerosTest(basePath, parentPathStr, 668, 1);
     });
 
     // Two leading privKey zeros -> P(1/65536)
-    it("Should test address m/44'/60'/0'/0/71068 (2 leading zero bytes)", async () => {
+    it('Should test address m/44\'/60\'/0\'/0/71068 (2 leading zero bytes)', async () => {
       await runZerosTest(basePath, parentPathStr, 71068, 2);
     });
-    it("Should test address m/44'/60'/0'/0/82173 (2 leading zero bytes)", async () => {
+    it('Should test address m/44\'/60\'/0\'/0/82173 (2 leading zero bytes)', async () => {
       await runZerosTest(basePath, parentPathStr, 82173, 2);
     });
 
     // Three leading privKey zeros -> P(1/16777216)
     // Unlikely any user ever runs into these but I wanted to derive the addrs for funsies
-    it("Should test address m/44'/60'/0'/0/11981831 (3 leading zero bytes)", async () => {
+    it('Should test address m/44\'/60\'/0\'/0/11981831 (3 leading zero bytes)', async () => {
       await runZerosTest(basePath, parentPathStr, 11981831, 3);
     });
 
@@ -790,7 +790,7 @@ describe('Test Wallet Jobs', () => {
     // We want this leading-zero pubkey to be a parent derivation path to then
     // test all further derivations
     it('Should switch to testing public keys', async () => {
-      parentPathStr = "m/44'/60'/0'";
+      parentPathStr = 'm/44\'/60\'/0\'';
       basePath[3] = 153;
       basePath = basePath.slice(0, 4);
     });
@@ -798,34 +798,34 @@ describe('Test Wallet Jobs', () => {
     // There should be no problems with the parent path here because the result
     // is the leading-zero pubkey directly. Since we do not do a further derivation
     // with that leading-zero pubkey, there should never be any issues.
-    it("Should test address m/44'/60'/0'/153", async () => {
+    it('Should test address m/44\'/60\'/0\'/153', async () => {
       await runZerosTest(basePath, parentPathStr, 153, 1, true);
     });
 
     it('Should prepare for one more derivation step', async () => {
-      parentPathStr = "m/44'/60'/0'/153";
+      parentPathStr = 'm/44\'/60\'/0\'/153';
       basePath.push(0);
     });
 
     // Now we will derive one more step with the leading zero pubkey feeding
     // into the derivation. This tests an edge case in firmware.
-    it("Should test address m/44'/60'/0'/153/0", async () => {
+    it('Should test address m/44\'/60\'/0\'/153/0', async () => {
       await runZerosTest(basePath, parentPathStr, 0, 0);
     });
 
-    it("Should test address m/44'/60'/0'/153/1", async () => {
+    it('Should test address m/44\'/60\'/0\'/153/1', async () => {
       await runZerosTest(basePath, parentPathStr, 1, 0);
     });
 
-    it("Should test address m/44'/60'/0'/153/5", async () => {
+    it('Should test address m/44\'/60\'/0\'/153/5', async () => {
       await runZerosTest(basePath, parentPathStr, 5, 0);
     });
 
-    it("Should test address m/44'/60'/0'/153/10000", async () => {
+    it('Should test address m/44\'/60\'/0\'/153/10000', async () => {
       await runZerosTest(basePath, parentPathStr, 10000, 0);
     });
 
-    it("Should test address m/44'/60'/0'/153/9876543", async () => {
+    it('Should test address m/44\'/60\'/0\'/153/9876543', async () => {
       await runZerosTest(basePath, parentPathStr, 9876543, 0);
     });
   });
