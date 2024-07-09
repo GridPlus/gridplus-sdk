@@ -68,6 +68,7 @@ const validateEthereumMsgResponse = function (res, req) {
       useEIP155: false,
     });
   } else if (input.protocol === 'eip712') {
+    req = convertBigNumbers(req);
     const encoded = TypedDataUtils.eip712Hash(
       req.input.payload,
       SignTypedDataVersion.V4,
@@ -80,6 +81,22 @@ const validateEthereumMsgResponse = function (res, req) {
     throw new Error('Unsupported protocol');
   }
 };
+
+function convertBigNumbers(obj) {
+  if (BN.isBigNumber(obj)) {
+    return obj.toFixed();
+  } else if (Array.isArray(obj)) {
+    return obj.map(convertBigNumbers);
+  } else if (typeof obj === 'object' && obj !== null) {
+    const newObj = {};
+    for (const [key, value] of Object.entries(obj)) {
+      newObj[key] = convertBigNumbers(value);
+    }
+    return newObj;
+  } else {
+    return obj;
+  }
+}
 
 const buildEthereumTxRequest = function (data) {
   try {
@@ -883,7 +900,7 @@ function parseEIP712Item(data, type, forJSParser = false) {
     // TODO: Find another cbor lib that is compataible with the firmware's lib in a browser
     // context. This is surprisingly difficult - I tried several libs and only cbor/borc have
     // worked (borc is a supposedly "browser compatible" version of cbor)
-    data = new cbor.Encoder().semanticTypes[1][0](data);
+    data = new BN(data);
   } else if (
     ethMsgProtocol.TYPED_DATA.typeCodes[type] &&
     (type.indexOf('uint') > -1 || type.indexOf('int') > -1)
@@ -902,7 +919,7 @@ function parseEIP712Item(data, type, forJSParser = false) {
       data = `0x${b.toString('hex')}`;
     } else {
       // Load into bignumber.js used by cbor lib
-      data = new cbor.Encoder().semanticTypes[1][0](b.toString('hex'), 16);
+      data = new BN(b.toString('hex'), 16);
     }
   } else if (type === 'bool') {
     // Booleans need to be cast to a u8

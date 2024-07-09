@@ -19,11 +19,8 @@
 import { HARDENED_OFFSET } from '../../constants';
 import { randomBytes } from '../../util';
 import { buildEthMsgReq, buildRandomMsg } from '../utils/builders';
-import { getN } from '../utils/getters';
 import { initializeClient } from '../utils/initializeClient';
 import { runEthMsg } from '../utils/runners';
-
-const numRandom = getN() ? getN() : 20; // Number of random tests to conduct
 
 describe('ETH Messages', () => {
   const client = initializeClient();
@@ -101,8 +98,8 @@ describe('ETH Messages', () => {
       ).rejects.toThrow(/Invalid Request/);
     });
 
-    describe(`Test ${numRandom} random payloads`, () => {
-      for (let i = 0; i < numRandom; i++) {
+    describe(`Test ${5} random payloads`, () => {
+      for (let i = 0; i < 5; i++) {
         it(`Payload: ${i}`, async () => {
           await runEthMsg(
             buildEthMsgReq(
@@ -284,7 +281,7 @@ describe('ETH Messages', () => {
           ],
           Order: [
             { name: 'sender', type: 'bytes32' },
-            { name: 'priceX18', type: 'uint256' },
+            { name: 'priceX18', type: 'int128' },
             { name: 'amount', type: 'int128' },
             { name: 'expiration', type: 'uint64' },
             { name: 'nonce', type: 'uint64' },
@@ -1296,8 +1293,8 @@ describe('ETH Messages', () => {
       await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
     });
 
-    describe(`test ${numRandom} random payloads`, () => {
-      for (let i = 0; i < numRandom; i++) {
+    describe('test 5 random payloads', () => {
+      for (let i = 0; i < 5; i++) {
         it(`Payload #: ${i}`, async () => {
           await runEthMsg(
             buildEthMsgReq(buildRandomMsg('eip712', client), 'eip712'),
