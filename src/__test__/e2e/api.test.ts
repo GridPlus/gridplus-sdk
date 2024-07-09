@@ -11,7 +11,7 @@ import {
   fetchBip44ChangeAddresses,
   fetchBtcLegacyAddresses,
   fetchBtcSegwitAddresses,
-  fetchByDerivationPath,
+  fetchAddressesByDerivationPath,
   fetchSolanaAddresses,
   pair,
   signBtcLegacyTx,
@@ -21,7 +21,7 @@ import {
 } from '../../api';
 import { HARDENED_OFFSET } from '../../constants';
 import { BTC_PURPOSE_P2SH_P2WPKH, BTC_TESTNET_COIN } from '../utils/helpers';
-import { dexlabProgram } from './signing/__mocks__/programs';
+import { dexlabProgram } from './signing/solana/__mocks__/programs';
 import {
   addAddressTags,
   fetchAddressTags,
@@ -200,65 +200,84 @@ describe('API', () => {
       });
     });
 
-    describe('fetchByDerivationPath', () => {
+    describe('fetchAddressesByDerivationPath', () => {
       test('fetch single specific address', async () => {
-        const addresses = await fetchByDerivationPath("44'/60'/0'/0/0");
+        const addresses = await fetchAddressesByDerivationPath(
+          "44'/60'/0'/0/0",
+        );
         expect(addresses).toHaveLength(1);
-        console.log(addresses[0]);
         expect(addresses[0]).toBeTruthy();
       });
 
       test('fetch multiple addresses with wildcard', async () => {
-        const addresses = await fetchByDerivationPath("44'/60'/0'/0/X", {
-          n: 5,
-        });
-        console.log(addresses[0]);
+        const addresses = await fetchAddressesByDerivationPath(
+          "44'/60'/0'/0/X",
+          {
+            n: 5,
+          },
+        );
         expect(addresses).toHaveLength(5);
         addresses.forEach((address) => expect(address).toBeTruthy());
       });
 
       test('fetch addresses with offset', async () => {
-        const addresses = await fetchByDerivationPath("44'/60'/0'/0/X", {
-          n: 3,
-          startPathIndex: 10,
-        });
-        console.log(addresses[0]);
+        const addresses = await fetchAddressesByDerivationPath(
+          "44'/60'/0'/0/X",
+          {
+            n: 3,
+            startPathIndex: 10,
+          },
+        );
         expect(addresses).toHaveLength(3);
         addresses.forEach((address) => expect(address).toBeTruthy());
       });
 
       test('fetch addresses with lowercase x wildcard', async () => {
-        const addresses = await fetchByDerivationPath("44'/60'/0'/0/x", {
-          n: 2,
-        });
+        const addresses = await fetchAddressesByDerivationPath(
+          "44'/60'/0'/0/x",
+          {
+            n: 2,
+          },
+        );
         expect(addresses).toHaveLength(2);
         addresses.forEach((address) => expect(address).toBeTruthy());
       });
 
       test('fetch addresses with wildcard in middle of path', async () => {
-        const addresses = await fetchByDerivationPath("44'/60'/X'/0/0", {
-          n: 3,
-        });
+        const addresses = await fetchAddressesByDerivationPath(
+          "44'/60'/X'/0/0",
+          {
+            n: 3,
+          },
+        );
         expect(addresses).toHaveLength(3);
         addresses.forEach((address) => expect(address).toBeTruthy());
       });
 
       test('error on invalid derivation path', async () => {
-        await expect(fetchByDerivationPath('invalid/path')).rejects.toThrow();
+        await expect(
+          fetchAddressesByDerivationPath('invalid/path'),
+        ).rejects.toThrow();
       });
 
       test('fetch single address when n=1 with wildcard', async () => {
-        const addresses = await fetchByDerivationPath("44'/60'/0'/0/X", {
-          n: 1,
-        });
+        const addresses = await fetchAddressesByDerivationPath(
+          "44'/60'/0'/0/X",
+          {
+            n: 1,
+          },
+        );
         expect(addresses).toHaveLength(1);
         expect(addresses[0]).toBeTruthy();
       });
 
       test('fetch no addresses when n=0', async () => {
-        const addresses = await fetchByDerivationPath("44'/60'/0'/0/X", {
-          n: 0,
-        });
+        const addresses = await fetchAddressesByDerivationPath(
+          "44'/60'/0'/0/X",
+          {
+            n: 0,
+          },
+        );
         expect(addresses).toHaveLength(0);
       });
     });
