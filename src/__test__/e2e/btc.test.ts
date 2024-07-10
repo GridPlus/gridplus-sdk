@@ -1,6 +1,12 @@
-import { getPrng, getTestnet } from '../utils/getters';
-// You must have `FEATURE_TEST_RUNNER=0` enabled in firmware to run these tests.
+/**
+ * IMPORTANT: ENABLE `FEATURE_TEST_RUNNER=0` IN FIRMWARE SETTINGS
+ *
+ * Failure to enable this setting will result in an `Invalid Request` error.
+ * Ensure `FEATURE_TEST_RUNNER=0` is active before executing these tests.
+ */
+
 import bip32 from 'bip32';
+import { getPrng, getTestnet } from '../utils/getters';
 import {
   BTC_PURPOSE_P2PKH,
   BTC_PURPOSE_P2SH_P2WPKH,
@@ -11,19 +17,20 @@ import {
   parseWalletJobResp,
   serializeJobData,
   setup_btc_sig_test,
-  stripDER
+  stripDER,
 } from '../utils/helpers';
-import { initializeClient } from '../utils/initializeClient';
 import { testRequest } from '../utils/testRequest';
+import { setupClient } from '../utils/setup';
+import { Wallet } from 'ethers';
 
 const prng = getPrng();
 const TEST_TESTNET = !!getTestnet() || false;
 let wallet: Wallet | null = null;
-type InputObj = { hash: string, value: number, signerIdx: number, idx: number };
+type InputObj = { hash: string; value: number; signerIdx: number; idx: number };
 
 // Build the inputs. By default we will build 10. Note that there are `n` tests for
 // *each category*, where `n` is the number of inputs.
-function rand32Bit () {
+function rand32Bit() {
   return Math.floor(prng.quick() * 2 ** 32);
 }
 const inputs: InputObj[] = [];
@@ -40,9 +47,9 @@ for (let i = 0; i < count; i++) {
   inputs.push({ hash: hash.toString('hex'), value, signerIdx, idx });
 }
 
-async function testSign ({ txReq, signingKeys, sigHashes, client }: any) {
+async function testSign({ txReq, signingKeys, sigHashes, client }: any) {
   const tx = await client.sign(txReq);
-  const len = tx?.sigs?.length ?? 0
+  const len = tx?.sigs?.length ?? 0;
   expect(len).toEqual(signingKeys.length);
   expect(len).toEqual(sigHashes.length);
   for (let i = 0; i < len; i++) {
@@ -53,12 +60,12 @@ async function testSign ({ txReq, signingKeys, sigHashes, client }: any) {
       `Signature validation failed for priv=${signingKeys[
         i
       ].privateKey.toString('hex')}, ` +
-      `hash=${sigHashes[i].toString('hex')}, sig=${sig.toString('hex')}`,
+        `hash=${sigHashes[i].toString('hex')}, sig=${sig.toString('hex')}`,
     );
   }
 }
 
-async function runTestSet (
+async function runTestSet(
   opts: any,
   wallet: Wallet | null,
   inputsSlice: InputObj[],
@@ -69,24 +76,40 @@ async function runTestSet (
     // Testnet + change
     opts.isTestnet = true;
     opts.useChange = true;
-    await testSign({ ...setup_btc_sig_test(opts, wallet, inputsSlice, prng), client });
+    await testSign({
+      ...setup_btc_sig_test(opts, wallet, inputsSlice, prng),
+      client,
+    });
     // Testnet + no change
     opts.isTestnet = true;
     opts.useChange = false;
-    await testSign({ ...setup_btc_sig_test(opts, wallet, inputsSlice, prng), client });
+    await testSign({
+      ...setup_btc_sig_test(opts, wallet, inputsSlice, prng),
+      client,
+    });
   }
   // Mainnet + change
   opts.isTestnet = false;
   opts.useChange = true;
-  await testSign({ ...setup_btc_sig_test(opts, wallet, inputsSlice, prng), client });
+  await testSign({
+    ...setup_btc_sig_test(opts, wallet, inputsSlice, prng),
+    client,
+  });
   // Mainnet + no change
   opts.isTestnet = false;
   opts.useChange = false;
-  await testSign({ ...setup_btc_sig_test(opts, wallet, inputsSlice, prng), client });
+  await testSign({
+    ...setup_btc_sig_test(opts, wallet, inputsSlice, prng),
+    client,
+  });
 }
 
 describe('Bitcoin', () => {
-  const client = initializeClient();
+  let client;
+
+  test('pair', async () => {
+    client = await setupClient();
+  });
 
   describe('wallet seeds', () => {
     it('Should get GP_SUCCESS for a known, connected wallet', async () => {
@@ -99,7 +122,14 @@ describe('Bitcoin', () => {
         testID: 0, // wallet_job test ID
         payload: serializeJobData(jobType, activeWalletUID, jobData),
       };
-      const res = await testRequest(jobReq);
+      const res = await testRequest(jobReq).catch((err) => {
+        if (err.message.includes('Invalid Request')) {
+          console.error(
+            'Ensure FEATURE_TEST_RUNNER=0 is active in firmware settings',
+          );
+        }
+        throw err;
+      });
       //@ts-expect-error - accessing private property
       const _res = parseWalletJobResp(res, client.fwVersion);
       expect(_res.resultStatus).toEqual(0);
@@ -190,6 +220,6 @@ describe('Bitcoin', () => {
           await runTestSet(opts, wallet, inputsSlice, client);
         });
       });
-    })
+    });
   }
 });

@@ -2,30 +2,34 @@ import {
   BASE_URL,
   DEFAULT_ACTIVE_WALLETS,
   EMPTY_WALLET_UID,
-  getFwVersionConst
+  getFwVersionConst,
 } from './constants';
 import {
   addKvRecords,
   connect,
-  fetchEncData,
   fetchActiveWallet,
+  fetchEncData,
   getAddresses,
   getKvRecords,
   pair,
   removeKvRecords,
-  sign
+  sign,
 } from './functions/index';
 import { buildRetryWrapper } from './shared/functions';
 import { getPubKeyBytes } from './shared/utilities';
 import { validateEphemeralPub } from './shared/validators';
-import { 
-  getP256KeyPair, 
-  getP256KeyPairFromPub, 
-  randomBytes 
-} from './util';
+import { getP256KeyPair, getP256KeyPairFromPub, randomBytes } from './util';
 
 /**
  * `Client` is a class-based interface for managing a Lattice device.
+ *
+ * @deprecated
+ * - This class is deprecated for external use. It is used internally by the SDK to manage
+ * the state of the connection to the Lattice device. It is not recommended to use this class directly.
+ * The recommended way to interact with the Lattice is through the functional interface.
+ * - See the [`src/api` directory on GitHub](https://github.com/GridPlus/gridplus-sdk/tree/dev/src/api)
+ *  or [learn more in the docs](https://gridplus.github.io/gridplus-sdk/).
+ *
  */
 export class Client {
   /** Is the Lattice paired with this Client. */
@@ -100,14 +104,14 @@ export class Client {
       this.unpackAndApplyStateData(stateData);
     }
   }
-  
+
   /**
    * Get the public key associated with the client's static keypair.
    * The public key is used for identifying the client to the Lattice.
    * @internal
    * @returns Buffer
    */
-  public get publicKey () {
+  public get publicKey() {
     return getPubKeyBytes(this.key);
   }
 
@@ -130,7 +134,7 @@ export class Client {
    * @internal
    * @returns Buffer
    */
-  public get sharedSecret () {
+  public get sharedSecret() {
     // Once every ~256 attempts, we will get a key that starts with a `00` byte, which can lead to
     // problems initializing AES if we don't force a 32 byte BE buffer.
     return Buffer.from(
@@ -139,13 +143,13 @@ export class Client {
   }
 
   /** @internal */
-  public get ephemeralPub () {
+  public get ephemeralPub() {
     return this._ephemeralPub;
   }
 
   /** @internal */
-  public set ephemeralPub (ephemeralPub: KeyPair) {
-    validateEphemeralPub(ephemeralPub)
+  public set ephemeralPub(ephemeralPub: KeyPair) {
+    validateEphemeralPub(ephemeralPub);
     this._ephemeralPub = ephemeralPub;
   }
 
@@ -154,8 +158,8 @@ export class Client {
    * public key, which is used to pair with the device in a later request.
    * @category Lattice
    */
-  public async connect (deviceId: string) {
-    return this.retryWrapper(connect, { id: deviceId })
+  public async connect(deviceId: string) {
+    return this.retryWrapper(connect, { id: deviceId });
   }
 
   /**
@@ -164,75 +168,75 @@ export class Client {
    * provided, `pair` sends a zero-length name buffer to the device.
    * @category Lattice
    */
-  public async pair (pairingSecret: string) {
-    return this.retryWrapper(pair, { pairingSecret })
+  public async pair(pairingSecret: string) {
+    return this.retryWrapper(pair, { pairingSecret });
   }
 
   /**
    * Takes a starting path and a number to get the addresses associated with the active wallet.
    * @category Lattice
    */
-  public async getAddresses ({
+  public async getAddresses({
     startPath,
     n = 1,
     flag = 0,
   }: GetAddressesRequestParams): Promise<Buffer[] | string[]> {
-    return this.retryWrapper(getAddresses, { startPath, n, flag })
+    return this.retryWrapper(getAddresses, { startPath, n, flag });
   }
 
   /**
    * Builds and sends a request for signing to the Lattice.
    * @category Lattice
    */
-  public async sign ({
+  public async sign({
     data,
     currency,
     cachedData,
     nextCode,
   }: SignRequestParams): Promise<SignData> {
-    return this.retryWrapper(sign, { data, currency, cachedData, nextCode })
+    return this.retryWrapper(sign, { data, currency, cachedData, nextCode });
   }
 
   /**
    * Fetch the active wallet in the Lattice.
    */
-  public async fetchActiveWallet (): Promise<ActiveWallets> {
-    return this.retryWrapper(fetchActiveWallet)
+  public async fetchActiveWallet(): Promise<ActiveWallets> {
+    return this.retryWrapper(fetchActiveWallet);
   }
 
   /**
    * Takes in a set of key-value records and sends a request to add them to the Lattice.
    * @category Lattice
    */
-  async addKvRecords ({
+  async addKvRecords({
     type = 0,
     records,
     caseSensitive = false,
   }: AddKvRecordsRequestParams): Promise<Buffer> {
-    return this.retryWrapper(addKvRecords, { type, records, caseSensitive, })
+    return this.retryWrapper(addKvRecords, { type, records, caseSensitive });
   }
 
   /**
    * Fetches a list of key-value records from the Lattice.
    * @category Lattice
    */
-  public async getKvRecords ({
+  public async getKvRecords({
     type = 0,
     n = 1,
     start = 0,
   }: GetKvRecordsRequestParams): Promise<GetKvRecordsData> {
-    return this.retryWrapper(getKvRecords, { type, n, start, })
+    return this.retryWrapper(getKvRecords, { type, n, start });
   }
 
   /**
    * Takes in an array of ids and sends a request to remove them from the Lattice.
    * @category Lattice
    */
-  public async removeKvRecords ({
+  public async removeKvRecords({
     type = 0,
     ids = [],
   }: RemoveKvRecordsRequestParams): Promise<Buffer> {
-    return this.retryWrapper(removeKvRecords, { type, ids, })
+    return this.retryWrapper(removeKvRecords, { type, ids });
   }
 
   /**
@@ -241,14 +245,14 @@ export class Client {
    * data formatted according to the specified type.
    * @category Lattice
    */
-  public async fetchEncryptedData (
-    params: FetchEncDataRequest
+  public async fetchEncryptedData(
+    params: FetchEncDataRequest,
   ): Promise<Buffer> {
-    return this.retryWrapper(fetchEncData, params)
+    return this.retryWrapper(fetchEncData, params);
   }
 
   /** Get the active wallet */
-  public getActiveWallet () {
+  public getActiveWallet() {
     if (
       this.activeWallets.external.uid &&
       !EMPTY_WALLET_UID.equals(this.activeWallets.external.uid)
@@ -265,7 +269,7 @@ export class Client {
   }
 
   /** Check if the user has an active wallet */
-  public hasActiveWallet () {
+  public hasActiveWallet() {
     return !!this.getActiveWallet();
   }
 
@@ -274,7 +278,7 @@ export class Client {
    * @category Device Response
    * @internal
    */
-  public resetActiveWallets () {
+  public resetActiveWallets() {
     this.activeWallets = DEFAULT_ACTIVE_WALLETS;
   }
 
@@ -283,7 +287,7 @@ export class Client {
    * contents of this to the constructor as `stateData` to rehydrate.
    * @internal
    */
-  public getStateData () {
+  public getStateData() {
     return this.packStateData();
   }
 
@@ -291,7 +295,7 @@ export class Client {
    * Returns the firmware version constants for the given firmware version.
    * @internal
    */
-  public getFwConstants () {
+  public getFwConstants() {
     return getFwVersionConst(this.fwVersion ?? Buffer.alloc(0));
   }
 
@@ -299,7 +303,7 @@ export class Client {
    * `getFwVersion` gets the firmware version of the paired device.
    * @internal
    */
-  public getFwVersion (): {
+  public getFwVersion(): {
     fix: number;
     minor: number;
     major: number;
@@ -345,7 +349,7 @@ export class Client {
    * reconnecting to the target Lattice.
    * @internal
    */
-  private packStateData () {
+  private packStateData() {
     try {
       const data = {
         activeWallets: {
@@ -381,23 +385,23 @@ export class Client {
    * rehydrate an old session.
    * @internal
    */
-  private unpackAndApplyStateData (data: string) {
+  private unpackAndApplyStateData(data: string) {
     try {
       const unpacked = JSON.parse(data);
       // Attempt to parse the data
       const internalWallet = {
         uid: Buffer.from(unpacked.activeWallets.internal.uid, 'hex'),
-        name: unpacked.activeWallets.internal.name ? 
-              Buffer.from(unpacked.activeWallets.internal.name) :
-              null,
+        name: unpacked.activeWallets.internal.name
+          ? Buffer.from(unpacked.activeWallets.internal.name)
+          : null,
         capabilities: unpacked.activeWallets.internal.capabilities,
         external: false,
       };
       const externalWallet = {
         uid: Buffer.from(unpacked.activeWallets.external.uid, 'hex'),
-        name: unpacked.activeWallets.external.name ? 
-              Buffer.from(unpacked.activeWallets.external.name) :
-              null,
+        name: unpacked.activeWallets.external.name
+          ? Buffer.from(unpacked.activeWallets.external.name)
+          : null,
         capabilities: unpacked.activeWallets.external.capabilities,
         external: true,
       };

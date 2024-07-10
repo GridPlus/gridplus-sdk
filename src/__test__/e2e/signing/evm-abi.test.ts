@@ -6,13 +6,18 @@ This includes:
 
 You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
  */
-import { NETWORKS_BY_CHAIN_ID} from '../../../constants'
+import { NETWORKS_BY_CHAIN_ID } from '../../../constants';
 import { fetchCalldataDecoder } from '../../../util';
 import { getTestVectors } from '../../utils/helpers';
-import { buildEncDefs, buildEvmReq, DEFAULT_SIGNER } from '../../utils/builders';
+import {
+  DEFAULT_SIGNER,
+  buildEncDefs,
+  buildEvmReq,
+} from '../../utils/builders';
 import { getEtherscanKey } from '../../utils/getters';
 import { runEvm } from '../../utils/runners';
-import { initializeClient, initializeSeed } from '../../utils/initializeClient';
+import { initializeSeed } from '../../utils/initializeClient';
+import { setupClient } from '../../utils/setup';
 
 const globalVectors = getTestVectors();
 const vectors = globalVectors.evm.calldata;
@@ -27,7 +32,11 @@ const { encDefs, encDefsCalldata } = buildEncDefs(vectors);
 // TESTS
 //---------------------------------------
 describe('[EVM ABI]', () => {
-  const client = initializeClient();
+  let client;
+
+  test('pair', async () => {
+    client = await setupClient();
+  });
   const runEvmTestForReq = (
     req?: any,
     bypassSetPayload?: boolean,
@@ -41,7 +50,7 @@ describe('[EVM ABI]', () => {
       CURRENT_SEED,
       bypassSetPayload,
       shouldFail,
-      useLegacySigning
+      useLegacySigning,
     ).catch((err) => {
       if (err.responseCode === 128) {
         err.message =
@@ -54,8 +63,7 @@ describe('[EVM ABI]', () => {
 
   it('Should get the current wallet seed', async () => {
     CURRENT_SEED = await initializeSeed(client);
-  })
-
+  });
 
   describe('[EVM] Test decoders', () => {
     const runAbiDecoderTest = (overrides: any, ...params: any) =>
@@ -80,10 +88,10 @@ describe('[EVM ABI]', () => {
       );
 
     beforeAll(() => {
-      // Silence warnings, which will be thrown when you provide a 
+      // Silence warnings, which will be thrown when you provide a
       // chainID=-1, which forces fallback to 4byte in certain tests
-      console.warn = vi.fn()
-    })
+      console.warn = vi.fn();
+    });
 
     describe('Test ABI decoding on real (mainnet) tx vectors', async () => {
       // Validate that we can decode using Etherscan ABI info as well as 4byte canonical names.
@@ -91,8 +99,7 @@ describe('[EVM ABI]', () => {
         // Hashes on ETH mainnet that we will use to fetch full tx and ABI data with
         const info = vectors.publicTxHashes[i];
         const chainInfo = NETWORKS_BY_CHAIN_ID[info.chainID];
-        const getTxBase =
-          `${chainInfo.baseUrl}/api?module=proxy&action=eth_getTransactionByHash&txhash=`;
+        const getTxBase = `${chainInfo.baseUrl}/api?module=proxy&action=eth_getTransactionByHash&txhash=`;
         // 1. First fetch the transaction details from etherscan. This is just to get
         // the calldata, so it would not be needed in a production environment
         // (since we already have the calldata).
@@ -102,7 +109,9 @@ describe('[EVM ABI]', () => {
         if (etherscanKey && info.chainID === 1) {
           getTxUrl += `&apiKey=${etherscanKey}`;
         }
-        const tx = await fetch(getTxUrl).then(res => res.json()).then((res) => res.result);
+        const tx = await fetch(getTxUrl)
+          .then((res) => res.json())
+          .then((res) => res.result);
         const txData = { data: tx.input, ...tx };
         const blockExplorerReqFailed = false;
         if (!etherscanKey) {
@@ -117,7 +126,10 @@ describe('[EVM ABI]', () => {
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
 
-        it(`Public tx #${i} (${chainInfo.name}: ${txHash.slice(0, 8)}...)`, async () => {
+        it(`Public tx #${i} (${chainInfo.name}: ${txHash.slice(
+          0,
+          8,
+        )}...)`, async () => {
           // Some requests are marked such that we should skip pinging
           // the relevant block explorer and should instead force a fallback
           // to 4byte.
@@ -129,11 +141,11 @@ describe('[EVM ABI]', () => {
             tx.input,
             tx.to,
             info.chainID,
-            true
+            true,
           );
           if (!def) {
             if (info.ignoreBlockExplorerError) {
-              console.log('ignoring error')
+              console.log('ignoring error');
               return;
             }
             blockExplorerReqFailed = true;
@@ -148,25 +160,26 @@ describe('[EVM ABI]', () => {
         it(`Public tx #${i} q(4byte)`, async () => {
           if (blockExplorerReqFailed) {
             throw new Error(
-              'ERROR: Etherscan request failed. Cannot execute corresponding 4byte test. Skipping.'
-              )
-            }
-            // 4. Get the canonical name from 4byte by using an unsupported chainId
-            const { def } = await fetchCalldataDecoder(tx.input, tx.to, -1, true);
-            await runAbiDecoderTest({ txData, data: { decoder: def } });
-          });
-
+              'ERROR: Etherscan request failed. Cannot execute corresponding 4byte test. Skipping.',
+            );
+          }
+          // 4. Get the canonical name from 4byte by using an unsupported chainId
+          const { def } = await fetchCalldataDecoder(tx.input, tx.to, -1, true);
+          await runAbiDecoderTest({ txData, data: { decoder: def } });
+        });
       }
-    })
+    });
 
     // Validate a series of canonical definitions
     const setSz = 10;
-    const maxVec = vectors.canonicalNames.length
+    const maxVec = vectors.canonicalNames.length;
     const canonicalSets = Math.ceil(maxVec / setSz);
-    for (let i = 0; i < canonicalSets; i++){ 
-      describe(`Test ABI decoding on canonical tx vectors (Set #${i+1}/${canonicalSets})`, async () => {
+    for (let i = 0; i < canonicalSets; i++) {
+      describe(`Test ABI decoding on canonical tx vectors (Set #${
+        i + 1
+      }/${canonicalSets})`, async () => {
         for (let j = 0; j < setSz; j++) {
-          const idx = (i * setSz) + j;
+          const idx = i * setSz + j;
           if (idx < maxVec) {
             it(`(Canonical #${idx}/${maxVec}) ${vectors.canonicalNames[idx]}`, async () => {
               const req = buildEvmReq({
@@ -188,7 +201,7 @@ describe('[EVM ABI]', () => {
             });
           }
         }
-      })
+      });
     }
 
     /*

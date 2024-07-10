@@ -1,6 +1,6 @@
 import {
-  encryptedSecureRequest,
   LatticeSecureEncryptedRequestType,
+  encryptedSecureRequest,
 } from '../protocol';
 import {
   validateConnectedClient,

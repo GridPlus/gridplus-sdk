@@ -12,15 +12,15 @@ import { sha256 } from 'hash.js/lib/hash/sha';
 import { keccak256 } from 'js-sha3';
 import {
   BIP_CONSTANTS,
-  ethMsgProtocol,
   HARDENED_OFFSET,
+  ethMsgProtocol,
 } from '../../constants';
 import { jsonc } from 'jsonc';
 import { Constants } from '../..';
 import { getV, parseDER, randomBytes } from '../../util';
 import { Client } from '../../client';
 import { ProtocolConstants } from '../../protocol';
-import { getPathStr } from '../../shared/utilities'
+import { getPathStr } from '../../shared/utilities';
 import { TypedTransaction } from '@ethereumjs/tx';
 import { getEnv } from './getters';
 const SIGHASH_ALL = 0x01;
@@ -40,12 +40,15 @@ export const ETH_COIN = BIP_CONSTANTS.COINS.ETH;
 export const REUSABLE_KEY =
   '3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca';
 
-export function setupTestClient (env = getEnv() as any, stateData?: any): Client {
+export function setupTestClient(
+  env = getEnv() as any,
+  stateData?: any,
+): Client {
   if (stateData) {
     return new Client({ stateData });
   }
   const setup: any = {
-    name: env.name || 'SDK Test',
+    name: env.APP_NAME || 'SDK Test',
     baseUrl: env.baseUrl || 'https://signing.gridpl.us',
     timeout: 120000,
   };
@@ -71,14 +74,15 @@ export const unharden = (x) => {
 };
 
 export const buildPath = (indices) => {
-  let path = 'm'
+  let path = 'm';
   indices.forEach((idx) => {
-    path += `/${unharden(idx)}${idx >= HARDENED_OFFSET ? '\'' : ''}`;
-  })
+    // eslint-disable-next-line quotes
+    path += `/${unharden(idx)}${idx >= HARDENED_OFFSET ? "'" : ''}`;
+  });
   return path;
 };
 
-export function _getSumInputs (inputs) {
+export function _getSumInputs(inputs) {
   let sum = 0;
   inputs.forEach((input) => {
     sum += input.value;
@@ -86,7 +90,7 @@ export function _getSumInputs (inputs) {
   return sum;
 }
 
-export function _get_btc_addr (pubkey, purpose, network) {
+export function _get_btc_addr(pubkey, purpose, network) {
   let obj;
   if (purpose === BTC_PURPOSE_P2SH_P2WPKH) {
     // Wrapped segwit requires p2sh wrapping
@@ -103,7 +107,7 @@ export function _get_btc_addr (pubkey, purpose, network) {
   return obj.address;
 }
 
-export function _start_tx_builder (
+export function _start_tx_builder(
   wallet,
   recipient,
   value,
@@ -148,7 +152,7 @@ export function _start_tx_builder (
   return txb;
 }
 
-function _build_sighashes (txb, purpose) {
+function _build_sighashes(txb, purpose) {
   const hashes: any = [];
   txb.__inputs.forEach((input, i) => {
     if (purpose === BTC_PURPOSE_P2PKH) {
@@ -167,7 +171,7 @@ function _build_sighashes (txb, purpose) {
   return hashes;
 }
 
-function _get_reference_sighashes (
+function _get_reference_sighashes(
   wallet,
   recipient,
   value,
@@ -213,7 +217,7 @@ function _get_reference_sighashes (
   return _build_sighashes(txb, purpose);
 }
 
-function _btc_tx_request_builder (
+function _btc_tx_request_builder(
   inputs,
   recipient,
   value,
@@ -244,7 +248,7 @@ function _btc_tx_request_builder (
 }
 
 // Convert DER signature to buffer of form `${r}${s}`
-export function stripDER (derSig) {
+export function stripDER(derSig) {
   const parsed = parseDER(derSig);
   parsed.s = Buffer.from(parsed.s.slice(-32));
   parsed.r = Buffer.from(parsed.r.slice(-32));
@@ -254,17 +258,23 @@ export function stripDER (derSig) {
   return sig;
 }
 
-function _get_signing_keys (wallet, inputs, isTestnet, purpose) {
+function _get_signing_keys(wallet, inputs, isTestnet, purpose) {
   const currencyIdx = isTestnet === true ? 1 : 0;
   const keys: any = [];
   inputs.forEach((input) => {
-    const path = buildPath([purpose, harden(currencyIdx), harden(0), 0, input.signerIdx]);
+    const path = buildPath([
+      purpose,
+      harden(currencyIdx),
+      harden(0),
+      0,
+      input.signerIdx,
+    ]);
     keys.push(wallet.derivePath(path));
   });
   return keys;
 }
 
-function _generate_btc_address (isTestnet, purpose, rand) {
+function _generate_btc_address(isTestnet, purpose, rand) {
   const priv = Buffer.alloc(32);
   for (let j = 0; j < 8; j++) {
     // 32 bits of randomness per call
@@ -276,7 +286,7 @@ function _generate_btc_address (isTestnet, purpose, rand) {
   return _get_btc_addr(keyPair.publicKey, purpose, network);
 }
 
-export function setup_btc_sig_test (opts, wallet, inputs, rand) {
+export function setup_btc_sig_test(opts, wallet, inputs, rand) {
   const { isTestnet, useChange, spenderPurpose, recipientPurpose } = opts;
   const recipient = _generate_btc_address(isTestnet, recipientPurpose, rand);
   const sumInputs = _getSumInputs(inputs);
@@ -474,7 +484,7 @@ export const stringifyPath = (parent) => {
     // BIP32 style encoding
     let s = 'm';
     for (let i = 0; i < parent.pathDepth; i++) {
-      s += `/${convert(parent.idx[i])}`
+      s += `/${convert(parent.idx[i])}`;
     }
     return s;
   }
@@ -533,7 +543,7 @@ export const deserializeGetAddressesJobResult = function (res) {
   const getAddrResult = {
     count: 0,
     addresses: [] as any[],
-    pubOnly: undefined
+    pubOnly: undefined,
   };
   getAddrResult.pubOnly = res.readUInt8(off);
   off += 1;
@@ -744,9 +754,9 @@ export const deserializeExportSeedJobResult = function (res) {
   }
   const numWords = res.slice(off, off + 4).readUInt32LE(0);
   off += 4;
-  return { 
-    seed, 
-    mnemonic: words.slice(0, numWords).join(' '), 
+  return {
+    seed,
+    mnemonic: words.slice(0, numWords).join(' '),
   };
 };
 
@@ -775,7 +785,7 @@ export const serializeLoadSeedJobData = function (data) {
     // Serialize the mnemonic
     const mWords = data.mnemonic.split(' ');
     for (let i = 0; i < mWords.length; i++) {
-      req.writeUint32LE(wordlists.english.indexOf(mWords[i]), off + (i * 4));
+      req.writeUint32LE(wordlists.english.indexOf(mWords[i]), off + i * 4);
     }
     // Strangely the struct is written with the length of
     // words after the words themselves lol (24 words * 4 bytes per word = 96)
@@ -792,7 +802,7 @@ export const serializeLoadSeedJobData = function (data) {
 // Struct builders
 //---------------------------------------------------
 export const buildRandomEip712Object = function (randInt) {
-  function randStr (n) {
+  function randStr(n) {
     const words = wordlists['english'];
     let s = '';
     while (s.length < n) {
@@ -800,13 +810,13 @@ export const buildRandomEip712Object = function (randInt) {
     }
     return s.slice(0, n);
   }
-  function getRandomName (upperCase = false, sz = 20) {
+  function getRandomName(upperCase = false, sz = 20) {
     const name = randStr(sz);
     if (upperCase === true)
       return `${name.slice(0, 1).toUpperCase()}${name.slice(1)}`;
     return name;
   }
-  function getRandomEIP712Type (customTypes: any[] = []) {
+  function getRandomEIP712Type(customTypes: any[] = []) {
     const types = Object.keys(customTypes).concat(
       Object.keys(ethMsgProtocol.TYPED_DATA.typeCodes),
     );
@@ -815,7 +825,7 @@ export const buildRandomEip712Object = function (randInt) {
       type: types[randInt(types.length)],
     };
   }
-  function getRandomEIP712Val (type) {
+  function getRandomEIP712Val(type) {
     if (type !== 'bytes' && type.slice(0, 5) === 'bytes') {
       return `0x${randomBytes(parseInt(type.slice(5))).toString('hex')}`;
     } else if (type === 'uint' || type === 'int') {
@@ -838,7 +848,7 @@ export const buildRandomEip712Object = function (randInt) {
         throw new Error('unsupported eip712 type');
     }
   }
-  function buildCustomTypeVal (typeName, msg) {
+  function buildCustomTypeVal(typeName, msg) {
     const val = {};
     const subTypes = msg.types[typeName];
     subTypes.forEach((subType) => {
@@ -981,10 +991,10 @@ export const compressPubKey = function (pub) {
     compressed[0] = 0x02;
   }
   return compressed;
-}
+};
 
 export const getTestVectors = function () {
   return jsonc.parse(
-    readFileSync(`${process.cwd()}/src/__test__/vectors.jsonc`).toString()
+    readFileSync(`${process.cwd()}/src/__test__/vectors.jsonc`).toString(),
   );
-}
+};

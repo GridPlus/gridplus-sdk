@@ -1,11 +1,11 @@
 import { Constants } from '..';
 import {
-  DEFAULT_ETH_DERIVATION,
   BTC_LEGACY_DERIVATION,
   BTC_SEGWIT_DERIVATION,
   BTC_WRAPPED_SEGWIT_DERIVATION,
-  SOLANA_DERIVATION,
   CURRENCIES,
+  DEFAULT_ETH_DERIVATION,
+  SOLANA_DERIVATION,
 } from '../constants';
 import { isEIP712Payload, queue } from './utilities';
 

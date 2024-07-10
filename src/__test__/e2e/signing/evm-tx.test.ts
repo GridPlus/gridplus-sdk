@@ -8,9 +8,10 @@ import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { BN } from 'bn.js';
 import { encode as rlpEncode } from 'rlp';
 import { randomBytes } from '../../../util';
-import { buildEvmReq, DEFAULT_SIGNER, getNumIter } from '../../utils/builders';
+import { DEFAULT_SIGNER, buildEvmReq, getNumIter } from '../../utils/builders';
 import { runEvm } from '../../utils/runners';
-import { initializeClient, initializeSeed } from '../../utils/initializeClient';
+import { initializeSeed } from '../../utils/initializeClient';
+import { setupClient } from '../../utils/setup';
 //---------------------------------------
 // STATE DATA
 //---------------------------------------
@@ -20,7 +21,12 @@ let CURRENT_SEED = null;
 // TESTS
 //---------------------------------------
 describe('[EVM TX]', () => {
-  const client = initializeClient();
+  let client;
+
+  test('pair', async () => {
+    client = await setupClient();
+  });
+
   const runEvmTestForReq = (
     req?: any,
     bypassSetPayload?: boolean,

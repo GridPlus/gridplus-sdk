@@ -1,57 +1,10 @@
-import { connect, Utils } from '..';
 import { Client } from '../client';
 import {
-  saveClient,
-  loadClient,
-  setSaveClient,
-  setLoadClient,
   getFunctionQueue,
+  loadClient,
+  saveClient,
   setFunctionQueue,
 } from './state';
-
-/**
- * `setup` initializes the Client and executes `connect()` if necessary. It returns a promise that
- * resolves to a boolean that indicates whether the Client is paired to the application to which it's
- * attempting to connect.
- */
-export const setup = async ({
-  deviceId,
-  password,
-  name,
-  getStoredClient,
-  setStoredClient,
-}: {
-  deviceId?: string;
-  password?: string;
-  name?: string;
-  getStoredClient: () => string;
-  setStoredClient: (clientData: string | null) => void;
-}) => {
-  if (!getStoredClient) throw new Error('Client data getter required');
-  setSaveClient(buildSaveClientFn(setStoredClient));
-
-  if (!setStoredClient) throw new Error('Client data setter required');
-  setLoadClient(buildLoadClientFn(getStoredClient));
-
-  if (deviceId && password && name) {
-    const privKey = Utils.generateAppSecret(deviceId, password, name);
-    const client = new Client({ deviceId, privKey, name });
-    return client.connect(deviceId).then((isPaired) => {
-      saveClient(client.getStateData());
-      return isPaired;
-    });
-  } else {
-    const client = loadClient();
-    if (!client) throw new Error('Client not initialized');
-    const deviceId = client.getDeviceId();
-    if (!client.ephemeralPub && deviceId) {
-      return connect(deviceId);
-    } else {
-      saveClient(client.getStateData());
-      return Promise.resolve(true);
-    }
-  }
-};
 
 /**
  * `queue` is a function that wraps all functional API calls. It limits the number of concurrent
@@ -59,6 +12,8 @@ export const setup = async ({
  * This is necessary because the ephemeral public key must be updated after each successful request,
  * and two concurrent requests could result in the same key being used twice or the wrong key being
  * written to memory locally.
+ *
+ * @internal
  */
 export const queue = (fn: (client: Client) => Promise<any>) => {
   const client = loadClient();
@@ -93,7 +48,7 @@ const decodeClientData = (clientData: string) => {
   return Buffer.from(clientData, 'base64').toString();
 };
 
-const buildSaveClientFn = (
+export const buildSaveClientFn = (
   setStoredClient: (clientData: string | null) => void,
 ) => {
   return (clientData: string | null) => {
@@ -103,7 +58,7 @@ const buildSaveClientFn = (
   };
 };
 
-const buildLoadClientFn = (getStoredClient: () => string) => {
+export const buildLoadClientFn = (getStoredClient: () => string) => {
   return () => {
     const clientData = getStoredClient();
     if (!clientData) return undefined;

@@ -14,16 +14,16 @@ import { ecdsaRecover } from 'secp256k1';
 import { Calldata } from '.';
 import {
   BIP_CONSTANTS,
-  NETWORKS_BY_CHAIN_ID,
-  HARDENED_OFFSET,
-  VERSION_BYTE,
   EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
+  HARDENED_OFFSET,
+  NETWORKS_BY_CHAIN_ID,
+  VERSION_BYTE,
 } from './constants';
-import { 
-  LatticeResponseCode,
-  ProtocolConstants
-} from './protocol';
-import { isValidBlockExplorerResponse, isValid4ByteResponse } from './shared/validators';
+import { LatticeResponseCode, ProtocolConstants } from './protocol';
+import {
+  isValid4ByteResponse,
+  isValidBlockExplorerResponse,
+} from './shared/validators';
 
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
@@ -99,7 +99,7 @@ export const checksum = function (x) {
   // crc32 returns a signed integer - need to cast it to unsigned
   // Note that this uses the default 0xedb88320 polynomial
   return crc32.buf(x) >>> 0; // Need this to be a uint, hence the bit shift
-}
+};
 
 // Get a 74-byte padded DER-encoded signature buffer
 // `sig` must be the signature output from elliptic.js
@@ -111,7 +111,7 @@ export const toPaddedDER = function (sig) {
   const ds = Buffer.from(sig.toDER());
   ds.copy(b);
   return b;
-}
+};
 
 //--------------------------------------------------
 // TRANSACTION UTILS
@@ -145,7 +145,7 @@ export const isValidAssetPath = function (path, fwConstants) {
     (allowedCoins.indexOf(path[1]) >= 0 ||
       allowedMyCryptoCoins.indexOf(path[1] - HARDENED_OFFSET) > 0)
   );
-}
+};
 
 /** @internal */
 export const splitFrames = function (data, frameSz) {
@@ -157,10 +157,10 @@ export const splitFrames = function (data, frameSz) {
     off += frameSz;
   }
   return frames;
-}
+};
 
 /** @internal */
-function isBase10NumStr (x) {
+function isBase10NumStr(x) {
   const bn = new BigNum(x).toFixed().split('.').join('');
   const s = new String(x);
   // Note that the JS native `String()` loses precision for large numbers, but we only
@@ -190,10 +190,10 @@ export const ensureHexBuffer = function (x, zeroIsNull = true) {
     return Buffer.from(x, 'hex');
   } catch (err) {
     throw new Error(
-      `Cannot convert ${x.toString()} to hex buffer (${err.toString()})`
+      `Cannot convert ${x.toString()} to hex buffer (${err.toString()})`,
     );
   }
-}
+};
 
 /** @internal */
 export const fixLen = function (msg, length) {
@@ -203,7 +203,7 @@ export const fixLen = function (msg, length) {
     return buf;
   }
   return msg.slice(-length);
-}
+};
 
 //--------------------------------------------------
 // CRYPTO UTILS
@@ -215,19 +215,20 @@ export const aes256_encrypt = function (data, key) {
   const paddedData =
     data.length % 16 === 0 ? data : aes.padding.pkcs7.pad(data);
   return Buffer.from(aesCbc.encrypt(paddedData));
-}
+};
 
 /** @internal */
 export const aes256_decrypt = function (data, key) {
   const iv = Buffer.from(ProtocolConstants.aesIv);
   const aesCbc = new aes.ModeOfOperation.cbc(key, iv);
   return Buffer.from(aesCbc.decrypt(data));
-}
+};
 
 // Decode a DER signature. Returns signature object {r, s } or null if there is an error
 /** @internal */
 export const parseDER = function (sigBuf: Buffer) {
-  if (sigBuf[0] !== 0x30 || sigBuf[2] !== 0x02) throw new Error('Failed to decode DER signature');
+  if (sigBuf[0] !== 0x30 || sigBuf[2] !== 0x02)
+    throw new Error('Failed to decode DER signature');
   let off = 3;
   const rLen = sigBuf[off];
   off++;
@@ -239,19 +240,19 @@ export const parseDER = function (sigBuf: Buffer) {
   off++;
   const s = sigBuf.slice(off, off + sLen);
   return { r, s };
-}
+};
 
 /** @internal */
 export const getP256KeyPair = function (priv) {
   if (ec === undefined) ec = new EC('p256');
   return ec.keyFromPrivate(priv, 'hex');
-}
+};
 
 /** @internal */
 export const getP256KeyPairFromPub = function (pub) {
   if (ec === undefined) ec = new EC('p256');
   return ec.keyFromPublic(pub, 'hex');
-}
+};
 
 /** @internal */
 export const buildSignerPathBuf = function (signerPath, varAddrPathSzAllowed) {
@@ -261,7 +262,7 @@ export const buildSignerPathBuf = function (signerPath, varAddrPathSzAllowed) {
     throw new Error('Signer path must be <=5 indices.');
   if (!varAddrPathSzAllowed && signerPath.length !== 5)
     throw new Error(
-      'Your Lattice firmware only supports 5-index derivation paths. Please upgrade.'
+      'Your Lattice firmware only supports 5-index derivation paths. Please upgrade.',
     );
   buf.writeUInt32LE(signerPath.length, off);
   off += 4;
@@ -271,7 +272,7 @@ export const buildSignerPathBuf = function (signerPath, varAddrPathSzAllowed) {
     off += 4;
   }
   return buf;
-}
+};
 
 //--------------------------------------------------
 // OTHER UTILS
@@ -281,11 +282,12 @@ export const isAsciiStr = function (str, allowFormatChars = false) {
   if (typeof str !== 'string') {
     return false;
   }
-  const extraChars = allowFormatChars ?
-    [
-      0x0020, // Space
-      0x000a, // New line
-    ] : [];
+  const extraChars = allowFormatChars
+    ? [
+        0x0020, // Space
+        0x000a, // New line
+      ]
+    : [];
   for (let i = 0; i < str.length; i++) {
     const c = str.charCodeAt(i);
     if (extraChars.indexOf(c) < 0 && (c < 0x0020 || c > 0x007f)) {
@@ -293,12 +295,12 @@ export const isAsciiStr = function (str, allowFormatChars = false) {
     }
   }
   return true;
-}
+};
 
 /** @internal Check if a value exists in an object. Only checks first level of keys. */
 export const existsIn = function (val, obj) {
-  return Object.keys(obj).some(key => obj[key] === val);
-}
+  return Object.keys(obj).some((key) => obj[key] === val);
+};
 
 /** @internal Create a buffer of size `n` and fill it with random data */
 export const randomBytes = function (n) {
@@ -307,16 +309,16 @@ export const randomBytes = function (n) {
     buf[i] = Math.round(Math.random() * 255);
   }
   return buf;
-}
+};
 
 /** @internal `isUInt4` accepts a number and returns true if it is a UInt4 */
-export const isUInt4 = (n: number) => isInteger(n) && inRange(n, 0, 16)
+export const isUInt4 = (n: number) => isInteger(n) && inRange(n, 0, 16);
 
 /**
  * Fetches an external JSON file containing networks indexed by chain id from a GridPlus repo, and
  * returns the parsed JSON.
  */
-async function fetchExternalNetworkForChainId (
+async function fetchExternalNetworkForChainId(
   chainId: number | string,
 ): Promise<{
   [key: string]: {
@@ -326,8 +328,9 @@ async function fetchExternalNetworkForChainId (
   };
 }> {
   try {
-    const body = await fetch(EXTERNAL_NETWORKS_BY_CHAIN_ID_URL)
-      .then((res) => res.json());
+    const body = await fetch(EXTERNAL_NETWORKS_BY_CHAIN_ID_URL).then((res) =>
+      res.json(),
+    );
     if (body) {
       return body[chainId];
     } else {
@@ -338,10 +341,10 @@ async function fetchExternalNetworkForChainId (
   }
 }
 
-/** 
- * Builds a URL for fetching calldata from block explorers for any supported chains 
+/**
+ * Builds a URL for fetching calldata from block explorers for any supported chains
  * */
-function buildUrlForSupportedChainAndAddress ({ supportedChain, address }) {
+function buildUrlForSupportedChainAndAddress({ supportedChain, address }) {
   const baseUrl = supportedChain.baseUrl;
   const apiRoute = supportedChain.apiRoute;
   const urlWithRoute = `${baseUrl}/${apiRoute}&address=${address}`;
@@ -349,14 +352,14 @@ function buildUrlForSupportedChainAndAddress ({ supportedChain, address }) {
   const apiKey = process.env.ETHERSCAN_KEY;
   const apiKeyParam = apiKey ? `&apiKey=${process.env.ETHERSCAN_KEY}` : '';
 
-  return urlWithRoute + apiKeyParam
+  return urlWithRoute + apiKeyParam;
 }
 
 /**
  * Takes a list of ABI data objects and a selector, and returns the earliest ABI data object that
  * matches the selector.
  */
-export function selectDefFrom4byteABI (abiData: any[], selector: string) {
+export function selectDefFrom4byteABI(abiData: any[], selector: string) {
   if (abiData.length > 1) {
     console.warn('WARNING: There are multiple results. Using the first one.');
   }
@@ -372,21 +375,20 @@ export function selectDefFrom4byteABI (abiData: any[], selector: string) {
         def = Calldata.EVM.parsers.parseCanonicalName(
           selector,
           result.text_signature,
-        )
-        return !!def
+        );
+        return !!def;
+      } catch (err) {
+        return false;
       }
-      catch (err) {
-        return false
-      }
-    })
+    });
   if (def) {
-    return def
+    return def;
   } else {
-    throw new Error('Could not find definition for selector')
+    throw new Error('Could not find definition for selector');
   }
 }
 
-export async function fetchWithTimeout (url, options) {
+export async function fetchWithTimeout(url, options) {
   const { timeout = 8000 } = options;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -398,7 +400,7 @@ export async function fetchWithTimeout (url, options) {
   return response;
 }
 
-async function fetchAndCache (url, opts?) {
+async function fetchAndCache(url, opts?) {
   try {
     if (globalThis.caches && globalThis.Request) {
       const cache = await caches.open('gp-calldata');
@@ -428,7 +430,7 @@ async function fetchAndCache (url, opts?) {
   }
 }
 
-async function fetchSupportedChainData (
+async function fetchSupportedChainData(
   address: string,
   supportedChain: number,
 ) {
@@ -447,7 +449,7 @@ async function fetchSupportedChainData (
     });
 }
 
-async function fetch4byteData (selector: string): Promise<any> {
+async function fetch4byteData(selector: string): Promise<any> {
   const url = `https://www.4byte.directory/api/v1/signatures/?hex_signature=0x${selector}`;
   return await fetch(url)
     .then((res) => res.json())
@@ -463,8 +465,8 @@ async function fetch4byteData (selector: string): Promise<any> {
     });
 }
 
-function encodeDef (def: any) {
-  return Buffer.from(rlpEncode(def))
+function encodeDef(def: any) {
+  return Buffer.from(rlpEncode(def));
 }
 
 /**
@@ -473,14 +475,17 @@ function encodeDef (def: any) {
  * @param calldata - Raw transaction calldata
  * @return - Updated `def`
  */
-async function postProcessDef (def, calldata) {
+async function postProcessDef(def, calldata) {
   // Replace all nested defs if applicable. This is done by looping
   // through each param in the definition and if it is of type `bytes`
   // or `bytes[]`, checking the param value in `calldata`. If the param
   // value (or for `bytes[]` each underlying value) is of size (4 + 32*n)
   // it could be nested calldata. We should use that item's selector(s)
   // to look up nested definition(s).
-  const nestedCalldata = Calldata.EVM.processors.getNestedCalldata(def, calldata);
+  const nestedCalldata = Calldata.EVM.processors.getNestedCalldata(
+    def,
+    calldata,
+  );
   const nestedDefs = await replaceNestedDefs(nestedCalldata);
   // Need to recurse before doing the full replacement
   for await (const [i] of nestedDefs.entries()) {
@@ -492,15 +497,14 @@ async function postProcessDef (def, calldata) {
         if (nestedDefs[i][j] !== null) {
           nestedDefs[i][j] = await postProcessDef(
             nestedDefs[i][j],
-            Buffer.from(nestedCalldata[i][j].slice(2), 'hex')
+            Buffer.from(nestedCalldata[i][j].slice(2), 'hex'),
           );
         }
       }
-    }
-    else if (nestedDefs[i] !== null) {
+    } else if (nestedDefs[i] !== null) {
       nestedDefs[i] = await postProcessDef(
         nestedDefs[i],
-        Buffer.from(nestedCalldata[i].slice(2), 'hex')
+        Buffer.from(nestedCalldata[i].slice(2), 'hex'),
       );
     }
   }
@@ -520,11 +524,11 @@ async function postProcessDef (def, calldata) {
  *          defs behind one param (e.g. multicall pattern), ALL nested
  *          items must have defs associated or the item will map to a
  *          single `null` value in the return array.
- *          
+ *
  */
-async function replaceNestedDefs (possNestedDefs) {
+async function replaceNestedDefs(possNestedDefs) {
   // For all possible nested defs, attempt to fetch the underlying def
-  const nestedDefs = []
+  const nestedDefs = [];
   for await (const d of possNestedDefs) {
     if (d !== null) {
       if (Array.isArray(d)) {
@@ -534,7 +538,10 @@ async function replaceNestedDefs (possNestedDefs) {
           try {
             const _nestedSelector = _d.slice(2, 10);
             const _nestedAbi = await fetch4byteData(_nestedSelector);
-            const _nestedDef = selectDefFrom4byteABI(_nestedAbi, _nestedSelector);
+            const _nestedDef = selectDefFrom4byteABI(
+              _nestedAbi,
+              _nestedSelector,
+            );
             _nestedDefs.push(_nestedDef);
           } catch (err) {
             shouldInclude = false;
@@ -553,14 +560,14 @@ async function replaceNestedDefs (possNestedDefs) {
           const nestedDef = selectDefFrom4byteABI(nestedAbi, nestedSelector);
           nestedDefs.push(nestedDef);
         } catch (err) {
-          nestedDefs.push(null)
+          nestedDefs.push(null);
         }
       }
     } else {
       nestedDefs.push(null);
     }
   }
-  // For all nested defs, replace the 
+  // For all nested defs, replace the
   return nestedDefs;
 }
 
@@ -572,21 +579,28 @@ async function replaceNestedDefs (possNestedDefs) {
 /**
  *  Fetches calldata from a remote scanner based on the transaction's `chainId`
  */
-export async function fetchCalldataDecoder (_data: Uint8Array | string, to: string, _chainId: number | string, recurse = true) {
+export async function fetchCalldataDecoder(
+  _data: Uint8Array | string,
+  to: string,
+  _chainId: number | string,
+  recurse = true,
+) {
   try {
     // Exit if there is no data. The 2 comes from the 0x prefix, but a later
     // check will confirm that there are at least 4 bytes of data in the buffer.
     if (!_data || _data.length < 2) {
-      throw new Error('Data is either undefined or less than two bytes')
+      throw new Error('Data is either undefined or less than two bytes');
     }
-    const isHexString = typeof _data === 'string' && _data.slice(0, 2) === '0x'
-    const data = isHexString ?
-      Buffer.from(_data.slice(2), 'hex') :
-      //@ts-expect-error - Buffer doesn't recognize Uint8Array type properly
-      Buffer.from(_data, 'hex');
+    const isHexString = typeof _data === 'string' && _data.slice(0, 2) === '0x';
+    const data = isHexString
+      ? Buffer.from(_data.slice(2), 'hex')
+      : //@ts-expect-error - Buffer doesn't recognize Uint8Array type properly
+        Buffer.from(_data, 'hex');
 
     if (data.length < 4) {
-      throw new Error('Data must contain at least 4 bytes of data to define the selector')
+      throw new Error(
+        'Data must contain at least 4 bytes of data to define the selector',
+      );
     }
     const selector = Buffer.from(data.slice(0, 4)).toString('hex');
     // Convert the chainId to a number and use it to determine if we can call out to
@@ -598,32 +612,35 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
       : await fetchExternalNetworkForChainId(chainId);
     try {
       if (supportedChain) {
-        const abi = await fetchSupportedChainData(to, supportedChain)
-        const parsedAbi = Calldata.EVM.parsers.parseSolidityJSONABI(selector, abi)
+        const abi = await fetchSupportedChainData(to, supportedChain);
+        const parsedAbi = Calldata.EVM.parsers.parseSolidityJSONABI(
+          selector,
+          abi,
+        );
         let def = parsedAbi.def;
         if (recurse) {
           def = await postProcessDef(def, data);
         }
-        return { abi, def: encodeDef(def) }
+        return { abi, def: encodeDef(def) };
       } else {
-        throw new Error(`Chain (id: ${chainId}) is not supported`)
+        throw new Error(`Chain (id: ${chainId}) is not supported`);
       }
     } catch (err) {
       console.warn(err.message, '\n', 'Falling back to 4byte');
     }
 
     // Fallback to checking 4byte
-    const abi = await fetch4byteData(selector)
-    let def = selectDefFrom4byteABI(abi, selector)
+    const abi = await fetch4byteData(selector);
+    let def = selectDefFrom4byteABI(abi, selector);
     if (recurse) {
       def = await postProcessDef(def, data);
     }
-    return { abi, def: encodeDef(def) }
+    return { abi, def: encodeDef(def) };
   } catch (err) {
-    console.warn(`Fetching calldata failed: ${err.message}`)
+    console.warn(`Fetching calldata failed: ${err.message}`);
   }
 
-  return { def: null, abi: null }
+  return { def: null, abi: null };
 }
 
 /**
@@ -635,8 +652,8 @@ export async function fetchCalldataDecoder (_data: Uint8Array | string, to: stri
  * @public
  */
 export const generateAppSecret = (
-   deviceId: Buffer | string,
-   password: Buffer | string,
+  deviceId: Buffer | string,
+  password: Buffer | string,
   appName: Buffer | string,
 ): Buffer => {
   const deviceIdBuffer =
@@ -700,9 +717,9 @@ export const getV = function (tx, resp) {
   } else {
     // @ethereumjs/tx object passed in
     type = tx._type;
-    hash = type ?
-      tx.getMessageToSign(true) :             // newer tx types
-      rlpEncode(tx.getMessageToSign(false));  // legacy tx
+    hash = type
+      ? tx.getMessageToSign(true) // newer tx types
+      : rlpEncode(tx.getMessageToSign(false)); // legacy tx
     if (tx.supports(Capability.EIP155ReplayProtection)) {
       chainId = tx.common.chainIdBN().toNumber();
     }
@@ -721,7 +738,9 @@ export const getV = function (tx, resp) {
     recovery = 1;
   } else {
     // If we fail a second time, exit here.
-    throw new Error('Failed to recover V parameter. Bad signature or transaction data.');
+    throw new Error(
+      'Failed to recover V parameter. Bad signature or transaction data.',
+    );
   }
   // Newer transaction types just use the [0, 1] value
   if (type) {
@@ -734,11 +753,11 @@ export const getV = function (tx, resp) {
   // EIP155 replay protection is included in the `v` param
   // and uses the chainId value.
   return chainId.muln(2).addn(35).addn(recovery);
-}
+};
 
 /** @internal */
 export const EXTERNAL = {
   fetchCalldataDecoder,
   generateAppSecret,
   getV,
-}
+};

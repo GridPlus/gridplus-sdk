@@ -1,10 +1,10 @@
 import { Constants } from '../../..';
 import { getNumIter } from '../../utils/builders';
-import { prandomBuf, ethPersonalSignMsg } from '../../utils/helpers';
+import { ethPersonalSignMsg, prandomBuf } from '../../utils/helpers';
 import { runGeneric } from '../../utils/runners';
 import { HARDENED_OFFSET } from '../../../constants';
 import { getPrng } from '../../utils/getters';
-import { initializeClient } from '../../utils/initializeClient';
+import { setupClient } from '../../utils/setup';
 
 const prng = getPrng();
 const numIter = getNumIter();
@@ -17,7 +17,12 @@ const DEFAULT_SIGNER = [
 ];
 
 describe('[Unformatted]', () => {
-  const client = initializeClient();
+  let client;
+
+  test('pair', async () => {
+    client = await setupClient();
+  });
+
   const getReq = (overrides: any) => ({
     data: {
       signerPath: DEFAULT_SIGNER,
