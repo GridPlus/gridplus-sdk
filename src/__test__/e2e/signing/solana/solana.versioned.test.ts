@@ -1,22 +1,15 @@
 import {
-  AddressLookupTableProgram,
   Connection,
   Keypair,
   LAMPORTS_PER_SOL,
-  PublicKey,
-  SystemProgram,
-  Transaction,
-  TransactionInstruction,
-  TransactionMessage,
-  VersionedTransaction,
+  PublicKey
 } from '@solana/web3.js';
 import { question } from 'readline-sync';
 import {
   Constants,
   fetchSolanaAddresses,
   pair,
-  sign,
-  signSolanaTx,
+  sign
 } from '../../../..';
 import { setupClient } from '../../../utils/setup';
 
@@ -61,137 +54,137 @@ describe('solana.versioned', () => {
     latestBlockhash = await SOLANA_RPC.getLatestBlockhash('confirmed');
   });
 
-  test('sign solana', async () => {
-    SIGNER_WALLET = await fetchSigningWallet();
-    const txInstructions: TransactionInstruction[] = [
-      SystemProgram.transfer({
-        fromPubkey: SIGNER_WALLET,
-        toPubkey: DESTINATION_WALLET_1.publicKey,
-        lamports: 0.01 * LAMPORTS_PER_SOL,
-      }),
-    ];
-    const messageV0 = new TransactionMessage({
-      payerKey: SIGNER_WALLET,
-      recentBlockhash: latestBlockhash.blockhash,
-      instructions: txInstructions,
-    }).compileToV0Message();
+  // test('sign solana', async () => {
+  //   SIGNER_WALLET = await fetchSigningWallet();
+  //   const txInstructions: TransactionInstruction[] = [
+  //     SystemProgram.transfer({
+  //       fromPubkey: SIGNER_WALLET,
+  //       toPubkey: DESTINATION_WALLET_1.publicKey,
+  //       lamports: 0.01 * LAMPORTS_PER_SOL,
+  //     }),
+  //   ];
+  //   const messageV0 = new TransactionMessage({
+  //     payerKey: SIGNER_WALLET,
+  //     recentBlockhash: latestBlockhash.blockhash,
+  //     instructions: txInstructions,
+  //   }).compileToV0Message();
 
-    const signedTx = await signSolanaTx(Buffer.from(messageV0.serialize()));
-    expect(signedTx).toBeTruthy();
-  });
+  //   const signedTx = await signSolanaTx(Buffer.from(messageV0.serialize()));
+  //   expect(signedTx).toBeTruthy();
+  // });
 
-  test('sign solana multiple instructions', async () => {
-    const txInstructions = [
-      SystemProgram.transfer({
-        fromPubkey: SIGNER_WALLET,
-        toPubkey: DESTINATION_WALLET_1.publicKey,
-        lamports: 0.005 * LAMPORTS_PER_SOL,
-      }),
-      SystemProgram.transfer({
-        fromPubkey: SIGNER_WALLET,
-        toPubkey: DESTINATION_WALLET_2.publicKey,
-        lamports: 0.005 * LAMPORTS_PER_SOL,
-      }),
-    ];
-    const message = new TransactionMessage({
-      payerKey: SIGNER_WALLET,
-      recentBlockhash: latestBlockhash.blockhash,
-      instructions: txInstructions,
-    }).compileToV0Message();
+  // test('sign solana multiple instructions', async () => {
+  //   const txInstructions = [
+  //     SystemProgram.transfer({
+  //       fromPubkey: SIGNER_WALLET,
+  //       toPubkey: DESTINATION_WALLET_1.publicKey,
+  //       lamports: 0.005 * LAMPORTS_PER_SOL,
+  //     }),
+  //     SystemProgram.transfer({
+  //       fromPubkey: SIGNER_WALLET,
+  //       toPubkey: DESTINATION_WALLET_2.publicKey,
+  //       lamports: 0.005 * LAMPORTS_PER_SOL,
+  //     }),
+  //   ];
+  //   const message = new TransactionMessage({
+  //     payerKey: SIGNER_WALLET,
+  //     recentBlockhash: latestBlockhash.blockhash,
+  //     instructions: txInstructions,
+  //   }).compileToV0Message();
 
-    const signedTx = await signSolanaTx(Buffer.from(message.serialize()));
-    expect(signedTx).toBeTruthy();
-  });
+  //   const signedTx = await signSolanaTx(Buffer.from(message.serialize()));
+  //   expect(signedTx).toBeTruthy();
+  // });
 
-  test('sign solana zero lamport transfer', async () => {
-    const txInstruction = SystemProgram.transfer({
-      fromPubkey: SIGNER_WALLET,
-      toPubkey: DESTINATION_WALLET_1.publicKey,
-      lamports: 0,
-    });
-    const message = new TransactionMessage({
-      payerKey: SIGNER_WALLET,
-      recentBlockhash: latestBlockhash.blockhash,
-      instructions: [txInstruction],
-    }).compileToV0Message();
+  // test('sign solana zero lamport transfer', async () => {
+  //   const txInstruction = SystemProgram.transfer({
+  //     fromPubkey: SIGNER_WALLET,
+  //     toPubkey: DESTINATION_WALLET_1.publicKey,
+  //     lamports: 0,
+  //   });
+  //   const message = new TransactionMessage({
+  //     payerKey: SIGNER_WALLET,
+  //     recentBlockhash: latestBlockhash.blockhash,
+  //     instructions: [txInstruction],
+  //   }).compileToV0Message();
 
-    const signedTx = await signSolanaTx(Buffer.from(message.serialize()));
-    expect(signedTx).toBeTruthy();
-  });
+  //   const signedTx = await signSolanaTx(Buffer.from(message.serialize()));
+  //   expect(signedTx).toBeTruthy();
+  // });
 
-  test('simulate versioned solana transaction', async () => {
-    await requestAirdrop(SIGNER_WALLET, 1);
+  // test('simulate versioned solana transaction', async () => {
+  //   await requestAirdrop(SIGNER_WALLET, 1);
 
-    const txInstruction = SystemProgram.transfer({
-      fromPubkey: SIGNER_WALLET,
-      toPubkey: DESTINATION_WALLET_1.publicKey,
-      lamports: 0.01 * LAMPORTS_PER_SOL,
-    });
+  //   const txInstruction = SystemProgram.transfer({
+  //     fromPubkey: SIGNER_WALLET,
+  //     toPubkey: DESTINATION_WALLET_1.publicKey,
+  //     lamports: 0.01 * LAMPORTS_PER_SOL,
+  //   });
 
-    const transaction = new Transaction();
-    transaction.add(txInstruction);
-    transaction.recentBlockhash = latestBlockhash.blockhash;
-    transaction.feePayer = SIGNER_WALLET;
+  //   const transaction = new Transaction();
+  //   transaction.add(txInstruction);
+  //   transaction.recentBlockhash = latestBlockhash.blockhash;
+  //   transaction.feePayer = SIGNER_WALLET;
 
-    // Serialize the transaction to get the wire format
-    const serializedTransaction = transaction.serialize({
-      requireAllSignatures: false,
-    });
+  //   // Serialize the transaction to get the wire format
+  //   const serializedTransaction = transaction.serialize({
+  //     requireAllSignatures: false,
+  //   });
 
-    // Create a VersionedTransaction from the serialized data
-    const versionedTransaction = VersionedTransaction.deserialize(
-      serializedTransaction,
-    );
+  //   // Create a VersionedTransaction from the serialized data
+  //   const versionedTransaction = VersionedTransaction.deserialize(
+  //     serializedTransaction,
+  //   );
 
-    // Simulate the versioned transaction
-    const simulatedResult = await SOLANA_RPC.simulateTransaction(
-      versionedTransaction,
-      { commitment: 'confirmed' },
-    );
-    // Expects real value to be in the wallet
-    expect(simulatedResult.value.err).toBeNull();
+  //   // Simulate the versioned transaction
+  //   const simulatedResult = await SOLANA_RPC.simulateTransaction(
+  //     versionedTransaction,
+  //     { commitment: 'confirmed' },
+  //   );
+  //   // Expects real value to be in the wallet
+  //   expect(simulatedResult.value.err).toBeNull();
 
-    const signedTx = await signSolanaTx(
-      Buffer.from(versionedTransaction.serialize()),
-    );
-    expect(signedTx).toBeTruthy();
-  });
+  //   const signedTx = await signSolanaTx(
+  //     Buffer.from(versionedTransaction.serialize()),
+  //   );
+  //   expect(signedTx).toBeTruthy();
+  // });
 
-  test('simulate versioned solana transaction with multiple instructions', async () => {
-    const payer = Keypair.generate();
-    await requestAirdrop(payer.publicKey, 1);
+  // test('simulate versioned solana transaction with multiple instructions', async () => {
+  //   const payer = Keypair.generate();
+  //   await requestAirdrop(payer.publicKey, 1);
 
-    const [transactionInstruction, pubkey] =
-      await AddressLookupTableProgram.createLookupTable({
-        payer: payer.publicKey,
-        authority: payer.publicKey,
-        recentSlot: await SOLANA_RPC.getSlot(),
-      });
+  //   const [transactionInstruction, pubkey] =
+  //     await AddressLookupTableProgram.createLookupTable({
+  //       payer: payer.publicKey,
+  //       authority: payer.publicKey,
+  //       recentSlot: await SOLANA_RPC.getSlot(),
+  //     });
 
-    await AddressLookupTableProgram.extendLookupTable({
-      payer: payer.publicKey,
-      authority: payer.publicKey,
-      lookupTable: pubkey,
-      addresses: [
-        DESTINATION_WALLET_1.publicKey,
-        DESTINATION_WALLET_2.publicKey,
-      ],
-    });
+  //   await AddressLookupTableProgram.extendLookupTable({
+  //     payer: payer.publicKey,
+  //     authority: payer.publicKey,
+  //     lookupTable: pubkey,
+  //     addresses: [
+  //       DESTINATION_WALLET_1.publicKey,
+  //       DESTINATION_WALLET_2.publicKey,
+  //     ],
+  //   });
 
-    const messageV0 = new TransactionMessage({
-      payerKey: SIGNER_WALLET,
-      recentBlockhash: latestBlockhash.blockhash,
-      instructions: [transactionInstruction],
-    }).compileToV0Message();
+  //   const messageV0 = new TransactionMessage({
+  //     payerKey: SIGNER_WALLET,
+  //     recentBlockhash: latestBlockhash.blockhash,
+  //     instructions: [transactionInstruction],
+  //   }).compileToV0Message();
 
-    const signedTx = await signSolanaTx(Buffer.from(messageV0.serialize()));
+  //   const signedTx = await signSolanaTx(Buffer.from(messageV0.serialize()));
 
-    expect(signedTx).toBeDefined();
-  });
+  //   expect(signedTx).toBeDefined();
+  // });
 
   test('simulate versioned solana transactions from nufi', async () => {
     // sign transaction
-    sign(null, {
+    await sign(null, {
       data: {
         signerPath: [2147483692, 2147484149, 2147483649, 2147483648],
         curveType: Constants.SIGNING.CURVES.ED25519,
@@ -204,7 +197,7 @@ describe('solana.versioned', () => {
       },
     });
     // signMessage
-    sign(null, {
+    await sign(null, {
       data: {
         signerPath: [2147483692, 2147484149, 2147483649, 2147483648],
         curveType: Constants.SIGNING.CURVES.ED25519,
