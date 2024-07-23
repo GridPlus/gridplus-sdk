@@ -2,9 +2,9 @@
 // does not have browser (or, by proxy, React-Native) support.
 import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory } from '@ethereumjs/tx';
+import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
 import BN from 'bignumber.js';
 import cbor from 'borc';
-import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
 import { keccak256 } from 'js-sha3';
 import { encode as rlpEncode } from 'rlp';
 import secp256k1 from 'secp256k1';
@@ -853,6 +853,18 @@ function parseEIP712Msg(msg, typeName, types, forJSParser = false) {
   return msg;
 }
 
+class PatchedBN extends BN {
+  // compatibility hack with borc lib which may internally use a different
+  // version of the lib which could then cause internal check for type to
+  // fail, ultimately resulting in incorrect serialization of bignumber instances
+  // passed from outside
+  // this line in borc (instanceof instead of `isBigNumber()` check) seems to be the source of the issue:
+  // https://github.com/dignifiedquire/borc/blob/1bd231963344d8ce2dfb9d9bcf04ea29ff4875de/src/encoder.js#L329
+  encodeCBOR(gen) {
+    return gen._pushBigNumber(gen, this);
+  }
+}
+
 function parseEIP712Item(data, type, forJSParser = false) {
   if (type === 'bytes') {
     // Variable sized bytes need to be buffer type
@@ -900,7 +912,7 @@ function parseEIP712Item(data, type, forJSParser = false) {
     // TODO: Find another cbor lib that is compataible with the firmware's lib in a browser
     // context. This is surprisingly difficult - I tried several libs and only cbor/borc have
     // worked (borc is a supposedly "browser compatible" version of cbor)
-    data = new BN(data);
+    data = new PatchedBN(data);
   } else if (
     ethMsgProtocol.TYPED_DATA.typeCodes[type] &&
     (type.indexOf('uint') > -1 || type.indexOf('int') > -1)
@@ -918,8 +930,9 @@ function parseEIP712Item(data, type, forJSParser = false) {
       // For EIP712 encoding in this module we need strings to represent the numbers
       data = `0x${b.toString('hex')}`;
     } else {
-      // Load into bignumber.js used by cbor lib
-      data = new BN(b.toString('hex'), 16);
+      // Load into patched bignumber.js to bypass potential mismatch with bignumber version used
+      // by borc lib internally
+      data = new PatchedBN(b.toString('hex'), 16);
     }
   } else if (type === 'bool') {
     // Booleans need to be cast to a u8
