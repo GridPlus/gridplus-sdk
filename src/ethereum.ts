@@ -76,7 +76,7 @@ const validateEthereumMsgResponse = function (res, req) {
     const digest = prehash ? prehash : encoded;
     const chainId = parseInt(input.payload.domain.chainId, 16);
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
-    return addRecoveryParam(digest, sig, signer, { chainId });
+    return addRecoveryParam(digest, sig, signer, { chainId, useEIP155: false });
   } else {
     throw new Error('Unsupported protocol');
   }
