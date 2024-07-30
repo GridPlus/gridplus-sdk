@@ -191,7 +191,7 @@ describe('[EVM ABI]', () => {
               // should uncomment these prints and validate that the `data` matches
               // what you see on the screen for each case. Please scroll through
               // ALL the data on the Lattice to confirm each param has properly decoded.
-              // const { types, data } = convertDecoderToEthers(rlpDecode(req.data.decoder).slice(1));
+              // const { types, data } = convertDecoderToEthers(RLP.decode(req.data.decoder).slice(1));
               // console.log('types', types)
               // console.log('params', JSON.stringify(data))
               // for (let cd = 2; cd < calldata.length; cd += 64) {

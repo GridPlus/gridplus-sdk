@@ -6,7 +6,7 @@ You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.
 import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { BN } from 'bn.js';
-import { encode as rlpEncode } from 'rlp';
+import { RLP } from '@ethereumjs/rlp';
 import { randomBytes } from '../../../util';
 import { DEFAULT_SIGNER, buildEvmReq, getNumIter } from '../../utils/builders';
 import { runEvm } from '../../utils/runners';
@@ -254,7 +254,7 @@ describe('[EVM TX]', () => {
         const dummyTx = EthTxFactory.fromTxData(req.txData, {
           common: req.common,
         });
-        const dummyTxSz = rlpEncode(dummyTx.getMessageToSign(false)).length;
+        const dummyTxSz = RLP.encode(dummyTx.getMessageToSign(false)).length;
         const rlpPrefixSz = 4; // 1 byte for descriptor, 1 byte for length, 2 bytes for length
         const maxDataSz = maxSz - dummyTxSz - rlpPrefixSz;
 
@@ -289,7 +289,7 @@ describe('[EVM TX]', () => {
         const getParamPayloadReq = (n: number, val?: any) => {
           const params = tx.getMessageToSign(false);
           params[n] = oversizedInt;
-          return { data: { payload: val ? val : rlpEncode(params) } };
+          return { data: { payload: val ? val : RLP.encode(params) } };
         };
         // Test numerical values >32 bytes
         // ---

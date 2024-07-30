@@ -10,7 +10,7 @@ import { testRequest } from './testRequest';
 import BN from 'bn.js';
 import { Constants } from '../..';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
-import { encode as rlpEncode } from 'rlp';
+import { RLP } from '@ethereumjs/rlp';
 import { getDeviceId } from './getters';
 import { ensureHexBuffer } from '../../util';
 
@@ -63,7 +63,7 @@ export async function runEvm(
   if (tx._type === 0 && !bypassSetPayload) {
     // The @ethereumjs/tx Transaction APIs differ here
     // Legacy transaction
-    req.data.payload = rlpEncode(tx.getMessageToSign(false));
+    req.data.payload = RLP.encode(tx.getMessageToSign(false));
   } else if (!bypassSetPayload) {
     // Newer transaction type
     req.data.payload = tx.getMessageToSign(false);
