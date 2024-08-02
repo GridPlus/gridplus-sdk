@@ -974,10 +974,10 @@ const ethConvertLegacyToGenericReq = function (req) {
   // slightly different APIs around this.
   if (req.type) {
     // Newer transaction types
-    return tx.getMessageToSign(false);
+    return tx.getMessageToSign();
   } else {
     // Legacy transaction type
-    return Buffer.from(RLP.encode(tx.getMessageToSign(false)));
+    return Buffer.from(RLP.encode(tx.getMessageToSign()));
   }
 };
 
