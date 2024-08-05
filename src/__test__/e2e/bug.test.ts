@@ -1,7 +1,8 @@
 /* eslint-disable quotes */
 import { question } from 'readline-sync';
-import { fetchAddressesByDerivationPath, pair } from '../../api';
+import { fetchAddresses, pair } from '../../api';
 import { setupClient } from '../utils/setup';
+import { HARDENED_OFFSET } from '../../constants';
 
 describe('bug', () => {
   test('pair', async () => {
@@ -13,6 +14,14 @@ describe('bug', () => {
   });
 
   test('fetch cosmos', async () => {
-    await fetchAddressesByDerivationPath(`1852'/1815'/0'/0/0`);
+    await fetchAddresses({
+      startPath: [
+        HARDENED_OFFSET + 1852,
+        HARDENED_OFFSET + 1815,
+        HARDENED_OFFSET,
+        0,
+        0,
+      ],
+    });
   });
 });
