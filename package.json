@@ -19,6 +19,7 @@
     "test-utils": "vitest src/__test__/utils/__test__/",
     "e2e": "vitest src/__test__/e2e",
     "e2e-btc": "vitest src/__test__/e2e/btc.test.ts",
+    "rog-test": "vitest src/__test__/e2e/bug.test.ts",
     "e2e-eth": "vitest src/__test__/e2e/eth.msg.test.ts",
     "e2e-gen": "vitest src/__test__/e2e/general.test.ts",
     "e2e-kv": "vitest src/__test__/e2e/kv.test.ts",

@@ -89,17 +89,17 @@ export const encodeGetAddressesRequest = ({
   fwConstants: FirmwareConstants;
   wallet: Wallet;
 }) => {
-  const flags = fwConstants.getAddressFlags || ([] as any[]);
-  const isPubkeyOnly =
-    flags.indexOf(flag) > -1 &&
-    (flag === LatticeGetAddressesFlag.ed25519Pubkey ||
-      flag === LatticeGetAddressesFlag.secp256k1Pubkey ||
-      flag === LatticeGetAddressesFlag.bls12_381Pubkey);
-  if (!isPubkeyOnly && !isValidAssetPath(startPath, fwConstants)) {
-    throw new Error(
-      'Derivation path or flag is not supported. Try updating Lattice firmware.',
-    );
-  }
+  // const flags = fwConstants.getAddressFlags || ([] as any[]);
+  // const isPubkeyOnly =
+  //   flags.indexOf(flag) > -1 &&
+  //   (flag === LatticeGetAddressesFlag.ed25519Pubkey ||
+  //     flag === LatticeGetAddressesFlag.secp256k1Pubkey ||
+  //     flag === LatticeGetAddressesFlag.bls12_381Pubkey);
+  // if (!isPubkeyOnly && !isValidAssetPath(startPath, fwConstants)) {
+  //   throw new Error(
+  //     'Derivation path or flag is not supported. Try updating Lattice firmware.',
+  //   );
+  // }
   let sz = 32 + 20 + 1; // walletUID + 5 u32 indices + count/flag
   if (fwConstants.varAddrPathSzAllowed) {
     sz += 1; // pathDepth
