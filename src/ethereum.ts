@@ -76,7 +76,7 @@ const validateEthereumMsgResponse = function (res, req) {
     const digest = prehash ? prehash : encoded;
     const chainId = parseInt(input.payload.domain.chainId, 16);
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
-    return addRecoveryParam(digest, sig, signer, { chainId });
+    return addRecoveryParam(digest, sig, signer, { chainId, useEIP155: false });
   } else {
     throw new Error('Unsupported protocol');
   }
@@ -495,7 +495,7 @@ function getRecoveryParam(v, txData: any = {}) {
   // transaction payload.
   if (type === 1 || type === 2) {
     return ensureHexBuffer(v, true); // 0 or 1, with 0 expected as an empty buffer
-  } else if (false === useEIP155 || chainId === null) {
+  } else if (!useEIP155 || !chainId) {
     // For ETH messages and non-EIP155 chains the set should be [27, 28] for `v`
     return Buffer.from(new BN(v).plus(27).toString(16), 'hex');
   }
