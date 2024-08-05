@@ -9,7 +9,8 @@ import { sha256 } from 'hash.js/lib/hash/sha';
 import { keccak256 } from 'js-sha3';
 import inRange from 'lodash/inRange';
 import isInteger from 'lodash/isInteger';
-import { decode as rlpDecode, encode as rlpEncode } from 'rlp';
+import { RLP } from '@ethereumjs/rlp';
+import { Buffer } from 'buffer';
 import { ecdsaRecover } from 'secp256k1';
 import { Calldata } from '.';
 import {
@@ -466,7 +467,7 @@ async function fetch4byteData(selector: string): Promise<any> {
 }
 
 function encodeDef(def: any) {
-  return Buffer.from(rlpEncode(def));
+  return Buffer.from(RLP.encode(def));
 }
 
 /**
@@ -692,7 +693,7 @@ export const getV = function (tx, resp) {
   if (txIsBuf) {
     hash = Buffer.from(keccak256(tx), 'hex');
     try {
-      const legacyTxArray = rlpDecode(tx);
+      const legacyTxArray = RLP.decode(tx);
       if (legacyTxArray.length === 6) {
         // Six item array means this is a pre-EIP155 transaction
         chainId = null;
@@ -719,7 +720,7 @@ export const getV = function (tx, resp) {
     type = tx._type;
     hash = type
       ? tx.getMessageToSign(true) // newer tx types
-      : rlpEncode(tx.getMessageToSign(false)); // legacy tx
+      : RLP.encode(tx.getMessageToSign(false)); // legacy tx
     if (tx.supports(Capability.EIP155ReplayProtection)) {
       chainId = tx.common.chainIdBN().toNumber();
     }
