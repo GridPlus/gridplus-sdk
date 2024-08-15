@@ -18,6 +18,7 @@
     "test-int": "vitest src/__test__/integration/",
     "test-utils": "vitest src/__test__/utils/__test__/",
     "e2e": "vitest src/__test__/e2e",
+    "addr": "vitest src/__test__/e2e/addr.test.ts",
     "e2e-btc": "vitest src/__test__/e2e/btc.test.ts",
     "e2e-eth": "vitest src/__test__/e2e/eth.msg.test.ts",
     "e2e-gen": "vitest src/__test__/e2e/general.test.ts",

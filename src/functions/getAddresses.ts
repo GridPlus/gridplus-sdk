@@ -26,6 +26,7 @@ export async function getAddresses({
   startPath: _startPath,
   n: _n,
   flag: _flag,
+  iterIdx,
 }: GetAddressesRequestFunctionParams): Promise<Buffer[]> {
   const { url, sharedSecret, ephemeralPub, fwConstants } =
     validateConnectedClient(client);
@@ -43,6 +44,7 @@ export async function getAddresses({
     flag,
     fwConstants,
     wallet: activeWallet,
+    iterIdx,
   });
 
   const { decryptedData, newEphemeralPub } = await encryptedSecureRequest({
@@ -82,12 +84,14 @@ export const encodeGetAddressesRequest = ({
   flag,
   fwConstants,
   wallet,
+  iterIdx,
 }: {
   startPath: number[];
   n: number;
   flag: number;
   fwConstants: FirmwareConstants;
   wallet: Wallet;
+  iterIdx?: number;
 }) => {
   const flags = fwConstants.getAddressFlags || ([] as any[]);
   const isPubkeyOnly =
@@ -100,54 +104,49 @@ export const encodeGetAddressesRequest = ({
       'Derivation path or flag is not supported. Try updating Lattice firmware.',
     );
   }
-  let sz = 32 + 20 + 1; // walletUID + 5 u32 indices + count/flag
-  if (fwConstants.varAddrPathSzAllowed) {
-    sz += 1; // pathDepth
-  } else if (startPath.length !== 5) {
-    throw new Error(
-      'Your Lattice firmware only supports derivation paths with 5 indices. Please upgrade.',
-    );
+
+  // Ensure path depth is valid (2-5 indices)
+  if (startPath.length < 2 || startPath.length > 5) {
+    throw new Error('Derivation path must include 2-5 indices.');
   }
+
+  // Validate iterIdx (0-5)
+  if (iterIdx < 0 || iterIdx > 5) {
+    throw new Error('Iteration index must be between 0 and 5.');
+  }
+
+  // Ensure iterIdx is not greater than path depth
+  if (iterIdx > startPath.length) {
+    throw new Error('Iteration index cannot be greater than path depth.');
+  }
+
+  const sz = 32 + 1 + 20 + 1; // walletUID + pathDepth_IterIdx + 5 u32 indices + count/flag
   const payload = Buffer.alloc(sz);
   let off = 0;
+
+  // walletUID
   wallet.uid.copy(payload, off);
   off += 32;
+
+  // pathDepth_IterIdx
+  const pathDepth_IterIdx = ((iterIdx & 0x0f) << 4) | (startPath.length & 0x0f);
+  payload.writeUInt8(pathDepth_IterIdx, off);
+  off += 1;
+
   // Build the start path (5x u32 indices)
-  if (fwConstants.varAddrPathSzAllowed) {
-    payload.writeUInt8(startPath.length, off);
-    off += 1;
-  }
   for (let i = 0; i < 5; i++) {
-    if (i <= startPath.length) {
-      const val = startPath[i] ?? 0;
-      payload.writeUInt32BE(val, off);
-    }
+    const val = i < startPath.length ? startPath[i] : 0;
+    payload.writeUInt32BE(val, off);
     off += 4;
   }
-  // Specify the number of subsequent addresses to request. We also allow the user to skip the
-  // cache and request any address related to the asset in the wallet.
-  let val,
-    flagVal: UInt4 = 0;
-  if (fwConstants.addrFlagsAllowed) {
-    // A 4-bit flag can be used for non-standard address requests Client needs to be combined with
-    // `n` as a 4 bit value
-    flagVal =
-      fwConstants.getAddressFlags &&
-      fwConstants.getAddressFlags.indexOf(flag) > -1
-        ? (flag as UInt4)
-        : 0;
-    const flagBits = bitwise.nibble.read(flagVal);
-    const countBits = bitwise.nibble.read(n as UInt4);
-    val = bitwise.byte.write(flagBits.concat(countBits) as Byte);
-  } else {
-    // Very old firmware does not support client flag. We can deprecate client soon.
-    val = n;
-  }
-  payload.writeUInt8(val, off);
-  off++;
+
+  // Combine count and flag into a single byte
+  const countVal = n & 0x0f;
+  const flagVal = (flag & 0x0f) << 4;
+  payload.writeUInt8(countVal | flagVal, off);
+
   return payload;
 };
-
 /**
  * @internal
  * @return an array of address strings or pubkey buffers
