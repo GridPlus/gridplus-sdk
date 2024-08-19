@@ -6,7 +6,7 @@ import {
 import { AbiCoder } from '@ethersproject/abi';
 import { keccak256 } from 'js-sha3';
 import randomWords from 'random-words';
-import { decode as rlpDecode, encode as rlpEncode } from 'rlp';
+import { RLP } from '@ethereumjs/rlp';
 import { Calldata, Constants } from '../..';
 import { Client } from '../../client';
 import {
@@ -303,9 +303,9 @@ export const buildEncDefs = (vectors: any) => {
     const name = vectors.canonicalNames[i];
     const selector = `0x${keccak256(name).slice(0, 8)}`;
     const def = EVMCalldata.parsers.parseCanonicalName(selector, name);
-    const encDef = Buffer.from(rlpEncode(def));
+    const encDef = Buffer.from(RLP.encode(def));
     encDefs.push(encDef);
-    const { types, data } = convertDecoderToEthers(rlpDecode(encDef).slice(1));
+    const { types, data } = convertDecoderToEthers(RLP.decode(encDef).slice(1));
     const calldata = coder.encode(types, data);
     encDefsCalldata.push(`${selector}${calldata.slice(2)}`);
   }

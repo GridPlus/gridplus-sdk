@@ -6,7 +6,7 @@ import BN from 'bignumber.js';
 import cbor from 'borc';
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
 import { keccak256 } from 'js-sha3';
-import { encode as rlpEncode } from 'rlp';
+import { RLP } from '@ethereumjs/rlp';
 import secp256k1 from 'secp256k1';
 import {
   ASCII_REGEX,
@@ -76,7 +76,7 @@ const validateEthereumMsgResponse = function (res, req) {
     const digest = prehash ? prehash : encoded;
     const chainId = parseInt(input.payload.domain.chainId, 16);
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
-    return addRecoveryParam(digest, sig, signer, { chainId });
+    return addRecoveryParam(digest, sig, signer, { chainId, useEIP155: false });
   } else {
     throw new Error('Unsupported protocol');
   }
@@ -431,7 +431,7 @@ const buildEthRawTx = function (tx, sig, address) {
   // See: https://github.com/ethereumjs/ethereumjs-tx/blob/master/src/transaction.ts#L187
   newRawTx.push(stripZeros(newSig.r));
   newRawTx.push(stripZeros(newSig.s));
-  let rlpEncodedWithSig = Buffer.from(rlpEncode(newRawTx));
+  let rlpEncodedWithSig = Buffer.from(RLP.encode(newRawTx));
   if (tx.type) {
     rlpEncodedWithSig = Buffer.concat([
       Buffer.from([tx.type]),
@@ -495,7 +495,7 @@ function getRecoveryParam(v, txData: any = {}) {
   // transaction payload.
   if (type === 1 || type === 2) {
     return ensureHexBuffer(v, true); // 0 or 1, with 0 expected as an empty buffer
-  } else if (false === useEIP155 || chainId === null) {
+  } else if (!useEIP155 || !chainId) {
     // For ETH messages and non-EIP155 chains the set should be [27, 28] for `v`
     return Buffer.from(new BN(v).plus(27).toString(16), 'hex');
   }
@@ -940,10 +940,10 @@ function get_rlp_encoded_preimage(rawTx, txType) {
   if (txType) {
     return Buffer.concat([
       Buffer.from([txType]),
-      Buffer.from(rlpEncode(rawTx)),
+      Buffer.from(RLP.encode(rawTx)),
     ]);
   } else {
-    return Buffer.from(rlpEncode(rawTx));
+    return Buffer.from(RLP.encode(rawTx));
   }
 }
 
@@ -974,10 +974,10 @@ const ethConvertLegacyToGenericReq = function (req) {
   // slightly different APIs around this.
   if (req.type) {
     // Newer transaction types
-    return tx.getMessageToSign(false);
+    return tx.getMessageToSign();
   } else {
     // Legacy transaction type
-    return Buffer.from(rlpEncode(tx.getMessageToSign(false)));
+    return Buffer.from(RLP.encode(tx.getMessageToSign()));
   }
 };
 

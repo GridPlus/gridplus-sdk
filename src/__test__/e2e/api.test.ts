@@ -3,7 +3,7 @@ import { getClient } from './../../api/utilities';
 import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory } from '@ethereumjs/tx';
 import { question } from 'readline-sync';
-import { encode } from 'rlp';
+import { RLP } from '@ethereumjs/rlp';
 import {
   fetchActiveWallets,
   fetchAddress,
@@ -120,7 +120,7 @@ describe('API', () => {
         });
 
         test('legacy', async () => {
-          const rawTx = encode([
+          const rawTx = RLP.encode([
             txData.nonce,
             txData.gasPrice,
             txData.gasLimit,
