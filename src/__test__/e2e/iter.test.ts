@@ -1,4 +1,3 @@
-/* eslint-disable quotes */
 import { question } from 'readline-sync';
 import { fetchAddresses, pair } from '../../api';
 import { setupClient } from '../utils/setup';
