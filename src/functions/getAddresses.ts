@@ -1,5 +1,3 @@
-import bitwise from 'bitwise';
-import { Byte, UInt4 } from 'bitwise/types';
 import {
   LatticeGetAddressesFlag,
   LatticeSecureEncryptedRequestType,
