@@ -32,6 +32,7 @@
     "e2e-sign-unformatted": "vitest src/__test__/e2e/signing/unformatted.test.ts",
     "e2e-wj": "vitest src/__test__/e2e/wallet-jobs.test.ts",
     "e2e-api": "vitest src/__test__/e2e/api.test.ts",
+    "e2e-iter": "vitest src/__test__/e2e/iter.test.ts",
     "contracts": "vitest src/__test__/e2e/contracts.test.ts"
   },
   "files": [
