@@ -10,7 +10,7 @@ exports[`encoders > getAddresses > encodeGetAddressesRequest with ED25519_PUB 1`
 
 exports[`encoders > getAddresses > encodeGetAddressesRequest with SECP256K1_PUB 1`] = `"162b56efe561c12bc93f703dc7026b3ec3d53923270c9259e2b08015fb9defd2058000002c8000003c80000000000000000000000031"`;
 
-exports[`encoders > getAddresses > encodeGetAddressesRequest with default flag 1`] = `"162b56efe561c12bc93f703dc7026b3ec3d53923270c9259e2b08015fb9defd2058000002c8000003c80000000000000000000000001"`;
+exports[`encoders > getAddresses > encodeGetAddressesRequest with default flag 1`] = `"162b56efe561c12bc93f703dc7026b3ec3d53923270c9259e2b08015fb9defd2058000002c8000003c80000000000000000000000011"`;
 
 exports[`encoders > pair > pair encoder 1`] = `"11111111111111111111111111111111"`;
 
