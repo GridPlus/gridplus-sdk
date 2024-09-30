@@ -189,14 +189,21 @@ export const fetchBip44ChangeAddresses = async (
   return Promise.all(addresses);
 };
 
-function parseDerivationPath(path: string): number[] {
-  return path.split('/').map((part) => {
-    // eslint-disable-next-line quotes
-    if (part.endsWith("'")) {
-      return parseInt(part.slice(0, -1)) + 0x80000000;
-    }
-    return part.toLowerCase() === 'x' ? 0 : parseInt(part);
-  });
+export function parseDerivationPath(path: string): number[] {
+  if (!path) return [];
+  return path
+    .split('/')
+    .filter(Boolean)
+    .map((part) => {
+      if (part.toLowerCase() === 'x') return 0;
+      if (part.toLowerCase() === "x'") return 0x80000000; // Hardened zero
+      if (part.endsWith("'")) return parseInt(part.slice(0, -1)) + 0x80000000;
+      const val = parseInt(part);
+      if (isNaN(val)) {
+        throw new Error(`Invalid part in derivation path: ${part}`);
+      }
+      return val;
+    });
 }
 
 export async function fetchAddressesByDerivationPath(

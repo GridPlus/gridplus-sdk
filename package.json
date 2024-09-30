@@ -12,6 +12,7 @@
     "prepublish": "",
     "test": "vitest /src/__test__/unit /src/__test__/integration",
     "test-unit": "vitest src/__test__/unit",
+    "unit-api": "vitest src/__test__/unit/api.test.ts",
     "unit-decode": "vitest src/__test__/unit/decoders.test.ts",
     "unit-encode": "vitest src/__test__/unit/encoders.test.ts",
     "unit-validators": "vitest src/__test__/unit/validators.test.ts",
