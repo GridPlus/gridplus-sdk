@@ -1,5 +1,6 @@
 /* eslint-disable quotes */
-import { parseDerivationPath } from '../../api/addresses';
+
+import { parseDerivationPath } from '../../api/utilities';
 
 describe('parseDerivationPath', () => {
   it('parses a simple derivation path correctly', () => {
