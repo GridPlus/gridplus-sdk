@@ -180,8 +180,9 @@ export class Client {
     startPath,
     n = 1,
     flag = 0,
+    iterIdx = 0,
   }: GetAddressesRequestParams): Promise<Buffer[] | string[]> {
-    return this.retryWrapper(getAddresses, { startPath, n, flag });
+    return this.retryWrapper(getAddresses, { startPath, n, flag, iterIdx });
   }
 
   /**

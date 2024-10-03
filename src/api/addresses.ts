@@ -12,7 +12,7 @@ import {
   MAX_ADDR,
   SOLANA_DERIVATION,
 } from '../constants';
-import { getStartPath, queue } from './utilities';
+import { getStartPath, parseDerivationPath, queue } from './utilities';
 
 type FetchAddressesParams = {
   n?: number;
@@ -188,16 +188,6 @@ export const fetchBip44ChangeAddresses = async (
   }
   return Promise.all(addresses);
 };
-
-function parseDerivationPath(path: string): number[] {
-  return path.split('/').map((part) => {
-    // eslint-disable-next-line quotes
-    if (part.endsWith("'")) {
-      return parseInt(part.slice(0, -1)) + 0x80000000;
-    }
-    return part.toLowerCase() === 'x' ? 0 : parseInt(part);
-  });
-}
 
 export async function fetchAddressesByDerivationPath(
   path: string,
