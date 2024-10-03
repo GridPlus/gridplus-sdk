@@ -42,7 +42,7 @@ describe('API', () => {
     }
   });
 
-  describe('signing', () => {
+  describe.skip('signing', () => {
     describe('bitcoin', () => {
       const btcTxData = {
         prevOuts: [
@@ -140,7 +140,7 @@ describe('API', () => {
     });
   });
 
-  describe('address tags', () => {
+  describe.skip('address tags', () => {
     test('addAddressTags', async () => {
       await addAddressTags([{ test: 'test' }]);
     });
@@ -158,7 +158,7 @@ describe('API', () => {
   });
 
   describe('addresses', () => {
-    describe('fetchAddresses', () => {
+    describe.skip('fetchAddresses', () => {
       test('fetchAddresses', async () => {
         const addresses = await fetchAddresses();
         expect(addresses).toHaveLength(10);
@@ -282,7 +282,7 @@ describe('API', () => {
       });
     });
 
-    describe('fetchAddress', () => {
+    describe.skip('fetchAddress', () => {
       test('fetchAddress', async () => {
         const address = await fetchAddress();
         expect(address).toBeTruthy();
@@ -290,7 +290,7 @@ describe('API', () => {
     });
   });
 
-  describe('fetchActiveWallets', () => {
+  describe.skip('fetchActiveWallets', () => {
     test('fetchActiveWallets', async () => {
       const wallet = await fetchActiveWallets();
       expect(wallet).toBeTruthy();

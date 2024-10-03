@@ -195,6 +195,7 @@ export async function fetchAddressesByDerivationPath(
 ): Promise<string[]> {
   const parsedPath = parseDerivationPath(path);
   const hasWildcard = path.toLowerCase().includes('x');
+  const wildcardIndex = parsedPath.findIndex((part) => part === 0);
 
   if (!hasWildcard) {
     return queue((client) =>
@@ -205,7 +206,6 @@ export async function fetchAddressesByDerivationPath(
     );
   }
 
-  const wildcardIndex = parsedPath.findIndex((part) => part === 0);
   const basePath = parsedPath.slice(0, wildcardIndex);
 
   const addresses: string[] = [];
@@ -218,6 +218,7 @@ export async function fetchAddressesByDerivationPath(
     const result = await queue((client) =>
       client.getAddresses({
         startPath: currentPath,
+        iterIdx: wildcardIndex,
         n: 1,
       }),
     );
