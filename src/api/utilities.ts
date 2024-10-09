@@ -90,7 +90,13 @@ export const isEIP712Payload = (payload: any) =>
   'primaryType' in payload &&
   'message' in payload;
 
-export function parseDerivationPath(components: string[]): number[] {
+export function parseDerivationPath(path: string): number[] {
+  if (!path) return [];
+  const components = path.split('/').filter(Boolean);
+  return parseDerivationPathComponents(components);
+}
+
+export function parseDerivationPathComponents(components: string[]): number[] {
   return components.map((part) => {
     const lowerPart = part.toLowerCase();
     if (lowerPart === 'x') return 0; // Wildcard

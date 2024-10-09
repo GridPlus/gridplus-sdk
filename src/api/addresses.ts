@@ -14,7 +14,7 @@ import {
 } from '../constants';
 import {
   getStartPath,
-  parseDerivationPath,
+  parseDerivationPathComponents,
   queue,
   getFlagFromPath,
 } from './utilities';
@@ -197,7 +197,7 @@ export async function fetchAddressesByDerivationPath(
   { n = 1, startPathIndex = 0 }: FetchAddressesParams = {},
 ): Promise<string[]> {
   const components = path.split('/').filter(Boolean);
-  const parsedPath = parseDerivationPath(components);
+  const parsedPath = parseDerivationPathComponents(components);
   const flag = getFlagFromPath(parsedPath);
   const wildcardIndex = components.findIndex((part) =>
     part.toLowerCase().includes('x'),
