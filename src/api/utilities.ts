@@ -5,6 +5,7 @@ import {
   saveClient,
   setFunctionQueue,
 } from './state';
+import { EXTERNAL, HARDENED_OFFSET } from '../constants';
 
 /**
  * `queue` is a function that wraps all functional API calls. It limits the number of concurrent
@@ -91,17 +92,28 @@ export const isEIP712Payload = (payload: any) =>
 
 export function parseDerivationPath(path: string): number[] {
   if (!path) return [];
-  return path
-    .split('/')
-    .filter(Boolean)
-    .map((part) => {
-      if (part.toLowerCase() === 'x') return 0;
-      if (part.toLowerCase() === "x'") return 0x80000000; // Hardened zero
-      if (part.endsWith("'")) return parseInt(part.slice(0, -1)) + 0x80000000;
-      const val = parseInt(part);
-      if (isNaN(val)) {
-        throw new Error(`Invalid part in derivation path: ${part}`);
-      }
-      return val;
-    });
+  const components = path.split('/').filter(Boolean);
+  return parseDerivationPathComponents(components);
+}
+
+export function parseDerivationPathComponents(components: string[]): number[] {
+  return components.map((part) => {
+    const lowerPart = part.toLowerCase();
+    if (lowerPart === 'x') return 0; // Wildcard
+    if (lowerPart === "x'") return HARDENED_OFFSET; // Hardened wildcard
+    if (part.endsWith("'"))
+      return parseInt(part.slice(0, -1)) + HARDENED_OFFSET;
+    const val = parseInt(part);
+    if (isNaN(val)) {
+      throw new Error(`Invalid part in derivation path: ${part}`);
+    }
+    return val;
+  });
+}
+
+export function getFlagFromPath(path: number[]): number | undefined {
+  if (path.length >= 2 && path[1] === 501 + HARDENED_OFFSET) {
+    return EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB; // SOLANA
+  }
+  return undefined;
 }
