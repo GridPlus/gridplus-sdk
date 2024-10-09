@@ -254,6 +254,17 @@ describe('API', () => {
         addresses.forEach((address) => expect(address).toBeTruthy());
       });
 
+      test('fetch solana addresses with wildcard in middle of path', async () => {
+        const addresses = await fetchAddressesByDerivationPath(
+          "44'/501'/X'/0'",
+          {
+            n: 1,
+          },
+        );
+        expect(addresses).toHaveLength(1);
+        addresses.forEach((address) => expect(address).toBeTruthy());
+      });
+
       test('error on invalid derivation path', async () => {
         await expect(
           fetchAddressesByDerivationPath('invalid/path'),

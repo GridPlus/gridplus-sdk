@@ -12,7 +12,12 @@ import {
   MAX_ADDR,
   SOLANA_DERIVATION,
 } from '../constants';
-import { getStartPath, parseDerivationPath, queue } from './utilities';
+import {
+  getStartPath,
+  parseDerivationPathComponents,
+  queue,
+  getFlagFromPath,
+} from './utilities';
 
 type FetchAddressesParams = {
   n?: number;
@@ -160,12 +165,10 @@ export const fetchLedgerLegacyAddresses = async (
   return Promise.all(addresses);
 };
 
-export const fetchBip44ChangeAddresses = async (
-  { n, startPathIndex }: FetchAddressesParams = {
-    n: MAX_ADDR,
-    startPathIndex: 0,
-  },
-) => {
+export const fetchBip44ChangeAddresses = async ({
+  n = MAX_ADDR,
+  startPathIndex = 0,
+}: FetchAddressesParams = {}) => {
   const addresses = [];
   for (let i = 0; i < n; i++) {
     addresses.push(
@@ -193,31 +196,33 @@ export async function fetchAddressesByDerivationPath(
   path: string,
   { n = 1, startPathIndex = 0 }: FetchAddressesParams = {},
 ): Promise<string[]> {
-  const parsedPath = parseDerivationPath(path);
-  const hasWildcard = path.toLowerCase().includes('x');
+  const components = path.split('/').filter(Boolean);
+  const parsedPath = parseDerivationPathComponents(components);
+  const flag = getFlagFromPath(parsedPath);
+  const wildcardIndex = components.findIndex((part) =>
+    part.toLowerCase().includes('x'),
+  );
 
-  if (!hasWildcard) {
+  if (wildcardIndex === -1) {
     return queue((client) =>
       client.getAddresses({
         startPath: parsedPath,
-        n: 1,
+        flag,
+        n,
       }),
     );
   }
 
-  const wildcardIndex = parsedPath.findIndex((part) => part === 0);
-  const basePath = parsedPath.slice(0, wildcardIndex);
-
   const addresses: string[] = [];
   for (let i = 0; i < n; i++) {
-    const currentPath = [
-      ...basePath,
-      startPathIndex + i,
-      ...parsedPath.slice(wildcardIndex + 1),
-    ];
+    const currentPath = [...parsedPath];
+    currentPath[wildcardIndex] =
+      currentPath[wildcardIndex] + startPathIndex + i;
+
     const result = await queue((client) =>
       client.getAddresses({
         startPath: currentPath,
+        flag,
         n: 1,
       }),
     );
