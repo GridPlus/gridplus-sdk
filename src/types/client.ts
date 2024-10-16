@@ -1,8 +1,10 @@
-type Currency = keyof typeof CURRENCIES;
+import { CURRENCIES } from '../constants';
 
-type SigningPath = number[];
+export type Currency = keyof typeof CURRENCIES;
 
-interface SignData {
+export type SigningPath = number[];
+
+export interface SignData {
   tx?: string;
   txHash?: string;
   changeRecipient?: string;
@@ -16,9 +18,9 @@ interface SignData {
   err?: string;
 }
 
-type SigningRequestResponse = SignData | { pubkey: null; sig: null };
+export type SigningRequestResponse = SignData | { pubkey: null; sig: null };
 
-interface TransactionPayload {
+export interface TransactionPayload {
   type: number;
   gasPrice: number;
   nonce: number;
@@ -30,7 +32,7 @@ interface TransactionPayload {
   maxPriorityFeePerGas: number;
 }
 
-interface Wallet {
+export interface Wallet {
   /** 32 byte id */
   uid: Buffer;
   /** 20 char (max) string */
@@ -41,19 +43,19 @@ interface Wallet {
   external: boolean;
 }
 
-interface ActiveWallets {
+export interface ActiveWallets {
   internal: Wallet;
   external: Wallet;
 }
 
-interface RequestParams {
+export interface RequestParams {
   url: string;
   payload: any; //TODO Fix this any
   timeout?: number;
   retries?: number;
 }
 
-interface ClientStateData {
+export interface ClientStateData {
   activeWallets: ActiveWallets;
   ephemeralPub: Buffer;
   fwVersion: Buffer;

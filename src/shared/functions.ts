@@ -13,6 +13,7 @@ import {
   shouldUseEVMLegacyConverter,
 } from './predicates';
 import { validateRequestError } from './validators';
+import { Currency, FirmwareConstants, RequestParams } from '../types';
 
 export const buildTransaction = ({
   data,

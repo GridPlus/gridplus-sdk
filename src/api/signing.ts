@@ -7,6 +7,12 @@ import {
   DEFAULT_ETH_DERIVATION,
   SOLANA_DERIVATION,
 } from '../constants';
+import {
+  SignRequestParams,
+  SignData,
+  EIP712MessagePayload,
+  BitcoinSignPayload,
+} from '../types';
 import { isEIP712Payload, queue } from './utilities';
 
 export const sign = async (

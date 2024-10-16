@@ -6,6 +6,7 @@ import {
   LatticeSignEncoding,
   LatticeSignHash,
 } from './protocol/latticeConstants';
+import { FirmwareConstants, FirmwareArr, ActiveWallets } from './types';
 
 /**
  * Externally exported constants used for building requests

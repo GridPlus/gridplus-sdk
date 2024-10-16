@@ -34,6 +34,14 @@ import {
 } from '../util';
 import { getEphemeralId, request } from '../shared/functions';
 import { validateEphemeralPub } from '../shared/validators';
+import {
+  DecryptedResponse,
+  LatticeSecureRequestPayload,
+  LatticeMessageHeader,
+  LatticeSecureRequest,
+  LatticeSecureConnectRequestPayloadData,
+  LatticeSecureDecryptedResponse,
+} from '../types';
 
 const { msgSizes } = Constants;
 const { secure: szs } = msgSizes;

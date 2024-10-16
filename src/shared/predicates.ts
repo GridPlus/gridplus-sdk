@@ -1,4 +1,5 @@
 import { LatticeResponseCode } from '../protocol';
+import { FirmwareVersion, FirmwareConstants } from '../types';
 import { isFWSupported } from './utilities';
 
 export const isDeviceBusy = (responseCode: number) =>

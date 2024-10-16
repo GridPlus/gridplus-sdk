@@ -19,6 +19,18 @@ import {
 import { buildRetryWrapper } from './shared/functions';
 import { getPubKeyBytes } from './shared/utilities';
 import { validateEphemeralPub } from './shared/validators';
+import {
+  KeyPair,
+  ActiveWallets,
+  GetAddressesRequestParams,
+  SignRequestParams,
+  SignData,
+  AddKvRecordsRequestParams,
+  GetKvRecordsRequestParams,
+  GetKvRecordsData,
+  RemoveKvRecordsRequestParams,
+  FetchEncDataRequest,
+} from './types';
 import { getP256KeyPair, getP256KeyPairFromPub, randomBytes } from './util';
 
 /**

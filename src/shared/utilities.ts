@@ -1,4 +1,5 @@
 import { HARDENED_OFFSET } from '../constants';
+import { KeyPair, ActiveWallets, FirmwareVersion } from '../types';
 
 /**
  * Get 64 bytes representing the public key This is the uncompressed key without the leading 04
