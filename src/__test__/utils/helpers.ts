@@ -23,6 +23,7 @@ import { ProtocolConstants } from '../../protocol';
 import { getPathStr } from '../../shared/utilities';
 import { TypedTransaction } from '@ethereumjs/tx';
 import { getEnv } from './getters';
+import { setStoredClient } from './setup';
 const SIGHASH_ALL = 0x01;
 const secp256k1 = new EC('secp256k1');
 const ed25519 = new EdDSA('ed25519');
@@ -51,6 +52,7 @@ export function setupTestClient(
     name: env.APP_NAME || 'SDK Test',
     baseUrl: env.baseUrl || 'https://signing.gridpl.us',
     timeout: 120000,
+    setStoredClient,
   };
 
   // If the user passes a deviceID in the env, we assume they have previously
