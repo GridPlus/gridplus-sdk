@@ -58,7 +58,7 @@ export class Client {
   /** A wrapper function for handling retries and injecting the {@link Client} class  */
   private retryWrapper: (fn: any, params?: any) => Promise<any>;
   /** Function to set the stored client data */
-  private setStoredClient: (clientData: string | null) => void;
+  private setStoredClient: (clientData: string | null) => Promise<void>;
 
   /**
    * @param params - Parameters are passed as an object.
@@ -91,7 +91,7 @@ export class Client {
     /** The ID of the connected Lattice */
     deviceId?: string;
     /** Function to set the stored client data */
-    setStoredClient?: (clientData: string | null) => void;
+    setStoredClient?: (clientData: string | null) => Promise<void>;
   }) {
     this.name = name || 'Unknown';
     this.baseUrl = baseUrl || BASE_URL;

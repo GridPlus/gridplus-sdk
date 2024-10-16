@@ -22,15 +22,15 @@ expect.extend({
   },
 });
 
-export const setStoredClient = (data: string) => {
+export const setStoredClient = async (data: string) => {
   try {
     fs.writeFileSync('./client.temp', data);
   } catch (err) {
-    return '';
+    return;
   }
 };
 
-export const getStoredClient = () => {
+export const getStoredClient = async () => {
   try {
     return fs.readFileSync('./client.temp', 'utf8');
   } catch (err) {
