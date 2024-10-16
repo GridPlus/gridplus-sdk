@@ -15,8 +15,8 @@ type SetupParameters = {
   deviceId: string;
   password: string;
   name: string;
-  getStoredClient: () => string;
-  setStoredClient: (clientData: string | null) => void;
+  getStoredClient: () => Promise<string>;
+  setStoredClient: (clientData: string | null) => Promise<void>;
 };
 
 /**
@@ -49,18 +49,18 @@ export const setup = async ({
   if (deviceId && password && name) {
     const privKey = Utils.generateAppSecret(deviceId, password, name);
     const client = new Client({ deviceId, privKey, name });
-    return client.connect(deviceId).then((isPaired) => {
-      saveClient(client.getStateData());
+    return client.connect(deviceId).then(async (isPaired) => {
+      await saveClient(client.getStateData());
       return isPaired;
     });
   } else {
-    const client = loadClient();
+    const client = await loadClient();
     if (!client) throw new Error('Client not initialized');
     const deviceId = client.getDeviceId();
     if (!client.ephemeralPub && deviceId) {
       return connect(deviceId);
     } else {
-      saveClient(client.getStateData());
+      await saveClient(client.getStateData());
       return Promise.resolve(true);
     }
   }
