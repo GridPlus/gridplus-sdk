@@ -4,7 +4,7 @@ import { setSaveClient, setLoadClient, saveClient, loadClient } from './state';
 import { buildLoadClientFn, buildSaveClientFn, queue } from './utilities';
 
 /**
- * @interface {Object} SetupParameters - paramaters for the setup function
+ * @interface {Object} SetupParameters - parameters for the setup function
  * @prop {string} SetupParameters.deviceId - the device id of the client
  * @prop {string} SetupParameters.password - the password of the client
  * @prop {string} SetupParameters.name - the name of the client
@@ -18,12 +18,12 @@ type SetupParameters =
       password: string;
       name: string;
       appSecret?: string;
-      getStoredClient: () => string;
-      setStoredClient: (clientData: string | null) => void;
+      getStoredClient: () => Promise<string>;
+      setStoredClient: (clientData: string | null) => Promise<void>;
     }
   | {
-      getStoredClient: () => string;
-      setStoredClient: (clientData: string | null) => void;
+      getStoredClient: () => Promise<string>;
+      setStoredClient: (clientData: string | null) => Promise<void>;
     };
 
 /**
@@ -57,18 +57,18 @@ export const setup = async (params: SetupParameters): Promise<boolean> => {
       privKey,
       name: params.name,
     });
-    return client.connect(params.deviceId).then((isPaired) => {
-      saveClient(client.getStateData());
+    return client.connect(params.deviceId).then(async (isPaired) => {
+      await saveClient(client.getStateData());
       return isPaired;
     });
   } else {
-    const client = loadClient();
+    const client = await loadClient();
     if (!client) throw new Error('Client not initialized');
     const deviceId = client.getDeviceId();
     if (!client.ephemeralPub && deviceId) {
       return connect(deviceId);
     } else {
-      saveClient(client.getStateData());
+      await saveClient(client.getStateData());
       return Promise.resolve(true);
     }
   }

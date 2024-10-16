@@ -1,14 +1,14 @@
 import { Client } from '../client';
 
-export let saveClient: (clientData: string | null) => void;
+export let saveClient: (clientData: string | null) => Promise<void>;
 
-export const setSaveClient = (fn: (clientData: string | null) => void) => {
+export const setSaveClient = (fn: (clientData: string | null) => Promise<void>) => {
   saveClient = fn;
 };
 
-export let loadClient: () => Client | undefined;
+export let loadClient: () => Promise<Client | undefined>;
 
-export const setLoadClient = (fn: () => Client | undefined) => {
+export const setLoadClient = (fn: () => Promise<Client | undefined>) => {
   loadClient = fn;
 };
 
