@@ -10,7 +10,7 @@ import { KeyPair, ActiveWallets, FirmwareVersion } from '../types';
  */
 export const getPubKeyBytes = (key: KeyPair, LE = false) => {
   const k = key.getPublic();
-  const p = k.encode('hex');
+  const p = k.encode('hex', true);
   const pb = Buffer.from(p, 'hex');
   if (LE === true) {
     // Need to flip X and Y components to little endian

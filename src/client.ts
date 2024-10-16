@@ -352,7 +352,7 @@ export class Client {
     activeWallets,
   }: {
     deviceId?: string;
-    ephemeralPub?: Buffer;
+    ephemeralPub?: KeyPair;
     url?: string;
     isPaired?: boolean;
     fwVersion?: Buffer;
@@ -390,7 +390,7 @@ export class Client {
             capabilities: this.activeWallets.external.capabilities,
           },
         },
-        ephemeralPub: this.ephemeralPub?.getPublic()?.encode('hex'),
+        ephemeralPub: this.ephemeralPub?.getPublic()?.encode('hex', true),
         fwVersion: this.fwVersion?.toString('hex'),
         deviceId: this.deviceId,
         name: this.name,

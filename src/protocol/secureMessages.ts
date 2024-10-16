@@ -41,6 +41,7 @@ import {
   LatticeSecureRequest,
   LatticeSecureConnectRequestPayloadData,
   LatticeSecureDecryptedResponse,
+  KeyPair,
 } from '../types';
 
 const { msgSizes } = Constants;
@@ -101,7 +102,7 @@ export async function encryptedSecureRequest({
   data: Buffer;
   requestType: LatticeSecureEncryptedRequestType;
   sharedSecret: Buffer;
-  ephemeralPub: Buffer;
+  ephemeralPub: KeyPair;
   url: string;
 }): Promise<DecryptedResponse> {
   // Generate a random message id for internal tracking
@@ -268,7 +269,7 @@ function serializeSecureRequestEncryptedPayloadData({
 }: {
   data: Buffer;
   requestType: LatticeSecureEncryptedRequestType;
-  ephemeralPub: Buffer;
+  ephemeralPub: KeyPair;
   sharedSecret: Buffer;
 }): Buffer {
   // Sanity checks request size

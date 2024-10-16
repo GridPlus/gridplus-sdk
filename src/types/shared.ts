@@ -21,5 +21,5 @@ export type WalletPath = [number, number, number, number, number];
 
 export interface DecryptedResponse {
   decryptedData: Buffer;
-  newEphemeralPub: Buffer;
+  newEphemeralPub: KeyPair;
 }

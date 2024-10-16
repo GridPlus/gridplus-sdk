@@ -144,7 +144,7 @@ export const validateConnectedClient = (client: Client) => {
   };
 };
 
-export const validateEphemeralPub = (ephemeralPub?: Buffer) => {
+export const validateEphemeralPub = (ephemeralPub?:  KeyPair) => {
   if (!ephemeralPub) {
     throw new Error(
       '`ephemeralPub` (ephemeral public key) is required. Please reconnect.',

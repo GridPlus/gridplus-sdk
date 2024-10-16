@@ -1,4 +1,5 @@
 import { CURRENCIES } from '../constants';
+import { KeyPair } from './shared';
 
 export type Currency = keyof typeof CURRENCIES;
 
@@ -57,7 +58,7 @@ export interface RequestParams {
 
 export interface ClientStateData {
   activeWallets: ActiveWallets;
-  ephemeralPub: Buffer;
+  ephemeralPub: KeyPair;
   fwVersion: Buffer;
   deviceId: string;
   name: string;
