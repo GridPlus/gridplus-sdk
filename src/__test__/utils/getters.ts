@@ -12,6 +12,5 @@ export const getEtherscanKey = (): string => getEnv()['ETHERSCAN_KEY'] ?? '';
 export const getEncPw = (): string => getEnv()['ENC_PW'] ?? null;
 
 export const getPrng = (seed?: string) => {
-  // @ts-expect-error -- @types/seedrandom is inaccurate
   return new seedrandom(seed ? seed : getSeed());
 };

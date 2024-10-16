@@ -635,7 +635,7 @@ export const validateDerivedPublicKeys = function (
       // Otherwise this is a SECP256K1 pubkey
       const priv = wallet.derivePath(getPathStr(path)).privateKey;
       expect(pub.toString('hex')).toEqualElseLog(
-        secp256k1.keyFromPrivate(priv).getPublic().encode('hex'),
+        secp256k1.keyFromPrivate(priv).getPublic().encode('hex', false),
         'Exported SECP256K1 pubkey incorrect',
       );
     }

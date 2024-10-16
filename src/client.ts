@@ -390,7 +390,7 @@ export class Client {
             capabilities: this.activeWallets.external.capabilities,
           },
         },
-        ephemeralPub: this.ephemeralPub?.getPublic()?.encode('hex', true),
+        ephemeralPub: this.ephemeralPub?.getPublic()?.encode('hex', false),
         fwVersion: this.fwVersion?.toString('hex'),
         deviceId: this.deviceId,
         name: this.name,
