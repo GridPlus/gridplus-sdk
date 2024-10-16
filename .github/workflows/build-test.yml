@@ -27,3 +27,6 @@ jobs:
 
       - name: Build project
         run: npm run build
+
+      - name: Release a nightly build
+        run: npx pkg-pr-new publish
