@@ -25,6 +25,7 @@ import {
   isValid4ByteResponse,
   isValidBlockExplorerResponse,
 } from './shared/validators';
+import { KeyPair } from './types';
 
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 const EC = elliptic.ec;
@@ -250,7 +251,7 @@ export const getP256KeyPair = function (priv) {
 };
 
 /** @internal */
-export const getP256KeyPairFromPub = function (pub) {
+export const getP256KeyPairFromPub = function (pub): KeyPair {
   if (ec === undefined) ec = new EC('p256');
   return ec.keyFromPublic(pub, 'hex');
 };

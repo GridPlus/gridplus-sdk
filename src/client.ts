@@ -19,6 +19,18 @@ import {
 import { buildRetryWrapper } from './shared/functions';
 import { getPubKeyBytes } from './shared/utilities';
 import { validateEphemeralPub } from './shared/validators';
+import {
+  KeyPair,
+  ActiveWallets,
+  GetAddressesRequestParams,
+  SignRequestParams,
+  SignData,
+  AddKvRecordsRequestParams,
+  GetKvRecordsRequestParams,
+  GetKvRecordsData,
+  RemoveKvRecordsRequestParams,
+  FetchEncDataRequest,
+} from './types';
 import { getP256KeyPair, getP256KeyPairFromPub, randomBytes } from './util';
 
 /**
@@ -340,7 +352,7 @@ export class Client {
     activeWallets,
   }: {
     deviceId?: string;
-    ephemeralPub?: Buffer;
+    ephemeralPub?: KeyPair;
     url?: string;
     isPaired?: boolean;
     fwVersion?: Buffer;
@@ -378,7 +390,7 @@ export class Client {
             capabilities: this.activeWallets.external.capabilities,
           },
         },
-        ephemeralPub: this.ephemeralPub?.getPublic()?.encode('hex'),
+        ephemeralPub: this.ephemeralPub?.getPublic()?.encode('hex', false),
         fwVersion: this.fwVersion?.toString('hex'),
         deviceId: this.deviceId,
         name: this.name,

@@ -3,6 +3,10 @@ import {
   encryptedSecureRequest,
 } from '../protocol';
 import { validateConnectedClient } from '../shared/validators';
+import {
+  RemoveKvRecordsRequestFunctionParams,
+  FirmwareConstants,
+} from '../types';
 
 /**
  * `removeKvRecords` takes in an array of ids and sends a request to remove them from the Lattice.

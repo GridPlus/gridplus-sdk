@@ -13,6 +13,7 @@ import {
   shouldUseEVMLegacyConverter,
 } from './predicates';
 import { validateRequestError } from './validators';
+import { Currency, FirmwareConstants, RequestParams } from '../types';
 
 export const buildTransaction = ({
   data,
@@ -191,7 +192,7 @@ export const retryWrapper = async ({ fn, params, retries, client }) => {
  * @returns Buffer
  */
 export const getEphemeralId = (sharedSecret: Buffer) => {
-  // EphemId is the first 4 bytes of the hash of the shared secret
+// EphemId is the first 4 bytes of the hash of the shared secret
   const hash = Buffer.from(sha256().update(sharedSecret).digest('hex'), 'hex');
   return parseInt(hash.slice(0, 4).toString('hex'), 16);
 };

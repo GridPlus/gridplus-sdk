@@ -7,6 +7,13 @@ import {
   DEFAULT_ETH_DERIVATION,
   SOLANA_DERIVATION,
 } from '../constants';
+import {
+  SignRequestParams,
+  SignData,
+  EIP712MessagePayload,
+  BitcoinSignPayload,
+  Currency,
+} from '../types';
 import { isEIP712Payload, queue } from './utilities';
 
 export const sign = async (
@@ -39,8 +46,8 @@ export const signMessage = async (
       payload,
       ...overrides,
     },
-    currency: CURRENCIES.ETH_MSG,
-  };
+    currency: CURRENCIES.ETH_MSG as Currency,
+  } as SignRequestParams & { data: {protocol: string}};
 
   if (isEIP712Payload(payload)) {
     tx.data.protocol = 'eip712';
@@ -57,7 +64,7 @@ export const signBtcLegacyTx = async (
       signerPath: BTC_LEGACY_DERIVATION,
       ...payload,
     },
-    currency: 'BTC',
+    currency: 'BTC' as Currency,
   };
   return queue((client) => client.sign(tx));
 };
@@ -70,7 +77,7 @@ export const signBtcSegwitTx = async (
       signerPath: BTC_SEGWIT_DERIVATION,
       ...payload,
     },
-    currency: 'BTC',
+    currency: 'BTC'as Currency,
   };
   return queue((client) => client.sign(tx));
 };
@@ -83,7 +90,7 @@ export const signBtcWrappedSegwitTx = async (
       signerPath: BTC_WRAPPED_SEGWIT_DERIVATION,
       ...payload,
     },
-    currency: 'BTC',
+    currency: 'BTC'as Currency,
   };
   return queue((client) => client.sign(tx));
 };

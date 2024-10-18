@@ -3,6 +3,15 @@ import { Client } from '../client';
 import { ASCII_REGEX, EMPTY_WALLET_UID, MAX_ADDR } from '../constants';
 import { isUInt4 } from '../util';
 import isEmpty from 'lodash/isEmpty';
+import {
+  FirmwareConstants,
+  FirmwareVersion,
+  LatticeError,
+  Wallet,
+  KeyPair,
+  ActiveWallets,
+  KVRecords,
+} from '../types';
 
 export const validateIsUInt4 = (n?: number) => {
   if (typeof n !== 'number' || !isUInt4(n)) {
@@ -135,7 +144,7 @@ export const validateConnectedClient = (client: Client) => {
   };
 };
 
-export const validateEphemeralPub = (ephemeralPub?: Buffer) => {
+export const validateEphemeralPub = (ephemeralPub?:  KeyPair) => {
   if (!ephemeralPub) {
     throw new Error(
       '`ephemeralPub` (ephemeral public key) is required. Please reconnect.',

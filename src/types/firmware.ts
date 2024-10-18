@@ -1,12 +1,14 @@
-type FirmwareArr = [number, number, number];
+import { EXTERNAL } from '../constants';
 
-interface FirmwareVersion {
+export type FirmwareArr = [number, number, number];
+
+export interface FirmwareVersion {
   major: number;
   minor: number;
   fix: number;
 }
 
-interface GenericSigningData {
+export interface GenericSigningData {
   calldataDecoding: {
     reserved: number;
     maxSz: number;
@@ -14,16 +16,16 @@ interface GenericSigningData {
   baseReqSz: number;
   // See `GENERIC_SIGNING_BASE_MSG_SZ` in firmware
   baseDataSz: number;
-  hashTypes: EXTERNAL.SIGNING.HASHES;
-  curveTypes: EXTERNAL.SIGNING.CURVES;
+  hashTypes: typeof EXTERNAL.SIGNING.HASHES;
+  curveTypes: typeof EXTERNAL.SIGNING.CURVES;
   encodingTypes: {
-    NONE: EXTERNAL.SIGNING.ENCODINGS.NONE;
-    SOLANA: EXTERNAL.SIGNING.ENCODINGS.SOLANA;
-    EVM?: EXTERNAL.SIGNING.ENCODINGS.EVM;
+    NONE: typeof EXTERNAL.SIGNING.ENCODINGS.NONE;
+    SOLANA: typeof EXTERNAL.SIGNING.ENCODINGS.SOLANA;
+    EVM?: typeof EXTERNAL.SIGNING.ENCODINGS.EVM;
   };
 }
 
-interface FirmwareConstants {
+export interface FirmwareConstants {
   abiCategorySz: number;
   abiMaxRmv: number;
   addrFlagsAllowed: boolean;
@@ -40,8 +42,8 @@ interface FirmwareConstants {
   extraDataMaxFrames: number;
   genericSigning: GenericSigningData;
   getAddressFlags: [
-    EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB,
-    EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB,
+    typeof EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB,
+    typeof EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB,
   ];
   kvActionMaxNum: number;
   kvActionsAllowed: boolean;
@@ -56,7 +58,7 @@ interface FirmwareConstants {
   flexibleAddrPaths?: boolean;
 }
 
-interface LatticeError {
+export interface LatticeError {
   code: string;
   errno: string;
   message: string;

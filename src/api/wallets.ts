@@ -1,3 +1,4 @@
+import { ActiveWallets } from '../types';
 import { queue } from './utilities';
 
 /**

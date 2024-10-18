@@ -4,6 +4,7 @@ import {
 } from '../protocol';
 import { getPubKeyBytes } from '../shared/utilities';
 import { validateConnectedClient } from '../shared/validators';
+import { PairRequestParams, KeyPair } from '../types';
 import { generateAppSecret, toPaddedDER } from '../util';
 
 /**

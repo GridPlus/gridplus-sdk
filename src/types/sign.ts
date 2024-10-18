@@ -1,24 +1,30 @@
-interface SigningPayload {
+import { Client } from '../client';
+import { SigningPath, Currency, Wallet } from './client';
+import { FirmwareConstants } from './firmware';
+
+export type ETH_MESSAGE_PROTOCOLS = 'eip712' | 'signPersonal';
+
+export interface SigningPayload {
   signerPath: SigningPath;
   payload: Uint8Array | Buffer | Buffer[] | string | EIP712MessagePayload;
   curveType: number;
   hashType: number;
   encodingType?: number;
-  protocol?: ETH_MESSAGE_PROTOCOL;
+  protocol?: ETH_MESSAGE_PROTOCOLS;
 }
 
-interface SignRequestParams {
+export interface SignRequestParams {
   data: SigningPayload | BitcoinSignPayload;
   currency?: Currency;
   cachedData?: any;
   nextCode?: Buffer;
 }
 
-interface SignRequestFunctionParams extends SignRequestParams {
+export interface SignRequestFunctionParams extends SignRequestParams {
   client: Client;
 }
 
-interface EncodeSignRequestParams {
+export interface EncodeSignRequestParams {
   fwConstants: FirmwareConstants;
   wallet: Wallet;
   requestData: any;
@@ -26,12 +32,12 @@ interface EncodeSignRequestParams {
   nextCode?: Buffer;
 }
 
-interface SignRequest {
+export interface SignRequest {
   payload: Buffer;
   schema: number;
 }
 
-interface EthSignRequest extends SignRequest {
+export interface EthSignRequest extends SignRequest {
   curveType: number;
   encodingType: number;
   hashType: number;
@@ -40,7 +46,7 @@ interface EthSignRequest extends SignRequest {
   extraDataPayloads: Buffer[];
 }
 
-interface EthMsgSignRequest extends SignRequest {
+export interface EthMsgSignRequest extends SignRequest {
   input: {
     signerPath: SigningPath;
     payload: Buffer;
@@ -49,7 +55,7 @@ interface EthMsgSignRequest extends SignRequest {
   };
 }
 
-interface BitcoinSignRequest extends SignRequest {
+export interface BitcoinSignRequest extends SignRequest {
   origData: {
     prevOuts: PreviousOutput[];
     recipient: string;
@@ -61,14 +67,14 @@ interface BitcoinSignRequest extends SignRequest {
   changeData?: { value: number };
 }
 
-type PreviousOutput = {
+export type PreviousOutput = {
   txHash: string;
   value: number;
   index: number;
   signerPath: number[];
 };
 
-type BitcoinSignPayload = {
+export type BitcoinSignPayload = {
   prevOuts: PreviousOutput[];
   recipient: string;
   value: number;
@@ -76,7 +82,7 @@ type BitcoinSignPayload = {
   changePath: number[];
 };
 
-interface DecodeSignResponseParams {
+export interface DecodeSignResponseParams {
   data: Buffer;
   /** The original request data */
   request: SignRequest;
@@ -84,9 +90,7 @@ interface DecodeSignResponseParams {
   currency?: Currency;
 }
 
-type ETH_MESSAGE_PROTOCOLS = 'eip712' | 'signPersonal';
-
-interface EIP712MessagePayload {
+export interface EIP712MessagePayload {
   types: {
     [key: string]: {
       name: string;

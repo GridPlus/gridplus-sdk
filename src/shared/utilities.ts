@@ -1,4 +1,5 @@
 import { HARDENED_OFFSET } from '../constants';
+import { KeyPair, ActiveWallets, FirmwareVersion } from '../types';
 
 /**
  * Get 64 bytes representing the public key This is the uncompressed key without the leading 04
@@ -9,7 +10,7 @@ import { HARDENED_OFFSET } from '../constants';
  */
 export const getPubKeyBytes = (key: KeyPair, LE = false) => {
   const k = key.getPublic();
-  const p = k.encode('hex');
+  const p = k.encode('hex', false);
   const pb = Buffer.from(p, 'hex');
   if (LE === true) {
     // Need to flip X and Y components to little endian

@@ -6,6 +6,7 @@ import {
   validateDeviceId,
   validateKey,
 } from '../shared/validators';
+import { ConnectRequestFunctionParams, KeyPair, ActiveWallets } from '../types';
 import { aes256_decrypt, getP256KeyPairFromPub } from '../util';
 
 export async function connect({
@@ -14,6 +15,7 @@ export async function connect({
 }: ConnectRequestFunctionParams): Promise<boolean> {
   const { deviceId, key, baseUrl } = validateConnectRequest({
     deviceId: id,
+    // @ts-expect-error - private access
     key: client.key,
     baseUrl: client.baseUrl,
   });
@@ -95,7 +97,7 @@ export const decodeConnectResponse = (
   isPaired: boolean;
   fwVersion: Buffer;
   activeWallets: ActiveWallets | undefined;
-  ephemeralPub: Buffer;
+  ephemeralPub: KeyPair;
 } => {
   let off = 0;
   const isPaired =
