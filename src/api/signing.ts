@@ -1,4 +1,4 @@
-import { ethers } from 'ethers';
+import { Transaction } from 'ethers';
 import { Constants } from '..';
 import {
   BTC_LEGACY_DERIVATION,
@@ -23,7 +23,7 @@ export const sign = async (
   transaction: TransactionRequest,
   overrides?: SignRequestParams,
 ): Promise<SignData> => {
-  const serializedTx = ethers.utils.serializeTransaction(transaction);
+  const serializedTx = Transaction.from(transaction).unsignedSerialized;
 
   const payload: SigningPayload = {
     signerPath: DEFAULT_ETH_DERIVATION,

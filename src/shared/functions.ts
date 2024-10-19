@@ -37,7 +37,7 @@ export const buildTransaction = ({
   if (currency === 'ETH' && shouldUseEVMLegacyConverter(fwConstants)) {
     console.log(
       'Using the legacy ETH signing path. This will soon be deprecated. ' +
-        'Please switch to general signing request.',
+      'Please switch to general signing request.',
     );
     let payload;
     try {
@@ -45,7 +45,7 @@ export const buildTransaction = ({
     } catch (err) {
       throw new Error(
         'Could not convert legacy request. Please switch to a general signing ' +
-          'request. See gridplus-sdk docs for more information.',
+        'request. See gridplus-sdk docs for more information.',
       );
     }
     data = {
@@ -121,7 +121,7 @@ export const request = async ({
 /**
  * `sleep()` returns a Promise that resolves after a given number of milliseconds.
  */
-function sleep(ms) {
+function sleep (ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -152,35 +152,46 @@ export const buildRetryWrapper = (client: Client, retries: number) => {
  * @param retries - The number of times to retry the function
  * @param client - The {@link Client} to use for side-effects
  */
-export const retryWrapper = async ({ fn, params, retries, client }) => {
-  return fn({ ...params }).catch(async (err) => {
-    /** `string` returned from the Lattice if there's an error */
-    const errorMessage = err.errorMessage;
-    /** `number` returned from the Lattice if there's an error */
-    const responseCode = err.responseCode;
+export const retryWrapper = async ({
+  fn,
+  params,
+  retries,
+  client
+}: {
+  fn: (...args: any[]) => Promise<any>,
+  params: any,
+  retries: number,
+  client: any
+}) => {
+  return fn({ ...params }).catch(async (err: Error) => {
+    if (err instanceof LatticeResponseError) {
+      /** `string` returned from the Lattice if there's an error */
+      const errorMessage = err.errorMessage;
+      /** `number` returned from the Lattice if there's an error */
+      const responseCode = err.responseCode;
 
-    if ((errorMessage || responseCode) && retries) {
-      if (isDeviceBusy(responseCode)) {
-        await sleep(3000);
-      } else if (
-        isWrongWallet(responseCode) &&
-        !client.skipRetryOnWrongWallet
-      ) {
-        await client.fetchActiveWallet();
-      } else if (isInvalidEphemeralId(responseCode)) {
-        await client.connect(client.deviceId);
-      } else {
-        throw err;
+      if ((errorMessage || responseCode) && retries) {
+        if (isDeviceBusy(responseCode)) {
+          await sleep(3000);
+        } else if (
+          isWrongWallet(responseCode) &&
+          !client.skipRetryOnWrongWallet
+        ) {
+          await client.fetchActiveWallet();
+        } else if (isInvalidEphemeralId(responseCode)) {
+          await client.connect(client.deviceId);
+        } else {
+          throw err;
+        }
+
+        return retryWrapper({
+          fn,
+          params,
+          retries: retries - 1,
+          client,
+        });
       }
-
-      return retryWrapper({
-        fn,
-        params,
-        retries: retries - 1,
-        client,
-      });
     }
-
     throw err;
   });
 };
@@ -192,7 +203,7 @@ export const retryWrapper = async ({ fn, params, retries, client }) => {
  * @returns Buffer
  */
 export const getEphemeralId = (sharedSecret: Buffer) => {
-// EphemId is the first 4 bytes of the hash of the shared secret
+  // EphemId is the first 4 bytes of the hash of the shared secret
   const hash = Buffer.from(sha256().update(sharedSecret).digest('hex'), 'hex');
   return parseInt(hash.slice(0, 4).toString('hex'), 16);
 };

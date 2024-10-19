@@ -97,8 +97,6 @@ describe('API', () => {
         const txData = {
           type: 1,
           chainId: 1,
-          maxFeePerGas: '1200000000',
-          maxPriorityFeePerGas: '1200000000',
           nonce: 0,
           gasLimit: '50000',
           to: '0x7a250d5630b4cf539739df2c5dacb4c659f2488d',
