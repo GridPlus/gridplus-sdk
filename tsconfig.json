@@ -61,8 +61,14 @@
     /* Basic Options */
     // "incremental": true,                         /* Enable incremental compilation */
     "target": "es5" /* Specify ECMAScript target version: 'ES3' (default), 'ES5', 'ES2015', 'ES2016', 'ES2017', 'ES2018', 'ES2019', 'ES2020', or 'ESNEXT'. */,
-    "typeRoots": ["node_modules/@types", "src/**/types"],
-    "types": ["node", "jest", "vitest", "vitest/globals"]
+    "typeRoots": [
+      "node_modules/@types",
+      "src/**/types"
+    ],
+    "types": [
+      "node",
+      "jest"
+    ]
   },
   "exclude": [
     "node_modules",
@@ -71,5 +77,8 @@
     "**/*.test.ts",
     "forge"
   ],
-  "include": ["./src", "forge"]
+  "include": [
+    "./src",
+    "forge"
+  ]
 }
