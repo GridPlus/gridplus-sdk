@@ -446,7 +446,8 @@ async function fetchSupportedChainData(
         throw new Error('Server response was malformed');
       }
     })
-    .catch(() => {
+    .catch((error) => {
+      console.log(error);
       throw new Error('Fetching data from external network failed');
     });
 }

@@ -1,3 +1,4 @@
+import { ethers } from 'ethers';
 import { Constants } from '..';
 import {
   BTC_LEGACY_DERIVATION,
@@ -7,30 +8,33 @@ import {
   DEFAULT_ETH_DERIVATION,
   SOLANA_DERIVATION,
 } from '../constants';
+import { fetchDecoder } from '../functions/fetchDecoder';
 import {
-  SignRequestParams,
-  SignData,
-  EIP712MessagePayload,
   BitcoinSignPayload,
-  Currency,
+  EIP712MessagePayload,
+  SignData,
+  SigningPayload,
+  SignRequestParams,
+  TransactionRequest,
 } from '../types';
 import { isEIP712Payload, queue } from './utilities';
 
 export const sign = async (
-  payload: Uint8Array | Buffer | Buffer[],
+  transaction: TransactionRequest,
   overrides?: SignRequestParams,
 ): Promise<SignData> => {
-  const tx: SignRequestParams = {
-    data: {
-      signerPath: DEFAULT_ETH_DERIVATION,
-      curveType: Constants.SIGNING.CURVES.SECP256K1,
-      hashType: Constants.SIGNING.HASHES.KECCAK256,
-      encodingType: Constants.SIGNING.ENCODINGS.EVM,
-      payload,
-    },
-    ...overrides,
+  const serializedTx = ethers.utils.serializeTransaction(transaction);
+
+  const payload: SigningPayload = {
+    signerPath: DEFAULT_ETH_DERIVATION,
+    curveType: Constants.SIGNING.CURVES.SECP256K1,
+    hashType: Constants.SIGNING.HASHES.KECCAK256,
+    encodingType: Constants.SIGNING.ENCODINGS.EVM,
+    payload: serializedTx,
+    decoder: await fetchDecoder(transaction),
   };
-  return queue((client) => client.sign(tx));
+
+  return queue((client) => client.sign({ data: payload, ...overrides }));
 };
 
 export const signMessage = async (
@@ -45,9 +49,9 @@ export const signMessage = async (
       protocol: 'signPersonal',
       payload,
       ...overrides,
-    },
-    currency: CURRENCIES.ETH_MSG as Currency,
-  } as SignRequestParams & { data: {protocol: string}};
+    } as SigningPayload,
+    currency: CURRENCIES.ETH_MSG,
+  };
 
   if (isEIP712Payload(payload)) {
     tx.data.protocol = 'eip712';
@@ -64,7 +68,7 @@ export const signBtcLegacyTx = async (
       signerPath: BTC_LEGACY_DERIVATION,
       ...payload,
     },
-    currency: 'BTC' as Currency,
+    currency: CURRENCIES.BTC,
   };
   return queue((client) => client.sign(tx));
 };
@@ -77,7 +81,7 @@ export const signBtcSegwitTx = async (
       signerPath: BTC_SEGWIT_DERIVATION,
       ...payload,
     },
-    currency: 'BTC'as Currency,
+    currency: CURRENCIES.BTC,
   };
   return queue((client) => client.sign(tx));
 };
@@ -90,7 +94,7 @@ export const signBtcWrappedSegwitTx = async (
       signerPath: BTC_WRAPPED_SEGWIT_DERIVATION,
       ...payload,
     },
-    currency: 'BTC'as Currency,
+    currency: CURRENCIES.BTC,
   };
   return queue((client) => client.sign(tx));
 };
