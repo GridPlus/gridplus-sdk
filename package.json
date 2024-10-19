@@ -34,8 +34,7 @@
     "e2e-wj": "vitest src/__test__/e2e/wallet-jobs.test.ts",
     "e2e-api": "vitest src/__test__/e2e/api.test.ts",
     "e2e-iter": "vitest src/__test__/e2e/iter.test.ts",
-    "contracts": "vitest src/__test__/e2e/contracts.test.ts",
-    "e2e-abi-fetching": "vitest src/__test__/e2e/abi-fetching.test.ts"
+    "contracts": "vitest src/__test__/e2e/contracts.test.ts"
   },
   "files": [
     "dist"
