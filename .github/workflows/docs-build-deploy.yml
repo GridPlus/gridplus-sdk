@@ -22,10 +22,10 @@ jobs:
           version: 8
 
       - name: Install dependencies for SDK
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: Install dependencies for Docs
-        run: pnpm install --frozen-lockfile
+        run: npm ci
         working-directory: ./docs
 
       - name: Build project
