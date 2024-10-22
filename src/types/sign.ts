@@ -4,6 +4,26 @@ import { FirmwareConstants } from './firmware';
 
 export type ETH_MESSAGE_PROTOCOLS = 'eip712' | 'signPersonal';
 
+export const TRANSACTION_TYPE = {
+  LEGACY: 0,
+  EIP2930: 1,
+  EIP1559: 2,
+};
+
+export type TransactionRequest = {
+  to: string;
+  value: string;
+  data: string;
+  chainId: number;
+  nonce: number;
+  gasLimit: string;
+  maxFeePerGas: string;
+  maxPriorityFeePerGas: string;
+  from?: string;
+  accessList?: Array<{ address: string; storageKeys: string[] }>;
+  type?: (typeof TRANSACTION_TYPE)[keyof typeof TRANSACTION_TYPE];
+};
+
 export interface SigningPayload {
   signerPath: SigningPath;
   payload: Uint8Array | Buffer | Buffer[] | string | EIP712MessagePayload;
@@ -11,6 +31,7 @@ export interface SigningPayload {
   hashType: number;
   encodingType?: number;
   protocol?: ETH_MESSAGE_PROTOCOLS;
+  decoder?: Buffer;
 }
 
 export interface SignRequestParams {
@@ -84,7 +105,6 @@ export type BitcoinSignPayload = {
 
 export interface DecodeSignResponseParams {
   data: Buffer;
-  /** The original request data */
   request: SignRequest;
   isGeneric: boolean;
   currency?: Currency;

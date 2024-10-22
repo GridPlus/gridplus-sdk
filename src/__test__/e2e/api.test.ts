@@ -1,7 +1,5 @@
 /* eslint-disable quotes */
 import { getClient } from './../../api/utilities';
-import { Chain, Common, Hardfork } from '@ethereumjs/common';
-import { TransactionFactory } from '@ethereumjs/tx';
 import { question } from 'readline-sync';
 import { RLP } from '@ethereumjs/rlp';
 import {
@@ -98,25 +96,19 @@ describe('API', () => {
       describe('transactions', () => {
         const txData = {
           type: 1,
-          maxFeePerGas: 1200000000,
-          maxPriorityFeePerGas: 1200000000,
+          chainId: 1,
+          maxFeePerGas: '1200000000',
+          maxPriorityFeePerGas: '1200000000',
           nonce: 0,
-          gasLimit: 50000,
-          to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-          value: 1000000000000,
-          data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
-          gasPrice: 1200000000,
-        };
+          gasLimit: '50000',
+          to: '0x7a250d5630b4cf539739df2c5dacb4c659f2488d',
+          value: '1000000000000',
+          data: '0x38ed17390000000000000000000000000000000000000000000c1c173c5b782a5b154ab900000000000000000000000000000000000000000000000f380d77022fe8c32600000000000000000000000000000000000000000000000000000000000000a00000000000000000000000007ae7684581f0298241c3d6a6567a48d56b42b15c00000000000000000000000000000000000000000000000000000000622f8d27000000000000000000000000000000000000000000000000000000000000000300000000000000000000000095ad61b0a150d79219dcf64e1e6cc01f0b64c4ce000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000050522c769e01eb06c02bd299066509d8f97a69ae',
+          gasPrice: '1200000000',
+        } as const;
 
         test('generic', async () => {
-          const common = new Common({
-            chain: Chain.Mainnet,
-            hardfork: Hardfork.London,
-          });
-          const tx = TransactionFactory.fromTxData(txData, { common });
-          const payload = tx.getMessageToSign(false);
-
-          await sign(payload);
+          await sign(txData);
         });
 
         test('legacy', async () => {
