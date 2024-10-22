@@ -63,7 +63,7 @@ export const encodePairRequest = ({
     nameBuf,
     Buffer.from(pairingSecret),
   );
-  const sig = key.sign(hash); 
+  const sig = key.sign(hash);
   const derSig = toPaddedDER(sig);
   const payload = Buffer.concat([nameBuf, derSig]);
   return payload;

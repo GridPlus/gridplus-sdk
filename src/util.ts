@@ -79,7 +79,7 @@ export const parseLattice1Response = function (r: string): {
   // Get response code
   const responseCode = payload.readUInt8(0);
   if (responseCode !== LatticeResponseCode.success) {
-    if (parsed instanceof LatticeResponseError){
+    if (parsed instanceof LatticeResponseError) {
       const errMsg = ProtocolConstants.responseMsg[responseCode];
       parsed.errorMessage = `[Lattice] ${errMsg ? errMsg : 'Unknown Error'}`;
       parsed.responseCode = responseCode;
@@ -124,7 +124,10 @@ export const toPaddedDER = function (sig: EC.Signature): Buffer {
 // TRANSACTION UTILS
 //--------------------------------------------------
 /** @internal */
-export const isValidAssetPath = function (path: number[], fwConstants: FirmwareConstants): boolean {
+export const isValidAssetPath = function (
+  path: number[],
+  fwConstants: FirmwareConstants,
+): boolean {
   const allowedPurposes = [
     PURPOSES.ETH,
     PURPOSES.BTC_LEGACY,
@@ -176,10 +179,14 @@ function isBase10NumStr(x: string): boolean {
 }
 
 /** @internal Ensure a param is represented by a buffer */
-export const ensureHexBuffer = function (x: string | number | Buffer, zeroIsNull = true): Buffer {
+export const ensureHexBuffer = function (
+  x: string | number | Buffer,
+  zeroIsNull = true,
+): Buffer {
   try {
     if (x === null || (x === 0 && zeroIsNull === true)) return Buffer.alloc(0);
-    const isNumber = typeof x === 'number' || (typeof x === 'string' && isBase10NumStr(x));
+    const isNumber =
+      typeof x === 'number' || (typeof x === 'string' && isBase10NumStr(x));
     let hexString: string;
     if (isNumber) {
       hexString = new BigNum(x).toString(16);
@@ -194,7 +201,9 @@ export const ensureHexBuffer = function (x: string | number | Buffer, zeroIsNull
     if (hexString === '00' && !isNumber) return Buffer.alloc(0);
     return Buffer.from(hexString, 'hex');
   } catch (err) {
-    throw new Error(`Cannot convert ${x.toString()} to hex buffer (${(err as Error).message})`);
+    throw new Error(
+      `Cannot convert ${x.toString()} to hex buffer (${(err as Error).message})`,
+    );
   }
 };
 
@@ -252,13 +261,18 @@ export const getP256KeyPair = function (priv: Buffer | string): EC.KeyPair {
 };
 
 /** @internal */
-export const getP256KeyPairFromPub = function (pub: Buffer | string): EC.KeyPair {
+export const getP256KeyPairFromPub = function (
+  pub: Buffer | string,
+): EC.KeyPair {
   if (ec === undefined) ec = new EC('p256');
   return ec.keyFromPublic(pub, 'hex');
 };
 
 /** @internal */
-export const buildSignerPathBuf = function (signerPath: number[], varAddrPathSzAllowed: boolean): Buffer {
+export const buildSignerPathBuf = function (
+  signerPath: number[],
+  varAddrPathSzAllowed: boolean,
+): Buffer {
   const buf = Buffer.alloc(24);
   let off = 0;
   if (varAddrPathSzAllowed && signerPath.length > 5)
@@ -281,7 +295,10 @@ export const buildSignerPathBuf = function (signerPath: number[], varAddrPathSzA
 // OTHER UTILS
 //--------------------------------------------------
 /** @internal */
-export const isAsciiStr = function (str: string, allowFormatChars = false): boolean {
+export const isAsciiStr = function (
+  str: string,
+  allowFormatChars = false,
+): boolean {
   if (typeof str !== 'string') {
     return false;
   }
@@ -301,7 +318,10 @@ export const isAsciiStr = function (str: string, allowFormatChars = false): bool
 };
 
 /** @internal Check if a value exists in an object. Only checks first level of keys. */
-export const existsIn = function <T>(val: T, obj: { [key: string]: T }): boolean {
+export const existsIn = function <T>(
+  val: T,
+  obj: { [key: string]: T },
+): boolean {
   return Object.keys(obj).some((key) => obj[key] === val);
 };
 
@@ -391,7 +411,10 @@ export function selectDefFrom4byteABI(abiData: any[], selector: string) {
   }
 }
 
-export async function fetchWithTimeout(url: string, options: RequestInit & { timeout?: number }): Promise<Response> {
+export async function fetchWithTimeout(
+  url: string,
+  options: RequestInit & { timeout?: number },
+): Promise<Response> {
   const { timeout = 8000 } = options;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -403,7 +426,10 @@ export async function fetchWithTimeout(url: string, options: RequestInit & { tim
   return response;
 }
 
-async function fetchAndCache(url: string, opts?: RequestInit): Promise<Response> {
+async function fetchAndCache(
+  url: string,
+  opts?: RequestInit,
+): Promise<Response> {
   try {
     if (globalThis.caches && globalThis.Request) {
       const cache = await caches.open('gp-calldata');

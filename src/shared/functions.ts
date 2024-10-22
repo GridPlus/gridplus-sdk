@@ -37,7 +37,7 @@ export const buildTransaction = ({
   if (currency === 'ETH' && shouldUseEVMLegacyConverter(fwConstants)) {
     console.log(
       'Using the legacy ETH signing path. This will soon be deprecated. ' +
-      'Please switch to general signing request.',
+        'Please switch to general signing request.',
     );
     let payload;
     try {
@@ -45,7 +45,7 @@ export const buildTransaction = ({
     } catch (err) {
       throw new Error(
         'Could not convert legacy request. Please switch to a general signing ' +
-        'request. See gridplus-sdk docs for more information.',
+          'request. See gridplus-sdk docs for more information.',
       );
     }
     data = {
@@ -121,7 +121,7 @@ export const request = async ({
 /**
  * `sleep()` returns a Promise that resolves after a given number of milliseconds.
  */
-function sleep (ms: number): Promise<void> {
+function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -156,12 +156,12 @@ export const retryWrapper = async ({
   fn,
   params,
   retries,
-  client
+  client,
 }: {
-  fn: (...args: any[]) => Promise<any>,
-  params: any,
-  retries: number,
-  client: any
+  fn: (...args: any[]) => Promise<any>;
+  params: any;
+  retries: number;
+  client: any;
 }) => {
   return fn({ ...params }).catch(async (err: Error) => {
     if (err instanceof LatticeResponseError) {

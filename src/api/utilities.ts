@@ -23,17 +23,18 @@ export const queue = async (fn: (client: Client) => Promise<any>) => {
     setFunctionQueue(Promise.resolve());
   }
   setFunctionQueue(
-    getFunctionQueue().then(async () =>
-      await fn(client)
-        .catch((err) => {
-          // Empty the queue if any function call fails
-          setFunctionQueue(Promise.resolve());
-          throw err;
-        })
-        .then((returnValue) => {
-          saveClient(client.getStateData());
-          return returnValue;
-        }),
+    getFunctionQueue().then(
+      async () =>
+        await fn(client)
+          .catch((err) => {
+            // Empty the queue if any function call fails
+            setFunctionQueue(Promise.resolve());
+            throw err;
+          })
+          .then((returnValue) => {
+            saveClient(client.getStateData());
+            return returnValue;
+          }),
     ),
   );
   return getFunctionQueue();
