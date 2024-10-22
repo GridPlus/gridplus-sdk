@@ -17,6 +17,7 @@ export default defineConfig({
         '@ethereumjs/tx',
         '@ethersproject/abi',
         '@metamask/eth-sig-util',
+        'bn.js',
       ],
       output: {
         globals: {
@@ -25,6 +26,7 @@ export default defineConfig({
           '@ethereumjs/tx': 'EthereumjsTx',
           '@ethersproject/abi': 'EthersprojectAbi',
           '@metamask/eth-sig-util': 'MetamaskEthSigUtil',
+          'bn.js': 'BN',
         },
       },
     },
