@@ -122,5 +122,10 @@
     "type": "git",
     "url": "https://github.com/GridPlus/gridplus-sdk.git"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "pnpm": {
+    "patchedDependencies": {
+      "vitest@2.1.3": "patches/vitest@2.1.3.patch"
+    }
+  }
 }

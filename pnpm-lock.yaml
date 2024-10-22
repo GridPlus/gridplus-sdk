@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  vitest@2.1.3:
+    hash: vwmc6yhalpfduebrkyv2xq7etq
+    path: patches/vitest@2.1.3.patch
+
 dependencies:
   '@ethereumjs/common':
     specifier: ^4.4.0
@@ -79,18 +84,12 @@ devDependencies:
   '@types/elliptic':
     specifier: ^6.4.18
     version: 6.4.18
-  '@types/expect':
-    specifier: ^24.3.0
-    version: 24.3.0
   '@types/jest':
     specifier: ^29.5.13
     version: 29.5.13
   '@types/node':
     specifier: ^22.7.7
     version: 22.7.7
-  '@types/random-words':
-    specifier: ^1.2.0
-    version: 1.2.0
   '@types/readline-sync':
     specifier: ^1.4.8
     version: 1.4.8
@@ -186,7 +185,7 @@ devDependencies:
     version: 4.2.4(@types/node@22.7.7)(typescript@5.6.3)(vite@5.4.9)
   vitest:
     specifier: ^2.1.3
-    version: 2.1.3(@types/node@22.7.7)(msw@2.4.11)
+    version: 2.1.3(patch_hash=vwmc6yhalpfduebrkyv2xq7etq)(@types/node@22.7.7)(msw@2.4.11)
 
 packages:
 
@@ -1513,13 +1512,6 @@ packages:
     resolution: {integrity: sha512-AYnb1nQyY49te+VRAVgmzfcgjYS91mY5P0TKUDCLEM+gNnA+3T6rWITXRLYCpahpqSQbN5cE+gHpnPyXjHWxcw==}
     dev: true
 
-  /@types/expect@24.3.0:
-    resolution: {integrity: sha512-aq5Z+YFBz5o2b6Sp1jigx5nsmoZMK5Ceurjwy6PZmRv7dEi1jLtkARfvB1ME+OXJUG+7TZUDcv3WoCr/aor6dQ==}
-    deprecated: This is a stub types definition. expect provides its own type definitions, so you do not need this installed.
-    dependencies:
-      expect: 29.7.0
-    dev: true
-
   /@types/istanbul-lib-coverage@2.0.6:
     resolution: {integrity: sha512-2QF/t/auWm0lsy8XtKVPG19v3sSOQlJe/YHZgfjb/KBBHOGSV+J2q/S671rcq9uTBrLAXmZpqJiaQbMT+zNU1w==}
     dev: true
@@ -1585,13 +1577,6 @@ packages:
     resolution: {integrity: sha512-uRwJqmiXmh9++aSu1VNEn3iIxWOhd8AHXNSdlaLfdAAdSTY9jYVeGWnzejM3dvrkbqE3/hyQkQQ29IFATEGlew==}
     dependencies:
       '@types/node': 22.7.7
-    dev: true
-
-  /@types/random-words@1.2.0:
-    resolution: {integrity: sha512-rF39R8IyXWXfN5klHD05h4VesPKhSFKURikEOMeZbwzMhndQSDGynwC82h77yGTcBV/DbSi1c+uXAUN/IqHAKg==}
-    deprecated: This is a stub types definition. random-words provides its own type definitions, so you do not need this installed.
-    dependencies:
-      random-words: 2.0.1
     dev: true
 
   /@types/readline-sync@1.4.8:
@@ -5060,7 +5045,7 @@ packages:
       fsevents: 2.3.3
     dev: true
 
-  /vitest@2.1.3(@types/node@22.7.7)(msw@2.4.11):
+  /vitest@2.1.3(patch_hash=vwmc6yhalpfduebrkyv2xq7etq)(@types/node@22.7.7)(msw@2.4.11):
     resolution: {integrity: sha512-Zrxbg/WiIvUP2uEzelDNTXmEMJXuzJ1kCpbDvaKByFA9MNeO95V+7r/3ti0qzJzrxdyuUw5VduN7k+D3VmVOSA==}
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
@@ -5116,6 +5101,7 @@ packages:
       - supports-color
       - terser
     dev: true
+    patched: true
 
   /vscode-uri@3.0.8:
     resolution: {integrity: sha512-AyFQ0EVmsOZOlAnxoFOGOq1SQDWAB7C6aqMGS23svWAllfOaxbuFvcT8D1i8z3Gyn8fraVeZNNmN6e9bxxXkKw==}

@@ -1,0 +1,127 @@
+diff --git a/dist/chunks/utils.CY6Spixo.js b/dist/chunks/utils.CY6Spixo.js
+index ee001766fb2f3a98b39bd78aded8e5798ec68c28..a69caf50b0a8d21d9352e4eeabff47f548219263 100644
+--- a/dist/chunks/utils.CY6Spixo.js
++++ b/dist/chunks/utils.CY6Spixo.js
+@@ -1,7 +1,7 @@
+-import { stripVTControlCharacters } from 'node:util';
+-import { isAbsolute, relative, dirname, basename } from 'pathe';
+-import c from 'tinyrainbow';
+-import { a as slash } from './base.DwXGwWst.js';
++import { stripVTControlCharacters } from "node:util";
++import { isAbsolute, relative, dirname, basename } from "pathe";
++import c from "tinyrainbow";
++import { a as slash } from "./base.DwXGwWst.js";
+ 
+ const F_RIGHT = "\u2192";
+ const F_DOWN = "\u2193";
+@@ -93,8 +93,8 @@ function renderSnapshotSummary(rootDir, snapshots) {
+           uncheckedFile.filePath
+         )}`
+       );
+-      uncheckedFile.keys.forEach(
+-        (key) => summary.push(`  ${c.gray(F_DOT)} ${key}`)
++      uncheckedFile.keys.forEach((key) =>
++        summary.push(`  ${c.gray(F_DOT)} ${key}`)
+       );
+     });
+   }
+@@ -111,12 +111,16 @@ function getStateString(tasks, name = "tests", showTotal = true) {
+   const failed = tasks.filter((i) => i.result?.state === "fail");
+   const skipped2 = tasks.filter((i) => i.mode === "skip");
+   const todo = tasks.filter((i) => i.mode === "todo");
+-  return [
+-    failed.length ? c.bold(c.red(`${failed.length} failed`)) : null,
+-    passed.length ? c.bold(c.green(`${passed.length} passed`)) : null,
+-    skipped2.length ? c.yellow(`${skipped2.length} skipped`) : null,
+-    todo.length ? c.gray(`${todo.length} todo`) : null
+-  ].filter(Boolean).join(c.dim(" | ")) + (showTotal ? c.gray(` (${tasks.length})`) : "");
++  return (
++    [
++      failed.length ? c.bold(c.red(`${failed.length} failed`)) : null,
++      passed.length ? c.bold(c.green(`${passed.length} passed`)) : null,
++      skipped2.length ? c.yellow(`${skipped2.length} skipped`) : null,
++      todo.length ? c.gray(`${todo.length} todo`) : null,
++    ]
++      .filter(Boolean)
++      .join(c.dim(" | ")) + (showTotal ? c.gray(` (${tasks.length})`) : "")
++  );
+ }
+ function getStateSymbol(task) {
+   if (task.mode === "skip" || task.mode === "todo") {
+@@ -134,7 +138,7 @@ function getStateSymbol(task) {
+       spinner = elegantSpinner();
+       spinnerMap.set(task, spinner);
+     }
+-    return c.yellow(spinner());
++    return c.yellow("⇒");
+   }
+   if (task.result.state === "pass") {
+     return task.meta?.benchmark ? benchmarkPass : testPass;
+@@ -157,10 +161,24 @@ function getHookStateSymbol(task, hookName) {
+       spinner = elegantSpinner();
+       spinnerMap2.set(hookName, spinner);
+     }
+-    return c.yellow(spinner());
++    return c.yellow("⇒");
+   }
+ }
+-const spinnerFrames = process.platform === "win32" ? ["-", "\\", "|", "/"] : ["\u280B", "\u2819", "\u2839", "\u2838", "\u283C", "\u2834", "\u2826", "\u2827", "\u2807", "\u280F"];
++const spinnerFrames =
++  process.platform === "win32"
++    ? ["-", "\\", "|", "/"]
++    : [
++        "\u280B",
++        "\u2819",
++        "\u2839",
++        "\u2838",
++        "\u283C",
++        "\u2834",
++        "\u2826",
++        "\u2827",
++        "\u2807",
++        "\u280F",
++      ];
+ function elegantSpinner() {
+   let index = 0;
+   return () => {
+@@ -175,12 +193,14 @@ function formatProjectName(name, suffix = " ") {
+   if (!name) {
+     return "";
+   }
+-  const index = name.split("").reduce((acc, v, idx) => acc + v.charCodeAt(0) + idx, 0);
++  const index = name
++    .split("")
++    .reduce((acc, v, idx) => acc + v.charCodeAt(0) + idx, 0);
+   const colors = [c.blue, c.yellow, c.cyan, c.green, c.magenta];
+   return colors[index % colors.length](`|${name}|`) + suffix;
+ }
+ 
+-var utils = /*#__PURE__*/Object.freeze({
++var utils = /*#__PURE__*/ Object.freeze({
+   __proto__: null,
+   benchmarkPass: benchmarkPass,
+   countTestErrors: countTestErrors,
+@@ -202,7 +222,21 @@ var utils = /*#__PURE__*/Object.freeze({
+   spinnerMap: spinnerMap,
+   suiteFail: suiteFail,
+   taskFail: taskFail,
+-  testPass: testPass
++  testPass: testPass,
+ });
+ 
+-export { F_RIGHT as F, F_POINTER as a, getStateString as b, formatTimeString as c, countTestErrors as d, divider as e, formatProjectName as f, getStateSymbol as g, getCols as h, getHookStateSymbol as i, renderSnapshotSummary as r, taskFail as t, utils as u };
++export {
++  F_RIGHT as F,
++  F_POINTER as a,
++  getStateString as b,
++  formatTimeString as c,
++  countTestErrors as d,
++  divider as e,
++  formatProjectName as f,
++  getStateSymbol as g,
++  getCols as h,
++  getHookStateSymbol as i,
++  renderSnapshotSummary as r,
++  taskFail as t,
++  utils as u,
++};
