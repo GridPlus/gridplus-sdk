@@ -6,10 +6,7 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
-    "lib": [
-      "ES2020",
-      "DOM"
-    ],
+    "lib": ["ES2020", "DOM"],
     "module": "ESNext",
     "moduleResolution": "node",
     "outDir": "./dist",
@@ -31,22 +28,9 @@
     "sourceMap": true,
     "strict": false,
     "target": "ES2020",
-    "typeRoots": [
-      "node_modules/@types",
-      "src/**/types"
-    ],
-    "types": [
-      "node",
-      "vitest/globals"
-    ]
+    "typeRoots": ["node_modules/@types", "src/**/types"],
+    "types": ["node", "vitest/globals"]
   },
-  "exclude": [
-    "node_modules",
-    "**/__test__",
-    "**/*.spec.ts",
-    "**/*.test.ts"
-  ],
-  "include": [
-    "src"
-  ]
+  "exclude": ["node_modules", "**/__test__", "**/*.spec.ts", "**/*.test.ts"],
+  "include": ["src"]
 }

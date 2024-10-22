@@ -192,9 +192,8 @@ describe('API', () => {
 
     describe('fetchAddressesByDerivationPath', () => {
       test('fetch single specific address', async () => {
-        const addresses = await fetchAddressesByDerivationPath(
-          "44'/60'/0'/0/0",
-        );
+        const addresses =
+          await fetchAddressesByDerivationPath("44'/60'/0'/0/0");
         expect(addresses).toHaveLength(1);
         expect(addresses[0]).toBeTruthy();
       });

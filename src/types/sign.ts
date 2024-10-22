@@ -26,7 +26,13 @@ export type TransactionRequest = {
 
 export interface SigningPayload {
   signerPath: SigningPath;
-  payload: Uint8Array | Uint8Array[] | Buffer | Buffer[] | string | EIP712MessagePayload;
+  payload:
+    | Uint8Array
+    | Uint8Array[]
+    | Buffer
+    | Buffer[]
+    | string
+    | EIP712MessagePayload;
   curveType: number;
   hashType: number;
   encodingType?: number;
