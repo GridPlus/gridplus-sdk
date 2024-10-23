@@ -79,12 +79,10 @@ export const parseLattice1Response = function (r: string): {
   // Get response code
   const responseCode = payload.readUInt8(0);
   if (responseCode !== LatticeResponseCode.success) {
-    if (parsed instanceof LatticeResponseError) {
-      const errMsg = ProtocolConstants.responseMsg[responseCode];
-      parsed.errorMessage = `[Lattice] ${errMsg ? errMsg : 'Unknown Error'}`;
-      parsed.responseCode = responseCode;
-      return parsed;
-    }
+    const errMsg = ProtocolConstants.responseMsg[responseCode];
+    parsed.errorMessage = `[Lattice] ${errMsg ? errMsg : 'Unknown Error'}`;
+    parsed.responseCode = responseCode;
+    return parsed;
   } else {
     parsed.data = payload.slice(1, payload.length);
   }
