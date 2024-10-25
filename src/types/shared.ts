@@ -1,5 +1,4 @@
 import type { ec } from 'elliptic';
-
 export interface KVRecords {
   [key: string]: string;
 }

@@ -17,8 +17,8 @@ export type TransactionRequest = {
   chainId: number;
   nonce: number;
   gasLimit: string;
-  maxFeePerGas: string;
-  maxPriorityFeePerGas: string;
+  maxFeePerGas?: string;
+  maxPriorityFeePerGas?: string;
   from?: string;
   accessList?: Array<{ address: string; storageKeys: string[] }>;
   type?: (typeof TRANSACTION_TYPE)[keyof typeof TRANSACTION_TYPE];
@@ -26,7 +26,13 @@ export type TransactionRequest = {
 
 export interface SigningPayload {
   signerPath: SigningPath;
-  payload: Uint8Array | Buffer | Buffer[] | string | EIP712MessagePayload;
+  payload:
+    | Uint8Array
+    | Uint8Array[]
+    | Buffer
+    | Buffer[]
+    | string
+    | EIP712MessagePayload;
   curveType: number;
   hashType: number;
   encodingType?: number;
