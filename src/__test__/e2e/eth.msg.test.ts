@@ -17,6 +17,7 @@
  */
 
 import { HARDENED_OFFSET } from '../../constants';
+import { SigningPath } from '../../types';
 import { randomBytes } from '../../util';
 import { buildEthMsgReq, buildRandomMsg } from '../utils/builders';
 import { runEthMsg } from '../utils/runners';
@@ -1292,6 +1293,65 @@ describe('ETH Messages', () => {
             private: '0xbb42',
           },
           drift_patch_cable_bi: '0xb4',
+        },
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
+
+    it('Signs long primary types', async () => {
+      const msg = {
+        types: {
+          EIP712Domain: [
+            {
+              name: 'name',
+              type: 'string',
+            },
+            {
+              name: 'version',
+              type: 'string',
+            },
+            {
+              name: 'chainId',
+              type: 'uint256',
+            },
+            {
+              name: 'verifyingContract',
+              type: 'address',
+            },
+          ],
+          'HyperliquidTransaction:ApproveAgent': [
+            {
+              name: 'hyperliquidChain',
+              type: 'string',
+            },
+            {
+              name: 'agentAddress',
+              type: 'address',
+            },
+            {
+              name: 'agentName',
+              type: 'string',
+            },
+            {
+              name: 'nonce',
+              type: 'uint64',
+            },
+          ],
+        },
+        primaryType: 'HyperliquidTransaction:ApproveAgent',
+        domain: {
+          name: 'HyperliquidSignTransaction',
+          version: '1',
+          chainId: 1,
+          verifyingContract: '0x0000000000000000000000000000000000000000',
+        },
+        message: {
+          hyperliquidChain: 'Mainnet',
+          signatureChainId: '0x1',
+          agentAddress: '0x343ab48c498a5b71e93a0c4c6e7f783ee8950436',
+          agentName: '',
+          nonce: 1718376161247,
+          type: 'approveAgent',
         },
       };
       await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
