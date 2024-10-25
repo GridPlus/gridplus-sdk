@@ -1,4 +1,4 @@
-export { getClient } from './utilities';
+export { getClient, parseDerivationPath } from './utilities';
 
 export * from './addresses';
 export * from './addressTags';

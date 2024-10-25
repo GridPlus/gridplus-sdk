@@ -24,12 +24,17 @@ import {
   gpErrors,
   jobTypes,
 } from '../../utils/helpers';
-import { initializeClient, initializeSeed } from '../../utils/initializeClient';
+import { initializeSeed } from '../../utils/initializeClient';
 import { runTestCase } from '../../utils/runners';
+import { setupClient } from '../../utils/setup';
 let seed: Buffer;
 
 describe('[Determinism]', () => {
-  const client = initializeClient();
+  let client;
+
+  test('pair', async () => {
+    client = await setupClient();
+  });
 
   describe('Setup and validate seed', () => {
     it('Should re-connect to the Lattice and update the walletUID.', async () => {

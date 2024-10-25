@@ -19,8 +19,9 @@ import {
   setup_btc_sig_test,
   stripDER,
 } from '../utils/helpers';
-import { initializeClient } from '../utils/initializeClient';
 import { testRequest } from '../utils/testRequest';
+import { setupClient } from '../utils/setup';
+import { Wallet } from 'ethers';
 
 const prng = getPrng();
 const TEST_TESTNET = !!getTestnet() || false;
@@ -104,7 +105,11 @@ async function runTestSet(
 }
 
 describe('Bitcoin', () => {
-  const client = initializeClient();
+  let client;
+
+  test('pair', async () => {
+    client = await setupClient();
+  });
 
   describe('wallet seeds', () => {
     it('Should get GP_SUCCESS for a known, connected wallet', async () => {

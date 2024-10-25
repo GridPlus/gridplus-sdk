@@ -9,26 +9,31 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install Node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
-          node-version: 18.x
+          node-version: 20.x
 
-      - name: Install NPM packages for SDK
-        run: npm ci
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
 
-      - name: Install NPM packages for Docs
+      - name: Install dependencies for SDK
+        run: pnpm install
+
+      - name: Install dependencies for Docs
         run: npm ci
         working-directory: ./docs
 
       - name: Build project
-        run: npm run build
+        run: pnpm run build
         working-directory: ./docs
 
       - name: Upload production-ready build files
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: production-files
           path: docs/build
@@ -41,7 +46,7 @@ jobs:
 
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: production-files
           path: docs/build

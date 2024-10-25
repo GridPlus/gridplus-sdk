@@ -1,9 +1,13 @@
-import { Constants } from '../../..';
-import { initializeClient } from '../../utils/initializeClient';
+import { Constants } from '../../../..';
+import { setupClient } from '../../../utils/setup';
 import { dexlabProgram, raydiumProgram } from './__mocks__/programs';
 
 describe('Solana Programs', () => {
-  const client = initializeClient();
+  let client;
+
+  test('pair', async () => {
+    client = await setupClient();
+  });
 
   it('should sign Dexlab program', async () => {
     const payload = dexlabProgram;

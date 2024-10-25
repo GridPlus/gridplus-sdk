@@ -13,6 +13,7 @@ import {
   shouldUseEVMLegacyConverter,
 } from './predicates';
 import { validateRequestError } from './validators';
+import { Currency, FirmwareConstants, RequestParams } from '../types';
 
 export const buildTransaction = ({
   data,
@@ -120,7 +121,7 @@ export const request = async ({
 /**
  * `sleep()` returns a Promise that resolves after a given number of milliseconds.
  */
-function sleep(ms) {
+function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -151,35 +152,46 @@ export const buildRetryWrapper = (client: Client, retries: number) => {
  * @param retries - The number of times to retry the function
  * @param client - The {@link Client} to use for side-effects
  */
-export const retryWrapper = async ({ fn, params, retries, client }) => {
-  return fn({ ...params }).catch(async (err) => {
-    /** `string` returned from the Lattice if there's an error */
-    const errorMessage = err.errorMessage;
-    /** `number` returned from the Lattice if there's an error */
-    const responseCode = err.responseCode;
+export const retryWrapper = async ({
+  fn,
+  params,
+  retries,
+  client,
+}: {
+  fn: (...args: any[]) => Promise<any>;
+  params: any;
+  retries: number;
+  client: any;
+}) => {
+  return fn({ ...params }).catch(async (err: Error) => {
+    if (err instanceof LatticeResponseError) {
+      /** `string` returned from the Lattice if there's an error */
+      const errorMessage = err.errorMessage;
+      /** `number` returned from the Lattice if there's an error */
+      const responseCode = err.responseCode;
 
-    if ((errorMessage || responseCode) && retries) {
-      if (isDeviceBusy(responseCode)) {
-        await sleep(3000);
-      } else if (
-        isWrongWallet(responseCode) &&
-        !client.skipRetryOnWrongWallet
-      ) {
-        await client.fetchActiveWallet();
-      } else if (isInvalidEphemeralId(responseCode)) {
-        await client.connect(client.deviceId);
-      } else {
-        throw err;
+      if ((errorMessage || responseCode) && retries) {
+        if (isDeviceBusy(responseCode)) {
+          await sleep(3000);
+        } else if (
+          isWrongWallet(responseCode) &&
+          !client.skipRetryOnWrongWallet
+        ) {
+          await client.fetchActiveWallet();
+        } else if (isInvalidEphemeralId(responseCode)) {
+          await client.connect(client.deviceId);
+        } else {
+          throw err;
+        }
+
+        return retryWrapper({
+          fn,
+          params,
+          retries: retries - 1,
+          client,
+        });
       }
-
-      return retryWrapper({
-        fn,
-        params,
-        retries: retries - 1,
-        client,
-      });
     }
-
     throw err;
   });
 };

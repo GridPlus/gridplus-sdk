@@ -1,14 +1,24 @@
 import {
+  BTC_LEGACY_CHANGE_DERIVATION,
   BTC_LEGACY_DERIVATION,
+  BTC_SEGWIT_CHANGE_DERIVATION,
   BTC_SEGWIT_DERIVATION,
+  BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION,
   BTC_WRAPPED_SEGWIT_DERIVATION,
   DEFAULT_ETH_DERIVATION,
+  HARDENED_OFFSET,
   LEDGER_LEGACY_DERIVATION,
   LEDGER_LIVE_DERIVATION,
   MAX_ADDR,
   SOLANA_DERIVATION,
 } from '../constants';
-import { getStartPath, queue } from './utilities';
+import { GetAddressesRequestParams, WalletPath } from '../types';
+import {
+  getStartPath,
+  parseDerivationPathComponents,
+  queue,
+  getFlagFromPath,
+} from './utilities';
 
 type FetchAddressesParams = {
   n?: number;
@@ -60,41 +70,36 @@ export const fetchAddress = async (
   }).then((addrs) => addrs[0]);
 };
 
-export const fetchBtcLegacyAddresses = async (
-  { n, startPathIndex }: FetchAddressesParams = {
-    n: MAX_ADDR,
-    startPathIndex: 0,
-  },
-) => {
-  return fetchAddresses({
-    startPath: getStartPath(BTC_LEGACY_DERIVATION, startPathIndex),
-    n,
-  });
-};
-
-export const fetchBtcSegwitAddresses = async (
-  { n, startPathIndex }: FetchAddressesParams = {
-    n: MAX_ADDR,
-    startPathIndex: 0,
-  },
-) => {
-  return fetchAddresses({
-    startPath: getStartPath(BTC_SEGWIT_DERIVATION, startPathIndex),
-    n,
-  });
-};
-
-export const fetchBtcWrappedSegwitAddresses = async (
-  { n, startPathIndex }: FetchAddressesParams = {
-    n: MAX_ADDR,
-    startPathIndex: 0,
-  },
-) => {
-  return fetchAddresses({
-    startPath: getStartPath(BTC_WRAPPED_SEGWIT_DERIVATION, startPathIndex),
-    n,
-  });
-};
+function createFetchBtcAddressesFunction(derivationPath: number[]) {
+  return async (
+    { n, startPathIndex }: FetchAddressesParams = {
+      n: MAX_ADDR,
+      startPathIndex: 0,
+    },
+  ) => {
+    return fetchAddresses({
+      startPath: getStartPath(derivationPath, startPathIndex),
+      n,
+    });
+  };
+}
+export const fetchBtcLegacyAddresses = createFetchBtcAddressesFunction(
+  BTC_LEGACY_DERIVATION,
+);
+export const fetchBtcSegwitAddresses = createFetchBtcAddressesFunction(
+  BTC_SEGWIT_DERIVATION,
+);
+export const fetchBtcWrappedSegwitAddresses = createFetchBtcAddressesFunction(
+  BTC_WRAPPED_SEGWIT_DERIVATION,
+);
+export const fetchBtcLegacyChangeAddresses = createFetchBtcAddressesFunction(
+  BTC_LEGACY_CHANGE_DERIVATION,
+);
+export const fetchBtcSegwitChangeAddresses = createFetchBtcAddressesFunction(
+  BTC_SEGWIT_CHANGE_DERIVATION,
+);
+export const fetchBtcWrappedSegwitChangeAddresses =
+  createFetchBtcAddressesFunction(BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION);
 
 export const fetchSolanaAddresses = async (
   { n, startPathIndex }: FetchAddressesParams = {
@@ -105,6 +110,7 @@ export const fetchSolanaAddresses = async (
   return fetchAddresses({
     startPath: getStartPath(SOLANA_DERIVATION, startPathIndex, 2),
     n,
+    flag: 4,
   });
 };
 
@@ -159,3 +165,70 @@ export const fetchLedgerLegacyAddresses = async (
   }
   return Promise.all(addresses);
 };
+
+export const fetchBip44ChangeAddresses = async ({
+  n = MAX_ADDR,
+  startPathIndex = 0,
+}: FetchAddressesParams = {}) => {
+  const addresses = [];
+  for (let i = 0; i < n; i++) {
+    addresses.push(
+      queue((client) => {
+        const startPath = [
+          44 + HARDENED_OFFSET,
+          501 + HARDENED_OFFSET,
+          startPathIndex + i + HARDENED_OFFSET,
+          0 + HARDENED_OFFSET,
+        ];
+        return client
+          .getAddresses({
+            startPath,
+            n: 1,
+            flag: 4,
+          })
+          .then((addresses) => addresses.map((address) => `${address}`));
+      }),
+    );
+  }
+  return Promise.all(addresses);
+};
+
+export async function fetchAddressesByDerivationPath(
+  path: string,
+  { n = 1, startPathIndex = 0 }: FetchAddressesParams = {},
+): Promise<string[]> {
+  const components = path.split('/').filter(Boolean);
+  const parsedPath = parseDerivationPathComponents(components);
+  const flag = getFlagFromPath(parsedPath);
+  const wildcardIndex = components.findIndex((part) =>
+    part.toLowerCase().includes('x'),
+  );
+
+  if (wildcardIndex === -1) {
+    return queue((client) =>
+      client.getAddresses({
+        startPath: parsedPath,
+        flag,
+        n,
+      }),
+    );
+  }
+
+  const addresses: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const currentPath = [...parsedPath];
+    currentPath[wildcardIndex] =
+      currentPath[wildcardIndex] + startPathIndex + i;
+
+    const result = await queue((client) =>
+      client.getAddresses({
+        startPath: currentPath,
+        flag,
+        n: 1,
+      }),
+    );
+    addresses.push(...result);
+  }
+
+  return addresses;
+}

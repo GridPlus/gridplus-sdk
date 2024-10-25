@@ -23,6 +23,7 @@ import { ProtocolConstants } from '../../protocol';
 import { getPathStr } from '../../shared/utilities';
 import { TypedTransaction } from '@ethereumjs/tx';
 import { getEnv } from './getters';
+import { setStoredClient } from './setup';
 const SIGHASH_ALL = 0x01;
 const secp256k1 = new EC('secp256k1');
 const ed25519 = new EdDSA('ed25519');
@@ -48,9 +49,10 @@ export function setupTestClient(
     return new Client({ stateData });
   }
   const setup: any = {
-    name: env.name || 'SDK Test',
+    name: env.APP_NAME || 'SDK Test',
     baseUrl: env.baseUrl || 'https://signing.gridpl.us',
     timeout: 120000,
+    setStoredClient,
   };
 
   // If the user passes a deviceID in the env, we assume they have previously
@@ -76,7 +78,8 @@ export const unharden = (x) => {
 export const buildPath = (indices) => {
   let path = 'm';
   indices.forEach((idx) => {
-    path += `/${unharden(idx)}${idx >= HARDENED_OFFSET ? '\'' : ''}`;
+    // eslint-disable-next-line quotes
+    path += `/${unharden(idx)}${idx >= HARDENED_OFFSET ? "'" : ''}`;
   });
   return path;
 };
@@ -632,7 +635,7 @@ export const validateDerivedPublicKeys = function (
       // Otherwise this is a SECP256K1 pubkey
       const priv = wallet.derivePath(getPathStr(path)).privateKey;
       expect(pub.toString('hex')).toEqualElseLog(
-        secp256k1.keyFromPrivate(priv).getPublic().encode('hex'),
+        secp256k1.keyFromPrivate(priv).getPublic().encode('hex', false),
         'Exported SECP256K1 pubkey incorrect',
       );
     }

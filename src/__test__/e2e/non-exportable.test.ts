@@ -26,12 +26,17 @@ import { ecdsaRecover } from 'secp256k1';
 import { Constants } from '../..';
 import { DEFAULT_SIGNER } from '../utils/builders';
 import { getSigStr } from '../utils/helpers';
-import { initializeClient } from '../utils/initializeClient';
+
+import { setupClient } from '../utils/setup';
 
 let runTests = true;
 
 describe('Non-Exportable Seed', () => {
-  const client = initializeClient();
+  let client;
+
+  test('pair', async () => {
+    client = await setupClient();
+  });
 
   describe('Setup', () => {
     it('Should ask if the user wants to test a card with a non-exportable seed', async () => {

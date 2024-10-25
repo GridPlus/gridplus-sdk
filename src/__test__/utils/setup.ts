@@ -1,6 +1,7 @@
 import fetch, { Request } from 'node-fetch';
 import * as fs from 'fs';
-import { setup } from '../..';
+import { question } from 'readline-sync';
+import { getClient, pair, setup } from '../..';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
@@ -21,15 +22,15 @@ expect.extend({
   },
 });
 
-export const setStoredClient = (data: string) => {
+export const setStoredClient = async (data: string) => {
   try {
     fs.writeFileSync('./client.temp', data);
   } catch (err) {
-    return '';
+    return;
   }
 };
 
-export const getStoredClient = () => {
+export const getStoredClient = async () => {
   try {
     return fs.readFileSync('./client.temp', 'utf8');
   } catch (err) {
@@ -40,12 +41,17 @@ export const getStoredClient = () => {
 export const setupClient = async () => {
   const deviceId = process.env.DEVICE_ID;
   const password = process.env.PASSWORD || 'password';
-  const name = process.env.name || 'api-test';
-  return setup({
+  const name = process.env.APP_NAME || 'SDK Test';
+  const isPaired = await setup({
     deviceId,
     password,
     name,
     getStoredClient,
     setStoredClient,
   });
+  if (!isPaired) {
+    const secret = question('Please enter the pairing secret: ');
+    await pair(secret.toUpperCase());
+  }
+  return getClient();
 };

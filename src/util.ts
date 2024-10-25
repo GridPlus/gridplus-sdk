@@ -1,15 +1,16 @@
 // Static utility functions
+import { RLP } from '@ethereumjs/rlp';
 import { Capability, TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import aes from 'aes-js';
 import BigNum from 'bignumber.js';
 import { BN } from 'bn.js';
+import { Buffer } from 'buffer';
 import crc32 from 'crc-32';
-import elliptic from 'elliptic';
+import { ec as EC } from 'elliptic';
 import { sha256 } from 'hash.js/lib/hash/sha';
 import { keccak256 } from 'js-sha3';
 import inRange from 'lodash/inRange';
 import isInteger from 'lodash/isInteger';
-import { decode as rlpDecode, encode as rlpEncode } from 'rlp';
 import { ecdsaRecover } from 'secp256k1';
 import { Calldata } from '.';
 import {
@@ -24,22 +25,26 @@ import {
   isValid4ByteResponse,
   isValidBlockExplorerResponse,
 } from './shared/validators';
+import { FirmwareConstants } from './types';
+import { LatticeResponseError } from './shared/errors';
 
 const { COINS, PURPOSES } = BIP_CONSTANTS;
-const EC = elliptic.ec;
-let ec;
+let ec: EC | undefined;
 
 //--------------------------------------------------
 // LATTICE UTILS
 //--------------------------------------------------
 
 /** @internal Parse a response from the Lattice1 */
-export const parseLattice1Response = function (r): {
+export const parseLattice1Response = function (r: string): {
   errorMessage?: string;
   responseCode?: number;
-  data?: any;
+  data?: Buffer;
 } {
-  const parsed: any = {
+  const parsed: {
+    errorMessage: string | null;
+    data: Buffer | null;
+  } = {
     errorMessage: null,
     data: null,
   };
@@ -95,7 +100,7 @@ export const parseLattice1Response = function (r): {
 };
 
 /** @internal */
-export const checksum = function (x) {
+export const checksum = function (x: Buffer): number {
   // crc32 returns a signed integer - need to cast it to unsigned
   // Note that this uses the default 0xedb88320 polynomial
   return crc32.buf(x) >>> 0; // Need this to be a uint, hence the bit shift
@@ -104,7 +109,7 @@ export const checksum = function (x) {
 // Get a 74-byte padded DER-encoded signature buffer
 // `sig` must be the signature output from elliptic.js
 /** @internal */
-export const toPaddedDER = function (sig) {
+export const toPaddedDER = function (sig: EC.Signature): Buffer {
   // We use 74 as the maximum length of a DER signature. All sigs must
   // be right-padded with zeros so that this can be a fixed size field
   const b = Buffer.alloc(74);
@@ -117,7 +122,10 @@ export const toPaddedDER = function (sig) {
 // TRANSACTION UTILS
 //--------------------------------------------------
 /** @internal */
-export const isValidAssetPath = function (path, fwConstants) {
+export const isValidAssetPath = function (
+  path: number[],
+  fwConstants: FirmwareConstants,
+): boolean {
   const allowedPurposes = [
     PURPOSES.ETH,
     PURPOSES.BTC_LEGACY,
@@ -148,7 +156,7 @@ export const isValidAssetPath = function (path, fwConstants) {
 };
 
 /** @internal */
-export const splitFrames = function (data, frameSz) {
+export const splitFrames = function (data: Buffer, frameSz: number): Buffer[] {
   const frames = [];
   const n = Math.ceil(data.length / frameSz);
   let off = 0;
@@ -160,7 +168,7 @@ export const splitFrames = function (data, frameSz) {
 };
 
 /** @internal */
-function isBase10NumStr(x) {
+function isBase10NumStr(x: string): boolean {
   const bn = new BigNum(x).toFixed().split('.').join('');
   const s = new String(x);
   // Note that the JS native `String()` loses precision for large numbers, but we only
@@ -169,34 +177,36 @@ function isBase10NumStr(x) {
 }
 
 /** @internal Ensure a param is represented by a buffer */
-export const ensureHexBuffer = function (x, zeroIsNull = true) {
+export const ensureHexBuffer = function (
+  x: string | number | Buffer,
+  zeroIsNull = true,
+): Buffer {
   try {
-    // For null values, return a 0-sized buffer. For most situations we assume
-    // 0 should be represented with a zero-length buffer (e.g. for RLP-building
-    // txs), but it can also be treated as a 1-byte buffer (`00`) if needed
     if (x === null || (x === 0 && zeroIsNull === true)) return Buffer.alloc(0);
-    const isNumber = typeof x === 'number' || isBase10NumStr(x);
-    // Otherwise try to get this converted to a hex string
+    const isNumber =
+      typeof x === 'number' || (typeof x === 'string' && isBase10NumStr(x));
+    let hexString: string;
     if (isNumber) {
-      // If this is a number or a base-10 number string, convert it to hex
-      x = `${new BigNum(x).toString(16)}`;
+      hexString = new BigNum(x).toString(16);
     } else if (typeof x === 'string' && x.slice(0, 2) === '0x') {
-      x = x.slice(2);
+      hexString = x.slice(2);
+    } else if (Buffer.isBuffer(x)) {
+      return x;
     } else {
-      x = x.toString('hex');
+      hexString = x.toString();
     }
-    if (x.length % 2 > 0) x = `0${x}`;
-    if (x === '00' && !isNumber) return Buffer.alloc(0);
-    return Buffer.from(x, 'hex');
+    if (hexString.length % 2 > 0) hexString = `0${hexString}`;
+    if (hexString === '00' && !isNumber) return Buffer.alloc(0);
+    return Buffer.from(hexString, 'hex');
   } catch (err) {
     throw new Error(
-      `Cannot convert ${x.toString()} to hex buffer (${err.toString()})`,
+      `Cannot convert ${x.toString()} to hex buffer (${(err as Error).message})`,
     );
   }
 };
 
 /** @internal */
-export const fixLen = function (msg, length) {
+export const fixLen = function (msg: Buffer, length: number): Buffer {
   const buf = Buffer.alloc(length);
   if (msg.length < length) {
     msg.copy(buf, length - msg.length);
@@ -209,7 +219,7 @@ export const fixLen = function (msg, length) {
 // CRYPTO UTILS
 //--------------------------------------------------
 /** @internal */
-export const aes256_encrypt = function (data, key) {
+export const aes256_encrypt = function (data: Buffer, key: Buffer): Buffer {
   const iv = Buffer.from(ProtocolConstants.aesIv);
   const aesCbc = new aes.ModeOfOperation.cbc(key, iv);
   const paddedData =
@@ -218,7 +228,7 @@ export const aes256_encrypt = function (data, key) {
 };
 
 /** @internal */
-export const aes256_decrypt = function (data, key) {
+export const aes256_decrypt = function (data: Buffer, key: Buffer): Buffer {
   const iv = Buffer.from(ProtocolConstants.aesIv);
   const aesCbc = new aes.ModeOfOperation.cbc(key, iv);
   return Buffer.from(aesCbc.decrypt(data));
@@ -243,19 +253,24 @@ export const parseDER = function (sigBuf: Buffer) {
 };
 
 /** @internal */
-export const getP256KeyPair = function (priv) {
+export const getP256KeyPair = function (priv: Buffer | string): EC.KeyPair {
   if (ec === undefined) ec = new EC('p256');
   return ec.keyFromPrivate(priv, 'hex');
 };
 
 /** @internal */
-export const getP256KeyPairFromPub = function (pub) {
+export const getP256KeyPairFromPub = function (
+  pub: Buffer | string,
+): EC.KeyPair {
   if (ec === undefined) ec = new EC('p256');
   return ec.keyFromPublic(pub, 'hex');
 };
 
 /** @internal */
-export const buildSignerPathBuf = function (signerPath, varAddrPathSzAllowed) {
+export const buildSignerPathBuf = function (
+  signerPath: number[],
+  varAddrPathSzAllowed: boolean,
+): Buffer {
   const buf = Buffer.alloc(24);
   let off = 0;
   if (varAddrPathSzAllowed && signerPath.length > 5)
@@ -278,7 +293,10 @@ export const buildSignerPathBuf = function (signerPath, varAddrPathSzAllowed) {
 // OTHER UTILS
 //--------------------------------------------------
 /** @internal */
-export const isAsciiStr = function (str, allowFormatChars = false) {
+export const isAsciiStr = function (
+  str: string,
+  allowFormatChars = false,
+): boolean {
   if (typeof str !== 'string') {
     return false;
   }
@@ -298,12 +316,15 @@ export const isAsciiStr = function (str, allowFormatChars = false) {
 };
 
 /** @internal Check if a value exists in an object. Only checks first level of keys. */
-export const existsIn = function (val, obj) {
+export const existsIn = function <T>(
+  val: T,
+  obj: { [key: string]: T },
+): boolean {
   return Object.keys(obj).some((key) => obj[key] === val);
 };
 
 /** @internal Create a buffer of size `n` and fill it with random data */
-export const randomBytes = function (n) {
+export const randomBytes = function (n: number): Buffer {
   const buf = Buffer.alloc(n);
   for (let i = 0; i < n; i++) {
     buf[i] = Math.round(Math.random() * 255);
@@ -388,7 +409,10 @@ export function selectDefFrom4byteABI(abiData: any[], selector: string) {
   }
 }
 
-export async function fetchWithTimeout(url, options) {
+export async function fetchWithTimeout(
+  url: string,
+  options: RequestInit & { timeout?: number },
+): Promise<Response> {
   const { timeout = 8000 } = options;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -400,7 +424,10 @@ export async function fetchWithTimeout(url, options) {
   return response;
 }
 
-async function fetchAndCache(url, opts?) {
+async function fetchAndCache(
+  url: string,
+  opts?: RequestInit,
+): Promise<Response> {
   try {
     if (globalThis.caches && globalThis.Request) {
       const cache = await caches.open('gp-calldata');
@@ -417,7 +444,7 @@ async function fetchAndCache(url, opts?) {
           (isValidBlockExplorerResponse(data) || isValid4ByteResponse(data))
         ) {
           await cache.put(request, responseClone);
-          return cache.match(request, opts);
+          return cache.match(request);
         }
         return response;
       }
@@ -444,7 +471,8 @@ async function fetchSupportedChainData(
         throw new Error('Server response was malformed');
       }
     })
-    .catch(() => {
+    .catch((error) => {
+      console.log(error);
       throw new Error('Fetching data from external network failed');
     });
 }
@@ -466,7 +494,7 @@ async function fetch4byteData(selector: string): Promise<any> {
 }
 
 function encodeDef(def: any) {
-  return Buffer.from(rlpEncode(def));
+  return Buffer.from(RLP.encode(def));
 }
 
 /**
@@ -686,13 +714,13 @@ export const generateAppSecret = (
  * @param resp - response from Lattice. Can be either legacy or generic signing variety
  * @returns bn.js BN object containing the `v` param
  */
-export const getV = function (tx, resp) {
+export const getV = function (tx: any, resp: any) {
   let chainId, hash, type;
   const txIsBuf = Buffer.isBuffer(tx);
   if (txIsBuf) {
     hash = Buffer.from(keccak256(tx), 'hex');
     try {
-      const legacyTxArray = rlpDecode(tx);
+      const legacyTxArray = RLP.decode(tx);
       if (legacyTxArray.length === 6) {
         // Six item array means this is a pre-EIP155 transaction
         chainId = null;
@@ -719,7 +747,7 @@ export const getV = function (tx, resp) {
     type = tx._type;
     hash = type
       ? tx.getMessageToSign(true) // newer tx types
-      : rlpEncode(tx.getMessageToSign(false)); // legacy tx
+      : RLP.encode(tx.getMessageToSign(false)); // legacy tx
     if (tx.supports(Capability.EIP155ReplayProtection)) {
       chainId = tx.common.chainIdBN().toNumber();
     }

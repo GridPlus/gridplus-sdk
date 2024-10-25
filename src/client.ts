@@ -1,3 +1,4 @@
+import { buildSaveClientFn } from './api/utilities';
 import {
   BASE_URL,
   DEFAULT_ACTIVE_WALLETS,
@@ -18,6 +19,18 @@ import {
 import { buildRetryWrapper } from './shared/functions';
 import { getPubKeyBytes } from './shared/utilities';
 import { validateEphemeralPub } from './shared/validators';
+import {
+  KeyPair,
+  ActiveWallets,
+  GetAddressesRequestParams,
+  SignRequestParams,
+  SignData,
+  AddKvRecordsRequestParams,
+  GetKvRecordsRequestParams,
+  GetKvRecordsData,
+  RemoveKvRecordsRequestParams,
+  FetchEncDataRequest,
+} from './types';
 import { getP256KeyPair, getP256KeyPairFromPub, randomBytes } from './util';
 
 /**
@@ -56,6 +69,8 @@ export class Client {
   public activeWallets: ActiveWallets;
   /** A wrapper function for handling retries and injecting the {@link Client} class  */
   private retryWrapper: (fn: any, params?: any) => Promise<any>;
+  /** Function to set the stored client data */
+  private setStoredClient: (clientData: string | null) => Promise<void>;
 
   /**
    * @param params - Parameters are passed as an object.
@@ -69,6 +84,7 @@ export class Client {
     retryCount,
     skipRetryOnWrongWallet,
     deviceId,
+    setStoredClient,
   }: {
     /** The base URL of the signing server. */
     baseUrl?: string;
@@ -86,6 +102,8 @@ export class Client {
     skipRetryOnWrongWallet?: boolean;
     /** The ID of the connected Lattice */
     deviceId?: string;
+    /** Function to set the stored client data */
+    setStoredClient?: (clientData: string | null) => Promise<void>;
   }) {
     this.name = name || 'Unknown';
     this.baseUrl = baseUrl || BASE_URL;
@@ -98,6 +116,9 @@ export class Client {
     this.privKey = privKey || randomBytes(32);
     this.key = getP256KeyPair(this.privKey);
     this.retryWrapper = buildRetryWrapper(this, this.retryCount);
+    this.setStoredClient = setStoredClient
+      ? buildSaveClientFn(setStoredClient)
+      : undefined;
 
     /** The user may pass in state data to rehydrate a session that was previously cached */
     if (stateData) {
@@ -180,8 +201,9 @@ export class Client {
     startPath,
     n = 1,
     flag = 0,
+    iterIdx = 0,
   }: GetAddressesRequestParams): Promise<Buffer[] | string[]> {
-    return this.retryWrapper(getAddresses, { startPath, n, flag });
+    return this.retryWrapper(getAddresses, { startPath, n, flag, iterIdx });
   }
 
   /**
@@ -330,7 +352,7 @@ export class Client {
     activeWallets,
   }: {
     deviceId?: string;
-    ephemeralPub?: Buffer;
+    ephemeralPub?: KeyPair;
     url?: string;
     isPaired?: boolean;
     fwVersion?: Buffer;
@@ -342,6 +364,10 @@ export class Client {
     if (isPaired !== undefined) this.isPaired = isPaired;
     if (fwVersion !== undefined) this.fwVersion = fwVersion;
     if (activeWallets !== undefined) this.activeWallets = activeWallets;
+
+    if (this.setStoredClient) {
+      this.setStoredClient(this.getStateData());
+    }
   }
 
   /**
@@ -364,7 +390,7 @@ export class Client {
             capabilities: this.activeWallets.external.capabilities,
           },
         },
-        ephemeralPub: this.ephemeralPub?.getPublic()?.encode('hex'),
+        ephemeralPub: this.ephemeralPub?.getPublic()?.encode('hex', false),
         fwVersion: this.fwVersion?.toString('hex'),
         deviceId: this.deviceId,
         name: this.name,

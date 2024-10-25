@@ -1,4 +1,5 @@
 import { HARDENED_OFFSET } from '../constants';
+import { KeyPair, ActiveWallets, FirmwareVersion } from '../types';
 
 /**
  * Get 64 bytes representing the public key This is the uncompressed key without the leading 04
@@ -9,7 +10,7 @@ import { HARDENED_OFFSET } from '../constants';
  */
 export const getPubKeyBytes = (key: KeyPair, LE = false) => {
   const k = key.getPublic();
-  const p = k.encode('hex');
+  const p = k.encode('hex', false);
   const pb = Buffer.from(p, 'hex');
   if (LE === true) {
     // Need to flip X and Y components to little endian
@@ -35,7 +36,7 @@ export const getSharedSecret = (key: KeyPair, ephemeralPub: KeyPair) => {
 
 // Given a set of wallet data, which contains two wallet descriptors, parse the data and save it
 // to memory
-export const parseWallets = (walletData): ActiveWallets => {
+export const parseWallets = (walletData: any): ActiveWallets => {
   // Read the external wallet data first. If it is non-null, the external wallet will be the
   // active wallet of the device and we should save it. If the external wallet is blank, it means
   // there is no card present and we should save and use the interal wallet. If both wallets are
@@ -76,6 +77,7 @@ export const parseWallets = (walletData): ActiveWallets => {
   // off + 36,
   // off + walletDescriptorLen,
   // );
+
   return activeWallets;
 };
 

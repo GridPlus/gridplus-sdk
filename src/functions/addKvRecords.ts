@@ -7,6 +7,11 @@ import {
   validateKvRecord,
   validateKvRecords,
 } from '../shared/validators';
+import {
+  AddKvRecordsRequestFunctionParams,
+  KVRecords,
+  FirmwareConstants,
+} from '../types';
 
 /**
  * `addKvRecords` takes in a set of key-value records and sends a request to add them to the

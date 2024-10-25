@@ -14,6 +14,13 @@ import {
   validateStartPath,
   validateWallet,
 } from '../shared/validators';
+import {
+  FetchEncDataRequestFunctionParams,
+  EIP2335KeyExportReq,
+  FirmwareVersion,
+  Wallet,
+  EIP2335KeyExportData,
+} from '../types';
 
 const { ENC_DATA } = EXTERNAL;
 const ENC_DATA_ERR_STR =

@@ -1,16 +1,18 @@
-interface TestRequestPayload {
+import { Client } from '../client';
+
+export interface TestRequestPayload {
   payload: Buffer;
   testID: number;
   client: Client;
 }
 
-interface EthDepositInfo {
+export interface EthDepositInfo {
   networkName: string;
   forkVersion: Buffer;
   validatorsRoot: Buffer;
 }
 
-interface EthDepositDataReq {
+export interface EthDepositDataReq {
   // (optional) BLS withdrawal key or ETH1 withdrawal address
   withdrawalKey?: Buffer | string;
   // Amount to be deposited in GWei (10**9 wei)
@@ -24,7 +26,7 @@ interface EthDepositDataReq {
   depositCliVersion: string;
 }
 
-interface EthDepositDataResp {
+export interface EthDepositDataResp {
   // Validator's pubkey as a hex string
   pubkey: string;
   // JSON encoded deposit data

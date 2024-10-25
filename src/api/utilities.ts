@@ -5,6 +5,7 @@ import {
   saveClient,
   setFunctionQueue,
 } from './state';
+import { EXTERNAL, HARDENED_OFFSET } from '../constants';
 
 /**
  * `queue` is a function that wraps all functional API calls. It limits the number of concurrent
@@ -15,24 +16,25 @@ import {
  *
  * @internal
  */
-export const queue = (fn: (client: Client) => Promise<any>) => {
-  const client = loadClient();
+export const queue = async (fn: (client: Client) => Promise<any>) => {
+  const client = await loadClient();
   if (!client) throw new Error('Client not initialized');
   if (!getFunctionQueue()) {
     setFunctionQueue(Promise.resolve());
   }
   setFunctionQueue(
-    getFunctionQueue().then(() =>
-      fn(client)
-        .catch((err) => {
-          // Empty the queue if any function call fails
-          setFunctionQueue(Promise.resolve());
-          throw err;
-        })
-        .then((returnValue) => {
-          saveClient(client.getStateData());
-          return returnValue;
-        }),
+    getFunctionQueue().then(
+      async () =>
+        await fn(client)
+          .catch((err) => {
+            // Empty the queue if any function call fails
+            setFunctionQueue(Promise.resolve());
+            throw err;
+          })
+          .then((returnValue) => {
+            saveClient(client.getStateData());
+            return returnValue;
+          }),
     ),
   );
   return getFunctionQueue();
@@ -49,18 +51,18 @@ const decodeClientData = (clientData: string) => {
 };
 
 export const buildSaveClientFn = (
-  setStoredClient: (clientData: string | null) => void,
+  setStoredClient: (clientData: string | null) => Promise<void>,
 ) => {
-  return (clientData: string | null) => {
+  return async (clientData: string | null) => {
     if (!clientData) return;
     const encodedData = encodeClientData(clientData);
-    setStoredClient(encodedData);
+    await setStoredClient(encodedData);
   };
 };
 
-export const buildLoadClientFn = (getStoredClient: () => string) => {
-  return () => {
-    const clientData = getStoredClient();
+export const buildLoadClientFn = (getStoredClient: () => Promise<string>) => {
+  return async () => {
+    const clientData = await getStoredClient();
     if (!clientData) return undefined;
     const stateData = decodeClientData(clientData);
     if (!stateData) return undefined;
@@ -88,3 +90,31 @@ export const isEIP712Payload = (payload: any) =>
   'domain' in payload &&
   'primaryType' in payload &&
   'message' in payload;
+
+export function parseDerivationPath(path: string): number[] {
+  if (!path) return [];
+  const components = path.split('/').filter(Boolean);
+  return parseDerivationPathComponents(components);
+}
+
+export function parseDerivationPathComponents(components: string[]): number[] {
+  return components.map((part) => {
+    const lowerPart = part.toLowerCase();
+    if (lowerPart === 'x') return 0; // Wildcard
+    if (lowerPart === "x'") return HARDENED_OFFSET; // Hardened wildcard
+    if (part.endsWith("'"))
+      return parseInt(part.slice(0, -1)) + HARDENED_OFFSET;
+    const val = parseInt(part);
+    if (isNaN(val)) {
+      throw new Error(`Invalid part in derivation path: ${part}`);
+    }
+    return val;
+  });
+}
+
+export function getFlagFromPath(path: number[]): number | undefined {
+  if (path.length >= 2 && path[1] === 501 + HARDENED_OFFSET) {
+    return EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB; // SOLANA
+  }
+  return undefined;
+}

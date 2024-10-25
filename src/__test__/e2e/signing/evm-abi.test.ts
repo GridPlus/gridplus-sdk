@@ -16,7 +16,8 @@ import {
 } from '../../utils/builders';
 import { getEtherscanKey } from '../../utils/getters';
 import { runEvm } from '../../utils/runners';
-import { initializeClient, initializeSeed } from '../../utils/initializeClient';
+import { initializeSeed } from '../../utils/initializeClient';
+import { setupClient } from '../../utils/setup';
 
 const globalVectors = getTestVectors();
 const vectors = globalVectors.evm.calldata;
@@ -31,7 +32,11 @@ const { encDefs, encDefsCalldata } = buildEncDefs(vectors);
 // TESTS
 //---------------------------------------
 describe('[EVM ABI]', () => {
-  const client = initializeClient();
+  let client;
+
+  test('pair', async () => {
+    client = await setupClient();
+  });
   const runEvmTestForReq = (
     req?: any,
     bypassSetPayload?: boolean,
@@ -186,7 +191,7 @@ describe('[EVM ABI]', () => {
               // should uncomment these prints and validate that the `data` matches
               // what you see on the screen for each case. Please scroll through
               // ALL the data on the Lattice to confirm each param has properly decoded.
-              // const { types, data } = convertDecoderToEthers(rlpDecode(req.data.decoder).slice(1));
+              // const { types, data } = convertDecoderToEthers(RLP.decode(req.data.decoder).slice(1));
               // console.log('types', types)
               // console.log('params', JSON.stringify(data))
               // for (let cd = 2; cd < calldata.length; cd += 64) {

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { EXTERNAL } from '../../constants';
 import {
   encodeAddKvRecordsRequest,
@@ -21,7 +22,7 @@ describe('encoders', () => {
   let mockRandom: any;
 
   beforeAll(() => {
-    mockRandom = vi.spyOn(global.Math, 'random').mockReturnValue(0.1);
+    mockRandom = vi.spyOn(globalThis.Math, 'random').mockReturnValue(0.1);
   });
 
   afterAll(() => {

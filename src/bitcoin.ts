@@ -392,7 +392,7 @@ function decodeAddress(address) {
     // Attempt to base58 decode the address. This will work for older
     // P2PKH, P2SH, and P2SH-P2WPKH addresses
     versionByte = bs58check.decode(address)[0];
-    pkh = bs58check.decode(address).slice(1);
+    pkh = Buffer.from(bs58check.decode(address).slice(1));
   } catch (err) {
     // If we could not base58 decode, the address must be bech32 encoded.
     // If neither decoding method works, the address is invalid.

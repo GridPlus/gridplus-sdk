@@ -3,6 +3,11 @@ import {
   encryptedSecureRequest,
 } from '../protocol';
 import { validateConnectedClient } from '../shared/validators';
+import {
+  GetKvRecordsRequestFunctionParams,
+  GetKvRecordsData,
+  FirmwareConstants,
+} from '../types';
 
 export async function getKvRecords({
   client,
