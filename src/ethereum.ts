@@ -3,7 +3,6 @@
 import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory } from '@ethereumjs/tx';
 import BN from 'bignumber.js';
-import cbor from 'borc';
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
 import { keccak256 } from 'js-sha3';
 import { RLP } from '@ethereumjs/rlp';
@@ -22,6 +21,9 @@ import {
   isAsciiStr,
   splitFrames,
 } from './util';
+import cbor from 'cbor';
+import bdec from 'cbor-bigdecimal';
+bdec(cbor);
 
 const buildEthereumMsgRequest = function (input) {
   if (!input.payload || !input.protocol || !input.signerPath)
