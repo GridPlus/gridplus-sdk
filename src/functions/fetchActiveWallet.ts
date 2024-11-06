@@ -7,6 +7,10 @@ import {
   validateActiveWallets,
   validateConnectedClient,
 } from '../shared/validators';
+import {
+  FetchActiveWalletRequestFunctionParams,
+  ActiveWallets,
+} from '../types';
 
 /**
  * Fetch the active wallet in the device.

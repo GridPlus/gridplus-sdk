@@ -12,6 +12,7 @@ import {
   MAX_ADDR,
   SOLANA_DERIVATION,
 } from '../constants';
+import { GetAddressesRequestParams, WalletPath } from '../types';
 import {
   getStartPath,
   parseDerivationPathComponents,

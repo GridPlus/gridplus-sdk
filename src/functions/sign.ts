@@ -11,6 +11,14 @@ import {
 import { buildTransaction } from '../shared/functions';
 import { validateConnectedClient, validateWallet } from '../shared/validators';
 import { parseDER } from '../util';
+import {
+  SignRequestFunctionParams,
+  SigningRequestResponse,
+  EncodeSignRequestParams,
+  DecodeSignResponseParams,
+  SignData,
+  BitcoinSignRequest,
+} from '../types';
 
 /**
  * `sign` builds and sends a request for signing to the device.

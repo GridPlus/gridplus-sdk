@@ -1,11 +1,14 @@
-interface LatticeSecureRequest {
+import { LatticeSecureMsgType, LatticeResponseCode } from '../protocol';
+import { LatticeMessageHeader } from './messages';
+
+export interface LatticeSecureRequest {
   // Message header
   header: LatticeMessageHeader;
   // Request data
   payload: LatticeSecureRequestPayload;
 }
 
-interface LatticeSecureRequestPayload {
+export interface LatticeSecureRequestPayload {
   // Indicates whether this is a connect (0x01) or
   // encrypted (0x02) secure request
   // [uint8]
@@ -15,12 +18,12 @@ interface LatticeSecureRequestPayload {
   data: Buffer;
 }
 
-interface LatticeSecureConnectResponsePayload {
+export interface LatticeSecureConnectResponsePayload {
   // [214 bytes]
   data: Buffer;
 }
 
-interface LatticeSecureEncryptedResponsePayload {
+export interface LatticeSecureEncryptedResponsePayload {
   // Error code
   responseCode: LatticeResponseCode;
   // Response data
@@ -28,13 +31,13 @@ interface LatticeSecureEncryptedResponsePayload {
   data: Buffer;
 }
 
-interface LatticeSecureConnectRequestPayloadData {
+export interface LatticeSecureConnectRequestPayloadData {
   // Public key corresponding to the static Client keypair
   // [65 bytes]
   pubkey: Buffer;
 }
 
-interface LatticeSecureEncryptedRequestPayloadData {
+export interface LatticeSecureEncryptedRequestPayloadData {
   // SHA256(sharedSecret).slice(0, 4)
   // [uint32]
   ephemeralId: number;
@@ -43,7 +46,7 @@ interface LatticeSecureEncryptedRequestPayloadData {
   encryptedData: Buffer;
 }
 
-interface LatticeSecureDecryptedResponse {
+export interface LatticeSecureDecryptedResponse {
   // ECDSA public key that should replace the client's ephemeral key
   // [65 bytes]
   ephemeralPub: Buffer;

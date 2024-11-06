@@ -4,6 +4,7 @@ import {
 } from '../protocol';
 import { getPubKeyBytes } from '../shared/utilities';
 import { validateConnectedClient } from '../shared/validators';
+import { PairRequestParams, KeyPair } from '../types';
 import { generateAppSecret, toPaddedDER } from '../util';
 
 /**
@@ -62,7 +63,7 @@ export const encodePairRequest = ({
     nameBuf,
     Buffer.from(pairingSecret),
   );
-  const sig = key.sign(hash); // returns an array, not a buffer
+  const sig = key.sign(hash);
   const derSig = toPaddedDER(sig);
   const payload = Buffer.concat([nameBuf, derSig]);
   return payload;

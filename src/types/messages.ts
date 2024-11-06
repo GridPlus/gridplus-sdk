@@ -1,4 +1,6 @@
-interface LatticeMessageHeader {
+import { LatticeMsgType } from '../protocol';
+
+export interface LatticeMessageHeader {
   // Protocol version. Should always be 0x01
   // [uint8]
   version: number;

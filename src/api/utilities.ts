@@ -16,24 +16,25 @@ import { EXTERNAL, HARDENED_OFFSET } from '../constants';
  *
  * @internal
  */
-export const queue = (fn: (client: Client) => Promise<any>) => {
-  const client = loadClient();
+export const queue = async (fn: (client: Client) => Promise<any>) => {
+  const client = await loadClient();
   if (!client) throw new Error('Client not initialized');
   if (!getFunctionQueue()) {
     setFunctionQueue(Promise.resolve());
   }
   setFunctionQueue(
-    getFunctionQueue().then(() =>
-      fn(client)
-        .catch((err) => {
-          // Empty the queue if any function call fails
-          setFunctionQueue(Promise.resolve());
-          throw err;
-        })
-        .then((returnValue) => {
-          saveClient(client.getStateData());
-          return returnValue;
-        }),
+    getFunctionQueue().then(
+      async () =>
+        await fn(client)
+          .catch((err) => {
+            // Empty the queue if any function call fails
+            setFunctionQueue(Promise.resolve());
+            throw err;
+          })
+          .then((returnValue) => {
+            saveClient(client.getStateData());
+            return returnValue;
+          }),
     ),
   );
   return getFunctionQueue();
@@ -50,18 +51,18 @@ const decodeClientData = (clientData: string) => {
 };
 
 export const buildSaveClientFn = (
-  setStoredClient: (clientData: string | null) => void,
+  setStoredClient: (clientData: string | null) => Promise<void>,
 ) => {
-  return (clientData: string | null) => {
+  return async (clientData: string | null) => {
     if (!clientData) return;
     const encodedData = encodeClientData(clientData);
-    setStoredClient(encodedData);
+    await setStoredClient(encodedData);
   };
 };
 
-export const buildLoadClientFn = (getStoredClient: () => string) => {
-  return () => {
-    const clientData = getStoredClient();
+export const buildLoadClientFn = (getStoredClient: () => Promise<string>) => {
+  return async () => {
+    const clientData = await getStoredClient();
     if (!clientData) return undefined;
     const stateData = decodeClientData(clientData);
     if (!stateData) return undefined;

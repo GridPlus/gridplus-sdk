@@ -11,6 +11,11 @@ import {
   validateStartPath,
   validateWallet,
 } from '../shared/validators';
+import {
+  GetAddressesRequestFunctionParams,
+  FirmwareConstants,
+  Wallet,
+} from '../types';
 import { isValidAssetPath } from '../util';
 
 /**
