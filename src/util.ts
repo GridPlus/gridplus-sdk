@@ -44,6 +44,7 @@ export const parseLattice1Response = function (r: string): {
   const parsed: {
     errorMessage: string | null;
     data: Buffer | null;
+    responseCode?: number;
   } = {
     errorMessage: null,
     data: null,
