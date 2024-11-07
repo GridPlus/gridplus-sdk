@@ -9,7 +9,8 @@
   "exports": {
     ".": {
       "import": "./dist/gridplus-sdk.es.js",
-      "require": "./dist/gridplus-sdk.umd.js"
+      "require": "./dist/gridplus-sdk.umd.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "files": [
