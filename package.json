@@ -1,23 +1,9 @@
 {
   "name": "gridplus-sdk",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "SDK to interact with GridPlus Lattice1 device",
-  "type": "module",
-  "main": "./dist/gridplus-sdk.umd.js",
-  "module": "./dist/gridplus-sdk.es.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/gridplus-sdk.es.js",
-      "require": "./dist/gridplus-sdk.umd.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
-  "files": [
-    "dist"
-  ],
   "scripts": {
-    "build": "vite build",
+    "build": "NODE_ENV=production tsc -p tsconfig.json",
     "commit": "git-cz",
     "lint:fix": "eslint src --c .ts,.tsx --config eslint.config.js --fix",
     "lint": "eslint src --c .ts,.tsx --config eslint.config.js",
@@ -48,6 +34,18 @@
     "e2e-api": "vitest ./src/__test__/e2e/api.test.ts",
     "e2e-iter": "vitest ./src/__test__/e2e/iter.test.ts",
     "contracts": "vitest ./src/__test__/e2e/contracts.test.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GridPlus/gridplus-sdk.git"
+  },
+  "overrides": {
+    "js-sha3": "^0.9.3"
   },
   "dependencies": {
     "@ethereumjs/common": "^4.4.0",
@@ -112,17 +110,6 @@
     "vite": "^5.4.9",
     "vite-plugin-dts": "^4.3.0",
     "vitest": "^2.1.3"
-  },
-  "peerDependencies": {
-    "@ethereumjs/common": "^4.4.0",
-    "@ethereumjs/rlp": "^5.0.2",
-    "@ethereumjs/tx": "^5.4.0",
-    "@ethersproject/abi": "^5.7.0",
-    "@metamask/eth-sig-util": "^8.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/GridPlus/gridplus-sdk.git"
   },
   "license": "MIT",
   "pnpm": {
