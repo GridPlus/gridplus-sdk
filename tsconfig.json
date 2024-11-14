@@ -29,7 +29,7 @@
     "strict": false,
     "target": "ES2020",
     "typeRoots": ["node_modules/@types", "src/**/types"],
-    "types": ["node", "vitest/globals"]
+    "types": ["node"]
   },
   "exclude": ["node_modules", "**/__test__", "**/*.spec.ts", "**/*.test.ts"],
   "include": ["src"]
