@@ -5,8 +5,8 @@
   "scripts": {
     "build": "NODE_ENV=production tsc -p tsconfig.json",
     "commit": "git-cz",
-    "lint:fix": "eslint src --c .ts,.tsx --config eslint.config.js --fix",
-    "lint": "eslint src --c .ts,.tsx --config eslint.config.js",
+    "lint:fix": "eslint src --c .ts,.tsx --config eslint.config.mjs --fix",
+    "lint": "eslint src --c .ts,.tsx --config eslint.config.mjs",
     "precommit": "npm run lint:fix && npm run test",
     "test": "vitest ./src/__test__/unit ./src/__test__/integration",
     "test-unit": "vitest ./src/__test__/unit --maxConcurrency 10 --fileParallelism true",
