@@ -32,3 +32,6 @@ jobs:
 
       - name: Build project
         run: pnpm run build
+
+      - name: Release a nightly build
+        run: pnpx pkg-pr-new publish
