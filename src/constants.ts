@@ -18,6 +18,7 @@ export const EXTERNAL = {
     SECP256K1_PUB: LatticeGetAddressesFlag.secp256k1Pubkey,
     ED25519_PUB: LatticeGetAddressesFlag.ed25519Pubkey,
     BLS12_381_G1_PUB: LatticeGetAddressesFlag.bls12_381Pubkey,
+    SECP256K1_XPUB: LatticeGetAddressesFlag.secp256k1Xpub,
   },
   // Options for building general signing requests
   SIGNING: {
