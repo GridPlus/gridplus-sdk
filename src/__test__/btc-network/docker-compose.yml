@@ -1,0 +1,63 @@
+services:
+  bitcoin-regtest:
+    image: ruimarinho/bitcoin-core:24
+    container_name: bitcoin-regtest
+    ports:
+      - '18443:18443'
+      - '18444:18444'
+    volumes:
+      - type: volume
+        source: bitcoin_data
+        target: /data
+        volume:
+          nocopy: true
+    command: >
+      bitcoind
+      -regtest=1
+      -rpcallowip=0.0.0.0/0
+      -rpcbind=0.0.0.0
+      -rpcuser=user
+      -rpcpassword=pass
+      -datadir=/data
+      -printtoconsole
+      -server=1
+      -txindex=1
+      -fallbackfee=0.0002
+      -debug=1
+      -logtimestamps
+      -logips
+      -rpcthreads=4
+      -rpcworkqueue=100
+      -maxtxfee=1.0
+      -maxmempool=50
+      -mempoolexpiry=72
+    environment:
+      - BITCOIN_DATA=/data
+    networks:
+      - bitcoin-network
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'bitcoin-cli',
+          '-regtest',
+          '-rpcuser=user',
+          '-rpcpassword=pass',
+          'getblockchaininfo',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: 'no'
+
+volumes:
+  bitcoin_data:
+    name: 'bitcoin_data_${TEST_RUN_ID:-default}'
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+
+networks:
+  bitcoin-network:
+    driver: bridge

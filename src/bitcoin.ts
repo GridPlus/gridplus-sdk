@@ -18,7 +18,7 @@ const OP = {
 };
 const SEGWIT_V0 = 0x00;
 const SEGWIT_NATIVE_V0_PREFIX = 'bc';
-const SEGWIT_NATIVE_V0_TESTNET_PREFIX = 'tb';
+const SEGWIT_NATIVE_V0_TESTNET_PREFIX = 'bcrt';
 
 const FMT_SEGWIT_NATIVE_V0 = 0xd0;
 const FMT_SEGWIT_NATIVE_V0_TESTNET = 0xf0;
@@ -195,6 +195,7 @@ const serializeTx = function (data) {
     payload = concat(payload, script);
     off += script.length;
   });
+  console.log('inputs', inputs);
   // Add witness data if needed
   if (useWitness) {
     const sigs = [];
@@ -377,6 +378,7 @@ function getVarInt(x) {
 }
 
 function writeUInt64LE(n, buf, off) {
+  debugger;
   if (typeof n === 'number') n = n.toString(16);
   const preBuf = Buffer.alloc(8);
   const nStr = n.length % 2 === 0 ? n.toString(16) : `0${n.toString(16)}`;
@@ -400,7 +402,7 @@ function decodeAddress(address) {
       const bech32Dec = bech32.decode(address);
       if (bech32Dec.prefix === SEGWIT_NATIVE_V0_PREFIX) {
         versionByte = FMT_SEGWIT_NATIVE_V0;
-      } else if (bech32Dec.prefix === SEGWIT_NATIVE_V0_TESTNET_PREFIX) {
+      } else if (bech32Dec.prefix === SEGWIT_NATIVE_V0_TESTNET_PREFIX || bech32Dec.prefix === "tb") {
         versionByte = FMT_SEGWIT_NATIVE_V0_TESTNET;
       } else {
         throw new Error('Unsupported prefix: must be bc or tb.');

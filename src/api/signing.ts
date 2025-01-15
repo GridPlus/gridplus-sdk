@@ -60,6 +60,10 @@ export const signMessage = async (
   return queue((client) => client.sign(tx));
 };
 
+export const signBtc = async (tx: SignRequestParams): Promise<SignData> => {
+  return queue((client) => client.sign(tx));
+};
+
 export const signBtcLegacyTx = async (
   payload: BitcoinSignPayload,
 ): Promise<SignData> => {
