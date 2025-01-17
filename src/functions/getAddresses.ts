@@ -198,7 +198,12 @@ export const decodeGetAddressesResponse = (
       // Return the UTF-8 representation
       const len = addrBytes.indexOf(0); // First 0 is the null terminator
       if (len > 0) {
-        addrs.push(addrBytes.slice(0, len).toString());
+        // Clean control characters from the string before adding to array
+        const cleanStr = addrBytes
+          .slice(0, len)
+          .toString()
+          .replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+        addrs.push(cleanStr);
       }
     }
   }

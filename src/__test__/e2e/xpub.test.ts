@@ -19,6 +19,6 @@ describe('XPUB', () => {
       flag: LatticeGetAddressesFlag.secp256k1Xpub,
     });
     expect(xpub).toHaveLength(1);
-    expect(xpub[0]).toMatch(/^xpub/); // XPUB should start with "xpub"
-    });
+    expect(xpub[0].startsWith('xpub')).toBe(true);
+  });
 });
