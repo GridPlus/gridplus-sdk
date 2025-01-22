@@ -48,6 +48,7 @@ export enum LatticeGetAddressesFlag {
   secp256k1Pubkey = 3,
   ed25519Pubkey = 4,
   bls12_381Pubkey = 5,
+  secp256k1Xpub = 6, // For Bitcoin XPUB
 }
 
 export enum LatticeSignSchema {
