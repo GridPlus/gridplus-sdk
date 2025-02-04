@@ -23,6 +23,7 @@ import {
 type FetchAddressesParams = {
   n?: number;
   startPathIndex?: number;
+  flag?: number;
 };
 
 export const fetchAddresses = async (overrides?: GetAddressesRequestParams) => {
@@ -195,11 +196,11 @@ export const fetchBip44ChangeAddresses = async ({
 
 export async function fetchAddressesByDerivationPath(
   path: string,
-  { n = 1, startPathIndex = 0 }: FetchAddressesParams = {},
+  { n = 1, startPathIndex = 0, flag }: FetchAddressesParams = {},
 ): Promise<string[]> {
   const components = path.split('/').filter(Boolean);
   const parsedPath = parseDerivationPathComponents(components);
-  const flag = getFlagFromPath(parsedPath);
+  const _flag = getFlagFromPath(parsedPath);
   const wildcardIndex = components.findIndex((part) =>
     part.toLowerCase().includes('x'),
   );
@@ -208,7 +209,7 @@ export async function fetchAddressesByDerivationPath(
     return queue((client) =>
       client.getAddresses({
         startPath: parsedPath,
-        flag,
+        flag: flag || _flag,
         n,
       }),
     );
@@ -223,7 +224,7 @@ export async function fetchAddressesByDerivationPath(
     const result = await queue((client) =>
       client.getAddresses({
         startPath: currentPath,
-        flag,
+        flag: flag || _flag,
         n: 1,
       }),
     );
