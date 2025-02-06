@@ -13,7 +13,7 @@ export async function fetchDecoder({
   data,
   to,
   chainId,
-}: TransactionRequest): Promise<Buffer | undefined> {
+}: TransactionRequest): Promise<{ abi: any; def: Buffer | null } | undefined> {
   try {
     const client = await getClient();
     validateConnectedClient(client);
@@ -22,14 +22,15 @@ export async function fetchDecoder({
     const supportsDecoderRecursion =
       fwVersion.major > 0 || fwVersion.minor >= 16;
 
-    const { def } = await fetchCalldataDecoder(
+    const result = await fetchCalldataDecoder(
       data,
       to,
       chainId,
       supportsDecoderRecursion,
     );
 
-    return def;
+    // Return the full result object containing both abi and def
+    return result;
   } catch (error) {
     console.warn('Failed to fetch ABI:', error);
     return undefined;

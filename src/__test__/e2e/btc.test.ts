@@ -21,11 +21,11 @@ import {
 } from '../utils/helpers';
 import { testRequest } from '../utils/testRequest';
 import { setupClient } from '../utils/setup';
-import { Wallet } from 'ethers';
+import { BIP32Interface } from 'bip32';
 
 const prng = getPrng();
 const TEST_TESTNET = !!getTestnet() || false;
-let wallet: Wallet | null = null;
+let wallet: BIP32Interface | null = null;
 type InputObj = { hash: string; value: number; signerIdx: number; idx: number };
 
 // Build the inputs. By default we will build 10. Note that there are `n` tests for

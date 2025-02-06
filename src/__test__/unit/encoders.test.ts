@@ -17,6 +17,8 @@ import {
   buildWallet,
   getFwVersionsList,
 } from '../utils/builders';
+import { encodeViemTransaction, encodeViemTypedData, encodeViemPersonalMessage } from '../../calldata/evm';
+import { TRANSACTION_TYPE } from '../../types/sign';
 
 describe('encoders', () => {
   let mockRandom: any;
@@ -121,6 +123,70 @@ describe('encoders', () => {
       const payload = encodeRemoveKvRecordsRequest(mockObject);
       const payloadAsString = payload.toString('hex');
       expect(payloadAsString).toMatchSnapshot();
+    });
+  });
+
+  describe('viem', () => {
+    test('should encode legacy transaction', () => {
+      const tx = {
+        to: '0x1234567890123456789012345678901234567890',
+        value: '1000000000000000000',
+        data: '0x',
+        chainId: 1,
+        nonce: 0,
+        gasLimit: '21000',
+        type: TRANSACTION_TYPE.LEGACY,
+      };
+
+      const payload = encodeViemTransaction(tx);
+      expect(payload).toMatchSnapshot();
+    });
+
+    test('should encode EIP-1559 transaction', () => {
+      const tx = {
+        to: '0x1234567890123456789012345678901234567890',
+        value: '1000000000000000000',
+        data: '0x',
+        chainId: 1,
+        nonce: 0,
+        gasLimit: '21000',
+        maxFeePerGas: '2000000000',
+        maxPriorityFeePerGas: '1000000000',
+        type: TRANSACTION_TYPE.EIP1559,
+      };
+
+      const payload = encodeViemTransaction(tx);
+      expect(payload).toMatchSnapshot();
+    });
+
+    test('should encode EIP-712 typed data', () => {
+      const typedData = {
+        types: {
+          Person: [
+            { name: 'name', type: 'string' },
+            { name: 'wallet', type: 'address' },
+          ],
+        },
+        domain: {
+          name: 'Test Domain',
+          version: '1',
+          chainId: 1,
+        },
+        primaryType: 'Person',
+        message: {
+          name: 'Bob',
+          wallet: '0x1234567890123456789012345678901234567890',
+        },
+      };
+
+      const payload = encodeViemTypedData(typedData);
+      expect(payload).toMatchSnapshot();
+    });
+
+    test('should encode personal message', () => {
+      const message = 'Hello, World!';
+      const payload = encodeViemPersonalMessage(message);
+      expect(payload).toMatchSnapshot();
     });
   });
 });

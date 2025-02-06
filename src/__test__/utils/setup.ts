@@ -3,6 +3,11 @@ import * as fs from 'fs';
 import { question } from 'readline-sync';
 import { getClient, pair, setup } from '../..';
 import * as dotenv from 'dotenv';
+import { expect } from 'vitest';
+import { Client } from '../../client';
+import { getEnv } from './getters';
+import { setupTestClient } from './helpers';
+
 dotenv.config();
 
 if (!globalThis.fetch) {
@@ -12,22 +17,10 @@ if (!globalThis.fetch) {
   globalThis.Request = Request;
 }
 
-expect.extend({
-  toEqualElseLog(received: any, expected: any, message: string) {
-    return {
-      pass: received === expected,
-      message: () =>
-        message ? message : `Expected ${received} to equal ${expected}`,
-    };
-  },
-});
+let storedClient: Client | null = null;
 
-export const setStoredClient = async (data: string) => {
-  try {
-    fs.writeFileSync('./client.temp', data);
-  } catch (err) {
-    return;
-  }
+export const setStoredClient = (client: Client) => {
+  storedClient = client;
 };
 
 export const getStoredClient = async () => {
@@ -39,19 +32,32 @@ export const getStoredClient = async () => {
 };
 
 export const setupClient = async () => {
-  const deviceId = process.env.DEVICE_ID;
-  const password = process.env.PASSWORD || 'password';
-  const name = process.env.APP_NAME || 'SDK Test';
-  const isPaired = await setup({
-    deviceId,
-    password,
-    name,
-    getStoredClient,
-    setStoredClient,
-  });
-  if (!isPaired) {
-    const secret = question('Please enter the pairing secret: ');
-    await pair(secret.toUpperCase());
+  if (storedClient) {
+    return storedClient;
   }
-  return getClient();
+  const env = getEnv();
+  const client = setupTestClient(env);
+  if (env.DEVICE_ID) {
+    await client.connect(env.DEVICE_ID);
+  }
+  return client;
 };
+
+// Add custom matchers for vitest
+expect.extend({
+  toEqualElseLog(received: any, expected: any, message?: string) {
+    const pass = this.equals(received, expected);
+    if (pass) {
+      return {
+        message: () => 'Values are equal',
+        pass: true,
+      };
+    } else {
+      console.error(message || `Expected ${expected} but received ${received}`);
+      return {
+        message: () => message || `Expected ${expected} but received ${received}`,
+        pass: false,
+      };
+    }
+  },
+});

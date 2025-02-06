@@ -12,7 +12,7 @@ import { keccak256 } from 'js-sha3';
 import inRange from 'lodash/inRange';
 import isInteger from 'lodash/isInteger';
 import { ecdsaRecover } from 'secp256k1';
-import { Calldata } from '.';
+import { CALLDATA } from './calldata';
 import {
   BIP_CONSTANTS,
   EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
@@ -26,6 +26,18 @@ import {
   isValidBlockExplorerResponse,
 } from './shared/validators';
 import { FirmwareConstants } from './types';
+import {
+  decodeAbiParameters as viemDecodeAbiParameters,
+  parseAbiParameters,
+  type AbiParameter,
+  decodeFunctionData,
+  encodeFunctionData,
+  parseAbiItem,
+  type AbiFunction,
+  getAbiItem,
+} from 'viem';
+import { parseCanonicalName } from './calldata/evm';
+import { AbiParameters } from 'ox';
 
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 let ec: EC | undefined;
@@ -380,34 +392,27 @@ function buildUrlForSupportedChainAndAddress({ supportedChain, address }) {
  * Takes a list of ABI data objects and a selector, and returns the earliest ABI data object that
  * matches the selector.
  */
-export function selectDefFrom4byteABI(abiData: any[], selector: string) {
-  if (abiData.length > 1) {
-    console.warn('WARNING: There are multiple results. Using the first one.');
+export const selectDefFrom4byteABI = async (result: any[], selector: string): Promise<string[]> => {
+  if (!selector || !result?.length) {
+    throw new Error('Missing selector or 4byte data');
   }
-  let def;
-  abiData
-    .sort((a, b) => {
-      const aTime = new Date(a.created_at).getTime();
-      const bTime = new Date(b.created_at).getTime();
-      return aTime - bTime;
-    })
-    .find((result) => {
-      try {
-        def = Calldata.EVM.parsers.parseCanonicalName(
-          selector,
-          result.text_signature,
-        );
-        return !!def;
-      } catch (err) {
-        return false;
-      }
-    });
-  if (def) {
-    return def;
-  } else {
-    throw new Error('Could not find definition for selector');
+
+  const cleanSelector = selector.toLowerCase().startsWith('0x') ? selector.slice(2).toLowerCase() : selector.toLowerCase();
+  const match = result.find(item => item.hex_signature.slice(2).toLowerCase() === cleanSelector);
+
+  if (!match) {
+    throw new Error('No matching function found in 4byte data');
   }
-}
+
+  const { text_signature } = match;
+  const [name, params] = text_signature.split('(');
+  if (!name || !params) {
+    throw new Error('Invalid function signature format');
+  }
+
+  const paramTypes = params.slice(0, -1).split(',').filter(Boolean);
+  return [name, ...paramTypes];
+};
 
 export async function fetchWithTimeout(
   url: string,
@@ -457,44 +462,66 @@ async function fetchAndCache(
   }
 }
 
-async function fetchSupportedChainData(
+export async function fetchSupportedChainData(
   address: string,
-  supportedChain: number,
-) {
-  const url = buildUrlForSupportedChainAndAddress({ address, supportedChain });
-  return fetchAndCache(url)
-    .then((res) => res.json())
-    .then((body) => {
-      if (body && body.result) {
-        return JSON.parse(body.result);
-      } else {
-        throw new Error('Server response was malformed');
-      }
-    })
-    .catch((error) => {
-      console.log(error);
-      throw new Error('Fetching data from external network failed');
-    });
+  supportedChain: {
+    name: string;
+    baseUrl: string;
+    apiRoute: string;
+  },
+): Promise<any> {
+  try {
+    const url = buildUrlForSupportedChainAndAddress({ address, supportedChain });
+    const res = await fetchAndCache(url);
+    const body = await res.json();
+    
+    if (body && body.result) {
+      return body.result;
+    }
+    console.warn('Server response was malformed');
+    return null;
+  } catch (error) {
+    console.warn('Fetching data from external network failed:', error);
+    return null;
+  }
 }
 
-async function fetch4byteData(selector: string): Promise<any> {
-  const url = `https://www.4byte.directory/api/v1/signatures/?hex_signature=0x${selector}`;
-  return await fetch(url)
-    .then((res) => res.json())
-    .then((body) => {
-      if (body && body.results) {
-        return body.results;
-      } else {
-        throw new Error('No results found');
-      }
-    })
-    .catch((err) => {
-      throw new Error(`Fetching data from 4byte failed: ${err.message}`);
-    });
+export async function fetch4byteData(selector: string): Promise<any> {
+  try {
+    const url = `https://www.4byte.directory/api/v1/signatures/?hex_signature=0x${selector}`;
+    const res = await fetch(url);
+    const body = await res.json();
+    
+    if (body && body.results) {
+      return body.results;
+    }
+    console.warn('No results found in 4byte data');
+    return null;
+  } catch (err) {
+    console.warn('Error fetching 4byte data:', err);
+    return null;
+  }
 }
 
 function encodeDef(def: any) {
-  return Buffer.from(RLP.encode(def));
+  if (!def) return null;
+  
+  if (Array.isArray(def)) {
+    const [functionName, ...params] = def;
+    const abiParams = params.map((param, idx) => ({
+      name: `param${idx}`,
+      type: param,
+    }));
+
+    try {
+      const encoded = AbiParameters.encode(abiParams, def);
+      return Buffer.from(encoded.slice(2), 'hex');
+    } catch (error) {
+      console.warn('Failed to encode def:', error);
+      return null;
+    }
+  }
+  return def;
 }
 
 /**
@@ -503,172 +530,56 @@ function encodeDef(def: any) {
  * @param calldata - Raw transaction calldata
  * @return - Updated `def`
  */
-async function postProcessDef(def, calldata) {
-  // Replace all nested defs if applicable. This is done by looping
-  // through each param in the definition and if it is of type `bytes`
-  // or `bytes[]`, checking the param value in `calldata`. If the param
-  // value (or for `bytes[]` each underlying value) is of size (4 + 32*n)
-  // it could be nested calldata. We should use that item's selector(s)
-  // to look up nested definition(s).
-  const nestedCalldata = Calldata.EVM.processors.getNestedCalldata(
-    def,
-    calldata,
-  );
-  const nestedDefs = await replaceNestedDefs(nestedCalldata);
-  // Need to recurse before doing the full replacement
-  for await (const [i] of nestedDefs.entries()) {
-    // If this is an array of nested defs, loop through each one and
-    // postprocess it. The first item of a single def is the function
-    // name so we need to check that it isn't a string in this case.
-    if (Array.isArray(nestedDefs[i]) && typeof nestedDefs[i][0] !== 'string') {
-      for await (const [j] of nestedDefs[i].entries()) {
-        if (nestedDefs[i][j] !== null) {
-          nestedDefs[i][j] = await postProcessDef(
-            nestedDefs[i][j],
-            Buffer.from(nestedCalldata[i][j].slice(2), 'hex'),
-          );
-        }
-      }
-    } else if (nestedDefs[i] !== null) {
-      nestedDefs[i] = await postProcessDef(
-        nestedDefs[i],
-        Buffer.from(nestedCalldata[i].slice(2), 'hex'),
-      );
-    }
-  }
-  // Replace any nested defs
-  const newDef = Calldata.EVM.processors.replaceNestedDefs(def, nestedDefs);
-  return newDef;
-}
+async function postProcessDef(def: string[], calldata: Buffer): Promise<string[]> {
+  if (!def?.length) return def;
 
-/**
- * Given a set of possible nested defs, slice out selectors and look up
- * definitions on 4byte.
- * @param possNestedDefs - result of `getPossibleNestedDefs` processor
- * @return Array containing calldata decoding data for each parameter
- *          that had a possible nested def. If there was no possible
- *          nested def or if a def could not be fetched from 4byte, the
- *          array item will be `null`. In the case of multiple possible
- *          defs behind one param (e.g. multicall pattern), ALL nested
- *          items must have defs associated or the item will map to a
- *          single `null` value in the return array.
- *
- */
-async function replaceNestedDefs(possNestedDefs) {
-  // For all possible nested defs, attempt to fetch the underlying def
-  const nestedDefs = [];
-  for await (const d of possNestedDefs) {
-    if (d !== null) {
-      if (Array.isArray(d)) {
-        const _nestedDefs = [];
-        let shouldInclude = true;
-        for await (const _d of d) {
-          try {
-            const _nestedSelector = _d.slice(2, 10);
-            const _nestedAbi = await fetch4byteData(_nestedSelector);
-            const _nestedDef = selectDefFrom4byteABI(
-              _nestedAbi,
-              _nestedSelector,
-            );
-            _nestedDefs.push(_nestedDef);
-          } catch (err) {
-            shouldInclude = false;
-            _nestedDefs.push(null);
-          }
-        }
-        if (shouldInclude) {
-          nestedDefs.push(_nestedDefs);
-        } else {
-          nestedDefs.push(null);
-        }
-      } else {
-        try {
-          const nestedSelector = d.slice(2, 10);
-          const nestedAbi = await fetch4byteData(nestedSelector);
-          const nestedDef = selectDefFrom4byteABI(nestedAbi, nestedSelector);
-          nestedDefs.push(nestedDef);
-        } catch (err) {
-          nestedDefs.push(null);
-        }
-      }
-    } else {
-      nestedDefs.push(null);
-    }
-  }
-  // For all nested defs, replace the
-  return nestedDefs;
-}
+  const [functionName, ...paramTypes] = def;
+  const abiItem: AbiFunction = {
+    type: 'function',
+    name: functionName,
+    inputs: paramTypes.map((type, idx) => ({ name: `param${idx}`, type })),
+    outputs: [],
+    stateMutability: 'nonpayable'
+  };
 
-//--------------------------------------------------
-//--------------------------------------------------
-// EXTERNAL UTILS
-//--------------------------------------------------
-//--------------------------------------------------
-/**
- *  Fetches calldata from a remote scanner based on the transaction's `chainId`
- */
-export async function fetchCalldataDecoder(
-  _data: Uint8Array | string,
-  to: string,
-  _chainId: number | string,
-  recurse = true,
-) {
   try {
-    // Exit if there is no data. The 2 comes from the 0x prefix, but a later
-    // check will confirm that there are at least 4 bytes of data in the buffer.
-    if (!_data || _data.length < 2) {
-      throw new Error('Data is either undefined or less than two bytes');
-    }
-    const isHexString = typeof _data === 'string' && _data.slice(0, 2) === '0x';
-    const data = isHexString
-      ? Buffer.from(_data.slice(2), 'hex')
-      : //@ts-expect-error - Buffer doesn't recognize Uint8Array type properly
-        Buffer.from(_data, 'hex');
+    const decoded = decodeFunctionData({
+      abi: [abiItem],
+      data: `0x${calldata.toString('hex')}`
+    });
 
-    if (data.length < 4) {
-      throw new Error(
-        'Data must contain at least 4 bytes of data to define the selector',
-      );
-    }
-    const selector = Buffer.from(data.slice(0, 4)).toString('hex');
-    // Convert the chainId to a number and use it to determine if we can call out to
-    // an etherscan-like explorer for richer data.
-    const chainId = Number(_chainId);
-    const cachedNetwork = NETWORKS_BY_CHAIN_ID[chainId];
-    const supportedChain = cachedNetwork
-      ? cachedNetwork
-      : await fetchExternalNetworkForChainId(chainId);
-    try {
-      if (supportedChain) {
-        const abi = await fetchSupportedChainData(to, supportedChain);
-        const parsedAbi = Calldata.EVM.parsers.parseSolidityJSONABI(
-          selector,
-          abi,
-        );
-        let def = parsedAbi.def;
-        if (recurse) {
-          def = await postProcessDef(def, data);
-        }
-        return { abi, def: encodeDef(def) };
-      } else {
-        throw new Error(`Chain (id: ${chainId}) is not supported`);
+    const nestedCalls = (decoded.args as unknown[]).reduce<string[]>((acc, arg) => {
+      if (typeof arg === 'string' && arg.startsWith('0x')) {
+        acc.push(arg);
       }
-    } catch (err) {
-      console.warn(err.message, '\n', 'Falling back to 4byte');
+      return acc;
+    }, []);
+
+    if (nestedCalls.length) {
+      const nestedDefs = await Promise.all(
+        nestedCalls.map(async (nestedData) => {
+          try {
+            const result = await fetchCalldataDecoder(
+              nestedData,
+              '0x0000000000000000000000000000000000000000',
+              '1',
+              true
+            );
+            return result.def ? result.def.toString('hex') : null;
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      return [functionName, ...nestedDefs.filter(Boolean)];
     }
 
-    // Fallback to checking 4byte
-    const abi = await fetch4byteData(selector);
-    let def = selectDefFrom4byteABI(abi, selector);
-    if (recurse) {
-      def = await postProcessDef(def, data);
-    }
-    return { abi, def: encodeDef(def) };
+    return def;
   } catch (err) {
-    console.warn(`Fetching calldata failed: ${err.message}`);
+    console.warn('Failed to post-process def:', err);
+    return def;
   }
-
-  return { def: null, abi: null };
 }
 
 /**
@@ -701,7 +612,6 @@ export const generateAppSecret = (
 };
 
 /**
- * Generic signing does not return a `v` value like legacy ETH signing requests did.
  * Get the `v` component of the signature as well as an `initV`
  * parameter, which is what you need to use to re-create an `@ethereumjs/tx`
  * object. There is a lot of tech debt in `@ethereumjs/tx` which also
@@ -722,32 +632,25 @@ export const getV = function (tx: any, resp: any) {
     try {
       const legacyTxArray = RLP.decode(tx);
       if (legacyTxArray.length === 6) {
-        // Six item array means this is a pre-EIP155 transaction
         chainId = null;
       } else {
-        // Otherwise the `v` param is the `chainId`
         chainId = new BN(legacyTxArray[6] as Uint8Array);
       }
-      // Legacy tx = type 0
       type = 0;
-    } catch (err) {
-      // This is likely a typed transaction
+    } catch {
       try {
         const txObj = EthTxFactory.fromSerializedData(tx);
         //@ts-expect-error -- Accessing private property
         type = txObj._type;
-      } catch (err) {
-        // If we can't RLP decode and can't hydrate an @ethereumjs/tx object,
-        // we don't know what this is and should abort.
+      } catch {
         throw new Error('Could not recover V. Bad transaction data.');
       }
     }
   } else {
-    // @ethereumjs/tx object passed in
     type = tx._type;
     hash = type
-      ? tx.getMessageToSign(true) // newer tx types
-      : RLP.encode(tx.getMessageToSign(false)); // legacy tx
+      ? tx.getMessageToSign(true)
+      : RLP.encode(tx.getMessageToSign(false));
     if (tx.supports(Capability.EIP155ReplayProtection)) {
       chainId = tx.common.chainIdBN().toNumber();
     }
@@ -783,9 +686,296 @@ export const getV = function (tx: any, resp: any) {
   return chainId.muln(2).addn(35).addn(recovery);
 };
 
+// Main function
+export const fetchCalldataDecoder = async (
+  _data: string | Buffer | Uint8Array,
+  _to: string,
+  _chainId: string | number,
+  isDebug = false,
+): Promise<{ def: Buffer | null; abi: any }> => {
+  try {
+    const data = coerceBuffer(_data);
+    const to = coerceHexString(_to);
+    const chainId = coerceChainId(_chainId);
+
+    const selector = data.slice(0, 4).toString('hex');
+    let abi = null;
+    let def = null;
+
+    // Try to get ABI from supported chains first
+    const supportedChain = await getSupportedChain(chainId);
+    if (supportedChain) {
+      const contractAbi = await fetchSupportedChainData(to, supportedChain);
+      if (contractAbi) {
+        try {
+          const abiArray = typeof contractAbi === 'string' ? JSON.parse(contractAbi) : contractAbi;
+          def = await selectDefFromABI(abiArray, selector);
+          if (def && isDebug) {
+            def = await postProcessDef(def, data);
+          }
+          // Store the full ABI for the matching function
+          abi = abiArray.find((item: any) => {
+            if (item.type !== 'function') return false;
+            try {
+              const encoded = encodeFunctionData({
+                abi: [item],
+                functionName: item.name,
+                args: item.inputs.map(() => '0x')
+              });
+              return encoded.slice(0, 10).toLowerCase() === `0x${selector}`.toLowerCase();
+            } catch {
+              return false;
+            }
+          });
+        } catch (err) {
+          console.warn('Error parsing ABI:', err);
+        }
+      }
+    }
+
+    // If we couldn't get the ABI from supported chains, try 4byte
+    if (!def) {
+      try {
+        const fourByteData = await fetch4byteData(selector);
+        if (fourByteData?.length) {
+          def = await selectDefFrom4byteABI(fourByteData, selector);
+          if (def && isDebug) {
+            def = await postProcessDef(def, data);
+          }
+          // For 4byte data, construct a minimal ABI
+          if (def) {
+            const [name, ...paramTypes] = def;
+            abi = {
+              type: 'function',
+              name,
+              inputs: paramTypes.map((type: string, i: number) => ({
+                name: `param${i}`,
+                type
+              })),
+              outputs: [],
+              stateMutability: 'nonpayable'
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('Error fetching 4byte data:', err);
+      }
+    }
+
+    // Convert def to RLP encoded buffer if we have one
+    if (def) {
+      try {
+        const encodedDef = Buffer.from(RLP.encode([
+          Buffer.from(def[0]), // Function name
+          ...def.slice(1).map((type: string) => Buffer.concat([
+            Buffer.from('#'),
+            Buffer.from(type),
+            Buffer.from([0])
+          ]))
+        ]));
+
+        return { abi, def: encodedDef };
+      } catch (err) {
+        console.warn('Error encoding def:', err);
+      }
+    }
+
+    return { def: null, abi: null };
+  } catch (err) {
+    console.warn('Error in fetchCalldataDecoder:', err);
+    return { def: null, abi: null };
+  }
+};
+
 /** @internal */
 export const EXTERNAL = {
   fetchCalldataDecoder,
   generateAppSecret,
   getV,
+};
+
+// Helper functions for type coercion
+const coerceBuffer = (_data: string | Buffer | Uint8Array): Buffer => {
+  if (Buffer.isBuffer(_data)) return _data;
+  if (typeof _data === 'string') {
+    return _data.startsWith('0x') 
+      ? Buffer.from(_data.slice(2), 'hex')
+      : Buffer.from(_data);
+  }
+  return Buffer.from(_data);
+};
+
+const coerceHexString = (_str: string): string => {
+  return _str.startsWith('0x') ? _str : `0x${_str}`;
+};
+
+const coerceChainId = (_chainId: string | number): number => {
+  return typeof _chainId === 'string' ? parseInt(_chainId, 10) : _chainId;
+};
+
+export async function getSupportedChain(chainId: number | string): Promise<{
+  name: string;
+  baseUrl: string;
+  apiRoute: string;
+} | null> {
+  try {
+    const networks = await fetchExternalNetworkForChainId(chainId);
+    if (!networks) return null;
+    
+    // Get first network from the response
+    const network = Object.values(networks)[0];
+    if (!network) return null;
+    
+    return {
+      name: network.name,
+      baseUrl: network.baseUrl,
+      apiRoute: network.apiRoute
+    };
+  } catch (err) {
+    console.warn('Error getting supported chain:', err);
+    return null;
+  }
+}
+
+const selectDefFromABI = async (abi: any[], selector: string): Promise<string[]> => {
+  try {
+    const abiItem = abi.find((item) => {
+      if (item.type !== 'function') return false;
+      try {
+        const encoded = encodeFunctionData({
+          abi: [item],
+          functionName: item.name,
+          args: item.inputs.map(() => '0x')
+        });
+        return encoded.slice(0, 10).toLowerCase() === `0x${selector}`.toLowerCase();
+      } catch {
+        return false;
+      }
+    });
+
+    if (!abiItem) {
+      throw new Error('No matching function found in ABI');
+    }
+
+    return [abiItem.name, ...abiItem.inputs.map(input => input.type)];
+  } catch (err) {
+    throw new Error(`Failed to parse ABI: ${err.message}`);
+  }
+};
+
+export const decodeAbiParameters = (
+  types: AbiParameter[],
+  data: string | Buffer,
+  nested = false,
+): any[] => {
+  const hexData = Buffer.isBuffer(data)
+    ? (`0x${data.toString('hex')}` as `0x${string}`)
+    : (data as `0x${string}`);
+
+  const abiFunction: AbiFunction = {
+    type: 'function',
+    name: 'decode',
+    inputs: types,
+    outputs: [],
+    stateMutability: 'pure',
+  };
+
+  try {
+    const decoded = decodeFunctionData({
+      abi: [abiFunction],
+      data: hexData,
+    });
+
+    return decoded.args.map((param: any) => {
+      if (Buffer.isBuffer(param)) {
+        return param;
+      }
+      if (typeof param === 'bigint') {
+        return param.toString();
+      }
+      if (
+        nested &&
+        Array.isArray(param) &&
+        param.every((p) => typeof p === 'string' && p.startsWith('0x'))
+      ) {
+        return param.map((p) => decodeAbiParameters(types, p, true));
+      }
+      return param;
+    });
+  } catch (error) {
+    console.warn('Failed to decode ABI parameters:', error);
+    return Array(types.length).fill(null);
+  }
+};
+
+export const formatAbiParameter = (param: AbiParameter, value: any): any => {
+  try {
+    const abiFunction: AbiFunction = {
+      type: 'function',
+      name: 'format',
+      inputs: [param],
+      outputs: [],
+      stateMutability: 'pure',
+    };
+
+    const encoded = encodeFunctionData({
+      abi: [abiFunction],
+      args: [value],
+    });
+
+    const decoded = decodeFunctionData({
+      abi: [abiFunction],
+      data: encoded,
+    });
+
+    return decoded.args[0];
+  } catch (error) {
+    console.warn('Failed to format ABI parameter:', error);
+    return value;
+  }
+};
+
+export const formatAbiDefinition = (
+  def: { name?: string; inputs?: AbiParameter[] },
+  params: any[],
+): { name: string; params: any } => {
+  if (!def.inputs) {
+    return { name: def.name || 'unknown', params: {} };
+  }
+
+  try {
+    const abiFunction: AbiFunction = {
+      type: 'function',
+      name: def.name || 'unknown',
+      inputs: def.inputs,
+      outputs: [],
+      stateMutability: 'pure',
+    };
+
+    const encoded = encodeFunctionData({
+      abi: [abiFunction],
+      args: params,
+    });
+
+    const decoded = decodeFunctionData({
+      abi: [abiFunction],
+      data: encoded,
+    });
+
+    const formattedParams = def.inputs.reduce(
+      (acc: any, param: AbiParameter, i: number) => {
+        acc[param.name || `param${i}`] = decoded.args[i];
+        return acc;
+      },
+      {},
+    );
+
+    return {
+      name: def.name || 'unknown',
+      params: formattedParams,
+    };
+  } catch (error) {
+    console.warn('Failed to format ABI definition:', error);
+    return { name: def.name || 'unknown', params: {} };
+  }
 };
