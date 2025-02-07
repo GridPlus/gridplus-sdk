@@ -297,7 +297,7 @@ function serializeSecureRequestEncryptedPayloadData({
 
   // Encrypt the data into a fixed size buffer. The buffer size should
   // equal to the full message request less the 4-byte ephemeral id.
-  const _encryptedData = Buffer.alloc(1685);
+  const _encryptedData = Buffer.alloc(szs.data.request.encrypted.encryptedData);
   preEncryptedData.copy(_encryptedData, 0);
   _encryptedData.writeUInt32LE(
     preEncryptedDataChecksum,
