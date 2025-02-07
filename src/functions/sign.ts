@@ -148,7 +148,7 @@ export const decodeSignResponse = ({
   if (currency === CURRENCIES.BTC) {
     const btcRequest = request as BitcoinSignRequest;
     const pkhLen = 20; // Pubkeyhashes are 20 bytes
-    const sigsLen = 740; // Up to 10x DER signatures
+    const sigsLen = 760; // Up to 10x DER signatures
     const changeVersion = bitcoin.getAddressFormat(
       btcRequest.origData.changePath,
     );
