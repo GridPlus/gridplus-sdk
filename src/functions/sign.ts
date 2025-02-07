@@ -147,13 +147,14 @@ export const decodeSignResponse = ({
   const derSigLen = 74; // DER signatures are 74 bytes
   if (currency === CURRENCIES.BTC) {
     const btcRequest = request as BitcoinSignRequest;
+    const pubkeyPrefixLen = 65
     const pkhLen = 20; // Pubkeyhashes are 20 bytes
     const sigsLen = 740; // Up to 10x DER signatures
     const changeVersion = bitcoin.getAddressFormat(
       btcRequest.origData.changePath,
     );
     const changePubKeyHash = data.slice(off, off + pkhLen);
-    off += pkhLen;
+    off += pkhLen + pubkeyPrefixLen;
     const changeRecipient = bitcoin.getBitcoinAddress(
       changePubKeyHash,
       changeVersion,
