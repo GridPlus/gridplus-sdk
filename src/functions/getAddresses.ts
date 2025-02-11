@@ -102,7 +102,8 @@ export const encodeGetAddressesRequest = ({
     (flag === LatticeGetAddressesFlag.ed25519Pubkey ||
       flag === LatticeGetAddressesFlag.secp256k1Pubkey ||
       flag === LatticeGetAddressesFlag.bls12_381Pubkey);
-  if (!isPubkeyOnly && !isValidAssetPath(startPath, fwConstants)) {
+  const isXpub = flag === LatticeGetAddressesFlag.secp256k1Xpub;
+  if (!isPubkeyOnly && !isXpub && !isValidAssetPath(startPath, fwConstants)) {
     throw new Error(
       'Derivation path or flag is not supported. Try updating Lattice firmware.',
     );
@@ -191,13 +192,19 @@ export const decodeGetAddressesResponse = (
       }
       off += 65;
     } else {
-      // Otherwise we are dealing with address strings
+      // Otherwise we are dealing with address strings or XPUB strings
       const addrBytes = data.slice(off, off + ProtocolConstants.addrStrLen);
       off += ProtocolConstants.addrStrLen;
       // Return the UTF-8 representation
       const len = addrBytes.indexOf(0); // First 0 is the null terminator
       if (len > 0) {
-        addrs.push(addrBytes.slice(0, len).toString());
+        // Clean control characters from the string before adding to array
+        const cleanStr = addrBytes
+          .slice(0, len)
+          .toString()
+          // eslint-disable-next-line no-control-regex
+          .replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+        addrs.push(cleanStr);
       }
     }
   }
