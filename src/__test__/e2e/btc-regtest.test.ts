@@ -178,7 +178,7 @@ describe('Bitcoin Regtest E2E Tests', () => {
       console.log('[BtcRegtestTest] Got device address:', deviceAddress);
     }, 60000);
 
-    it.skip('should fund the device address', async () => {
+    it('should fund the device address', async () => {
       expect(deviceAddress).toBeTruthy();
       console.log('[BtcRegtestTest] Testing segwit address:', deviceAddress);
 
