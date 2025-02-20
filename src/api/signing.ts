@@ -1,4 +1,4 @@
-import { Buffer } from 'buffer';
+import { Transaction } from 'ethers';
 import { Constants } from '..';
 import {
   BTC_LEGACY_DERIVATION,
@@ -18,19 +18,12 @@ import {
   TransactionRequest,
 } from '../types';
 import { isEIP712Payload, queue } from './utilities';
-import {
-  encodeViemTransaction,
-  encodeViemTypedData,
-  encodeViemPersonalMessage,
-} from '../calldata/evm';
 
 export const sign = async (
   transaction: TransactionRequest,
   overrides?: SignRequestParams,
 ): Promise<SignData> => {
-  const serializedTx = encodeViemTransaction(transaction);
-
-  const { def } = await fetchDecoder(transaction);
+  const serializedTx = Transaction.from(transaction).unsignedSerialized;
 
   const payload: SigningPayload = {
     signerPath: DEFAULT_ETH_DERIVATION,
@@ -38,7 +31,7 @@ export const sign = async (
     hashType: Constants.SIGNING.HASHES.KECCAK256,
     encodingType: Constants.SIGNING.ENCODINGS.EVM,
     payload: serializedTx,
-    decoder:  def,
+    decoder: await fetchDecoder(transaction),
   };
 
   return queue((client) => client.sign({ data: payload, ...overrides }));
@@ -48,29 +41,21 @@ export const signMessage = async (
   payload: string | Uint8Array | Buffer | Buffer[] | EIP712MessagePayload,
   overrides?: SignRequestParams,
 ): Promise<SignData> => {
-  let processedPayload = payload;
-  let protocol = 'signPersonal';
-
-  if (isEIP712Payload(payload)) {
-    protocol = 'eip712';
-    processedPayload = encodeViemTypedData(payload as any);
-  } else if (typeof payload !== 'string') {
-    processedPayload = encodeViemPersonalMessage(
-      payload as Buffer | Uint8Array,
-    );
-  }
-
   const tx = {
     data: {
       signerPath: DEFAULT_ETH_DERIVATION,
       curveType: Constants.SIGNING.CURVES.SECP256K1,
       hashType: Constants.SIGNING.HASHES.KECCAK256,
-      protocol,
-      payload: processedPayload,
+      protocol: 'signPersonal',
+      payload,
       ...overrides,
     } as SigningPayload,
     currency: CURRENCIES.ETH_MSG,
   };
+
+  if (isEIP712Payload(payload)) {
+    tx.data.protocol = 'eip712';
+  }
 
   return queue((client) => client.sign(tx));
 };

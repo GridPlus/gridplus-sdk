@@ -1,5 +1,5 @@
 import { keccak256 } from 'js-sha3';
-import { decodeAbiParameters, parseAbiParameters, type Hex } from 'viem';
+import { decodeAbiParameters, type Hex } from 'viem';
 
 /**
  * Look through an ABI definition to see if there is a function that matches the signature provided.
@@ -76,11 +76,9 @@ export const getNestedCalldata = function (def, calldata) {
   // Skip past first item, which is the function name
   const defParams = def.slice(1);
   const strParams = getParamStrNames(defParams);
-  
-  // Convert string params to viem ABI parameters format
   const abiParams = strParams.map((type) => ({ type }));
   const hexData = `0x${calldata.slice(4).toString('hex')}` as Hex;
-  const decoded = decodeAbiParameters(abiParams, hexData) as Array<any>;
+  const decoded = decodeAbiParameters(abiParams, hexData);
 
   function couldBeNestedDef(x) {
     return (x.length - 4) % 32 === 0;

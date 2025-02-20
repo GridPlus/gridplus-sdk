@@ -11,15 +11,15 @@ export const TRANSACTION_TYPE = {
 };
 
 export type TransactionRequest = {
-  to: string;
-  value: string;
-  data: string;
-  chainId: number;
-  nonce: number;
-  gasLimit: string;
-  maxFeePerGas?: string;
-  maxPriorityFeePerGas?: string;
-  from?: string;
+  to?: `0x${string}`;
+  value?: bigint;
+  data?: `0x${string}`;
+  chainId?: number;
+  nonce?: number;
+  gas?: bigint;
+  maxFeePerGas?: bigint;
+  maxPriorityFeePerGas?: bigint;
+  from?: `0x${string}`;
   accessList?: Array<{ address: string; storageKeys: string[] }>;
   type?: (typeof TRANSACTION_TYPE)[keyof typeof TRANSACTION_TYPE];
 };
