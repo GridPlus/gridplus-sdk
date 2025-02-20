@@ -14,7 +14,6 @@ import {
 } from '../../constants';
 import type { Currency, SignRequestParams, SigningPath } from '../../types';
 import type { FirmwareConstants } from '../../types/firmware';
-import type { ETH_MESSAGE_PROTOCOLS } from '../../types/sign';
 import type { TestRequestPayload } from '../../types/utils';
 import { randomBytes } from '../../util';
 import { MSG_PAYLOAD_METADATA_SZ } from './constants';
@@ -302,10 +301,12 @@ export const buildEncDefs = (vectors: any) => {
   });
 
   // The calldata is already in hex format, we just need to ensure it has 0x prefix
-  const encDefsCalldata = vectors.canonicalNames.map((_: string, idx: number) => {
-    const calldata = `0x${idx.toString(16).padStart(8, '0')}`;
-    return calldata;
-  });
+  const encDefsCalldata = vectors.canonicalNames.map(
+    (_: string, idx: number) => {
+      const calldata = `0x${idx.toString(16).padStart(8, '0')}`;
+      return calldata;
+    },
+  );
 
   return { encDefs, encDefsCalldata };
 };
@@ -376,9 +377,3 @@ export function buildMockConnectedClient(opts) {
     stateData: JSON.stringify(stateData),
   });
 }
-
-export const buildEthMsgRequest = (protocol: ETH_MESSAGE_PROTOCOLS = 'signPersonal') => ({
-  protocol,
-  payload: Buffer.from('test message'),
-  signerPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
-});
