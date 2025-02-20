@@ -1,21 +1,23 @@
 import { Chain, Common, Hardfork } from '@ethereumjs/common';
+import { RLP } from '@ethereumjs/rlp';
 import {
   TransactionFactory as EthTxFactory,
   TypedTransaction,
 } from '@ethereumjs/tx';
-import { keccak256 } from 'js-sha3';
 import { generate as randomWords } from 'random-words';
-import { RLP } from '@ethereumjs/rlp';
-import { Calldata, Constants } from '../..';
+import { Constants } from '../..';
 import { Client } from '../../client';
 import {
   CURRENCIES,
   HARDENED_OFFSET,
   getFwVersionConst,
 } from '../../constants';
+import type { Currency, SignRequestParams, SigningPath } from '../../types';
+import type { FirmwareConstants } from '../../types/firmware';
+import type { ETH_MESSAGE_PROTOCOLS } from '../../types/sign';
+import type { TestRequestPayload } from '../../types/utils';
 import { randomBytes } from '../../util';
 import { MSG_PAYLOAD_METADATA_SZ } from './constants';
-import { convertDecoderToViem } from './viem';
 import { getN, getPrng } from './getters';
 import {
   BTC_PURPOSE_P2PKH,
@@ -25,11 +27,6 @@ import {
   getTestVectors,
   serializeJobData,
 } from './helpers';
-import { encodeAbiParameters, parseAbiParameters, type Hex } from 'viem';
-import type { Currency, SigningPath, SignRequestParams } from '../../types';
-import type { FirmwareConstants } from '../../types/firmware';
-import type { TestRequestPayload } from '../../types/utils';
-import type { ETH_MESSAGE_PROTOCOLS } from '../../types/sign';
 const prng = getPrng();
 
 export const getFwVersionsList = () => {

@@ -1,8 +1,17 @@
-import { describe, expect, it } from 'vitest';
 import { selectDefFrom4byteABI } from '../../util';
+import { vi } from 'vitest';
 
 describe('selectDefFrom4byteAbi', () => {
-  it('select correct result', async () => {
+  beforeAll(() => {
+    // Disable this mock to restore console logs when testing
+    console.warn = vi.fn();
+  });
+
+  afterAll(() => {
+    vi.clearAllMocks();
+  });
+
+  test('select correct result', () => {
     const result = [
       {
         bytes_signature: '8í9',
@@ -29,11 +38,10 @@ describe('selectDefFrom4byteAbi', () => {
       },
     ];
     const selector = '0x38ed1739';
-    const def = await selectDefFrom4byteABI(result, selector);
-    expect(def).toMatchSnapshot();
+    expect(selectDefFrom4byteABI(result, selector)).toMatchSnapshot();
   });
 
-  it('handle no match', async () => {
+  test('handle no match', () => {
     const result = [
       {
         bytes_signature: '',
@@ -44,10 +52,10 @@ describe('selectDefFrom4byteAbi', () => {
       },
     ];
     const selector = '0x38ed1739';
-    await expect(selectDefFrom4byteABI(result, selector)).rejects.toThrow();
+    expect(() => selectDefFrom4byteABI(result, selector)).toThrowError();
   });
 
-  it('handle no selector', async () => {
+  test('handle no selector', () => {
     const result = [
       {
         bytes_signature: '',
@@ -58,18 +66,18 @@ describe('selectDefFrom4byteAbi', () => {
       },
     ];
     const selector = undefined;
-    await expect(selectDefFrom4byteABI(result, selector)).rejects.toThrow();
+    expect(() => selectDefFrom4byteABI(result, selector)).toThrowError();
   });
 
-  it('handle no result', async () => {
+  test('handle no result', () => {
     const result = undefined;
     const selector = '0x38ed1739';
-    await expect(selectDefFrom4byteABI(result, selector)).rejects.toThrow();
+    expect(() => selectDefFrom4byteABI(result, selector)).toThrowError();
   });
 
-  it('handle bad data', async () => {
+  test('handle bad data', () => {
     const result = [];
     const selector = '';
-    await expect(selectDefFrom4byteABI(result, selector)).rejects.toThrow();
+    expect(() => selectDefFrom4byteABI(result, selector)).toThrowError();
   });
 });
