@@ -1,4 +1,4 @@
-import { Transaction } from 'ethers';
+import { serializeTransaction } from 'viem';
 import { Constants } from '..';
 import {
   BTC_LEGACY_DERIVATION,
@@ -8,6 +8,7 @@ import {
   DEFAULT_ETH_DERIVATION,
   SOLANA_DERIVATION,
 } from '../constants';
+import { toViemTransaction } from '../ethereum';
 import { fetchDecoder } from '../functions/fetchDecoder';
 import {
   BitcoinSignPayload,
@@ -23,7 +24,7 @@ export const sign = async (
   transaction: TransactionRequest,
   overrides?: SignRequestParams,
 ): Promise<SignData> => {
-  const serializedTx = Transaction.from(transaction).unsignedSerialized;
+  const serializedTx = serializeTransaction(toViemTransaction(transaction));
 
   const payload: SigningPayload = {
     signerPath: DEFAULT_ETH_DERIVATION,

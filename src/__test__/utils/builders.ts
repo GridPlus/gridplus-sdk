@@ -1,22 +1,22 @@
 import { Chain, Common, Hardfork } from '@ethereumjs/common';
+import { RLP } from '@ethereumjs/rlp';
 import {
   TransactionFactory as EthTxFactory,
   TypedTransaction,
 } from '@ethereumjs/tx';
-import { AbiCoder } from '@ethersproject/abi';
-import { keccak256 } from 'js-sha3';
-import randomWords from 'random-words';
-import { RLP } from '@ethereumjs/rlp';
-import { Calldata, Constants } from '../..';
+import { generate as randomWords } from 'random-words';
+import { Constants } from '../..';
 import { Client } from '../../client';
 import {
   CURRENCIES,
   HARDENED_OFFSET,
   getFwVersionConst,
 } from '../../constants';
+import type { Currency, SignRequestParams, SigningPath } from '../../types';
+import type { FirmwareConstants } from '../../types/firmware';
+import type { TestRequestPayload } from '../../types/utils';
 import { randomBytes } from '../../util';
 import { MSG_PAYLOAD_METADATA_SZ } from './constants';
-import { convertDecoderToEthers } from './ethers';
 import { getN, getPrng } from './getters';
 import {
   BTC_PURPOSE_P2PKH,
@@ -295,20 +295,19 @@ export const buildEvmReq = (overrides?: {
 };
 
 export const buildEncDefs = (vectors: any) => {
-  const coder = new AbiCoder();
-  const EVMCalldata = Calldata.EVM;
-  const encDefs: any[] = [];
-  const encDefsCalldata: any[] = [];
-  for (let i = 0; i < vectors.canonicalNames.length; i++) {
-    const name = vectors.canonicalNames[i];
-    const selector = `0x${keccak256(name).slice(0, 8)}`;
-    const def = EVMCalldata.parsers.parseCanonicalName(selector, name);
-    const encDef = Buffer.from(RLP.encode(def));
-    encDefs.push(encDef);
-    const { types, data } = convertDecoderToEthers(RLP.decode(encDef).slice(1));
-    const calldata = coder.encode(types, data);
-    encDefsCalldata.push(`${selector}${calldata.slice(2)}`);
-  }
+  const encDefs = vectors.canonicalNames.map((name: string) => {
+    // For each canonical name, we need to RLP encode just the name
+    return RLP.encode([name]);
+  });
+
+  // The calldata is already in hex format, we just need to ensure it has 0x prefix
+  const encDefsCalldata = vectors.canonicalNames.map(
+    (_: string, idx: number) => {
+      const calldata = `0x${idx.toString(16).padStart(8, '0')}`;
+      return calldata;
+    },
+  );
+
   return { encDefs, encDefsCalldata };
 };
 

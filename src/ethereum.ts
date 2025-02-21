@@ -23,6 +23,9 @@ import {
 } from './util';
 import cbor from 'cbor';
 import bdec from 'cbor-bigdecimal';
+import { TransactionSerializable } from 'viem';
+import { TRANSACTION_TYPE, TransactionRequest } from './types';
+
 bdec(cbor);
 
 const buildEthereumMsgRequest = function (input) {
@@ -981,6 +984,40 @@ const ethConvertLegacyToGenericReq = function (req) {
     // Legacy transaction type
     return Buffer.from(RLP.encode(tx.getMessageToSign()));
   }
+};
+
+// Convert an ethers `TransactionRequest` to a viem `TransactionSerializable`
+export const toViemTransaction = (
+  tx: TransactionRequest,
+): TransactionSerializable => {
+  const base = {
+    to: tx.to as `0x${string}`,
+    value: tx.value ? BigInt(tx.value) : undefined,
+    data: tx.data as `0x${string}`,
+    nonce: tx.nonce,
+    gas: tx.gasLimit ? BigInt(tx.gasLimit) : undefined,
+  };
+
+  if (tx.type === TRANSACTION_TYPE.EIP1559) {
+    return {
+      ...base,
+      type: 'eip1559',
+      maxFeePerGas: tx.maxFeePerGas ? BigInt(tx.maxFeePerGas) : undefined,
+      maxPriorityFeePerGas: tx.maxPriorityFeePerGas
+        ? BigInt(tx.maxPriorityFeePerGas)
+        : undefined,
+      chainId: tx.chainId,
+      accessList: tx.accessList?.map((item) => ({
+        address: item.address as `0x${string}`,
+        storageKeys: item.storageKeys as `0x${string}`[],
+      })),
+    };
+  }
+
+  return {
+    ...base,
+    gasPrice: tx.maxFeePerGas ? BigInt(tx.maxFeePerGas) : undefined,
+  };
 };
 
 export default {

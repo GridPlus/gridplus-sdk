@@ -64,7 +64,6 @@
     "@ethereumjs/common": "^4.4.0",
     "@ethereumjs/rlp": "^5.0.2",
     "@ethereumjs/tx": "^5.4.0",
-    "@ethersproject/abi": "^5.7.0",
     "@metamask/eth-sig-util": "^8.0.0",
     "@types/uuid": "^10.0.0",
     "aes-js": "^3.1.2",
@@ -78,12 +77,12 @@
     "cbor-bigdecimal": "^10.0.2",
     "crc-32": "^1.2.2",
     "elliptic": "6.5.7",
-    "ethers": "^6.13.4",
     "hash.js": "^1.1.7",
     "js-sha3": "^0.9.3",
     "lodash": "^4.17.21",
     "secp256k1": "5.0.1",
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "viem": "^2.22.19"
   },
   "devDependencies": {
     "@chainsafe/bls-keystore": "^3.1.0",
