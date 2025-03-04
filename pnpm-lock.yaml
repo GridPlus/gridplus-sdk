@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   vitest@2.1.3:
-    hash: vwmc6yhalpfduebrkyv2xq7etq
+    hash: 0c337a8de71c98b9a0e1f0e80ef2bf86e1b90fb9871b385fff2d2a2d93ed3ffd
     path: patches/vitest@2.1.3.patch
 
 importers:
@@ -49,12 +49,9 @@ importers:
       buffer:
         specifier: ^6.0.3
         version: 6.0.3
-      cbor:
-        specifier: ^10.0.2
-        version: 10.0.2
-      cbor-bigdecimal:
-        specifier: ^10.0.2
-        version: 10.0.2(bignumber.js@9.1.2)
+      cbor2:
+        specifier: 1.12.0
+        version: 1.12.0
       crc-32:
         specifier: ^1.2.2
         version: 1.2.2
@@ -181,7 +178,7 @@ importers:
         version: 4.3.0(@types/node@22.7.8)(rollup@4.24.0)(typescript@5.6.3)(vite@5.4.9(@types/node@22.7.8))
       vitest:
         specifier: 2.1.3
-        version: 2.1.3(patch_hash=vwmc6yhalpfduebrkyv2xq7etq)(@types/node@22.7.8)(msw@2.5.0(typescript@5.6.3))
+        version: 2.1.3(patch_hash=0c337a8de71c98b9a0e1f0e80ef2bf86e1b90fb9871b385fff2d2a2d93ed3ffd)(@types/node@22.7.8)(msw@2.5.0(typescript@5.6.3))
 
 packages:
 
@@ -1363,15 +1360,9 @@ packages:
     resolution: {integrity: sha512-P8BjAsXvZS+VIDUI11hHCQEv74YT67YUi5JJFNWIqL235sBmjX4+qx9Muvls5ivyNENctx46xQLQ3aTuE7ssaQ==}
     engines: {node: '>=6'}
 
-  cbor-bigdecimal@10.0.2:
-    resolution: {integrity: sha512-O/rckJeYt+6rBmFsG8D6YIOdZs+sJmbgFh+Y1ld4PAIzwn6iFcLgdo1/pG9hYpEXAuSe3HBbULzIDusKjD655Q==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      bignumber.js: ^9.1.0
-
-  cbor@10.0.2:
-    resolution: {integrity: sha512-wJjyC0Efg8yUKpq9/+5SIcUbmBtyw+ZbvE8nNwbfGEKUkrL01h5CQ7h9/OPWtSt5oikmx6E5MuB5rTFz8zmMww==}
-    engines: {node: '>=18'}
+  cbor2@1.12.0:
+    resolution: {integrity: sha512-3Cco8XQhi27DogSp9Ri6LYNZLi/TBY/JVnDe+mj06NkBjW/ZYOtekaEU4wZ4xcRMNrFkDv8KNtOAqHyDfz3lYg==}
+    engines: {node: '>=18.7'}
 
   chai@5.1.1:
     resolution: {integrity: sha512-pT1ZgP8rPNqUgieVaEY+ryQr6Q4HXNg8Ei9UnLUrjN4IA7dvQC5JB+/kxVcPNDHyBcc/26CXPkbNzq3qwrOEKA==}
@@ -2169,10 +2160,6 @@ packages:
   node-gyp-build@4.8.2:
     resolution: {integrity: sha512-IRUxE4BVsHWXkV/SFOut4qTlagw2aM8T5/vnTsmrHJvVoKueJHRc/JaFND7QDDc61kLYUJ6qlZM3sqTSyx2dTw==}
     hasBin: true
-
-  nofilter@3.1.0:
-    resolution: {integrity: sha512-l2NNj07e9afPnhAhvgVrCD/oy2Ai1yfLpuo3EpiO1jFTsB4sFz6oIfAfSZyQzVpkZQ9xS8ZS5g1jCBgq4Hwo0g==}
-    engines: {node: '>=12.19'}
 
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
@@ -4109,13 +4096,7 @@ snapshots:
 
   callsites@3.1.0: {}
 
-  cbor-bigdecimal@10.0.2(bignumber.js@9.1.2):
-    dependencies:
-      bignumber.js: 9.1.2
-
-  cbor@10.0.2:
-    dependencies:
-      nofilter: 3.1.0
+  cbor2@1.12.0: {}
 
   chai@5.1.1:
     dependencies:
@@ -5030,8 +5011,6 @@ snapshots:
 
   node-gyp-build@4.8.2: {}
 
-  nofilter@3.1.0: {}
-
   object-assign@4.1.1: {}
 
   once@1.4.0:
@@ -5619,7 +5598,7 @@ snapshots:
       '@types/node': 22.7.8
       fsevents: 2.3.3
 
-  vitest@2.1.3(patch_hash=vwmc6yhalpfduebrkyv2xq7etq)(@types/node@22.7.8)(msw@2.5.0(typescript@5.6.3)):
+  vitest@2.1.3(patch_hash=0c337a8de71c98b9a0e1f0e80ef2bf86e1b90fb9871b385fff2d2a2d93ed3ffd)(@types/node@22.7.8)(msw@2.5.0(typescript@5.6.3)):
     dependencies:
       '@vitest/expect': 2.1.3
       '@vitest/mocker': 2.1.3(@vitest/spy@2.1.3)(msw@2.5.0(typescript@5.6.3))(vite@5.4.9(@types/node@22.7.8))
