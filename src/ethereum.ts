@@ -13,7 +13,12 @@ import {
   MAX_CHAIN_ID_BYTES,
   ethMsgProtocol,
 } from './constants';
-import { LatticeSignSchema } from './protocol';
+import {
+  LatticeSignCurve,
+  LatticeSignEncoding,
+  LatticeSignHash,
+  LatticeSignSchema,
+} from './protocol';
 import {
   buildSignerPathBuf,
   ensureHexBuffer,
@@ -23,10 +28,47 @@ import {
 } from './util';
 import cbor from 'cbor';
 import bdec from 'cbor-bigdecimal';
-import { TransactionSerializable } from 'viem';
-import { TRANSACTION_TYPE, TransactionRequest } from './types';
+import { Hex, toHex, TransactionSerializable } from 'viem';
+
+import {
+  TransactionRequest,
+  TRANSACTION_TYPE,
+  EIP7702Transaction,
+} from './types';
 
 bdec(cbor);
+
+const ETH_TX_TYPE_EIP7702_AUTH = 0x04;
+const ETH_TX_TYPE_EIP7702_AUTH_LIST = 0x05;
+
+// Add these type definitions near the top with other imports
+interface EIP7702BaseTransactionRequest {
+  type: number;
+  chainId: number;
+  nonce: number;
+  gasPrice: string;
+  gasLimit: string;
+  to: string;
+  value?: string;
+  data?: string;
+  validUntil: number;
+  authorizedAmount: string;
+  maxPriorityFeePerGas: string;
+  maxFeePerGas: string;
+}
+
+interface EIP7702AuthTransactionRequest extends EIP7702BaseTransactionRequest {
+  type: 4;
+}
+
+interface EIP7702AuthListTransactionRequest
+  extends EIP7702BaseTransactionRequest {
+  type: 5;
+  accessList: {
+    address: string;
+    storageKeys: string[];
+  }[];
+}
 
 const buildEthereumMsgRequest = function (input) {
   if (!input.payload || !input.protocol || !input.signerPath)
@@ -394,6 +436,85 @@ const buildEthereumTxRequest = function (data) {
       dataBytes.slice(0, MAX_BASE_DATA_SZ).copy(txReqPayload, off);
       off += MAX_BASE_DATA_SZ;
     }
+
+    if (
+      data.type === ETH_TX_TYPE_EIP7702_AUTH ||
+      data.type === ETH_TX_TYPE_EIP7702_AUTH_LIST
+    ) {
+      const authData = data;
+      const isAuthList = data.type === ETH_TX_TYPE_EIP7702_AUTH_LIST;
+
+      // Convert validUntil to buffer
+      const validUntilBuf = Buffer.alloc(8);
+      validUntilBuf.writeBigUInt64BE(BigInt(authData.validUntil));
+
+      // Convert authorizedAmount to buffer
+      const authorizedAmountBuf = ensureHexBuffer(authData.authorizedAmount);
+
+      // Build RLP array
+      const rawTx = [
+        ensureHexBuffer(authData.nonce),
+        ensureHexBuffer(authData.gasPrice),
+        ensureHexBuffer(authData.gasLimit),
+        ensureHexBuffer(authData.to),
+        ensureHexBuffer(authData.value || '0x0'),
+        ensureHexBuffer(authData.data || '0x'),
+        ensureHexBuffer(authData.chainId),
+        validUntilBuf,
+        authorizedAmountBuf,
+      ];
+
+      // Add access list for auth list transactions
+      if (isAuthList && 'accessList' in authData) {
+        const accessList = authData.accessList.map((entry) => [
+          ensureHexBuffer(entry.address),
+          entry.storageKeys.map((key) => ensureHexBuffer(key)),
+        ]);
+        rawTx.push(accessList);
+      }
+
+      // Build the request
+      const req = {
+        protocol: ethMsgProtocol.TYPED_DATA,
+        payload: null,
+        schema: LatticeSignSchema.ethereum,
+        curve: LatticeSignCurve.secp256k1,
+        hashType: LatticeSignHash.keccak256,
+        encodingType: LatticeSignEncoding.evm,
+      };
+
+      // Get the chain ID buffer
+      const chainIdBuf = getChainIdBuf(authData.chainId);
+      const chainIdBufSz = chainIdBuf ? chainIdBuf.length : 0;
+
+      // Encode the transaction
+      const ETH_TX_NON_DATA_SZ = 122;
+      const txReqPayload = Buffer.alloc(MAX_BASE_DATA_SZ + ETH_TX_NON_DATA_SZ);
+      let off = 0;
+
+      // Write EIP155 switch and chainID
+      txReqPayload.writeUInt8(chainIdBufSz > 0 ? 1 : 0, off);
+      off += 1;
+      if (chainIdBufSz > 0) {
+        txReqPayload.writeUInt8(chainIdBufSz, off);
+        off += 1;
+        chainIdBuf.copy(txReqPayload, off);
+        off += chainIdBufSz;
+      }
+
+      // Write the transaction type
+      txReqPayload.writeUInt8(authData.type, off);
+      off += 1;
+
+      // Write the RLP-encoded transaction
+      const rlpEncoded = Buffer.from(RLP.encode(rawTx));
+      rlpEncoded.copy(txReqPayload, off);
+      off += rlpEncoded.length;
+
+      req.payload = txReqPayload.slice(0, off);
+      return req;
+    }
+
     return {
       rawTx,
       type,
@@ -441,8 +562,17 @@ const buildEthRawTx = function (tx, sig, address) {
     rlpEncodedWithSig = Buffer.concat([
       Buffer.from([tx.type]),
       rlpEncodedWithSig,
-    ]);
+    ]) as unknown as Buffer;
   }
+
+  if (
+    tx.type === ETH_TX_TYPE_EIP7702_AUTH ||
+    tx.type === ETH_TX_TYPE_EIP7702_AUTH_LIST
+  ) {
+    // For EIP-7702 transactions, we return just the hex string
+    return rlpEncodedWithSig.toString('hex');
+  }
+
   return { rawTx: rlpEncodedWithSig.toString('hex'), sigWithV: newSig };
 };
 
@@ -571,7 +701,7 @@ function isValidChainIdHexNumStr(s) {
   try {
     const b = new BN(s, 16);
     return b.isNaN() === false;
-  } catch (err) {
+  } catch (_err) {
     return false;
   }
 }
@@ -1020,6 +1150,74 @@ export const toViemTransaction = (
   };
 };
 
+/**
+ * Serializes an EIP7702 transaction (both auth and auth-list types)
+ */
+export function serializeEIP7702Transaction(tx: EIP7702Transaction): Hex {
+  // Build RLP array
+  const rlpFields: (Buffer | number)[] = [
+    ensureHexBuffer(tx.nonce),
+    ensureHexBuffer(tx.maxPriorityFeePerGas),
+    ensureHexBuffer(tx.maxFeePerGas),
+    ensureHexBuffer(tx.gasLimit),
+    ensureHexBuffer(tx.to),
+    ensureHexBuffer(tx.value || '0x0'),
+    ensureHexBuffer(tx.data || '0x'),
+    ensureHexBuffer(tx.validUntil),
+    ensureHexBuffer(tx.authorizedAmount),
+  ];
+
+  // Add authorization(s)
+  if (tx.type === 4) {
+    // Single authorization
+    rlpFields.push([
+      ensureHexBuffer(tx.authorization.chainId),
+      ensureHexBuffer(tx.authorization.contractAddress),
+      ensureHexBuffer(tx.authorization.nonce),
+      ensureHexBuffer(tx.authorization.yParity || '0x0'),
+      ensureHexBuffer(tx.authorization.r || '0x0'),
+      ensureHexBuffer(tx.authorization.s || '0x0'),
+    ]);
+  } else {
+    // Authorization list
+    rlpFields.push(
+      tx.authorizations.map((auth) => [
+        ensureHexBuffer(auth.chainId),
+        ensureHexBuffer(auth.contractAddress),
+        ensureHexBuffer(auth.nonce),
+        ensureHexBuffer(auth.yParity || '0x0'),
+        ensureHexBuffer(auth.r || '0x0'),
+        ensureHexBuffer(auth.s || '0x0'),
+      ]),
+    );
+
+    // Add access list for type 5
+    if (tx.accessList) {
+      rlpFields.push(
+        tx.accessList.map((item) => [
+          ensureHexBuffer(item.address),
+          item.storageKeys.map((key) => ensureHexBuffer(key)),
+        ]),
+      );
+    }
+  }
+
+  // RLP encode the transaction
+  const encoded = RLP.encode(rlpFields);
+
+  // Prefix with transaction type
+  return `0x${toHex(tx.type).slice(2)}${toHex(encoded).slice(2)}`;
+}
+
+export const isEip7702Transaction = (
+  tx: TransactionRequest,
+): tx is EIP7702Transaction => {
+  return (
+    tx.type === TRANSACTION_TYPE.EIP7702_AUTH ||
+    tx.type === TRANSACTION_TYPE.EIP7702_AUTH_LIST
+  );
+};
+
 export default {
   buildEthereumMsgRequest,
   validateEthereumMsgResponse,
@@ -1028,6 +1226,5 @@ export default {
   hashTransaction,
   chainIds,
   ensureHexBuffer,
-
   ethConvertLegacyToGenericReq,
 };

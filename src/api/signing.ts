@@ -8,7 +8,11 @@ import {
   DEFAULT_ETH_DERIVATION,
   SOLANA_DERIVATION,
 } from '../constants';
-import { toViemTransaction } from '../ethereum';
+import {
+  toViemTransaction,
+  isEip7702Transaction,
+  serializeEIP7702Transaction,
+} from '../ethereum';
 import { fetchDecoder } from '../functions/fetchDecoder';
 import {
   BitcoinSignPayload,
@@ -17,14 +21,46 @@ import {
   SigningPayload,
   SignRequestParams,
   TransactionRequest,
+  Authorization,
 } from '../types';
 import { isEIP712Payload, queue } from './utilities';
+import { RLP } from '@ethereumjs/rlp';
+
+export const signAuthorization = async (
+  authorization: Authorization,
+  overrides?: SignRequestParams,
+): Promise<SignData> => {
+  // EIP-7702 authorization message is: MAGIC || rlp([chain_id, address, nonce])
+  const MAGIC = Buffer.from('EIP-7702 Authorization', 'utf8');
+  const message = Buffer.concat([
+    MAGIC,
+    Buffer.from(
+      RLP.encode([
+        authorization.chainId,
+        authorization.contractAddress,
+        authorization.nonce,
+      ]),
+    ),
+  ]);
+
+  const payload: SigningPayload = {
+    signerPath: DEFAULT_ETH_DERIVATION,
+    curveType: Constants.SIGNING.CURVES.SECP256K1,
+    hashType: Constants.SIGNING.HASHES.KECCAK256,
+    encodingType: Constants.SIGNING.ENCODINGS.EVM,
+    payload: message,
+  };
+
+  return queue((client) => client.sign({ data: payload, ...overrides }));
+};
 
 export const sign = async (
   transaction: TransactionRequest,
   overrides?: SignRequestParams,
 ): Promise<SignData> => {
-  const serializedTx = serializeTransaction(toViemTransaction(transaction));
+  const serializedTx = isEip7702Transaction(transaction)
+    ? serializeEIP7702Transaction(transaction)
+    : serializeTransaction(toViemTransaction(transaction));
 
   const payload: SigningPayload = {
     signerPath: DEFAULT_ETH_DERIVATION,

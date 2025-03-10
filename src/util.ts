@@ -176,13 +176,28 @@ function isBase10NumStr(x: string): boolean {
   return bn.slice(0, 8) === s.slice(0, 8);
 }
 
-/** @internal Ensure a param is represented by a buffer */
+/**
+ * Convert input to a Buffer. Input can be:
+ * - hex string (with or without 0x prefix)
+ * - Buffer
+ * - number
+ * - bigint
+ * - null/undefined (returns empty buffer)
+ */
 export const ensureHexBuffer = function (
-  x: string | number | Buffer,
+  x: string | number | Buffer | bigint,
   zeroIsNull = true,
 ): Buffer {
   try {
     if (x === null || (x === 0 && zeroIsNull === true)) return Buffer.alloc(0);
+
+    // Handle bigint
+    if (typeof x === 'bigint') {
+      const hexString = x.toString(16);
+      if (hexString.length % 2 > 0) return Buffer.from(`0${hexString}`, 'hex');
+      return Buffer.from(hexString, 'hex');
+    }
+
     const isNumber =
       typeof x === 'number' || (typeof x === 'string' && isBase10NumStr(x));
     let hexString: string;

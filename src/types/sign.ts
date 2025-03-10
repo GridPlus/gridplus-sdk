@@ -1,6 +1,7 @@
 import { Client } from '../client';
 import { SigningPath, Currency, Wallet } from './client';
 import { FirmwareConstants } from './firmware';
+import type { Address, Hex } from 'viem';
 
 export type ETH_MESSAGE_PROTOCOLS = 'eip712' | 'signPersonal';
 
@@ -8,21 +9,26 @@ export const TRANSACTION_TYPE = {
   LEGACY: 0,
   EIP2930: 1,
   EIP1559: 2,
+  EIP7702_AUTH: 4,
+  EIP7702_AUTH_LIST: 5,
 };
 
-export type TransactionRequest = {
-  to: string;
-  value: string;
-  data: string;
-  chainId: number;
-  nonce: number;
-  gasLimit: string;
-  maxFeePerGas?: string;
-  maxPriorityFeePerGas?: string;
-  from?: string;
-  accessList?: Array<{ address: string; storageKeys: string[] }>;
-  type?: (typeof TRANSACTION_TYPE)[keyof typeof TRANSACTION_TYPE];
-};
+export type TransactionRequest =
+  | {
+      to: string;
+      value: string;
+      data: string;
+      chainId: number;
+      nonce: number;
+      gasLimit: string;
+      maxFeePerGas?: string;
+      maxPriorityFeePerGas?: string;
+      from?: string;
+      accessList?: Array<{ address: string; storageKeys: string[] }>;
+      type?: (typeof TRANSACTION_TYPE)[keyof typeof TRANSACTION_TYPE];
+    }
+  | Authorization
+  | EIP7702Transaction;
 
 export interface SigningPayload {
   signerPath: SigningPath;
@@ -127,3 +133,45 @@ export interface EIP712MessagePayload {
   primaryType: string;
   message: any;
 }
+
+// EIP-7702 Types
+export interface Authorization {
+  contractAddress: Address;
+  chainId: number;
+  nonce: number;
+  yParity?: Hex;
+  r?: Hex;
+  s?: Hex;
+}
+
+export interface EIP7702BaseTransaction {
+  type: number;
+  chainId: number;
+  nonce: number;
+  maxPriorityFeePerGas: bigint;
+  maxFeePerGas: bigint;
+  gasLimit: bigint;
+  to: Address;
+  value: bigint;
+  data?: Hex;
+  validUntil: number;
+  authorizedAmount: bigint;
+}
+
+export interface EIP7702AuthTransaction extends EIP7702BaseTransaction {
+  type: 4;
+  authorization: Authorization;
+}
+
+export interface EIP7702AuthListTransaction extends EIP7702BaseTransaction {
+  type: 5;
+  authorizations: Authorization[];
+  accessList: {
+    address: Address;
+    storageKeys: Hex[];
+  }[];
+}
+
+export type EIP7702Transaction =
+  | EIP7702AuthTransaction
+  | EIP7702AuthListTransaction;
