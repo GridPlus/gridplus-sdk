@@ -232,17 +232,36 @@ export const decodeSignResponse = ({
     off += derSigLen;
     const ethAddr = data.slice(off, off + 20);
     // Determine the `v` param and add it to the sig before returning
-    const { rawTx, sigWithV } = ethereum.buildEthRawTx(request, sig, ethAddr);
-    return {
-      tx: `0x${rawTx}`,
-      txHash: `0x${ethereum.hashTransaction(rawTx)}`,
-      sig: {
-        v: sigWithV.v,
-        r: sigWithV.r.toString('hex'),
-        s: sigWithV.s.toString('hex'),
-      },
-      signer: ethAddr,
-    };
+    const result = ethereum.buildEthRawTx(request, sig, ethAddr);
+    
+    // Handle both object and string returns from buildEthRawTx
+    if (typeof result === 'string') {
+      // EIP-7702 transactions return only the hex string
+      // Per EIP-7702: "The [EIP-2718] `ReceiptPayload` for this transaction is 
+      // `rlp([status, cumulative_transaction_gas_used, logs_bloom, logs])`."
+      return {
+        tx: `0x${result}`,
+        txHash: `0x${ethereum.hashTransaction(result)}`,
+        sig: {
+          v: Buffer.from([]),
+          r: Buffer.from([]),
+          s: Buffer.from([]),
+        },
+        signer: ethAddr,
+      };
+    } else {
+      // Normal transactions return object with rawTx and sigWithV
+      return {
+        tx: `0x${result.rawTx}`,
+        txHash: `0x${ethereum.hashTransaction(result.rawTx)}`,
+        sig: {
+          v: result.sigWithV.v,
+          r: result.sigWithV.r.toString('hex'),
+          s: result.sigWithV.s.toString('hex'),
+        },
+        signer: ethAddr,
+      };
+    }
   } else if (currency === CURRENCIES.ETH_MSG) {
     const sig = parseDER(data.slice(off, off + 2 + data[off + 1]));
     off += derSigLen;

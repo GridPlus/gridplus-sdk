@@ -22,15 +22,27 @@ import {
   SignRequestParams,
   TransactionRequest,
   Authorization,
+  AuthorizationData,
 } from '../types';
 import { isEIP712Payload, queue } from './utilities';
 import { RLP } from '@ethereumjs/rlp';
 
+/**
+ * Signs an EIP-7702 authorization to set code for an externally owned account (EOA).
+ * 
+ * From the EIP-7702 spec:
+ * - "MAGIC = 0x05" (parameter value)
+ * - "authority = ecrecover(keccak(MAGIC || rlp([chain_id, address, nonce])), y_parity, r, s)"
+ *   where s value must be less than or equal to secp256k1n/2, as specified in EIP-2.
+ *
+ * This function creates and signs the authorization message required for EIP-7702 delegation.
+ */
 export const signAuthorization = async (
-  authorization: Authorization,
+  authorization: AuthorizationData,
   overrides?: SignRequestParams,
 ): Promise<SignData> => {
   // EIP-7702 authorization message is: MAGIC || rlp([chain_id, address, nonce])
+  // MAGIC = 0x05 per EIP-7702 spec
   const MAGIC = Buffer.from([0x05]);
   const message = Buffer.concat([
     MAGIC,

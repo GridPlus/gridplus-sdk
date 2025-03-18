@@ -27,7 +27,6 @@ export type TransactionRequest =
       accessList?: Array<{ address: string; storageKeys: string[] }>;
       type?: (typeof TRANSACTION_TYPE)[keyof typeof TRANSACTION_TYPE];
     }
-  | Authorization
   | EIP7702Transaction;
 
 export interface SigningPayload {
@@ -135,41 +134,61 @@ export interface EIP712MessagePayload {
 }
 
 // EIP-7702 Types
-export interface Authorization {
-  contractAddress: Address;
-  chainId: number;
-  nonce: number;
-  yParity?: Hex;
-  r?: Hex;
-  s?: Hex;
+
+/**
+ * EIP-7702 Authorization data structure - the data that gets signed.
+ * This is what needs to be signed with ecrecover: keccak(MAGIC || rlp([chain_id, address, nonce]))
+ */
+export interface AuthorizationData {
+  contractAddress: Address; // The target contract address for delegation
+  chainId: number;          // Either 0 (valid on all chains) or the specific chain ID
+  nonce: number;            // Must be less than 2^64 - 1
 }
 
+/**
+ * EIP-7702 Authorization tuple structure.
+ * From the spec: "authorization_list = [[chain_id, address, nonce, y_parity, r, s], ...]"
+ */
+export interface Authorization extends AuthorizationData {
+  yParity?: Hex;            // Recovery parameter (v)
+  r?: Hex;                  // r component of the signature
+  s?: Hex;                  // s component of the signature (must be <= secp256k1n/2 per EIP-2)
+}
+
+/**
+ * EIP-7702 Base transaction structure.
+ * From the spec:
+ * "rlp([chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, destination, value, data, access_list, authorization_list, signature_y_parity, signature_r, signature_s])"
+ */
 export interface EIP7702BaseTransaction {
-  type: number;
-  chainId: number;
-  nonce: number;
-  maxPriorityFeePerGas: bigint;
-  maxFeePerGas: bigint;
-  gasLimit: bigint;
-  to: Address;
-  value: bigint;
-  data?: Hex;
-  validUntil: number;
-  authorizedAmount: bigint;
+  type: number;                // Transaction type (0x04 for EIP-7702)
+  chainId: number;             // Chain ID for the transaction
+  nonce: number;               // Sender's nonce
+  maxPriorityFeePerGas: bigint | string;  // EIP-1559 max priority fee
+  maxFeePerGas: bigint | string;          // EIP-1559 max fee
+  gasLimit: bigint | string;              // Gas limit for the transaction
+  to: Address;                 // Destination address (null destination not valid)
+  value: bigint | string;      // ETH value to send
+  data?: Hex;                  // Transaction calldata
+  accessList?: Array<{ address: Address; storageKeys: Hex[] }>; // EIP-2930 access list
 }
 
+/**
+ * EIP-7702 Single Authorization transaction (type 0x04).
+ * This type includes a single authorization tuple.
+ */
 export interface EIP7702AuthTransaction extends EIP7702BaseTransaction {
   type: 4;
   authorization: Authorization;
 }
 
+/**
+ * EIP-7702 Authorization List transaction (type 0x05).
+ * This type includes multiple authorization tuples.
+ */
 export interface EIP7702AuthListTransaction extends EIP7702BaseTransaction {
   type: 5;
   authorizations: Authorization[];
-  accessList: {
-    address: Address;
-    storageKeys: Hex[];
-  }[];
 }
 
 export type EIP7702Transaction =
