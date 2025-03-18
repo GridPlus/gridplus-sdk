@@ -31,7 +31,7 @@ export const signAuthorization = async (
   overrides?: SignRequestParams,
 ): Promise<SignData> => {
   // EIP-7702 authorization message is: MAGIC || rlp([chain_id, address, nonce])
-  const MAGIC = Buffer.from('EIP-7702 Authorization', 'utf8');
+  const MAGIC = Buffer.from([0x05]);
   const message = Buffer.concat([
     MAGIC,
     Buffer.from(
