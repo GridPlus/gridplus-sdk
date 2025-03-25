@@ -7,7 +7,7 @@ import { TRANSACTION_TYPE, AuthorizationData } from '../../types';
 
 /**
  * Test vectors for EIP-7702
- * 
+ *
  * According to the EIP-7702 specification:
  * - Transaction type is 0x04 (SET_CODE_TX_TYPE)
  * - MAGIC value is 0x05
@@ -26,12 +26,12 @@ describe('EIP-7702', () => {
 
   describe('transactions', () => {
     let signedAuthorization: any;
-    
+
     /**
      * Test Case: Single Authorization
-     * 
+     *
      * From the EIP-7702 spec:
-     * "At the start of executing the transaction, after incrementing the sender's nonce, 
+     * "At the start of executing the transaction, after incrementing the sender's nonce,
      * for each [chain_id, address, nonce, y_parity, r, s] tuple do the following:
      * 1. Verify the chain id is either 0 or the chain's current ID.
      * 2. Verify the nonce is less than 2**64 - 1."
@@ -44,11 +44,11 @@ describe('EIP-7702', () => {
           '0x769f783730e49994f724069898f8738bfd406dfd' as Address,
         nonce: 0,
       };
-      
+
       // Sign the authorization data to get a complete authorization with signature
       signedAuthorization = await signAuthorization(authorizationData);
       console.log('Auth transaction result:', signedAuthorization);
-      
+
       // Verify signature components exist
       expect(signedAuthorization.sig).toBeDefined();
       expect(signedAuthorization.sig.r).toBeDefined();
@@ -58,7 +58,7 @@ describe('EIP-7702', () => {
 
     /**
      * Test Case: Authorization List
-     * 
+     *
      * From the EIP-7702 spec:
      * "The access_list and authorization_list fields follow EIP-2930 format.
      * The transaction is considered invalid if the length of authorization_list is zero."
@@ -81,15 +81,15 @@ describe('EIP-7702', () => {
 
       const result = await sign(authListTx);
       console.log('Auth list transaction result:', result);
-      
+
       // Verify the transaction was properly signed
       expect(result.tx).toBeDefined();
       expect(result.txHash).toBeDefined();
     });
-    
+
     /**
      * Test Case: Authorization with chain ID 0
-     * 
+     *
      * From the EIP-7702 spec:
      * "For other situations where universal deployment is preferred, e.g., delegating to a wallet proxy,
      * it's possible to set chain ID to 0 for validity on all EIP-7702 chains."
@@ -102,10 +102,12 @@ describe('EIP-7702', () => {
           '0x769f783730e49994f724069898f8738bfd406dfd' as Address,
         nonce: 0,
       };
-      
-      const universalSigned = await signAuthorization(universalAuthorizationData);
+
+      const universalSigned = await signAuthorization(
+        universalAuthorizationData,
+      );
       console.log('Universal auth result:', universalSigned);
-      
+
       // Verify signature components exist
       expect(universalSigned.sig).toBeDefined();
       expect(universalSigned.sig.r).toBeDefined();
@@ -114,3 +116,4 @@ describe('EIP-7702', () => {
     });
   });
 });
+d70194769f783730e49994f724069898f8738bfd406dfd80;

@@ -29,7 +29,7 @@ import { RLP } from '@ethereumjs/rlp';
 
 /**
  * Signs an EIP-7702 authorization to set code for an externally owned account (EOA).
- * 
+ *
  * From the EIP-7702 spec:
  * - "MAGIC = 0x05" (parameter value)
  * - "authority = ecrecover(keccak(MAGIC || rlp([chain_id, address, nonce])), y_parity, r, s)"
@@ -59,7 +59,7 @@ export const signAuthorization = async (
     signerPath: DEFAULT_ETH_DERIVATION,
     curveType: Constants.SIGNING.CURVES.SECP256K1,
     hashType: Constants.SIGNING.HASHES.KECCAK256,
-    encodingType: Constants.SIGNING.ENCODINGS.EVM,
+    encodingType: Constants.SIGNING.ENCODINGS.EIP7702_AUTH,
     payload: message,
   };
 
@@ -78,7 +78,7 @@ export const sign = async (
     signerPath: DEFAULT_ETH_DERIVATION,
     curveType: Constants.SIGNING.CURVES.SECP256K1,
     hashType: Constants.SIGNING.HASHES.KECCAK256,
-    encodingType: Constants.SIGNING.ENCODINGS.EVM,
+    encodingType: Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST,
     payload: serializedTx,
     decoder: await fetchDecoder(transaction),
   };

@@ -37,6 +37,8 @@ export const EXTERNAL = {
       SOLANA: LatticeSignEncoding.solana,
       EVM: LatticeSignEncoding.evm,
       ETH_DEPOSIT: LatticeSignEncoding.eth_deposit,
+      EIP7702_AUTH: LatticeSignEncoding.eip7702_auth,
+      EIP7702_AUTH_LIST: LatticeSignEncoding.eip7702_auth_list,
     },
     BLS_DST: {
       BLS_DST_NUL: LatticeSignBlsDst.NUL,
