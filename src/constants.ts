@@ -445,6 +445,17 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
       EXTERNAL.SIGNING.ENCODINGS.ETH_DEPOSIT;
   }
 
+  // --- V0.18.X ---
+  // V0.18.0 added support for EIP7702 signing
+  // TODO: update patch version when this is released
+  if (!legacy && gte(v, [0, 18, 0])) {
+    c.genericSigning.encodingTypes = {
+      ...c.genericSigning.encodingTypes,
+      EIP7702_AUTH: EXTERNAL.SIGNING.ENCODINGS.EIP7702_AUTH,
+      EIP7702_AUTH_LIST: EXTERNAL.SIGNING.ENCODINGS.EIP7702_AUTH_LIST,
+    };
+  }
+
   return c;
 }
 
