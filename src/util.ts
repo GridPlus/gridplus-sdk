@@ -802,18 +802,36 @@ export const getV = function (tx: any, resp: any) {
  * Gets the y-parity value (0 or 1) from a transaction signature.
  * This is useful for EIP-1559 and EIP-2718 transaction types.
  *
- * @param tx - An @ethereumjs/tx Transaction object
+ * @param tx - An @ethereumjs/tx Transaction object or mock with getMessageToSign method
  * @param resp - response from Lattice containing signature data
  * @returns number - 0 or 1 representing the y-parity value
  */
 export const getYParity = function (tx: any, resp: any): number {
-  const hash = tx._type
-    ? tx.getMessageToSign(true)
-    : RLP.encode(tx.getMessageToSign(false));
+  let hashData;
+
+  if (tx._type) {
+    // For EIP-1559 and newer transaction types
+    hashData = tx.getMessageToSign(true);
+  } else if (tx._type === null) {
+    // For direct hash input - already keccak'd and ready for secp256k1
+    hashData = tx.getMessageToSign();
+  } else {
+    // For legacy transaction types
+    hashData = RLP.encode(tx.getMessageToSign(false));
+  }
 
   // Make sure the hash is exactly 32 bytes as required by secp256k1
-  const hashBuffer = Buffer.isBuffer(hash) ? hash : Buffer.from(hash);
-  const normalizedHash = Buffer.from(keccak256(hashBuffer), 'hex');
+  let normalizedHash;
+  if (Buffer.isBuffer(hashData) && hashData.length === 32) {
+    // Already a correctly sized hash buffer, use directly
+    normalizedHash = hashData;
+  } else {
+    // Need to hash or normalize the data
+    const hashBuffer = Buffer.isBuffer(hashData)
+      ? hashData
+      : Buffer.from(hashData);
+    normalizedHash = Buffer.from(keccak256(hashBuffer), 'hex');
+  }
 
   const rs = new Uint8Array(Buffer.concat([resp.sig.r, resp.sig.s]));
   const pubkey = new Uint8Array(resp.pubkey);

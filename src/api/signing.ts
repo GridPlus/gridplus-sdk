@@ -80,12 +80,16 @@ export const signAuthorization = async (
   if (response.sig && response.pubkey) {
     // Create a mock tx object to use with getYParity
     // For EIP-7702, we need to prepare a proper hash for the message to recover y-parity
-    const hash = Buffer.from(keccak256(message), 'hex');
+    // We need a proper 32-byte hash for secp256k1 to work with
+    const messageHash = Buffer.from(keccak256(message), 'hex');
+
+    // Create a mock tx that will just return this hash directly without modifying it
     const mockTx = {
-      getMessageToSign: () => hash, // Return the message hash directly
+      _type: null, // Bypass the hash processing in getYParity
+      getMessageToSign: () => messageHash,
     };
 
-    // Get the y-parity value using our new utility function
+    // Get the y-parity value using our utility function
     const yParity = getYParity(mockTx, response);
 
     // Add the signature components to the result
