@@ -811,11 +811,15 @@ export const getYParity = function (tx: any, resp: any): number {
     ? tx.getMessageToSign(true)
     : RLP.encode(tx.getMessageToSign(false));
 
+  // Make sure the hash is exactly 32 bytes as required by secp256k1
+  const hashBuffer = Buffer.isBuffer(hash) ? hash : Buffer.from(hash);
+  const normalizedHash = Buffer.from(keccak256(hashBuffer), 'hex');
+
   const rs = new Uint8Array(Buffer.concat([resp.sig.r, resp.sig.s]));
   const pubkey = new Uint8Array(resp.pubkey);
 
-  const recovery0 = ecdsaRecover(rs, 0, hash, false);
-  const recovery1 = ecdsaRecover(rs, 1, hash, false);
+  const recovery0 = ecdsaRecover(rs, 0, normalizedHash, false);
+  const recovery1 = ecdsaRecover(rs, 1, normalizedHash, false);
 
   const pubkeyStr = Buffer.from(pubkey).toString('hex');
   const recovery0Str = Buffer.from(recovery0).toString('hex');

@@ -28,6 +28,7 @@ import { isEIP712Payload, queue } from './utilities';
 import { RLP } from '@ethereumjs/rlp';
 import { getYParity } from '../util';
 import type { Hex } from 'viem';
+import { keccak256 } from 'js-sha3';
 
 /**
  * Signs an EIP-7702 authorization to set code for an externally owned account (EOA).
@@ -78,11 +79,10 @@ export const signAuthorization = async (
   // Extract signature components if they exist
   if (response.sig && response.pubkey) {
     // Create a mock tx object to use with getYParity
-    // We're using a dummy transaction with type=2 (EIP-1559) to ensure
-    // getYParity returns the correct y-parity value (0 or 1)
+    // For EIP-7702, we need to prepare a proper hash for the message to recover y-parity
+    const hash = Buffer.from(keccak256(message), 'hex');
     const mockTx = {
-      _type: 2, // EIP-1559 or newer transaction type
-      getMessageToSign: () => message, // Return our authorization message
+      getMessageToSign: () => hash, // Return the message hash directly
     };
 
     // Get the y-parity value using our new utility function

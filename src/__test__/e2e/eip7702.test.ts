@@ -78,7 +78,17 @@ describe('EIP-7702', () => {
         value: toHex(parseEther('0.1')),
         data: '0x12345678', // Function selector for the authorization
         accessList: [],
-        authorizations: [signedAuthorization],
+        authorizations: [
+          {
+            // Ensure we include all required fields explicitly
+            chainId: signedAuthorization.chainId,
+            contractAddress: signedAuthorization.contractAddress,
+            nonce: signedAuthorization.nonce,
+            yParity: signedAuthorization.yParity,
+            r: signedAuthorization.r,
+            s: signedAuthorization.s,
+          },
+        ],
       };
 
       const result = await sign(authListTx);
