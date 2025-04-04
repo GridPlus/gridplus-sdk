@@ -17,7 +17,7 @@ import {
 } from '../../constants';
 import { jsonc } from 'jsonc';
 import { Constants } from '../..';
-import { getV, parseDER, randomBytes } from '../../util';
+import { getV, parseDER, randomBytes, getYParity } from '../../util';
 import { Client } from '../../client';
 import { ProtocolConstants } from '../../protocol';
 import { getPathStr } from '../../shared/utilities';
@@ -974,7 +974,13 @@ export const getSigStr = function (resp: any, tx?: TypedTransaction) {
       .toString(16)
       .padStart(2, '0');
   } else if (tx) {
-    v = getV(tx, resp);
+    if (tx._type && tx._type > 0) {
+      // For EIP-1559 and newer transaction types
+      v = getYParity(tx, resp).toString(16).padStart(2, '0');
+    } else {
+      // For legacy transactions
+      v = getV(tx, resp);
+    }
   } else {
     throw new Error('Could not build sig string');
   }

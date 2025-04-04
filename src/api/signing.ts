@@ -26,6 +26,8 @@ import {
 } from '../types';
 import { isEIP712Payload, queue } from './utilities';
 import { RLP } from '@ethereumjs/rlp';
+import { getYParity } from '../util';
+import type { Hex } from 'viem';
 
 /**
  * Signs an EIP-7702 authorization to set code for an externally owned account (EOA).
@@ -40,7 +42,7 @@ import { RLP } from '@ethereumjs/rlp';
 export const signAuthorization = async (
   authorization: AuthorizationData,
   overrides?: SignRequestParams,
-): Promise<SignData> => {
+): Promise<Authorization> => {
   // EIP-7702 authorization message is: MAGIC || rlp([chain_id, address, nonce])
   // MAGIC = 0x05 per EIP-7702 spec
   const MAGIC = Buffer.from([0x05]);
@@ -63,7 +65,36 @@ export const signAuthorization = async (
     payload: message,
   };
 
-  return queue((client) => client.sign({ data: payload, ...overrides }));
+  // Get the signature with all components
+  const response = await queue((client) =>
+    client.sign({ data: payload, ...overrides }),
+  );
+
+  // Create a result object that combines authorization data with signature components
+  const result: Authorization = {
+    ...authorization,
+  };
+
+  // Extract signature components if they exist
+  if (response.sig && response.pubkey) {
+    // Create a mock tx object to use with getYParity
+    // We're using a dummy transaction with type=2 (EIP-1559) to ensure
+    // getYParity returns the correct y-parity value (0 or 1)
+    const mockTx = {
+      _type: 2, // EIP-1559 or newer transaction type
+      getMessageToSign: () => message, // Return our authorization message
+    };
+
+    // Get the y-parity value using our new utility function
+    const yParity = getYParity(mockTx, response);
+
+    // Add the signature components to the result
+    result.yParity = `0x${yParity.toString(16)}` as Hex;
+    result.r = `0x${response.sig.r.toString('hex')}` as Hex;
+    result.s = `0x${response.sig.s.toString('hex')}` as Hex;
+  }
+
+  return result;
 };
 
 export const sign = async (

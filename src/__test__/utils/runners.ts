@@ -12,7 +12,7 @@ import { Constants } from '../..';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { RLP } from '@ethereumjs/rlp';
 import { getDeviceId } from './getters';
-import { ensureHexBuffer } from '../../util';
+import { ensureHexBuffer, getYParity } from '../../util';
 
 export async function runTestCase(
   payload: TestRequestPayload,
@@ -103,11 +103,30 @@ export async function runEvm(
   );
   const refR = ensureHexBuffer(signedTx.r?.toString(16));
   const refS = ensureHexBuffer(signedTx.s?.toString(16));
-  const refV = signedTx.v?.toString();
+
+  // Handle the V parameter differently based on transaction type
+  let refV;
+  if (tx._type && tx._type > 0) {
+    // For EIP-1559 and newer transaction types, use y-parity (0 or 1)
+    refV = signedTx.v?.toString();
+  } else {
+    // For legacy transactions
+    refV = signedTx.v?.toString();
+  }
+
   // Get params from Lattice sig
   const latticeR = Buffer.from(sig.r);
   const latticeS = Buffer.from(sig.s);
-  const latticeV = new BN(sig.v);
+
+  // Get the V parameter or y-parity value depending on transaction type
+  let latticeV;
+  if (tx._type && tx._type > 0) {
+    // For EIP-1559 and newer transaction types, get y-parity (0 or 1)
+    latticeV = getYParity(tx, resp);
+  } else {
+    // For legacy transactions, use getV
+    latticeV = new BN(sig.v);
+  }
 
   // Validate the signature
   expect(latticeR.equals(refR)).toEqualElseLog(
@@ -122,7 +141,7 @@ export async function runEvm(
     refV.toString(),
     'Signature V component does not match reference',
   );
-  // One more check -- create a new tx with the signatre params and verify it
+  // One more check -- create a new tx with the signature params and verify it
   const signedTxData = JSON.parse(JSON.stringify(txData));
   signedTxData.v = latticeV;
   signedTxData.r = latticeR;

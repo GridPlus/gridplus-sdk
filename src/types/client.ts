@@ -13,6 +13,8 @@ export interface SignData {
     v: Buffer;
     r: Buffer;
     s: Buffer;
+    // Added for EIP-7702 support - y-parity value (0 or 1)
+    yParity?: number;
   };
   sigs?: Buffer[];
   signer?: Buffer;

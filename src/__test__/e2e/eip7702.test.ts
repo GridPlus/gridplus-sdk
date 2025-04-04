@@ -50,10 +50,12 @@ describe('EIP-7702', () => {
       console.log('Auth transaction result:', signedAuthorization);
 
       // Verify signature components exist
-      expect(signedAuthorization.sig).toBeDefined();
-      expect(signedAuthorization.sig.r).toBeDefined();
-      expect(signedAuthorization.sig.s).toBeDefined();
-      expect(signedAuthorization.sig.v).toBeDefined();
+      expect(signedAuthorization.yParity).toBeDefined();
+      expect(signedAuthorization.r).toBeDefined();
+      expect(signedAuthorization.s).toBeDefined();
+
+      // Verify yParity is either 0x0 or 0x1
+      expect(['0x0', '0x1']).toContain(signedAuthorization.yParity);
     });
 
     /**
@@ -109,10 +111,12 @@ describe('EIP-7702', () => {
       console.log('Universal auth result:', universalSigned);
 
       // Verify signature components exist
-      expect(universalSigned.sig).toBeDefined();
-      expect(universalSigned.sig.r).toBeDefined();
-      expect(universalSigned.sig.s).toBeDefined();
-      expect(universalSigned.sig.v).toBeDefined();
+      expect(universalSigned.yParity).toBeDefined();
+      expect(universalSigned.r).toBeDefined();
+      expect(universalSigned.s).toBeDefined();
+
+      // Verify yParity is either 0x0 or 0x1
+      expect(['0x0', '0x1']).toContain(universalSigned.yParity);
     });
   });
 });

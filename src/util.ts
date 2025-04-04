@@ -798,9 +798,39 @@ export const getV = function (tx: any, resp: any) {
   return chainId.muln(2).addn(35).addn(recovery);
 };
 
+/**
+ * Gets the y-parity value (0 or 1) from a transaction signature.
+ * This is useful for EIP-1559 and EIP-2718 transaction types.
+ *
+ * @param tx - An @ethereumjs/tx Transaction object
+ * @param resp - response from Lattice containing signature data
+ * @returns number - 0 or 1 representing the y-parity value
+ */
+export const getYParity = function (tx: any, resp: any): number {
+  const hash = tx._type
+    ? tx.getMessageToSign(true)
+    : RLP.encode(tx.getMessageToSign(false));
+
+  const rs = new Uint8Array(Buffer.concat([resp.sig.r, resp.sig.s]));
+  const pubkey = new Uint8Array(resp.pubkey);
+
+  const recovery0 = ecdsaRecover(rs, 0, hash, false);
+  const recovery1 = ecdsaRecover(rs, 1, hash, false);
+
+  const pubkeyStr = Buffer.from(pubkey).toString('hex');
+  const recovery0Str = Buffer.from(recovery0).toString('hex');
+  const recovery1Str = Buffer.from(recovery1).toString('hex');
+
+  if (pubkeyStr === recovery0Str) return 0;
+  if (pubkeyStr === recovery1Str) return 1;
+
+  throw new Error('Unable to recover y_parity from signature');
+};
+
 /** @internal */
 export const EXTERNAL = {
   fetchCalldataDecoder,
   generateAppSecret,
   getV,
+  getYParity,
 };

@@ -1152,14 +1152,14 @@ export const toViemTransaction = (
 
 /**
  * Serializes an EIP7702 transaction (both auth and auth-list types).
- * 
+ *
  * From the EIP-7702 spec:
  * - Transaction type is 0x04 (SET_CODE_TX_TYPE)
  * - TransactionPayload is RLP-serialized as:
- *   rlp([chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, destination, 
+ *   rlp([chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, destination,
  *        value, data, access_list, authorization_list, signature_y_parity, signature_r, signature_s])
  * - authorization_list = [[chain_id, address, nonce, y_parity, r, s], ...]
- * 
+ *
  * Note: Destinations must not be null, as specified in the EIP.
  */
 export function serializeEIP7702Transaction(tx: EIP7702Transaction): Hex {
@@ -1185,6 +1185,8 @@ export function serializeEIP7702Transaction(tx: EIP7702Transaction): Hex {
   if (tx.type === 4) {
     // Single authorization tuple: [chain_id, address, nonce, y_parity, r, s]
     const auth = tx.authorization;
+
+    // Get the y-parity value directly from the authorization
     const authTuple = [
       ensureHexBuffer(auth.chainId),
       ensureHexBuffer(auth.contractAddress),
@@ -1238,10 +1240,10 @@ export const isEip7702Transaction = (
   tx: TransactionRequest,
 ): tx is EIP7702Transaction => {
   return (
-    typeof tx === 'object' && 
-    'type' in tx && 
+    typeof tx === 'object' &&
+    'type' in tx &&
     (tx.type === TRANSACTION_TYPE.EIP7702_AUTH ||
-     tx.type === TRANSACTION_TYPE.EIP7702_AUTH_LIST)
+      tx.type === TRANSACTION_TYPE.EIP7702_AUTH_LIST)
   );
 };
 
