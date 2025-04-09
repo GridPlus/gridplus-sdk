@@ -202,7 +202,7 @@ export class Client {
     n = 1,
     flag = 0,
     iterIdx = 0,
-  }: GetAddressesRequestParams): Promise<Buffer[] | string[]> {
+  }: GetAddressesRequestParams): Promise<string[]> {
     return this.retryWrapper(getAddresses, { startPath, n, flag, iterIdx });
   }
 

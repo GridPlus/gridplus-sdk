@@ -14,10 +14,10 @@ import {
 } from '../constants';
 import { GetAddressesRequestParams, WalletPath } from '../types';
 import {
+  getFlagFromPath,
   getStartPath,
   parseDerivationPathComponents,
   queue,
-  getFlagFromPath,
 } from './utilities';
 
 type FetchAddressesParams = {

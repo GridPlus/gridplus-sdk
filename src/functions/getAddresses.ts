@@ -30,7 +30,7 @@ export async function getAddresses({
   n: _n,
   flag: _flag,
   iterIdx,
-}: GetAddressesRequestFunctionParams): Promise<Buffer[]> {
+}: GetAddressesRequestFunctionParams): Promise<string[]> {
   const { url, sharedSecret, ephemeralPub, fwConstants } =
     validateConnectedClient(client);
   const activeWallet = validateWallet(client.getActiveWallet());
