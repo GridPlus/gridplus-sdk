@@ -26,6 +26,11 @@ describe('EIP-7702', () => {
 
   describe('transactions', () => {
     let signedAuthorization: any;
+    const authorizationData: AuthorizationData = {
+      chainId: 1,
+      contractAddress: '0x769f783730e49994f724069898f8738bfd406dfd' as Address,
+      nonce: 0,
+    };
 
     /**
      * Test Case: Single Authorization
@@ -37,14 +42,6 @@ describe('EIP-7702', () => {
      * 2. Verify the nonce is less than 2**64 - 1."
      */
     test('single authorization', async () => {
-      // Create an authorization for chain ID 1 (Ethereum mainnet)
-      const authorizationData: AuthorizationData = {
-        chainId: 1,
-        contractAddress:
-          '0x769f783730e49994f724069898f8738bfd406dfd' as Address,
-        nonce: 0,
-      };
-
       // Sign the authorization data to get a complete authorization with signature
       signedAuthorization = await signAuthorization(authorizationData);
       console.log('Auth transaction result:', signedAuthorization);
@@ -81,9 +78,9 @@ describe('EIP-7702', () => {
         authorizations: [
           {
             // Ensure we include all required fields explicitly
-            chainId: signedAuthorization.chainId,
-            contractAddress: signedAuthorization.contractAddress,
-            nonce: signedAuthorization.nonce,
+            chainId: authorizationData.chainId,
+            contractAddress: authorizationData.contractAddress,
+            nonce: authorizationData.nonce,
             yParity: signedAuthorization.yParity,
             r: signedAuthorization.r,
             s: signedAuthorization.s,
