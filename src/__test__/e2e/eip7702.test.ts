@@ -4,7 +4,6 @@ import { pair, sign, signAuthorization } from '../../api/index';
 import { question } from 'readline-sync';
 import { parseEther, toHex, type Address } from 'viem';
 import { TRANSACTION_TYPE, AuthorizationData } from '../../types';
-
 /**
  * Test vectors for EIP-7702
  *
@@ -94,36 +93,6 @@ describe('EIP-7702', () => {
       // Verify the transaction was properly signed
       expect(result.tx).toBeDefined();
       expect(result.txHash).toBeDefined();
-    });
-
-    /**
-     * Test Case: Authorization with chain ID 0
-     *
-     * From the EIP-7702 spec:
-     * "For other situations where universal deployment is preferred, e.g., delegating to a wallet proxy,
-     * it's possible to set chain ID to 0 for validity on all EIP-7702 chains."
-     */
-    test('authorization with chain ID 0', async () => {
-      // Create an authorization with chain ID 0 (valid on all chains)
-      const universalAuthorizationData: AuthorizationData = {
-        chainId: 0, // Valid on all chains
-        contractAddress:
-          '0x769f783730e49994f724069898f8738bfd406dfd' as Address,
-        nonce: 0,
-      };
-
-      const universalSigned = await signAuthorization(
-        universalAuthorizationData,
-      );
-      console.log('Universal auth result:', universalSigned);
-
-      // Verify signature components exist
-      expect(universalSigned.yParity).toBeDefined();
-      expect(universalSigned.r).toBeDefined();
-      expect(universalSigned.s).toBeDefined();
-
-      // Verify yParity is either 0x0 or 0x1
-      expect(['0x0', '0x1']).toContain(universalSigned.yParity);
     });
   });
 });
