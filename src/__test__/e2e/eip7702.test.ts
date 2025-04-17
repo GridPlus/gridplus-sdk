@@ -14,6 +14,14 @@ import { TRANSACTION_TYPE, AuthorizationData } from '../../types';
  * - EIP-7702 supports both single authorizations and authorization lists
  */
 
+// BigInt safe replacer for JSON.stringify
+const bigIntReplacer = (key, value) => {
+  if (typeof value === 'bigint') {
+    return value.toString();
+  }
+  return value;
+};
+
 // Debug utility function to print detailed object info
 const debugLog = (label, obj) => {
   console.log('\n========== DEBUG LOG ==========');
@@ -30,7 +38,7 @@ const debugLog = (label, obj) => {
   }
 
   console.log('Type:', typeof obj);
-  console.log('JSON Stringified:', JSON.stringify(obj, null, 2));
+  console.log('JSON Stringified:', JSON.stringify(obj, bigIntReplacer, 2));
 
   if (typeof obj === 'object') {
     console.log('Keys:', Object.keys(obj));
@@ -229,7 +237,10 @@ describe('EIP-7702', () => {
         console.error('\n❌ TEST FAILED WITH ERROR:');
         console.error('Error message:', error.message);
         console.error('Error stack:', error.stack);
-        console.error('Error details:', JSON.stringify(error, null, 2));
+        console.error(
+          'Error details:',
+          JSON.stringify(error, bigIntReplacer, 2),
+        );
         throw error; // Re-throw the error to fail the test
       }
     });

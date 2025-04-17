@@ -49,6 +49,14 @@ bdec(cbor);
 const ETH_TX_TYPE_EIP7702_AUTH = 0x04;
 const ETH_TX_TYPE_EIP7702_AUTH_LIST = 0x05;
 
+// Custom JSON replacer to handle BigInt values
+const bigIntReplacer = (key, value) => {
+  if (typeof value === 'bigint') {
+    return value.toString();
+  }
+  return value;
+};
+
 // Add these type definitions near the top with other imports
 interface EIP7702BaseTransactionRequest {
   type: number;
@@ -1200,7 +1208,7 @@ export function serializeEIP7702Transaction(
     console.log(`Debug - Auth[${idx}] contractAddress:`, auth.contractAddress);
     console.log(
       `Debug - Auth[${idx}] complete:`,
-      JSON.stringify(auth, null, 2),
+      JSON.stringify(auth, bigIntReplacer, 2),
     );
   });
 
@@ -1249,7 +1257,10 @@ export function serializeEIP7702Transaction(
     })),
   };
 
-  console.log('Debug - Final viemTx:', JSON.stringify(viemTx, null, 2));
+  console.log(
+    'Debug - Final viemTx:',
+    JSON.stringify(viemTx, bigIntReplacer, 2),
+  );
 
   return serializeTransaction(viemTx);
 }
