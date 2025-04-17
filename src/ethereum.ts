@@ -6,7 +6,7 @@ import BN from 'bignumber.js';
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
 import { keccak256 } from 'js-sha3';
 import { RLP } from '@ethereumjs/rlp';
-import secp256k1 from 'secp256k1';
+import * as secp256k1 from 'secp256k1';
 import {
   ASCII_REGEX,
   HANDLE_LARGER_CHAIN_ID,
@@ -26,13 +26,14 @@ import {
   isAsciiStr,
   splitFrames,
 } from './util';
-import cbor from 'cbor';
+import * as cbor from 'cbor';
 import bdec from 'cbor-bigdecimal';
 import {
   Hex,
   toHex,
   TransactionSerializable,
   serializeTransaction,
+  TransactionSerializableEIP7702,
 } from 'viem';
 
 import {
@@ -1212,8 +1213,13 @@ export function serializeEIP7702Transaction(
     }
   });
 
+  // Validate required transaction fields
+  if (!tx.to) {
+    throw new Error('EIP-7702 transaction must include a valid "to" address');
+  }
+
   // Convert to Viem's expected format
-  const viemTx: TransactionSerializable = {
+  const viemTx: TransactionSerializableEIP7702 = {
     type: 'eip7702' as const,
     chainId: tx.chainId,
     nonce: tx.nonce,
@@ -1226,10 +1232,9 @@ export function serializeEIP7702Transaction(
         ? BigInt(tx.maxFeePerGas)
         : tx.maxFeePerGas,
     gas: typeof tx.gasLimit === 'string' ? BigInt(tx.gasLimit) : tx.gasLimit,
-    to: tx.to,
+    to: tx.to as `0x${string}`,
     value: typeof tx.value === 'string' ? BigInt(tx.value) : tx.value,
     data: tx.data || '0x',
-    accessList: tx.accessList || [],
     authorizationList: tx.authorizations.map((auth) => ({
       chainId: auth.chainId,
       address: auth.contractAddress as `0x${string}`,
@@ -1244,10 +1249,7 @@ export function serializeEIP7702Transaction(
     })),
   };
 
-  console.log(
-    'Debug - Final viemTx authorizationList:',
-    JSON.stringify(viemTx.authorizationList, null, 2),
-  );
+  console.log('Debug - Final viemTx:', JSON.stringify(viemTx, null, 2));
 
   return serializeTransaction(viemTx);
 }
