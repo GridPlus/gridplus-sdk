@@ -1163,42 +1163,76 @@ export const toViemTransaction = (
  * @param tx The EIP7702 transaction to serialize
  * @returns The serialized transaction as a hex string
  */
-export function serializeEIP7702Transaction(tx: EIP7702Transaction): Hex {
+export function serializeEIP7702Transaction(
+  tx: EIP7702AuthListTransaction,
+): Hex {
   if (tx.type !== TRANSACTION_TYPE.EIP7702_AUTH_LIST) {
     throw new Error(
       `Only EIP-7702 auth-list transactions (type ${TRANSACTION_TYPE.EIP7702_AUTH_LIST}) are supported`,
     );
   }
 
-  const authListTx = tx as EIP7702AuthListTransaction;
+  // Validate that all required fields exist
+  if (
+    !tx.authorizations ||
+    !Array.isArray(tx.authorizations) ||
+    tx.authorizations.length === 0
+  ) {
+    throw new Error(
+      'EIP-7702 auth list transaction must contain at least one authorization',
+    );
+  }
+
+  // Debug logging to find the undefined address
+  console.log('Debug - Transaction TO address:', tx.to);
+  console.log('Debug - Transaction has accessList:', !!tx.accessList);
+
+  if (tx.accessList && tx.accessList.length > 0) {
+    console.log('Debug - AccessList items:', tx.accessList.length);
+    tx.accessList.forEach((item, idx) => {
+      console.log(`Debug - AccessList[${idx}] address:`, item.address);
+    });
+  }
+
+  console.log('Debug - Authorizations count:', tx.authorizations.length);
+  tx.authorizations.forEach((auth, idx) => {
+    console.log(`Debug - Auth[${idx}] contractAddress:`, auth.contractAddress);
+    console.log(
+      `Debug - Auth[${idx}] complete:`,
+      JSON.stringify(auth, null, 2),
+    );
+  });
+
+  // Validate each authorization
+  tx.authorizations.forEach((auth, index) => {
+    if (!auth.contractAddress) {
+      throw new Error(
+        `Authorization at index ${index} is missing a contract address`,
+      );
+    }
+  });
 
   // Convert to Viem's expected format
   const viemTx: TransactionSerializable = {
     type: 'eip7702' as const,
-    chainId: authListTx.chainId,
-    nonce: authListTx.nonce,
+    chainId: tx.chainId,
+    nonce: tx.nonce,
     maxPriorityFeePerGas:
-      typeof authListTx.maxPriorityFeePerGas === 'string'
-        ? BigInt(authListTx.maxPriorityFeePerGas)
-        : authListTx.maxPriorityFeePerGas,
+      typeof tx.maxPriorityFeePerGas === 'string'
+        ? BigInt(tx.maxPriorityFeePerGas)
+        : tx.maxPriorityFeePerGas,
     maxFeePerGas:
-      typeof authListTx.maxFeePerGas === 'string'
-        ? BigInt(authListTx.maxFeePerGas)
-        : authListTx.maxFeePerGas,
-    gas:
-      typeof authListTx.gasLimit === 'string'
-        ? BigInt(authListTx.gasLimit)
-        : authListTx.gasLimit,
-    to: authListTx.to,
-    value:
-      typeof authListTx.value === 'string'
-        ? BigInt(authListTx.value)
-        : authListTx.value,
-    data: authListTx.data || '0x',
-    accessList: authListTx.accessList || [],
-    authorizationList: authListTx.authorizations.map((auth) => ({
+      typeof tx.maxFeePerGas === 'string'
+        ? BigInt(tx.maxFeePerGas)
+        : tx.maxFeePerGas,
+    gas: typeof tx.gasLimit === 'string' ? BigInt(tx.gasLimit) : tx.gasLimit,
+    to: tx.to,
+    value: typeof tx.value === 'string' ? BigInt(tx.value) : tx.value,
+    data: tx.data || '0x',
+    accessList: tx.accessList || [],
+    authorizationList: tx.authorizations.map((auth) => ({
       chainId: auth.chainId,
-      address: auth.contractAddress,
+      address: auth.contractAddress as `0x${string}`,
       nonce: auth.nonce,
       yParity: auth.yParity
         ? auth.yParity === '0x01' || auth.yParity === '0x1'
@@ -1209,6 +1243,11 @@ export function serializeEIP7702Transaction(tx: EIP7702Transaction): Hex {
       s: auth.s || '0x0',
     })),
   };
+
+  console.log(
+    'Debug - Final viemTx authorizationList:',
+    JSON.stringify(viemTx.authorizationList, null, 2),
+  );
 
   return serializeTransaction(viemTx);
 }
