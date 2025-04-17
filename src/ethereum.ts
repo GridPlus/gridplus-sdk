@@ -28,12 +28,19 @@ import {
 } from './util';
 import cbor from 'cbor';
 import bdec from 'cbor-bigdecimal';
-import { Hex, toHex, TransactionSerializable } from 'viem';
+import {
+  Hex,
+  toHex,
+  TransactionSerializable,
+  serializeTransaction,
+} from 'viem';
 
 import {
   TransactionRequest,
   TRANSACTION_TYPE,
   EIP7702Transaction,
+  EIP7702AuthTransaction,
+  EIP7702AuthListTransaction,
 } from './types';
 
 bdec(cbor);
@@ -1151,89 +1158,59 @@ export const toViemTransaction = (
 };
 
 /**
- * Serializes an EIP7702 transaction (both auth and auth-list types).
+ * Serializes an EIP7702 transaction using Viem.
  *
- * From the EIP-7702 spec:
- * - Transaction type is 0x04 (SET_CODE_TX_TYPE)
- * - TransactionPayload is RLP-serialized as:
- *   rlp([chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, destination,
- *        value, data, access_list, authorization_list, signature_y_parity, signature_r, signature_s])
- * - authorization_list = [[chain_id, address, nonce, y_parity, r, s], ...]
- *
- * Note: Destinations must not be null, as specified in the EIP.
+ * @param tx The EIP7702 transaction to serialize
+ * @returns The serialized transaction as a hex string
  */
 export function serializeEIP7702Transaction(tx: EIP7702Transaction): Hex {
-  // Build individual field buffers
-  const chainIdBuffer = ensureHexBuffer(tx.chainId);
-  const nonceBuffer = ensureHexBuffer(tx.nonce);
-  const maxPriorityFeeBuffer = ensureHexBuffer(tx.maxPriorityFeePerGas);
-  const maxFeeBuffer = ensureHexBuffer(tx.maxFeePerGas);
-  const gasLimitBuffer = ensureHexBuffer(tx.gasLimit);
-  const toBuffer = ensureHexBuffer(tx.to);
-  const valueBuffer = ensureHexBuffer(tx.value || '0x0');
-  const dataBuffer = ensureHexBuffer(tx.data || '0x');
-
-  // Access list - serialize based on EIP-2930 format
-  const accessList = tx.accessList || [];
-  const accessListEncoded = accessList.map((item) => [
-    ensureHexBuffer(item.address),
-    item.storageKeys.map((key) => ensureHexBuffer(key)),
-  ]);
-
-  // Build authorization data
-  let authorizationData;
-  if (tx.type === 4) {
-    // Single authorization tuple: [chain_id, address, nonce, y_parity, r, s]
-    const auth = tx.authorization;
-
-    // Get the y-parity value directly from the authorization
-    const authTuple = [
-      ensureHexBuffer(auth.chainId),
-      ensureHexBuffer(auth.contractAddress),
-      ensureHexBuffer(auth.nonce),
-      ensureHexBuffer(auth.yParity || '0x0'),
-      ensureHexBuffer(auth.r || '0x0'),
-      ensureHexBuffer(auth.s || '0x0'),
-    ];
-    authorizationData = [authTuple];
-  } else {
-    // Authorization list: [[chain_id, address, nonce, y_parity, r, s], ...]
-    authorizationData = tx.authorizations.map((auth) => [
-      ensureHexBuffer(auth.chainId),
-      ensureHexBuffer(auth.contractAddress),
-      ensureHexBuffer(auth.nonce),
-      ensureHexBuffer(auth.yParity || '0x0'),
-      ensureHexBuffer(auth.r || '0x0'),
-      ensureHexBuffer(auth.s || '0x0'),
-    ]);
+  if (tx.type !== TRANSACTION_TYPE.EIP7702_AUTH_LIST) {
+    throw new Error(
+      `Only EIP-7702 auth-list transactions (type ${TRANSACTION_TYPE.EIP7702_AUTH_LIST}) are supported`,
+    );
   }
 
-  // Empty signature values for the outer transaction
-  const emptyBuffer = Buffer.from([]);
+  const authListTx = tx as EIP7702AuthListTransaction;
 
-  // Create the full transaction payload to be RLP encoded
-  // Field order is critical and must match the EIP-7702 specification
-  const rlpPayload = [
-    chainIdBuffer,
-    nonceBuffer,
-    maxPriorityFeeBuffer,
-    maxFeeBuffer,
-    gasLimitBuffer,
-    toBuffer,
-    valueBuffer,
-    dataBuffer,
-    accessListEncoded,
-    authorizationData,
-    emptyBuffer, // signature_y_parity
-    emptyBuffer, // signature_r
-    emptyBuffer, // signature_s
-  ];
+  // Convert to Viem's expected format
+  const viemTx: TransactionSerializable = {
+    type: 'eip7702' as const,
+    chainId: authListTx.chainId,
+    nonce: authListTx.nonce,
+    maxPriorityFeePerGas:
+      typeof authListTx.maxPriorityFeePerGas === 'string'
+        ? BigInt(authListTx.maxPriorityFeePerGas)
+        : authListTx.maxPriorityFeePerGas,
+    maxFeePerGas:
+      typeof authListTx.maxFeePerGas === 'string'
+        ? BigInt(authListTx.maxFeePerGas)
+        : authListTx.maxFeePerGas,
+    gas:
+      typeof authListTx.gasLimit === 'string'
+        ? BigInt(authListTx.gasLimit)
+        : authListTx.gasLimit,
+    to: authListTx.to,
+    value:
+      typeof authListTx.value === 'string'
+        ? BigInt(authListTx.value)
+        : authListTx.value,
+    data: authListTx.data || '0x',
+    accessList: authListTx.accessList || [],
+    authorizationList: authListTx.authorizations.map((auth) => ({
+      chainId: auth.chainId,
+      address: auth.contractAddress,
+      nonce: auth.nonce,
+      yParity: auth.yParity
+        ? auth.yParity === '0x01' || auth.yParity === '0x1'
+          ? 1
+          : 0
+        : 0,
+      r: auth.r || '0x0',
+      s: auth.s || '0x0',
+    })),
+  };
 
-  // RLP encode the transaction
-  const encoded = RLP.encode(rlpPayload);
-
-  // Prefix with transaction type (0x04 for EIP-7702)
-  return `0x${toHex(tx.type).slice(2)}${toHex(encoded).slice(2)}`;
+  return serializeTransaction(viemTx);
 }
 
 export const isEip7702Transaction = (
