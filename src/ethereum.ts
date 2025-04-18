@@ -1279,13 +1279,22 @@ export function serializeEIP7702Transaction(
         auth.contractAddress,
       );
 
-      // Try to get the address from either contractAddress or address property
-      const addressValue =
-        auth.contractAddress || (auth as any).address || null;
+      // Create the Viem-formatted authorization
+      // CRITICAL FIX: Make sure each auth object has both required fields:
+      // 1. Must explicitly convert contractAddress to string type with 0x prefix
+      // 2. Must handle potential nullish/undefined values
+      const contractAddress = auth.contractAddress || '';
+      // Ensure it's a valid address string with proper 0x prefix
+      const addressStr =
+        typeof contractAddress === 'string'
+          ? contractAddress.startsWith('0x')
+            ? contractAddress
+            : `0x${contractAddress}`
+          : `0x`; // If not a string, use empty hex string
 
-      console.log(`Debug - Resolved address value:`, addressValue);
+      console.log(`Debug - Resolved address value:`, addressStr);
 
-      if (!addressValue) {
+      if (!addressStr || addressStr === '0x') {
         console.error(
           `ERROR: No valid address found in authorization[${idx}]!`,
         );
@@ -1297,7 +1306,7 @@ export function serializeEIP7702Transaction(
 
       const result = {
         chainId: auth.chainId,
-        address: addressValue as `0x${string}`,
+        address: addressStr as `0x${string}`,
         nonce: auth.nonce,
         yParity: auth.yParity
           ? auth.yParity === '0x01' || auth.yParity === '0x1'
