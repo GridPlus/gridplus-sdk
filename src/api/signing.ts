@@ -2,6 +2,7 @@ import { RLP } from '@ethereumjs/rlp';
 import { keccak256 } from 'js-sha3';
 import type { Hex } from 'viem';
 import { serializeTransaction, TransactionSerializableEIP7702 } from 'viem';
+import { z } from 'zod';
 import { Constants } from '..';
 import {
   BTC_LEGACY_DERIVATION,
@@ -29,6 +30,29 @@ import {
 } from '../types';
 import { getYParity } from '../util';
 import { isEIP712Payload, queue } from './utilities';
+
+// Add Zod schema for EIP7702 transaction validation
+const authorizationSchema = z.object({
+  chainId: z.number(),
+  address: z.string().startsWith('0x').length(42),
+  nonce: z.number(),
+  yParity: z.number().or(z.string().startsWith('0x')),
+  r: z.string().startsWith('0x'),
+  s: z.string().startsWith('0x'),
+});
+
+const eip7702TransactionSchema = z.object({
+  type: z.literal('eip7702'),
+  chainId: z.number(),
+  nonce: z.number(),
+  maxPriorityFeePerGas: z.bigint().or(z.string()),
+  maxFeePerGas: z.bigint().or(z.string()),
+  to: z.string().startsWith('0x'),
+  value: z.bigint().optional(),
+  data: z.string().startsWith('0x').optional(),
+  authorizationList: z.array(authorizationSchema),
+});
+
 /**
  * Signs an EIP-7702 authorization to set code for an externally owned account (EOA).
  *
@@ -103,15 +127,125 @@ export const signAuthorization = async (
 export const signEIP7702 = async (
   tx: TransactionSerializableEIP7702,
 ): Promise<SignData> => {
-  const serializedTx = serializeTransaction(tx);
-  const payload: SigningPayload = {
-    signerPath: DEFAULT_ETH_DERIVATION,
-    curveType: Constants.SIGNING.CURVES.SECP256K1,
-    hashType: Constants.SIGNING.HASHES.KECCAK256,
-    encodingType: Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST,
-    payload: serializedTx,
+  console.log('DEBUG: Starting EIP7702 transaction validation with Zod');
+
+  // Deep clone the transaction to avoid modifying the original during validation
+  const txClone = JSON.parse(
+    JSON.stringify(tx, (key, value) =>
+      typeof value === 'bigint' ? value.toString() : value,
+    ),
+  );
+
+  // Convert string representations of BigInt back to BigInt
+  const convertBackBigInt = (obj: any) => {
+    Object.keys(obj).forEach((key) => {
+      const value = obj[key];
+      if (
+        typeof value === 'string' &&
+        /^\d+$/.test(value) &&
+        key.includes('Fee')
+      ) {
+        obj[key] = BigInt(value);
+      } else if (
+        key === 'value' &&
+        typeof value === 'string' &&
+        /^\d+$/.test(value)
+      ) {
+        obj[key] = BigInt(value);
+      } else if (typeof value === 'object' && value !== null) {
+        convertBackBigInt(value);
+      }
+    });
+    return obj;
   };
-  return queue((client) => client.sign({ data: payload }));
+
+  const txForValidation = convertBackBigInt(txClone);
+
+  console.log(
+    'DEBUG: Transaction to validate:',
+    JSON.stringify(
+      txForValidation,
+      (key, value) => (typeof value === 'bigint' ? value.toString() : value),
+      2,
+    ),
+  );
+
+  // Validate with Zod schema
+  try {
+    const result = eip7702TransactionSchema.safeParse(txForValidation);
+
+    if (!result.success) {
+      console.error(
+        'DEBUG: Zod validation failed:',
+        JSON.stringify(result.error.format(), null, 2),
+      );
+
+      // Additional debugging for authorizationList
+      if (tx.authorizationList) {
+        console.log('DEBUG: Original authorizationList:');
+        tx.authorizationList.forEach((auth, idx) => {
+          console.log(`DEBUG: Auth[${idx}]:`, {
+            chainId: auth.chainId,
+            address: auth.address,
+            nonce: auth.nonce,
+            yParity: auth.yParity,
+            r: auth.r,
+            s: auth.s,
+          });
+        });
+      }
+
+      throw new Error(
+        `EIP7702 transaction validation failed: ${result.error.message}`,
+      );
+    }
+
+    console.log('DEBUG: Zod validation passed');
+  } catch (error) {
+    console.error('DEBUG: Zod validation exception:', error);
+    throw error;
+  }
+
+  // Extra safety check for addresses
+  if (tx.authorizationList) {
+    tx.authorizationList.forEach((auth, index) => {
+      if (!auth.address) {
+        throw new Error(
+          `Authorization at index ${index} is missing an address`,
+        );
+      }
+
+      // Ensure address has correct format
+      if (
+        typeof auth.address !== 'string' ||
+        !auth.address.startsWith('0x') ||
+        auth.address.length !== 42
+      ) {
+        throw new Error(
+          `Authorization at index ${index} has invalid address format: ${auth.address}`,
+        );
+      }
+    });
+  }
+
+  try {
+    console.log('DEBUG: Calling serializeTransaction');
+    const serializedTx = serializeTransaction(tx);
+    console.log('DEBUG: serializeTransaction succeeded');
+
+    const payload: SigningPayload = {
+      signerPath: DEFAULT_ETH_DERIVATION,
+      curveType: Constants.SIGNING.CURVES.SECP256K1,
+      hashType: Constants.SIGNING.HASHES.KECCAK256,
+      encodingType: Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST,
+      payload: serializedTx,
+    };
+
+    return queue((client) => client.sign({ data: payload }));
+  } catch (error) {
+    console.error('DEBUG: Error during serialization:', error);
+    throw error;
+  }
 };
 
 export const sign = async (

@@ -83,7 +83,8 @@
     "lodash": "^4.17.21",
     "secp256k1": "5.0.1",
     "uuid": "^10.0.0",
-    "viem": "^2.22.19"
+    "viem": "^2.22.19",
+    "zod": "^3.24.3"
   },
   "devDependencies": {
     "@chainsafe/bls-keystore": "^3.1.0",
