@@ -1,4 +1,7 @@
-import { serializeTransaction } from 'viem';
+import { RLP } from '@ethereumjs/rlp';
+import { keccak256 } from 'js-sha3';
+import type { Hex } from 'viem';
+import { serializeTransaction, TransactionSerializableEIP7702 } from 'viem';
 import { Constants } from '..';
 import {
   BTC_LEGACY_DERIVATION,
@@ -9,27 +12,23 @@ import {
   SOLANA_DERIVATION,
 } from '../constants';
 import {
-  toViemTransaction,
   isEip7702Transaction,
   serializeEIP7702Transaction,
+  toViemTransaction,
 } from '../ethereum';
 import { fetchDecoder } from '../functions/fetchDecoder';
 import {
+  Authorization,
+  AuthorizationData,
   BitcoinSignPayload,
   EIP712MessagePayload,
   SignData,
   SigningPayload,
   SignRequestParams,
   TransactionRequest,
-  Authorization,
-  AuthorizationData,
 } from '../types';
-import { isEIP712Payload, queue } from './utilities';
-import { RLP } from '@ethereumjs/rlp';
 import { getYParity } from '../util';
-import type { Hex } from 'viem';
-import { keccak256 } from 'js-sha3';
-
+import { isEIP712Payload, queue } from './utilities';
 /**
  * Signs an EIP-7702 authorization to set code for an externally owned account (EOA).
  *
@@ -101,12 +100,26 @@ export const signAuthorization = async (
   return result;
 };
 
+export const signEIP7702 = async (
+  tx: TransactionSerializableEIP7702,
+): Promise<SignData> => {
+  const serializedTx = serializeTransaction(tx);
+  const payload: SigningPayload = {
+    signerPath: DEFAULT_ETH_DERIVATION,
+    curveType: Constants.SIGNING.CURVES.SECP256K1,
+    hashType: Constants.SIGNING.HASHES.KECCAK256,
+    encodingType: Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST,
+    payload: serializedTx,
+  };
+  return queue((client) => client.sign({ data: payload }));
+};
+
 export const sign = async (
   transaction: TransactionRequest,
   overrides?: SignRequestParams,
 ): Promise<SignData> => {
   const serializedTx = isEip7702Transaction(transaction)
-    ? serializeEIP7702Transaction(transaction)
+    ? serializeEIP7702Transaction(transaction as any)
     : serializeTransaction(toViemTransaction(transaction));
 
   const payload: SigningPayload = {

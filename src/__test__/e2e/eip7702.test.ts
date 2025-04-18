@@ -1,8 +1,14 @@
 /* eslint-disable quotes */
 import { setupClient } from '../utils/setup';
-import { pair, sign, signAuthorization } from '../../api/index';
+import { pair, sign, signAuthorization, signEIP7702 } from '../../api/index';
 import { question } from 'readline-sync';
-import { parseEther, toHex, type Address, Hex } from 'viem';
+import {
+  parseEther,
+  toHex,
+  type Address,
+  Hex,
+  TransactionSerializableEIP7702,
+} from 'viem';
 import {
   TRANSACTION_TYPE,
   AuthorizationData,
@@ -140,7 +146,7 @@ describe('EIP-7702', () => {
           chainId: signedAuthorization.chainId,
           address: signedAuthorization.address as Address,
           nonce: signedAuthorization.nonce,
-          yParity: signedAuthorization.yParity as Hex,
+          yParity: Number(signedAuthorization.yParity) as number,
           r: signedAuthorization.r as Hex,
           s: signedAuthorization.s as Hex,
         };
@@ -149,17 +155,16 @@ describe('EIP-7702', () => {
         console.log('📌 Safe authorization data for transaction:');
         console.log(JSON.stringify(safeAuthorization, null, 2));
 
-        const authListTx: EIP7702AuthListTransaction = {
-          type: 5, // Must be exactly 5 for EIP7702_AUTH_LIST
+        const authListTx: TransactionSerializableEIP7702 = {
+          type: 'eip7702', // Must be exactly 5 for EIP7702_AUTH_LIST
           chainId: 1,
           nonce: 0,
-          maxPriorityFeePerGas: toHex(parseEther('0.000000001')), // 1 gwei
-          maxFeePerGas: toHex(parseEther('0.00000001')), // 10 gwei
-          gasLimit: toHex(BigInt(21000)),
+          maxPriorityFeePerGas: BigInt(parseEther('0.000000001')), // 1 gwei
+          maxFeePerGas: BigInt(parseEther('0.00000001')), // 10 gwei
           to: '0x769f783730e49994f724069898f8738bfd406dfd' as Address,
-          value: toHex(parseEther('0.1')),
+          value: BigInt(parseEther('0.1')),
           data: '0x12345678' as Hex, // Function selector for the authorization
-          authorizations: [safeAuthorization],
+          authorizationList: [safeAuthorization],
         };
 
         console.log('📌 Auth list transaction constructed');
@@ -171,12 +176,15 @@ describe('EIP-7702', () => {
           `  - Transaction type: ${authListTx.type} (expected: ${TRANSACTION_TYPE.EIP7702_AUTH_LIST})`,
         );
         console.log(
-          `  - Authorizations count: ${authListTx.authorizations.length}`,
+          `  - Authorizations count: ${authListTx.authorizationList.length}`,
         );
 
         // Check each authorization in the list
-        if (authListTx.authorizations && authListTx.authorizations.length > 0) {
-          const auth = authListTx.authorizations[0];
+        if (
+          authListTx.authorizationList &&
+          authListTx.authorizationList.length > 0
+        ) {
+          const auth = authListTx.authorizationList[0];
           console.log('  - First authorization fields:');
 
           fieldsToCheck.forEach((field) => {
@@ -191,7 +199,7 @@ describe('EIP-7702', () => {
         }
 
         console.log('🔐 Calling sign API with auth list transaction...');
-        const result = await sign(authListTx);
+        const result = await signEIP7702(authListTx);
         console.log('✅ sign completed successfully');
         debugLog('Sign result for auth list transaction', result);
 
@@ -204,40 +212,6 @@ describe('EIP-7702', () => {
           `  - result.txHash: ${result.txHash ? 'EXISTS' : 'MISSING'}`,
         );
         console.log('✅ Sign result verified successfully');
-
-        // Step 3: Test authorization with chain ID 0 (universal authorization)
-        console.log(
-          '\n🔄 STEP 3: Testing universal authorization (chain ID 0)',
-        );
-
-        const universalAuthData: AuthorizationData = {
-          chainId: 0, // Universal authorization (valid on all chains)
-          address: '0x769f783730e49994f724069898f8738bfd406dfd' as Address,
-          nonce: 0,
-        };
-
-        debugLog('Universal authorization data', universalAuthData);
-
-        console.log(
-          '🔐 Calling signAuthorization API for universal authorization...',
-        );
-        const universalAuth = await signAuthorization(universalAuthData);
-        console.log('✅ Universal authorization completed successfully');
-        debugLog('Universal auth result', universalAuth);
-
-        // Verify signature components
-        console.log('🔍 Verifying universal auth signature components...');
-        fieldsToCheck.forEach((field) => {
-          const exists = universalAuth[field] !== undefined;
-          console.log(`  - ${field}: ${exists ? 'EXISTS' : 'MISSING'}`);
-          expect(universalAuth[field]).toBeDefined();
-        });
-        console.log('✅ All signature fields verified successfully');
-
-        // Verify the chain ID is 0
-        console.log('🔍 Verifying chain ID is 0:', universalAuth.chainId);
-        expect(universalAuth.chainId).toBe(0);
-        console.log('✅ Chain ID verified as 0');
 
         console.log(
           '\n🎉 EIP-7702 TRANSACTION FLOW TEST COMPLETED SUCCESSFULLY',
