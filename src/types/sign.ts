@@ -140,9 +140,9 @@ export interface EIP712MessagePayload {
  * This is what needs to be signed with ecrecover: keccak(MAGIC || rlp([chain_id, address, nonce]))
  */
 export interface AuthorizationData {
-  contractAddress: Address; // The target contract address for delegation
-  chainId: number;          // Either 0 (valid on all chains) or the specific chain ID
-  nonce: number;            // Must be less than 2^64 - 1
+  address: Address; // The target contract address for delegation
+  chainId: number; // Either 0 (valid on all chains) or the specific chain ID
+  nonce: number; // Must be less than 2^64 - 1
 }
 
 /**
@@ -150,9 +150,9 @@ export interface AuthorizationData {
  * From the spec: "authorization_list = [[chain_id, address, nonce, y_parity, r, s], ...]"
  */
 export interface Authorization extends AuthorizationData {
-  yParity?: Hex;            // Recovery parameter (v)
-  r?: Hex;                  // r component of the signature
-  s?: Hex;                  // s component of the signature (must be <= secp256k1n/2 per EIP-2)
+  yParity?: Hex; // Recovery parameter (v)
+  r?: Hex; // r component of the signature
+  s?: Hex; // s component of the signature (must be <= secp256k1n/2 per EIP-2)
 }
 
 /**
@@ -161,15 +161,15 @@ export interface Authorization extends AuthorizationData {
  * "rlp([chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, destination, value, data, access_list, authorization_list, signature_y_parity, signature_r, signature_s])"
  */
 export interface EIP7702BaseTransaction {
-  type: number;                // Transaction type (0x04 for EIP-7702)
-  chainId: number;             // Chain ID for the transaction
-  nonce: number;               // Sender's nonce
-  maxPriorityFeePerGas: bigint | string;  // EIP-1559 max priority fee
-  maxFeePerGas: bigint | string;          // EIP-1559 max fee
-  gasLimit: bigint | string;              // Gas limit for the transaction
-  to: Address;                 // Destination address (null destination not valid)
-  value: bigint | string;      // ETH value to send
-  data?: Hex;                  // Transaction calldata
+  type: number; // Transaction type (0x04 for EIP-7702)
+  chainId: number; // Chain ID for the transaction
+  nonce: number; // Sender's nonce
+  maxPriorityFeePerGas: bigint | string; // EIP-1559 max priority fee
+  maxFeePerGas: bigint | string; // EIP-1559 max fee
+  gasLimit: bigint | string; // Gas limit for the transaction
+  to: Address; // Destination address (null destination not valid)
+  value: bigint | string; // ETH value to send
+  data?: Hex; // Transaction calldata
   accessList?: Array<{ address: Address; storageKeys: Hex[] }>; // EIP-2930 access list
 }
 

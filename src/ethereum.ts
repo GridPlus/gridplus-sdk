@@ -1205,25 +1205,19 @@ export function serializeEIP7702Transaction(
 
   console.log('Debug - Authorizations count:', tx.authorizations.length);
   tx.authorizations.forEach((auth, idx) => {
-    console.log(`Debug - Auth[${idx}] contractAddress:`, auth.contractAddress);
-    console.log(
-      `Debug - Auth[${idx}] contractAddress type:`,
-      typeof auth.contractAddress,
-    );
+    console.log(`Debug - Auth[${idx}] address:`, auth.address);
+    console.log(`Debug - Auth[${idx}] address type:`, typeof auth.address);
     // Check for exact value comparison
     console.log(
-      `Debug - Auth[${idx}] contractAddress === undefined:`,
-      auth.contractAddress === undefined,
+      `Debug - Auth[${idx}] address === undefined:`,
+      auth.address === undefined,
     );
     // Check for truthiness
-    console.log(
-      `Debug - Auth[${idx}] contractAddress is truthy:`,
-      !!auth.contractAddress,
-    );
+    console.log(`Debug - Auth[${idx}] address is truthy:`, !!auth.address);
     // Check property existence on the object itself
     console.log(
-      `Debug - Auth[${idx}] has contractAddress property:`,
-      'contractAddress' in auth,
+      `Debug - Auth[${idx}] has address property:`,
+      'address' in auth,
     );
     // Check for address property too (in case property is named differently)
     console.log(
@@ -1242,7 +1236,7 @@ export function serializeEIP7702Transaction(
 
   // Validate each authorization
   tx.authorizations.forEach((auth, index) => {
-    if (!auth.contractAddress) {
+    if (!auth.address) {
       throw new Error(
         `Authorization at index ${index} is missing a contract address`,
       );
@@ -1274,22 +1268,19 @@ export function serializeEIP7702Transaction(
     authorizationList: tx.authorizations.map((auth, idx) => {
       // Debug the mapping process for each authorization
       console.log(`Debug - Converting auth[${idx}] to Viem format`);
-      console.log(
-        `Debug - auth[${idx}].contractAddress:`,
-        auth.contractAddress,
-      );
+      console.log(`Debug - auth[${idx}].address:`, auth.address);
 
       // Create the Viem-formatted authorization
       // CRITICAL FIX: Make sure each auth object has both required fields:
-      // 1. Must explicitly convert contractAddress to string type with 0x prefix
+      // 1. Must explicitly convert address to string type with 0x prefix
       // 2. Must handle potential nullish/undefined values
-      const contractAddress = auth.contractAddress || '';
+      const address = auth.address || '';
       // Ensure it's a valid address string with proper 0x prefix
       const addressStr =
-        typeof contractAddress === 'string'
-          ? contractAddress.startsWith('0x')
-            ? contractAddress
-            : `0x${contractAddress}`
+        typeof address === 'string'
+          ? address.startsWith('0x')
+            ? address
+            : `0x${address}`
           : `0x`; // If not a string, use empty hex string
 
       console.log(`Debug - Resolved address value:`, addressStr);

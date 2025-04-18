@@ -52,7 +52,7 @@ export const signAuthorization = async (
     Buffer.from(
       RLP.encode([
         authorization.chainId,
-        authorization.contractAddress,
+        authorization.address,
         authorization.nonce,
       ]),
     ),

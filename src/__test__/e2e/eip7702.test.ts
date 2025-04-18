@@ -2,8 +2,12 @@
 import { setupClient } from '../utils/setup';
 import { pair, sign, signAuthorization } from '../../api/index';
 import { question } from 'readline-sync';
-import { parseEther, toHex, type Address } from 'viem';
-import { TRANSACTION_TYPE, AuthorizationData } from '../../types';
+import { parseEther, toHex, type Address, Hex } from 'viem';
+import {
+  TRANSACTION_TYPE,
+  AuthorizationData,
+  EIP7702AuthListTransaction,
+} from '../../types';
 /**
  * Test vectors for EIP-7702
  *
@@ -71,7 +75,7 @@ describe('EIP-7702', () => {
   describe('transactions', () => {
     const authorizationData: AuthorizationData = {
       chainId: 1,
-      contractAddress: '0x769f783730e49994f724069898f8738bfd406dfd' as Address,
+      address: '0x769f783730e49994f724069898f8738bfd406dfd' as Address,
       nonce: 0,
     };
 
@@ -107,7 +111,7 @@ describe('EIP-7702', () => {
         console.log('🔍 Verifying signature components...');
         const fieldsToCheck = [
           'chainId',
-          'contractAddress',
+          'address',
           'nonce',
           'yParity',
           'r',
@@ -128,8 +132,25 @@ describe('EIP-7702', () => {
 
         // Step 2: Create an auth list transaction using the signed authorization
         console.log('\n🔄 STEP 2: Creating auth list transaction');
-        const authListTx = {
-          type: TRANSACTION_TYPE.EIP7702_AUTH_LIST,
+
+        // Make a defensive copy of the signed authorization to ensure data integrity
+        const safeAuthorization = {
+          ...signedAuthorization,
+          // Ensure these fields are properly typed
+          chainId: signedAuthorization.chainId,
+          address: signedAuthorization.address as Address,
+          nonce: signedAuthorization.nonce,
+          yParity: signedAuthorization.yParity as Hex,
+          r: signedAuthorization.r as Hex,
+          s: signedAuthorization.s as Hex,
+        };
+
+        // Log the safe authorization to verify its data
+        console.log('📌 Safe authorization data for transaction:');
+        console.log(JSON.stringify(safeAuthorization, null, 2));
+
+        const authListTx: EIP7702AuthListTransaction = {
+          type: 5, // Must be exactly 5 for EIP7702_AUTH_LIST
           chainId: 1,
           nonce: 0,
           maxPriorityFeePerGas: toHex(parseEther('0.000000001')), // 1 gwei
@@ -137,19 +158,8 @@ describe('EIP-7702', () => {
           gasLimit: toHex(BigInt(21000)),
           to: '0x769f783730e49994f724069898f8738bfd406dfd' as Address,
           value: toHex(parseEther('0.1')),
-          data: '0x12345678', // Function selector for the authorization
-          accessList: [],
-          authorizations: [
-            {
-              // Ensure we include all required fields explicitly
-              chainId: signedAuthorization.chainId,
-              contractAddress: signedAuthorization.contractAddress,
-              nonce: signedAuthorization.nonce,
-              yParity: signedAuthorization.yParity,
-              r: signedAuthorization.r,
-              s: signedAuthorization.s,
-            },
-          ],
+          data: '0x12345678' as Hex, // Function selector for the authorization
+          authorizations: [safeAuthorization],
         };
 
         console.log('📌 Auth list transaction constructed');
@@ -202,8 +212,7 @@ describe('EIP-7702', () => {
 
         const universalAuthData: AuthorizationData = {
           chainId: 0, // Universal authorization (valid on all chains)
-          contractAddress:
-            '0x769f783730e49994f724069898f8738bfd406dfd' as Address,
+          address: '0x769f783730e49994f724069898f8738bfd406dfd' as Address,
           nonce: 0,
         };
 
@@ -245,4 +254,79 @@ describe('EIP-7702', () => {
       }
     });
   });
+
+  // /**
+  //  * Test using exact hex values to ensure consistency across test environments
+  //  */
+  // test('EIP-7702 with exact hex values', async () => {
+  //   console.log('\n🔍 TESTING EIP-7702 WITH EXACT HEX VALUES');
+
+  //   try {
+  //     // Create authorization with explicit typing
+  //     const safeAuthorization = {
+  //       chainId: 1,
+  //       address: '0x769f783730e49994f724069898f8738bfd406dfd' as Address,
+  //       nonce: 0,
+  //       yParity: '0x1' as Hex,
+  //       r: '0xcd27f8d16ea21ba806b8a9c3fad886dc77cb3887715b272ebe1448c67d2d5ffe' as Hex,
+  //       s: '0x30516d176c8694d5f841582be93538f0037d1fb3f6e46ddf87c8ee26570065d2' as Hex,
+  //     };
+
+  //     // Log the safe authorization to verify its data
+  //     console.log('📌 Safe authorization data for transaction:');
+  //     console.log(JSON.stringify(safeAuthorization, null, 2));
+
+  //     // Create a transaction with the exact hex values provided
+  //     const exactHexTx: EIP7702AuthListTransaction = {
+  //       type: 5, // Must be exactly 5 for auth list transaction
+  //       chainId: 1,
+  //       nonce: 0,
+  //       maxPriorityFeePerGas: '0x3b9aca00' as Hex,
+  //       maxFeePerGas: '0x2540be400' as Hex,
+  //       gasLimit: '0x5208' as Hex,
+  //       to: '0x769f783730e49994f724069898f8738bfd406dfd' as Address,
+  //       value: '0x16345785d8a0000' as Hex,
+  //       data: '0x12345678' as Hex,
+  //       accessList: [],
+  //       authorizations: [safeAuthorization],
+  //     };
+
+  //     // Log the transaction details
+  //     console.log('📌 Exact hex transaction constructed');
+  //     debugLog('Exact hex transaction (full details)', exactHexTx);
+
+  //     // Validate the authorizations
+  //     console.log('🔍 Validating authorization fields:');
+  //     if (exactHexTx.authorizations && exactHexTx.authorizations.length > 0) {
+  //       const auth = exactHexTx.authorizations[0];
+  //       console.log('  - Authorization fields:');
+  //       console.log(`    * chainId: ${auth.chainId}`);
+  //       console.log(`    * address: ${auth.address}`);
+  //       console.log(`    * nonce: ${auth.nonce}`);
+  //       console.log(`    * yParity: ${auth.yParity}`);
+  //       console.log(`    * r: ${auth.r}`);
+  //       console.log(`    * s: ${auth.s}`);
+  //     }
+
+  //     // Attempt to sign the transaction
+  //     console.log('🔐 Calling sign API with exact hex values...');
+  //     const result = await sign(exactHexTx);
+  //     console.log('✅ Sign with exact hex values completed successfully');
+  //     debugLog('Sign result for exact hex transaction', result);
+
+  //     // Verify the transaction was properly signed
+  //     console.log('🔍 Verifying sign result has expected properties...');
+  //     expect(result.tx).toBeDefined();
+  //     console.log(`  - result.tx: ${result.tx ? 'EXISTS' : 'MISSING'}`);
+  //     expect(result.txHash).toBeDefined();
+  //     console.log(`  - result.txHash: ${result.txHash ? 'EXISTS' : 'MISSING'}`);
+  //     console.log('✅ Sign result verified successfully');
+  //   } catch (error) {
+  //     console.error('\n❌ EXACT HEX TEST FAILED WITH ERROR:');
+  //     console.error('Error message:', error.message);
+  //     console.error('Error stack:', error.stack);
+  //     console.error('Error details:', JSON.stringify(error, bigIntReplacer, 2));
+  //     throw error; // Re-throw the error to fail the test
+  //   }
+  // });
 });
