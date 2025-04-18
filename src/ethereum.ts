@@ -1207,6 +1207,34 @@ export function serializeEIP7702Transaction(
   tx.authorizations.forEach((auth, idx) => {
     console.log(`Debug - Auth[${idx}] contractAddress:`, auth.contractAddress);
     console.log(
+      `Debug - Auth[${idx}] contractAddress type:`,
+      typeof auth.contractAddress,
+    );
+    // Check for exact value comparison
+    console.log(
+      `Debug - Auth[${idx}] contractAddress === undefined:`,
+      auth.contractAddress === undefined,
+    );
+    // Check for truthiness
+    console.log(
+      `Debug - Auth[${idx}] contractAddress is truthy:`,
+      !!auth.contractAddress,
+    );
+    // Check property existence on the object itself
+    console.log(
+      `Debug - Auth[${idx}] has contractAddress property:`,
+      'contractAddress' in auth,
+    );
+    // Check for address property too (in case property is named differently)
+    console.log(
+      `Debug - Auth[${idx}] has address property:`,
+      'address' in auth,
+    );
+    if ('address' in auth) {
+      console.log(`Debug - Auth[${idx}] address value:`, auth.address);
+    }
+    // Stringify the entire auth object to see all properties
+    console.log(
       `Debug - Auth[${idx}] complete:`,
       JSON.stringify(auth, bigIntReplacer, 2),
     );
@@ -1243,18 +1271,51 @@ export function serializeEIP7702Transaction(
     to: tx.to as `0x${string}`,
     value: typeof tx.value === 'string' ? BigInt(tx.value) : tx.value,
     data: tx.data || '0x',
-    authorizationList: tx.authorizations.map((auth) => ({
-      chainId: auth.chainId,
-      address: auth.contractAddress as `0x${string}`,
-      nonce: auth.nonce,
-      yParity: auth.yParity
-        ? auth.yParity === '0x01' || auth.yParity === '0x1'
-          ? 1
-          : 0
-        : 0,
-      r: auth.r || '0x0',
-      s: auth.s || '0x0',
-    })),
+    authorizationList: tx.authorizations.map((auth, idx) => {
+      // Debug the mapping process for each authorization
+      console.log(`Debug - Converting auth[${idx}] to Viem format`);
+      console.log(
+        `Debug - auth[${idx}].contractAddress:`,
+        auth.contractAddress,
+      );
+
+      // Try to get the address from either contractAddress or address property
+      const addressValue =
+        auth.contractAddress || (auth as any).address || null;
+
+      console.log(`Debug - Resolved address value:`, addressValue);
+
+      if (!addressValue) {
+        console.error(
+          `ERROR: No valid address found in authorization[${idx}]!`,
+        );
+        console.error(`Auth object keys:`, Object.keys(auth));
+        throw new Error(
+          `Authorization at index ${idx} is missing a valid address`,
+        );
+      }
+
+      const result = {
+        chainId: auth.chainId,
+        address: addressValue as `0x${string}`,
+        nonce: auth.nonce,
+        yParity: auth.yParity
+          ? auth.yParity === '0x01' || auth.yParity === '0x1'
+            ? 1
+            : 0
+          : 0,
+        r: auth.r || '0x0',
+        s: auth.s || '0x0',
+      };
+
+      console.log(`Debug - Converted to address:`, result.address);
+      console.log(
+        `Debug - Resulting viem authorization:`,
+        JSON.stringify(result, bigIntReplacer, 2),
+      );
+
+      return result;
+    }),
   };
 
   console.log(
