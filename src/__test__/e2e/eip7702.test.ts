@@ -122,7 +122,7 @@ describe('EIP-7702', () => {
     // Define the authorization with required fields
     const authorization = {
       chainId: 1,
-      address: '0x769f783730e49994f724069898f8738bfd406dfd' as Address,
+      address: '0x769F783730E49994F724069898f8738bFd406DfD' as Address,
       nonce: 0,
       yParity: 1,
       r: '0xcd27f8d16ea21ba806b8a9c3fad886dc77cb3887715b272ebe1448c67d2d5ffe' as Hex,
@@ -136,7 +136,7 @@ describe('EIP-7702', () => {
       nonce: 0,
       maxPriorityFeePerGas: BigInt(parseEther('0.000000001')),
       maxFeePerGas: BigInt(parseEther('0.00000001')),
-      to: '0x769f783730e49994f724069898f8738bfd406dfd' as Address,
+      to: '0x769F783730E49994F724069898f8738bFd406DfD' as Address,
       value: BigInt(parseEther('0.1')),
       data: '0x12345678' as Hex,
       authorizationList: [authorization],
