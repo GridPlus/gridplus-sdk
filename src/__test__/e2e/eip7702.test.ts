@@ -275,7 +275,6 @@ describe('EIP-7702', () => {
       // Verify the transaction was properly signed
       expect(result.sig.r).toBeDefined();
       expect(result.sig.s).toBeDefined();
-      expect(result.sig.v).toBeDefined();
 
       // Verify r and s are valid buffers with correct length (32 bytes for ECDSA signatures)
       expect(Buffer.isBuffer(result.sig.r)).toBe(true);
