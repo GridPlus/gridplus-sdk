@@ -273,10 +273,15 @@ describe('EIP-7702', () => {
       debugLog('Sign result', result);
 
       // Verify the transaction was properly signed
-      expect(result.tx).toBeDefined();
-      console.log(`  - result.tx: ${result.tx ? 'EXISTS' : 'MISSING'}`);
-      expect(result.txHash).toBeDefined();
-      console.log(`  - result.txHash: ${result.txHash ? 'EXISTS' : 'MISSING'}`);
+      expect(result.sig.r).toBeDefined();
+      expect(result.sig.s).toBeDefined();
+      expect(result.sig.v).toBeDefined();
+
+      // Verify r and s are valid buffers with correct length (32 bytes for ECDSA signatures)
+      expect(Buffer.isBuffer(result.sig.r)).toBe(true);
+      expect(Buffer.isBuffer(result.sig.s)).toBe(true);
+      expect(result.sig.r.length).toBe(32); // ECDSA signatures have 32-byte r values
+      expect(result.sig.s.length).toBe(32); // ECDSA signatures have 32-byte s values
 
       console.log('✅ Transaction successfully serialized and signed');
       console.log(`Transaction hash: ${result.txHash}`);
