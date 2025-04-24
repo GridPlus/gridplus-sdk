@@ -42,8 +42,16 @@ if ! command -v forge &> /dev/null; then
     foundryup
 fi
 
-# Change to forge directory
-cd forge
+# Handle directory change safely
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+if [[ "$SCRIPT_DIR" == */forge/scripts ]]; then
+    cd "$(dirname "$(dirname "$SCRIPT_DIR")")/forge"
+elif [[ "$SCRIPT_DIR" == */scripts ]]; then
+    cd ..
+else
+    echo "Error: Script must be run from either the project root or the forge directory"
+    exit 1
+fi
 
 # Install dependencies
 echo "Installing dependencies..."
