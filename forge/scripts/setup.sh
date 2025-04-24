@@ -15,6 +15,9 @@ if ! command -v forge &> /dev/null; then
     foundryup
 fi
 
+# Change to forge directory
+cd forge
+
 # Install dependencies
 echo "Installing dependencies..."
 pnpm install
@@ -23,9 +26,13 @@ pnpm install
 echo "Installing forge dependencies..."
 forge install
 
+# Clean the build artifacts first
+echo "Cleaning build artifacts..."
+forge clean
+
 # Build all contracts including dependencies
-echo "Building contracts..."
-forge build --build-info --force
+echo "Building contracts with all dependencies..."
+FOUNDRY_PROFILE=default forge build --build-info --force --optimize --sizes --via-ir --contracts ./src/Simple7702Account.sol
 
 # Install dependencies if needed
 if [ ! -d "lib/openzeppelin-contracts" ]; then
