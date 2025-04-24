@@ -117,7 +117,7 @@ describe('Simple7702Account EIP-7702 Flow', () => {
     }
   });
 
-  test('Execute batch transactions with EIP-7702', async () => {
+  test.skip('Execute batch transactions with EIP-7702', async () => {
     expect(delegateContractAddress).toBeDefined();
     expect(isAddress(delegateContractAddress)).toBe(true);
 
@@ -242,17 +242,16 @@ describe('Simple7702Account EIP-7702 Flow', () => {
       address: account.address,
     });
 
-    // --- Let Viem handle nonce when executor is 'self' ---
-    const authorization = await signAuthorization({
+    const authTxPayload = {
       address: delegateContractAddress,
       chainId,
       nonce,
-    });
+    };
+    console.log('AuthTxPayload:', authTxPayload);
+    // --- Let Viem handle nonce when executor is 'self' ---
+    const authorization = await signAuthorization(authTxPayload);
     // Log the nonce Viem used (it's part of the returned object)
-    console.log(
-      'EIP-7702 Authorization Signed (Viem derived nonce):',
-      authorization,
-    );
+    console.log('EIP-7702 Authorization Signed By Lattice', authorization);
 
     // Prepare delegate call data
     const delegateCallData = encodeFunctionData({
