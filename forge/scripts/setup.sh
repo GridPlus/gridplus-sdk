@@ -5,10 +5,37 @@ set -e
 pkill -f anvil || true
 sleep 1
 
+# Function to download using available method
+download_file() {
+    local url="$1"
+    local output="${2:--}" # Default to stdout if no output specified
+    
+    if command -v curl &> /dev/null; then
+        if [ "$output" = "-" ]; then
+            curl -L "$url"
+        else
+            curl -L "$url" -o "$output"
+        fi
+    elif command -v wget &> /dev/null; then
+        if [ "$output" = "-" ]; then
+            wget -qO- "$url"
+        else
+            wget -q -O "$output" "$url"
+        fi
+    elif command -v python3 &> /dev/null; then
+        python3 -c "import urllib.request; print(urllib.request.urlopen('$url').read().decode())"
+    elif command -v python &> /dev/null; then
+        python -c "import urllib2; print urllib2.urlopen('$url').read()"
+    else
+        echo "Error: Neither curl, wget, nor python is available. Please install one of them to continue."
+        exit 1
+    fi
+}
+
 # Check if forge is installed
 if ! command -v forge &> /dev/null; then
     echo "Installing Foundry..."
-    curl -L https://foundry.paradigm.xyz | bash
+    download_file "https://foundry.paradigm.xyz" | bash
     # Load new PATH to include foundryup
     source ~/.bashrc
     # Install latest forge
