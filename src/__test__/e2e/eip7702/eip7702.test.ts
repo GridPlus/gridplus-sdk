@@ -7,8 +7,8 @@ import {
   TransactionSerializableEIP7702,
   type Address,
 } from 'viem';
-import { pair, signEIP7702 } from '../../api/index';
-import { setupClient } from '../utils/setup';
+import { pair, signAuthorizationList } from '../../../api/index';
+import { setupClient } from '../../utils/setup';
 /**
  * Test vectors for EIP-7702
  *
@@ -268,8 +268,8 @@ describe('EIP-7702', () => {
       console.log('\n✅ All pre-validation checks passed');
 
       // Sign the transaction
-      console.log('\n🔐 Calling signEIP7702 API...');
-      const result = await signEIP7702(transaction);
+      console.log('\n🔐 Calling signAuthorizationList API...');
+      const result = await signAuthorizationList(transaction);
       debugLog('Sign result', result);
 
       // Verify the transaction was properly signed

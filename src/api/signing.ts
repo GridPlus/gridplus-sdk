@@ -1,6 +1,6 @@
 import { RLP } from '@ethereumjs/rlp';
 import { keccak256 } from 'js-sha3';
-import type { Hex } from 'viem';
+import type { Account, Hex } from 'viem';
 import { serializeTransaction, TransactionSerializableEIP7702 } from 'viem';
 import { z } from 'zod';
 import { Constants } from '..';
@@ -30,6 +30,7 @@ import {
 } from '../types';
 import { getYParity } from '../util';
 import { isEIP712Payload, queue } from './utilities';
+import { SignAuthorizationParameters } from 'viem/_types/accounts/utils/signAuthorization';
 
 // Add Zod schema for EIP7702 transaction validation
 const authorizationSchema = z.object({
@@ -64,7 +65,7 @@ const eip7702TransactionSchema = z.object({
  * This function creates and signs the authorization message required for EIP-7702 delegation.
  */
 export const signAuthorization = async (
-  authorization: AuthorizationData,
+  authorization: SignAuthorizationParameters,
   overrides?: SignRequestParams,
 ): Promise<Authorization> => {
   // EIP-7702 authorization message is: MAGIC || rlp([chain_id, address, nonce])
@@ -124,7 +125,7 @@ export const signAuthorization = async (
   return result;
 };
 
-export const signEIP7702 = async (
+export const signAuthorizationList = async (
   tx: TransactionSerializableEIP7702,
 ): Promise<SignData> => {
   console.log('DEBUG: Starting EIP7702 transaction validation with Zod');

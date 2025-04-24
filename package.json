@@ -9,7 +9,7 @@
     "lint:fix": "eslint src --c .ts,.tsx --config eslint.config.mjs --fix",
     "lint": "eslint src --c .ts,.tsx --config eslint.config.mjs",
     "precommit": "npm run lint:fix && npm run test",
-    "test": "vitest ./src/__test__/unit ./src/__test__/integration",
+    "test": "vitest run",
     "test-unit": "vitest ./src/__test__/unit --maxConcurrency 10 --fileParallelism true",
     "unit-api": "vitest ./src/__test__/unit/api.test.ts",
     "unit-decode": "vitest ./src/__test__/unit/decoders.test.ts",
@@ -33,8 +33,10 @@
     "e2e-wj": "vitest ./src/__test__/e2e/wallet-jobs.test.ts",
     "e2e-api": "vitest ./src/__test__/e2e/api.test.ts",
     "e2e-iter": "vitest ./src/__test__/e2e/iter.test.ts",
-    "e2e-eip7702": "vitest ./src/__test__/e2e/eip7702.test.ts",
-    "contracts": "vitest ./src/__test__/e2e/contracts.test.ts"
+    "e2e-eip7702": "vitest **/eip7702",
+    "contracts": "vitest ./src/__test__/e2e/contracts.test.ts",
+    "setup:anvil": "cd forge && chmod +x scripts/setup.sh && ./scripts/setup.sh",
+    "cleanup:anvil": "cd forge && chmod +x scripts/cleanup.sh && ./scripts/cleanup.sh"
   },
   "files": [
     "dist"
@@ -127,5 +129,6 @@
     "patchedDependencies": {
       "vitest@2.1.3": "patches/vitest@2.1.3.patch"
     }
-  }
+  },
+  "packageManager": "pnpm@10.8.1+sha512.c50088ba998c67b8ca8c99df8a5e02fd2ae2e2b29aaf238feaa9e124248d3f48f9fb6db2424949ff901cffbb5e0f0cc1ad6aedb602cd29450751d11c35023677"
 }
