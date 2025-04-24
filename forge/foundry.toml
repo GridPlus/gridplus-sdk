@@ -3,10 +3,10 @@ src = 'src'
 out = 'out'
 libs = ['lib', 'node_modules']
 remappings = [
-    '@openzeppelin/=node_modules/@openzeppelin/',
+    '@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/',
+    '@openzeppelin/=lib/openzeppelin-contracts/',
     '@account-abstraction/=node_modules/@account-abstraction/',
-    'openzeppelin-contracts/=lib/openzeppelin-contracts/',
-    'forge-std/=lib/openzeppelin-contracts/lib/forge-std/src/'
+    'forge-std/=lib/forge-std/src/'
 ]
 solc = "0.8.28"
 
