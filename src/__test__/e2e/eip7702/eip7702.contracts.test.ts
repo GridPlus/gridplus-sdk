@@ -283,13 +283,30 @@ describe('Simple7702Account EIP-7702 Flow', () => {
     } satisfies Omit<SendTransactionParameters, 'kzg'>;
 
     console.log('Sending EIP-7702 transaction with value=0 & derived nonce...');
-    const hash = await signAuthorizationList(eip7702Tx);
+    const response = await signAuthorizationList(eip7702Tx);
+
+    // Prepare the transaction with proper signature components
+    const signedTx = {
+      to: eip7702Tx.to,
+      data: eip7702Tx.data,
+      value: eip7702Tx.value,
+      gas: eip7702Tx.gas,
+      maxFeePerGas: eip7702Tx.maxFeePerGas,
+      maxPriorityFeePerGas: eip7702Tx.maxPriorityFeePerGas,
+      type: 'eip7702' as const,
+      chainId,
+      authorizationList: eip7702Tx.authorizationList,
+      yParity: response.sig.v % 2,
+      r: `0x${response.sig.r.toString('hex')}`,
+      s: `0x${response.sig.s.toString('hex')}`,
+    };
+
+    // Send the signed transaction
+    const hash = await walletClient.sendTransaction(signedTx);
     console.log('Transaction hash:', hash);
 
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
-    console.log('Transaction receipt:', {
-      /* ... */
-    });
+    console.log('Transaction receipt:', receipt);
     expect(receipt.status).toBe('success');
 
     const gasCost = receipt.gasUsed * receipt.effectiveGasPrice;
