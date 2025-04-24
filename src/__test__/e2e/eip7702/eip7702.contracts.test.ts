@@ -274,6 +274,10 @@ describe('Simple7702Account EIP-7702 Flow', () => {
       account,
       to: account.address,
       data: delegateCallData,
+      chainId,
+      nonce: await publicClient.getTransactionCount({
+        address: account.address,
+      }),
       value: 0n, // Keep value as 0, rely on pre-funded EOA
       type: 'eip7702' as const,
       authorizationList: [
