@@ -238,13 +238,15 @@ describe('Simple7702Account EIP-7702 Flow', () => {
     console.log('recipient1:', formatEther(initialBalance1), 'ETH');
     console.log('recipient2:', formatEther(initialBalance2), 'ETH');
     expect(initialEoaBalance_Test).toBeGreaterThanOrEqual(totalValue); // Ensure EOA can cover transfers
+    const nonce = await publicClient.getTransactionCount({
+      address: account.address,
+    });
 
     // --- Let Viem handle nonce when executor is 'self' ---
     const authorization = await signAuthorization({
-      account,
-      contractAddress: delegateContractAddress,
+      address: delegateContractAddress,
       chainId,
-      executor: 'self',
+      nonce,
     });
     // Log the nonce Viem used (it's part of the returned object)
     console.log(
