@@ -277,7 +277,16 @@ describe('Simple7702Account EIP-7702 Flow', () => {
       data: delegateCallData,
       value: 0n, // Keep value as 0, rely on pre-funded EOA
       type: 'eip7702' as const,
-      authorizationList: [authorization], // Pass the full authorization object
+      authorizationList: [
+        {
+          chainId: authorization.chainId,
+          address: authorization.address,
+          nonce: authorization.nonce,
+          yParity: authorization.yParity,
+          r: authorization.r,
+          s: authorization.s,
+        },
+      ], // Pass the full authorization object
       gas: gasLimit,
       maxFeePerGas: maxFee,
       maxPriorityFeePerGas: maxPrio,
