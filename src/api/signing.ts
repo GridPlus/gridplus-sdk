@@ -44,8 +44,8 @@ const authorizationSchema = z.object({
 
 const eip7702TransactionSchema = z.object({
   type: z.literal('eip7702'),
-  chainId: z.number(),
-  nonce: z.number(),
+  chainId: z.number().optional(),
+  nonce: z.number().optional(),
   maxPriorityFeePerGas: z.bigint().or(z.string()),
   maxFeePerGas: z.bigint().or(z.string()),
   to: z.string().startsWith('0x'),
