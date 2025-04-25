@@ -49,8 +49,7 @@ async function fundAccountIfNeeded(targetAddress: string): Promise<bigint> {
       account: deployer,
     });
 
-    const amountToFund =
-      minRequiredBalance + parseEther('0.5') - initialBalance;
+    const amountToFund = parseEther('2.0');
     const fundingTx = {
       account: deployer,
       to: targetAddress as `0x${string}`,
@@ -84,7 +83,7 @@ describe('Simple7702Account EIP-7702 Flow', () => {
   let walletClient: WalletClient;
   let account: Account;
   let simple7702Abi: any;
-  let latticeAddress: string;
+  let latticeAddress: Address;
 
   beforeAll(async () => {
     // Deploy and verify delegate contract
@@ -154,7 +153,7 @@ describe('Simple7702Account EIP-7702 Flow', () => {
 
     // Get initial balances
     const initialEoaBalance_Test = await publicClient.getBalance({
-      address: account.address,
+      address: latticeAddress,
     });
     const initialBalance1 = await publicClient.getBalance({
       address: recipient1,
@@ -189,22 +188,23 @@ describe('Simple7702Account EIP-7702 Flow', () => {
     });
 
     // Construct and send EIP-7702 transaction
-    const gasLimit = 2_000_000n;
-    const maxFee = parseEther('0.0000001');
-    const maxPrio = parseEther('0.00000001');
+    const gasLimit = BigInt(500000);
+    const maxFee = parseEther('0.000000001');
+    const maxPrio = parseEther('0.0000000001');
 
     const eip7702Tx = {
       account,
-      to: account.address,
+      to: latticeAddress,
       data: delegateCallData,
-      value: 0n, // Keep value as 0, rely on pre-funded EOA
+      value: BigInt(0),
       type: 'eip7702' as const,
-      authorizationList: [authorization], // Pass the full authorization object
+      authorizationList: [authorization],
       gas: gasLimit,
       maxFeePerGas: maxFee,
       maxPriorityFeePerGas: maxPrio,
       chain: foundry,
-    } satisfies Omit<SendTransactionParameters, 'kzg'>;
+      kzg: undefined,
+    };
 
     const hash = await walletClient.sendTransaction(eip7702Tx);
 
@@ -216,7 +216,7 @@ describe('Simple7702Account EIP-7702 Flow', () => {
 
     // Get final balances
     const finalEoaBalance_Test = await publicClient.getBalance({
-      address: account.address,
+      address: latticeAddress,
     });
     const finalBalance1 = await publicClient.getBalance({
       address: recipient1,
@@ -250,7 +250,7 @@ describe('Simple7702Account EIP-7702 Flow', () => {
 
     // Get initial balances
     const initialEoaBalance_Test = await publicClient.getBalance({
-      address: account.address,
+      address: latticeAddress,
     });
     const initialBalance1 = await publicClient.getBalance({
       address: recipient1,
@@ -264,7 +264,7 @@ describe('Simple7702Account EIP-7702 Flow', () => {
     console.log('recipient2:', formatEther(initialBalance2), 'ETH');
     expect(initialEoaBalance_Test).toBeGreaterThanOrEqual(totalValue); // Ensure EOA can cover transfers
     const nonce = await publicClient.getTransactionCount({
-      address: account.address,
+      address: latticeAddress,
     });
 
     const authTxPayload = {
@@ -291,41 +291,43 @@ describe('Simple7702Account EIP-7702 Flow', () => {
     });
 
     // Construct and send EIP-7702 transaction
-    const gasLimit = 2_000_000n;
-    const maxFee = parseEther('0.0000001');
-    const maxPrio = parseEther('0.00000001');
+    const gasLimit = BigInt(500000);
+    const maxFee = parseEther('0.000000001');
+    const maxPrio = parseEther('0.0000000001');
 
     const eip7702Tx = {
-      account,
-      to: account.address,
+      account: latticeAddress,
+      to: latticeAddress,
       data: delegateCallData,
       chainId,
       nonce: await publicClient.getTransactionCount({
-        address: account.address,
+        address: latticeAddress,
       }),
-      value: 0n, // Keep value as 0, rely on pre-funded EOA
+      value: BigInt(0),
       type: 'eip7702' as const,
       authorizationList: [
         {
           chainId: authorization.chainId,
           address: authorization.address,
           nonce: authorization.nonce,
-          yParity: authorization.yParity,
+          yParity: Number(authorization.yParity),
           r: authorization.r,
           s: authorization.s,
         },
-      ], // Pass the full authorization object
+      ],
       gas: gasLimit,
       maxFeePerGas: maxFee,
       maxPriorityFeePerGas: maxPrio,
       chain: foundry,
-    } satisfies Omit<SendTransactionParameters, 'kzg'>;
+      kzg: undefined,
+    };
 
     console.log('Sending EIP-7702 transaction with value=0 & derived nonce...');
     const response = await signAuthorizationList(eip7702Tx);
 
-    // Prepare the transaction with proper signature components
+    // Update the signed transaction
     const signedTx = {
+      account,
       to: eip7702Tx.to,
       data: eip7702Tx.data,
       value: eip7702Tx.value,
@@ -334,10 +336,12 @@ describe('Simple7702Account EIP-7702 Flow', () => {
       maxPriorityFeePerGas: eip7702Tx.maxPriorityFeePerGas,
       type: 'eip7702' as const,
       chainId,
+      chain: foundry,
       authorizationList: eip7702Tx.authorizationList,
-      yParity: response.sig.v % 2,
+      yParity: Number(response.sig.v) % 2,
       r: `0x${response.sig.r.toString('hex')}`,
       s: `0x${response.sig.s.toString('hex')}`,
+      kzg: undefined,
     };
 
     // Send the signed transaction
