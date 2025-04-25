@@ -29,6 +29,54 @@ const ETH_PROVIDER_URL = 'http://localhost:8545';
 const WALLET_PRIVATE_KEY =
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 
+async function fundAccountIfNeeded(targetAddress: string): Promise<bigint> {
+  const transport = http(ETH_PROVIDER_URL);
+  const publicClient = createPublicClient({
+    chain: foundry,
+    transport: transport as Transport,
+  }) as PublicClient;
+
+  const minRequiredBalance = parseEther('1.0');
+  const initialBalance = await publicClient.getBalance({
+    address: targetAddress as `0x${string}`,
+  });
+
+  if (initialBalance < minRequiredBalance) {
+    const deployer = privateKeyToAccount(WALLET_PRIVATE_KEY as `0x${string}`);
+    const deployerClient = createWalletClient({
+      chain: foundry,
+      transport: transport as Transport,
+      account: deployer,
+    });
+
+    const amountToFund =
+      minRequiredBalance + parseEther('0.5') - initialBalance;
+    const fundingTx = {
+      account: deployer,
+      to: targetAddress as `0x${string}`,
+      value: amountToFund,
+      chain: foundry,
+    } satisfies Omit<SendTransactionParameters, 'kzg'>;
+
+    const fundingHash = await deployerClient.sendTransaction(fundingTx);
+    await publicClient.waitForTransactionReceipt({ hash: fundingHash });
+    console.log(
+      `Funded account ${targetAddress} with ${formatEther(amountToFund)} ETH`,
+    );
+  } else {
+    console.log(
+      `Account ${targetAddress} already has sufficient funds: ${formatEther(
+        initialBalance,
+      )} ETH`,
+    );
+  }
+
+  const fundedBalance = await publicClient.getBalance({
+    address: targetAddress as `0x${string}`,
+  });
+  return fundedBalance;
+}
+
 describe('Simple7702Account EIP-7702 Flow', () => {
   let delegateContractAddress: Address;
   let chainId: number;
@@ -67,43 +115,9 @@ describe('Simple7702Account EIP-7702 Flow', () => {
     console.log('EOA Address:', account.address);
     console.log('Chain ID:', chainId);
 
-    latticeAddress = await fetchAddress();
-    console.log('EOA Address:', latticeAddress);
-
     // Fund the account generously IF NEEDED
-    const deployer = privateKeyToAccount(WALLET_PRIVATE_KEY as `0x${string}`);
-    const deployerClient = createWalletClient({
-      chain: foundry,
-      transport: transport as Transport,
-      account: deployer,
-    });
-    const minRequiredBalance = parseEther('1.0');
-    const initialEoaBalance = await publicClient.getBalance({
-      address: latticeAddress as `0x${string}`,
-    });
-    if (initialEoaBalance < minRequiredBalance) {
-      const amountToFund =
-        minRequiredBalance + parseEther('0.5') - initialEoaBalance;
-      const fundingTx = {
-        account: deployer,
-        to: latticeAddress as `0x${string}`,
-        value: amountToFund,
-        chain: foundry,
-      } satisfies Omit<SendTransactionParameters, 'kzg'>;
-      const fundingHash = await deployerClient.sendTransaction(fundingTx);
-      await publicClient.waitForTransactionReceipt({ hash: fundingHash });
-      console.log(
-        `Funded account ${account.address} with ${formatEther(amountToFund)} ETH`,
-      );
-    } else {
-      console.log(
-        `EOA ${account.address} already has sufficient funds: ${formatEther(initialEoaBalance)} ETH`,
-      );
-    }
-    const fundedEoaBalance = await publicClient.getBalance({
-      address: account.address,
-    });
-    expect(fundedEoaBalance).toBeGreaterThanOrEqual(minRequiredBalance);
+    const fundedEoaBalance = await fundAccountIfNeeded(account.address);
+    expect(fundedEoaBalance).toBeGreaterThanOrEqual(parseEther('1.0'));
 
     // Verify contract deployment
     const bytecode = await publicClient.getBytecode({
@@ -119,6 +133,13 @@ describe('Simple7702Account EIP-7702 Flow', () => {
       const secret = question('Please enter the pairing secret: ');
       await pair(secret.toUpperCase());
     }
+
+    latticeAddress = await fetchAddress();
+    console.log('EOA Address:', latticeAddress);
+
+    // Fund the paired device's address
+    const fundedBalance = await fundAccountIfNeeded(latticeAddress);
+    expect(fundedBalance).toBeGreaterThanOrEqual(parseEther('1.0'));
   });
 
   test.skip('Execute batch transactions with EIP-7702', async () => {
