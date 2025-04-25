@@ -22,7 +22,7 @@ import { deployContract } from '../../utils/contracts';
 import { setupClient } from '../../utils/setup';
 // @ts-ignore
 import Simple7702Account from './abi/Simple7702Account.json';
-
+import { fetchAddress } from '../../../api';
 dotenv.config();
 
 const ETH_PROVIDER_URL = 'http://localhost:8545';
@@ -36,6 +36,7 @@ describe('Simple7702Account EIP-7702 Flow', () => {
   let walletClient: WalletClient;
   let account: Account;
   let simple7702Abi: any;
+  let latticeAddress: string;
 
   beforeAll(async () => {
     // Deploy and verify delegate contract
@@ -66,6 +67,9 @@ describe('Simple7702Account EIP-7702 Flow', () => {
     console.log('EOA Address:', account.address);
     console.log('Chain ID:', chainId);
 
+    latticeAddress = await fetchAddress();
+    console.log('EOA Address:', latticeAddress);
+
     // Fund the account generously IF NEEDED
     const deployer = privateKeyToAccount(WALLET_PRIVATE_KEY as `0x${string}`);
     const deployerClient = createWalletClient({
@@ -75,14 +79,14 @@ describe('Simple7702Account EIP-7702 Flow', () => {
     });
     const minRequiredBalance = parseEther('1.0');
     const initialEoaBalance = await publicClient.getBalance({
-      address: account.address,
+      address: latticeAddress as `0x${string}`,
     });
     if (initialEoaBalance < minRequiredBalance) {
       const amountToFund =
         minRequiredBalance + parseEther('0.5') - initialEoaBalance;
       const fundingTx = {
         account: deployer,
-        to: account.address,
+        to: latticeAddress as `0x${string}`,
         value: amountToFund,
         chain: foundry,
       } satisfies Omit<SendTransactionParameters, 'kzg'>;
