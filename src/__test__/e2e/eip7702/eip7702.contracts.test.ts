@@ -1,380 +1,272 @@
 import * as dotenv from 'dotenv';
 import { question } from 'readline-sync';
 import {
-  Account,
   Address,
   createPublicClient,
-  createWalletClient,
   encodeFunctionData,
+  encodeAbiParameters,
+  parseAbiParameters, // We'll use this
   formatEther,
   http,
   isAddress,
   parseEther,
   PublicClient,
-  SendTransactionParameters,
   Transport,
-  WalletClient,
+  serializeTransaction,
+  TransactionSerializableEIP7702,
+  Hex,
 } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
-import { foundry } from 'viem/chains';
-import { pair, signAuthorization, signAuthorizationList } from '../../../api';
-import { deployContract } from '../../utils/contracts';
+import { sepolia } from 'viem/chains';
+import { pair, signAuthorizationList } from '../../../api';
 import { setupClient } from '../../utils/setup';
-// @ts-ignore
-import Simple7702Account from './abi/Simple7702Account.json';
+import { DEFAULT_ETH_DERIVATION } from '../../../constants';
+
+import DeleGatorABI_JSON from './abi/EIP7702StatelessDeleGator.json'; // Your ABI file
+
 import { fetchAddress } from '../../../api';
+
 dotenv.config();
 
-const ETH_PROVIDER_URL = 'http://localhost:8545';
-const WALLET_PRIVATE_KEY =
-  '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+const ETH_PROVIDER_URL =
+  process.env.ETH_PROVIDER_URL || sepolia.rpcUrls.default.http[0];
+const PRE_DEPLOYED_DELEGATOR_ADDRESS: Address =
+  '0x6eb81ea5bc15f4f4a2d79fa15a75a43c1ee17cd0'; // Corrected checksum
 
-async function fundAccountIfNeeded(targetAddress: string): Promise<bigint> {
-  const transport = http(ETH_PROVIDER_URL);
-  const publicClient = createPublicClient({
-    chain: foundry,
-    transport: transport as Transport,
-  }) as PublicClient;
+// This string defines a single parameter type: an array of our Execution struct.
+// We give the parameter a name "_executionBatch" for `parseAbiParameters`.
+const executionBatchParameterDefinition =
+  'tuple(address target, uint256 value, bytes callData)[] _executionBatch';
 
-  const minRequiredBalance = parseEther('1.0');
-  const initialBalance = await publicClient.getBalance({
-    address: targetAddress as `0x${string}`,
-  });
-
-  if (initialBalance < minRequiredBalance) {
-    const deployer = privateKeyToAccount(WALLET_PRIVATE_KEY as `0x${string}`);
-    const deployerClient = createWalletClient({
-      chain: foundry,
-      transport: transport as Transport,
-      account: deployer,
-    });
-
-    const amountToFund = parseEther('2.0');
-    const fundingTx = {
-      account: deployer,
-      to: targetAddress as `0x${string}`,
-      value: amountToFund,
-      chain: foundry,
-    } satisfies Omit<SendTransactionParameters, 'kzg'>;
-
-    const fundingHash = await deployerClient.sendTransaction(fundingTx);
-    await publicClient.waitForTransactionReceipt({ hash: fundingHash });
-    console.log(
-      `Funded account ${targetAddress} with ${formatEther(amountToFund)} ETH`,
-    );
-  } else {
-    console.log(
-      `Account ${targetAddress} already has sufficient funds: ${formatEther(
-        initialBalance,
-      )} ETH`,
-    );
-  }
-
-  const fundedBalance = await publicClient.getBalance({
-    address: targetAddress as `0x${string}`,
-  });
-  return fundedBalance;
-}
-
-describe('Simple7702Account EIP-7702 Flow', () => {
-  let delegateContractAddress: Address;
+describe('EIP7702StatelessDeleGator EIP-7702 Flow with Lattice', () => {
+  let delegatorContractAddress: Address;
   let chainId: number;
   let publicClient: PublicClient;
-  let walletClient: WalletClient;
-  let account: Account;
-  let simple7702Abi: any;
+  let delegatorAbi: any;
   let latticeAddress: Address;
 
   beforeAll(async () => {
-    // Deploy and verify delegate contract
-    delegateContractAddress = (await deployContract(
-      'Simple7702Account',
-    )) as Address;
-    console.log('Delegate contract deployed at:', delegateContractAddress);
-    if (!delegateContractAddress || !isAddress(delegateContractAddress)) {
-      throw new Error(
-        `Invalid delegate contract address: ${delegateContractAddress}`,
-      );
-    }
-
-    account = privateKeyToAccount(WALLET_PRIVATE_KEY as `0x${string}`);
-    simple7702Abi = Simple7702Account.abi;
-
     const transport = http(ETH_PROVIDER_URL);
     publicClient = createPublicClient({
-      chain: foundry,
+      chain: sepolia,
       transport: transport as Transport,
     }) as PublicClient;
-    walletClient = createWalletClient({
-      chain: foundry,
-      transport: transport as Transport,
-      account,
-    }) as WalletClient;
+
     chainId = await publicClient.getChainId();
-    console.log('EOA Address:', account.address);
+    if (chainId !== sepolia.id) {
+      throw new Error(
+        `Chain ID mismatch. Expected ${sepolia.id}, got ${chainId}.`,
+      );
+    }
     console.log('Chain ID:', chainId);
 
-    // Fund the account generously IF NEEDED
-    const fundedEoaBalance = await fundAccountIfNeeded(account.address);
-    expect(fundedEoaBalance).toBeGreaterThanOrEqual(parseEther('1.0'));
-
-    // Verify contract deployment
-    const bytecode = await publicClient.getBytecode({
-      address: delegateContractAddress,
-    });
-    expect(bytecode).toBeDefined();
-    expect(bytecode!.length).toBeGreaterThan(2);
-  }, 20000);
-
-  test('pair', async () => {
     const isPaired = await setupClient();
     if (!isPaired) {
-      const secret = question('Please enter the pairing secret: ');
+      const secret = question('Lattice not paired. Enter secret: ');
+      if (!secret) throw new Error('Pairing secret required.');
       await pair(secret.toUpperCase());
     }
 
-    latticeAddress = await fetchAddress();
-    console.log('EOA Address:', latticeAddress);
+    latticeAddress = (await fetchAddress(DEFAULT_ETH_DERIVATION)) as Address;
+    if (!isAddress(latticeAddress)) {
+      throw new Error(`Invalid Lattice address: ${latticeAddress}`);
+    }
+    console.log('Lattice EOA Address:', latticeAddress);
 
-    // Fund the paired device's address
-    const fundedBalance = await fundAccountIfNeeded(latticeAddress);
-    expect(fundedBalance).toBeGreaterThanOrEqual(parseEther('1.0'));
-  });
+    const balance = await publicClient.getBalance({ address: latticeAddress });
+    console.log(`Lattice account balance: ${formatEther(balance)} ETH`);
+    if (balance < parseEther('0.01')) {
+      console.warn(
+        'Lattice account balance is low. Ensure sufficient funds for fees.',
+      );
+    }
 
-  test.skip('Execute batch transactions with EIP-7702', async () => {
-    expect(delegateContractAddress).toBeDefined();
-    expect(isAddress(delegateContractAddress)).toBe(true);
-
-    const recipient1 = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
-    const recipient2 = '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC';
-    const value1 = parseEther('0.01');
-    const value2 = parseEther('0.02');
-    const totalValue = value1 + value2;
-
-    // Get initial balances
-    const initialEoaBalance_Test = await publicClient.getBalance({
-      address: latticeAddress,
-    });
-    const initialBalance1 = await publicClient.getBalance({
-      address: recipient1,
-    });
-    const initialBalance2 = await publicClient.getBalance({
-      address: recipient2,
-    });
-    expect(initialEoaBalance_Test).toBeGreaterThanOrEqual(totalValue);
-
-    const authorization = await walletClient.signAuthorization({
-      account,
-      contractAddress: delegateContractAddress,
-      chainId,
-      executor: 'self',
-    });
-    // Log the nonce Viem used (it's part of the returned object)
+    delegatorContractAddress = PRE_DEPLOYED_DELEGATOR_ADDRESS;
     console.log(
-      'EIP-7702 Authorization Signed (Viem derived nonce):',
-      authorization,
+      'Using pre-deployed EIP7702StatelessDeleGator at:',
+      delegatorContractAddress,
     );
+    if (!isAddress(delegatorContractAddress)) {
+      throw new Error(
+        `Invalid pre-deployed contract address: ${delegatorContractAddress}`,
+      );
+    }
 
-    // Prepare delegate call data
-    const delegateCallData = encodeFunctionData({
-      abi: simple7702Abi,
-      functionName: 'executeBatch',
-      args: [
-        [
-          { target: recipient1, value: value1, data: '0x' },
-          { target: recipient2, value: value2, data: '0x' },
-        ],
-      ],
+    const bytecode = await publicClient.getBytecode({
+      address: delegatorContractAddress,
     });
+    if (!bytecode || bytecode === '0x') {
+      console.warn(
+        `No bytecode at ${delegatorContractAddress}. Ensure contract is deployed.`,
+      );
+    } else {
+      console.log(`Bytecode found at ${delegatorContractAddress}.`);
+    }
 
-    // Construct and send EIP-7702 transaction
-    const gasLimit = BigInt(500000);
-    const maxFee = parseEther('0.000000001');
-    const maxPrio = parseEther('0.0000000001');
+    delegatorAbi = DeleGatorABI_JSON.abi;
+    if (!Array.isArray(delegatorAbi)) {
+      throw new Error(
+        'Failed to load delegator ABI correctly. `DeleGatorABI_JSON.abi` is not an array.',
+      );
+    }
+  }, 60000);
 
-    const eip7702Tx = {
-      account,
-      to: latticeAddress,
-      data: delegateCallData,
-      value: BigInt(0),
-      type: 'eip7702' as const,
-      authorizationList: [authorization],
-      gas: gasLimit,
-      maxFeePerGas: maxFee,
-      maxPriorityFeePerGas: maxPrio,
-      chain: foundry,
-      kzg: undefined,
-    };
-
-    const hash = await walletClient.sendTransaction(eip7702Tx);
-
-    const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-    expect(receipt.status).toBe('success');
-
-    const gasCost = receipt.gasUsed * receipt.effectiveGasPrice;
-
-    // Get final balances
-    const finalEoaBalance_Test = await publicClient.getBalance({
-      address: latticeAddress,
-    });
-    const finalBalance1 = await publicClient.getBalance({
-      address: recipient1,
-    });
-    const finalBalance2 = await publicClient.getBalance({
-      address: recipient2,
-    });
-
-    // --- Assert Balance Changes ---
-    expect(finalEoaBalance_Test).toBe(
-      initialEoaBalance_Test - totalValue - gasCost,
-    );
-    expect(finalBalance1).toBe(initialBalance1 + value1);
-    expect(finalBalance2).toBe(initialBalance2 + value2);
-  }, 30000);
-
-  test('Execute batch transactions with EIP-7702 sign with lattice', async () => {
-    expect(delegateContractAddress).toBeDefined();
-    expect(isAddress(delegateContractAddress)).toBe(true);
+  test('Execute batch ETH transfers via EIP7702StatelessDeleGator', async () => {
+    expect(isAddress(delegatorContractAddress)).toBe(true);
+    expect(isAddress(latticeAddress)).toBe(true);
 
     const recipient1 = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
     const recipient2 = '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC';
-    const value1 = parseEther('0.01');
-    const value2 = parseEther('0.02');
-    const totalValue = value1 + value2;
+    const value1 = parseEther('0.00001');
+    const value2 = parseEther('0.00002');
+    const totalValueForTx = value1 + value2;
 
-    console.log('Test values:');
-    console.log('value1:', formatEther(value1), 'ETH');
-    console.log('value2:', formatEther(value2), 'ETH');
-    console.log('totalValue:', formatEther(totalValue), 'ETH');
-
-    // Get initial balances
-    const initialEoaBalance_Test = await publicClient.getBalance({
+    const initialEoaBalance = await publicClient.getBalance({
       address: latticeAddress,
     });
     const initialBalance1 = await publicClient.getBalance({
-      address: recipient1,
+      address: recipient1 as Address,
     });
     const initialBalance2 = await publicClient.getBalance({
-      address: recipient2,
+      address: recipient2 as Address,
     });
-    console.log('Initial balances:');
-    console.log('EOA:       ', formatEther(initialEoaBalance_Test), 'ETH');
-    console.log('recipient1:', formatEther(initialBalance1), 'ETH');
-    console.log('recipient2:', formatEther(initialBalance2), 'ETH');
-    expect(initialEoaBalance_Test).toBeGreaterThanOrEqual(totalValue); // Ensure EOA can cover transfers
-    const nonce = await publicClient.getTransactionCount({
+    console.log(
+      `Initial Balances - EOA: ${formatEther(initialEoaBalance)}, R1: ${formatEther(initialBalance1)}, R2: ${formatEther(initialBalance2)}`,
+    );
+
+    if (initialEoaBalance < totalValueForTx + parseEther('0.001')) {
+      throw new Error('Lattice EOA balance insufficient.');
+    }
+
+    const eoaNonce = await publicClient.getTransactionCount({
       address: latticeAddress,
+      blockTag: 'pending',
+    });
+    console.log(`Using EOA nonce for EIP-7702 transaction: ${eoaNonce}`);
+
+    const executionCalls = [
+      { target: recipient1 as Address, value: value1, callData: '0x' as Hex },
+      { target: recipient2 as Address, value: value2, callData: '0x' as Hex },
+    ];
+
+    // `parseAbiParameters` takes a string defining one or more parameters.
+    // Here, `executionBatchParameterDefinition` defines ONE parameter of type `tuple(...)[]` named `_executionBatch`.
+    // `encodeAbiParameters` then expects an array of values, one for each defined parameter.
+    // Since we defined one parameter, we pass an array containing one value: `[executionCalls]`.
+    const encodedExecutionCalldata = encodeAbiParameters(
+      parseAbiParameters(executionBatchParameterDefinition),
+      [executionCalls], // The value for the `_executionBatch` parameter
+    );
+    console.log(
+      '_executionCalldata (encoded batch):',
+      encodedExecutionCalldata,
+    );
+
+    const MODE_CODE_BATCH_REVERT_ON_FAILURE: Hex =
+      '0x0100000000000000000000000000000000000000000000000000000000000000';
+    console.log(
+      'ModeCode for batch call (revert on failure):',
+      MODE_CODE_BATCH_REVERT_ON_FAILURE,
+    );
+
+    const DELEGATOR_EXECUTE_FUNCTION_NAME = 'execute';
+    const abiItem = delegatorAbi.find(
+      (item: any) =>
+        item.name === DELEGATOR_EXECUTE_FUNCTION_NAME &&
+        item.type === 'function' &&
+        item.inputs &&
+        item.inputs.length === 2 &&
+        item.inputs[0].type === 'bytes32' && // ModeCode
+        item.inputs[1].type === 'bytes', // executionData
+    );
+    if (!abiItem) {
+      throw new Error(
+        `Function ${DELEGATOR_EXECUTE_FUNCTION_NAME}(bytes32,bytes) not found in ABI.`,
+      );
+    }
+
+    const delegatorOuterCallData = encodeFunctionData({
+      abi: delegatorAbi,
+      functionName: DELEGATOR_EXECUTE_FUNCTION_NAME,
+      args: [MODE_CODE_BATCH_REVERT_ON_FAILURE, encodedExecutionCalldata],
     });
 
-    const authTxPayload = {
-      address: delegateContractAddress,
-      chainId,
-      nonce,
-    };
-    console.log('AuthTxPayload:', authTxPayload);
-    // --- Let Viem handle nonce when executor is 'self' ---
-    const authorization = await signAuthorization(authTxPayload);
-    // Log the nonce Viem used (it's part of the returned object)
-    console.log('EIP-7702 Authorization Signed By Lattice', authorization);
+    const gasLimit = BigInt(400000);
+    const maxFee = parseEther('0.00000002');
+    const maxPrio = parseEther('0.0000000015');
 
-    // Prepare delegate call data
-    const delegateCallData = encodeFunctionData({
-      abi: simple7702Abi,
-      functionName: 'executeBatch',
-      args: [
-        [
-          { target: recipient1, value: value1, data: '0x' },
-          { target: recipient2, value: value2, data: '0x' },
-        ],
-      ],
-    });
-
-    // Construct and send EIP-7702 transaction
-    const gasLimit = BigInt(500000);
-    const maxFee = parseEther('0.000000001');
-    const maxPrio = parseEther('0.0000000001');
-
-    const eip7702Tx = {
-      account: latticeAddress,
-      to: latticeAddress,
-      data: delegateCallData,
-      chainId,
+    const eip7702TxForLatticeSigning = {
+      from: latticeAddress,
+      to: delegatorContractAddress,
+      data: delegatorOuterCallData,
+      chainId: sepolia.id,
       nonce: await publicClient.getTransactionCount({
         address: latticeAddress,
+        blockTag: 'pending',
       }),
-      value: BigInt(0),
+      value: totalValueForTx,
       type: 'eip7702' as const,
-      authorizationList: [
-        {
-          chainId: authorization.chainId,
-          address: authorization.address,
-          nonce: authorization.nonce,
-          yParity: Number(authorization.yParity),
-          r: authorization.r,
-          s: authorization.s,
-        },
-      ],
+      authorizationList: [],
+      accessList: [],
       gas: gasLimit,
       maxFeePerGas: maxFee,
       maxPriorityFeePerGas: maxPrio,
-      chain: foundry,
-      kzg: undefined,
     };
 
-    console.log('Sending EIP-7702 transaction with value=0 & derived nonce...');
-    const response = await signAuthorizationList(eip7702Tx);
+    console.log(
+      'Preparing to sign EIP-7702 transaction to EIP7702StatelessDeleGator...',
+    );
+    const signedEip7702Tx = await signAuthorizationList(
+      eip7702TxForLatticeSigning,
+    );
+    console.log('EIP-7702 Transaction signed by Lattice.');
 
-    // Update the signed transaction
-    const signedTx = {
-      account,
-      to: eip7702Tx.to,
-      data: eip7702Tx.data,
-      value: eip7702Tx.value,
-      gas: eip7702Tx.gas,
-      maxFeePerGas: eip7702Tx.maxFeePerGas,
-      maxPriorityFeePerGas: eip7702Tx.maxPriorityFeePerGas,
-      type: 'eip7702' as const,
-      chainId,
-      chain: foundry,
-      authorizationList: eip7702Tx.authorizationList,
-      yParity: Number(response.sig.v) % 2,
-      r: `0x${response.sig.r.toString('hex')}`,
-      s: `0x${response.sig.s.toString('hex')}`,
-      kzg: undefined,
+    const eip7702TxToSerialize: TransactionSerializableEIP7702 = {
+      chainId: eip7702TxForLatticeSigning.chainId,
+      nonce: eip7702TxForLatticeSigning.nonce,
+      gas: eip7702TxForLatticeSigning.gas,
+      maxFeePerGas: eip7702TxForLatticeSigning.maxFeePerGas,
+      maxPriorityFeePerGas: eip7702TxForLatticeSigning.maxPriorityFeePerGas,
+      to: eip7702TxForLatticeSigning.to,
+      value: eip7702TxForLatticeSigning.value,
+      data: eip7702TxForLatticeSigning.data,
+      accessList: eip7702TxForLatticeSigning.accessList,
+      authorizationList: eip7702TxForLatticeSigning.authorizationList,
+      type: 'eip7702',
+      r: signedEip7702Tx.r,
+      s: signedEip7702Tx.s,
+      yParity: Number(signedEip7702Tx.yParity) as 0 | 1,
     };
 
-    // Send the signed transaction
-    const hash = await walletClient.sendTransaction(signedTx);
-    console.log('Transaction hash:', hash);
+    const serializedTransaction = serializeTransaction(eip7702TxToSerialize);
+
+    console.log('Sending EIP-7702 transaction...');
+    const hash = await publicClient.sendRawTransaction({
+      serializedTransaction,
+    });
+    console.log(`Transaction hash: ${hash}. Waiting for receipt...`);
 
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
     console.log('Transaction receipt:', receipt);
     expect(receipt.status).toBe('success');
 
     const gasCost = receipt.gasUsed * receipt.effectiveGasPrice;
-    console.log('Gas Cost:', formatEther(gasCost), 'ETH');
+    console.log('Actual Gas Cost:', formatEther(gasCost), 'ETH');
 
-    // Get final balances
-    const finalEoaBalance_Test = await publicClient.getBalance({
-      address: account.address,
+    const finalEoaBalance = await publicClient.getBalance({
+      address: latticeAddress,
     });
     const finalBalance1 = await publicClient.getBalance({
-      address: recipient1,
+      address: recipient1 as Address,
     });
     const finalBalance2 = await publicClient.getBalance({
-      address: recipient2,
+      address: recipient2 as Address,
     });
-    console.log('Final balances:');
-    console.log('EOA:       ', formatEther(finalEoaBalance_Test), 'ETH');
-    console.log('recipient1:', formatEther(finalBalance1), 'ETH');
-    console.log('recipient2:', formatEther(finalBalance2), 'ETH');
-
-    // --- Assert Balance Changes ---
-    expect(finalEoaBalance_Test).toBe(
-      initialEoaBalance_Test - totalValue - gasCost,
+    console.log(
+      `Final Balances - EOA: ${formatEther(finalEoaBalance)}, R1: ${formatEther(finalBalance1)}, R2: ${formatEther(finalBalance2)}`,
     );
+
+    expect(finalEoaBalance).toBe(initialEoaBalance - totalValueForTx - gasCost);
     expect(finalBalance1).toBe(initialBalance1 + value1);
     expect(finalBalance2).toBe(initialBalance2 + value2);
-  }, 30000);
+  }, 60000);
 });

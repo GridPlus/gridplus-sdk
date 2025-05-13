@@ -6,7 +6,12 @@ import {
   LatticeSignEncoding,
   LatticeSignHash,
 } from './protocol/latticeConstants';
-import { FirmwareConstants, FirmwareArr, ActiveWallets } from './types';
+import {
+  FirmwareConstants,
+  FirmwareArr,
+  ActiveWallets,
+  WalletPath,
+} from './types';
 
 /**
  * Externally exported constants used for building requests
@@ -519,7 +524,7 @@ export const DEFAULT_ACTIVE_WALLETS: ActiveWallets = {
 };
 
 /** @internal */
-export const DEFAULT_ETH_DERIVATION = [
+export const DEFAULT_ETH_DERIVATION: WalletPath = [
   HARDENED_OFFSET + 44,
   HARDENED_OFFSET + 60,
   HARDENED_OFFSET,

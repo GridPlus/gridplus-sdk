@@ -150,7 +150,7 @@ export interface AuthorizationData {
  * From the spec: "authorization_list = [[chain_id, address, nonce, y_parity, r, s], ...]"
  */
 export interface Authorization extends AuthorizationData {
-  yParity?: Hex; // Recovery parameter (v)
+  yParity?: number; // Recovery parameter (v)
   r?: Hex; // r component of the signature
   s?: Hex; // s component of the signature (must be <= secp256k1n/2 per EIP-2)
 }

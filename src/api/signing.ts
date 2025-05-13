@@ -31,6 +31,8 @@ import {
 import { getYParity } from '../util';
 import { isEIP712Payload, queue } from './utilities';
 import { SignAuthorizationParameters } from 'viem/_types/accounts/utils/signAuthorization';
+import { addRecoveryParam } from '../ethereum';
+import { compactSignatureToSignature } from 'viem';
 
 // Add Zod schema for EIP7702 transaction validation
 const authorizationSchema = z.object({
@@ -65,7 +67,7 @@ const eip7702TransactionSchema = z.object({
  * This function creates and signs the authorization message required for EIP-7702 delegation.
  */
 export const signAuthorization = async (
-  authorization: SignAuthorizationParameters,
+  authorization: Omit<SignAuthorizationParameters, 'privateKey'>,
   overrides?: SignRequestParams,
 ): Promise<Authorization> => {
   // EIP-7702 authorization message is: MAGIC || rlp([chain_id, address, nonce])
@@ -128,9 +130,6 @@ export const signAuthorization = async (
 export const signAuthorizationList = async (
   tx: TransactionSerializableEIP7702,
 ): Promise<SignData> => {
-  console.log('DEBUG: Starting EIP7702 transaction validation with Zod');
-
-  // Deep clone the transaction to avoid modifying the original during validation
   const txClone = JSON.parse(
     JSON.stringify(tx, (key, value) =>
       typeof value === 'bigint' ? value.toString() : value,
@@ -162,49 +161,26 @@ export const signAuthorizationList = async (
 
   const txForValidation = convertBackBigInt(txClone);
 
-  console.log(
-    'DEBUG: Transaction to validate:',
-    JSON.stringify(
-      txForValidation,
-      (key, value) => (typeof value === 'bigint' ? value.toString() : value),
-      2,
-    ),
-  );
+  const result = eip7702TransactionSchema.safeParse(txForValidation);
 
-  // Validate with Zod schema
-  try {
-    const result = eip7702TransactionSchema.safeParse(txForValidation);
-
-    if (!result.success) {
-      console.error(
-        'DEBUG: Zod validation failed:',
-        JSON.stringify(result.error.format(), null, 2),
-      );
-
-      // Additional debugging for authorizationList
-      if (tx.authorizationList) {
-        console.log('DEBUG: Original authorizationList:');
-        tx.authorizationList.forEach((auth, idx) => {
-          console.log(`DEBUG: Auth[${idx}]:`, {
-            chainId: auth.chainId,
-            address: auth.address,
-            nonce: auth.nonce,
-            yParity: auth.yParity,
-            r: auth.r,
-            s: auth.s,
-          });
+  if (!result.success) {
+    // Additional debugging for authorizationList
+    if (tx.authorizationList) {
+      tx.authorizationList.forEach((auth, idx) => {
+        console.log(`DEBUG: Auth[${idx}]:`, {
+          chainId: auth.chainId,
+          address: auth.address,
+          nonce: auth.nonce,
+          yParity: auth.yParity,
+          r: auth.r,
+          s: auth.s,
         });
-      }
-
-      throw new Error(
-        `EIP7702 transaction validation failed: ${result.error.message}`,
-      );
+      });
     }
 
-    console.log('DEBUG: Zod validation passed');
-  } catch (error) {
-    console.error('DEBUG: Zod validation exception:', error);
-    throw error;
+    throw new Error(
+      `EIP7702 transaction validation failed: ${result.error.message}`,
+    );
   }
 
   // Extra safety check for addresses
@@ -230,9 +206,7 @@ export const signAuthorizationList = async (
   }
 
   try {
-    console.log('DEBUG: Calling serializeTransaction');
     const serializedTx = serializeTransaction(tx);
-    console.log('DEBUG: serializeTransaction succeeded');
 
     const payload: SigningPayload = {
       signerPath: DEFAULT_ETH_DERIVATION,
@@ -242,7 +216,15 @@ export const signAuthorizationList = async (
       payload: serializedTx,
     };
 
-    return queue((client) => client.sign({ data: payload }));
+    const signedPayload = await queue((client) =>
+      client.sign({ data: payload }),
+    );
+    console.log('signedPayload', signedPayload);
+    console.log('signedPayload.sig', signedPayload.sig);
+    return compactSignatureToSignature({
+      r: `0x${signedPayload.sig.r.toString('hex')}`,
+      yParityAndS: `0x${signedPayload.sig.s.toString('hex')}`,
+    });
   } catch (error) {
     console.error('DEBUG: Error during serialization:', error);
     throw error;

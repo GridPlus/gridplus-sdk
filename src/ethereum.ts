@@ -593,7 +593,7 @@ const buildEthRawTx = function (tx, sig, address) {
 };
 
 // Attach a recovery parameter to a signature by brute-forcing ECRecover
-function addRecoveryParam(hashBuf, sig, address, txData = {}) {
+export function addRecoveryParam(hashBuf, sig, address, txData = {}) {
   try {
     // Rebuild the keccak256 hash here so we can `ecrecover`
     const hash = new Uint8Array(hashBuf);

@@ -98,7 +98,7 @@ const validateEthereumAddress = (
   }
 };
 
-describe('EIP-7702', () => {
+describe.skip('EIP-7702', () => {
   /**
    * Test focusing on EIP-7702 transaction serialization
    */

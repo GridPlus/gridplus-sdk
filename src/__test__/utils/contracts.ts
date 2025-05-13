@@ -11,7 +11,7 @@ import {
   Chain,
   DeployContractParameters,
 } from 'viem';
-import { foundry } from 'viem/chains';
+import { sepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -19,25 +19,20 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 dotenv.config();
 
-const ETH_PROVIDER_URL =
-  process.env.ETH_PROVIDER_URL || 'http://localhost:8545';
 const WALLET_PRIVATE_KEY =
-  process.env.WALLET_PRIVATE_KEY ||
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
-
-// Initialize viem clients
-const transport = http('http://127.0.0.1:8545');
+const transport = http(sepolia.rpcUrls.default.http[0]);
 
 const account = privateKeyToAccount(WALLET_PRIVATE_KEY as `0x${string}`);
 
 const publicClient = createPublicClient({
-  chain: foundry,
+  chain: sepolia,
   transport,
 });
 
 const walletClient = createWalletClient({
   account,
-  chain: foundry,
+  chain: sepolia,
   transport,
 });
 
@@ -74,7 +69,8 @@ export async function deployContract(
     bytecode: artifact.bytecode.object as `0x${string}`,
     args,
     account,
-    chain: foundry,
+    chain: sepolia,
+    kzg: undefined,
   });
 
   // Wait for deployment
