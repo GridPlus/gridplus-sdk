@@ -24,14 +24,12 @@ export const sign = async (
   transaction: TransactionRequest,
   overrides?: SignRequestParams,
 ): Promise<SignData> => {
-  const serializedTx = serializeTransaction(toViemTransaction(transaction));
-
-  const payload: SigningPayload = {
+  const payload: SigningPayload = overrides?.data && 'signerPath' in overrides.data ? overrides.data : {
     signerPath: DEFAULT_ETH_DERIVATION,
     curveType: Constants.SIGNING.CURVES.SECP256K1,
     hashType: Constants.SIGNING.HASHES.KECCAK256,
     encodingType: Constants.SIGNING.ENCODINGS.EVM,
-    payload: serializedTx,
+    payload: serializeTransaction(toViemTransaction(transaction)),
     decoder: await fetchDecoder(transaction),
   };
 
