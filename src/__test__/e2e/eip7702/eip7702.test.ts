@@ -98,7 +98,7 @@ const validateEthereumAddress = (
   }
 };
 
-describe.skip('EIP-7702', () => {
+describe('EIP-7702 Core Functionality', () => {
   /**
    * Test focusing on EIP-7702 transaction serialization
    */
@@ -119,10 +119,10 @@ describe.skip('EIP-7702', () => {
       console.log('✅ Pairing completed');
     }
 
-    // Define the authorization with required fields
+    // Define the authorization with required fields (using contractAddress)
     const authorization = {
       chainId: 1,
-      address: '0x769F783730E49994F724069898f8738bFd406DfD' as Address,
+      contractAddress: '0x769F783730E49994F724069898f8738bFd406DfD' as Address,
       nonce: 0,
       yParity: 1,
       r: '0xcd27f8d16ea21ba806b8a9c3fad886dc77cb3887715b272ebe1448c67d2d5ffe' as Hex,
@@ -213,7 +213,7 @@ describe.skip('EIP-7702', () => {
       // 4. Validate each authorization in the list
       const requiredAuthFields = [
         'chainId',
-        'address',
+        'contractAddress',
         'nonce',
         'yParity',
         'r',
@@ -241,17 +241,17 @@ describe.skip('EIP-7702', () => {
           console.log(`  - ${field}: ${auth[field]} (${typeof auth[field]})`);
 
           // Extra validation for specific fields
-          if (field === 'address') {
+          if (field === 'contractAddress') {
             // Enhanced address validation
             const addressValidation = validateEthereumAddress(
-              auth.address as string,
+              auth.contractAddress as string,
             );
             if (!addressValidation.valid) {
               console.error(`❌ ${addressValidation.error}`);
               throw new Error(addressValidation.error);
             }
             console.log(
-              `  - address: ${auth.address} (✓ valid checksum address)`,
+              `  - contractAddress: ${auth.contractAddress} (✓ valid checksum address)`,
             );
           }
 

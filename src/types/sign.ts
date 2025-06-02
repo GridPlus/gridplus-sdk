@@ -140,7 +140,7 @@ export interface EIP712MessagePayload {
  * This is what needs to be signed with ecrecover: keccak(MAGIC || rlp([chain_id, address, nonce]))
  */
 export interface AuthorizationData {
-  address: Address; // The target contract address for delegation
+  contractAddress: Address; // The target contract address for delegation
   chainId: number; // Either 0 (valid on all chains) or the specific chain ID
   nonce: number; // Must be less than 2^64 - 1
 }
