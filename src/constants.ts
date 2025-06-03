@@ -11,7 +11,7 @@ import {
   FirmwareArr,
   ActiveWallets,
   WalletPath,
-} from './types';
+} from './types/index.js';
 
 /**
  * Externally exported constants used for building requests

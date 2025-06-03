@@ -1,8 +1,7 @@
 import { RLP } from '@ethereumjs/rlp';
 import { keccak256 } from 'js-sha3';
-import type { Hex } from 'viem';
+import type { Hex, Address } from 'viem';
 import { serializeTransaction, TransactionSerializableEIP7702 } from 'viem';
-import { SignAuthorizationParameters } from 'viem/_types/accounts/utils/signAuthorization';
 import { z } from 'zod';
 import { Constants } from '..';
 import {
@@ -30,6 +29,12 @@ import {
 } from '../types';
 import { getYParity } from '../util';
 import { isEIP712Payload, queue } from './utilities';
+
+// Define the authorization request type based on Viem's structure
+type AuthorizationRequest = {
+  chainId: number;
+  nonce: number;
+} & ({ address: Address } | { contractAddress: Address });
 
 export const sign = async (
   transaction: TransactionRequest,
@@ -106,20 +111,23 @@ const eip7702TransactionSchema = z.object({
  * This function creates and signs the authorization message required for EIP-7702 delegation.
  */
 export const signAuthorization = async (
-  authorization: Omit<SignAuthorizationParameters, 'privateKey'>,
+  authorization: AuthorizationRequest,
   overrides?: SignRequestParams,
 ): Promise<Authorization> => {
   // EIP-7702 authorization message is: MAGIC || rlp([chain_id, address, nonce])
   // MAGIC = 0x05 per EIP-7702 spec
   const MAGIC = Buffer.from([0x05]);
+
+  // Handle the address/contractAddress alias
+  const address =
+    'address' in authorization
+      ? authorization.address
+      : authorization.contractAddress;
+
   const message = Buffer.concat([
     MAGIC,
     Buffer.from(
-      RLP.encode([
-        authorization.chainId,
-        authorization.contractAddress,
-        authorization.nonce,
-      ]),
+      RLP.encode([authorization.chainId, address, authorization.nonce]),
     ),
   ]);
 
@@ -138,8 +146,9 @@ export const signAuthorization = async (
 
   // Create a result object that combines authorization data with signature components
   const result: Authorization = {
-    contractAddress: authorization.contractAddress,
-    ...authorization,
+    contractAddress: address,
+    chainId: authorization.chainId,
+    nonce: authorization.nonce,
   };
 
   // Extract signature components if they exist
