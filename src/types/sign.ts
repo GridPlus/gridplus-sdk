@@ -1,7 +1,17 @@
 import { Client } from '../client';
 import { SigningPath, Currency, Wallet } from './client';
 import { FirmwareConstants } from './firmware';
-import type { Address, Hex } from 'viem';
+import type {
+  Address,
+  Hex,
+  Hash,
+  TransactionSerializable,
+  TransactionSerializableEIP1559,
+  TransactionSerializableEIP2930,
+  TransactionSerializableEIP7702,
+  TypedData,
+  TypedDataDefinition,
+} from 'viem';
 
 export type ETH_MESSAGE_PROTOCOLS = 'eip712' | 'signPersonal';
 
@@ -11,33 +21,36 @@ export const TRANSACTION_TYPE = {
   EIP1559: 2,
   EIP7702_AUTH: 4,
   EIP7702_AUTH_LIST: 5,
-};
+} as const;
 
 export type TransactionRequest =
   | {
-      to: string;
-      value: string;
-      data: string;
+      to: Address;
+      value?: Hex | bigint;
+      data?: Hex;
       chainId: number;
       nonce: number;
-      gasLimit: string;
-      maxFeePerGas?: string;
-      maxPriorityFeePerGas?: string;
-      from?: string;
-      accessList?: Array<{ address: string; storageKeys: string[] }>;
+      gasLimit: Hex | bigint;
+      gasPrice?: Hex | bigint; // Legacy transactions
+      maxFeePerGas?: Hex | bigint; // EIP-1559
+      maxPriorityFeePerGas?: Hex | bigint; // EIP-1559
+      from?: Address;
+      accessList?: Array<{ address: Address; storageKeys: Hex[] }>;
       type?: (typeof TRANSACTION_TYPE)[keyof typeof TRANSACTION_TYPE];
     }
   | EIP7702Transaction;
 
-export interface SigningPayload {
+export interface SigningPayload<
+  TTypedData extends TypedData | Record<string, unknown> = TypedData,
+> {
   signerPath: SigningPath;
   payload:
     | Uint8Array
     | Uint8Array[]
     | Buffer
     | Buffer[]
-    | string
-    | EIP712MessagePayload;
+    | Hex
+    | EIP712MessagePayload<TTypedData>;
   curveType: number;
   hashType: number;
   encodingType?: number;
@@ -45,14 +58,18 @@ export interface SigningPayload {
   decoder?: Buffer;
 }
 
-export interface SignRequestParams {
-  data: SigningPayload | BitcoinSignPayload;
+export interface SignRequestParams<
+  TTypedData extends TypedData | Record<string, unknown> = TypedData,
+> {
+  data: SigningPayload<TTypedData> | BitcoinSignPayload;
   currency?: Currency;
   cachedData?: any;
   nextCode?: Buffer;
 }
 
-export interface SignRequestFunctionParams extends SignRequestParams {
+export interface SignRequestFunctionParams<
+  TTypedData extends TypedData | Record<string, unknown> = TypedData,
+> extends SignRequestParams<TTypedData> {
   client: Client;
 }
 
@@ -121,16 +138,18 @@ export interface DecodeSignResponseParams {
   currency?: Currency;
 }
 
-export interface EIP712MessagePayload {
-  types: {
-    [key: string]: {
-      name: string;
-      type: string;
-    }[];
-  };
-  domain: any;
-  primaryType: string;
-  message: any;
+export interface EIP712MessagePayload<
+  TTypedData extends TypedData | Record<string, unknown> = TypedData,
+  TPrimaryType extends keyof TTypedData | 'EIP712Domain' = keyof TTypedData,
+> {
+  types: TTypedData;
+  domain: TTypedData extends TypedData
+    ? TypedDataDefinition<TTypedData, 'EIP712Domain'>['message']
+    : any;
+  primaryType: TPrimaryType;
+  message: TTypedData extends TypedData
+    ? TypedDataDefinition<TTypedData, TPrimaryType>['message']
+    : any;
 }
 
 // EIP-7702 Types
@@ -146,17 +165,18 @@ export interface AuthorizationData {
 }
 
 /**
- * EIP-7702 Authorization tuple structure.
+ * EIP-7702 Authorization tuple structure compatible with Viem.
  * From the spec: "authorization_list = [[chain_id, address, nonce, y_parity, r, s], ...]"
  */
 export interface Authorization extends AuthorizationData {
+  address: Address; // Alias for contractAddress to match Viem
   yParity?: number; // Recovery parameter (v)
   r?: Hex; // r component of the signature
   s?: Hex; // s component of the signature (must be <= secp256k1n/2 per EIP-2)
 }
 
 /**
- * EIP-7702 Base transaction structure.
+ * EIP-7702 Base transaction structure compatible with Viem.
  * From the spec:
  * "rlp([chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, destination, value, data, access_list, authorization_list, signature_y_parity, signature_r, signature_s])"
  */
@@ -164,11 +184,11 @@ export interface EIP7702BaseTransaction {
   type: number; // Transaction type (0x04 for EIP-7702)
   chainId: number; // Chain ID for the transaction
   nonce: number; // Sender's nonce
-  maxPriorityFeePerGas: bigint | string; // EIP-1559 max priority fee
-  maxFeePerGas: bigint | string; // EIP-1559 max fee
-  gasLimit: bigint | string; // Gas limit for the transaction
+  maxPriorityFeePerGas: bigint | Hex; // EIP-1559 max priority fee
+  maxFeePerGas: bigint | Hex; // EIP-1559 max fee
+  gasLimit: bigint | Hex; // Gas limit for the transaction
   to: Address; // Destination address (null destination not valid)
-  value: bigint | string; // ETH value to send
+  value?: bigint | Hex; // ETH value to send
   data?: Hex; // Transaction calldata
   accessList?: Array<{ address: Address; storageKeys: Hex[] }>; // EIP-2930 access list
 }
@@ -194,3 +214,22 @@ export interface EIP7702AuthListTransaction extends EIP7702BaseTransaction {
 export type EIP7702Transaction =
   | EIP7702AuthTransaction
   | EIP7702AuthListTransaction;
+
+// Viem-compatible signature type
+export interface ViemSignature {
+  r: Hex;
+  s: Hex;
+  v: number;
+  yParity: number;
+}
+
+// Enhanced SignData to be more Viem-compatible
+export interface EnhancedSignData {
+  sig?: {
+    r: Buffer;
+    s: Buffer;
+    v: Buffer;
+  };
+  pubkey?: Buffer;
+  signature?: ViemSignature; // Viem-compatible format
+}

@@ -1,7 +1,14 @@
 import { RLP } from '@ethereumjs/rlp';
 import { keccak256 } from 'js-sha3';
-import type { Hex, Address } from 'viem';
-import { serializeTransaction, TransactionSerializableEIP7702 } from 'viem';
+import type {
+  Hex,
+  Address,
+  TransactionSerializable,
+  TransactionSerializableEIP7702,
+  TypedData,
+  TypedDataDefinition,
+} from 'viem';
+import { serializeTransaction } from 'viem';
 import { z } from 'zod';
 import { Constants } from '..';
 import {
@@ -26,6 +33,7 @@ import {
   SigningPayload,
   SignRequestParams,
   TransactionRequest,
+  ViemSignature,
 } from '../types';
 import { getYParity } from '../util';
 import { isEIP712Payload, queue } from './utilities';
@@ -36,13 +44,22 @@ type AuthorizationRequest = {
   nonce: number;
 } & ({ address: Address } | { contractAddress: Address });
 
+/**
+ * Sign a transaction using Viem-compatible transaction types
+ */
 export const sign = async (
-  transaction: TransactionRequest,
-  overrides?: SignRequestParams,
+  transaction: TransactionRequest | TransactionSerializable,
+  overrides?: Omit<SignRequestParams<any>, 'data'>,
 ): Promise<SignData> => {
-  const serializedTx = isEip7702Transaction(transaction)
-    ? serializeEIP7702Transaction(transaction as any)
-    : serializeTransaction(toViemTransaction(transaction));
+  // Handle both our transaction format and Viem's format
+  const serializedTx =
+    'type' in transaction && typeof transaction.type === 'string'
+      ? serializeTransaction(transaction as TransactionSerializable)
+      : isEip7702Transaction(transaction as TransactionRequest)
+        ? serializeEIP7702Transaction(transaction as any)
+        : serializeTransaction(
+            toViemTransaction(transaction as TransactionRequest),
+          );
 
   const payload: SigningPayload = {
     signerPath: DEFAULT_ETH_DERIVATION,
@@ -50,15 +67,26 @@ export const sign = async (
     hashType: Constants.SIGNING.HASHES.KECCAK256,
     encodingType: Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST,
     payload: serializedTx,
-    decoder: await fetchDecoder(transaction),
+    decoder: await fetchDecoder(transaction as TransactionRequest),
   };
 
   return queue((client) => client.sign({ data: payload, ...overrides }));
 };
 
-export const signMessage = async (
-  payload: string | Uint8Array | Buffer | Buffer[] | EIP712MessagePayload,
-  overrides?: SignRequestParams,
+/**
+ * Sign a message with support for EIP-712 typed data and const assertions
+ */
+export const signMessage = async <
+  TTypedData extends TypedData | Record<string, unknown> = TypedData,
+  TPrimaryType extends keyof TTypedData | 'EIP712Domain' = keyof TTypedData,
+>(
+  payload:
+    | string
+    | Uint8Array
+    | Buffer
+    | Buffer[]
+    | EIP712MessagePayload<TTypedData, TPrimaryType>,
+  overrides?: Omit<SignRequestParams<any>, 'data'>,
 ): Promise<SignData> => {
   const tx = {
     data: {
@@ -68,7 +96,7 @@ export const signMessage = async (
       protocol: 'signPersonal',
       payload,
       ...overrides,
-    } as SigningPayload,
+    } as SigningPayload<any>,
     currency: CURRENCIES.ETH_MSG,
   };
 
@@ -102,17 +130,11 @@ const eip7702TransactionSchema = z.object({
 
 /**
  * Signs an EIP-7702 authorization to set code for an externally owned account (EOA).
- *
- * From the EIP-7702 spec:
- * - "MAGIC = 0x05" (parameter value)
- * - "authority = ecrecover(keccak(MAGIC || rlp([chain_id, address, nonce])), y_parity, r, s)"
- *   where s value must be less than or equal to secp256k1n/2, as specified in EIP-2.
- *
- * This function creates and signs the authorization message required for EIP-7702 delegation.
+ * Returns a Viem-compatible authorization object.
  */
 export const signAuthorization = async (
   authorization: AuthorizationRequest,
-  overrides?: SignRequestParams,
+  overrides?: Omit<SignRequestParams<any>, 'data'>,
 ): Promise<Authorization> => {
   // EIP-7702 authorization message is: MAGIC || rlp([chain_id, address, nonce])
   // MAGIC = 0x05 per EIP-7702 spec
@@ -147,6 +169,7 @@ export const signAuthorization = async (
   // Create a result object that combines authorization data with signature components
   const result: Authorization = {
     contractAddress: address,
+    address, // Viem compatibility
     chainId: authorization.chainId,
     nonce: authorization.nonce,
   };
@@ -176,6 +199,9 @@ export const signAuthorization = async (
   return result;
 };
 
+/**
+ * Sign an EIP-7702 authorization list transaction using Viem-compatible types
+ */
 export const signAuthorizationList = async (
   tx: TransactionSerializableEIP7702,
 ): Promise<SignData> => {

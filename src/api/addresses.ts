@@ -1,3 +1,4 @@
+import type { Address } from 'viem';
 import {
   BTC_LEGACY_CHANGE_DERIVATION,
   BTC_LEGACY_DERIVATION,
@@ -26,8 +27,10 @@ type FetchAddressesParams = {
   flag?: number;
 };
 
-export const fetchAddresses = async (overrides?: GetAddressesRequestParams) => {
-  let allAddresses: string[] = [];
+export const fetchAddresses = async (
+  overrides?: GetAddressesRequestParams,
+): Promise<Address[]> => {
+  let allAddresses: Address[] = [];
   let totalFetched = 0;
   const totalToFetch = overrides?.n || MAX_ADDR;
 
@@ -42,12 +45,14 @@ export const fetchAddresses = async (overrides?: GetAddressesRequestParams) => {
           n: batchSize,
         })
         .then((addresses: Buffer[] | string[]) => {
-          const stringAddresses = addresses.map((addr) =>
-            typeof addr === 'string' ? addr : addr.toString(),
-          );
-          if (stringAddresses.length > 0) {
-            allAddresses = [...allAddresses, ...stringAddresses];
-            totalFetched += stringAddresses.length;
+          const addressArray = addresses.map((addr) => {
+            const addressStr =
+              typeof addr === 'string' ? addr : addr.toString();
+            return addressStr as Address;
+          });
+          if (addressArray.length > 0) {
+            allAddresses = [...allAddresses, ...addressArray];
+            totalFetched += addressArray.length;
           }
         }),
     );
@@ -64,7 +69,7 @@ export const fetchAddresses = async (overrides?: GetAddressesRequestParams) => {
  */
 export const fetchAddress = async (
   path: number | WalletPath = 0,
-): Promise<string> => {
+): Promise<Address> => {
   return fetchAddresses({
     startPath:
       typeof path === 'number'
@@ -78,7 +83,7 @@ function createFetchBtcAddressesFunction(derivationPath: number[]) {
   return async ({
     n = MAX_ADDR,
     startPathIndex = 0,
-  }: FetchAddressesParams = {}) => {
+  }: FetchAddressesParams = {}): Promise<Address[]> => {
     return fetchAddresses({
       startPath: getStartPath(derivationPath, startPathIndex),
       n,
@@ -106,7 +111,7 @@ export const fetchBtcWrappedSegwitChangeAddresses =
 export const fetchSolanaAddresses = async ({
   n = MAX_ADDR,
   startPathIndex = 0,
-}: FetchAddressesParams = {}) => {
+}: FetchAddressesParams = {}): Promise<Address[]> => {
   return fetchAddresses({
     startPath: getStartPath(SOLANA_DERIVATION, startPathIndex, 2),
     n,
@@ -117,7 +122,7 @@ export const fetchSolanaAddresses = async ({
 export const fetchLedgerLiveAddresses = async ({
   n = MAX_ADDR,
   startPathIndex = 0,
-}: FetchAddressesParams = {}) => {
+}: FetchAddressesParams = {}): Promise<Address[][]> => {
   const addresses = [];
   for (let i = 0; i < n; i++) {
     addresses.push(
@@ -131,7 +136,9 @@ export const fetchLedgerLiveAddresses = async ({
             ),
             n: 1,
           })
-          .then((addresses) => addresses.map((address) => `${address}`)),
+          .then((addresses) =>
+            addresses.map((address) => `${address}` as Address),
+          ),
       ),
     );
   }
@@ -141,7 +148,7 @@ export const fetchLedgerLiveAddresses = async ({
 export const fetchLedgerLegacyAddresses = async ({
   n = MAX_ADDR,
   startPathIndex = 0,
-}: FetchAddressesParams = {}) => {
+}: FetchAddressesParams = {}): Promise<Address[][]> => {
   const addresses = [];
   for (let i = 0; i < n; i++) {
     addresses.push(
@@ -155,7 +162,9 @@ export const fetchLedgerLegacyAddresses = async ({
             ),
             n: 1,
           })
-          .then((addresses) => addresses.map((address) => `${address}`)),
+          .then((addresses) =>
+            addresses.map((address) => `${address}` as Address),
+          ),
       ),
     );
   }
@@ -165,7 +174,7 @@ export const fetchLedgerLegacyAddresses = async ({
 export const fetchBip44ChangeAddresses = async ({
   n = MAX_ADDR,
   startPathIndex = 0,
-}: FetchAddressesParams = {}) => {
+}: FetchAddressesParams = {}): Promise<Address[][]> => {
   const addresses = [];
   for (let i = 0; i < n; i++) {
     addresses.push(
@@ -182,7 +191,9 @@ export const fetchBip44ChangeAddresses = async ({
             n: 1,
             flag: 4,
           })
-          .then((addresses) => addresses.map((address) => `${address}`));
+          .then((addresses) =>
+            addresses.map((address) => `${address}` as Address),
+          );
       }),
     );
   }
@@ -192,7 +203,7 @@ export const fetchBip44ChangeAddresses = async ({
 export async function fetchAddressesByDerivationPath(
   path: string,
   { n = 1, startPathIndex = 0, flag }: FetchAddressesParams = {},
-): Promise<string[]> {
+): Promise<Address[]> {
   const components = path.split('/').filter(Boolean);
   const parsedPath = parseDerivationPathComponents(components);
   const _flag = getFlagFromPath(parsedPath);
@@ -209,14 +220,16 @@ export async function fetchAddressesByDerivationPath(
           n,
         })
         .then((addresses) =>
-          addresses.map((addr) =>
-            typeof addr === 'string' ? addr : addr.toString(),
-          ),
+          addresses.map((addr) => {
+            const addressStr =
+              typeof addr === 'string' ? addr : addr.toString();
+            return addressStr as Address;
+          }),
         ),
     );
   }
 
-  const addresses: string[] = [];
+  const addresses: Address[] = [];
   for (let i = 0; i < n; i++) {
     const currentPath = [...parsedPath];
     currentPath[wildcardIndex] =
@@ -230,9 +243,11 @@ export async function fetchAddressesByDerivationPath(
           n: 1,
         })
         .then((addresses) =>
-          addresses.map((addr) =>
-            typeof addr === 'string' ? addr : addr.toString(),
-          ),
+          addresses.map((addr) => {
+            const addressStr =
+              typeof addr === 'string' ? addr : addr.toString();
+            return addressStr as Address;
+          }),
         ),
     );
     addresses.push(...result);
