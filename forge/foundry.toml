@@ -1,14 +1,6 @@
 [profile.default]
-src = 'src'
-out = 'out'
-evm_version = "prague"
-libs = ['lib', 'node_modules']
-remappings = [
-    '@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/',
-    '@openzeppelin/=lib/openzeppelin-contracts/',
-    '@account-abstraction/=node_modules/@account-abstraction/',
-    'forge-std/=lib/forge-std/src/'
-]
-solc = "0.8.28"
+src = "src"
+out = "out"
+libs = ["lib"]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
