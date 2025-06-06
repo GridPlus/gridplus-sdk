@@ -13,12 +13,7 @@ import {
   MAX_CHAIN_ID_BYTES,
   ethMsgProtocol,
 } from './constants';
-import {
-  LatticeSignCurve,
-  LatticeSignEncoding,
-  LatticeSignHash,
-  LatticeSignSchema,
-} from './protocol';
+import { LatticeSignSchema } from './protocol';
 import {
   buildSignerPathBuf,
   ensureHexBuffer,
@@ -28,25 +23,11 @@ import {
 } from './util';
 import * as cbor from 'cbor';
 import bdec from 'cbor-bigdecimal';
-import {
-  Hex,
-  toHex,
-  TransactionSerializable,
-  serializeTransaction,
-  TransactionSerializableEIP7702,
-} from 'viem';
+import { Hex, TransactionSerializable, serializeTransaction } from 'viem';
 
 import { TransactionRequest, TRANSACTION_TYPE } from './types';
 
 bdec(cbor);
-
-// Custom JSON replacer to handle BigInt values
-const bigIntReplacer = (key, value) => {
-  if (typeof value === 'bigint') {
-    return value.toString();
-  }
-  return value;
-};
 
 const buildEthereumMsgRequest = function (input) {
   if (!input.payload || !input.protocol || !input.signerPath)

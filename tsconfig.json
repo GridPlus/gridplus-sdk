@@ -1,18 +1,36 @@
 {
   "compilerOptions": {
     "declaration": true,
+    "declarationMap": true,
     "esModuleInterop": true,
-    "lib": ["ES2020"],
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2020", "DOM"],
     "module": "ESNext",
     "moduleResolution": "node",
     "outDir": "./dist",
+    // "strictNullChecks": true,
+    // "strictFunctionTypes": true,
+    // "strictBindCallApply": true,
+    // "strictPropertyInitialization": true,
+    // "noImplicitAny": true,
+    // "noImplicitThis": true,
+    // "alwaysStrict": true,
+    // "noUnusedLocals": true,
+    // "noUnusedParameters": true,
+    // "noImplicitReturns": true,
+    // "noFallthroughCasesInSwitch": true,
     "resolveJsonModule": true,
     "rootDir": "./src",
+    "skipDefaultLibCheck": true,
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": false,
-    "target": "ES2020"
+    "target": "ES2020",
+    "typeRoots": ["node_modules/@types", "src/**/types"],
+    "types": ["node"]
   },
   "exclude": ["node_modules", "**/__test__", "**/*.spec.ts", "**/*.test.ts"],
-  "include": ["src", "src/__test__/e2e"]
+  "include": ["src"]
 }

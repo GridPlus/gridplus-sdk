@@ -28,8 +28,6 @@ const getFoundryAddress = (): Address => {
 
 // Get Foundry private key for signing
 const getFoundryPrivateKey = (): Hex => {
-  // This would need to be implemented - for now we'll use a mock
-  // In a real scenario, you'd derive the private key from the same path
   return '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'; // Foundry test account #0 private key
 };
 

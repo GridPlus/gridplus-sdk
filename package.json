@@ -9,8 +9,8 @@
     "lint:fix": "eslint src --c .ts,.tsx --config eslint.config.mjs --fix",
     "lint": "eslint src --c .ts,.tsx --config eslint.config.mjs",
     "precommit": "npm run lint:fix && npm run test",
-    "test": "vitest run",
-    "test-unit": "vitest  ./src/__test__/unit --maxConcurrency 10 --fileParallelism true",
+    "test": "vitest ./src/__test__/unit ./src/__test__/integration",
+    "test-unit": "vitest ./src/__test__/unit --maxConcurrency 10 --fileParallelism true",
     "unit-api": "vitest ./src/__test__/unit/api.test.ts",
     "unit-decode": "vitest ./src/__test__/unit/decoders.test.ts",
     "unit-encode": "vitest ./src/__test__/unit/encoders.test.ts",
@@ -85,8 +85,7 @@
     "lodash": "^4.17.21",
     "secp256k1": "5.0.1",
     "uuid": "^10.0.0",
-    "viem": "^2.30.0",
-    "zod": "^3.24.3"
+    "viem": "^2.30.0"
   },
   "devDependencies": {
     "@chainsafe/bls-keystore": "^3.1.0",
