@@ -1,4 +1,6 @@
 import type { ec } from 'elliptic';
+import type { Signature } from 'viem';
+
 export interface KVRecords {
   [key: string]: string;
 }
@@ -8,11 +10,7 @@ export interface EncrypterParams {
   sharedSecret: Buffer;
 }
 
-export interface Signature {
-  r: Buffer;
-  s: Buffer;
-  v?: Buffer;
-}
+export type { Signature };
 
 export type KeyPair = ec.KeyPair;
 

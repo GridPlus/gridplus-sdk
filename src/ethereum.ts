@@ -36,18 +36,9 @@ import {
   TransactionSerializableEIP7702,
 } from 'viem';
 
-import {
-  TransactionRequest,
-  TRANSACTION_TYPE,
-  EIP7702Transaction,
-  EIP7702AuthTransaction,
-  EIP7702AuthListTransaction,
-} from './types';
+import { TransactionRequest, TRANSACTION_TYPE } from './types';
 
 bdec(cbor);
-
-const ETH_TX_TYPE_EIP7702_AUTH = 0x04;
-const ETH_TX_TYPE_EIP7702_AUTH_LIST = 0x05;
 
 // Custom JSON replacer to handle BigInt values
 const bigIntReplacer = (key, value) => {
@@ -56,35 +47,6 @@ const bigIntReplacer = (key, value) => {
   }
   return value;
 };
-
-// Add these type definitions near the top with other imports
-interface EIP7702BaseTransactionRequest {
-  type: number;
-  chainId: number;
-  nonce: number;
-  gasPrice: string;
-  gasLimit: string;
-  to: string;
-  value?: string;
-  data?: string;
-  validUntil: number;
-  authorizedAmount: string;
-  maxPriorityFeePerGas: string;
-  maxFeePerGas: string;
-}
-
-interface EIP7702AuthTransactionRequest extends EIP7702BaseTransactionRequest {
-  type: 4;
-}
-
-interface EIP7702AuthListTransactionRequest
-  extends EIP7702BaseTransactionRequest {
-  type: 5;
-  accessList: {
-    address: string;
-    storageKeys: string[];
-  }[];
-}
 
 const buildEthereumMsgRequest = function (input) {
   if (!input.payload || !input.protocol || !input.signerPath)
@@ -453,83 +415,8 @@ const buildEthereumTxRequest = function (data) {
       off += MAX_BASE_DATA_SZ;
     }
 
-    if (
-      data.type === ETH_TX_TYPE_EIP7702_AUTH ||
-      data.type === ETH_TX_TYPE_EIP7702_AUTH_LIST
-    ) {
-      const authData = data;
-      const isAuthList = data.type === ETH_TX_TYPE_EIP7702_AUTH_LIST;
-
-      // Convert validUntil to buffer
-      const validUntilBuf = Buffer.alloc(8);
-      validUntilBuf.writeBigUInt64BE(BigInt(authData.validUntil));
-
-      // Convert authorizedAmount to buffer
-      const authorizedAmountBuf = ensureHexBuffer(authData.authorizedAmount);
-
-      // Build RLP array
-      const rawTx = [
-        ensureHexBuffer(authData.nonce),
-        ensureHexBuffer(authData.gasPrice),
-        ensureHexBuffer(authData.gasLimit),
-        ensureHexBuffer(authData.to),
-        ensureHexBuffer(authData.value || '0x0'),
-        ensureHexBuffer(authData.data || '0x'),
-        ensureHexBuffer(authData.chainId),
-        validUntilBuf,
-        authorizedAmountBuf,
-      ];
-
-      // Add access list for auth list transactions
-      if (isAuthList && 'accessList' in authData) {
-        const accessList = authData.accessList.map((entry) => [
-          ensureHexBuffer(entry.address),
-          entry.storageKeys.map((key) => ensureHexBuffer(key)),
-        ]);
-        rawTx.push(accessList);
-      }
-
-      // Build the request
-      const req = {
-        protocol: ethMsgProtocol.TYPED_DATA,
-        payload: null,
-        schema: LatticeSignSchema.ethereum,
-        curve: LatticeSignCurve.secp256k1,
-        hashType: LatticeSignHash.keccak256,
-        encodingType: LatticeSignEncoding.evm,
-      };
-
-      // Get the chain ID buffer
-      const chainIdBuf = getChainIdBuf(authData.chainId);
-      const chainIdBufSz = chainIdBuf ? chainIdBuf.length : 0;
-
-      // Encode the transaction
-      const ETH_TX_NON_DATA_SZ = 122;
-      const txReqPayload = Buffer.alloc(MAX_BASE_DATA_SZ + ETH_TX_NON_DATA_SZ);
-      let off = 0;
-
-      // Write EIP155 switch and chainID
-      txReqPayload.writeUInt8(chainIdBufSz > 0 ? 1 : 0, off);
-      off += 1;
-      if (chainIdBufSz > 0) {
-        txReqPayload.writeUInt8(chainIdBufSz, off);
-        off += 1;
-        chainIdBuf.copy(txReqPayload, off);
-        off += chainIdBufSz;
-      }
-
-      // Write the transaction type
-      txReqPayload.writeUInt8(authData.type, off);
-      off += 1;
-
-      // Write the RLP-encoded transaction
-      const rlpEncoded = Buffer.from(RLP.encode(rawTx));
-      rlpEncoded.copy(txReqPayload, off);
-      off += rlpEncoded.length;
-
-      req.payload = txReqPayload.slice(0, off);
-      return req;
-    }
+    // NOTE: EIP-7702 transactions should go through the new signEip7702Transaction API
+    // and serializeEIP7702Transaction function, not through this legacy buildEthereumTxRequest path
 
     return {
       rawTx,
@@ -575,15 +462,13 @@ const buildEthRawTx = function (tx, sig, address) {
   newRawTx.push(stripZeros(newSig.s));
   let rlpEncodedWithSig = Buffer.from(RLP.encode(newRawTx));
   if (tx.type) {
-    rlpEncodedWithSig = Buffer.concat([
-      Buffer.from([tx.type]),
-      rlpEncodedWithSig,
-    ]) as unknown as Buffer;
+    const typeBuffer = Buffer.from([tx.type]);
+    rlpEncodedWithSig = Buffer.concat([typeBuffer, rlpEncodedWithSig]);
   }
 
   if (
-    tx.type === ETH_TX_TYPE_EIP7702_AUTH ||
-    tx.type === ETH_TX_TYPE_EIP7702_AUTH_LIST
+    tx.type === TRANSACTION_TYPE.EIP7702_AUTH ||
+    tx.type === TRANSACTION_TYPE.EIP7702_AUTH_LIST
   ) {
     // For EIP-7702 transactions, we return just the hex string
     return rlpEncodedWithSig.toString('hex');
@@ -1132,7 +1017,7 @@ const ethConvertLegacyToGenericReq = function (req) {
   }
 };
 
-// Convert an ethers `TransactionRequest` to a viem `TransactionSerializable`
+// Convert a GridPlus SDK `TransactionRequest` to a viem `TransactionSerializable`
 export const toViemTransaction = (
   tx: TransactionRequest,
 ): TransactionSerializable => {
@@ -1141,29 +1026,55 @@ export const toViemTransaction = (
     value: tx.value ? BigInt(tx.value) : undefined,
     data: tx.data as `0x${string}`,
     nonce: tx.nonce,
-    gas: tx.gasLimit ? BigInt(tx.gasLimit) : undefined,
+    gas: tx.gas ? BigInt(tx.gas) : undefined,
+    chainId: tx.chainId,
   };
 
-  if (tx.type === TRANSACTION_TYPE.EIP1559) {
-    return {
-      ...base,
-      type: 'eip1559',
-      maxFeePerGas: tx.maxFeePerGas ? BigInt(tx.maxFeePerGas) : undefined,
-      maxPriorityFeePerGas: tx.maxPriorityFeePerGas
-        ? BigInt(tx.maxPriorityFeePerGas)
-        : undefined,
-      chainId: tx.chainId,
-      accessList: tx.accessList?.map((item) => ({
-        address: item.address as `0x${string}`,
-        storageKeys: item.storageKeys as `0x${string}`[],
-      })),
-    };
+  switch (tx.type) {
+    case TRANSACTION_TYPE.LEGACY:
+      return {
+        ...base,
+        type: 'legacy',
+        gasPrice: BigInt(tx.gasPrice),
+      };
+
+    case TRANSACTION_TYPE.EIP2930:
+      return {
+        ...base,
+        type: 'eip2930',
+        gasPrice: BigInt(tx.gasPrice),
+        accessList: tx.accessList || [],
+      };
+
+    case TRANSACTION_TYPE.EIP1559:
+      return {
+        ...base,
+        type: 'eip1559',
+        maxFeePerGas: BigInt(tx.maxFeePerGas),
+        maxPriorityFeePerGas: BigInt(tx.maxPriorityFeePerGas),
+        accessList: tx.accessList || [],
+      };
+
+    case TRANSACTION_TYPE.EIP7702_AUTH_LIST:
+      return {
+        ...base,
+        type: 'eip7702',
+        maxFeePerGas: BigInt(tx.maxFeePerGas),
+        maxPriorityFeePerGas: BigInt(tx.maxPriorityFeePerGas),
+        accessList: tx.accessList || [],
+        authorizationList: tx.authorizationList.map((auth) => ({
+          chainId: auth.chainId,
+          address: auth.address,
+          nonce: auth.nonce,
+          r: auth.r,
+          s: auth.s,
+          yParity: auth.yParity || 0,
+        })),
+      };
+
+    default:
+      throw new Error(`Unsupported transaction type: ${(tx as any).type}`);
   }
-
-  return {
-    ...base,
-    gasPrice: tx.maxFeePerGas ? BigInt(tx.maxFeePerGas) : undefined,
-  };
 };
 
 /**
@@ -1172,70 +1083,62 @@ export const toViemTransaction = (
  * @param tx The EIP7702 transaction to serialize
  * @returns The serialized transaction as a hex string
  */
-export function serializeEIP7702Transaction(
-  tx: EIP7702AuthListTransaction,
-): Hex {
-  if (tx.type !== TRANSACTION_TYPE.EIP7702_AUTH_LIST) {
+export function serializeEIP7702Transaction(tx: TransactionRequest): Hex {
+  if (
+    tx.type !== TRANSACTION_TYPE.EIP7702_AUTH_LIST &&
+    tx.type !== TRANSACTION_TYPE.EIP7702_AUTH
+  ) {
     throw new Error(
-      `Only EIP-7702 auth-list transactions (type ${TRANSACTION_TYPE.EIP7702_AUTH_LIST}) are supported`,
+      `Only EIP-7702 auth transactions (type ${TRANSACTION_TYPE.EIP7702_AUTH}) and auth-list transactions (type ${TRANSACTION_TYPE.EIP7702_AUTH_LIST}) are supported`,
     );
+  }
+
+  // Type guard to ensure we have an EIP7702 transaction with appropriate authorization data
+  const hasAuthList = 'authorizationList' in tx;
+  const hasAuthorizations = 'authorizations' in tx;
+  const hasSingleAuth = 'authorization' in tx;
+
+  if (!hasAuthList && !hasAuthorizations && !hasSingleAuth) {
+    throw new Error(
+      'Transaction does not have authorization, authorizations, or authorizationList property',
+    );
+  }
+
+  // For type 4 transactions, convert single authorization to array format
+  let authorizationList: any[];
+  if (tx.type === TRANSACTION_TYPE.EIP7702_AUTH) {
+    if (!hasSingleAuth) {
+      throw new Error(
+        'EIP-7702 auth transaction (type 4) must contain authorization property',
+      );
+    }
+    authorizationList = [(tx as any).authorization];
+  } else {
+    // Type 5 transaction - handle both authorizationList and authorizations field names
+    if (hasAuthList) {
+      authorizationList = (tx as any).authorizationList;
+    } else if (hasAuthorizations) {
+      authorizationList = (tx as any).authorizations;
+    } else {
+      throw new Error(
+        'EIP-7702 auth list transaction (type 5) must contain authorizationList or authorizations property',
+      );
+    }
   }
 
   // Validate that all required fields exist
   if (
-    !tx.authorizations ||
-    !Array.isArray(tx.authorizations) ||
-    tx.authorizations.length === 0
+    !authorizationList ||
+    !Array.isArray(authorizationList) ||
+    authorizationList.length === 0
   ) {
     throw new Error(
-      'EIP-7702 auth list transaction must contain at least one authorization',
+      'EIP-7702 transaction must contain at least one authorization',
     );
   }
-
-  // Debug logging to find the undefined address
-  console.log('Debug - Transaction TO address:', tx.to);
-  console.log('Debug - Transaction has accessList:', !!tx.accessList);
-
-  if (tx.accessList && tx.accessList.length > 0) {
-    console.log('Debug - AccessList items:', tx.accessList.length);
-    tx.accessList.forEach((item, idx) => {
-      console.log(`Debug - AccessList[${idx}] address:`, item.address);
-    });
-  }
-
-  console.log('Debug - Authorizations count:', tx.authorizations.length);
-  tx.authorizations.forEach((auth, idx) => {
-    console.log(`Debug - Auth[${idx}] address:`, auth.address);
-    console.log(`Debug - Auth[${idx}] address type:`, typeof auth.address);
-    // Check for exact value comparison
-    console.log(
-      `Debug - Auth[${idx}] address === undefined:`,
-      auth.address === undefined,
-    );
-    // Check for truthiness
-    console.log(`Debug - Auth[${idx}] address is truthy:`, !!auth.address);
-    // Check property existence on the object itself
-    console.log(
-      `Debug - Auth[${idx}] has address property:`,
-      'address' in auth,
-    );
-    // Check for address property too (in case property is named differently)
-    console.log(
-      `Debug - Auth[${idx}] has address property:`,
-      'address' in auth,
-    );
-    if ('address' in auth) {
-      console.log(`Debug - Auth[${idx}] address value:`, auth.address);
-    }
-    // Stringify the entire auth object to see all properties
-    console.log(
-      `Debug - Auth[${idx}] complete:`,
-      JSON.stringify(auth, bigIntReplacer, 2),
-    );
-  });
 
   // Validate each authorization
-  tx.authorizations.forEach((auth, index) => {
+  authorizationList.forEach((auth, index) => {
     if (!auth.address) {
       throw new Error(
         `Authorization at index ${index} is missing a contract address`,
@@ -1249,7 +1152,7 @@ export function serializeEIP7702Transaction(
   }
 
   // Convert to Viem's expected format
-  const viemTx: TransactionSerializableEIP7702 = {
+  const viemTx = {
     type: 'eip7702' as const,
     chainId: tx.chainId,
     nonce: tx.nonce,
@@ -1261,79 +1164,64 @@ export function serializeEIP7702Transaction(
       typeof tx.maxFeePerGas === 'string'
         ? BigInt(tx.maxFeePerGas)
         : tx.maxFeePerGas,
-    gas: typeof tx.gasLimit === 'string' ? BigInt(tx.gasLimit) : tx.gasLimit,
+    gas:
+      typeof (tx as any).gas === 'string'
+        ? BigInt((tx as any).gas)
+        : (tx as any).gas ||
+          (typeof (tx as any).gasLimit === 'string'
+            ? BigInt((tx as any).gasLimit)
+            : (tx as any).gasLimit),
     to: tx.to as `0x${string}`,
     value: typeof tx.value === 'string' ? BigInt(tx.value) : tx.value,
     data: tx.data || '0x',
-    authorizationList: tx.authorizations.map((auth, idx) => {
-      // Debug the mapping process for each authorization
-      console.log(`Debug - Converting auth[${idx}] to Viem format`);
-      console.log(`Debug - auth[${idx}].address:`, auth.address);
-
+    authorizationList: authorizationList.map((auth, idx) => {
       // Create the Viem-formatted authorization
-      // CRITICAL FIX: Make sure each auth object has both required fields:
-      // 1. Must explicitly convert address to string type with 0x prefix
-      // 2. Must handle potential nullish/undefined values
+      // Ensure proper address handling with 0x prefix
       const address = auth.address || '';
-      // Ensure it's a valid address string with proper 0x prefix
       const addressStr =
         typeof address === 'string'
           ? address.startsWith('0x')
             ? address
             : `0x${address}`
-          : `0x`; // If not a string, use empty hex string
-
-      console.log(`Debug - Resolved address value:`, addressStr);
+          : `0x`;
 
       if (!addressStr || addressStr === '0x') {
-        console.error(
-          `ERROR: No valid address found in authorization[${idx}]!`,
-        );
-        console.error(`Auth object keys:`, Object.keys(auth));
         throw new Error(
           `Authorization at index ${idx} is missing a valid address`,
         );
       }
 
-      const result = {
+      return {
         chainId: auth.chainId,
         address: addressStr as `0x${string}`,
         nonce: auth.nonce,
-        yParity: auth.yParity
-          ? auth.yParity === '0x01' || auth.yParity === '0x1'
-            ? 1
-            : 0
-          : 0,
-        r: auth.r || '0x0',
-        s: auth.s || '0x0',
+        signature: {
+          yParity:
+            typeof auth.yParity === 'number'
+              ? auth.yParity
+              : typeof auth.yParity === 'string'
+                ? auth.yParity === '0x01' ||
+                  auth.yParity === '0x1' ||
+                  auth.yParity === '1'
+                  ? 1
+                  : 0
+                : 0,
+          r: auth.r || '0x0',
+          s: auth.s || '0x0',
+        },
       };
-
-      console.log(`Debug - Converted to address:`, result.address);
-      console.log(
-        `Debug - Resulting viem authorization:`,
-        JSON.stringify(result, bigIntReplacer, 2),
-      );
-
-      return result;
     }),
   };
 
-  console.log(
-    'Debug - Final viemTx:',
-    JSON.stringify(viemTx, bigIntReplacer, 2),
-  );
-
-  return serializeTransaction(viemTx);
+  return serializeTransaction(viemTx as any);
 }
 
-export const isEip7702Transaction = (
-  tx: TransactionRequest,
-): tx is EIP7702Transaction => {
+export const isEip7702Transaction = (tx: TransactionRequest): boolean => {
   return (
     typeof tx === 'object' &&
     'type' in tx &&
-    (tx.type === TRANSACTION_TYPE.EIP7702_AUTH ||
-      tx.type === TRANSACTION_TYPE.EIP7702_AUTH_LIST)
+    (tx.type === TRANSACTION_TYPE.EIP7702_AUTH_LIST ||
+      tx.type === TRANSACTION_TYPE.EIP7702_AUTH)
   );
 };
 

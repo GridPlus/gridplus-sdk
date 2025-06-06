@@ -1,17 +1,20 @@
-import { Client } from '../client';
-import { SigningPath, Currency, Wallet } from './client';
-import { FirmwareConstants } from './firmware';
 import type {
   Address,
   Hex,
-  Hash,
-  TransactionSerializable,
+  TypedData,
+  TypedDataDefinition,
+  Signature,
+  TransactionSerializableLegacy,
   TransactionSerializableEIP1559,
   TransactionSerializableEIP2930,
   TransactionSerializableEIP7702,
-  TypedData,
-  TypedDataDefinition,
+  AccessList,
+  Authorization as ViemAuthorization,
+  SignedAuthorization as ViemSignedAuthorization,
 } from 'viem';
+import { Client } from '../client';
+import { Currency, SigningPath, Wallet } from './client';
+import { FirmwareConstants } from './firmware';
 
 export type ETH_MESSAGE_PROTOCOLS = 'eip712' | 'signPersonal';
 
@@ -23,22 +26,65 @@ export const TRANSACTION_TYPE = {
   EIP7702_AUTH_LIST: 5,
 } as const;
 
+// Base transaction request with common fields
+type BaseTransactionRequest = {
+  from?: Address;
+  to: Address;
+  value?: Hex | bigint;
+  data?: Hex;
+  chainId: number;
+  nonce: number;
+  gas?: Hex | bigint; // For viem compatibility
+  gasLimit?: Hex | bigint; // For legacy compatibility
+};
+
+// Legacy transaction request
+type LegacyTransactionRequest = BaseTransactionRequest & {
+  type: typeof TRANSACTION_TYPE.LEGACY;
+  gasPrice: Hex | bigint;
+};
+
+// EIP-2930 transaction request
+type EIP2930TransactionRequest = BaseTransactionRequest & {
+  type: typeof TRANSACTION_TYPE.EIP2930;
+  gasPrice: Hex | bigint;
+  accessList?: AccessList;
+};
+
+// EIP-1559 transaction request
+type EIP1559TransactionRequest = BaseTransactionRequest & {
+  type: typeof TRANSACTION_TYPE.EIP1559;
+  maxFeePerGas: Hex | bigint;
+  maxPriorityFeePerGas: Hex | bigint;
+  accessList?: AccessList;
+};
+
+// EIP-7702 single authorization transaction request (type 4)
+export type EIP7702AuthTransactionRequest = BaseTransactionRequest & {
+  type: typeof TRANSACTION_TYPE.EIP7702_AUTH;
+  maxFeePerGas: Hex | bigint;
+  maxPriorityFeePerGas: Hex | bigint;
+  accessList?: AccessList;
+  authorization: Authorization;
+};
+
+// EIP-7702 authorization list transaction request (type 5)
+export type EIP7702AuthListTransactionRequest = BaseTransactionRequest & {
+  type: typeof TRANSACTION_TYPE.EIP7702_AUTH_LIST;
+  maxFeePerGas: Hex | bigint;
+  maxPriorityFeePerGas: Hex | bigint;
+  accessList?: AccessList;
+  authorizationList?: Authorization[]; // For viem compatibility
+  authorizations?: Authorization[]; // For test compatibility
+};
+
+// Main discriminated union for transaction requests
 export type TransactionRequest =
-  | {
-      to: Address;
-      value?: Hex | bigint;
-      data?: Hex;
-      chainId: number;
-      nonce: number;
-      gasLimit: Hex | bigint;
-      gasPrice?: Hex | bigint; // Legacy transactions
-      maxFeePerGas?: Hex | bigint; // EIP-1559
-      maxPriorityFeePerGas?: Hex | bigint; // EIP-1559
-      from?: Address;
-      accessList?: Array<{ address: Address; storageKeys: Hex[] }>;
-      type?: (typeof TRANSACTION_TYPE)[keyof typeof TRANSACTION_TYPE];
-    }
-  | EIP7702Transaction;
+  | LegacyTransactionRequest
+  | EIP2930TransactionRequest
+  | EIP1559TransactionRequest
+  | EIP7702AuthTransactionRequest
+  | EIP7702AuthListTransactionRequest;
 
 export interface SigningPayload<
   TTypedData extends TypedData | Record<string, unknown> = TypedData,
@@ -63,7 +109,7 @@ export interface SignRequestParams<
 > {
   data: SigningPayload<TTypedData> | BitcoinSignPayload;
   currency?: Currency;
-  cachedData?: any;
+  cachedData?: unknown;
   nextCode?: Buffer;
 }
 
@@ -76,8 +122,8 @@ export interface SignRequestFunctionParams<
 export interface EncodeSignRequestParams {
   fwConstants: FirmwareConstants;
   wallet: Wallet;
-  requestData: any;
-  cachedData?: any;
+  requestData: unknown;
+  cachedData?: unknown;
   nextCode?: Buffer;
 }
 
@@ -138,98 +184,41 @@ export interface DecodeSignResponseParams {
   currency?: Currency;
 }
 
+// Align EIP712MessagePayload with Viem's TypedDataDefinition
 export interface EIP712MessagePayload<
   TTypedData extends TypedData | Record<string, unknown> = TypedData,
   TPrimaryType extends keyof TTypedData | 'EIP712Domain' = keyof TTypedData,
 > {
   types: TTypedData;
   domain: TTypedData extends TypedData
-    ? TypedDataDefinition<TTypedData, 'EIP712Domain'>['message']
-    : any;
+    ? TypedDataDefinition<TTypedData, 'EIP712Domain'>['domain']
+    : Record<string, unknown>;
   primaryType: TPrimaryType;
   message: TTypedData extends TypedData
     ? TypedDataDefinition<TTypedData, TPrimaryType>['message']
-    : any;
+    : Record<string, unknown>;
 }
 
-// EIP-7702 Types
+// EIP-7702 Authorization Types - strictly aligned with Viem
 
 /**
- * EIP-7702 Authorization data structure - the data that gets signed.
- * This is what needs to be signed with ecrecover: keccak(MAGIC || rlp([chain_id, address, nonce]))
+ * Unsigned authorization data (what needs to be signed)
+ * This aligns with viem's Authorization type
  */
 export interface AuthorizationData {
-  contractAddress: Address; // The target contract address for delegation
-  chainId: number; // Either 0 (valid on all chains) or the specific chain ID
+  address: Address; // Contract address for delegation
+  chainId: number; // Chain ID (0 for all chains, or specific chain)
   nonce: number; // Must be less than 2^64 - 1
 }
 
 /**
- * EIP-7702 Authorization tuple structure compatible with Viem.
- * From the spec: "authorization_list = [[chain_id, address, nonce, y_parity, r, s], ...]"
+ * Signed authorization - strictly compatible with viem's SignedAuthorization
+ * This combines AuthorizationData with viem's Signature type
  */
-export interface Authorization extends AuthorizationData {
-  address: Address; // Alias for contractAddress to match Viem
-  yParity?: number; // Recovery parameter (v)
-  r?: Hex; // r component of the signature
-  s?: Hex; // s component of the signature (must be <= secp256k1n/2 per EIP-2)
-}
+export type Authorization = AuthorizationData & Signature;
 
-/**
- * EIP-7702 Base transaction structure compatible with Viem.
- * From the spec:
- * "rlp([chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, destination, value, data, access_list, authorization_list, signature_y_parity, signature_r, signature_s])"
- */
-export interface EIP7702BaseTransaction {
-  type: number; // Transaction type (0x04 for EIP-7702)
-  chainId: number; // Chain ID for the transaction
-  nonce: number; // Sender's nonce
-  maxPriorityFeePerGas: bigint | Hex; // EIP-1559 max priority fee
-  maxFeePerGas: bigint | Hex; // EIP-1559 max fee
-  gasLimit: bigint | Hex; // Gas limit for the transaction
-  to: Address; // Destination address (null destination not valid)
-  value?: bigint | Hex; // ETH value to send
-  data?: Hex; // Transaction calldata
-  accessList?: Array<{ address: Address; storageKeys: Hex[] }>; // EIP-2930 access list
-}
+// Alternative type alias for clarity - exactly equivalent to viem's SignedAuthorization
+export type SignedAuthorization = ViemSignedAuthorization;
 
-/**
- * EIP-7702 Single Authorization transaction (type 0x04).
- * This type includes a single authorization tuple.
- */
-export interface EIP7702AuthTransaction extends EIP7702BaseTransaction {
-  type: 4;
-  authorization: Authorization;
-}
-
-/**
- * EIP-7702 Authorization List transaction (type 0x05).
- * This type includes multiple authorization tuples.
- */
-export interface EIP7702AuthListTransaction extends EIP7702BaseTransaction {
-  type: 5;
-  authorizations: Authorization[];
-}
-
-export type EIP7702Transaction =
-  | EIP7702AuthTransaction
-  | EIP7702AuthListTransaction;
-
-// Viem-compatible signature type
-export interface ViemSignature {
-  r: Hex;
-  s: Hex;
-  v: number;
-  yParity: number;
-}
-
-// Enhanced SignData to be more Viem-compatible
-export interface EnhancedSignData {
-  sig?: {
-    r: Buffer;
-    s: Buffer;
-    v: Buffer;
-  };
-  pubkey?: Buffer;
-  signature?: ViemSignature; // Viem-compatible format
-}
+// Utility type for creating authorizations (unsigned)
+export type UnsignedAuthorization = ViemAuthorization;

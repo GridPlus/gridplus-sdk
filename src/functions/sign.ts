@@ -233,11 +233,11 @@ export const decodeSignResponse = ({
     const ethAddr = data.slice(off, off + 20);
     // Determine the `v` param and add it to the sig before returning
     const result = ethereum.buildEthRawTx(request, sig, ethAddr);
-    
+
     // Handle both object and string returns from buildEthRawTx
     if (typeof result === 'string') {
       // EIP-7702 transactions return only the hex string
-      // Per EIP-7702: "The [EIP-2718] `ReceiptPayload` for this transaction is 
+      // Per EIP-7702: "The [EIP-2718] `ReceiptPayload` for this transaction is
       // `rlp([status, cumulative_transaction_gas_used, logs_bloom, logs])`."
       return {
         tx: `0x${result}`,

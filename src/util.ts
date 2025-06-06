@@ -283,7 +283,7 @@ export const buildSignerPathBuf = function (
   signerPath: number[],
   varAddrPathSzAllowed: boolean,
 ): Buffer {
-  const maxSzOld = 20;
+  const maxSzOld = 22; // 2 bytes for length + 20 bytes for path data
   const maxSzNew = 24;
   const maxSz = varAddrPathSzAllowed ? maxSzNew : maxSzOld;
   const maxPathLen = varAddrPathSzAllowed ? 6 : 5;
@@ -297,6 +297,13 @@ export const buildSignerPathBuf = function (
   }
   const pathBuf = Buffer.alloc(maxSz);
   let off = 0;
+
+  // For old format, include length prefix
+  if (!varAddrPathSzAllowed) {
+    pathBuf.writeUInt16BE(signerPath.length, off);
+    off += 2;
+  }
+
   signerPath.forEach((pathIdx) => {
     pathBuf.writeUInt32BE(pathIdx, off);
     off += 4;

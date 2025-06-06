@@ -90,11 +90,56 @@ export type {
 export type {
   KVRecords,
   EncrypterParams,
-  Signature,
   KeyPair,
   WalletPath,
   DecryptedResponse,
 } from './shared';
+
+// Exports from sign.ts
+export type {
+  ETH_MESSAGE_PROTOCOLS,
+  TransactionRequest,
+  SigningPayload,
+  SignRequestParams,
+  SignRequestFunctionParams,
+  EncodeSignRequestParams,
+  SignRequest,
+  EthSignRequest,
+  EthMsgSignRequest,
+  BitcoinSignRequest,
+  PreviousOutput,
+  BitcoinSignPayload,
+  DecodeSignResponseParams,
+  EIP712MessagePayload,
+  AuthorizationData,
+  Authorization,
+  SignedAuthorization,
+  UnsignedAuthorization,
+} from './sign';
+
+// Export EIP-7702 transaction types that were previously internal
+export type {
+  EIP7702AuthTransactionRequest as EIP7702AuthTransaction,
+  EIP7702AuthListTransactionRequest as EIP7702AuthListTransaction,
+} from './sign';
+
+// Re-export important viem types for convenience
+export type {
+  Address,
+  Hash,
+  Hex,
+  Signature,
+  TypedData,
+  TypedDataDefinition,
+  TransactionSerializable,
+  TransactionSerializableLegacy,
+  TransactionSerializableEIP1559,
+  TransactionSerializableEIP2930,
+  TransactionSerializableEIP7702,
+  AccessList,
+  Authorization as ViemAuthorization,
+  SignedAuthorization as ViemSignedAuthorization,
+} from 'viem';
 
 // Note: We don't export from vitest.d.ts as it's a declaration file for Vitest
 

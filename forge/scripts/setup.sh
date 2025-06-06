@@ -65,20 +65,9 @@ forge install
 echo "Cleaning build artifacts..."
 forge clean
 
-# Build all contracts including dependencies
-echo "Building contracts with all dependencies..."
-FOUNDRY_PROFILE=default forge build --build-info --force --optimize --sizes --via-ir --contracts ./src/Simple7702Account.sol
-
-# Install dependencies if needed
-if [ ! -d "lib/openzeppelin-contracts" ]; then
-    echo "Installing Foundry dependencies..."
-    forge install OpenZeppelin/openzeppelin-contracts --no-commit
-fi
-
-if [ ! -d "node_modules/@account-abstraction" ]; then
-    echo "Installing npm dependencies..."
-    npm install @account-abstraction/contracts
-fi
+# Build contracts with standard build (more general approach)
+echo "Building contracts..."
+forge build
 
 # Start anvil in the background if not running
 if ! nc -z localhost 8545 2>/dev/null; then

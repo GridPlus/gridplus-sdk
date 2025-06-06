@@ -1,14 +1,13 @@
 import { RLP } from '@ethereumjs/rlp';
 import { keccak256 } from 'js-sha3';
+import { serializeTransaction } from 'viem';
 import type {
   Hex,
   Address,
   TransactionSerializable,
   TransactionSerializableEIP7702,
   TypedData,
-  TypedDataDefinition,
 } from 'viem';
-import { serializeTransaction } from 'viem';
 import { z } from 'zod';
 import { Constants } from '..';
 import {
@@ -33,7 +32,6 @@ import {
   SigningPayload,
   SignRequestParams,
   TransactionRequest,
-  ViemSignature,
 } from '../types';
 import { getYParity } from '../util';
 import { isEIP712Payload, queue } from './utilities';
@@ -49,7 +47,7 @@ type AuthorizationRequest = {
  */
 export const sign = async (
   transaction: TransactionRequest | TransactionSerializable,
-  overrides?: Omit<SignRequestParams<any>, 'data'>,
+  overrides?: Omit<SignRequestParams, 'data'>,
 ): Promise<SignData> => {
   // Handle both our transaction format and Viem's format
   const serializedTx =
@@ -76,8 +74,21 @@ export const sign = async (
 /**
  * Sign a message with support for EIP-712 typed data and const assertions
  */
-export const signMessage = async <
-  TTypedData extends TypedData | Record<string, unknown> = TypedData,
+export function signMessage(
+  payload: string | Uint8Array | Buffer | Buffer[],
+  overrides?: Omit<SignRequestParams, 'data'>,
+): Promise<SignData>;
+
+export function signMessage<
+  TTypedData extends TypedData,
+  TPrimaryType extends keyof TTypedData | 'EIP712Domain' = keyof TTypedData,
+>(
+  payload: EIP712MessagePayload<TTypedData, TPrimaryType>,
+  overrides?: Omit<SignRequestParams<TTypedData>, 'data'>,
+): Promise<SignData>;
+
+export function signMessage<
+  TTypedData extends TypedData,
   TPrimaryType extends keyof TTypedData | 'EIP712Domain' = keyof TTypedData,
 >(
   payload:
@@ -86,30 +97,46 @@ export const signMessage = async <
     | Buffer
     | Buffer[]
     | EIP712MessagePayload<TTypedData, TPrimaryType>,
-  overrides?: Omit<SignRequestParams<any>, 'data'>,
-): Promise<SignData> => {
-  const tx = {
-    data: {
+  overrides?: Omit<SignRequestParams<TTypedData>, 'data'>,
+): Promise<SignData> {
+  if (isEIP712Payload(payload)) {
+    const eip712Payload: SigningPayload<TTypedData> = {
+      signerPath: DEFAULT_ETH_DERIVATION,
+      curveType: Constants.SIGNING.CURVES.SECP256K1,
+      hashType: Constants.SIGNING.HASHES.KECCAK256,
+      protocol: 'eip712',
+      payload: payload as EIP712MessagePayload<TTypedData>,
+      ...overrides,
+    };
+
+    const tx: SignRequestParams<TTypedData> = {
+      data: eip712Payload,
+      currency: CURRENCIES.ETH_MSG,
+    };
+
+    return queue((client) => client.sign(tx as unknown as SignRequestParams));
+  } else {
+    const basePayload: SigningPayload = {
       signerPath: DEFAULT_ETH_DERIVATION,
       curveType: Constants.SIGNING.CURVES.SECP256K1,
       hashType: Constants.SIGNING.HASHES.KECCAK256,
       protocol: 'signPersonal',
-      payload,
+      payload: payload as Hex,
       ...overrides,
-    } as SigningPayload<any>,
-    currency: CURRENCIES.ETH_MSG,
-  };
+    };
 
-  if (isEIP712Payload(payload)) {
-    tx.data.protocol = 'eip712';
+    const tx: SignRequestParams = {
+      data: basePayload,
+      currency: CURRENCIES.ETH_MSG,
+    };
+
+    return queue((client) => client.sign(tx));
   }
-
-  return queue((client) => client.sign(tx));
-};
+}
 
 const authorizationSchema = z.object({
   chainId: z.number(),
-  contractAddress: z.string().startsWith('0x').length(42),
+  address: z.string().startsWith('0x').length(42),
   nonce: z.number(),
   yParity: z.number().or(z.string().startsWith('0x')),
   r: z.string().startsWith('0x'),
@@ -134,7 +161,7 @@ const eip7702TransactionSchema = z.object({
  */
 export const signAuthorization = async (
   authorization: AuthorizationRequest,
-  overrides?: Omit<SignRequestParams<any>, 'data'>,
+  overrides?: Omit<SignRequestParams, 'data'>,
 ): Promise<Authorization> => {
   // EIP-7702 authorization message is: MAGIC || rlp([chain_id, address, nonce])
   // MAGIC = 0x05 per EIP-7702 spec
@@ -166,14 +193,6 @@ export const signAuthorization = async (
     client.sign({ data: payload, ...overrides }),
   );
 
-  // Create a result object that combines authorization data with signature components
-  const result: Authorization = {
-    contractAddress: address,
-    address, // Viem compatibility
-    chainId: authorization.chainId,
-    nonce: authorization.nonce,
-  };
-
   // Extract signature components if they exist
   if (response.sig && response.pubkey) {
     // Create a mock tx object to use with getYParity
@@ -190,19 +209,26 @@ export const signAuthorization = async (
     // Get the y-parity value using our utility function
     const yParity = getYParity(mockTx, response);
 
-    // Add the signature components to the result
-    result.yParity = yParity;
-    result.r = `0x${response.sig.r.toString('hex')}` as Hex;
-    result.s = `0x${response.sig.s.toString('hex')}` as Hex;
+    // Create a complete Authorization object with all required signature components
+    const result: Authorization = {
+      address, // Viem compatibility
+      chainId: authorization.chainId,
+      nonce: authorization.nonce,
+      yParity,
+      r: `0x${response.sig.r.toString('hex')}` as Hex,
+      s: `0x${response.sig.s.toString('hex')}` as Hex,
+    };
+
+    return result;
   }
 
-  return result;
+  throw new Error('Failed to get signature from device');
 };
 
 /**
- * Sign an EIP-7702 authorization list transaction using Viem-compatible types
+ * Sign an EIP-7702 transaction using Viem-compatible types
  */
-export const signAuthorizationList = async (
+export const signEip7702Transaction = async (
   tx: TransactionSerializableEIP7702,
 ): Promise<SignData> => {
   const txClone = JSON.parse(
@@ -212,7 +238,9 @@ export const signAuthorizationList = async (
   );
 
   // Convert string representations of BigInt back to BigInt
-  const convertBackBigInt = (obj: any) => {
+  const convertBackBigInt = (
+    obj: Record<string, unknown>,
+  ): Record<string, unknown> => {
     Object.keys(obj).forEach((key) => {
       const value = obj[key];
       if (
@@ -228,7 +256,7 @@ export const signAuthorizationList = async (
       ) {
         obj[key] = BigInt(value);
       } else if (typeof value === 'object' && value !== null) {
-        convertBackBigInt(value);
+        convertBackBigInt(value as Record<string, unknown>);
       }
     });
     return obj;
@@ -239,20 +267,6 @@ export const signAuthorizationList = async (
   const result = eip7702TransactionSchema.safeParse(txForValidation);
 
   if (!result.success) {
-    // Additional debugging for authorizationList
-    if (tx.authorizationList) {
-      tx.authorizationList.forEach((auth, idx) => {
-        console.log(`DEBUG: Auth[${idx}]:`, {
-          chainId: auth.chainId,
-          address: auth.address,
-          nonce: auth.nonce,
-          yParity: auth.yParity,
-          r: auth.r,
-          s: auth.s,
-        });
-      });
-    }
-
     throw new Error(
       `EIP7702 transaction validation failed: ${result.error.message}`,
     );
@@ -294,13 +308,10 @@ export const signAuthorizationList = async (
     const signedPayload = await queue((client) =>
       client.sign({ data: payload }),
     );
-    console.log('signedPayload', signedPayload);
-    console.log('signedPayload.sig', signedPayload.sig);
 
     // Return the SignData structure from Lattice, not the converted signature
     return signedPayload;
   } catch (error) {
-    console.error('DEBUG: Error during serialization:', error);
     throw error;
   }
 };

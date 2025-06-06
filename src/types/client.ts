@@ -1,5 +1,6 @@
 import { CURRENCIES } from '../constants';
 import { KeyPair } from './shared';
+import type { Address, Hash, Hex, Signature } from 'viem';
 
 export type Currency = keyof typeof CURRENCIES;
 
@@ -7,32 +8,31 @@ export type SigningPath = number[];
 
 export interface SignData {
   tx?: string;
-  txHash?: string;
+  txHash?: Hash;
   changeRecipient?: string;
-  sig?: {
-    v: Buffer;
-    r: Buffer;
-    s: Buffer;
-    // Added for EIP-7702 support - y-parity value (0 or 1)
-    yParity?: number;
-  };
-  sigs?: Buffer[];
-  signer?: Buffer;
+  sig?: Signature;
+  sigs?: Buffer[]; // Legacy - consider migrating to Signature[] in future
+  signer?: Address; // Ethereum address or public key as Hex if not an address
   err?: string;
 }
 
 export type SigningRequestResponse = SignData | { pubkey: null; sig: null };
 
+/**
+ * @deprecated This type uses legacy field names and number types instead of viem-compatible bigint.
+ * Use viem's TransactionSerializable types directly, or create viem-aligned request types.
+ * This will be removed in a future version.
+ */
 export interface TransactionPayload {
   type: number;
   gasPrice: number;
   nonce: number;
-  gasLimit: number;
-  to: string;
-  value: number;
-  data: string;
-  maxFeePerGas: number;
-  maxPriorityFeePerGas: number;
+  gasLimit: number; // Should be `gas` in viem-aligned types
+  to: string; // Should be Address in viem-aligned types
+  value: number; // Should be bigint in viem-aligned types
+  data: string; // Should be Hex in viem-aligned types
+  maxFeePerGas: number; // Should be bigint in viem-aligned types
+  maxPriorityFeePerGas: number; // Should be bigint in viem-aligned types
 }
 
 export interface Wallet {
