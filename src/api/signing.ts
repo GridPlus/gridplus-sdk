@@ -228,7 +228,7 @@ export const signAuthorization = async (
 /**
  * Sign an EIP-7702 transaction using Viem-compatible types
  */
-export const signEip7702Transaction = async (
+export const signAuthorizationList = async (
   tx: TransactionSerializableEIP7702,
 ): Promise<SignData> => {
   const txClone = JSON.parse(

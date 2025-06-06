@@ -11,8 +11,8 @@ export interface SignData {
   txHash?: Hash;
   changeRecipient?: string;
   sig?: Signature;
-  sigs?: Buffer[]; // Legacy - consider migrating to Signature[] in future
-  signer?: Address; // Ethereum address or public key as Hex if not an address
+  sigs?: Buffer[];
+  signer?: Address;
   err?: string;
 }
 
@@ -27,12 +27,12 @@ export interface TransactionPayload {
   type: number;
   gasPrice: number;
   nonce: number;
-  gasLimit: number; // Should be `gas` in viem-aligned types
-  to: string; // Should be Address in viem-aligned types
-  value: number; // Should be bigint in viem-aligned types
-  data: string; // Should be Hex in viem-aligned types
-  maxFeePerGas: number; // Should be bigint in viem-aligned types
-  maxPriorityFeePerGas: number; // Should be bigint in viem-aligned types
+  gasLimit: number;
+  to: string;
+  value: number;
+  data: string;
+  maxFeePerGas: number;
+  maxPriorityFeePerGas: number;
 }
 
 export interface Wallet {

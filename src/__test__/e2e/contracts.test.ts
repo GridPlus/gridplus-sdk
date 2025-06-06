@@ -14,13 +14,13 @@ import {
   Account,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { sepolia } from 'viem/chains';
+import { foundry } from 'viem/chains';
 // @ts-ignore
 import NegativeAmountHandler from '../../../forge/out/NegativeAmountHandler.sol/NegativeAmountHandler.json';
 
 dotenv.config();
 
-const ETH_PROVIDER_URL = sepolia.rpcUrls.default.http[0];
+const ETH_PROVIDER_URL = 'http://localhost:8545';
 const WALLET_PRIVATE_KEY =
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 
@@ -30,8 +30,8 @@ describe('NegativeAmountHandler', () => {
   let domain;
   let data;
   let types;
-  let publicClient;
-  let walletClient;
+  let publicClient: PublicClient;
+  let walletClient: WalletClient;
   let account: Account;
   let contract;
 
@@ -41,13 +41,13 @@ describe('NegativeAmountHandler', () => {
     )) as Address;
 
     publicClient = createPublicClient({
-      chain: sepolia,
+      chain: foundry,
       transport: http(ETH_PROVIDER_URL),
     });
 
     account = privateKeyToAccount(WALLET_PRIVATE_KEY);
     walletClient = createWalletClient({
-      chain: sepolia,
+      chain: foundry,
       transport: http(ETH_PROVIDER_URL),
       account,
     });

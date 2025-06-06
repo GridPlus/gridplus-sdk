@@ -199,8 +199,6 @@ export interface EIP712MessagePayload<
     : Record<string, unknown>;
 }
 
-// EIP-7702 Authorization Types - strictly aligned with Viem
-
 /**
  * Unsigned authorization data (what needs to be signed)
  * This aligns with viem's Authorization type
@@ -215,7 +213,12 @@ export interface AuthorizationData {
  * Signed authorization - strictly compatible with viem's SignedAuthorization
  * This combines AuthorizationData with viem's Signature type
  */
-export type Authorization = AuthorizationData & Signature;
+export type Authorization = AuthorizationData & {
+  r: Hex;
+  s: Hex;
+  yParity: number;
+  v?: bigint;
+};
 
 // Alternative type alias for clarity - exactly equivalent to viem's SignedAuthorization
 export type SignedAuthorization = ViemSignedAuthorization;
