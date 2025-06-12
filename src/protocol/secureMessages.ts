@@ -62,15 +62,11 @@ export async function connectSecureRequest({
   url: string;
   pubkey: Buffer;
 }): Promise<Buffer> {
-  // Build connect payload data
-  const payloadData = serializeSecureRequestConnectPayloadData({ pubkey });
-
-  // Generate a random message id for internal tracking
-  // of this specific request (internal on both sides).
+  // Build the secure request message
+  const payloadData = serializeSecureRequestConnectPayloadData({
+    pubkey: pubkey,
+  });
   const msgId = randomBytes(4);
-
-  // Serialize the payload data into a connect secure
-  // request message.
   const msg = serializeSecureRequestMsg(
     msgId,
     LatticeSecureMsgType.connect,
@@ -78,9 +74,6 @@ export async function connectSecureRequest({
   );
   // Send request to the Lattice
   const resp = await request({ url, payload: msg });
-  if (!resp) {
-    throw new Error('No response received from Lattice.');
-  }
   if (resp.length !== szs.payload.response.connect - 1) {
     throw new Error('Wrong Lattice response message size.');
   }
@@ -140,9 +133,6 @@ export async function encryptedSecureRequest({
   });
 
   // Deserialize the response payload data
-  if (!resp) {
-    throw new Error('No response received from Lattice.');
-  }
   if (resp.length !== szs.payload.response.encrypted - 1) {
     throw new Error('Wrong Lattice response message size.');
   }
@@ -283,7 +273,7 @@ function serializeSecureRequestEncryptedPayloadData({
   sharedSecret: Buffer;
 }): Buffer {
   // Sanity checks request size
-  if (data.length > szs.data.request.encrypted[requestType]) {
+  if (data.length > szs.data.request.encrypted.encryptedData) {
     throw new Error('Encrypted request data too large');
   }
   // Make sure we have a shared secret. An error will be thrown
@@ -307,7 +297,7 @@ function serializeSecureRequestEncryptedPayloadData({
 
   // Encrypt the data into a fixed size buffer. The buffer size should
   // equal to the full message request less the 4-byte ephemeral id.
-  const _encryptedData = Buffer.alloc(szs.data.request.encrypted[requestType]);
+  const _encryptedData = Buffer.alloc(szs.data.request.encrypted.encryptedData);
   preEncryptedData.copy(_encryptedData, 0);
   _encryptedData.writeUInt32LE(
     preEncryptedDataChecksum,

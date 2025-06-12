@@ -395,10 +395,6 @@ const buildEthereumTxRequest = function (data) {
       dataBytes.slice(0, MAX_BASE_DATA_SZ).copy(txReqPayload, off);
       off += MAX_BASE_DATA_SZ;
     }
-
-    // NOTE: EIP-7702 transactions should go through the new signEip7702Transaction API
-    // and serializeEIP7702Transaction function, not through this legacy buildEthereumTxRequest path
-
     return {
       rawTx,
       type,
@@ -443,8 +439,10 @@ const buildEthRawTx = function (tx, sig, address) {
   newRawTx.push(stripZeros(newSig.s));
   let rlpEncodedWithSig = Buffer.from(RLP.encode(newRawTx));
   if (tx.type) {
-    const typeBuffer = Buffer.from([tx.type]);
-    rlpEncodedWithSig = Buffer.concat([typeBuffer, rlpEncodedWithSig]);
+    rlpEncodedWithSig = Buffer.concat([
+      Buffer.from([tx.type]),
+      rlpEncodedWithSig,
+    ]);
   }
 
   if (
@@ -583,7 +581,7 @@ function isValidChainIdHexNumStr(s) {
   try {
     const b = new BN(s, 16);
     return b.isNaN() === false;
-  } catch (_err) {
+  } catch (err) {
     return false;
   }
 }
@@ -998,7 +996,7 @@ const ethConvertLegacyToGenericReq = function (req) {
   }
 };
 
-// Convert a GridPlus SDK `TransactionRequest` to a viem `TransactionSerializable`
+// Convert an ethers `TransactionRequest` to a viem `TransactionSerializable`
 export const toViemTransaction = (
   tx: TransactionRequest,
 ): TransactionSerializable => {
@@ -1214,5 +1212,6 @@ export default {
   hashTransaction,
   chainIds,
   ensureHexBuffer,
+
   ethConvertLegacyToGenericReq,
 };

@@ -30,7 +30,7 @@ import {
   GetKvRecordsData,
   RemoveKvRecordsRequestParams,
   FetchEncDataRequest,
-} from './types/index.js';
+} from './types';
 import { getP256KeyPair, getP256KeyPairFromPub, randomBytes } from './util';
 
 /**

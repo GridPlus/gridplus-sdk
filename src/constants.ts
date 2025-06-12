@@ -338,13 +338,9 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
   }
   // V0.10.5 added the ability to use flexible address path sizes, which
   // changes the `getAddress` API. It also added support for EIP712
-  // Note: v0.19.4 reverts to old path format for compatibility
   if (!legacy && gte(v, [0, 10, 5])) {
+    c.varAddrPathSzAllowed = true;
     c.eip712Supported = true;
-    // v0.19.4 specifically uses old path format
-    if (!(v[2] === 0 && v[1] === 19 && v[0] === 4)) {
-      c.varAddrPathSzAllowed = true;
-    }
   }
   // V0.10.8 allows a user to sign a prehashed transaction if the payload
   // is too big

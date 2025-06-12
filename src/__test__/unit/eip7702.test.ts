@@ -1,7 +1,6 @@
 import {
-  TRANSACTION_TYPE,
-  EIP7702AuthTransaction,
-  EIP7702AuthListTransaction,
+  EIP7702AuthTransactionRequest,
+  EIP7702AuthListTransactionRequest,
 } from '../../types';
 import { serializeEIP7702Transaction } from '../../ethereum';
 import { parseEther, toHex } from 'viem';
@@ -21,7 +20,7 @@ describe('EIP-7702 Transaction Serialization', () => {
    */
   test('single authorization transaction serialization', () => {
     // Create a single authorization transaction with deterministic values
-    const tx: EIP7702AuthTransaction = {
+    const tx: EIP7702AuthTransactionRequest = {
       type: 4, // Must be exactly 4 for auth transaction
       chainId: 1, // Mainnet
       nonce: 0,
@@ -36,7 +35,7 @@ describe('EIP-7702 Transaction Serialization', () => {
         chainId: 1,
         address: '0x2222222222222222222222222222222222222222',
         nonce: 0,
-        yParity: '0x00', // Known signature values for deterministic test
+        yParity: 0, // Known signature values for deterministic test
         r: '0x1111111111111111111111111111111111111111111111111111111111111111',
         s: '0x2222222222222222222222222222222222222222222222222222222222222222',
       },
@@ -68,7 +67,7 @@ describe('EIP-7702 Transaction Serialization', () => {
    * that the serialized result is consistent and properly formatted.
    */
   test('authorization list transaction serialization', () => {
-    const tx: EIP7702AuthListTransaction = {
+    const tx: EIP7702AuthListTransactionRequest = {
       type: 5, // Must be exactly 5 for auth list transaction
       chainId: 1, // Mainnet
       nonce: 0,
@@ -84,7 +83,7 @@ describe('EIP-7702 Transaction Serialization', () => {
           chainId: 1,
           address: '0x2222222222222222222222222222222222222222',
           nonce: 0,
-          yParity: '0x00', // Known signature values for deterministic test
+          yParity: 0, // Known signature values for deterministic test
           r: '0x1111111111111111111111111111111111111111111111111111111111111111',
           s: '0x2222222222222222222222222222222222222222222222222222222222222222',
         },
@@ -92,7 +91,7 @@ describe('EIP-7702 Transaction Serialization', () => {
           chainId: 1,
           address: '0x3333333333333333333333333333333333333333',
           nonce: 0,
-          yParity: '0x01', // Different signature
+          yParity: 1, // Different signature
           r: '0x3333333333333333333333333333333333333333333333333333333333333333',
           s: '0x4444444444444444444444444444444444444444444444444444444444444444',
         },
@@ -129,7 +128,7 @@ describe('EIP-7702 Transaction Serialization', () => {
    */
   test('serialization matches known good hash', () => {
     // Reference transaction with specific values
-    const tx: EIP7702AuthTransaction = {
+    const tx: EIP7702AuthTransactionRequest = {
       type: 4, // Must be exactly 4 for auth transaction
       chainId: 1, // Mainnet
       nonce: 42,
@@ -145,7 +144,7 @@ describe('EIP-7702 Transaction Serialization', () => {
         address: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', // WETH contract
         nonce: 0,
         // Standard test signature values
-        yParity: '0x00',
+        yParity: 0,
         r: '0x0000000000000000000000000000000000000000000000000000000000000001',
         s: '0x0000000000000000000000000000000000000000000000000000000000000002',
       },
@@ -161,7 +160,7 @@ describe('EIP-7702 Transaction Serialization', () => {
     console.log('Reference transaction hash:', txHash);
 
     // The expected hash would be provided by a reference implementation
-    // For now, we'll assert consistency across multiple serializations
+    // For now,. I will assert consistency across multiple serializations
     const secondRun = serializeEIP7702Transaction(tx);
     expect(serialized).toEqual(secondRun);
 

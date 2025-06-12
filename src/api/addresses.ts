@@ -1,4 +1,3 @@
-import type { Address } from 'viem';
 import {
   BTC_LEGACY_CHANGE_DERIVATION,
   BTC_LEGACY_DERIVATION,
@@ -27,10 +26,8 @@ type FetchAddressesParams = {
   flag?: number;
 };
 
-export const fetchAddresses = async (
-  overrides?: GetAddressesRequestParams,
-): Promise<Address[]> => {
-  let allAddresses: Address[] = [];
+export const fetchAddresses = async (overrides?: GetAddressesRequestParams) => {
+  let allAddresses: string[] = [];
   let totalFetched = 0;
   const totalToFetch = overrides?.n || MAX_ADDR;
 
@@ -44,15 +41,10 @@ export const fetchAddresses = async (
           ...overrides,
           n: batchSize,
         })
-        .then((addresses: Buffer[] | string[]) => {
-          const addressArray = addresses.map((addr) => {
-            const addressStr =
-              typeof addr === 'string' ? addr : addr.toString();
-            return addressStr as Address;
-          });
-          if (addressArray.length > 0) {
-            allAddresses = [...allAddresses, ...addressArray];
-            totalFetched += addressArray.length;
+        .then((addresses: string[]) => {
+          if (addresses.length > 0) {
+            allAddresses = [...allAddresses, ...addresses];
+            totalFetched += addresses.length;
           }
         }),
     );
@@ -69,7 +61,7 @@ export const fetchAddresses = async (
  */
 export const fetchAddress = async (
   path: number | WalletPath = 0,
-): Promise<Address> => {
+): Promise<string> => {
   return fetchAddresses({
     startPath:
       typeof path === 'number'
@@ -80,10 +72,12 @@ export const fetchAddress = async (
 };
 
 function createFetchBtcAddressesFunction(derivationPath: number[]) {
-  return async ({
-    n = MAX_ADDR,
-    startPathIndex = 0,
-  }: FetchAddressesParams = {}): Promise<Address[]> => {
+  return async (
+    { n, startPathIndex }: FetchAddressesParams = {
+      n: MAX_ADDR,
+      startPathIndex: 0,
+    },
+  ) => {
     return fetchAddresses({
       startPath: getStartPath(derivationPath, startPathIndex),
       n,
@@ -108,10 +102,12 @@ export const fetchBtcSegwitChangeAddresses = createFetchBtcAddressesFunction(
 export const fetchBtcWrappedSegwitChangeAddresses =
   createFetchBtcAddressesFunction(BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION);
 
-export const fetchSolanaAddresses = async ({
-  n = MAX_ADDR,
-  startPathIndex = 0,
-}: FetchAddressesParams = {}): Promise<Address[]> => {
+export const fetchSolanaAddresses = async (
+  { n, startPathIndex }: FetchAddressesParams = {
+    n: MAX_ADDR,
+    startPathIndex: 0,
+  },
+) => {
   return fetchAddresses({
     startPath: getStartPath(SOLANA_DERIVATION, startPathIndex, 2),
     n,
@@ -119,10 +115,12 @@ export const fetchSolanaAddresses = async ({
   });
 };
 
-export const fetchLedgerLiveAddresses = async ({
-  n = MAX_ADDR,
-  startPathIndex = 0,
-}: FetchAddressesParams = {}): Promise<Address[][]> => {
+export const fetchLedgerLiveAddresses = async (
+  { n, startPathIndex }: FetchAddressesParams = {
+    n: MAX_ADDR,
+    startPathIndex: 0,
+  },
+) => {
   const addresses = [];
   for (let i = 0; i < n; i++) {
     addresses.push(
@@ -136,19 +134,19 @@ export const fetchLedgerLiveAddresses = async ({
             ),
             n: 1,
           })
-          .then((addresses) =>
-            addresses.map((address) => `${address}` as Address),
-          ),
+          .then((addresses) => addresses.map((address) => `${address}`)),
       ),
     );
   }
   return Promise.all(addresses);
 };
 
-export const fetchLedgerLegacyAddresses = async ({
-  n = MAX_ADDR,
-  startPathIndex = 0,
-}: FetchAddressesParams = {}): Promise<Address[][]> => {
+export const fetchLedgerLegacyAddresses = async (
+  { n, startPathIndex }: FetchAddressesParams = {
+    n: MAX_ADDR,
+    startPathIndex: 0,
+  },
+) => {
   const addresses = [];
   for (let i = 0; i < n; i++) {
     addresses.push(
@@ -162,9 +160,7 @@ export const fetchLedgerLegacyAddresses = async ({
             ),
             n: 1,
           })
-          .then((addresses) =>
-            addresses.map((address) => `${address}` as Address),
-          ),
+          .then((addresses) => addresses.map((address) => `${address}`)),
       ),
     );
   }
@@ -174,7 +170,7 @@ export const fetchLedgerLegacyAddresses = async ({
 export const fetchBip44ChangeAddresses = async ({
   n = MAX_ADDR,
   startPathIndex = 0,
-}: FetchAddressesParams = {}): Promise<Address[][]> => {
+}: FetchAddressesParams = {}) => {
   const addresses = [];
   for (let i = 0; i < n; i++) {
     addresses.push(
@@ -191,9 +187,7 @@ export const fetchBip44ChangeAddresses = async ({
             n: 1,
             flag: 4,
           })
-          .then((addresses) =>
-            addresses.map((address) => `${address}` as Address),
-          );
+          .then((addresses) => addresses.map((address) => `${address}`));
       }),
     );
   }
@@ -203,7 +197,7 @@ export const fetchBip44ChangeAddresses = async ({
 export async function fetchAddressesByDerivationPath(
   path: string,
   { n = 1, startPathIndex = 0, flag }: FetchAddressesParams = {},
-): Promise<Address[]> {
+): Promise<string[]> {
   const components = path.split('/').filter(Boolean);
   const parsedPath = parseDerivationPathComponents(components);
   const _flag = getFlagFromPath(parsedPath);
@@ -213,42 +207,26 @@ export async function fetchAddressesByDerivationPath(
 
   if (wildcardIndex === -1) {
     return queue((client) =>
-      client
-        .getAddresses({
-          startPath: parsedPath,
-          flag: flag || _flag,
-          n,
-        })
-        .then((addresses) =>
-          addresses.map((addr) => {
-            const addressStr =
-              typeof addr === 'string' ? addr : addr.toString();
-            return addressStr as Address;
-          }),
-        ),
+      client.getAddresses({
+        startPath: parsedPath,
+        flag: flag || _flag,
+        n,
+      }),
     );
   }
 
-  const addresses: Address[] = [];
+  const addresses: string[] = [];
   for (let i = 0; i < n; i++) {
     const currentPath = [...parsedPath];
     currentPath[wildcardIndex] =
       currentPath[wildcardIndex] + startPathIndex + i;
 
     const result = await queue((client) =>
-      client
-        .getAddresses({
-          startPath: currentPath,
-          flag: flag || _flag,
-          n: 1,
-        })
-        .then((addresses) =>
-          addresses.map((addr) => {
-            const addressStr =
-              typeof addr === 'string' ? addr : addr.toString();
-            return addressStr as Address;
-          }),
-        ),
+      client.getAddresses({
+        startPath: currentPath,
+        flag: flag || _flag,
+        n: 1,
+      }),
     );
     addresses.push(...result);
   }
