@@ -791,72 +791,66 @@ export const getV = function (tx: any, resp: any) {
  * For EIP-2930 and EIP-1559 transactions, y-parity is used instead of v.
  */
 export const getYParity = function (tx: any, resp: any): number {
-  let chainId, hash, type;
+  let hash: any;
   const txIsBuf = Buffer.isBuffer(tx);
+
   if (txIsBuf) {
+    // Serialized tx buffer – hash directly
     hash = Buffer.from(keccak256(tx), 'hex');
-    try {
-      const legacyTxArray = RLP.decode(tx);
-      if (legacyTxArray.length === 6) {
-        // Six item array means this is a pre-EIP155 transaction
-        chainId = null;
-      } else {
-        // Otherwise the `v` param is the `chainId`
-        chainId = new BN(legacyTxArray[6] as Uint8Array);
-      }
-      // Legacy tx = type 0
-      type = 0;
-    } catch (err) {
-      // This is likely a typed transaction
-      try {
-        const txObj = EthTxFactory.fromSerializedData(tx);
-        //@ts-expect-error -- Accessing private property
-        type = txObj._type;
-      } catch (err) {
-        // If we can't RLP decode and can't hydrate an @ethereumjs/tx object,
-        // we don't know what this is and should abort.
-        throw new Error('Could not recover Y parity. Bad transaction data.');
-      }
-    }
   } else {
-    // @ethereumjs/tx object passed in or mock tx object
-    type = tx._type;
-    hash = type
-      ? tx.getMessageToSign(true) // newer tx types
-      : tx.getMessageToSign
-        ? tx.getMessageToSign(false) // legacy tx or mock tx with getMessageToSign
-        : tx; // fallback for direct hash
-    if (tx.supports && tx.supports(Capability.EIP155ReplayProtection)) {
-      chainId = tx.common.chainIdBN().toNumber();
+    // @ethereumjs/tx object or other representations
+    const type = tx._type;
+    if (type !== undefined && type !== null) {
+      // EIP-1559 / EIP-2930 / future typed transactions
+      hash = tx.getMessageToSign(true);
+    } else if (typeof tx.getMessageToSign === 'function') {
+      // Legacy transaction objects expose getMessageToSign(false)
+      // but return the RLP pre-image → we must keccak it to 32 bytes
+      const preimage = RLP.encode(tx.getMessageToSign(false));
+      hash = Buffer.from(keccak256(preimage), 'hex');
+    } else {
+      // Fallback: assume caller already passed in the digest (Buffer | Uint8Array | hex string)
+      hash = tx;
     }
   }
 
-  // Handle case where hash is already a Buffer (e.g., from mock tx)
-  if (!Buffer.isBuffer(hash)) {
-    hash = Buffer.isBuffer(hash) ? hash : RLP.encode(hash);
+  // Convert to Buffer and guarantee 32-byte length. If not 32, keccak hash again.
+  let hashBuf: Buffer;
+  if (Buffer.isBuffer(hash)) {
+    hashBuf = hash;
+  } else if (hash instanceof Uint8Array) {
+    hashBuf = Buffer.from(hash);
+  } else if (typeof hash === 'string') {
+    const hexStr = hash.startsWith('0x') ? hash.slice(2) : hash;
+    hashBuf = Buffer.from(hexStr, 'hex');
+  } else {
+    // Last-ditch conversion
+    hashBuf = Buffer.from(hash);
   }
+
+  if (hashBuf.length !== 32) {
+    hashBuf = Buffer.from(keccak256(hashBuf), 'hex');
+  }
+
+  const hashBytes = new Uint8Array(hashBuf);
 
   const rs = new Uint8Array(Buffer.concat([resp.sig.r, resp.sig.s]));
   const pubkey = new Uint8Array(resp.pubkey);
-  const recovery0 = ecdsaRecover(rs, 0, hash, false);
-  const recovery1 = ecdsaRecover(rs, 1, hash, false);
+  const recovery0 = ecdsaRecover(rs, 0, hashBytes, false);
+  const recovery1 = ecdsaRecover(rs, 1, hashBytes, false);
   const pubkeyStr = Buffer.from(pubkey).toString('hex');
   const recovery0Str = Buffer.from(recovery0).toString('hex');
   const recovery1Str = Buffer.from(recovery1).toString('hex');
-  let recovery;
+
   if (pubkeyStr === recovery0Str) {
-    recovery = 0;
+    return 0;
   } else if (pubkeyStr === recovery1Str) {
-    recovery = 1;
+    return 1;
   } else {
-    // If we fail a second time, exit here.
     throw new Error(
       'Failed to recover Y parity. Bad signature or transaction data.',
     );
   }
-
-  // For EIP-2930, EIP-1559, and EIP-7702, y-parity is simply 0 or 1
-  return recovery;
 };
 
 /** @internal */

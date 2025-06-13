@@ -114,7 +114,7 @@ describe('EIP-7702 Transaction Serialization', () => {
     expect(serialized).toEqual(initialRun);
 
     // Ensure the serialized transaction starts with the transaction type (0x05)
-    expect(serialized.startsWith('0x05')).toBe(true);
+    expect(serialized.startsWith('0x04')).toBe(true);
   });
 
   /**
