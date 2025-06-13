@@ -8,13 +8,12 @@ import { Buffer } from 'buffer';
 import crc32 from 'crc-32';
 import elliptic from 'elliptic';
 import { Hash } from 'ox';
-import sha3 from 'js-sha3';
 import inRange from 'lodash/inRange';
 import isInteger from 'lodash/isInteger';
 import secp256k1 from 'secp256k1';
+import { keccak256 } from 'js-sha3';
 
 const EC = elliptic.ec;
-const { keccak256 } = sha3;
 const { ecdsaRecover } = secp256k1;
 import { Calldata } from '.';
 import {

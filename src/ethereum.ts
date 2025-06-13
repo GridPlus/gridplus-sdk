@@ -4,7 +4,7 @@ import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory } from '@ethereumjs/tx';
 import BN from 'bignumber.js';
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
-import { Hash } from 'ox';
+import { keccak256 } from 'js-sha3';
 import { RLP } from '@ethereumjs/rlp';
 import * as secp256k1 from 'secp256k1';
 import {
@@ -24,7 +24,6 @@ import {
 import * as cbor from 'cbor';
 import bdec from 'cbor-bigdecimal';
 import { Hex, TransactionSerializable, serializeTransaction } from 'viem';
-
 import { TransactionRequest, TRANSACTION_TYPE } from './types';
 
 bdec(cbor);
