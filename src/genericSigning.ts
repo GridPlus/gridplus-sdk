@@ -8,8 +8,8 @@ This payload should be coupled with:
 * Curve on which to derive the signing key
 * Hash function to use on the message
 */
-import { sha256 } from 'hash.js/lib/hash/sha';
-import { keccak256 } from 'js-sha3';
+import { Hash } from 'ox';
+// keccak256 now imported from ox via Hash module
 import { HARDENED_OFFSET } from './constants';
 import { Constants } from './index';
 import { LatticeSignSchema } from './protocol';
@@ -154,12 +154,9 @@ export const buildGenericSigningMsgRequest = function (req) {
           'Message too large to send and could not be prehashed (hashType=NONE).',
         );
       } else if (hashType === hashTypes.KECCAK256) {
-        prehash = Buffer.from(keccak256(payloadData), 'hex');
+        prehash = Buffer.from(Hash.keccak256(payloadData));
       } else if (hashType === hashTypes.SHA256) {
-        prehash = Buffer.from(
-          sha256().update(payloadData).digest('hex'),
-          'hex',
-        );
+        prehash = Buffer.from(Hash.sha256(payloadData));
       } else {
         throw new Error('Unsupported hash type.');
       }

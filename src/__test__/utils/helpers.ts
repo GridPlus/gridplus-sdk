@@ -8,8 +8,7 @@ import {
 import { ec as EC, eddsa as EdDSA } from 'elliptic';
 import { privateToAddress } from 'ethereumjs-util';
 import { readFileSync } from 'fs';
-import { sha256 } from 'hash.js/lib/hash/sha';
-import { keccak256 } from 'js-sha3';
+import { Hash } from 'ox';
 import {
   BIP_CONSTANTS,
   HARDENED_OFFSET,
@@ -934,9 +933,9 @@ export const validateGenericSig = function (seed, sig, payloadBuf, req) {
   let hash;
   if (curveType === CURVES.SECP256K1) {
     if (hashType === HASHES.SHA256) {
-      hash = Buffer.from(sha256().update(payloadBuf).digest('hex'), 'hex');
+      hash = Buffer.from(Hash.sha256(payloadBuf));
     } else if (hashType === HASHES.KECCAK256) {
-      hash = Buffer.from(keccak256(payloadBuf), 'hex');
+      hash = Buffer.from(Hash.keccak256(payloadBuf));
     } else {
       throw new Error('Bad params');
     }

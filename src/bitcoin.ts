@@ -1,8 +1,8 @@
 // Util for Bitcoin-specific functionality
 import { bech32 } from 'bech32';
 import bs58check from 'bs58check';
+import { Hash } from 'ox';
 import { ripemd160 } from 'hash.js/lib/hash/ripemd';
-import { sha256 } from 'hash.js/lib/hash/sha';
 import { BIP_CONSTANTS } from './constants';
 import { LatticeSignSchema } from './protocol';
 const DEFAULT_SEQUENCE = 0xffffffff;
@@ -237,7 +237,7 @@ const getBitcoinAddress = function (pubkeyhash, version) {
 //-----------------------
 function buildRedeemScript(pubkey) {
   const redeemScript = Buffer.alloc(22);
-  const shaHash = Buffer.from(sha256().update(pubkey).digest('hex'), 'hex');
+  const shaHash = Buffer.from(Hash.sha256(pubkey));
   const pubkeyhash = Buffer.from(
     ripemd160().update(shaHash).digest('hex'),
     'hex',

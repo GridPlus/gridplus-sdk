@@ -1,4 +1,4 @@
-import { keccak256 } from 'js-sha3';
+import { Hash } from 'ox';
 import { decodeAbiParameters, parseAbiParameters } from 'viem';
 /**
  * Look through an ABI definition to see if there is a function that matches the signature provided.
@@ -163,7 +163,9 @@ export const replaceNestedDefs = function (def, nestedDefs) {
  * @internal
  */
 function getFuncSig(canonicalName: string): string {
-  return `0x${keccak256(canonicalName).slice(0, 8)}`;
+  return `0x${Buffer.from(Hash.keccak256(Buffer.from(canonicalName)))
+    .toString('hex')
+    .slice(0, 8)}`;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { RLP } from '@ethereumjs/rlp';
-import { keccak256 } from 'js-sha3';
+import { Hash } from 'ox';
 import {
   serializeTransaction,
   type Address,
@@ -135,7 +135,7 @@ export const signAuthorization = async (
     // Create a mock tx object to use with getYParity
     // For EIP-7702, we need to prepare a proper hash for the message to recover y-parity
     // We need a proper 32-byte hash for secp256k1 to work with
-    const messageHash = Buffer.from(keccak256(message), 'hex');
+    const messageHash = Buffer.from(Hash.keccak256(Buffer.from(message)));
 
     // Create a mock tx that will just return this hash directly without modifying it
     const mockTx = {

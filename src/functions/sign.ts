@@ -1,4 +1,4 @@
-import { sha256 } from 'hash.js';
+import { Hash } from 'ox';
 import bitcoin from '../bitcoin';
 import { CURRENCIES } from '../constants';
 import ethereum from '../ethereum';
@@ -217,13 +217,12 @@ export const decodeSignResponse = ({
     // Generate the transaction hash so the user can look this transaction up later
     const preImageTxHash = serializedTx;
     const txHashPre: Buffer = Buffer.from(
-      sha256().update(Buffer.from(preImageTxHash, 'hex')).digest('hex'),
-      'hex',
+      Hash.sha256(Buffer.from(preImageTxHash, 'hex')),
     );
     // Add extra data for debugging/lookup purposes
     return {
       tx: serializedTx,
-      txHash: sha256().update(txHashPre).digest('hex'),
+      txHash: Buffer.from(Hash.sha256(txHashPre)).toString('hex'),
       changeRecipient,
       sigs,
     };

@@ -4,7 +4,7 @@ import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory } from '@ethereumjs/tx';
 import BN from 'bignumber.js';
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
-import { keccak256 } from 'js-sha3';
+import { Hash } from 'ox';
 import { RLP } from '@ethereumjs/rlp';
 import * as secp256k1 from 'secp256k1';
 import {
