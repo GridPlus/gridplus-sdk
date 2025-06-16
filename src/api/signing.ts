@@ -56,11 +56,22 @@ export const sign = async (
             toViemTransaction(transaction as TransactionRequest),
           );
 
+  // Determine the correct encoding type based on transaction type
+  let encodingType: number;
+  if (
+    ('type' in transaction && transaction.type === 'eip7702') ||
+    isEip7702Transaction(transaction as TransactionRequest)
+  ) {
+    encodingType = Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST;
+  } else {
+    encodingType = Constants.SIGNING.ENCODINGS.EVM;
+  }
+
   const payload: SigningPayload = {
     signerPath: DEFAULT_ETH_DERIVATION,
     curveType: Constants.SIGNING.CURVES.SECP256K1,
     hashType: Constants.SIGNING.HASHES.KECCAK256,
-    encodingType: Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST,
+    encodingType,
     payload: serializedTx,
     decoder: await fetchDecoder(transaction as TransactionRequest),
   };

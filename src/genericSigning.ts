@@ -237,8 +237,8 @@ export const parseGenericSigningResponse = function (res, off, req) {
     // the result is a 64 byte sig
     parsed.sig.r = fixLen(parsed.sig.r, 32);
     parsed.sig.s = fixLen(parsed.sig.s, 32);
-    // If this is an EVM request, we want to add a `v`. Other request
-    // types do not require this additional signature param.
+
+    // If this is an EVM request, we want to add a `v` and format r,s as hex strings with 0x prefix
     if (req.encodingType === Constants.SIGNING.ENCODINGS.EVM) {
       const vBn = getV(req.origPayloadBuf, parsed);
       // NOTE: For backward-compatibility reasons we are returning
@@ -246,6 +246,10 @@ export const parseGenericSigningResponse = function (res, off, req) {
       // returning `v` as a BN and `r`,`s` as Buffers (they are hex
       // strings right now).
       parsed.sig.v = vBn.toArrayLike(Buffer);
+
+      // Format r and s as hex strings with 0x prefix for consistency with legacy ETH signing
+      parsed.sig.r = `0x${parsed.sig.r.toString('hex')}`;
+      parsed.sig.s = `0x${parsed.sig.s.toString('hex')}`;
     }
   } else if (req.curveType === Constants.SIGNING.CURVES.ED25519) {
     if (!req.omitPubkey) {
