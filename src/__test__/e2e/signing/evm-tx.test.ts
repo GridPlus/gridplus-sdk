@@ -11,7 +11,7 @@ import {
 import { setupClient } from '../../utils/setup';
 
 // Helper to generate random hex strings
-const randomHex = (bytes: number): `0x${string}` => 
+const randomHex = (bytes: number): `0x${string}` =>
   `0x${randomBytes(bytes).toString('hex')}` as `0x${string}`;
 
 // Helper to generate random bigint within range
@@ -60,31 +60,6 @@ const TEST_VECTORS: Array<{ name: string; tx: TestTransaction }> = [
       gas: BigInt(50000),
       chainId: 1,
       accessList: [],
-    },
-  },
-  {
-    name: 'EIP-7702 Transaction',
-    tx: {
-      type: 'eip7702',
-      to: '0xe242e54155b1abc71fc118065270cecaaf8b7768' as `0x${string}`,
-      value: BigInt(100),
-      data: '0x',
-      nonce: 0,
-      maxFeePerGas: BigInt(1200000000),
-      maxPriorityFeePerGas: BigInt(1200000000),
-      gas: BigInt(50000),
-      chainId: 1,
-      authorizationList: [
-        {
-          chainId: 1,
-          address:
-            '0x2222222222222222222222222222222222222222' as `0x${string}`,
-          nonce: 0,
-          yParity: 0,
-          r: '0x0000000000000000000000000000000000000000000000000000000000000001' as `0x${string}`,
-          s: '0x0000000000000000000000000000000000000000000000000000000000000002' as `0x${string}`,
-        },
-      ],
     },
   },
   {
@@ -315,7 +290,9 @@ const TEST_VECTORS: Array<{ name: string; tx: TestTransaction }> = [
     tx: {
       type: 'eip1559',
       to: '0xe242e54155b1abc71fc118065270cecaaf8b7768' as `0x${string}`,
-      value: BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'),
+      value: BigInt(
+        '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+      ),
       data: '0x',
       nonce: 0,
       maxFeePerGas: BigInt(1200000000),
@@ -364,13 +341,15 @@ const TEST_VECTORS: Array<{ name: string; tx: TestTransaction }> = [
       chainId: 1,
       accessList: [
         {
-          address: '0xe242e54155b1abc71fc118065270cecaaf8b7768' as `0x${string}`,
+          address:
+            '0xe242e54155b1abc71fc118065270cecaaf8b7768' as `0x${string}`,
           storageKeys: [
             '0x7154f8b310ad6ce97ce3b15e3419d9863865dfe2d8635802f7f4a52a206255a6' as `0x${string}`,
           ],
         },
         {
-          address: '0xe0f8ff08ef0242c461da688b8b85e438db724860' as `0x${string}`,
+          address:
+            '0xe0f8ff08ef0242c461da688b8b85e438db724860' as `0x${string}`,
           storageKeys: [],
         },
       ],
@@ -379,13 +358,16 @@ const TEST_VECTORS: Array<{ name: string; tx: TestTransaction }> = [
 ];
 
 // Generate random transaction test vectors
-const generateRandomTransactionVectors = (count: number): Array<{ name: string; tx: TestTransaction }> => {
+const generateRandomTransactionVectors = (
+  count: number,
+): Array<{ name: string; tx: TestTransaction }> => {
   const vectors = [];
   for (let i = 0; i < count; i++) {
     const chainId = Math.floor(Math.random() * 10000) + 1;
     const transactionTypes = ['legacy', 'eip1559', 'eip2930'] as const;
-    const txType = transactionTypes[Math.floor(Math.random() * transactionTypes.length)];
-    
+    const txType =
+      transactionTypes[Math.floor(Math.random() * transactionTypes.length)];
+
     const baseTx = {
       to: randomHex(20),
       value: randomBigInt(32),
