@@ -269,7 +269,7 @@ const TEST_VECTORS: Array<{ name: string; tx: TestTransaction }> = [
     },
   },
   {
-    name: 'Max ChainID Transaction (UINT64_MAX - 1)',
+    name: 'Max Safe ChainID Transaction',
     tx: {
       type: 'eip1559',
       to: '0xe242e54155b1abc71fc118065270cecaaf8b7768' as `0x${string}`,
@@ -279,7 +279,7 @@ const TEST_VECTORS: Array<{ name: string; tx: TestTransaction }> = [
       maxFeePerGas: BigInt(1200000000),
       maxPriorityFeePerGas: BigInt(1200000000),
       gas: BigInt(50000),
-      chainId: 18446744073709551615, // UINT64_MAX - 1
+      chainId: Number.MAX_SAFE_INTEGER, // 9007199254740991
     },
   },
   {

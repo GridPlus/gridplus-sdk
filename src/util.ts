@@ -787,70 +787,96 @@ export const getV = function (tx: any, resp: any) {
 };
 
 /**
- * Get the y-parity value for the given transaction and response.
- * For EIP-2930 and EIP-1559 transactions, y-parity is used instead of v.
+ * Get the y-parity value for a signature by recovering the public key.
+ * 
+ * Usage:
+ * - Simple: getYParity(messageHash, signature, publicKey)
+ * - Object: getYParity({ messageHash, signature, publicKey })
+ * - Legacy: getYParity(tx, response) 
+ * 
+ * @param messageHash - The 32-byte message hash (or tx object for legacy)
+ * @param signature - Object with r and s values
+ * @param publicKey - Expected public key
+ * @returns 0 or 1 for the y-parity value
  */
-export const getYParity = function (tx: any, resp: any): number {
-  let hash: any;
-  const txIsBuf = Buffer.isBuffer(tx);
-
-  if (txIsBuf) {
-    // Serialized tx buffer – hash directly
-    hash = Buffer.from(keccak256(tx), 'hex');
-  } else {
-    // @ethereumjs/tx object or other representations
-    const type = tx._type;
+export const getYParity = function (
+  messageHash: Buffer | Uint8Array | string | { messageHash: any; signature: any; publicKey: any } | any,
+  signature?: { r: any; s: any } | any,
+  publicKey?: Buffer | Uint8Array | string
+): number {
+  // Handle legacy object format for backward compatibility
+  if (typeof messageHash === 'object' && messageHash && 'messageHash' in messageHash) {
+    return getYParity(messageHash.messageHash, messageHash.signature, messageHash.publicKey);
+  }
+  
+  // Handle legacy transaction format for backward compatibility
+  if (signature && signature.sig && signature.pubkey && !publicKey) {
+    return getYParity(messageHash, signature.sig, signature.pubkey);
+  }
+  
+  // Validate required parameters
+  if (!signature || !publicKey) {
+    throw new Error('Response with sig and pubkey required for legacy format');
+  }
+  
+  if (!signature.r || !signature.s) {
+    throw new Error('Response with sig and pubkey required for legacy format');
+  }
+  
+  // Handle transaction objects with getMessageToSign
+  let hash = messageHash;
+  if (typeof messageHash === 'object' && messageHash && typeof messageHash.getMessageToSign === 'function') {
+    const type = messageHash._type;
     if (type !== undefined && type !== null) {
       // EIP-1559 / EIP-2930 / future typed transactions
-      hash = tx.getMessageToSign(true);
-    } else if (typeof tx.getMessageToSign === 'function') {
-      // Legacy transaction objects expose getMessageToSign(false)
-      // but return the RLP pre-image → we must keccak it to 32 bytes
-      const preimage = RLP.encode(tx.getMessageToSign(false));
-      hash = Buffer.from(keccak256(preimage), 'hex');
+      hash = messageHash.getMessageToSign(true);
     } else {
-      // Fallback: assume caller already passed in the digest (Buffer | Uint8Array | hex string)
-      hash = tx;
+      // Legacy transaction objects
+      const preimage = RLP.encode(messageHash.getMessageToSign(false));
+      hash = Buffer.from(keccak256(preimage), 'hex');
+    }
+  } else if (Buffer.isBuffer(messageHash) && messageHash.length !== 32) {
+    // If it's a buffer but not 32 bytes, hash it
+    hash = Buffer.from(keccak256(messageHash), 'hex');
+  }
+  
+  // Normalize inputs to Buffers
+  const toBuffer = (data: any): Buffer => {
+    if (!data) throw new Error('Invalid data');
+    if (Buffer.isBuffer(data)) return data;
+    if (data instanceof Uint8Array) return Buffer.from(data);
+    if (typeof data === 'string') {
+      return Buffer.from(data.replace(/^0x/i, ''), 'hex');
+    }
+    throw new Error('Invalid data type');
+  };
+  
+  const hashBuf = toBuffer(hash);
+  const rBuf = toBuffer(signature.r);
+  const sBuf = toBuffer(signature.s);
+  const pubkeyBuf = toBuffer(publicKey);
+  
+  // For non-32 byte hashes, hash them (legacy support)
+  const finalHash = hashBuf.length === 32 ? hashBuf : Buffer.from(keccak256(hashBuf), 'hex');
+  
+  // Combine r and s
+  const rs = new Uint8Array(Buffer.concat([rBuf, sBuf]));
+  const hashBytes = new Uint8Array(finalHash);
+  const isCompressed = pubkeyBuf.length === 33;
+  
+  // Try both recovery values
+  for (let recovery = 0; recovery <= 1; recovery++) {
+    try {
+      const recovered = ecdsaRecover(rs, recovery, hashBytes, isCompressed);
+      if (Buffer.from(recovered).equals(pubkeyBuf)) {
+        return recovery;
+      }
+    } catch {
+      continue;
     }
   }
-
-  // Convert to Buffer and guarantee 32-byte length. If not 32, keccak hash again.
-  let hashBuf: Buffer;
-  if (Buffer.isBuffer(hash)) {
-    hashBuf = hash;
-  } else if (hash instanceof Uint8Array) {
-    hashBuf = Buffer.from(hash);
-  } else if (typeof hash === 'string') {
-    const hexStr = hash.startsWith('0x') ? hash.slice(2) : hash;
-    hashBuf = Buffer.from(hexStr, 'hex');
-  } else {
-    // Last-ditch conversion
-    hashBuf = Buffer.from(hash);
-  }
-
-  if (hashBuf.length !== 32) {
-    hashBuf = Buffer.from(keccak256(hashBuf), 'hex');
-  }
-
-  const hashBytes = new Uint8Array(hashBuf);
-
-  const rs = new Uint8Array(Buffer.concat([resp.sig.r, resp.sig.s]));
-  const pubkey = new Uint8Array(resp.pubkey);
-  const recovery0 = ecdsaRecover(rs, 0, hashBytes, false);
-  const recovery1 = ecdsaRecover(rs, 1, hashBytes, false);
-  const pubkeyStr = Buffer.from(pubkey).toString('hex');
-  const recovery0Str = Buffer.from(recovery0).toString('hex');
-  const recovery1Str = Buffer.from(recovery1).toString('hex');
-
-  if (pubkeyStr === recovery0Str) {
-    return 0;
-  } else if (pubkeyStr === recovery1Str) {
-    return 1;
-  } else {
-    throw new Error(
-      'Failed to recover Y parity. Bad signature or transaction data.',
-    );
-  }
+  
+  throw new Error('Failed to recover Y parity. Bad signature or transaction data.');
 };
 
 /** @internal */

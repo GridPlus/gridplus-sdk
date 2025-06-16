@@ -143,19 +143,17 @@ export const signAuthorization = async (
 
   // Extract signature components if they exist
   if (response.sig && response.pubkey) {
-    // Create a mock tx object to use with getYParity
-    // For EIP-7702, we need to prepare a proper hash for the message to recover y-parity
-    // We need a proper 32-byte hash for secp256k1 to work with
-    const messageHash = Buffer.from(Hash.keccak256(Buffer.from(message)));
-
-    // Create a mock tx that will just return this hash directly without modifying it
-    const mockTx = {
-      _type: null, // Bypass the hash processing in getYParity
-      getMessageToSign: () => messageHash,
-    };
-
-    // Get the y-parity value using our utility function
-    const yParity = getYParity(mockTx, response);
+    // Calculate the correct y-parity value
+    const messageHash = Buffer.from(Hash.keccak256(message));
+    const yParity = getYParity(messageHash, response.sig, response.pubkey);
+    
+    // Handle both Buffer and string formats for r and s
+    const rValue = Buffer.isBuffer(response.sig.r) 
+      ? `0x${response.sig.r.toString('hex')}` 
+      : response.sig.r;
+    const sValue = Buffer.isBuffer(response.sig.s)
+      ? `0x${response.sig.s.toString('hex')}`
+      : response.sig.s;
 
     // Create a complete Authorization object with all required signature components
     const result: Authorization = {
@@ -163,8 +161,8 @@ export const signAuthorization = async (
       chainId: authorization.chainId,
       nonce: authorization.nonce,
       yParity,
-      r: `0x${response.sig.r.toString('hex')}` as Hex,
-      s: `0x${response.sig.s.toString('hex')}` as Hex,
+      r: rValue as Hex,
+      s: sValue as Hex,
     };
 
     return result;
