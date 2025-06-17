@@ -146,10 +146,10 @@ export const signAuthorization = async (
     // Calculate the correct y-parity value
     const messageHash = Buffer.from(Hash.keccak256(message));
     const yParity = getYParity(messageHash, response.sig, response.pubkey);
-    
+
     // Handle both Buffer and string formats for r and s
-    const rValue = Buffer.isBuffer(response.sig.r) 
-      ? `0x${response.sig.r.toString('hex')}` 
+    const rValue = Buffer.isBuffer(response.sig.r)
+      ? `0x${response.sig.r.toString('hex')}`
       : response.sig.r;
     const sValue = Buffer.isBuffer(response.sig.s)
       ? `0x${response.sig.s.toString('hex')}`

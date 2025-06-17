@@ -788,44 +788,61 @@ export const getV = function (tx: any, resp: any) {
 
 /**
  * Get the y-parity value for a signature by recovering the public key.
- * 
+ *
  * Usage:
  * - Simple: getYParity(messageHash, signature, publicKey)
  * - Object: getYParity({ messageHash, signature, publicKey })
- * - Legacy: getYParity(tx, response) 
- * 
+ * - Legacy: getYParity(tx, response)
+ *
  * @param messageHash - The 32-byte message hash (or tx object for legacy)
  * @param signature - Object with r and s values
  * @param publicKey - Expected public key
  * @returns 0 or 1 for the y-parity value
  */
 export const getYParity = function (
-  messageHash: Buffer | Uint8Array | string | { messageHash: any; signature: any; publicKey: any } | any,
+  messageHash:
+    | Buffer
+    | Uint8Array
+    | string
+    | { messageHash: any; signature: any; publicKey: any }
+    | any,
   signature?: { r: any; s: any } | any,
-  publicKey?: Buffer | Uint8Array | string
+  publicKey?: Buffer | Uint8Array | string,
 ): number {
   // Handle legacy object format for backward compatibility
-  if (typeof messageHash === 'object' && messageHash && 'messageHash' in messageHash) {
-    return getYParity(messageHash.messageHash, messageHash.signature, messageHash.publicKey);
+  if (
+    typeof messageHash === 'object' &&
+    messageHash &&
+    'messageHash' in messageHash
+  ) {
+    return getYParity(
+      messageHash.messageHash,
+      messageHash.signature,
+      messageHash.publicKey,
+    );
   }
-  
+
   // Handle legacy transaction format for backward compatibility
   if (signature && signature.sig && signature.pubkey && !publicKey) {
     return getYParity(messageHash, signature.sig, signature.pubkey);
   }
-  
+
   // Validate required parameters
   if (!signature || !publicKey) {
     throw new Error('Response with sig and pubkey required for legacy format');
   }
-  
+
   if (!signature.r || !signature.s) {
     throw new Error('Response with sig and pubkey required for legacy format');
   }
-  
+
   // Handle transaction objects with getMessageToSign
   let hash = messageHash;
-  if (typeof messageHash === 'object' && messageHash && typeof messageHash.getMessageToSign === 'function') {
+  if (
+    typeof messageHash === 'object' &&
+    messageHash &&
+    typeof messageHash.getMessageToSign === 'function'
+  ) {
     const type = messageHash._type;
     if (type !== undefined && type !== null) {
       // EIP-1559 / EIP-2930 / future typed transactions
@@ -839,7 +856,7 @@ export const getYParity = function (
     // If it's a buffer but not 32 bytes, hash it
     hash = Buffer.from(keccak256(messageHash), 'hex');
   }
-  
+
   // Normalize inputs to Buffers
   const toBuffer = (data: any): Buffer => {
     if (!data) throw new Error('Invalid data');
@@ -850,20 +867,21 @@ export const getYParity = function (
     }
     throw new Error('Invalid data type');
   };
-  
+
   const hashBuf = toBuffer(hash);
   const rBuf = toBuffer(signature.r);
   const sBuf = toBuffer(signature.s);
   const pubkeyBuf = toBuffer(publicKey);
-  
+
   // For non-32 byte hashes, hash them (legacy support)
-  const finalHash = hashBuf.length === 32 ? hashBuf : Buffer.from(keccak256(hashBuf), 'hex');
-  
+  const finalHash =
+    hashBuf.length === 32 ? hashBuf : Buffer.from(keccak256(hashBuf), 'hex');
+
   // Combine r and s
   const rs = new Uint8Array(Buffer.concat([rBuf, sBuf]));
   const hashBytes = new Uint8Array(finalHash);
   const isCompressed = pubkeyBuf.length === 33;
-  
+
   // Try both recovery values
   for (let recovery = 0; recovery <= 1; recovery++) {
     try {
@@ -875,8 +893,10 @@ export const getYParity = function (
       continue;
     }
   }
-  
-  throw new Error('Failed to recover Y parity. Bad signature or transaction data.');
+
+  throw new Error(
+    'Failed to recover Y parity. Bad signature or transaction data.',
+  );
 };
 
 /** @internal */
