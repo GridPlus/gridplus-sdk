@@ -628,6 +628,11 @@ export async function fetchCalldataDecoder(
       : //@ts-expect-error - Buffer doesn't recognize Uint8Array type properly
         Buffer.from(_data, 'hex');
 
+    // For empty data (just '0x'), return early - no calldata to decode
+    if (data.length === 0) {
+      return { def: null, abi: null };
+    }
+
     if (data.length < 4) {
       throw new Error(
         'Data must contain at least 4 bytes of data to define the selector',
