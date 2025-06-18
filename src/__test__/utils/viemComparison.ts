@@ -88,15 +88,10 @@ const normalizeLatticeSignature = (
     vValue = Number(latticeResult.sig.v);
   }
 
-  console.log(
-    `🔧 Signature normalization: vValue=${vValue}, originalTx.type=${originalTx.type}`,
-  );
-
   // For typed transactions (non-legacy), viem expects yParity instead of v
   if (originalTx.type !== 'legacy') {
     // Convert v to yParity (v is either 27/28 or 0/1)
     const yParity = vValue >= 27 ? vValue - 27 : vValue;
-    console.log(`   Non-legacy: yParity=${yParity}`);
     return {
       ...originalTx,
       r: latticeResult.sig.r as Hex,
@@ -105,7 +100,6 @@ const normalizeLatticeSignature = (
     };
   } else {
     // Legacy transactions use v directly as BigInt
-    console.log(`   Legacy: v=${vValue} (as BigInt)`);
     const result = {
       ...originalTx,
       r: latticeResult.sig.r as Hex,
@@ -122,12 +116,6 @@ const normalizeLatticeSignature = (
     delete result.accessList;
     delete result.authorizationList;
 
-    console.log(`   Legacy result:`, {
-      r: result.r?.slice(0, 10),
-      s: result.s?.slice(0, 10),
-      v: result.v,
-      type: result.type,
-    });
     return result;
   }
 };
@@ -161,15 +149,6 @@ export const signAndCompareTransaction = async (
     // Parse the viem signed transaction to extract signature components
     const parsedViemTx = parseTransaction(viemSignedTx);
 
-    // Debug: show what viem actually signed for legacy transactions
-    if (tx.type === 'legacy') {
-      console.log(`🔍 Viem signed transaction details:`);
-      console.log(`   v: ${parsedViemTx.v}`);
-      console.log(`   r: ${parsedViemTx.r?.slice(0, 10)}...`);
-      console.log(`   s: ${parsedViemTx.s?.slice(0, 10)}...`);
-      console.log(`   Full tx: ${viemSignedTx}`);
-    }
-
     // Verify Lattice signature structure
     expect(latticeResult.sig).toBeDefined();
     expect(latticeResult.sig.r).toBeDefined();
@@ -188,16 +167,6 @@ export const signAndCompareTransaction = async (
       expect(parsedViemTx.v).toBeDefined();
     }
 
-    // Debug logging for legacy transactions
-    if (tx.type === 'legacy') {
-      console.log(`🔍 Debug ${testName}:`);
-      console.log(`   latticeResult.tx exists: ${!!latticeResult.tx}`);
-      console.log(`   latticeResult.sig:`, latticeResult.sig);
-      if (latticeResult.tx) {
-        console.log(`   latticeResult.tx: ${latticeResult.tx.slice(0, 40)}...`);
-      }
-    }
-
     // Get the signed transaction from Lattice
     let latticeSignedTx: string;
 
@@ -206,16 +175,8 @@ export const signAndCompareTransaction = async (
       if (latticeResult.tx) {
         // Lattice provided a complete signed transaction - use it directly
         latticeSignedTx = latticeResult.tx;
-        console.log(
-          `   Using Lattice provided tx: ${latticeSignedTx.slice(0, 40)}...`,
-        );
       } else {
         // Lattice only provided signature components - reconstruct the transaction
-        console.log(
-          `   Reconstructing legacy transaction from signature components...`,
-        );
-
-        // For legacy transactions, we need to use a different approach
         // Convert Buffer v value to number
         let vValue: number;
         const vBuffer = latticeResult.sig.v as any; // Type assertion to avoid intersection issues
@@ -246,23 +207,7 @@ export const signAndCompareTransaction = async (
           v: BigInt(vValue), // Legacy uses v, not yParity
         };
 
-        console.log(
-          `   Unsigned tx:`,
-          JSON.stringify(
-            unsignedTx,
-            (key, value) =>
-              typeof value === 'bigint' ? value.toString() : value,
-            2,
-          ),
-        );
-        console.log(`   Signature:`, {
-          r: signature.r.slice(0, 10) + '...',
-          s: signature.s.slice(0, 10) + '...',
-          v: signature.v.toString(),
-        });
-
         latticeSignedTx = serializeTransaction(unsignedTx, signature);
-        console.log(`   Reconstructed tx: ${latticeSignedTx.slice(0, 40)}...`);
       }
     } else if (latticeResult.tx) {
       // Lattice provided the complete signed transaction for non-legacy
@@ -286,11 +231,6 @@ export const signAndCompareTransaction = async (
     // Verify r and s components match exactly
     expect(latticeR).toBe(viemR);
     expect(latticeS).toBe(viemS);
-
-    console.log(`✅ ${testName}: Signatures match perfectly`);
-    console.log(`   r: ${latticeR.slice(0, 10)}...`);
-    console.log(`   s: ${latticeS.slice(0, 10)}...`);
-    console.log(`   Serialized tx: ${viemSignedTx.slice(0, 20)}...`);
 
     return {
       lattice: latticeResult,
