@@ -241,11 +241,8 @@ export const parseGenericSigningResponse = function (res, off, req) {
     // If this is an EVM request, we want to add a `v` and format r,s as hex strings with 0x prefix
     if (req.encodingType === Constants.SIGNING.ENCODINGS.EVM) {
       const vBn = getV(req.origPayloadBuf, parsed);
-      // NOTE: For backward-compatibility reasons we are returning
-      // a Buffer for `v` here. In the future, we will switch to
-      // returning `v` as a BN and `r`,`s` as Buffers (they are hex
-      // strings right now).
-      parsed.sig.v = vBn.toArrayLike(Buffer);
+      // Convert v to hex string for consistency with r and s
+      parsed.sig.v = `0x${vBn.toString(16)}`;
 
       // Format r and s as hex strings with 0x prefix for consistency with legacy ETH signing
       parsed.sig.r = `0x${parsed.sig.r.toString('hex')}`;

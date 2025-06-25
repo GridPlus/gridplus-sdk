@@ -101,19 +101,33 @@ export const getNestedCalldata = function (def, calldata) {
         // extend to more complex array structures if we see nested defs
         // in this pattern. However, we have only ever seen `bytes[]`, which
         // is typically used in `multicall` patterns
-        paramData.forEach((nestedParamDatum) => {
-          const nestedParamDatumBuf = Buffer.from(
-            String(nestedParamDatum).slice(2),
-            'hex',
-          );
-          if (!couldBeNestedDef(nestedParamDatumBuf)) {
-            nestedDefIsPossible = false;
-          }
-        });
+        // Ensure paramData is an array for bytes[] type
+        if (Array.isArray(paramData)) {
+          paramData.forEach((nestedParamDatum) => {
+            // Ensure nestedParamDatum is a hex string
+            if (typeof nestedParamDatum !== 'string' || !nestedParamDatum.startsWith('0x')) {
+              nestedDefIsPossible = false;
+              return;
+            }
+            const nestedParamDatumBuf = Buffer.from(
+              nestedParamDatum.slice(2),
+              'hex',
+            );
+            if (!couldBeNestedDef(nestedParamDatumBuf)) {
+              nestedDefIsPossible = false;
+            }
+          });
+        } else {
+          nestedDefIsPossible = false;
+        }
       } else if (isBytesItem(defParams[i])) {
         // Regular `bytes` type - perform size check
-        const paramDataBuf = Buffer.from(String(paramData).slice(2), 'hex');
-        nestedDefIsPossible = couldBeNestedDef(paramDataBuf);
+        if (typeof paramData !== 'string' || !paramData.startsWith('0x')) {
+          nestedDefIsPossible = false;
+        } else {
+          const paramDataBuf = Buffer.from(paramData.slice(2), 'hex');
+          nestedDefIsPossible = couldBeNestedDef(paramDataBuf);
+        }
       } else {
         // Unknown `bytes` item type
         nestedDefIsPossible = false;

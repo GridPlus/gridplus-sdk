@@ -9,12 +9,11 @@ describe('XPUB', () => {
     const isPaired = await setupClient();
     if (!isPaired) {
       const secret = question('Please enter the pairing secret: ');
-      console.log('secret', secret);
       await pair(secret.toUpperCase());
     }
   });
 
-    test('fetch bitcoin xpub', async () => {
+  test('fetch bitcoin xpub', async () => {
     const xpub = await fetchAddressesByDerivationPath("44'/0'/0'", {
       flag: LatticeGetAddressesFlag.secp256k1Xpub,
     });

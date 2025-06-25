@@ -4,6 +4,7 @@ import {
   deriveSECP256K1Key,
   parseWalletJobResp,
   validateGenericSig,
+  getSignatureVBN,
 } from './helpers';
 import { initializeSeed } from './initializeClient';
 import { testRequest } from './testRequest';
@@ -12,7 +13,7 @@ import { Constants } from '../..';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { RLP } from '@ethereumjs/rlp';
 import { getDeviceId } from './getters';
-import { ensureHexBuffer, getYParity } from '../../util';
+import { ensureHexBuffer } from '../../util';
 
 export async function runTestCase(
   payload: TestRequestPayload,
@@ -119,14 +120,7 @@ export async function runEvm(
   const latticeS = Buffer.from(sig.s);
 
   // Get the V parameter or y-parity value depending on transaction type
-  let latticeV;
-  if (tx._type && tx._type > 0) {
-    // For EIP-1559 and newer transaction types, get y-parity (0 or 1)
-    latticeV = getYParity(tx, resp);
-  } else {
-    // For legacy transactions, use getV
-    latticeV = new BN(sig.v);
-  }
+  const latticeV = getSignatureVBN(tx, resp);
 
   // Validate the signature
   expect(latticeR.equals(refR)).toEqualElseLog(

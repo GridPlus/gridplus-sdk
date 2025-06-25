@@ -16,11 +16,6 @@ import {
   DEFAULT_ETH_DERIVATION,
   SOLANA_DERIVATION,
 } from '../constants';
-import {
-  isEip7702Transaction,
-  serializeEIP7702Transaction,
-  toViemTransaction,
-} from '../ethereum';
 import { fetchDecoder } from '../functions/fetchDecoder';
 import type { Authorization } from 'viem';
 import {
@@ -43,28 +38,33 @@ type AuthorizationRequest = {
  * Sign a transaction using Viem-compatible transaction types
  */
 export const sign = async (
-  transaction: TransactionRequest | TransactionSerializable,
+  transaction: TransactionSerializable,
   overrides?: Omit<SignRequestParams, 'data'>,
 ): Promise<SignData> => {
-  // Handle both our transaction format and Viem's format
-  const serializedTx =
-    'type' in transaction && typeof transaction.type === 'string'
-      ? serializeTransaction(transaction as TransactionSerializable)
-      : isEip7702Transaction(transaction as TransactionRequest)
-        ? serializeEIP7702Transaction(transaction as any)
-        : serializeTransaction(
-            toViemTransaction(transaction as TransactionRequest),
-          );
+  // Serialize the transaction using Viem's native serializer
+  const serializedTx = serializeTransaction(transaction);
 
-  // Determine the correct encoding type based on transaction type
+  // Determine the encoding type based on transaction type
   let encodingType: number;
-  if (
-    ('type' in transaction && transaction.type === 'eip7702') ||
-    isEip7702Transaction(transaction as TransactionRequest)
-  ) {
-    encodingType = Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST;
+  if (transaction.type === 'eip7702') {
+    // Check if it has single authorization or authorization list
+    const eip7702Tx = transaction as TransactionSerializableEIP7702;
+    const hasAuthList = eip7702Tx.authorizationList && eip7702Tx.authorizationList.length > 0;
+    encodingType = hasAuthList 
+      ? Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST
+      : Constants.SIGNING.ENCODINGS.EIP7702_AUTH;
   } else {
     encodingType = Constants.SIGNING.ENCODINGS.EVM;
+  }
+
+  // Only fetch decoder if we have the required fields
+  let decoder: Buffer | undefined;
+  if ('data' in transaction && 'to' in transaction && 'chainId' in transaction) {
+    decoder = await fetchDecoder({
+      data: transaction.data,
+      to: transaction.to,
+      chainId: transaction.chainId,
+    } as TransactionRequest);
   }
 
   const payload: SigningPayload = {
@@ -73,7 +73,7 @@ export const sign = async (
     hashType: Constants.SIGNING.HASHES.KECCAK256,
     encodingType,
     payload: serializedTx,
-    decoder: await fetchDecoder(transaction as TransactionRequest),
+    decoder,
   };
 
   return queue((client) => client.sign({ data: payload, ...overrides }));

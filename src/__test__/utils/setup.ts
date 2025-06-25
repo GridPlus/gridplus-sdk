@@ -51,7 +51,6 @@ export const setupClient = async () => {
   });
   if (!isPaired) {
     const secret = question('Please enter the pairing secret: ');
-    console.log('secret', secret);
     await pair(secret.toUpperCase());
   }
   return getClient();

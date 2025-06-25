@@ -1,6 +1,6 @@
 import { CURRENCIES } from '../constants';
 import { KeyPair } from './shared';
-import type { Address, Hash, Hex, Signature } from 'viem';
+import type { Address, Hash, Signature } from 'viem';
 
 export type Currency = keyof typeof CURRENCIES;
 
@@ -14,7 +14,6 @@ export interface SignData {
   sigs?: Buffer[];
   signer?: Address;
   err?: string;
-  viemTx?: Hex;
 }
 
 export type SigningRequestResponse = SignData | { pubkey: null; sig: null };
