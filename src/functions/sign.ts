@@ -1,7 +1,11 @@
 import { Hash } from 'ox';
+import { serializeTransaction, type Hex, type Address } from 'viem';
 import bitcoin from '../bitcoin';
 import { CURRENCIES } from '../constants';
-import ethereum from '../ethereum';
+import ethereum, {
+  normalizeLatticeSignature,
+  toViemTransaction,
+} from '../ethereum';
 import { parseGenericSigningResponse } from '../genericSigning';
 import {
   LatticeSecureEncryptedRequestType,
@@ -18,6 +22,9 @@ import {
   DecodeSignResponseParams,
   SignData,
   BitcoinSignRequest,
+  EthSignRequest,
+  EthMsgSignRequest,
+  SignRequest,
 } from '../types';
 
 /**
@@ -78,7 +85,7 @@ export async function sign({
     // decode response data and return
     const decodedResponse = decodeSignResponse({
       data: decryptedData,
-      request: requestData,
+      request: requestData as SignRequest,
       isGeneric,
       currency,
     });
@@ -103,26 +110,31 @@ export const encodeSignRequest = ({
   cachedData,
   nextCode,
 }: EncodeSignRequestParams) => {
-  let reqPayload, schema;
+  let reqPayload: Buffer, schema: number;
+  const typedRequestData = requestData as SignRequest & {
+    extraDataPayloads?: Buffer[];
+  };
 
   if (cachedData && nextCode) {
-    requestData = cachedData;
+    const typedCachedData = cachedData as SignRequest & {
+      extraDataPayloads: Buffer[];
+    };
     reqPayload = Buffer.concat([
       nextCode,
-      requestData.extraDataPayloads.shift(),
+      typedCachedData.extraDataPayloads.shift() as Buffer,
     ]);
     schema = LatticeSignSchema.extraData;
   } else {
-    reqPayload = requestData.payload;
-    schema = requestData.schema;
+    reqPayload = typedRequestData.payload;
+    schema = typedRequestData.schema;
   }
 
   const payload = Buffer.alloc(2 + fwConstants.reqMaxDataSz);
   let off = 0;
 
   const hasExtraPayloads =
-    requestData.extraDataPayloads &&
-    Number(requestData.extraDataPayloads.length > 0);
+    typedRequestData.extraDataPayloads &&
+    Number(typedRequestData.extraDataPayloads.length > 0);
 
   payload.writeUInt8(hasExtraPayloads, off);
   off += 1;
@@ -222,7 +234,7 @@ export const decodeSignResponse = ({
     // Add extra data for debugging/lookup purposes
     return {
       tx: serializedTx,
-      txHash: Buffer.from(Hash.sha256(txHashPre)).toString('hex'),
+      txHash: `0x${Buffer.from(Hash.sha256(txHashPre)).toString('hex')}` as Hex,
       changeRecipient,
       sigs,
     };
@@ -240,26 +252,32 @@ export const decodeSignResponse = ({
       // `rlp([status, cumulative_transaction_gas_used, logs_bloom, logs])`."
       return {
         tx: `0x${result}`,
-        txHash: `0x${ethereum.hashTransaction(result)}`,
+        txHash: `0x${ethereum.hashTransaction(result)}` as Hex,
         sig: {
-          v: Buffer.from([]),
-          r: Buffer.from([]),
-          s: Buffer.from([]),
+          v: 0n,
+          r: `0x${''}` as Hex,
+          s: `0x${''}` as Hex,
         },
-        signer: ethAddr,
+        signer: `0x${ethAddr.toString('hex')}` as Address,
       };
     } else {
       // Normal transactions return object with rawTx and sigWithV
-      return {
+      const response: SignData = {
         tx: `0x${result.rawTx}`,
-        txHash: `0x${ethereum.hashTransaction(result.rawTx)}`,
+        txHash: `0x${ethereum.hashTransaction(result.rawTx)}` as Hex,
         sig: {
           v: result.sigWithV.v,
-          r: result.sigWithV.r.toString('hex'),
-          s: result.sigWithV.s.toString('hex'),
+          r: `0x${result.sigWithV.r.toString('hex')}` as Hex,
+          s: `0x${result.sigWithV.s.toString('hex')}` as Hex,
         },
-        signer: ethAddr,
+        signer: `0x${ethAddr.toString('hex')}` as Address,
       };
+
+      // Add normalized viem-compatible signed transaction if original transaction data is available
+      // Note: For now, skip viem transaction normalization due to interface compatibility
+      // This can be added back when proper transaction data is available
+
+      return response;
     }
   } else if (currency === CURRENCIES.ETH_MSG) {
     const sig = parseDER(data.slice(off, off + 2 + data[off + 1]));
@@ -272,10 +290,10 @@ export const decodeSignResponse = ({
     return {
       sig: {
         v: validatedSig.v,
-        r: validatedSig.r.toString('hex'),
-        s: validatedSig.s.toString('hex'),
+        r: `0x${validatedSig.r.toString('hex')}` as Hex,
+        s: `0x${validatedSig.s.toString('hex')}` as Hex,
       },
-      signer,
+      signer: `0x${signer.toString('hex')}` as Address,
     };
   } else {
     // Generic signing request

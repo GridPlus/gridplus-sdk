@@ -14,6 +14,7 @@ export interface SignData {
   sigs?: Buffer[];
   signer?: Address;
   err?: string;
+  viemTx?: Hex;
 }
 
 export type SigningRequestResponse = SignData | { pubkey: null; sig: null };

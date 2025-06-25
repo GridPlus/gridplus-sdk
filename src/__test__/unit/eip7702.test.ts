@@ -4,7 +4,7 @@ import {
 } from '../../types';
 import { serializeEIP7702Transaction } from '../../ethereum';
 import { parseEther, toHex } from 'viem';
-import { keccak256 } from 'js-sha3';
+import { Hash } from 'ox';
 
 describe('EIP-7702 Transaction Serialization', () => {
   /**
@@ -34,10 +34,10 @@ describe('EIP-7702 Transaction Serialization', () => {
       authorization: {
         chainId: 1,
         address: '0x2222222222222222222222222222222222222222',
-        nonce: 0,
-        yParity: 0, // Known signature values for deterministic test
-        r: '0x1111111111111111111111111111111111111111111111111111111111111111',
-        s: '0x2222222222222222222222222222222222222222222222222222222222222222',
+        nonce: 0n,
+        yParity: 0, // Valid ECDSA signature values
+        r: '0xbfa71d3b2c96bd4f573ee8e2b0da387999eb521b8c09f68499f4ed528cbeeb40',
+        s: '0x171bb6415a3ff1207ddf5314aa05ffc168bd82f3abd0c8a7c91ef22ff58c4698',
       },
     };
 
@@ -45,7 +45,11 @@ describe('EIP-7702 Transaction Serialization', () => {
     const serialized = serializeEIP7702Transaction(tx);
 
     // Compute the keccak256 hash of the serialized transaction
-    const txHash = '0x' + keccak256(Buffer.from(serialized.slice(2), 'hex'));
+    const txHash =
+      '0x' +
+      Buffer.from(
+        Hash.keccak256(Buffer.from(serialized.slice(2), 'hex')),
+      ).toString('hex');
 
     // Store the serialized value for debugging
     console.log('Serialized transaction:', serialized);
@@ -78,22 +82,22 @@ describe('EIP-7702 Transaction Serialization', () => {
       value: toHex(parseEther('1.0')), // 1 ETH
       data: '0x',
       accessList: [],
-      authorizations: [
+      authorizationList: [
         {
           chainId: 1,
           address: '0x2222222222222222222222222222222222222222',
-          nonce: 0,
-          yParity: 0, // Known signature values for deterministic test
-          r: '0x1111111111111111111111111111111111111111111111111111111111111111',
-          s: '0x2222222222222222222222222222222222222222222222222222222222222222',
+          nonce: 0n,
+          yParity: 0, // Valid ECDSA signature values
+          r: '0xbfa71d3b2c96bd4f573ee8e2b0da387999eb521b8c09f68499f4ed528cbeeb40',
+          s: '0x171bb6415a3ff1207ddf5314aa05ffc168bd82f3abd0c8a7c91ef22ff58c4698',
         },
         {
           chainId: 1,
           address: '0x3333333333333333333333333333333333333333',
-          nonce: 0,
-          yParity: 1, // Different signature
-          r: '0x3333333333333333333333333333333333333333333333333333333333333333',
-          s: '0x4444444444444444444444444444444444444444444444444444444444444444',
+          nonce: 0n,
+          yParity: 0, // Valid ECDSA signature values
+          r: '0x888acc1e501f052175c59fa2167699341709bd72f9809182bdf580c1c3bf6cf',
+          s: '0x7e03cfbc948cf6b8c4cd946d511b3ea1c4c64e8c70e0259573183ef22d565034',
         },
       ],
     };
@@ -102,7 +106,11 @@ describe('EIP-7702 Transaction Serialization', () => {
     const serialized = serializeEIP7702Transaction(tx);
 
     // Compute the keccak256 hash of the serialized transaction
-    const txHash = '0x' + keccak256(Buffer.from(serialized.slice(2), 'hex'));
+    const txHash =
+      '0x' +
+      Buffer.from(
+        Hash.keccak256(Buffer.from(serialized.slice(2), 'hex')),
+      ).toString('hex');
 
     // Store the serialized value for debugging
     console.log('Serialized auth list transaction:', serialized);
@@ -142,11 +150,11 @@ describe('EIP-7702 Transaction Serialization', () => {
       authorization: {
         chainId: 1,
         address: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', // WETH contract
-        nonce: 0,
-        // Standard test signature values
-        yParity: 0,
-        r: '0x0000000000000000000000000000000000000000000000000000000000000001',
-        s: '0x0000000000000000000000000000000000000000000000000000000000000002',
+        nonce: 0n,
+        // Valid ECDSA signature values for chainId=1, address=WETH, nonce=0
+        yParity: 1,
+        r: '0x7afecf0fa2f0c5f3cee3bf477dc4b0787afaecf5c8b0e2f7ec6c47c893bb06f0',
+        s: '0x2e019bd0bb7b96a5beb6f92c63bc7d72f19f6b960d50f8b1c0c4f6bc690e95f4',
       },
     };
 
@@ -154,7 +162,11 @@ describe('EIP-7702 Transaction Serialization', () => {
     const serialized = serializeEIP7702Transaction(tx);
 
     // Compute the keccak256 hash of the serialized transaction
-    const txHash = '0x' + keccak256(Buffer.from(serialized.slice(2), 'hex'));
+    const txHash =
+      '0x' +
+      Buffer.from(
+        Hash.keccak256(Buffer.from(serialized.slice(2), 'hex')),
+      ).toString('hex');
 
     console.log('Reference serialized transaction:', serialized);
     console.log('Reference transaction hash:', txHash);

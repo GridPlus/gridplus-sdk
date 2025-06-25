@@ -3,14 +3,9 @@ import type {
   Hex,
   TypedData,
   TypedDataDefinition,
-  Signature,
-  TransactionSerializableLegacy,
-  TransactionSerializableEIP1559,
-  TransactionSerializableEIP2930,
-  TransactionSerializableEIP7702,
   AccessList,
-  Authorization as ViemAuthorization,
-  SignedAuthorization as ViemSignedAuthorization,
+  SignedAuthorization,
+  SignedAuthorizationList,
 } from 'viem';
 import { Client } from '../client';
 import { Currency, SigningPath, Wallet } from './client';
@@ -34,8 +29,7 @@ type BaseTransactionRequest = {
   data?: Hex;
   chainId: number;
   nonce: number;
-  gas?: Hex | bigint; // For viem compatibility
-  gasLimit?: Hex | bigint; // For legacy compatibility
+  gasLimit?: Hex | bigint;
 };
 
 // Legacy transaction request
@@ -65,7 +59,7 @@ export type EIP7702AuthTransactionRequest = BaseTransactionRequest & {
   maxFeePerGas: Hex | bigint;
   maxPriorityFeePerGas: Hex | bigint;
   accessList?: AccessList;
-  authorization: Authorization;
+  authorization: SignedAuthorization;
 };
 
 // EIP-7702 authorization list transaction request (type 5)
@@ -74,8 +68,7 @@ export type EIP7702AuthListTransactionRequest = BaseTransactionRequest & {
   maxFeePerGas: Hex | bigint;
   maxPriorityFeePerGas: Hex | bigint;
   accessList?: AccessList;
-  authorizationList?: Authorization[]; // For viem compatibility
-  authorizations?: Authorization[]; // For test compatibility
+  authorizationList: SignedAuthorizationList;
 };
 
 // Main discriminated union for transaction requests
@@ -198,30 +191,3 @@ export interface EIP712MessagePayload<
     ? TypedDataDefinition<TTypedData, TPrimaryType>['message']
     : Record<string, unknown>;
 }
-
-/**
- * Unsigned authorization data (what needs to be signed)
- * This aligns with viem's Authorization type
- */
-export interface AuthorizationData {
-  address: Address; // Contract address for delegation
-  chainId: number; // Chain ID (0 for all chains, or specific chain)
-  nonce: number; // Must be less than 2^64 - 1
-}
-
-/**
- * Signed authorization - strictly compatible with viem's SignedAuthorization
- * This combines AuthorizationData with viem's Signature type
- */
-export type Authorization = AuthorizationData & {
-  r: Hex;
-  s: Hex;
-  yParity: number;
-  v?: bigint;
-};
-
-// Alternative type alias for clarity - exactly equivalent to viem's SignedAuthorization
-export type SignedAuthorization = ViemSignedAuthorization;
-
-// Utility type for creating authorizations (unsigned)
-export type UnsignedAuthorization = ViemAuthorization;

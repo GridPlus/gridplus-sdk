@@ -4,7 +4,7 @@ import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory } from '@ethereumjs/tx';
 import BN from 'bignumber.js';
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
-import { keccak256 } from 'js-sha3';
+import { Hash } from 'ox';
 import { RLP } from '@ethereumjs/rlp';
 import * as secp256k1 from 'secp256k1';
 import {
@@ -23,7 +23,12 @@ import {
 } from './util';
 import * as cbor from 'cbor';
 import bdec from 'cbor-bigdecimal';
-import { Hex, TransactionSerializable, serializeTransaction } from 'viem';
+import {
+  Hex,
+  TransactionSerializable,
+  serializeTransaction,
+  hexToNumber,
+} from 'viem';
 import { TransactionRequest, TRANSACTION_TYPE } from './types';
 
 bdec(cbor);
@@ -64,8 +69,9 @@ const validateEthereumMsgResponse = function (res, req) {
     const hash = prehash
       ? prehash
       : Buffer.from(
-          keccak256(Buffer.concat([get_personal_sign_prefix(msg.length), msg])),
-          'hex',
+          Hash.keccak256(
+            Buffer.concat([get_personal_sign_prefix(msg.length), msg]),
+          ),
         );
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
     return addRecoveryParam(hash, sig, signer, {
@@ -342,8 +348,7 @@ const buildEthereumTxRequest = function (data) {
       if (prehashAllowed && totalSz > maxSzAllowed) {
         // If this payload is too large to send, but the Lattice allows a prehashed message, do that
         prehash = Buffer.from(
-          keccak256(get_rlp_encoded_preimage(rawTx, type)),
-          'hex',
+          Hash.keccak256(get_rlp_encoded_preimage(rawTx, type)),
         );
       } else {
         if (
@@ -370,8 +375,7 @@ const buildEthereumTxRequest = function (data) {
       // If something is unsupported in firmware but we want to allow such transactions,
       // we prehash the message here.
       prehash = Buffer.from(
-        keccak256(get_rlp_encoded_preimage(rawTx, type)),
-        'hex',
+        Hash.keccak256(get_rlp_encoded_preimage(rawTx, type)),
       );
     }
 
@@ -424,8 +428,7 @@ function stripZeros(a) {
 const buildEthRawTx = function (tx, sig, address) {
   // RLP-encode the data we sent to the lattice
   const hash = Buffer.from(
-    keccak256(get_rlp_encoded_preimage(tx.rawTx, tx.type)),
-    'hex',
+    Hash.keccak256(get_rlp_encoded_preimage(tx.rawTx, tx.type)),
   );
   const newSig = addRecoveryParam(hash, sig, address, tx);
   // Use the signature to generate a new raw transaction payload
@@ -436,13 +439,10 @@ const buildEthRawTx = function (tx, sig, address) {
   // See: https://github.com/ethereumjs/ethereumjs-tx/blob/master/src/transaction.ts#L187
   newRawTx.push(stripZeros(newSig.r));
   newRawTx.push(stripZeros(newSig.s));
-  let rlpEncodedWithSig = Buffer.from(RLP.encode(newRawTx));
-  if (tx.type) {
-    rlpEncodedWithSig = Buffer.concat([
-      Buffer.from([tx.type]),
-      rlpEncodedWithSig,
-    ]);
-  }
+  const rlpEncoded = Buffer.from(RLP.encode(newRawTx));
+  const rlpEncodedWithSig = tx.type
+    ? Buffer.concat([Buffer.from([tx.type]), rlpEncoded])
+    : rlpEncoded;
 
   if (
     tx.type === TRANSACTION_TYPE.EIP7702_AUTH ||
@@ -489,14 +489,79 @@ export function addRecoveryParam(hashBuf, sig, address, txData = {}) {
   }
 }
 
+/**
+ * Normalize Lattice signature components to viem format.
+ * Handles Buffer v value conversion and yParity vs v for different transaction types.
+ */
+export function normalizeLatticeSignature(
+  latticeResult: any,
+  originalTx: TransactionSerializable,
+) {
+  // Convert Buffer v value to number
+  let vValue: number;
+  if (Buffer.isBuffer(latticeResult.sig.v)) {
+    // Read entire buffer as big-endian integer
+    // Single byte: <Buffer 26> = 0x26 = 38
+    // Multi-byte: <Buffer 01 35> = 0x0135 = 309 (Polygon chainId 137 with EIP-155)
+    const bufferLength = latticeResult.sig.v.length;
+    if (bufferLength === 1) {
+      vValue = latticeResult.sig.v.readUInt8(0);
+    } else if (bufferLength === 2) {
+      vValue = latticeResult.sig.v.readUInt16BE(0);
+    } else if (bufferLength <= 4) {
+      vValue = latticeResult.sig.v.readUInt32BE(Math.max(0, 4 - bufferLength));
+    } else {
+      // For very large buffers, read as hex and convert
+      vValue = parseInt(latticeResult.sig.v.toString('hex'), 16);
+    }
+  } else if (typeof latticeResult.sig.v === 'number') {
+    vValue = latticeResult.sig.v;
+  } else if (typeof latticeResult.sig.v === 'string') {
+    vValue = hexToNumber(latticeResult.sig.v as Hex);
+  } else {
+    vValue = Number(latticeResult.sig.v);
+  }
+
+  // For typed transactions (non-legacy), viem expects yParity instead of v
+  if (originalTx.type !== 'legacy') {
+    // Convert v to yParity (v is either 27/28 or 0/1)
+    const yParity = vValue >= 27 ? vValue - 27 : vValue;
+    return {
+      ...originalTx,
+      r: latticeResult.sig.r as Hex,
+      s: latticeResult.sig.s as Hex,
+      yParity,
+    };
+  } else {
+    // Legacy transactions use v directly as BigInt
+    const result = {
+      ...originalTx,
+      r: latticeResult.sig.r as Hex,
+      s: latticeResult.sig.s as Hex,
+      v: BigInt(vValue),
+    };
+
+    // For legacy transactions, remove the type field to ensure Viem treats it as legacy
+    delete result.type;
+
+    // Also remove any typed transaction fields that might confuse viem
+    delete result.maxFeePerGas;
+    delete result.maxPriorityFeePerGas;
+    delete result.accessList;
+    delete result.authorizationList;
+
+    return result;
+  }
+}
+
 // Convert an RLP-serialized transaction (plus signature) into a transaction hash
 const hashTransaction = function (serializedTx) {
-  return keccak256(Buffer.from(serializedTx, 'hex'));
+  return Hash.keccak256(Buffer.from(serializedTx, 'hex'));
 };
 
 // Returns address string given public key buffer
 function pubToAddrStr(pub) {
-  return keccak256(pub).slice(-40);
+  return Buffer.from(Hash.keccak256(pub)).slice(-40);
 }
 
 // Convert a 0/1 `v` into a recovery param:
@@ -649,10 +714,9 @@ function buildPersonalSignRequest(req, input) {
     req.payload.writeUInt16LE(payload.length, off);
     off += 2;
     const prehash = Buffer.from(
-      keccak256(
+      Hash.keccak256(
         Buffer.concat([get_personal_sign_prefix(payload.length), payload]),
       ),
-      'hex',
     );
     prehash.copy(req.payload, off);
     req.prehash = prehash;
@@ -1004,7 +1068,7 @@ export const toViemTransaction = (
     value: tx.value ? BigInt(tx.value) : undefined,
     data: tx.data as `0x${string}`,
     nonce: tx.nonce,
-    gas: tx.gas ? BigInt(tx.gas) : undefined,
+    gas: tx.gasLimit ? BigInt(tx.gasLimit) : undefined,
     chainId: tx.chainId,
   };
 
@@ -1073,12 +1137,11 @@ export function serializeEIP7702Transaction(tx: TransactionRequest): Hex {
 
   // Type guard to ensure we have an EIP7702 transaction with appropriate authorization data
   const hasAuthList = 'authorizationList' in tx;
-  const hasAuthorizations = 'authorizations' in tx;
   const hasSingleAuth = 'authorization' in tx;
 
-  if (!hasAuthList && !hasAuthorizations && !hasSingleAuth) {
+  if (!hasAuthList && !hasSingleAuth) {
     throw new Error(
-      'Transaction does not have authorization, authorizations, or authorizationList property',
+      'Transaction does not have authorization or authorizationList property',
     );
   }
 
@@ -1092,14 +1155,12 @@ export function serializeEIP7702Transaction(tx: TransactionRequest): Hex {
     }
     authorizationList = [(tx as any).authorization];
   } else {
-    // Type 5 transaction - handle both authorizationList and authorizations field names
+    // Type 5 transaction - only handle authorizationList field
     if (hasAuthList) {
       authorizationList = (tx as any).authorizationList;
-    } else if (hasAuthorizations) {
-      authorizationList = (tx as any).authorizations;
     } else {
       throw new Error(
-        'EIP-7702 auth list transaction (type 5) must contain authorizationList or authorizations property',
+        'EIP-7702 auth list transaction (type 5) must contain authorizationList property',
       );
     }
   }
@@ -1169,25 +1230,37 @@ export function serializeEIP7702Transaction(tx: TransactionRequest): Hex {
         );
       }
 
-      return {
-        chainId: auth.chainId,
-        address: addressStr as `0x${string}`,
-        nonce: auth.nonce,
-        signature: {
-          yParity:
-            typeof auth.yParity === 'number'
-              ? auth.yParity
-              : typeof auth.yParity === 'string'
-                ? auth.yParity === '0x01' ||
-                  auth.yParity === '0x1' ||
-                  auth.yParity === '1'
-                  ? 1
-                  : 0
-                : 0,
-          r: auth.r || '0x0',
-          s: auth.s || '0x0',
-        },
-      };
+      // Handle viem's SignedAuthorization format
+      if ('signature' in auth && auth.signature) {
+        // Viem format with nested signature
+        return {
+          chainId: auth.chainId,
+          address: addressStr as `0x${string}`,
+          nonce: BigInt(auth.nonce || 0),
+          signature: auth.signature,
+        };
+      } else {
+        // Direct signature properties (r, s, yParity/v)
+        return {
+          chainId: auth.chainId,
+          address: addressStr as `0x${string}`,
+          nonce: BigInt(auth.nonce || 0),
+          signature: {
+            yParity:
+              typeof auth.yParity === 'number'
+                ? auth.yParity
+                : typeof auth.yParity === 'string'
+                  ? auth.yParity === '0x01' ||
+                    auth.yParity === '0x1' ||
+                    auth.yParity === '1'
+                    ? 1
+                    : 0
+                  : 0,
+            r: auth.r || '0x0',
+            s: auth.s || '0x0',
+          },
+        };
+      }
     }),
   };
 

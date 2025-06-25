@@ -4,8 +4,6 @@ import {
   http,
   parseTransaction,
   serializeTransaction,
-  hexToNumber,
-  numberToHex,
   type Address,
   type Hex,
   type TransactionSerializable,
@@ -14,6 +12,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { mainnet, polygon, bsc, avalanche } from 'viem/chains';
 import { sign } from '../../api';
 import { deriveAddress } from './determinism';
+import { normalizeLatticeSignature } from '../../ethereum';
 
 // Foundry test mnemonic
 const FOUNDRY_TEST_MNEMONIC =
@@ -58,67 +57,6 @@ export const createFoundryWalletClient = (chainId = 1) => {
 // Transaction type for our test vectors - use viem's TransactionSerializable
 export type TestTransaction = TransactionSerializable;
 
-// Helper to normalize Lattice signature components to viem format
-const normalizeLatticeSignature = (
-  latticeResult: any,
-  originalTx: TestTransaction,
-) => {
-  // Convert Buffer v value to number
-  let vValue: number;
-  if (Buffer.isBuffer(latticeResult.sig.v)) {
-    // Read entire buffer as big-endian integer
-    // Single byte: <Buffer 26> = 0x26 = 38
-    // Multi-byte: <Buffer 01 35> = 0x0135 = 309 (Polygon chainId 137 with EIP-155)
-    const bufferLength = latticeResult.sig.v.length;
-    if (bufferLength === 1) {
-      vValue = latticeResult.sig.v.readUInt8(0);
-    } else if (bufferLength === 2) {
-      vValue = latticeResult.sig.v.readUInt16BE(0);
-    } else if (bufferLength <= 4) {
-      vValue = latticeResult.sig.v.readUInt32BE(Math.max(0, 4 - bufferLength));
-    } else {
-      // For very large buffers, read as hex and convert
-      vValue = parseInt(latticeResult.sig.v.toString('hex'), 16);
-    }
-  } else if (typeof latticeResult.sig.v === 'number') {
-    vValue = latticeResult.sig.v;
-  } else if (typeof latticeResult.sig.v === 'string') {
-    vValue = hexToNumber(latticeResult.sig.v as Hex);
-  } else {
-    vValue = Number(latticeResult.sig.v);
-  }
-
-  // For typed transactions (non-legacy), viem expects yParity instead of v
-  if (originalTx.type !== 'legacy') {
-    // Convert v to yParity (v is either 27/28 or 0/1)
-    const yParity = vValue >= 27 ? vValue - 27 : vValue;
-    return {
-      ...originalTx,
-      r: latticeResult.sig.r as Hex,
-      s: latticeResult.sig.s as Hex,
-      yParity,
-    };
-  } else {
-    // Legacy transactions use v directly as BigInt
-    const result = {
-      ...originalTx,
-      r: latticeResult.sig.r as Hex,
-      s: latticeResult.sig.s as Hex,
-      v: BigInt(vValue),
-    };
-
-    // For legacy transactions, remove the type field to ensure Viem treats it as legacy
-    delete result.type;
-
-    // Also remove any typed transaction fields that might confuse viem
-    delete result.maxFeePerGas;
-    delete result.maxPriorityFeePerGas;
-    delete result.accessList;
-    delete result.authorizationList;
-
-    return result;
-  }
-};
 
 // Sign transaction with both Lattice and viem, then compare
 export const signAndCompareTransaction = async (
@@ -147,13 +85,17 @@ export const signAndCompareTransaction = async (
     const viemSignedTx = await foundryAccount.signTransaction(tx);
 
     // Parse the viem signed transaction to extract signature components
-    const parsedViemTx = parseTransaction(viemSignedTx);
+    const parsedViemTx = parseTransaction(viemSignedTx as `0x${string}`);
 
     // Verify Lattice signature structure
     expect(latticeResult.sig).toBeDefined();
     expect(latticeResult.sig.r).toBeDefined();
     expect(latticeResult.sig.s).toBeDefined();
-    expect(latticeResult.sig.v).toBeDefined();
+
+    // For legacy transactions, expect v; for modern transactions, v might be undefined
+    if (tx.type === 'legacy') {
+      expect(latticeResult.sig.v).toBeDefined();
+    }
 
     // Verify viem signature components exist
     expect(parsedViemTx.r).toBeDefined();
@@ -170,50 +112,14 @@ export const signAndCompareTransaction = async (
     // Get the signed transaction from Lattice
     let latticeSignedTx: string;
 
-    // For legacy transactions, handle serialization compatibility issues
-    if (tx.type === 'legacy') {
-      if (latticeResult.tx) {
-        // Lattice provided a complete signed transaction - use it directly
-        latticeSignedTx = latticeResult.tx;
-      } else {
-        // Lattice only provided signature components - reconstruct the transaction
-        // Convert Buffer v value to number
-        let vValue: number;
-        const vBuffer = latticeResult.sig.v as any; // Type assertion to avoid intersection issues
-
-        if (Buffer.isBuffer(vBuffer)) {
-          const bufferLength = vBuffer.length;
-          if (bufferLength === 1) {
-            vValue = vBuffer.readUInt8(0);
-          } else if (bufferLength === 2) {
-            vValue = vBuffer.readUInt16BE(0);
-          } else if (bufferLength <= 4) {
-            vValue = vBuffer.readUInt32BE(Math.max(0, 4 - bufferLength));
-          } else {
-            vValue = parseInt(vBuffer.toString('hex'), 16);
-          }
-        } else {
-          vValue = Number(vBuffer);
-        }
-
-        // Prepare the unsigned transaction (no signature components)
-        const unsignedTx = { ...tx };
-        delete unsignedTx.type; // Remove type for legacy
-
-        // Prepare the signature object with v for legacy transactions
-        const signature = {
-          r: latticeResult.sig.r as Hex,
-          s: latticeResult.sig.s as Hex,
-          v: BigInt(vValue), // Legacy uses v, not yParity
-        };
-
-        latticeSignedTx = serializeTransaction(unsignedTx, signature);
-      }
+    // Check if the new viemTx field is available (automatic normalization)
+    if ((latticeResult as any).viemTx) {
+      latticeSignedTx = (latticeResult as any).viemTx;
     } else if (latticeResult.tx) {
-      // Lattice provided the complete signed transaction for non-legacy
+      // Use the provided signed transaction
       latticeSignedTx = latticeResult.tx;
     } else {
-      // Reconstruct using viem's serializeTransaction with normalized signature
+      // Fallback to manual normalization for backward compatibility
       const normalizedSignedTx = normalizeLatticeSignature(latticeResult, tx);
       latticeSignedTx = serializeTransaction(normalizedSignedTx);
     }
@@ -222,9 +128,15 @@ export const signAndCompareTransaction = async (
     expect(latticeSignedTx).toBe(viemSignedTx);
 
     // Additional verification: compare signature components
-    // Lattice returns r,s as hex strings with 0x prefix
-    const latticeR = latticeResult.sig.r.toLowerCase();
-    const latticeS = latticeResult.sig.s.toLowerCase();
+    // Lattice returns r,s as hex strings with 0x prefix or as Buffer
+    const latticeR =
+      typeof latticeResult.sig.r === 'string'
+        ? latticeResult.sig.r.toLowerCase()
+        : '0x' + Buffer.from(latticeResult.sig.r).toString('hex');
+    const latticeS =
+      typeof latticeResult.sig.s === 'string'
+        ? latticeResult.sig.s.toLowerCase()
+        : '0x' + Buffer.from(latticeResult.sig.s).toString('hex');
     const viemR = parsedViemTx.r!.toLowerCase();
     const viemS = parsedViemTx.s!.toLowerCase();
 

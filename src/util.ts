@@ -11,7 +11,6 @@ import { Hash } from 'ox';
 import inRange from 'lodash/inRange';
 import isInteger from 'lodash/isInteger';
 import secp256k1 from 'secp256k1';
-import { keccak256 } from 'js-sha3';
 
 const EC = elliptic.ec;
 const { ecdsaRecover } = secp256k1;
@@ -726,7 +725,7 @@ export const getV = function (tx: any, resp: any) {
   let chainId, hash, type;
   const txIsBuf = Buffer.isBuffer(tx);
   if (txIsBuf) {
-    hash = Buffer.from(keccak256(tx), 'hex');
+    hash = Buffer.from(Hash.keccak256(tx));
     try {
       const legacyTxArray = RLP.decode(tx);
       if (legacyTxArray.length === 6) {
@@ -855,11 +854,11 @@ export const getYParity = function (
     } else {
       // Legacy transaction objects
       const preimage = RLP.encode(messageHash.getMessageToSign(false));
-      hash = Buffer.from(keccak256(preimage), 'hex');
+      hash = Buffer.from(Hash.keccak256(preimage));
     }
   } else if (Buffer.isBuffer(messageHash) && messageHash.length !== 32) {
     // If it's a buffer but not 32 bytes, hash it
-    hash = Buffer.from(keccak256(messageHash), 'hex');
+    hash = Buffer.from(Hash.keccak256(messageHash));
   }
 
   // Normalize inputs to Buffers
@@ -880,7 +879,7 @@ export const getYParity = function (
 
   // For non-32 byte hashes, hash them (legacy support)
   const finalHash =
-    hashBuf.length === 32 ? hashBuf : Buffer.from(keccak256(hashBuf), 'hex');
+    hashBuf.length === 32 ? hashBuf : Buffer.from(Hash.keccak256(hashBuf));
 
   // Combine r and s
   const rs = new Uint8Array(Buffer.concat([rBuf, sBuf]));

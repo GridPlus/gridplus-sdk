@@ -103,7 +103,7 @@ export const getNestedCalldata = function (def, calldata) {
         // is typically used in `multicall` patterns
         paramData.forEach((nestedParamDatum) => {
           const nestedParamDatumBuf = Buffer.from(
-            nestedParamDatum.slice(2),
+            String(nestedParamDatum).slice(2),
             'hex',
           );
           if (!couldBeNestedDef(nestedParamDatumBuf)) {
@@ -112,7 +112,7 @@ export const getNestedCalldata = function (def, calldata) {
         });
       } else if (isBytesItem(defParams[i])) {
         // Regular `bytes` type - perform size check
-        const paramDataBuf = Buffer.from(paramData.slice(2), 'hex');
+        const paramDataBuf = Buffer.from(String(paramData).slice(2), 'hex');
         nestedDefIsPossible = couldBeNestedDef(paramDataBuf);
       } else {
         // Unknown `bytes` item type

@@ -22,8 +22,8 @@ import {
   toViemTransaction,
 } from '../ethereum';
 import { fetchDecoder } from '../functions/fetchDecoder';
+import type { Authorization } from 'viem';
 import {
-  Authorization,
   BitcoinSignPayload,
   SignData,
   SigningPayload,

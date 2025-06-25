@@ -1,12 +1,11 @@
-import { describe, test, expect } from 'vitest';
-import {
-  TRANSACTION_TYPE,
-  EIP7702AuthTransaction,
-  EIP7702AuthListTransaction,
-} from '../../types';
+import { Hash } from 'ox';
+import { parseEther, serializeTransaction, toHex } from 'viem';
+import { describe, expect, test } from 'vitest';
 import { serializeEIP7702Transaction } from '../../ethereum';
-import { Hex, parseEther, serializeTransaction, toHex } from 'viem';
-import { keccak256 } from 'js-sha3';
+import {
+  EIP7702AuthListTransactionRequest as EIP7702AuthListTransaction,
+  EIP7702AuthTransactionRequest as EIP7702AuthTransaction,
+} from '../../types';
 
 describe('EIP7702 Transaction Serialization Comparison', () => {
   /**
@@ -28,7 +27,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
       authorization: {
         chainId: 1,
         address: '0x2222222222222222222222222222222222222222',
-        nonce: 0,
+        nonce: 0n,
         yParity: '0x00',
         r: '0x0000000000000000000000000000000000000000000000000000000000000001',
         s: '0x0000000000000000000000000000000000000000000000000000000000000002',
@@ -51,7 +50,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         {
           chainId: 1,
           address: '0x2222222222222222222222222222222222222222',
-          nonce: 0,
+          nonce: 0n,
           signature: {
             yParity: 0,
             r: '0x0000000000000000000000000000000000000000000000000000000000000001',
@@ -113,7 +112,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
       authorization: {
         chainId: 1,
         address: '0x2222222222222222222222222222222222222222',
-        nonce: 0,
+        nonce: 0n,
         yParity: '0x00', // Known signature values for deterministic test
         r: '0x1111111111111111111111111111111111111111111111111111111111111111',
         s: '0x2222222222222222222222222222222222222222222222222222222222222222',
@@ -136,7 +135,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         {
           chainId: 1,
           address: '0x2222222222222222222222222222222222222222',
-          nonce: 0,
+          nonce: 0n,
           signature: {
             yParity: 0,
             r: '0x1111111111111111111111111111111111111111111111111111111111111111',
@@ -154,9 +153,15 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
 
     // Compute hashes for comparison
     const ourHash =
-      '0x' + keccak256(Buffer.from(ourSerialized.slice(2), 'hex'));
+      '0x' +
+      Buffer.from(
+        Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex')),
+      ).toString('hex');
     const viemHash =
-      '0x' + keccak256(Buffer.from(viemSerialized.slice(2), 'hex'));
+      '0x' +
+      Buffer.from(
+        Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex')),
+      ).toString('hex');
 
     // Output for debugging
     console.log('Our serialized:', ourSerialized);
@@ -184,11 +189,11 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
       value: toHex(parseEther('1.0')), // 1 ETH
       data: '0x',
       accessList: [],
-      authorizations: [
+      authorizationList: [
         {
           chainId: 1,
           address: '0x2222222222222222222222222222222222222222',
-          nonce: 0,
+          nonce: 0n,
           yParity: '0x00', // Known signature values for deterministic test
           r: '0x1111111111111111111111111111111111111111111111111111111111111111',
           s: '0x2222222222222222222222222222222222222222222222222222222222222222',
@@ -196,7 +201,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         {
           chainId: 1,
           address: '0x3333333333333333333333333333333333333333',
-          nonce: 0,
+          nonce: 0n,
           yParity: '0x01', // Different signature
           r: '0x3333333333333333333333333333333333333333333333333333333333333333',
           s: '0x4444444444444444444444444444444444444444444444444444444444444444',
@@ -220,7 +225,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         {
           chainId: 1,
           address: '0x2222222222222222222222222222222222222222',
-          nonce: 0,
+          nonce: 0n,
           signature: {
             yParity: 0,
             r: '0x1111111111111111111111111111111111111111111111111111111111111111',
@@ -230,7 +235,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         {
           chainId: 1,
           address: '0x3333333333333333333333333333333333333333',
-          nonce: 0,
+          nonce: 0n,
           signature: {
             yParity: 1,
             r: '0x3333333333333333333333333333333333333333333333333333333333333333',
@@ -248,9 +253,15 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
 
     // Compute hashes for comparison
     const ourHash =
-      '0x' + keccak256(Buffer.from(ourSerialized.slice(2), 'hex'));
+      '0x' +
+      Buffer.from(
+        Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex')),
+      ).toString('hex');
     const viemHash =
-      '0x' + keccak256(Buffer.from(viemSerialized.slice(2), 'hex'));
+      '0x' +
+      Buffer.from(
+        Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex')),
+      ).toString('hex');
 
     // Output for debugging
     console.log('Our serialized (auth list):', ourSerialized);
@@ -323,9 +334,15 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
 
     // Compute hashes for comparison
     const ourHash =
-      '0x' + keccak256(Buffer.from(ourSerialized.slice(2), 'hex'));
+      '0x' +
+      Buffer.from(
+        Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex')),
+      ).toString('hex');
     const viemHash =
-      '0x' + keccak256(Buffer.from(viemSerialized.slice(2), 'hex'));
+      '0x' +
+      Buffer.from(
+        Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex')),
+      ).toString('hex');
 
     // Output for debugging
     console.log('Our serialized (realistic):', ourSerialized);
@@ -397,9 +414,15 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
 
     // Compute hashes for comparison
     const ourHash =
-      '0x' + keccak256(Buffer.from(ourSerialized.slice(2), 'hex'));
+      '0x' +
+      Buffer.from(
+        Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex')),
+      ).toString('hex');
     const viemHash =
-      '0x' + keccak256(Buffer.from(viemSerialized.slice(2), 'hex'));
+      '0x' +
+      Buffer.from(
+        Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex')),
+      ).toString('hex');
 
     // Output for debugging
     console.log('Our serialized (contract auth):', ourSerialized);

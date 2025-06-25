@@ -61,9 +61,6 @@
     "type": "git",
     "url": "https://github.com/GridPlus/gridplus-sdk.git"
   },
-  "overrides": {
-    "js-sha3": "^0.9.3"
-  },
   "dependencies": {
     "@ethereumjs/common": "^4.4.0",
     "@ethereumjs/rlp": "^5.0.2",
@@ -82,12 +79,11 @@
     "crc-32": "^1.2.2",
     "elliptic": "6.5.7",
     "hash.js": "^1.1.7",
-    "js-sha3": "^0.9.3",
     "lodash": "^4.17.21",
     "ox": "^0.8.1",
     "secp256k1": "5.0.1",
     "uuid": "^10.0.0",
-    "viem": "^2.30.0"
+    "viem": "^2.31.4"
   },
   "devDependencies": {
     "@chainsafe/bls-keystore": "^3.1.0",
@@ -124,7 +120,7 @@
     "seedrandom": "^3.0.5",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.3",
+    "typescript": "^5.8.3",
     "vite": "^5.4.9",
     "vite-plugin-dts": "^4.3.0",
     "vitest": "2.1.3"
