@@ -105,7 +105,10 @@ export const getNestedCalldata = function (def, calldata) {
         if (Array.isArray(paramData)) {
           paramData.forEach((nestedParamDatum) => {
             // Ensure nestedParamDatum is a hex string
-            if (typeof nestedParamDatum !== 'string' || !nestedParamDatum.startsWith('0x')) {
+            if (
+              typeof nestedParamDatum !== 'string' ||
+              !nestedParamDatum.startsWith('0x')
+            ) {
               nestedDefIsPossible = false;
               return;
             }

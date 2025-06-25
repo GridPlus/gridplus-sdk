@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Buffer } from 'buffer';
 import { Hash } from 'ox';
-import { getYParity } from '../../util';
-import { randomBytes } from '../../util';
+import { getYParity, randomBytes } from '../../util';
 import secp256k1 from 'secp256k1';
 
 describe('getYParity', () => {
@@ -278,9 +277,6 @@ describe('getYParity', () => {
     it('should handle EIP-7702 authorization signature', () => {
       // Simulate the exact scenario from signAuthorization
       const MAGIC = Buffer.from([0x05]);
-      const chainId = 1;
-      const address = '0x742d35Cc6634C0532925a3b844Bc9e7595f8b2dc';
-      const nonce = 0;
 
       // This would normally use RLP.encode but we'll create a test message
       const message = Buffer.concat([

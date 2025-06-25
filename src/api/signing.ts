@@ -3,6 +3,7 @@ import { Hash } from 'ox';
 import {
   serializeTransaction,
   type Address,
+  type Authorization,
   type Hex,
   type TransactionSerializable,
   type TransactionSerializableEIP7702,
@@ -17,7 +18,6 @@ import {
   SOLANA_DERIVATION,
 } from '../constants';
 import { fetchDecoder } from '../functions/fetchDecoder';
-import type { Authorization } from 'viem';
 import {
   BitcoinSignPayload,
   SignData,
@@ -49,8 +49,9 @@ export const sign = async (
   if (transaction.type === 'eip7702') {
     // Check if it has single authorization or authorization list
     const eip7702Tx = transaction as TransactionSerializableEIP7702;
-    const hasAuthList = eip7702Tx.authorizationList && eip7702Tx.authorizationList.length > 0;
-    encodingType = hasAuthList 
+    const hasAuthList =
+      eip7702Tx.authorizationList && eip7702Tx.authorizationList.length > 0;
+    encodingType = hasAuthList
       ? Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST
       : Constants.SIGNING.ENCODINGS.EIP7702_AUTH;
   } else {
@@ -59,7 +60,11 @@ export const sign = async (
 
   // Only fetch decoder if we have the required fields
   let decoder: Buffer | undefined;
-  if ('data' in transaction && 'to' in transaction && 'chainId' in transaction) {
+  if (
+    'data' in transaction &&
+    'to' in transaction &&
+    'chainId' in transaction
+  ) {
     decoder = await fetchDecoder({
       data: transaction.data,
       to: transaction.to,
@@ -177,26 +182,20 @@ export const signAuthorization = async (
 export const signAuthorizationList = async (
   tx: TransactionSerializableEIP7702,
 ): Promise<SignData> => {
-  try {
-    const serializedTx = serializeTransaction(tx);
+  const serializedTx = serializeTransaction(tx);
 
-    const payload: SigningPayload = {
-      signerPath: DEFAULT_ETH_DERIVATION,
-      curveType: Constants.SIGNING.CURVES.SECP256K1,
-      hashType: Constants.SIGNING.HASHES.KECCAK256,
-      encodingType: Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST,
-      payload: serializedTx,
-    };
+  const payload: SigningPayload = {
+    signerPath: DEFAULT_ETH_DERIVATION,
+    curveType: Constants.SIGNING.CURVES.SECP256K1,
+    hashType: Constants.SIGNING.HASHES.KECCAK256,
+    encodingType: Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST,
+    payload: serializedTx,
+  };
 
-    const signedPayload = await queue((client) =>
-      client.sign({ data: payload }),
-    );
+  const signedPayload = await queue((client) => client.sign({ data: payload }));
 
-    // Return the SignData structure from Lattice, not the converted signature
-    return signedPayload;
-  } catch (error) {
-    throw error;
-  }
+  // Return the SignData structure from Lattice, not the converted signature
+  return signedPayload;
 };
 
 export const signBtcLegacyTx = async (
