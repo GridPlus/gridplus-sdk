@@ -8,8 +8,7 @@ import {
 import { ec as EC, eddsa as EdDSA } from 'elliptic';
 import { privateToAddress } from 'ethereumjs-util';
 import { readFileSync } from 'fs';
-import { sha256 } from 'hash.js/lib/hash/sha';
-import { keccak256 } from 'js-sha3';
+import { Hash } from 'ox';
 import {
   BIP_CONSTANTS,
   HARDENED_OFFSET,
@@ -17,16 +16,47 @@ import {
 } from '../../constants';
 import { jsonc } from 'jsonc';
 import { Constants } from '../..';
-import { getV, parseDER, randomBytes } from '../../util';
+import { getV, parseDER, randomBytes, getYParity } from '../../util';
 import { Client } from '../../client';
 import { ProtocolConstants } from '../../protocol';
 import { getPathStr } from '../../shared/utilities';
 import { TypedTransaction } from '@ethereumjs/tx';
 import { getEnv } from './getters';
 import { setStoredClient } from './setup';
+import BN from 'bn.js';
 const SIGHASH_ALL = 0x01;
 const secp256k1 = new EC('secp256k1');
 const ed25519 = new EdDSA('ed25519');
+
+/**
+ * Get the appropriate V parameter for a transaction signature based on transaction type.
+ * For typed transactions (EIP-1559, EIP-2930, etc.), returns yParity as hex string.
+ * For legacy transactions, returns the full V value.
+ */
+export const getSignatureVParam = (tx: any, resp: any): string => {
+  if (tx._type && tx._type > 0) {
+    // For EIP-1559 and newer transaction types, use yParity (0 or 1)
+    return getYParity(tx, resp).toString(16).padStart(2, '0');
+  } else {
+    // For legacy transactions, return full V value
+    return getV(tx, resp);
+  }
+};
+
+/**
+ * Get the appropriate V parameter as BN for signature validation based on transaction type.
+ * For typed transactions, returns yParity (0 or 1) as BN.
+ * For legacy transactions, returns the full V value as BN.
+ */
+export const getSignatureVBN = (tx: any, resp: any): BN => {
+  if (tx._type && tx._type > 0) {
+    // For EIP-1559 and newer transaction types, get y-parity (0 or 1)
+    return getYParity(tx, resp);
+  } else {
+    // For legacy transactions, use the v value from signature
+    return new BN(resp.sig.v);
+  }
+};
 
 // NOTE: We use the HARDEN(49) purpose for p2sh(p2wpkh) address derivations.
 //       For p2pkh-derived addresses, we use the legacy 44' purpose
@@ -934,9 +964,9 @@ export const validateGenericSig = function (seed, sig, payloadBuf, req) {
   let hash;
   if (curveType === CURVES.SECP256K1) {
     if (hashType === HASHES.SHA256) {
-      hash = Buffer.from(sha256().update(payloadBuf).digest('hex'), 'hex');
+      hash = Buffer.from(Hash.sha256(payloadBuf));
     } else if (hashType === HASHES.KECCAK256) {
-      hash = Buffer.from(keccak256(payloadBuf), 'hex');
+      hash = Buffer.from(Hash.keccak256(payloadBuf));
     } else {
       throw new Error('Bad params');
     }
@@ -974,7 +1004,7 @@ export const getSigStr = function (resp: any, tx?: TypedTransaction) {
       .toString(16)
       .padStart(2, '0');
   } else if (tx) {
-    v = getV(tx, resp);
+    v = getSignatureVParam(tx, resp);
   } else {
     throw new Error('Could not build sig string');
   }

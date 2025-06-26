@@ -1,6 +1,6 @@
 {
   "name": "gridplus-sdk",
-  "version": "3.4.0",
+  "version": "4.0.0",
   "type": "module",
   "description": "SDK to interact with GridPlus Lattice1 device",
   "scripts": {
@@ -8,32 +8,36 @@
     "commit": "git-cz",
     "lint:fix": "eslint src --c .ts,.tsx --config eslint.config.mjs --fix",
     "lint": "eslint src --c .ts,.tsx --config eslint.config.mjs",
+    "pair-device": "tsx scripts/pair-device.ts",
     "precommit": "npm run lint:fix && npm run test",
-    "test": "vitest ./src/__test__/unit ./src/__test__/integration",
-    "test-unit": "vitest ./src/__test__/unit --maxConcurrency 10 --fileParallelism true",
-    "unit-api": "vitest ./src/__test__/unit/api.test.ts",
-    "unit-decode": "vitest ./src/__test__/unit/decoders.test.ts",
-    "unit-encode": "vitest ./src/__test__/unit/encoders.test.ts",
-    "unit-validators": "vitest ./src/__test__/unit/validators.test.ts",
-    "test-int": "vitest ./src/__test__/integration/",
-    "test-utils": "vitest src/__test__/utils/__test__/",
-    "e2e": "vitest src/__test__/e2e",
-    "e2e-btc": "vitest ./src/__test__/e2e/btc.test.ts",
-    "e2e-eth": "vitest ./src/__test__/e2e/eth.msg.test.ts",
-    "e2e-gen": "vitest ./src/__test__/e2e/general.test.ts",
-    "e2e-kv": "vitest ./src/__test__/e2e/kv.test.ts",
-    "e2e-ne": "vitest ./src/__test__/e2e/non-exportable.test.ts",
-    "e2e-sign": "vitest ./src/__test__/e2e/signing",
-    "e2e-sign-bls": "vitest ./src/__test__/e2e/signing/bls.test.ts",
-    "e2e-sign-determinism": "vitest ./src/__test__/e2e/signing/determinism.test.ts",
-    "e2e-sign-evm-abi": "vitest ./src/__test__/e2e/signing/evm-abi.test.ts",
-    "e2e-sign-evm-tx": "vitest ./src/__test__/e2e/signing/evm-tx.test.ts",
-    "e2e-sign-solana": "vitest ./src/__test__/e2e/signing/solana*",
-    "e2e-sign-unformatted": "vitest ./src/__test__/e2e/signing/unformatted.test.ts",
-    "e2e-wj": "vitest ./src/__test__/e2e/wallet-jobs.test.ts",
-    "e2e-api": "vitest ./src/__test__/e2e/api.test.ts",
-    "e2e-iter": "vitest ./src/__test__/e2e/iter.test.ts",
-    "contracts": "vitest ./src/__test__/e2e/contracts.test.ts"
+    "test": "vitest run ./src/__test__/unit ./src/__test__/integration",
+    "test-unit": "vitest run ./src/__test__/unit --maxConcurrency 10 --fileParallelism true",
+    "unit-api": "vitest run ./src/__test__/unit/api.test.ts",
+    "unit-decode": "vitest run ./src/__test__/unit/decoders.test.ts",
+    "unit-encode": "vitest run ./src/__test__/unit/encoders.test.ts",
+    "unit-validators": "vitest run ./src/__test__/unit/validators.test.ts",
+    "test-int": "vitest run ./src/__test__/integration/",
+    "test-utils": "vitest run src/__test__/utils/__test__/",
+    "e2e": "vitest run src/__test__/e2e",
+    "e2e-btc": "vitest run ./src/__test__/e2e/btc.test.ts",
+    "e2e-eth": "vitest run ./src/__test__/e2e/eth.msg.test.ts",
+    "e2e-gen": "vitest run ./src/__test__/e2e/general.test.ts",
+    "e2e-kv": "vitest run ./src/__test__/e2e/kv.test.ts",
+    "e2e-ne": "vitest run ./src/__test__/e2e/non-exportable.test.ts",
+    "e2e-sign": "vitest run ./src/__test__/e2e/signing",
+    "e2e-sign-bls": "vitest run ./src/__test__/e2e/signing/bls.test.ts",
+    "e2e-sign-determinism": "vitest run ./src/__test__/e2e/signing/determinism.test.ts",
+    "e2e-sign-evm-abi": "vitest run ./src/__test__/e2e/signing/evm-abi.test.ts",
+    "e2e-sign-evm-tx": "vitest run ./src/__test__/e2e/signing/evm-tx.test.ts",
+    "e2e-sign-solana": "vitest run ./src/__test__/e2e/signing/solana*",
+    "e2e-sign-unformatted": "vitest run ./src/__test__/e2e/signing/unformatted.test.ts",
+    "e2e-wj": "vitest run ./src/__test__/e2e/wallet-jobs.test.ts",
+    "e2e-api": "vitest run ./src/__test__/e2e/api.test.ts",
+    "e2e-iter": "vitest run ./src/__test__/e2e/iter.test.ts",
+    "e2e-eip7702": "vitest run ./src/__test__/e2e/eip7702.test.ts",
+    "contracts": "vitest run ./src/__test__/e2e/contracts.test.ts",
+    "setup:anvil": "cd forge && chmod +x scripts/setup.sh && ./scripts/setup.sh",
+    "cleanup:anvil": "cd forge && chmod +x scripts/cleanup.sh && ./scripts/cleanup.sh"
   },
   "files": [
     "dist"
@@ -57,9 +61,6 @@
     "type": "git",
     "url": "https://github.com/GridPlus/gridplus-sdk.git"
   },
-  "overrides": {
-    "js-sha3": "^0.9.3"
-  },
   "dependencies": {
     "@ethereumjs/common": "^4.4.0",
     "@ethereumjs/rlp": "^5.0.2",
@@ -78,21 +79,24 @@
     "crc-32": "^1.2.2",
     "elliptic": "6.5.7",
     "hash.js": "^1.1.7",
-    "js-sha3": "^0.9.3",
     "lodash": "^4.17.21",
+    "ox": "^0.8.1",
     "secp256k1": "5.0.1",
     "uuid": "^10.0.0",
-    "viem": "^2.22.19"
+    "viem": "^2.31.4"
   },
   "devDependencies": {
     "@chainsafe/bls-keystore": "^3.1.0",
     "@eslint/js": "^9.13.0",
     "@noble/bls12-381": "^1.4.0",
     "@solana/web3.js": "^1.95.4",
+    "@types/bn.js": "^5.1.6",
     "@types/elliptic": "^6.4.18",
     "@types/jest": "^29.5.13",
+    "@types/lodash": "^4.17.17",
     "@types/node": "^22.7.8",
     "@types/readline-sync": "^1.4.8",
+    "@types/secp256k1": "^4.0.6",
     "@types/seedrandom": "^3.0.8",
     "@typescript-eslint/eslint-plugin": "^8.11.0",
     "@typescript-eslint/parser": "^8.11.0",
@@ -115,15 +119,11 @@
     "readline-sync": "^1.4.10",
     "seedrandom": "^3.0.5",
     "tsup": "^8.3.5",
-    "typescript": "^5.6.3",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3",
     "vite": "^5.4.9",
     "vite-plugin-dts": "^4.3.0",
     "vitest": "2.1.3"
   },
-  "license": "MIT",
-  "pnpm": {
-    "patchedDependencies": {
-      "vitest@2.1.3": "patches/vitest@2.1.3.patch"
-    }
-  }
+  "license": "MIT"
 }

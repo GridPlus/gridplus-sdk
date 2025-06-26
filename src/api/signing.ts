@@ -1,4 +1,13 @@
-import { serializeTransaction } from 'viem';
+import { RLP } from '@ethereumjs/rlp';
+import { Hash } from 'ox';
+import {
+  serializeTransaction,
+  type Address,
+  type Authorization,
+  type Hex,
+  type TransactionSerializable,
+  type TransactionSerializableEIP7702,
+} from 'viem';
 import { Constants } from '..';
 import {
   BTC_LEGACY_DERIVATION,
@@ -8,57 +17,185 @@ import {
   DEFAULT_ETH_DERIVATION,
   SOLANA_DERIVATION,
 } from '../constants';
-import { toViemTransaction } from '../ethereum';
 import { fetchDecoder } from '../functions/fetchDecoder';
 import {
   BitcoinSignPayload,
-  EIP712MessagePayload,
   SignData,
   SigningPayload,
   SignRequestParams,
   TransactionRequest,
 } from '../types';
-import { isEIP712Payload, queue } from './utilities';
+import { getYParity } from '../util';
+import { queue } from './utilities';
 
+// Define the authorization request type based on Viem's structure
+type AuthorizationRequest = {
+  chainId: number;
+  nonce: number;
+} & ({ address: Address } | { contractAddress: Address });
+
+/**
+ * Sign a transaction using Viem-compatible transaction types
+ */
 export const sign = async (
-  transaction: TransactionRequest,
-  overrides?: SignRequestParams,
+  transaction: TransactionSerializable,
+  overrides?: Omit<SignRequestParams, 'data'>,
 ): Promise<SignData> => {
-  const serializedTx = serializeTransaction(toViemTransaction(transaction));
+  // Serialize the transaction using Viem's native serializer
+  const serializedTx = serializeTransaction(transaction);
+
+  // Determine the encoding type based on transaction type
+  let encodingType: number;
+  if (transaction.type === 'eip7702') {
+    // Check if it has single authorization or authorization list
+    const eip7702Tx = transaction as TransactionSerializableEIP7702;
+    const hasAuthList =
+      eip7702Tx.authorizationList && eip7702Tx.authorizationList.length > 0;
+    encodingType = hasAuthList
+      ? Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST
+      : Constants.SIGNING.ENCODINGS.EIP7702_AUTH;
+  } else {
+    encodingType = Constants.SIGNING.ENCODINGS.EVM;
+  }
+
+  // Only fetch decoder if we have the required fields
+  let decoder: Buffer | undefined;
+  if (
+    'data' in transaction &&
+    'to' in transaction &&
+    'chainId' in transaction
+  ) {
+    decoder = await fetchDecoder({
+      data: transaction.data,
+      to: transaction.to,
+      chainId: transaction.chainId,
+    } as TransactionRequest);
+  }
 
   const payload: SigningPayload = {
     signerPath: DEFAULT_ETH_DERIVATION,
     curveType: Constants.SIGNING.CURVES.SECP256K1,
     hashType: Constants.SIGNING.HASHES.KECCAK256,
-    encodingType: Constants.SIGNING.ENCODINGS.EVM,
+    encodingType,
     payload: serializedTx,
-    decoder: await fetchDecoder(transaction),
+    decoder,
   };
 
   return queue((client) => client.sign({ data: payload, ...overrides }));
 };
 
-export const signMessage = async (
-  payload: string | Uint8Array | Buffer | Buffer[] | EIP712MessagePayload,
-  overrides?: SignRequestParams,
-): Promise<SignData> => {
-  const tx = {
-    data: {
-      signerPath: DEFAULT_ETH_DERIVATION,
-      curveType: Constants.SIGNING.CURVES.SECP256K1,
-      hashType: Constants.SIGNING.HASHES.KECCAK256,
-      protocol: 'signPersonal',
-      payload,
-      ...overrides,
-    } as SigningPayload,
+/**
+ * Sign a message with support for EIP-712 typed data and const assertions
+ */
+export function signMessage(
+  payload: string | Uint8Array | Buffer | Buffer[],
+  overrides?: Omit<SignRequestParams, 'data'>,
+): Promise<SignData> {
+  const basePayload: SigningPayload = {
+    signerPath: DEFAULT_ETH_DERIVATION,
+    curveType: Constants.SIGNING.CURVES.SECP256K1,
+    hashType: Constants.SIGNING.HASHES.KECCAK256,
+    protocol: 'signPersonal',
+    payload: payload as Hex,
+    ...overrides,
+  };
+
+  const tx: SignRequestParams = {
+    data: basePayload,
     currency: CURRENCIES.ETH_MSG,
   };
 
-  if (isEIP712Payload(payload)) {
-    tx.data.protocol = 'eip712';
+  return queue((client) => client.sign(tx));
+}
+
+/**
+ * Signs an EIP-7702 authorization to set code for an externally owned account (EOA).
+ * Returns a Viem-compatible authorization object.
+ */
+export const signAuthorization = async (
+  authorization: AuthorizationRequest,
+  overrides?: Omit<SignRequestParams, 'data'>,
+): Promise<Authorization> => {
+  // EIP-7702 authorization message is: MAGIC || rlp([chain_id, address, nonce])
+  // MAGIC = 0x05 per EIP-7702 spec
+  const MAGIC = Buffer.from([0x05]);
+
+  // Handle the address/contractAddress alias
+  const address =
+    'address' in authorization
+      ? authorization.address
+      : authorization.contractAddress;
+
+  const message = Buffer.concat([
+    MAGIC,
+    Buffer.from(
+      RLP.encode([authorization.chainId, address, authorization.nonce]),
+    ),
+  ]);
+
+  const payload: SigningPayload = {
+    signerPath: DEFAULT_ETH_DERIVATION,
+    curveType: Constants.SIGNING.CURVES.SECP256K1,
+    hashType: Constants.SIGNING.HASHES.KECCAK256,
+    encodingType: Constants.SIGNING.ENCODINGS.EIP7702_AUTH,
+    payload: message,
+  };
+
+  // Get the signature with all components
+  const response = await queue((client) =>
+    client.sign({ data: payload, ...overrides }),
+  );
+
+  // Extract signature components if they exist
+  if (response.sig && response.pubkey) {
+    // Calculate the correct y-parity value
+    const messageHash = Buffer.from(Hash.keccak256(message));
+    const yParity = getYParity(messageHash, response.sig, response.pubkey);
+
+    // Handle both Buffer and string formats for r and s
+    const rValue = Buffer.isBuffer(response.sig.r)
+      ? `0x${response.sig.r.toString('hex')}`
+      : response.sig.r;
+    const sValue = Buffer.isBuffer(response.sig.s)
+      ? `0x${response.sig.s.toString('hex')}`
+      : response.sig.s;
+
+    // Create a complete Authorization object with all required signature components
+    const result: Authorization = {
+      address, // Viem compatibility
+      chainId: authorization.chainId,
+      nonce: authorization.nonce,
+      yParity,
+      r: rValue as Hex,
+      s: sValue as Hex,
+    };
+
+    return result;
   }
 
-  return queue((client) => client.sign(tx));
+  throw new Error('Failed to get signature from device');
+};
+
+/**
+ * Sign an EIP-7702 transaction using Viem-compatible types
+ */
+export const signAuthorizationList = async (
+  tx: TransactionSerializableEIP7702,
+): Promise<SignData> => {
+  const serializedTx = serializeTransaction(tx);
+
+  const payload: SigningPayload = {
+    signerPath: DEFAULT_ETH_DERIVATION,
+    curveType: Constants.SIGNING.CURVES.SECP256K1,
+    hashType: Constants.SIGNING.HASHES.KECCAK256,
+    encodingType: Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST,
+    payload: serializedTx,
+  };
+
+  const signedPayload = await queue((client) => client.sign({ data: payload }));
+
+  // Return the SignData structure from Lattice, not the converted signature
+  return signedPayload;
 };
 
 export const signBtcLegacyTx = async (

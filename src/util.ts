@@ -6,12 +6,14 @@ import BigNum from 'bignumber.js';
 import { BN } from 'bn.js';
 import { Buffer } from 'buffer';
 import crc32 from 'crc-32';
-import { ec as EC } from 'elliptic';
-import { sha256 } from 'hash.js/lib/hash/sha';
-import { keccak256 } from 'js-sha3';
+import elliptic from 'elliptic';
+import { Hash } from 'ox';
 import inRange from 'lodash/inRange';
 import isInteger from 'lodash/isInteger';
-import { ecdsaRecover } from 'secp256k1';
+import secp256k1 from 'secp256k1';
+
+const EC = elliptic.ec;
+const { ecdsaRecover } = secp256k1;
 import { Calldata } from '.';
 import {
   BIP_CONSTANTS,
@@ -28,7 +30,7 @@ import {
 import { FirmwareConstants } from './types';
 
 const { COINS, PURPOSES } = BIP_CONSTANTS;
-let ec: EC | undefined;
+let ec: any;
 
 //--------------------------------------------------
 // LATTICE UTILS
@@ -109,7 +111,7 @@ export const checksum = function (x: Buffer): number {
 // Get a 74-byte padded DER-encoded signature buffer
 // `sig` must be the signature output from elliptic.js
 /** @internal */
-export const toPaddedDER = function (sig: EC.Signature): Buffer {
+export const toPaddedDER = function (sig: any): Buffer {
   // We use 74 as the maximum length of a DER signature. All sigs must
   // be right-padded with zeros so that this can be a fixed size field
   const b = Buffer.alloc(74);
@@ -253,17 +255,17 @@ export const parseDER = function (sigBuf: Buffer) {
 };
 
 /** @internal */
-export const getP256KeyPair = function (priv: Buffer | string): EC.KeyPair {
+export const getP256KeyPair = function (priv: Buffer | string): any {
   if (ec === undefined) ec = new EC('p256');
   return ec.keyFromPrivate(priv, 'hex');
 };
 
 /** @internal */
-export const getP256KeyPairFromPub = function (
-  pub: Buffer | string,
-): EC.KeyPair {
+export const getP256KeyPairFromPub = function (pub: Buffer | string): any {
   if (ec === undefined) ec = new EC('p256');
-  return ec.keyFromPublic(pub, 'hex');
+  // Convert Buffer to hex string if needed
+  const pubHex = Buffer.isBuffer(pub) ? pub.toString('hex') : pub;
+  return ec.keyFromPublic(pubHex, 'hex');
 };
 
 /** @internal */
@@ -625,6 +627,11 @@ export async function fetchCalldataDecoder(
       : //@ts-expect-error - Buffer doesn't recognize Uint8Array type properly
         Buffer.from(_data, 'hex');
 
+    // For empty data (just '0x'), return early - no calldata to decode
+    if (data.length === 0) {
+      return { def: null, abi: null };
+    }
+
     if (data.length < 4) {
       throw new Error(
         'Data must contain at least 4 bytes of data to define the selector',
@@ -697,7 +704,7 @@ export const generateAppSecret = (
     appNameBuffer,
   ]);
 
-  return Buffer.from(sha256().update(preImage).digest('hex'), 'hex');
+  return Buffer.from(Hash.sha256(preImage));
 };
 
 /**
@@ -718,7 +725,7 @@ export const getV = function (tx: any, resp: any) {
   let chainId, hash, type;
   const txIsBuf = Buffer.isBuffer(tx);
   if (txIsBuf) {
-    hash = Buffer.from(keccak256(tx), 'hex');
+    hash = Buffer.from(Hash.keccak256(tx));
     try {
       const legacyTxArray = RLP.decode(tx);
       if (legacyTxArray.length === 6) {
@@ -783,9 +790,123 @@ export const getV = function (tx: any, resp: any) {
   return chainId.muln(2).addn(35).addn(recovery);
 };
 
+/**
+ * Get the y-parity value for a signature by recovering the public key.
+ *
+ * Usage:
+ * - Simple: getYParity(messageHash, signature, publicKey)
+ * - Object: getYParity({ messageHash, signature, publicKey })
+ * - Legacy: getYParity(tx, response)
+ *
+ * @param messageHash - The 32-byte message hash (or tx object for legacy)
+ * @param signature - Object with r and s values
+ * @param publicKey - Expected public key
+ * @returns 0 or 1 for the y-parity value
+ */
+export const getYParity = function (
+  messageHash:
+    | Buffer
+    | Uint8Array
+    | string
+    | { messageHash: any; signature: any; publicKey: any }
+    | any,
+  signature?: { r: any; s: any } | any,
+  publicKey?: Buffer | Uint8Array | string,
+): number {
+  // Handle legacy object format for backward compatibility
+  if (
+    typeof messageHash === 'object' &&
+    messageHash &&
+    'messageHash' in messageHash
+  ) {
+    return getYParity(
+      messageHash.messageHash,
+      messageHash.signature,
+      messageHash.publicKey,
+    );
+  }
+
+  // Handle legacy transaction format for backward compatibility
+  if (signature && signature.sig && signature.pubkey && !publicKey) {
+    return getYParity(messageHash, signature.sig, signature.pubkey);
+  }
+
+  // Validate required parameters
+  if (!signature || !publicKey) {
+    throw new Error('Response with sig and pubkey required for legacy format');
+  }
+
+  if (!signature.r || !signature.s) {
+    throw new Error('Response with sig and pubkey required for legacy format');
+  }
+
+  // Handle transaction objects with getMessageToSign
+  let hash = messageHash;
+  if (
+    typeof messageHash === 'object' &&
+    messageHash &&
+    typeof messageHash.getMessageToSign === 'function'
+  ) {
+    const type = messageHash._type;
+    if (type !== undefined && type !== null) {
+      // EIP-1559 / EIP-2930 / future typed transactions
+      hash = messageHash.getMessageToSign(true);
+    } else {
+      // Legacy transaction objects
+      const preimage = RLP.encode(messageHash.getMessageToSign(false));
+      hash = Buffer.from(Hash.keccak256(preimage));
+    }
+  } else if (Buffer.isBuffer(messageHash) && messageHash.length !== 32) {
+    // If it's a buffer but not 32 bytes, hash it
+    hash = Buffer.from(Hash.keccak256(messageHash));
+  }
+
+  // Normalize inputs to Buffers
+  const toBuffer = (data: any): Buffer => {
+    if (!data) throw new Error('Invalid data');
+    if (Buffer.isBuffer(data)) return data;
+    if (data instanceof Uint8Array) return Buffer.from(data);
+    if (typeof data === 'string') {
+      return Buffer.from(data.replace(/^0x/i, ''), 'hex');
+    }
+    throw new Error('Invalid data type');
+  };
+
+  const hashBuf = toBuffer(hash);
+  const rBuf = toBuffer(signature.r);
+  const sBuf = toBuffer(signature.s);
+  const pubkeyBuf = toBuffer(publicKey);
+
+  // For non-32 byte hashes, hash them (legacy support)
+  const finalHash =
+    hashBuf.length === 32 ? hashBuf : Buffer.from(Hash.keccak256(hashBuf));
+
+  // Combine r and s
+  const rs = new Uint8Array(Buffer.concat([rBuf, sBuf]));
+  const hashBytes = new Uint8Array(finalHash);
+  const isCompressed = pubkeyBuf.length === 33;
+
+  // Try both recovery values
+  for (let recovery = 0; recovery <= 1; recovery++) {
+    try {
+      const recovered = ecdsaRecover(rs, recovery, hashBytes, isCompressed);
+      if (Buffer.from(recovered).equals(pubkeyBuf)) {
+        return recovery;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  throw new Error(
+    'Failed to recover Y parity. Bad signature or transaction data.',
+  );
+};
+
 /** @internal */
 export const EXTERNAL = {
   fetchCalldataDecoder,
   generateAppSecret,
   getV,
+  getYParity,
 };

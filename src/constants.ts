@@ -6,7 +6,12 @@ import {
   LatticeSignEncoding,
   LatticeSignHash,
 } from './protocol/latticeConstants';
-import { FirmwareConstants, FirmwareArr, ActiveWallets } from './types';
+import {
+  FirmwareConstants,
+  FirmwareArr,
+  ActiveWallets,
+  WalletPath,
+} from './types/index.js';
 
 /**
  * Externally exported constants used for building requests
@@ -37,6 +42,8 @@ export const EXTERNAL = {
       SOLANA: LatticeSignEncoding.solana,
       EVM: LatticeSignEncoding.evm,
       ETH_DEPOSIT: LatticeSignEncoding.eth_deposit,
+      EIP7702_AUTH: LatticeSignEncoding.eip7702_auth,
+      EIP7702_AUTH_LIST: LatticeSignEncoding.eip7702_auth_list,
     },
     BLS_DST: {
       BLS_DST_NUL: LatticeSignBlsDst.NUL,
@@ -443,6 +450,17 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
       EXTERNAL.SIGNING.ENCODINGS.ETH_DEPOSIT;
   }
 
+  // --- V0.18.X ---
+  // V0.18.0 added support for EIP7702 signing
+  // TODO: update patch version when this is released
+  if (!legacy && gte(v, [0, 18, 0])) {
+    c.genericSigning.encodingTypes = {
+      ...c.genericSigning.encodingTypes,
+      EIP7702_AUTH: EXTERNAL.SIGNING.ENCODINGS.EIP7702_AUTH,
+      EIP7702_AUTH_LIST: EXTERNAL.SIGNING.ENCODINGS.EIP7702_AUTH_LIST,
+    };
+  }
+
   return c;
 }
 
@@ -506,7 +524,7 @@ export const DEFAULT_ACTIVE_WALLETS: ActiveWallets = {
 };
 
 /** @internal */
-export const DEFAULT_ETH_DERIVATION = [
+export const DEFAULT_ETH_DERIVATION: WalletPath = [
   HARDENED_OFFSET + 44,
   HARDENED_OFFSET + 60,
   HARDENED_OFFSET,

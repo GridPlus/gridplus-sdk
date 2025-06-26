@@ -4,6 +4,7 @@ import {
   deriveSECP256K1Key,
   parseWalletJobResp,
   validateGenericSig,
+  getSignatureVBN,
 } from './helpers';
 import { initializeSeed } from './initializeClient';
 import { testRequest } from './testRequest';
@@ -103,11 +104,23 @@ export async function runEvm(
   );
   const refR = ensureHexBuffer(signedTx.r?.toString(16));
   const refS = ensureHexBuffer(signedTx.s?.toString(16));
-  const refV = signedTx.v?.toString();
+
+  // Handle the V parameter differently based on transaction type
+  let refV;
+  if (tx._type && tx._type > 0) {
+    // For EIP-1559 and newer transaction types, use y-parity (0 or 1)
+    refV = signedTx.v?.toString();
+  } else {
+    // For legacy transactions
+    refV = signedTx.v?.toString();
+  }
+
   // Get params from Lattice sig
   const latticeR = Buffer.from(sig.r);
   const latticeS = Buffer.from(sig.s);
-  const latticeV = new BN(sig.v);
+
+  // Get the V parameter or y-parity value depending on transaction type
+  const latticeV = getSignatureVBN(tx, resp);
 
   // Validate the signature
   expect(latticeR.equals(refR)).toEqualElseLog(
@@ -122,7 +135,7 @@ export async function runEvm(
     refV.toString(),
     'Signature V component does not match reference',
   );
-  // One more check -- create a new tx with the signatre params and verify it
+  // One more check -- create a new tx with the signature params and verify it
   const signedTxData = JSON.parse(JSON.stringify(txData));
   signedTxData.v = latticeV;
   signedTxData.r = latticeR;

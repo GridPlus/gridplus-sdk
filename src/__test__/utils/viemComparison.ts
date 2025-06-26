@@ -1,0 +1,157 @@
+import { mnemonicToSeedSync } from 'bip39';
+import {
+  createWalletClient,
+  http,
+  parseTransaction,
+  serializeTransaction,
+  type Address,
+  type Hex,
+  type TransactionSerializable,
+} from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { mainnet, polygon, bsc, avalanche } from 'viem/chains';
+import { sign } from '../../api';
+import { deriveAddress } from './determinism';
+import { normalizeLatticeSignature } from '../../ethereum';
+
+// Foundry test mnemonic
+const FOUNDRY_TEST_MNEMONIC =
+  'test test test test test test test test test test test junk';
+const FOUNDRY_TEST_SEED = mnemonicToSeedSync(FOUNDRY_TEST_MNEMONIC);
+
+// Utility function to create foundry account address for comparison
+export const getFoundryAddress = (): Address => {
+  // Use first account derivation path: m/44'/60'/0'/0/0
+  const foundryPath = [44 + 0x80000000, 60 + 0x80000000, 0x80000000, 0, 0];
+  return deriveAddress(FOUNDRY_TEST_SEED, foundryPath as any) as Address;
+};
+
+// Get Foundry private key for signing
+export const getFoundryPrivateKey = (): Hex => {
+  return '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'; // Foundry test account #0 private key
+};
+
+// Create foundry account for actual signing
+export const getFoundryAccount = () => {
+  const privateKey = getFoundryPrivateKey();
+  return privateKeyToAccount(privateKey);
+};
+
+// Create a wallet client for Foundry account
+export const createFoundryWalletClient = (chainId = 1) => {
+  const account = getFoundryAccount();
+  const chains = {
+    1: mainnet,
+    137: polygon,
+    56: bsc,
+    43114: avalanche,
+  };
+
+  return createWalletClient({
+    account,
+    chain: chains[chainId] || mainnet,
+    transport: http(),
+  });
+};
+
+// Transaction type for our test vectors - use viem's TransactionSerializable
+export type TestTransaction = TransactionSerializable;
+
+
+// Sign transaction with both Lattice and viem, then compare
+export const signAndCompareTransaction = async (
+  tx: TestTransaction,
+  testName: string,
+) => {
+  const foundryAccount = getFoundryAccount();
+
+  try {
+    // Sign with Lattice using the new sign API that accepts TransactionSerializable directly
+    const latticeResult = await sign(tx).catch((err) => {
+      if (err.responseCode === 128) {
+        err.message =
+          'NOTE: You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.\n' +
+          err.message;
+      }
+      if (err.responseCode === 132) {
+        err.message =
+          'NOTE: Please approve the transaction on your Lattice device.\n' +
+          err.message;
+      }
+      throw err;
+    });
+
+    // Sign with viem wallet (use original transaction)
+    const viemSignedTx = await foundryAccount.signTransaction(tx);
+
+    // Parse the viem signed transaction to extract signature components
+    const parsedViemTx = parseTransaction(viemSignedTx as `0x${string}`);
+
+    // Verify Lattice signature structure
+    expect(latticeResult.sig).toBeDefined();
+    expect(latticeResult.sig.r).toBeDefined();
+    expect(latticeResult.sig.s).toBeDefined();
+
+    // For legacy transactions, expect v; for modern transactions, v might be undefined
+    if (tx.type === 'legacy') {
+      expect(latticeResult.sig.v).toBeDefined();
+    }
+
+    // Verify viem signature components exist
+    expect(parsedViemTx.r).toBeDefined();
+    expect(parsedViemTx.s).toBeDefined();
+
+    // For typed transactions (EIP-1559, EIP-2930, EIP-7702), check yParity
+    // For legacy transactions, check v
+    if (tx.type !== 'legacy') {
+      expect(parsedViemTx.yParity).toBeDefined();
+    } else {
+      expect(parsedViemTx.v).toBeDefined();
+    }
+
+    // Get the signed transaction from Lattice
+    let latticeSignedTx: string;
+
+    // Check if the new viemTx field is available (automatic normalization)
+    if ((latticeResult as any).viemTx) {
+      latticeSignedTx = (latticeResult as any).viemTx;
+    } else if (latticeResult.tx) {
+      // Use the provided signed transaction
+      latticeSignedTx = latticeResult.tx;
+    } else {
+      // Fallback to manual normalization for backward compatibility
+      const normalizedSignedTx = normalizeLatticeSignature(latticeResult, tx);
+      latticeSignedTx = serializeTransaction(normalizedSignedTx);
+    }
+
+    // The most important comparison: verify both produce the same serialized transaction
+    expect(latticeSignedTx).toBe(viemSignedTx);
+
+    // Additional verification: compare signature components
+    // Lattice returns r,s as hex strings with 0x prefix or as Buffer
+    const latticeR =
+      typeof latticeResult.sig.r === 'string'
+        ? latticeResult.sig.r.toLowerCase()
+        : '0x' + Buffer.from(latticeResult.sig.r).toString('hex');
+    const latticeS =
+      typeof latticeResult.sig.s === 'string'
+        ? latticeResult.sig.s.toLowerCase()
+        : '0x' + Buffer.from(latticeResult.sig.s).toString('hex');
+    const viemR = parsedViemTx.r!.toLowerCase();
+    const viemS = parsedViemTx.s!.toLowerCase();
+
+    // Verify r and s components match exactly
+    expect(latticeR).toBe(viemR);
+    expect(latticeS).toBe(viemS);
+
+    return {
+      lattice: latticeResult,
+      viem: viemSignedTx,
+      success: true,
+    };
+  } catch (error) {
+    console.error(`❌ Test failed for ${testName}:`, error.message);
+
+    throw error;
+  }
+};

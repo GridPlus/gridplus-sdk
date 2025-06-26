@@ -8,8 +8,8 @@ This payload should be coupled with:
 * Curve on which to derive the signing key
 * Hash function to use on the message
 */
-import { sha256 } from 'hash.js/lib/hash/sha';
-import { keccak256 } from 'js-sha3';
+import { Hash } from 'ox';
+// keccak256 now imported from ox via Hash module
 import { HARDENED_OFFSET } from './constants';
 import { Constants } from './index';
 import { LatticeSignSchema } from './protocol';
@@ -154,12 +154,9 @@ export const buildGenericSigningMsgRequest = function (req) {
           'Message too large to send and could not be prehashed (hashType=NONE).',
         );
       } else if (hashType === hashTypes.KECCAK256) {
-        prehash = Buffer.from(keccak256(payloadData), 'hex');
+        prehash = Buffer.from(Hash.keccak256(payloadData));
       } else if (hashType === hashTypes.SHA256) {
-        prehash = Buffer.from(
-          sha256().update(payloadData).digest('hex'),
-          'hex',
-        );
+        prehash = Buffer.from(Hash.sha256(payloadData));
       } else {
         throw new Error('Unsupported hash type.');
       }
@@ -240,15 +237,16 @@ export const parseGenericSigningResponse = function (res, off, req) {
     // the result is a 64 byte sig
     parsed.sig.r = fixLen(parsed.sig.r, 32);
     parsed.sig.s = fixLen(parsed.sig.s, 32);
-    // If this is an EVM request, we want to add a `v`. Other request
-    // types do not require this additional signature param.
+
+    // If this is an EVM request, we want to add a `v` and format r,s as hex strings with 0x prefix
     if (req.encodingType === Constants.SIGNING.ENCODINGS.EVM) {
       const vBn = getV(req.origPayloadBuf, parsed);
-      // NOTE: For backward-compatibility reasons we are returning
-      // a Buffer for `v` here. In the future, we will switch to
-      // returning `v` as a BN and `r`,`s` as Buffers (they are hex
-      // strings right now).
-      parsed.sig.v = vBn.toArrayLike(Buffer);
+      // Convert v to hex string for consistency with r and s
+      parsed.sig.v = `0x${vBn.toString(16)}`;
+
+      // Format r and s as hex strings with 0x prefix for consistency with legacy ETH signing
+      parsed.sig.r = `0x${parsed.sig.r.toString('hex')}`;
+      parsed.sig.s = `0x${parsed.sig.s.toString('hex')}`;
     }
   } else if (req.curveType === Constants.SIGNING.CURVES.ED25519) {
     if (!req.omitPubkey) {
