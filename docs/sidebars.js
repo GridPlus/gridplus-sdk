@@ -55,6 +55,10 @@ const sidebars = {
       id: 'testing',
     },
     {
+      type: 'doc',
+      id: 'migration-v3-to-v4',
+    },
+    {
       type: 'category',
       label: 'Reference',
       items: [sidebar],
