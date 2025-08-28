@@ -3609,7 +3609,7 @@ exports[`decoders > sign - generic 1`] = `
   "sig": {
     "r": "0x640b2c690858ab8d0b9500f9ed64c9aa6b7467b77f1199b061aa96ea780aadaa",
     "s": "0x48f830f9290dd1b3eaf1922e08a8c992873be1162bd6d5bef681cf911328abe5",
-    "v": "0x1",
+    "v": 1n,
   },
 }
 `;

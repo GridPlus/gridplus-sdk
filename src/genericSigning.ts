@@ -232,21 +232,21 @@ export const parseGenericSigningResponse = function (res, off, req) {
       off += 65;
     }
     // Handle `GpECDSASig_t`
-    parsed.sig = parseDER(res.slice(off, off + 2 + res[off + 1]));
+    const derSig = parseDER(res.slice(off, off + 2 + res[off + 1]));
     // Remove any leading zeros in signature components to ensure
     // the result is a 64 byte sig
-    parsed.sig.r = fixLen(parsed.sig.r, 32);
-    parsed.sig.s = fixLen(parsed.sig.s, 32);
-
-    // If this is an EVM request, we want to add a `v` and format r,s as hex strings with 0x prefix
-    if (req.encodingType === Constants.SIGNING.ENCODINGS.EVM) {
+    const rBuf = fixLen(derSig.r, 32);
+    const sBuf = fixLen(derSig.s, 32);
+    
+    parsed.sig = {
+      r: `0x${rBuf.toString('hex')}`,
+      s: `0x${sBuf.toString('hex')}`
+    };
+    
+    if (req.encodingType === Constants.SIGNING.ENCODINGS.EVM || 
+        req.hashType === Constants.SIGNING.HASHES.KECCAK256) {
       const vBn = getV(req.origPayloadBuf, parsed);
-      // Convert v to hex string for consistency with r and s
-      parsed.sig.v = `0x${vBn.toString(16)}`;
-
-      // Format r and s as hex strings with 0x prefix for consistency with legacy ETH signing
-      parsed.sig.r = `0x${parsed.sig.r.toString('hex')}`;
-      parsed.sig.s = `0x${parsed.sig.s.toString('hex')}`;
+      parsed.sig.v = BigInt(vBn.toString());
     }
   } else if (req.curveType === Constants.SIGNING.CURVES.ED25519) {
     if (!req.omitPubkey) {
@@ -257,8 +257,8 @@ export const parseGenericSigningResponse = function (res, off, req) {
     off += 32;
     // Handle `GpEdDSASig_t`
     parsed.sig = {
-      r: res.slice(off, off + 32),
-      s: res.slice(off + 32, off + 64),
+      r: `0x${res.slice(off, off + 32).toString('hex')}`,
+      s: `0x${res.slice(off + 32, off + 64).toString('hex')}`,
     };
   } else if (req.curveType === Constants.SIGNING.CURVES.BLS12_381_G2) {
     if (!req.omitPubkey) {

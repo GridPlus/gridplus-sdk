@@ -759,7 +759,13 @@ export const getV = function (tx: any, resp: any) {
       chainId = tx.common.chainIdBN().toNumber();
     }
   }
-  const rs = new Uint8Array(Buffer.concat([resp.sig.r, resp.sig.s]));
+  const rBuf = Buffer.isBuffer(resp.sig.r) 
+    ? resp.sig.r 
+    : Buffer.from(resp.sig.r.slice(2), 'hex');
+  const sBuf = Buffer.isBuffer(resp.sig.s)
+    ? resp.sig.s
+    : Buffer.from(resp.sig.s.slice(2), 'hex');
+  const rs = new Uint8Array(Buffer.concat([rBuf, sBuf]));
   const pubkey = new Uint8Array(resp.pubkey);
   const recovery0 = ecdsaRecover(rs, 0, hash, false);
   const recovery1 = ecdsaRecover(rs, 1, hash, false);
