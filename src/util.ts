@@ -759,8 +759,8 @@ export const getV = function (tx: any, resp: any) {
       chainId = tx.common.chainIdBN().toNumber();
     }
   }
-  const rBuf = Buffer.isBuffer(resp.sig.r) 
-    ? resp.sig.r 
+  const rBuf = Buffer.isBuffer(resp.sig.r)
+    ? resp.sig.r
     : Buffer.from(resp.sig.r.slice(2), 'hex');
   const sBuf = Buffer.isBuffer(resp.sig.s)
     ? resp.sig.s

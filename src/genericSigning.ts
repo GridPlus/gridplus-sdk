@@ -237,14 +237,16 @@ export const parseGenericSigningResponse = function (res, off, req) {
     // the result is a 64 byte sig
     const rBuf = fixLen(derSig.r, 32);
     const sBuf = fixLen(derSig.s, 32);
-    
+
     parsed.sig = {
       r: `0x${rBuf.toString('hex')}`,
-      s: `0x${sBuf.toString('hex')}`
+      s: `0x${sBuf.toString('hex')}`,
     };
-    
-    if (req.encodingType === Constants.SIGNING.ENCODINGS.EVM || 
-        req.hashType === Constants.SIGNING.HASHES.KECCAK256) {
+
+    if (
+      req.encodingType === Constants.SIGNING.ENCODINGS.EVM ||
+      req.hashType === Constants.SIGNING.HASHES.KECCAK256
+    ) {
       const vBn = getV(req.origPayloadBuf, parsed);
       parsed.sig.v = BigInt(vBn.toString());
     }
