@@ -1,7 +1,5 @@
 // Utils for Ethereum transactions. This is effecitvely a shim of ethereumjs-util, which
 // does not have browser (or, by proxy, React-Native) support.
-import { Chain, Common, Hardfork } from '@ethereumjs/common';
-import { TransactionFactory } from '@ethereumjs/tx';
 import BN from 'bignumber.js';
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
 import { Hash } from 'ox';
@@ -12,6 +10,7 @@ import {
   HANDLE_LARGER_CHAIN_ID,
   MAX_CHAIN_ID_BYTES,
   ethMsgProtocol,
+  EXTERNAL,
 } from './constants';
 import { LatticeSignSchema } from './protocol';
 import {
@@ -20,16 +19,24 @@ import {
   fixLen,
   isAsciiStr,
   splitFrames,
+  convertRecoveryToV,
 } from './util';
 import * as cbor from 'cbor';
 import bdec from 'cbor-bigdecimal';
 import {
-  Hex,
   TransactionSerializable,
   serializeTransaction,
+  type Hex,
   hexToNumber,
 } from 'viem';
-import { TransactionRequest, TRANSACTION_TYPE } from './types';
+import {
+  type SigningPath,
+  type FirmwareConstants,
+  TransactionRequest,
+  TRANSACTION_TYPE,
+} from './types';
+import { buildGenericSigningMsgRequest } from './genericSigning';
+import { TransactionSchema, type FlexibleTransaction } from './schemas';
 
 bdec(cbor);
 
@@ -567,27 +574,18 @@ function pubToAddrStr(pub) {
 // Convert a 0/1 `v` into a recovery param:
 // * For non-EIP155 transactions, return `27 + v`
 // * For EIP155 transactions, return `(CHAIN_ID*2) + 35 + v`
+// Uses the consolidated convertRecoveryToV function from util.ts
 function getRecoveryParam(v, txData: any = {}) {
-  const { chainId, useEIP155, type } = txData;
-  // For EIP1559 and EIP2930 transactions, we want the recoveryParam (0 or 1)
-  // rather than the `v` value because the `chainId` is already included in the
-  // transaction payload.
-  if (type === 1 || type === 2) {
-    return ensureHexBuffer(v, true); // 0 or 1, with 0 expected as an empty buffer
-  } else if (!useEIP155 || !chainId) {
-    // For ETH messages and non-EIP155 chains the set should be [27, 28] for `v`
-    return Buffer.from(new BN(v).plus(27).toString(16), 'hex');
-  }
+  const result = convertRecoveryToV(v, txData);
 
-  // We will use EIP155 in most cases. Convert v to a bignum and operate on it.
-  // Note that the protocol calls for v = (CHAIN_ID*2) + 35/36, where 35 or 36
-  // is decided on based on the ecrecover result. `v` is passed in as either 0 or 1
-  // so we add 35 to that.
-  const chainIdBuf = getChainIdBuf(chainId);
-  const chainIdBN = new BN(chainIdBuf.toString('hex'), 16);
-  return ensureHexBuffer(
-    `0x${chainIdBN.times(2).plus(35).plus(v).toString(16)}`,
-  );
+  // convertRecoveryToV returns Buffer for typed transactions, BN for legacy
+  // Always return Buffer to maintain compatibility with existing code
+  if (Buffer.isBuffer(result)) {
+    return result;
+  } else {
+    // Convert BN result to hex buffer
+    return ensureHexBuffer(`0x${result.toString(16)}`);
+  }
 }
 
 const chainIds = {
@@ -1025,98 +1023,83 @@ function get_rlp_encoded_preimage(rawTx, txType) {
   }
 }
 
-// ======
-// TEMPORARY BRIDGE
-// We are migrating from all legacy signing paths to a single generic
-// signing route. If users are attempting a legacy transaction request
-// against a Lattice on firmware v0.15.0 and above, we need to convert
-// that to a generic signing request.
-//
-// NOTE: Once we deprecate, we will remove this entire file
-// ======
-const ethConvertLegacyToGenericReq = function (req) {
-  let common;
-  if (!req.chainId || ensureHexBuffer(req.chainId).toString('hex') === '01') {
-    common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London });
-  } else {
-    // Not every network will support these EIPs but we will allow
-    // signing of transactions using them
-    common = Common.custom(
-      { chainId: Number(req.chainId) },
-      { hardfork: Hardfork.London, eips: [1559, 2930] },
-    );
-  }
-  const tx = TransactionFactory.fromTxData(req, { common });
-  // Get the raw transaction payload to be hashed and signed.
-  // Different `@ethereumjs/tx` Transaction object types have
-  // slightly different APIs around this.
-  if (req.type) {
-    // Newer transaction types
-    return tx.getMessageToSign();
-  } else {
-    // Legacy transaction type
-    return Buffer.from(RLP.encode(tx.getMessageToSign()));
-  }
+/**
+ * Normalizes a flexible transaction input object into a `viem`-compatible
+ * `TransactionSerializable` object. It uses a comprehensive `zod` schema
+ * to validate, parse, and transform various input formats into a consistent,
+ * secure, and well-typed structure. This function serves as the single entry
+ * point for handling all EVM transaction types.
+ *
+ * @param tx - A flexible transaction object. Can be a legacy, EIP-1559,
+ * EIP-2930, or EIP-7702 transaction with fields in various formats (e.g.,
+ * hex strings, numbers, bigints).
+ * @returns A `viem`-compatible `TransactionSerializable` object.
+ */
+export const normalizeToViemTransaction = (
+  tx: unknown,
+): TransactionSerializable => {
+  const parsed = TransactionSchema.parse(tx);
+
+  return {
+    ...parsed,
+    to: parsed.to as Hex,
+    data: parsed.data as Hex,
+    gas: parsed.gas,
+    value: parsed.value,
+    nonce: parsed.nonce,
+    chainId: parsed.chainId,
+    gasPrice: 'gasPrice' in parsed ? parsed.gasPrice : undefined,
+    maxFeePerGas: 'maxFeePerGas' in parsed ? parsed.maxFeePerGas : undefined,
+    maxPriorityFeePerGas:
+      'maxPriorityFeePerGas' in parsed
+        ? parsed.maxPriorityFeePerGas
+        : undefined,
+    accessList: 'accessList' in parsed ? parsed.accessList : undefined,
+    authorizationList:
+      'authorizationList' in parsed ? parsed.authorizationList : undefined,
+  };
 };
 
-// Convert an ethers `TransactionRequest` to a viem `TransactionSerializable`
-export const toViemTransaction = (
-  tx: TransactionRequest,
-): TransactionSerializable => {
-  const base = {
-    to: tx.to as `0x${string}`,
-    value: tx.value ? BigInt(tx.value) : undefined,
-    data: tx.data as `0x${string}`,
-    nonce: tx.nonce,
-    gas: tx.gasLimit ? BigInt(tx.gasLimit) : undefined,
-    chainId: tx.chainId,
-  };
+/**
+ * Convert Ethereum transaction to serialized bytes for generic signing.
+ * Bridge function for firmware v0.15.0+ which removed legacy ETH signing paths.
+ */
+const convertEthereumTransactionToGenericRequest = function (
+  req: FlexibleTransaction,
+) {
+  // Use the unified normalization and serialization pipeline.
+  // 1. Normalize the potentially varied input to a standard viem format.
+  const viemTx = normalizeToViemTransaction(req);
+  // 2. Serialize the transaction to RLP-encoded bytes.
+  const serializedTx = serializeTransaction(viemTx);
+  return Buffer.from(serializedTx.slice(2), 'hex');
+};
 
-  switch (tx.type) {
-    case TRANSACTION_TYPE.LEGACY:
-      return {
-        ...base,
-        type: 'legacy',
-        gasPrice: BigInt(tx.gasPrice),
-      };
+// Type for Ethereum generic signing request
+type EthereumGenericSigningRequestParams = FlexibleTransaction & {
+  fwConstants: FirmwareConstants;
+  signerPath: SigningPath;
+};
 
-    case TRANSACTION_TYPE.EIP2930:
-      return {
-        ...base,
-        type: 'eip2930',
-        gasPrice: BigInt(tx.gasPrice),
-        accessList: tx.accessList || [],
-      };
+/**
+ * Build complete generic signing request for Ethereum transactions.
+ * One-step function combining transaction conversion and generic signing setup.
+ */
+export const buildEthereumGenericSigningRequest = function (
+  req: EthereumGenericSigningRequestParams,
+) {
+  const { fwConstants, signerPath, ...txData } = req;
 
-    case TRANSACTION_TYPE.EIP1559:
-      return {
-        ...base,
-        type: 'eip1559',
-        maxFeePerGas: BigInt(tx.maxFeePerGas),
-        maxPriorityFeePerGas: BigInt(tx.maxPriorityFeePerGas),
-        accessList: tx.accessList || [],
-      };
+  const payload = convertEthereumTransactionToGenericRequest(txData);
 
-    case TRANSACTION_TYPE.EIP7702_AUTH_LIST:
-      return {
-        ...base,
-        type: 'eip7702',
-        maxFeePerGas: BigInt(tx.maxFeePerGas),
-        maxPriorityFeePerGas: BigInt(tx.maxPriorityFeePerGas),
-        accessList: tx.accessList || [],
-        authorizationList: tx.authorizationList.map((auth) => ({
-          chainId: auth.chainId,
-          address: auth.address,
-          nonce: auth.nonce,
-          r: auth.r,
-          s: auth.s,
-          yParity: auth.yParity || 0,
-        })),
-      };
-
-    default:
-      throw new Error(`Unsupported transaction type: ${(tx as any).type}`);
-  }
+  return buildGenericSigningMsgRequest({
+    fwConstants,
+    encodingType: EXTERNAL.SIGNING.ENCODINGS.EVM,
+    curveType: EXTERNAL.SIGNING.CURVES.SECP256K1,
+    hashType: EXTERNAL.SIGNING.HASHES.KECCAK256,
+    signerPath,
+    payload,
+  });
 };
 
 /**
@@ -1284,6 +1267,7 @@ export default {
   hashTransaction,
   chainIds,
   ensureHexBuffer,
-
-  ethConvertLegacyToGenericReq,
+  normalizeToViemTransaction,
+  convertEthereumTransactionToGenericRequest,
+  buildEthereumGenericSigningRequest,
 };

@@ -1,6 +1,5 @@
 // Static utility functions
 import { RLP } from '@ethereumjs/rlp';
-import { Capability, TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import aes from 'aes-js';
 import BigNum from 'bignumber.js';
 import { BN } from 'bn.js';
@@ -11,6 +10,7 @@ import { Hash } from 'ox';
 import inRange from 'lodash/inRange';
 import isInteger from 'lodash/isInteger';
 import secp256k1 from 'secp256k1';
+import { parseTransaction, keccak256, type Hex } from 'viem';
 
 const EC = elliptic.ec;
 const { ecdsaRecover } = secp256k1;
@@ -400,7 +400,7 @@ export function selectDefFrom4byteABI(abiData: any[], selector: string) {
           result.text_signature,
         );
         return !!def;
-      } catch (err) {
+      } catch (_err) {
         return false;
       }
     });
@@ -573,7 +573,7 @@ async function replaceNestedDefs(possNestedDefs) {
               _nestedSelector,
             );
             _nestedDefs.push(_nestedDef);
-          } catch (err) {
+          } catch (_err) {
             shouldInclude = false;
             _nestedDefs.push(null);
           }
@@ -589,7 +589,7 @@ async function replaceNestedDefs(possNestedDefs) {
           const nestedAbi = await fetch4byteData(nestedSelector);
           const nestedDef = selectDefFrom4byteABI(nestedAbi, nestedSelector);
           nestedDefs.push(nestedDef);
-        } catch (err) {
+        } catch (_err) {
           nestedDefs.push(null);
         }
       }
@@ -708,57 +708,102 @@ export const generateAppSecret = (
 };
 
 /**
- * Generic signing does not return a `v` value like legacy ETH signing requests did.
- * Get the `v` component of the signature as well as an `initV`
- * parameter, which is what you need to use to re-create an `@ethereumjs/tx`
- * object. There is a lot of tech debt in `@ethereumjs/tx` which also
- * inherits the tech debt of ethereumjs-util.
- * 1.  The legacy `Transaction` type can call `_processSignature` with the regular
- *     `v` value.
- * 2.  Newer transaction types such as `FeeMarketEIP1559Transaction` will subtract
- *     27 from the `v` that gets passed in, so we need to add `27` to create `initV`
- * @param tx - An @ethereumjs/tx Transaction object or Buffer (serialized tx)
- * @param resp - response from Lattice. Can be either legacy or generic signing variety
- * @returns bn.js BN object containing the `v` param
+ * Get the `v` component of signature using viem parsing.
+ * @param tx - Serialized transaction (Buffer or hex string)
+ * @param resp - Lattice response with sig and pubkey
+ * @returns BN object containing the `v` param
  */
 export const getV = function (tx: any, resp: any) {
-  let chainId, hash, type;
-  const txIsBuf = Buffer.isBuffer(tx);
-  if (txIsBuf) {
-    hash = Buffer.from(Hash.keccak256(tx));
+  let chainId: number | undefined;
+  let hash: Uint8Array;
+  let type: string | undefined;
+
+  if (Buffer.isBuffer(tx) || typeof tx === 'string') {
+    const txHex = Buffer.isBuffer(tx)
+      ? (`0x${tx.toString('hex')}` as Hex)
+      : (tx as Hex);
+
     try {
-      const legacyTxArray = RLP.decode(tx);
-      if (legacyTxArray.length === 6) {
-        // Six item array means this is a pre-EIP155 transaction
-        chainId = null;
-      } else {
-        // Otherwise the `v` param is the `chainId`
-        chainId = new BN(legacyTxArray[6] as Uint8Array);
+      const parsedTx = parseTransaction(txHex);
+      type = parsedTx.type;
+      chainId = parsedTx.chainId;
+
+      if (type === 'legacy') {
+        // Check if this is EIP-155 by looking at RLP structure
+        try {
+          const legacyTxArray = RLP.decode(Buffer.from(txHex.slice(2), 'hex'));
+          if (legacyTxArray.length === 6) {
+            chainId = undefined; // Pre-EIP155
+          }
+        } catch {
+          // Use chainId from viem parse
+        }
       }
-      // Legacy tx = type 0
-      type = 0;
+
+      // Construct signing hash for EIP-155 legacy transactions
+      if (type === 'legacy' && chainId) {
+        const signingTx = [
+          parsedTx.nonce ? `0x${parsedTx.nonce.toString(16)}` : '0x',
+          parsedTx.gasPrice ? `0x${parsedTx.gasPrice.toString(16)}` : '0x',
+          parsedTx.gas ? `0x${parsedTx.gas.toString(16)}` : '0x',
+          parsedTx.to || '0x',
+          parsedTx.value ? `0x${parsedTx.value.toString(16)}` : '0x',
+          parsedTx.data || '0x',
+          `0x${chainId.toString(16)}`,
+          '0x',
+          '0x',
+        ].map((val) =>
+          val === '0x' ? Buffer.alloc(0) : Buffer.from(val.slice(2), 'hex'),
+        );
+
+        const signingRlp = RLP.encode(signingTx);
+        hash = Buffer.from(Hash.keccak256(signingRlp));
+      } else {
+        // Use transaction hash directly for non-EIP155 or typed transactions
+        hash = Buffer.from(keccak256(txHex).slice(2), 'hex');
+      }
     } catch (err) {
-      // This is likely a typed transaction
+      // Fallback to legacy RLP decode if viem parsing fails
       try {
-        const txObj = EthTxFactory.fromSerializedData(tx);
-        //@ts-expect-error -- Accessing private property
-        type = txObj._type;
-      } catch (err) {
-        // If we can't RLP decode and can't hydrate an @ethereumjs/tx object,
-        // we don't know what this is and should abort.
+        const txBuf = Buffer.isBuffer(tx)
+          ? tx
+          : Buffer.from(tx.slice(2), 'hex');
+        const legacyTxArray = RLP.decode(txBuf);
+
+        if (legacyTxArray.length === 6) {
+          chainId = undefined; // Pre-EIP155
+          type = 'legacy';
+        } else if (legacyTxArray.length >= 9) {
+          const vBuf = legacyTxArray[6] as Uint8Array;
+          if (vBuf && vBuf.length > 0) {
+            chainId = new BN(vBuf).toNumber();
+          }
+          type = 'legacy';
+        }
+
+        if (type === 'legacy' && chainId) {
+          // Reconstruct EIP-155 signing hash
+          const signingTxArray = [
+            ...legacyTxArray.slice(0, 6),
+            chainId,
+            Buffer.alloc(0),
+            Buffer.alloc(0),
+          ];
+          const signingRlp = RLP.encode(signingTxArray);
+          hash = Buffer.from(Hash.keccak256(signingRlp));
+        } else {
+          hash = Buffer.from(Hash.keccak256(txBuf));
+        }
+      } catch {
         throw new Error('Could not recover V. Bad transaction data.');
       }
     }
   } else {
-    // @ethereumjs/tx object passed in
-    type = tx._type;
-    hash = type
-      ? tx.getMessageToSign(true) // newer tx types
-      : RLP.encode(tx.getMessageToSign(false)); // legacy tx
-    if (tx.supports(Capability.EIP155ReplayProtection)) {
-      chainId = tx.common.chainIdBN().toNumber();
-    }
+    throw new Error(
+      'Unsupported transaction format. Expected Buffer or hex string.',
+    );
   }
+
   const rBuf = Buffer.isBuffer(resp.sig.r)
     ? resp.sig.r
     : Buffer.from(resp.sig.r.slice(2), 'hex');
@@ -767,33 +812,73 @@ export const getV = function (tx: any, resp: any) {
     : Buffer.from(resp.sig.s.slice(2), 'hex');
   const rs = new Uint8Array(Buffer.concat([rBuf, sBuf]));
   const pubkey = new Uint8Array(resp.pubkey);
+
   const recovery0 = ecdsaRecover(rs, 0, hash, false);
   const recovery1 = ecdsaRecover(rs, 1, hash, false);
   const pubkeyStr = Buffer.from(pubkey).toString('hex');
   const recovery0Str = Buffer.from(recovery0).toString('hex');
   const recovery1Str = Buffer.from(recovery1).toString('hex');
-  let recovery;
+
+  let recovery: number;
   if (pubkeyStr === recovery0Str) {
     recovery = 0;
   } else if (pubkeyStr === recovery1Str) {
     recovery = 1;
   } else {
-    // If we fail a second time, exit here.
     throw new Error(
       'Failed to recover V parameter. Bad signature or transaction data.',
     );
   }
-  // Newer transaction types just use the [0, 1] value
-  if (type) {
-    return new BN(recovery);
+
+  // Use the consolidated v parameter conversion logic
+  const result = convertRecoveryToV(recovery, {
+    chainId,
+    useEIP155: !!chainId,
+    type,
+  });
+
+  // Always return BN for consistent interface - convertRecoveryToV returns Buffer for typed txs
+  if (Buffer.isBuffer(result)) {
+    // For typed transactions that return recovery value (0 or 1) as buffer
+    if (result.length === 0) {
+      return new BN(0); // Empty buffer means 0
+    } else {
+      return new BN(result.toString('hex'), 16);
+    }
+  } else {
+    return result; // Already a BN
   }
-  // If there is no chain ID, this is a pre-EIP155 tx
-  if (!chainId) {
+};
+
+/**
+ * Convert a recovery parameter (0/1) to the proper v value format based on transaction type.
+ * Consolidates the v parameter conversion logic used across ethereum.ts and util.ts.
+ *
+ * @param recovery - Recovery parameter (0 or 1)
+ * @param txData - Transaction data containing chainId, useEIP155, and type
+ * @returns The properly formatted v value as Buffer or BN
+ */
+export const convertRecoveryToV = function (
+  recovery: number,
+  txData: any = {},
+) {
+  const { chainId, useEIP155, type } = txData;
+
+  // For EIP1559 and EIP2930 transactions, we want the recoveryParam (0 or 1)
+  // rather than the `v` value because the `chainId` is already included in the
+  // transaction payload.
+  if (type === 1 || type === 2 || type === 'eip2930' || type === 'eip1559') {
+    return ensureHexBuffer(recovery, true); // 0 or 1, with 0 expected as an empty buffer
+  } else if (!useEIP155 || !chainId) {
+    // For ETH messages and non-EIP155 chains the set should be [27, 28] for `v`
     return new BN(recovery).addn(27);
   }
-  // EIP155 replay protection is included in the `v` param
-  // and uses the chainId value.
-  return chainId.muln(2).addn(35).addn(recovery);
+
+  // We will use EIP155 in most cases. Convert recovery to a bignum and operate on it.
+  // Note that the protocol calls for v = (CHAIN_ID*2) + 35/36, where 35 or 36
+  // is decided on based on the ecrecover result. `recovery` is passed in as either 0 or 1
+  // so we add 35 to that.
+  return new BN(chainId).muln(2).addn(35).addn(recovery);
 };
 
 /**
@@ -915,4 +1000,5 @@ export const EXTERNAL = {
   generateAppSecret,
   getV,
   getYParity,
+  convertRecoveryToV,
 };

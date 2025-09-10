@@ -83,7 +83,8 @@
     "ox": "^0.8.1",
     "secp256k1": "5.0.1",
     "uuid": "^10.0.0",
-    "viem": "^2.31.4"
+    "viem": "^2.31.4",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@chainsafe/bls-keystore": "^3.1.0",

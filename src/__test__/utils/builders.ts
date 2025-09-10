@@ -105,7 +105,7 @@ export const buildSignObject = (fwVersion, overrides?) => {
       to: '0xc0c8f96C2fE011cc96770D2e37CfbfeAFB585F0e',
       from: '0xc0c8f96C2fE011cc96770D2e37CfbfeAFB585F0e',
       value: 0x80000000,
-      data: 0x0,
+      data: '0x0',
       signerPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
       nonce: 0x80000000,
       gasLimit: 0x80000000,
