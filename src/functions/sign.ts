@@ -1,5 +1,5 @@
 import { Hash } from 'ox';
-import { serializeTransaction, type Hex, type Address } from 'viem';
+import { type Hex, type Address } from 'viem';
 import bitcoin from '../bitcoin';
 import { CURRENCIES } from '../constants';
 import ethereum from '../ethereum';
@@ -19,8 +19,6 @@ import {
   DecodeSignResponseParams,
   SignData,
   BitcoinSignRequest,
-  EthSignRequest,
-  EthMsgSignRequest,
   SignRequest,
 } from '../types';
 

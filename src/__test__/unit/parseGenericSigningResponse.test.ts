@@ -4,6 +4,7 @@ import { parseGenericSigningResponse } from '../../genericSigning';
 import { Constants } from '../../index';
 import secp256k1 from 'secp256k1';
 import { Hash } from 'ox';
+import { RLP } from '@ethereumjs/rlp';
 
 describe('parseGenericSigningResponse', () => {
   // Helper to create a DER signature
@@ -69,8 +70,7 @@ describe('parseGenericSigningResponse', () => {
     expect(typeof result.sig.v).toBe('bigint');
 
     // For non-EVM generic messages, v should be 27 or 28
-    const vNumber = Number(result.sig.v);
-    expect([27n, 28n]).toContain(result.sig.v);
+    expect([27, 28]).toContain(result.sig.v);
   });
 
   it('should handle EVM transaction encoding', () => {
@@ -123,7 +123,6 @@ describe('parseGenericSigningResponse', () => {
 
   it('should handle RLP-encoded data that looks like a transaction', () => {
     // Create an RLP-encoded array with 6+ elements (looks like a transaction)
-    const RLP = require('@ethereumjs/rlp').RLP;
     const txLikeData = [
       Buffer.from([0x01]), // nonce
       Buffer.from([0x02]), // gasPrice

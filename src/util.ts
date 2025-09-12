@@ -861,7 +861,7 @@ export const getV = function (tx: any, resp: any) {
 export const convertRecoveryToV = function (
   recovery: number,
   txData: any = {},
-) {
+): Buffer | InstanceType<typeof BN> {
   const { chainId, useEIP155, type } = txData;
 
   // For EIP1559 and EIP2930 transactions, we want the recoveryParam (0 or 1)

@@ -408,8 +408,7 @@ describe('getV function', () => {
     expect(v.toNumber()).toBe(27 + resp.recovery);
   });
 
-  it('should parse viem parseTransaction correctly', () => {
-    // Test that we're using viem's parseTransaction correctly
+  it('should throw error when pubkey does not match signature', () => {
     // This is a signed legacy transaction
     const signedTx =
       '0xf86c0a8504a817c800825208943535353535353535353535353535353535353535880de0b6b3a76400008025a0134f5038e0e6a96741e17a82c8df13e9dc10c3b0e9e956cf7dcf21e1e3b73f9fa0638cf1b1f9dd5e6e8e6b9a8e6e8e6b9a8e6e8e6b9a8e6e8e6b9a8e6e8e6b9a8';
@@ -429,11 +428,10 @@ describe('getV function', () => {
       pubkey: Buffer.from('04' + '1'.repeat(128), 'hex'),
     };
 
-    // Should throw because pubkey doesn't match
     expect(() => getV(signedTx, mockResp)).toThrow();
   });
 
-  it('should handle hex string input', () => {
+  it('should throw error when signature is invalid', () => {
     const txHex =
       '0xe9808504a817c800825208943535353535353535353535353535353535353535880de0b6b3a764000080';
 
@@ -445,7 +443,6 @@ describe('getV function', () => {
       pubkey: Buffer.from('04' + '1'.repeat(128), 'hex'),
     };
 
-    // Should throw because signature doesn't match
     expect(() => getV(txHex, mockResp)).toThrow();
   });
 });
