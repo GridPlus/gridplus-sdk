@@ -1,11 +1,8 @@
 import { Hash } from 'ox';
-import { serializeTransaction, type Hex, type Address } from 'viem';
+import { type Hex, type Address } from 'viem';
 import bitcoin from '../bitcoin';
 import { CURRENCIES } from '../constants';
-import ethereum, {
-  normalizeLatticeSignature,
-  toViemTransaction,
-} from '../ethereum';
+import ethereum from '../ethereum';
 import { parseGenericSigningResponse } from '../genericSigning';
 import {
   LatticeSecureEncryptedRequestType,
@@ -22,8 +19,6 @@ import {
   DecodeSignResponseParams,
   SignData,
   BitcoinSignRequest,
-  EthSignRequest,
-  EthMsgSignRequest,
   SignRequest,
 } from '../types';
 
@@ -266,7 +261,7 @@ export const decodeSignResponse = ({
         tx: `0x${result.rawTx}`,
         txHash: `0x${ethereum.hashTransaction(result.rawTx)}` as Hex,
         sig: {
-          v: result.sigWithV.v,
+          v: BigInt(`0x${result.sigWithV.v.toString('hex')}`),
           r: `0x${result.sigWithV.r.toString('hex')}` as Hex,
           s: `0x${result.sigWithV.s.toString('hex')}` as Hex,
         },
@@ -289,7 +284,7 @@ export const decodeSignResponse = ({
     );
     return {
       sig: {
-        v: validatedSig.v,
+        v: BigInt(`0x${validatedSig.v.toString('hex')}`),
         r: `0x${validatedSig.r.toString('hex')}` as Hex,
         s: `0x${validatedSig.s.toString('hex')}` as Hex,
       },

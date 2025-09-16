@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Buffer } from 'buffer';
 import { Hash } from 'ox';
-import { getYParity, randomBytes } from '../../util';
+import { getYParity, getV, randomBytes } from '../../util';
 import secp256k1 from 'secp256k1';
 
 describe('getYParity', () => {
@@ -363,5 +363,86 @@ describe('getYParity', () => {
 
       expect(foundYParityOne).toBe(true);
     });
+  });
+});
+
+describe('getV function', () => {
+  // Helper to create a valid signature
+  const createValidSignature = (messageHash: Buffer, privateKey?: Buffer) => {
+    // Use deterministic key if not provided
+    const privKey =
+      privateKey ||
+      Buffer.from(
+        '0101010101010101010101010101010101010101010101010101010101010101',
+        'hex',
+      );
+
+    const sigObj = secp256k1.ecdsaSign(messageHash, privKey);
+    const publicKey = secp256k1.publicKeyCreate(privKey, false);
+
+    return {
+      sig: {
+        r: Buffer.from(sigObj.signature.slice(0, 32)),
+        s: Buffer.from(sigObj.signature.slice(32, 64)),
+      },
+      pubkey: Buffer.from(publicKey),
+      recovery: sigObj.recid,
+    };
+  };
+
+  it('should handle unsigned legacy transaction with valid signature', () => {
+    // A simple unsigned legacy transaction
+    const unsignedTxRLP = Buffer.from(
+      'e9808504a817c800825208943535353535353535353535353535353535353535880de0b6b3a764000080',
+      'hex',
+    );
+
+    // Hash the transaction
+    const hash = Buffer.from(Hash.keccak256(unsignedTxRLP));
+
+    // Create a valid signature for this hash
+    const resp = createValidSignature(hash);
+
+    // Should return correct v value (27 or 28 for non-EIP155)
+    const v = getV(unsignedTxRLP, resp);
+    expect(v.toNumber()).toBe(27 + resp.recovery);
+  });
+
+  it('should throw error when pubkey does not match signature', () => {
+    // This is a signed legacy transaction
+    const signedTx =
+      '0xf86c0a8504a817c800825208943535353535353535353535353535353535353535880de0b6b3a76400008025a0134f5038e0e6a96741e17a82c8df13e9dc10c3b0e9e956cf7dcf21e1e3b73f9fa0638cf1b1f9dd5e6e8e6b9a8e6e8e6b9a8e6e8e6b9a8e6e8e6b9a8e6e8e6b9a8';
+
+    const mockResp = {
+      sig: {
+        r: Buffer.from(
+          '134f5038e0e6a96741e17a82c8df13e9dc10c3b0e9e956cf7dcf21e1e3b73f9f',
+          'hex',
+        ),
+        s: Buffer.from(
+          '638cf1b1f9dd5e6e8e6b9a8e6e8e6b9a8e6e8e6b9a8e6e8e6b9a8e6e8e6b9a8',
+          'hex',
+        ),
+      },
+      // This is a fake pubkey, so recovery will fail
+      pubkey: Buffer.from('04' + '1'.repeat(128), 'hex'),
+    };
+
+    expect(() => getV(signedTx, mockResp)).toThrow();
+  });
+
+  it('should throw error when signature is invalid', () => {
+    const txHex =
+      '0xe9808504a817c800825208943535353535353535353535353535353535353535880de0b6b3a764000080';
+
+    const mockResp = {
+      sig: {
+        r: '0x' + '1'.repeat(64), // 32 bytes as hex string
+        s: '0x' + '2'.repeat(64), // 32 bytes as hex string
+      },
+      pubkey: Buffer.from('04' + '1'.repeat(128), 'hex'),
+    };
+
+    expect(() => getV(txHex, mockResp)).toThrow();
   });
 });

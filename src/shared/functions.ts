@@ -41,7 +41,7 @@ export const buildTransaction = ({
     );
     let payload;
     try {
-      payload = ethereum.ethConvertLegacyToGenericReq(data);
+      payload = ethereum.convertEthereumTransactionToGenericRequest(data);
     } catch (err) {
       throw new Error(
         'Could not convert legacy request. Please switch to a general signing ' +

@@ -9,6 +9,7 @@ This payload should be coupled with:
 * Hash function to use on the message
 */
 import { Hash } from 'ox';
+import { RLP } from '@ethereumjs/rlp';
 // keccak256 now imported from ox via Hash module
 import { HARDENED_OFFSET } from './constants';
 import { Constants } from './index';
@@ -17,6 +18,7 @@ import {
   buildSignerPathBuf,
   existsIn,
   fixLen,
+  getYParity,
   getV,
   parseDER,
   splitFrames,
@@ -232,21 +234,68 @@ export const parseGenericSigningResponse = function (res, off, req) {
       off += 65;
     }
     // Handle `GpECDSASig_t`
-    parsed.sig = parseDER(res.slice(off, off + 2 + res[off + 1]));
+    const derSig = parseDER(res.slice(off, off + 2 + res[off + 1]));
     // Remove any leading zeros in signature components to ensure
     // the result is a 64 byte sig
-    parsed.sig.r = fixLen(parsed.sig.r, 32);
-    parsed.sig.s = fixLen(parsed.sig.s, 32);
+    const rBuf = fixLen(derSig.r, 32);
+    const sBuf = fixLen(derSig.s, 32);
 
-    // If this is an EVM request, we want to add a `v` and format r,s as hex strings with 0x prefix
+    parsed.sig = {
+      r: `0x${rBuf.toString('hex')}`,
+      s: `0x${sBuf.toString('hex')}`,
+    };
+
     if (req.encodingType === Constants.SIGNING.ENCODINGS.EVM) {
+      // Full EVM transaction - use getV for proper chainId/EIP-155 handling
       const vBn = getV(req.origPayloadBuf, parsed);
-      // Convert v to hex string for consistency with r and s
-      parsed.sig.v = `0x${vBn.toString(16)}`;
+      parsed.sig.v = BigInt(vBn.toString());
+    } else if (
+      req.hashType === Constants.SIGNING.HASHES.KECCAK256 &&
+      req.encodingType !== Constants.SIGNING.ENCODINGS.EVM
+    ) {
+      // Generic Keccak256 message - determine if it looks like a transaction
+      let isTransaction = false;
 
-      // Format r and s as hex strings with 0x prefix for consistency with legacy ETH signing
-      parsed.sig.r = `0x${parsed.sig.r.toString('hex')}`;
-      parsed.sig.s = `0x${parsed.sig.s.toString('hex')}`;
+      try {
+        let bufferToDecode = req.origPayloadBuf;
+
+        // Try to skip EIP-2718 type byte if present
+        if (bufferToDecode[0] <= 0x7f) {
+          bufferToDecode = bufferToDecode.slice(1);
+        }
+
+        const decoded = RLP.decode(bufferToDecode);
+        // A legacy transaction has 9 fields (or 6 if pre-EIP155)
+        isTransaction = Array.isArray(decoded) && decoded.length >= 6;
+      } catch {
+        isTransaction = false;
+      }
+
+      if (isTransaction) {
+        try {
+          // If it looks like a transaction, use the robust getV
+          const vBn = getV(req.origPayloadBuf, parsed);
+          parsed.sig.v = BigInt(vBn.toString());
+        } catch (err) {
+          // Fall back to simple recovery if getV fails (e.g., malformed RLP)
+          const msgHash = Buffer.from(Hash.keccak256(req.origPayloadBuf));
+          const yParity = getYParity({
+            messageHash: msgHash,
+            signature: parsed.sig,
+            publicKey: parsed.pubkey,
+          });
+          parsed.sig.v = BigInt(27 + yParity);
+        }
+      } else {
+        // Generic message - use simple recovery (v = 27 + recoveryId)
+        const msgHash = Buffer.from(Hash.keccak256(req.origPayloadBuf));
+        const yParity = getYParity({
+          messageHash: msgHash,
+          signature: parsed.sig,
+          publicKey: parsed.pubkey,
+        });
+        parsed.sig.v = BigInt(27 + yParity);
+      }
     }
   } else if (req.curveType === Constants.SIGNING.CURVES.ED25519) {
     if (!req.omitPubkey) {
@@ -257,8 +306,8 @@ export const parseGenericSigningResponse = function (res, off, req) {
     off += 32;
     // Handle `GpEdDSASig_t`
     parsed.sig = {
-      r: res.slice(off, off + 32),
-      s: res.slice(off + 32, off + 64),
+      r: `0x${res.slice(off, off + 32).toString('hex')}`,
+      s: `0x${res.slice(off + 32, off + 64).toString('hex')}`,
     };
   } else if (req.curveType === Constants.SIGNING.CURVES.BLS12_381_G2) {
     if (!req.omitPubkey) {

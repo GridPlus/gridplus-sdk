@@ -21,7 +21,7 @@ describe('EVM Transaction Signing - Unified Test Suite', () => {
     await setupClient();
   });
 
-  describe.skip('Legacy Transactions', () => {
+  describe('Legacy Transactions', () => {
     LEGACY_VECTORS.forEach((vector, index) => {
       it(`${vector.name} (${index + 1}/${LEGACY_VECTORS.length})`, async () => {
         await signAndCompareTransaction(vector.tx, vector.name);
@@ -29,7 +29,7 @@ describe('EVM Transaction Signing - Unified Test Suite', () => {
     });
   });
 
-  describe.skip('EIP-1559 Transactions (Fee Market)', () => {
+  describe('EIP-1559 Transactions (Fee Market)', () => {
     EIP1559_TEST_VECTORS.forEach((vector, index) => {
       it(`${vector.name} (${index + 1}/${EIP1559_TEST_VECTORS.length})`, async () => {
         await signAndCompareTransaction(vector.tx, vector.name);
@@ -37,7 +37,7 @@ describe('EVM Transaction Signing - Unified Test Suite', () => {
     });
   });
 
-  describe.skip('EIP-2930 Transactions (Access Lists)', () => {
+  describe('EIP-2930 Transactions (Access Lists)', () => {
     EIP2930_TEST_VECTORS.forEach((vector, index) => {
       it(`${vector.name} (${index + 1}/${EIP2930_TEST_VECTORS.length})`, async () => {
         await signAndCompareTransaction(vector.tx, vector.name);
@@ -53,7 +53,7 @@ describe('EVM Transaction Signing - Unified Test Suite', () => {
     });
   });
 
-  describe.skip('Edge Cases & Boundary Conditions', () => {
+  describe('Edge Cases & Boundary Conditions', () => {
     EDGE_CASE_TEST_VECTORS.forEach((vector, index) => {
       it(`${vector.name} (${index + 1}/${EDGE_CASE_TEST_VECTORS.length})`, async () => {
         await signAndCompareTransaction(vector.tx, vector.name);

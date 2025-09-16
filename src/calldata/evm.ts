@@ -125,10 +125,14 @@ export const getNestedCalldata = function (def, calldata) {
         }
       } else if (isBytesItem(defParams[i])) {
         // Regular `bytes` type - perform size check
-        if (typeof paramData !== 'string' || !paramData.startsWith('0x')) {
+        if (
+          typeof paramData !== 'string' ||
+          !(paramData as string).startsWith('0x')
+        ) {
           nestedDefIsPossible = false;
         } else {
-          const paramDataBuf = Buffer.from(paramData.slice(2), 'hex');
+          const data = paramData as string;
+          const paramDataBuf = Buffer.from(data.slice(2), 'hex');
           nestedDefIsPossible = couldBeNestedDef(paramDataBuf);
         }
       } else {
