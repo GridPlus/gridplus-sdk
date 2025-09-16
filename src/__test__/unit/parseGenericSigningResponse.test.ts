@@ -70,7 +70,7 @@ describe('parseGenericSigningResponse', () => {
     expect(typeof result.sig.v).toBe('bigint');
 
     // For non-EVM generic messages, v should be 27 or 28
-    expect([27, 28]).toContain(result.sig.v);
+    expect([27n, 28n]).toContain(result.sig.v);
   });
 
   it('should handle EVM transaction encoding', () => {
