@@ -7,7 +7,7 @@
  */
 import { describe, it, beforeAll } from 'vitest';
 import { signAndCompareTransaction } from '../../utils/viemComparison';
-import { setupClient } from '../../utils/setup';
+import { setupClient } from '../../utils/clientStorage';
 import {
   LEGACY_VECTORS,
   EIP1559_TEST_VECTORS,

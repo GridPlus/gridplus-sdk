@@ -41,7 +41,7 @@ import {
   validateETHAddresses,
 } from '../utils/helpers';
 import { testRequest } from '../utils/testRequest';
-import { setupClient } from '../utils/setup';
+import { setupClient } from '../utils/clientStorage';
 
 const id = getDeviceId();
 //---------------------------------------

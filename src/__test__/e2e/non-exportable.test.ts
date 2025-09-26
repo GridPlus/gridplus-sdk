@@ -27,7 +27,7 @@ import { Constants } from '../..';
 import { DEFAULT_SIGNER } from '../utils/builders';
 import { getSigStr } from '../utils/helpers';
 
-import { setupClient } from '../utils/setup';
+import { setupClient } from '../utils/clientStorage';
 
 let runTests = true;
 

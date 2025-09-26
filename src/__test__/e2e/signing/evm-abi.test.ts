@@ -3,7 +3,7 @@
  * These transactions use contract addresses so the device can fetch ABI data dynamically.
  */
 import { describe, it, beforeAll, expect } from 'vitest';
-import { setupClient } from '../../utils/setup';
+import { setupClient } from '../../utils/clientStorage';
 import { sign } from '../../../api';
 import { ABI_TEST_VECTORS } from '../../vectors/abi-vectors';
 

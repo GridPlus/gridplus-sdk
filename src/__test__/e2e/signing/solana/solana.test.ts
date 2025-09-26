@@ -10,7 +10,7 @@ import { getPrng } from '../../../utils/getters';
 import { deriveED25519Key, prandomBuf } from '../../../utils/helpers';
 import { initializeSeed } from '../../../utils/initializeClient';
 import { runGeneric } from '../../../utils/runners';
-import { setupClient } from '../../../utils/setup';
+import { setupClient } from '../../../utils/clientStorage';
 
 //---------------------------------------
 // STATE DATA

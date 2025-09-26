@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv';
 import { question } from 'readline-sync';
 import { pair, signMessage } from '../..';
 import { deployContract } from '../utils/contracts';
-import { setupClient } from '../utils/setup';
+import { setupClient } from '../utils/clientStorage';
 import {
   createPublicClient,
   createWalletClient,

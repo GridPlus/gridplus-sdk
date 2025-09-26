@@ -26,7 +26,7 @@ import {
 } from '../../utils/helpers';
 import { initializeSeed } from '../../utils/initializeClient';
 import { runTestCase } from '../../utils/runners';
-import { setupClient } from '../../utils/setup';
+import { setupClient } from '../../utils/clientStorage';
 let seed: Buffer;
 
 describe('[Determinism]', () => {

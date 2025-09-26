@@ -1,7 +1,7 @@
 /* eslint-disable quotes */
 import { question } from 'readline-sync';
 import { fetchAddressesByDerivationPath, pair } from '../../api';
-import { setupClient } from '../utils/setup';
+import { setupClient } from '../utils/clientStorage';
 import { LatticeGetAddressesFlag } from '../../protocol';
 
 describe('XPUB', () => {

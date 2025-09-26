@@ -1,7 +1,7 @@
 import { fetchActiveWallets, setup } from '../../api';
 import { getDeviceId } from '../utils/getters';
 import { setupTestClient } from '../utils/helpers';
-import { getStoredClient, setStoredClient } from '../utils/setup';
+import { getStoredClient, setStoredClient } from '../utils/clientStorage';
 
 /**
  * This test is used to test the interoperability between the Class-based API and the Functional API.

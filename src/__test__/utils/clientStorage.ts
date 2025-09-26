@@ -1,44 +1,28 @@
-import fetch, { Request } from 'node-fetch';
-import * as fs from 'fs';
-import { question } from 'readline-sync';
+import * as fs from 'node:fs';
+import readlineSync from 'readline-sync';
 import { getClient, pair, setup } from '../..';
-import * as dotenv from 'dotenv';
-dotenv.config();
 
-if (!globalThis.fetch) {
-  // @ts-expect-error - fetch must be patched in a node environment
-  globalThis.fetch = fetch;
-  // @ts-expect-error - Request must be patched in a node environment
-  globalThis.Request = Request;
-}
+const question = readlineSync.question;
 
-expect.extend({
-  toEqualElseLog(received: any, expected: any, message: string) {
-    return {
-      pass: received === expected,
-      message: () =>
-        message ? message : `Expected ${received} to equal ${expected}`,
-    };
-  },
-});
+const TEMP_CLIENT_FILE = './client.temp';
 
-export const setStoredClient = async (data: string) => {
+export async function setStoredClient(data: string) {
   try {
-    fs.writeFileSync('./client.temp', data);
+    fs.writeFileSync(TEMP_CLIENT_FILE, data);
   } catch (err) {
     return;
   }
-};
+}
 
-export const getStoredClient = async () => {
+export async function getStoredClient() {
   try {
-    return fs.readFileSync('./client.temp', 'utf8');
+    return fs.readFileSync(TEMP_CLIENT_FILE, 'utf8');
   } catch (err) {
     return '';
   }
-};
+}
 
-export const setupClient = async () => {
+export async function setupClient() {
   const deviceId = process.env.DEVICE_ID;
   const baseUrl = process.env.baseUrl || 'https://signing.gridpl.us';
   const password = process.env.PASSWORD || 'password';
@@ -65,4 +49,4 @@ export const setupClient = async () => {
     await pair(pairingSecret.toUpperCase());
   }
   return getClient();
-};
+}

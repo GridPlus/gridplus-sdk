@@ -33,7 +33,7 @@ import {
   serializeJobData,
 } from '../../utils/helpers';
 import { initializeSeed } from '../../utils/initializeClient';
-import { setupClient } from '../../utils/setup';
+import { setupClient } from '../../utils/clientStorage';
 import { testRequest } from '../../utils/testRequest';
 
 const globalVectors = getTestVectors();

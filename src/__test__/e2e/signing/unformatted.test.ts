@@ -4,7 +4,7 @@ import { ethPersonalSignMsg, prandomBuf } from '../../utils/helpers';
 import { runGeneric } from '../../utils/runners';
 import { HARDENED_OFFSET } from '../../../constants';
 import { getPrng } from '../../utils/getters';
-import { setupClient } from '../../utils/setup';
+import { setupClient } from '../../utils/clientStorage';
 
 const prng = getPrng();
 const numIter = getNumIter();

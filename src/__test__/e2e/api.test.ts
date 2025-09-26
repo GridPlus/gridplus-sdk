@@ -28,7 +28,7 @@ import {
   sign,
   signSolanaTx,
 } from '../../api/index';
-import { setupClient } from '../utils/setup';
+import { setupClient } from '../utils/clientStorage';
 import { buildRandomMsg } from '../utils/builders';
 
 describe('API', () => {

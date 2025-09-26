@@ -9,7 +9,7 @@ import { HARDENED_OFFSET } from '../../constants';
 import { LatticeResponseCode, ProtocolConstants } from '../../protocol';
 import { BTC_PURPOSE_P2PKH, ETH_COIN } from '../utils/helpers';
 
-import { setupClient } from '../utils/setup';
+import { setupClient } from '../utils/clientStorage';
 
 // Random address to test the screen with.
 // IMPORTANT NOTE: For Ethereum addresses you should always add the lower case variety since

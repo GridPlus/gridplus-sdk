@@ -20,7 +20,7 @@ import {
   stripDER,
 } from '../utils/helpers';
 import { testRequest } from '../utils/testRequest';
-import { setupClient } from '../utils/setup';
+import { setupClient } from '../utils/clientStorage';
 import { BIP32Interface } from 'bip32';
 
 const prng = getPrng();

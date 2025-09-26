@@ -7,7 +7,7 @@ import {
 } from 'ed25519-hd-key';
 import { ec as EC, eddsa as EdDSA } from 'elliptic';
 import { privateToAddress } from 'ethereumjs-util';
-import { readFileSync } from 'fs';
+import { readFileSync } from 'node:fs';
 import { Hash } from 'ox';
 import {
   BIP_CONSTANTS,
@@ -22,7 +22,7 @@ import { ProtocolConstants } from '../../protocol';
 import { getPathStr } from '../../shared/utilities';
 import { TypedTransaction } from '@ethereumjs/tx';
 import { getEnv } from './getters';
-import { setStoredClient } from './setup';
+import { setStoredClient } from './clientStorage';
 import BN from 'bn.js';
 const SIGHASH_ALL = 0x01;
 const secp256k1 = new EC('secp256k1');

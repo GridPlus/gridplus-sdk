@@ -18,7 +18,7 @@ import {
   sign,
   signSolanaTx,
 } from '../../../..';
-import { setupClient } from '../../../utils/setup';
+import { setupClient } from '../../../utils/clientStorage';
 
 const SOLANA_RPC = new Connection('https://api.devnet.solana.com', 'confirmed');
 

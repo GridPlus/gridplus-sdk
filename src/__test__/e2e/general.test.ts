@@ -33,7 +33,7 @@ import {
   setupTestClient,
 } from '../utils/helpers';
 
-import { setupClient } from '../utils/setup';
+import { setupClient } from '../utils/clientStorage';
 
 const id = getDeviceId();
 

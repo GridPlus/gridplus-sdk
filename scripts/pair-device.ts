@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 import { question } from 'readline-sync';
 import { setup, pair, getClient } from '../src/api';
 import * as dotenv from 'dotenv';
