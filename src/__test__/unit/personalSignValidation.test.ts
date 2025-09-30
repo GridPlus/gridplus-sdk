@@ -28,7 +28,7 @@ describe('Personal Sign Validation - Issue Fix', () => {
       'utf-8',
     );
     const messageHash = Buffer.from(
-      Hash.keccak256(Buffer.concat([prefix, message]))
+      Hash.keccak256(Buffer.concat([prefix, message])),
     );
 
     // Sign the message
@@ -43,8 +43,9 @@ describe('Personal Sign Validation - Issue Fix', () => {
     // Get the Ethereum address from the public key
     // This matches what the firmware returns
     const pubkeyWithoutPrefix = publicKey.slice(1); // Remove 0x04 prefix
-    const addressBuffer = Buffer.from(Hash.keccak256(pubkeyWithoutPrefix))
-      .slice(-20);
+    const addressBuffer = Buffer.from(
+      Hash.keccak256(pubkeyWithoutPrefix),
+    ).slice(-20);
 
     // This is the function that was failing before the fix
     // It should now correctly add the recovery parameter
@@ -100,7 +101,7 @@ describe('Personal Sign Validation - Issue Fix', () => {
       'utf-8',
     );
     const messageHash = Buffer.from(
-      Hash.keccak256(Buffer.concat([prefix, payloadBuffer]))
+      Hash.keccak256(Buffer.concat([prefix, payloadBuffer])),
     );
 
     // Create a valid signature for this message
@@ -118,8 +119,9 @@ describe('Personal Sign Validation - Issue Fix', () => {
 
     // Get address from public key
     const pubkeyWithoutPrefix = publicKey.slice(1);
-    const addressBuffer = Buffer.from(Hash.keccak256(pubkeyWithoutPrefix))
-      .slice(-20);
+    const addressBuffer = Buffer.from(
+      Hash.keccak256(pubkeyWithoutPrefix),
+    ).slice(-20);
 
     // This should NOT throw with the fix in place
     expect(() => {
