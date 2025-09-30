@@ -568,7 +568,7 @@ const hashTransaction = function (serializedTx) {
 
 // Returns address string given public key buffer
 function pubToAddrStr(pub) {
-  return Buffer.from(Hash.keccak256(pub)).slice(-40);
+  return Buffer.from(Hash.keccak256(pub)).slice(-20).toString('hex');
 }
 
 // Convert a 0/1 `v` into a recovery param:
