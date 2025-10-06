@@ -44,7 +44,6 @@ export const setupClient = async () => {
   const password = process.env.PASSWORD || 'password';
   const name = process.env.APP_NAME || 'SDK Test';
   const pairingSecret = process.env.PAIRING_SECRET || '12345678';
-  console.log(`deviceId: ${deviceId}, baseUrl: ${baseUrl}, password: ${password}, name: ${name}`);
   const isPaired = await setup({
     deviceId,
     password,

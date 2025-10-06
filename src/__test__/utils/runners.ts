@@ -101,25 +101,7 @@ export async function runEvm(
     true,
     'Signature failed to verify',
   );
-  if (process.env.DEBUG_EVM_SIGN === '1') {
-    console.debug('[runEvm] lattice signature components', {
-      r: Buffer.from(sig.r).toString('hex'),
-      s: Buffer.from(sig.s).toString('hex'),
-      v: sig.v?.toString('hex'),
-      pubkey: resp.pubkey ? Buffer.from(resp.pubkey).toString('hex') : null,
-    });
-    console.debug('[runEvm] reference signature components', {
-      r: signedTx.r?.toString(16),
-      s: signedTx.s?.toString(16),
-      pubkey: (() => {
-        try {
-          return Buffer.from(tx.getSenderPublicKey()).toString('hex');
-        } catch (err) {
-          return `error:${(err as Error).message}`;
-        }
-      })(),
-    });
-  }
+
   const refR = ensureHexBuffer(signedTx.r?.toString(16));
   const refS = ensureHexBuffer(signedTx.s?.toString(16));
 
@@ -186,24 +168,7 @@ export async function runEvm(
   signedTxData.v = latticeV;
   signedTxData.r = latticeR;
   signedTxData.s = latticeS;
-  if (process.env.DEBUG_EVM_SIGN === '1') {
-    const typeSummary = Object.fromEntries(
-      Object.entries(signedTxData).map(([key, value]) => {
-        if (Buffer.isBuffer(value)) {
-          return [key, { type: 'Buffer', length: value.length }];
-        }
-        const valueType = typeof value;
-        return [key, {
-          type: valueType,
-          value:
-            valueType === 'bigint'
-              ? (value as bigint).toString()
-              : value,
-        }];
-      }),
-    );
-    console.debug('[runEvm] signedTxData summary', typeSummary);
-  }
+
   const verifTx = EthTxFactory.fromTxData(signedTxData, {
     common: req.common,
   });
