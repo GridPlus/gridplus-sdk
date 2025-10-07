@@ -10,6 +10,12 @@ This payload should be coupled with:
 */
 import { Hash } from 'ox';
 import { RLP } from '@ethereumjs/rlp';
+import {
+  parseTransaction,
+  serializeTransaction,
+  type Hex,
+  type TransactionSerializable,
+} from 'viem';
 // keccak256 now imported from ox via Hash module
 import { HARDENED_OFFSET } from './constants';
 import { Constants } from './index';
@@ -249,6 +255,7 @@ export const parseGenericSigningResponse = function (res, off, req) {
       // Full EVM transaction - use getV for proper chainId/EIP-155 handling
       const vBn = getV(req.origPayloadBuf, parsed);
       parsed.sig.v = BigInt(vBn.toString());
+      populateViemSignedTx(parsed.sig.v, req, parsed);
     } else if (
       req.hashType === Constants.SIGNING.HASHES.KECCAK256 &&
       req.encodingType !== Constants.SIGNING.ENCODINGS.EVM
@@ -276,6 +283,7 @@ export const parseGenericSigningResponse = function (res, off, req) {
           // If it looks like a transaction, use the robust getV
           const vBn = getV(req.origPayloadBuf, parsed);
           parsed.sig.v = BigInt(vBn.toString());
+          populateViemSignedTx(parsed.sig.v, req, parsed);
         } catch (err) {
           // Fall back to simple recovery if getV fails (e.g., malformed RLP)
           const msgHash = Buffer.from(Hash.keccak256(req.origPayloadBuf));
@@ -324,6 +332,70 @@ export const parseGenericSigningResponse = function (res, off, req) {
   }
   return parsed;
 };
+
+// Reconstruct a viem-compatible signed transaction string from the raw payload and
+// recovered signature so consumers can compare or broadcast without extra parsing.
+function populateViemSignedTx(
+  sigV: bigint,
+  req: any,
+  parsed: { sig: { r: string; s: string; v?: bigint }; viemTx?: string },
+) {
+  if (req.encodingType !== Constants.SIGNING.ENCODINGS.EVM) return;
+
+  try {
+    const rawTxHex = `0x${req.origPayloadBuf.toString('hex')}` as Hex;
+    const parsedTx: any = parseTransaction(rawTxHex);
+
+    const baseTx: any = {
+      chainId: parsedTx.chainId,
+      to: parsedTx.to ?? undefined,
+      value: parsedTx.value ?? 0n,
+      data: (parsedTx.data ?? '0x') as Hex,
+      nonce: parsedTx.nonce ?? 0n,
+      gas: parsedTx.gas ?? parsedTx.gasLimit ?? 0n,
+    };
+
+    if (parsedTx.maxFeePerGas !== undefined) {
+      baseTx.maxFeePerGas = parsedTx.maxFeePerGas;
+    }
+    if (parsedTx.maxPriorityFeePerGas !== undefined) {
+      baseTx.maxPriorityFeePerGas = parsedTx.maxPriorityFeePerGas;
+    }
+    if (parsedTx.gasPrice !== undefined) {
+      baseTx.gasPrice = parsedTx.gasPrice;
+    }
+    if (parsedTx.accessList !== undefined) {
+      baseTx.accessList = parsedTx.accessList;
+    }
+    if (parsedTx.authorizationList !== undefined) {
+      baseTx.authorizationList = parsedTx.authorizationList;
+    }
+
+    if (parsedTx.type !== undefined && parsedTx.type !== null) {
+      baseTx.type = parsedTx.type;
+    }
+
+    const signature =
+      parsedTx.type === 'legacy' || parsedTx.type === undefined
+        ? {
+            v: sigV,
+            r: parsed.sig.r as Hex,
+            s: parsed.sig.s as Hex,
+          }
+        : {
+            yParity: Number(sigV),
+            r: parsed.sig.r as Hex,
+            s: parsed.sig.s as Hex,
+          };
+
+    parsed.viemTx = serializeTransaction(
+      baseTx as TransactionSerializable,
+      signature as any,
+    );
+  } catch (err) {
+    console.debug('Failed to build viemTx from response', err);
+  }
+}
 
 export const getEncodedPayload = function (
   payload,

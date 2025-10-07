@@ -129,16 +129,19 @@ export const signAndCompareTransaction = async (
 
     // Additional verification: compare signature components
     // Lattice returns r,s as hex strings with 0x prefix or as Buffer
-    const latticeR =
-      typeof latticeResult.sig.r === 'string'
-        ? latticeResult.sig.r.toLowerCase()
-        : '0x' + Buffer.from(latticeResult.sig.r).toString('hex');
-    const latticeS =
-      typeof latticeResult.sig.s === 'string'
-        ? latticeResult.sig.s.toLowerCase()
-        : '0x' + Buffer.from(latticeResult.sig.s).toString('hex');
-    const viemR = parsedViemTx.r!.toLowerCase();
-    const viemS = parsedViemTx.s!.toLowerCase();
+    const normalizeSigComponent = (value: string | Buffer) => {
+      const hexString =
+        typeof value === 'string'
+          ? value
+          : '0x' + Buffer.from(value).toString('hex');
+      const stripped = hexString.replace(/^0x/, '').toLowerCase();
+      return `0x${stripped.padStart(64, '0')}`;
+    };
+
+    const latticeR = normalizeSigComponent(latticeResult.sig.r);
+    const latticeS = normalizeSigComponent(latticeResult.sig.s);
+    const viemR = normalizeSigComponent(parsedViemTx.r!);
+    const viemS = normalizeSigComponent(parsedViemTx.s!);
 
     // Verify r and s components match exactly
     expect(latticeR).toBe(viemR);

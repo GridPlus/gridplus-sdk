@@ -10,7 +10,7 @@ import { Hash } from 'ox';
 import inRange from 'lodash/inRange';
 import isInteger from 'lodash/isInteger';
 import secp256k1 from 'secp256k1';
-import { parseTransaction, keccak256, type Hex } from 'viem';
+import { parseTransaction, type Hex } from 'viem';
 
 const EC = elliptic.ec;
 const { ecdsaRecover } = secp256k1;
@@ -714,85 +714,54 @@ export const generateAppSecret = (
  * @returns BN object containing the `v` param
  */
 export const getV = function (tx: any, resp: any) {
-  let chainId: number | undefined;
+  let chainId: string | undefined;
   let hash: Uint8Array;
-  let type: string | undefined;
+  let type: string | number | undefined;
+  let useEIP155 = false;
 
   if (Buffer.isBuffer(tx) || typeof tx === 'string') {
     const txHex = Buffer.isBuffer(tx)
       ? (`0x${tx.toString('hex')}` as Hex)
       : (tx as Hex);
+    const txBuf = Buffer.isBuffer(tx) ? tx : Buffer.from(tx.slice(2), 'hex');
+
+    hash = Buffer.from(Hash.keccak256(txBuf));
 
     try {
       const parsedTx = parseTransaction(txHex);
       type = parsedTx.type;
-      chainId = parsedTx.chainId;
 
-      if (type === 'legacy') {
-        // Check if this is EIP-155 by looking at RLP structure
-        try {
-          const legacyTxArray = RLP.decode(Buffer.from(txHex.slice(2), 'hex'));
-          if (legacyTxArray.length === 6) {
-            chainId = undefined; // Pre-EIP155
-          }
-        } catch {
-          // Use chainId from viem parse
+      if (parsedTx.chainId !== undefined && parsedTx.chainId !== null) {
+        chainId = parsedTx.chainId.toString();
+        if (type === 'legacy') {
+          useEIP155 = true;
         }
       }
 
-      // Construct signing hash for EIP-155 legacy transactions
-      if (type === 'legacy' && chainId) {
-        const signingTx = [
-          parsedTx.nonce ? `0x${parsedTx.nonce.toString(16)}` : '0x',
-          parsedTx.gasPrice ? `0x${parsedTx.gasPrice.toString(16)}` : '0x',
-          parsedTx.gas ? `0x${parsedTx.gas.toString(16)}` : '0x',
-          parsedTx.to || '0x',
-          parsedTx.value ? `0x${parsedTx.value.toString(16)}` : '0x',
-          parsedTx.data || '0x',
-          `0x${chainId.toString(16)}`,
-          '0x',
-          '0x',
-        ].map((val) =>
-          val === '0x' ? Buffer.alloc(0) : Buffer.from(val.slice(2), 'hex'),
-        );
-
-        const signingRlp = RLP.encode(signingTx);
-        hash = Buffer.from(Hash.keccak256(signingRlp));
-      } else {
-        // Use transaction hash directly for non-EIP155 or typed transactions
-        hash = Buffer.from(keccak256(txHex).slice(2), 'hex');
-      }
-    } catch (err) {
-      // Fallback to legacy RLP decode if viem parsing fails
-      try {
-        const txBuf = Buffer.isBuffer(tx)
-          ? tx
-          : Buffer.from(tx.slice(2), 'hex');
+      if (type === 'legacy' && !useEIP155) {
         const legacyTxArray = RLP.decode(txBuf);
-
-        if (legacyTxArray.length === 6) {
-          chainId = undefined; // Pre-EIP155
-          type = 'legacy';
-        } else if (legacyTxArray.length >= 9) {
+        if (legacyTxArray.length >= 9) {
           const vBuf = legacyTxArray[6] as Uint8Array;
           if (vBuf && vBuf.length > 0) {
-            chainId = new BN(vBuf).toNumber();
+            chainId = new BN(vBuf).toString();
+            useEIP155 = true;
           }
-          type = 'legacy';
         }
+      }
+    } catch (err) {
+      try {
+        const txBufRaw = Buffer.isBuffer(tx)
+          ? tx
+          : Buffer.from(tx.slice(2), 'hex');
+        const legacyTxArray = RLP.decode(txBufRaw);
 
-        if (type === 'legacy' && chainId) {
-          // Reconstruct EIP-155 signing hash
-          const signingTxArray = [
-            ...legacyTxArray.slice(0, 6),
-            chainId,
-            Buffer.alloc(0),
-            Buffer.alloc(0),
-          ];
-          const signingRlp = RLP.encode(signingTxArray);
-          hash = Buffer.from(Hash.keccak256(signingRlp));
-        } else {
-          hash = Buffer.from(Hash.keccak256(txBuf));
+        type = 'legacy';
+        if (legacyTxArray.length >= 9) {
+          const vBuf = legacyTxArray[6] as Uint8Array;
+          if (vBuf && vBuf.length > 0) {
+            chainId = new BN(vBuf).toString();
+            useEIP155 = true;
+          }
         }
       } catch {
         throw new Error('Could not recover V. Bad transaction data.');
@@ -811,13 +780,44 @@ export const getV = function (tx: any, resp: any) {
     ? resp.sig.s
     : Buffer.from(resp.sig.s.slice(2), 'hex');
   const rs = new Uint8Array(Buffer.concat([rBuf, sBuf]));
-  const pubkey = new Uint8Array(resp.pubkey);
+  const pubkeyInput = resp.pubkey;
 
-  const recovery0 = ecdsaRecover(rs, 0, hash, false);
-  const recovery1 = ecdsaRecover(rs, 1, hash, false);
-  const pubkeyStr = Buffer.from(pubkey).toString('hex');
-  const recovery0Str = Buffer.from(recovery0).toString('hex');
-  const recovery1Str = Buffer.from(recovery1).toString('hex');
+  if (!pubkeyInput) {
+    throw new Error('Response did not include a public key.');
+  }
+
+  let pubkeyBuf: Buffer;
+  if (Buffer.isBuffer(pubkeyInput)) {
+    pubkeyBuf = Buffer.from(pubkeyInput);
+  } else if (pubkeyInput instanceof Uint8Array) {
+    pubkeyBuf = Buffer.from(pubkeyInput);
+  } else if (typeof pubkeyInput === 'string') {
+    const hex = pubkeyInput.startsWith('0x')
+      ? pubkeyInput.slice(2)
+      : pubkeyInput;
+    pubkeyBuf = Buffer.from(hex, 'hex');
+  } else {
+    pubkeyBuf = Buffer.from(pubkeyInput);
+  }
+
+  if (pubkeyBuf.length === 64) {
+    pubkeyBuf = Buffer.concat([Buffer.from([0x04]), pubkeyBuf]);
+  }
+
+  const isCompressedPubkey =
+    pubkeyBuf.length === 33 && (pubkeyBuf[0] === 0x02 || pubkeyBuf[0] === 0x03);
+  const isUncompressedPubkey = pubkeyBuf.length === 65 && pubkeyBuf[0] === 0x04;
+
+  if (!isCompressedPubkey && !isUncompressedPubkey) {
+    throw new Error('Unsupported public key format returned by device.');
+  }
+
+  const recovery0 = Buffer.from(ecdsaRecover(rs, 0, hash, isCompressedPubkey));
+  const recovery1 = Buffer.from(ecdsaRecover(rs, 1, hash, isCompressedPubkey));
+
+  const pubkeyStr = pubkeyBuf.toString('hex');
+  const recovery0Str = recovery0.toString('hex');
+  const recovery1Str = recovery1.toString('hex');
 
   let recovery: number;
   if (pubkeyStr === recovery0Str) {
@@ -833,7 +833,7 @@ export const getV = function (tx: any, resp: any) {
   // Use the consolidated v parameter conversion logic
   const result = convertRecoveryToV(recovery, {
     chainId,
-    useEIP155: !!chainId,
+    useEIP155,
     type,
   });
 
@@ -864,10 +864,17 @@ export const convertRecoveryToV = function (
 ): Buffer | InstanceType<typeof BN> {
   const { chainId, useEIP155, type } = txData;
 
-  // For EIP1559 and EIP2930 transactions, we want the recoveryParam (0 or 1)
+  // For typed transactions (EIP-2930, EIP-1559, EIP-7702), we want the recoveryParam (0 or 1)
   // rather than the `v` value because the `chainId` is already included in the
   // transaction payload.
-  if (type === 1 || type === 2 || type === 'eip2930' || type === 'eip1559') {
+  if (
+    type === 1 ||
+    type === 2 ||
+    type === 4 ||
+    type === 'eip2930' ||
+    type === 'eip1559' ||
+    type === 'eip7702'
+  ) {
     return ensureHexBuffer(recovery, true); // 0 or 1, with 0 expected as an empty buffer
   } else if (!useEIP155 || !chainId) {
     // For ETH messages and non-EIP155 chains the set should be [27, 28] for `v`
