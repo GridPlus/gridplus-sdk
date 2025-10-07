@@ -723,9 +723,7 @@ export const getV = function (tx: any, resp: any) {
     const txHex = Buffer.isBuffer(tx)
       ? (`0x${tx.toString('hex')}` as Hex)
       : (tx as Hex);
-    const txBuf = Buffer.isBuffer(tx)
-      ? tx
-      : Buffer.from(tx.slice(2), 'hex');
+    const txBuf = Buffer.isBuffer(tx) ? tx : Buffer.from(tx.slice(2), 'hex');
 
     hash = Buffer.from(Hash.keccak256(txBuf));
 
@@ -808,19 +806,14 @@ export const getV = function (tx: any, resp: any) {
 
   const isCompressedPubkey =
     pubkeyBuf.length === 33 && (pubkeyBuf[0] === 0x02 || pubkeyBuf[0] === 0x03);
-  const isUncompressedPubkey =
-    pubkeyBuf.length === 65 && pubkeyBuf[0] === 0x04;
+  const isUncompressedPubkey = pubkeyBuf.length === 65 && pubkeyBuf[0] === 0x04;
 
   if (!isCompressedPubkey && !isUncompressedPubkey) {
     throw new Error('Unsupported public key format returned by device.');
   }
 
-  const recovery0 = Buffer.from(
-    ecdsaRecover(rs, 0, hash, isCompressedPubkey),
-  );
-  const recovery1 = Buffer.from(
-    ecdsaRecover(rs, 1, hash, isCompressedPubkey),
-  );
+  const recovery0 = Buffer.from(ecdsaRecover(rs, 0, hash, isCompressedPubkey));
+  const recovery1 = Buffer.from(ecdsaRecover(rs, 1, hash, isCompressedPubkey));
 
   const pubkeyStr = pubkeyBuf.toString('hex');
   const recovery0Str = recovery0.toString('hex');
@@ -874,7 +867,14 @@ export const convertRecoveryToV = function (
   // For typed transactions (EIP-2930, EIP-1559, EIP-7702), we want the recoveryParam (0 or 1)
   // rather than the `v` value because the `chainId` is already included in the
   // transaction payload.
-  if (type === 1 || type === 2 || type === 4 || type === 'eip2930' || type === 'eip1559' || type === 'eip7702') {
+  if (
+    type === 1 ||
+    type === 2 ||
+    type === 4 ||
+    type === 'eip2930' ||
+    type === 'eip1559' ||
+    type === 'eip7702'
+  ) {
     return ensureHexBuffer(recovery, true); // 0 or 1, with 0 expected as an empty buffer
   } else if (!useEIP155 || !chainId) {
     // For ETH messages and non-EIP155 chains the set should be [27, 28] for `v`

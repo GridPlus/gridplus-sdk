@@ -343,7 +343,7 @@ function populateViemSignedTx(
   if (req.encodingType !== Constants.SIGNING.ENCODINGS.EVM) return;
 
   try {
-    const rawTxHex = (`0x${req.origPayloadBuf.toString('hex')}`) as Hex;
+    const rawTxHex = `0x${req.origPayloadBuf.toString('hex')}` as Hex;
     const parsedTx: any = parseTransaction(rawTxHex);
 
     const baseTx: any = {
