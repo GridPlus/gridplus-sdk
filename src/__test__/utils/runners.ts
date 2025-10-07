@@ -8,7 +8,6 @@ import {
 } from './helpers';
 import { initializeSeed } from './initializeClient';
 import { testRequest } from './testRequest';
-import BN from 'bn.js';
 import { Constants } from '../..';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { RLP } from '@ethereumjs/rlp';
@@ -102,6 +101,7 @@ export async function runEvm(
     true,
     'Signature failed to verify',
   );
+
   const refR = ensureHexBuffer(signedTx.r?.toString(16));
   const refS = ensureHexBuffer(signedTx.s?.toString(16));
 
@@ -118,9 +118,37 @@ export async function runEvm(
   // Get params from Lattice sig
   const latticeR = Buffer.from(sig.r);
   const latticeS = Buffer.from(sig.s);
-
-  // Get the V parameter or y-parity value depending on transaction type
-  const latticeV = getSignatureVBN(tx, resp);
+  const latticeV = (() => {
+    const value = sig.v;
+    if (value === null || value === undefined) {
+      return 0n;
+    }
+    if (typeof value === 'bigint') {
+      return value;
+    }
+    if (typeof value === 'number') {
+      return BigInt(value);
+    }
+    if (typeof value === 'string') {
+      const normalized = value.startsWith('0x') ? value : `0x${value}`;
+      return BigInt(normalized);
+    }
+    if (Buffer.isBuffer(value) || value instanceof Uint8Array) {
+      const hex = Buffer.from(value).toString('hex');
+      return hex ? BigInt(`0x${hex}`) : 0n;
+    }
+    if (typeof (value as any)?.toArray === 'function') {
+      const hex = Buffer.from((value as any).toArray('be')).toString('hex');
+      return hex ? BigInt(`0x${hex}`) : 0n;
+    }
+    if (typeof (value as any)?.toString === 'function') {
+      const str = (value as any).toString();
+      if (/^0x[0-9a-f]+$/i.test(str) || /^[0-9]+$/i.test(str)) {
+        return BigInt(str.startsWith('0x') ? str : `0x${str}`);
+      }
+    }
+    return 0n;
+  })();
 
   // Validate the signature
   expect(latticeR.equals(refR)).toEqualElseLog(
@@ -140,6 +168,7 @@ export async function runEvm(
   signedTxData.v = latticeV;
   signedTxData.r = latticeR;
   signedTxData.s = latticeS;
+
   const verifTx = EthTxFactory.fromTxData(signedTxData, {
     common: req.common,
   });

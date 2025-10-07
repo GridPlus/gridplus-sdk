@@ -20,6 +20,7 @@ type SetupParameters =
       appSecret?: string;
       getStoredClient: () => Promise<string>;
       setStoredClient: (clientData: string | null) => Promise<void>;
+      baseUrl?: string;
     }
   | {
       getStoredClient: () => Promise<string>;
@@ -56,6 +57,7 @@ export const setup = async (params: SetupParameters): Promise<boolean> => {
       deviceId: params.deviceId,
       privKey,
       name: params.name,
+      baseUrl: params.baseUrl,
     });
     return client.connect(params.deviceId).then(async (isPaired) => {
       await saveClient(client.getStateData());
