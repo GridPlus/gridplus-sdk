@@ -43,7 +43,7 @@ export const setupClient = async () => {
   const baseUrl = process.env.baseUrl || 'https://signing.gridpl.us';
   const password = process.env.PASSWORD || 'password';
   const name = process.env.APP_NAME || 'SDK Test';
-  const pairingSecret = process.env.PAIRING_SECRET || '12345678';
+  let pairingSecret = process.env.PAIRING_SECRET;
   const isPaired = await setup({
     deviceId,
     password,
@@ -54,9 +54,14 @@ export const setupClient = async () => {
   });
   if (!isPaired) {
     if (!pairingSecret) {
-      throw new Error('PAIRING_SECRET environment variable required for pairing');
+      if (process.env.CI) {
+        throw new Error('Pairing secret is required. If simulator is running, set PAIRING_SECRET environment variable.');
+      }
+      pairingSecret = question('Enter pairing secret:');
+      if (!pairingSecret) {
+        throw new Error('Pairing secret is required.');
+      }
     }
-    console.log(`Using pairing secret from environment`);
     await pair(pairingSecret.toUpperCase());
   }
   return getClient();
