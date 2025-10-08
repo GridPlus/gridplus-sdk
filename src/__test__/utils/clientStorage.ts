@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import readlineSync from 'readline-sync';
-import { getClient, pair, setup } from '../..';
+import { getClient, pair, setup } from '../../api';
 
 const question = readlineSync.question;
 
