@@ -27,12 +27,14 @@ import {
 import { initializeSeed } from '../../utils/initializeClient';
 import { runTestCase } from '../../utils/runners';
 import { setupClient } from '../../utils/setup';
+import { describe, it, beforeAll } from 'vitest';
+
 let seed: Buffer;
 
 describe('[Determinism]', () => {
   let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
   });
 

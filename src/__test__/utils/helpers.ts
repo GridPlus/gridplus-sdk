@@ -1000,7 +1000,11 @@ export const validateGenericSig = function (seed, sig, payloadBuf, req) {
 export const getSigStr = function (resp: any, tx?: TypedTransaction) {
   let v;
   if (resp.sig.v !== undefined) {
-    v = (parseInt(resp.sig.v.toString('hex'), 16) - 27)
+    // Handle both BigInt and Buffer formats
+    const vValue = typeof resp.sig.v === 'bigint'
+      ? Number(resp.sig.v)
+      : parseInt(resp.sig.v.toString('hex'), 16);
+    v = (vValue - 27)
       .toString(16)
       .padStart(2, '0');
   } else if (tx) {
@@ -1008,7 +1012,10 @@ export const getSigStr = function (resp: any, tx?: TypedTransaction) {
   } else {
     throw new Error('Could not build sig string');
   }
-  return `${resp.sig.r}${resp.sig.s}${v}`;
+  // Strip 0x prefix if present
+  const r = typeof resp.sig.r === 'string' ? resp.sig.r.replace('0x', '') : resp.sig.r.toString('hex');
+  const s = typeof resp.sig.s === 'string' ? resp.sig.s.replace('0x', '') : resp.sig.s.toString('hex');
+  return `${r}${s}${v}`;
 };
 
 export const compressPubKey = function (pub) {

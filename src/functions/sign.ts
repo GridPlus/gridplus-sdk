@@ -274,7 +274,8 @@ export const decodeSignResponse = ({
 
       return response;
     }
-  } else if (currency === CURRENCIES.ETH_MSG) {
+  } else if (currency === CURRENCIES.ETH_MSG && !isGeneric) {
+    // Legacy ETH_MSG signing (firmware < 0.15.0)
     const sig = parseDER(data.slice(off, off + 2 + data[off + 1]));
     off += derSigLen;
     const signer = data.slice(off, off + 20);
@@ -291,7 +292,7 @@ export const decodeSignResponse = ({
       signer: `0x${signer.toString('hex')}` as Address,
     };
   } else {
-    // Generic signing request
+    // Generic signing request (or ETH_MSG with firmware >= 0.15.0)
     return parseGenericSigningResponse(data, off, request);
   }
 };
