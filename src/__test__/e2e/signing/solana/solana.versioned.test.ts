@@ -10,12 +10,8 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from '@solana/web3.js';
-import { question } from 'readline-sync';
 import {
-  Constants,
   fetchSolanaAddresses,
-  pair,
-  sign,
   signSolanaTx,
 } from '../../../..';
 import { setupClient } from '../../../utils/setup';
