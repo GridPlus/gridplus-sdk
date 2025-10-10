@@ -37,7 +37,13 @@ export async function runGeneric(request: SignRequestParams, client: Client) {
     allowedEncodings,
   );
   const seed = await initializeSeed(client);
-  validateGenericSig(seed, response.sig, payloadBuf, request.data);
+  validateGenericSig(
+    seed,
+    response.sig,
+    payloadBuf,
+    request.data,
+    response.pubkey,
+  );
   return response;
 }
 
@@ -93,7 +99,7 @@ export async function runEvm(
   if (!seed) {
     seed = await initializeSeed(client);
   }
-  validateGenericSig(seed, resp.sig, payloadBuf, req.data);
+  validateGenericSig(seed, resp.sig, payloadBuf, req.data, resp.pubkey);
   // Sign the original tx and compare
   const { priv } = deriveSECP256K1Key(req.data.signerPath, seed);
   const signedTx: any = tx.sign(priv);

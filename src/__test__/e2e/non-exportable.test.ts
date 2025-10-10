@@ -28,6 +28,7 @@ import { DEFAULT_SIGNER } from '../utils/builders';
 import { getSigStr } from '../utils/helpers';
 
 import { setupClient } from '../utils/setup';
+import { ensureHexBuffer } from '../../util';
 
 let runTests = true;
 
@@ -171,7 +172,15 @@ describe('Non-Exportable Seed', () => {
 });
 
 function validateSig(resp: any, hash: Buffer) {
-  const rs = new Uint8Array(Buffer.concat([resp.sig.r, resp.sig.s]));
+  if (!resp.sig?.r || !resp.sig?.s) {
+    throw new Error('Missing signature components');
+  }
+  const rs = new Uint8Array(
+    Buffer.concat([
+      ensureHexBuffer(resp.sig.r as string | Buffer),
+      ensureHexBuffer(resp.sig.s as string | Buffer),
+    ]),
+  );
   const pubkeyA = Buffer.from(ecdsaRecover(rs, 0, hash, false)).toString('hex');
   const pubkeyB = Buffer.from(ecdsaRecover(rs, 1, hash, false)).toString('hex');
   if (
