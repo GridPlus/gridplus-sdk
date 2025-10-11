@@ -23,7 +23,7 @@ import {
   getYParity,
   ensureHexBuffer,
 } from '../../util';
-import * as nacl from 'tweetnacl';
+import nacl from 'tweetnacl';
 import { Client } from '../../client';
 import { ProtocolConstants } from '../../protocol';
 import { getPathStr } from '../../shared/utilities';
