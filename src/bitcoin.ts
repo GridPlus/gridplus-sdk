@@ -2,7 +2,7 @@
 import { bech32 } from 'bech32';
 import bs58check from 'bs58check';
 import { Hash } from 'ox';
-import { ripemd160 } from 'hash.js/lib/hash/ripemd';
+import { ripemd160 } from 'hash.js/lib/hash/ripemd.js';
 import { BIP_CONSTANTS } from './constants';
 import { LatticeSignSchema } from './protocol';
 const DEFAULT_SEQUENCE = 0xffffffff;
