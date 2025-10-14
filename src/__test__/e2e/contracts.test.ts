@@ -17,6 +17,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { foundry } from 'viem/chains';
 // @ts-ignore
 import NegativeAmountHandler from '../../../forge/out/NegativeAmountHandler.sol/NegativeAmountHandler.json';
+import { ensureHexBuffer } from '../../util';
 
 dotenv.config();
 
@@ -128,7 +129,46 @@ describe('NegativeAmountHandler', () => {
     };
 
     const response = await signMessage(msg);
-    const latticeSignature = `0x${response.sig.r.toString('hex')}${response.sig.s.toString('hex')}${response.sig.v.toString('hex').padStart(2, '0')}`;
+
+    const normalizeHex = (value: any): string => {
+      if (value === null || value === undefined) {
+        return '';
+      }
+      if (typeof value === 'bigint') {
+        let hex = value.toString(16);
+        if (hex.length % 2 !== 0) hex = `0${hex}`;
+        return hex;
+      }
+      if (typeof value === 'number') {
+        return value.toString(16);
+      }
+      if (typeof value === 'string') {
+        return value.startsWith('0x') ? value.slice(2) : value;
+      }
+      if (Buffer.isBuffer(value) || value instanceof Uint8Array) {
+        return Buffer.from(value).toString('hex');
+      }
+      if (typeof value?.toString === 'function') {
+        const str = value.toString();
+        if (/^0x[0-9a-f]+$/i.test(str)) {
+          return str.slice(2);
+        }
+        if (/^[0-9a-f]+$/i.test(str)) {
+          return str;
+        }
+      }
+      return ensureHexBuffer(value as string | number | Buffer).toString('hex');
+    };
+
+    const rHex = normalizeHex(response.sig.r);
+    const sHex = normalizeHex(response.sig.s);
+    let vHex = normalizeHex(response.sig.v);
+    if (!vHex) {
+      vHex = '00';
+    }
+    vHex = vHex.padStart(2, '0');
+
+    const latticeSignature = `0x${rHex}${sHex}${vHex}`;
 
     expect(latticeSignature).toEqual(viemSignature);
 
