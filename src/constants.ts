@@ -459,6 +459,9 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
       EIP7702_AUTH: EXTERNAL.SIGNING.ENCODINGS.EIP7702_AUTH,
       EIP7702_AUTH_LIST: EXTERNAL.SIGNING.ENCODINGS.EIP7702_AUTH_LIST,
     };
+    // V0.18.0 also added support for streaming large transactions (~102kb).
+    // This increases the number of extra data frames from 1 to 67.
+    c.extraDataMaxFrames = 67;
   }
 
   return c;

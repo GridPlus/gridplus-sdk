@@ -45,6 +45,11 @@ export async function sign({
       fwConstants,
     });
 
+    // For multi-payload requests, we need to calculate a dynamic timeout
+    // based on the number of chunks we are sending.
+    const numChunks = 1 + ((requestData as any).extraDataPayloads?.length || 0);
+    const timeout = client.timeout + (numChunks > 1 ? numChunks * 500 : 0);
+
     const { payload, hasExtraPayloads } = encodeSignRequest({
       fwConstants,
       wallet,
@@ -59,6 +64,7 @@ export async function sign({
       sharedSecret,
       ephemeralPub,
       url,
+      timeout,
     });
 
     client.mutate({

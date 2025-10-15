@@ -98,12 +98,14 @@ export async function encryptedSecureRequest({
   sharedSecret,
   ephemeralPub,
   url,
+  timeout,
 }: {
   data: Buffer;
   requestType: LatticeSecureEncryptedRequestType;
   sharedSecret: Buffer;
   ephemeralPub: KeyPair;
   url: string;
+  timeout?: number;
 }): Promise<DecryptedResponse> {
   // Generate a random message id for internal tracking
   // of this specific request (internal on both sides).
@@ -130,6 +132,7 @@ export async function encryptedSecureRequest({
   const resp = await request({
     url,
     payload: msg,
+    timeout,
   });
 
   // Deserialize the response payload data
