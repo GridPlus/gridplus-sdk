@@ -9,12 +9,7 @@ import { TestRequestPayload, WalletPath } from '../../types';
 import { buildTestRequestPayload } from './builders';
 import { ethPersonalSignMsg, getSigStr, jobTypes } from './helpers';
 import { getPathStr } from '../../shared/utilities';
-
-const TEST_MNEMONIC =
-  'nose elder baby marriage frequent list ' +
-  'cargo swallow memory universe smooth involve ' +
-  'iron purity throw vintage crew artefact ' +
-  'pyramid dash split announce trend grain';
+import { TEST_MNEMONIC } from './testConstants';
 
 export const TEST_SEED = mnemonicToSeedSync(TEST_MNEMONIC);
 

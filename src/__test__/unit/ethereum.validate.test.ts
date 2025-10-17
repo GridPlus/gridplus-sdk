@@ -5,12 +5,7 @@ import { ecsign, privateToAddress } from 'ethereumjs-util';
 import ethereum from '../../ethereum';
 import { buildFirmwareConstants, DEFAULT_SIGNER } from '../utils/builders';
 import { HARDENED_OFFSET } from '../../constants';
-
-const TEST_MNEMONIC =
-  'nose elder baby marriage frequent list ' +
-  'cargo swallow memory universe smooth involve ' +
-  'iron purity throw vintage crew artefact ' +
-  'pyramid dash split announce trend grain';
+import { TEST_MNEMONIC } from '../utils/testConstants';
 
 const typedData = {
   types: {

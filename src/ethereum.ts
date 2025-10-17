@@ -92,30 +92,20 @@ const validateEthereumMsgResponse = function (res, req) {
     const payloadForHashing = normalizeTypedDataForHashing(
       req.validationPayload || req.input.payload,
     );
-    if (process.env.DEBUG_SIGNING) {
-      console.log(
-        '[EIP712 Validation] payload for hashing:',
-        JSON.stringify(payloadForHashing, null, 2),
-      );
-    }
     const encoded = TypedDataUtils.eip712Hash(
       payloadForHashing,
       SignTypedDataVersion.V4,
     );
-    if (process.env.DEBUG_SIGNING) {
-      console.log(
-        '[EIP712 Validation] Calculated hash:',
-        Buffer.from(encoded).toString('hex'),
-      );
-    }
     const digest = prehash ? prehash : encoded;
-    // Parse chainId - it could be a number, hex string, or decimal string
+    // Parse chainId - it could be a number, hex string, decimal string, or bigint
     let chainId =
       input.payload.domain?.chainId || payloadForHashing.domain?.chainId;
     if (typeof chainId === 'string') {
       chainId = chainId.startsWith('0x')
         ? parseInt(chainId, 16)
         : parseInt(chainId, 10);
+    } else if (typeof chainId === 'bigint') {
+      chainId = Number(chainId);
     }
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
     return addRecoveryParam(digest, sig, signer, { chainId, useEIP155: false });
@@ -123,38 +113,6 @@ const validateEthereumMsgResponse = function (res, req) {
     throw new Error('Unsupported protocol');
   }
 };
-
-function convertBigNumbers(obj) {
-  if (BN.isBigNumber(obj)) {
-    return obj.toFixed();
-  } else if (
-    obj &&
-    typeof obj === 'object' &&
-    typeof obj.toString === 'function' &&
-    obj.constructor &&
-    obj.constructor.name === 'BN' &&
-    typeof obj.toArray === 'function'
-  ) {
-    // Handle bn.js instances without importing the module directly to avoid
-    // duplicating large dependencies. bn.js signatures include these objects
-    // when encoding signed integers for EIP-712 payloads.
-    return obj.toString(10);
-  } else if (Buffer.isBuffer(obj) || obj instanceof Uint8Array) {
-    // Preserve binary data (e.g. CBOR payloads) instead of recursively cloning
-    // into plain objects which breaks downstream hashing logic.
-    return obj;
-  } else if (Array.isArray(obj)) {
-    return obj.map(convertBigNumbers);
-  } else if (typeof obj === 'object' && obj !== null) {
-    const newObj = {};
-    for (const [key, value] of Object.entries(obj)) {
-      newObj[key] = convertBigNumbers(value);
-    }
-    return newObj;
-  } else {
-    return obj;
-  }
-}
 
 function normalizeTypedDataForHashing(value: any): any {
   if (value === null || value === undefined) {
@@ -910,16 +868,6 @@ function buildEIP712Request(req, input) {
     data.types,
     false,
   );
-  if (process.env.DEBUG_SIGNING) {
-    console.log(
-      '[buildEIP712Request] Data to be CBOR-encoded for firmware:',
-      JSON.stringify(data, null, 2),
-    );
-    console.log(
-      '[buildEIP712Request] input.payload for SDK validation:',
-      JSON.stringify(input.payload, null, 2),
-    );
-  }
   // Now build the message to be sent to the Lattice
   const payload = Buffer.from(cbor.encode(data));
   const fwConst = input.fwConstants;
