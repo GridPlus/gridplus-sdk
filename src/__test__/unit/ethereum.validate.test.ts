@@ -14,9 +14,7 @@ const TEST_MNEMONIC =
 
 const typedData = {
   types: {
-    EIP712Domain: [
-      { name: 'chainId', type: 'uint256' },
-    ],
+    EIP712Domain: [{ name: 'chainId', type: 'uint256' }],
     Greeting: [
       { name: 'salutation', type: 'string' },
       { name: 'target', type: 'string' },
@@ -35,9 +33,14 @@ const typedData = {
 describe('validateEthereumMsgResponse', () => {
   it('recovers expected signature for EIP712 payload', () => {
     const seed = mnemonicToSeedSync(TEST_MNEMONIC);
-    const priv = bip32.fromSeed(seed).derivePath("m/44'/60'/0'/0/0").privateKey!;
+    const priv = bip32
+      .fromSeed(seed)
+      .derivePath("m/44'/60'/0'/0/0").privateKey!;
     const signer = privateToAddress(priv);
-    const digest = TypedDataUtils.eip712Hash(typedData, SignTypedDataVersion.V4);
+    const digest = TypedDataUtils.eip712Hash(
+      typedData,
+      SignTypedDataVersion.V4,
+    );
     const sig = ecsign(Buffer.from(digest), priv);
     const result = ethereum.validateEthereumMsgResponse(
       {
@@ -66,9 +69,14 @@ describe('validateEthereumMsgResponse', () => {
     });
 
     const seed = mnemonicToSeedSync(TEST_MNEMONIC);
-    const priv = bip32.fromSeed(seed).derivePath("m/44'/60'/0'/0/0").privateKey!;
+    const priv = bip32
+      .fromSeed(seed)
+      .derivePath("m/44'/60'/0'/0/0").privateKey!;
     const signer = privateToAddress(priv);
-    const digest = TypedDataUtils.eip712Hash(typedData, SignTypedDataVersion.V4);
+    const digest = TypedDataUtils.eip712Hash(
+      typedData,
+      SignTypedDataVersion.V4,
+    );
     const sig = ecsign(Buffer.from(digest), priv);
 
     const result = ethereum.validateEthereumMsgResponse(

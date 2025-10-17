@@ -93,20 +93,29 @@ const validateEthereumMsgResponse = function (res, req) {
       req.validationPayload || req.input.payload,
     );
     if (process.env.DEBUG_SIGNING) {
-      console.log('[EIP712 Validation] payload for hashing:', JSON.stringify(payloadForHashing, null, 2));
+      console.log(
+        '[EIP712 Validation] payload for hashing:',
+        JSON.stringify(payloadForHashing, null, 2),
+      );
     }
     const encoded = TypedDataUtils.eip712Hash(
       payloadForHashing,
       SignTypedDataVersion.V4,
     );
     if (process.env.DEBUG_SIGNING) {
-      console.log('[EIP712 Validation] Calculated hash:', Buffer.from(encoded).toString('hex'));
+      console.log(
+        '[EIP712 Validation] Calculated hash:',
+        Buffer.from(encoded).toString('hex'),
+      );
     }
     const digest = prehash ? prehash : encoded;
     // Parse chainId - it could be a number, hex string, or decimal string
-    let chainId = input.payload.domain?.chainId || payloadForHashing.domain?.chainId;
+    let chainId =
+      input.payload.domain?.chainId || payloadForHashing.domain?.chainId;
     if (typeof chainId === 'string') {
-      chainId = chainId.startsWith('0x') ? parseInt(chainId, 16) : parseInt(chainId, 10);
+      chainId = chainId.startsWith('0x')
+        ? parseInt(chainId, 16)
+        : parseInt(chainId, 10);
     }
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
     return addRecoveryParam(digest, sig, signer, { chainId, useEIP155: false });
@@ -157,7 +166,10 @@ function normalizeTypedDataForHashing(value: any): any {
     if (/^0x[0-9a-fA-F]+$/.test(trimmed)) {
       try {
         const asBigInt = BigInt(trimmed);
-        if (asBigInt <= BigInt(Number.MAX_SAFE_INTEGER) && asBigInt >= BigInt(Number.MIN_SAFE_INTEGER)) {
+        if (
+          asBigInt <= BigInt(Number.MAX_SAFE_INTEGER) &&
+          asBigInt >= BigInt(Number.MIN_SAFE_INTEGER)
+        ) {
           return Number(asBigInt);
         }
         return asBigInt.toString(10);
@@ -196,7 +208,7 @@ function normalizeTypedDataForHashing(value: any): any {
   }
 
   if (Array.isArray(value)) {
-    return value.map(item => normalizeTypedDataForHashing(item));
+    return value.map((item) => normalizeTypedDataForHashing(item));
   }
 
   if (typeof value === 'object') {
@@ -899,8 +911,14 @@ function buildEIP712Request(req, input) {
     false,
   );
   if (process.env.DEBUG_SIGNING) {
-    console.log('[buildEIP712Request] Data to be CBOR-encoded for firmware:', JSON.stringify(data, null, 2));
-    console.log('[buildEIP712Request] input.payload for SDK validation:', JSON.stringify(input.payload, null, 2));
+    console.log(
+      '[buildEIP712Request] Data to be CBOR-encoded for firmware:',
+      JSON.stringify(data, null, 2),
+    );
+    console.log(
+      '[buildEIP712Request] input.payload for SDK validation:',
+      JSON.stringify(input.payload, null, 2),
+    );
   }
   // Now build the message to be sent to the Lattice
   const payload = Buffer.from(cbor.encode(data));
