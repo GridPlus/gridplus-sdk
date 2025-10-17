@@ -86,13 +86,28 @@ const validateEthereumMsgResponse = function (res, req) {
       useEIP155: false,
     });
   } else if (input.protocol === 'eip712') {
-    req = convertBigNumbers(req);
+    // Use the validationPayload that was created in buildEIP712Request
+    // This payload has been parsed with forJSParser=true, converting all numbers
+    // to the format that TypedDataUtils.eip712Hash expects
+    const payloadForHashing = normalizeTypedDataForHashing(
+      req.validationPayload || req.input.payload,
+    );
+    if (process.env.DEBUG_SIGNING) {
+      console.log('[EIP712 Validation] payload for hashing:', JSON.stringify(payloadForHashing, null, 2));
+    }
     const encoded = TypedDataUtils.eip712Hash(
-      req.input.payload,
+      payloadForHashing,
       SignTypedDataVersion.V4,
     );
+    if (process.env.DEBUG_SIGNING) {
+      console.log('[EIP712 Validation] Calculated hash:', Buffer.from(encoded).toString('hex'));
+    }
     const digest = prehash ? prehash : encoded;
-    const chainId = parseInt(input.payload.domain.chainId, 16);
+    // Parse chainId - it could be a number, hex string, or decimal string
+    let chainId = input.payload.domain?.chainId || payloadForHashing.domain?.chainId;
+    if (typeof chainId === 'string') {
+      chainId = chainId.startsWith('0x') ? parseInt(chainId, 16) : parseInt(chainId, 10);
+    }
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
     return addRecoveryParam(digest, sig, signer, { chainId, useEIP155: false });
   } else {
@@ -103,6 +118,22 @@ const validateEthereumMsgResponse = function (res, req) {
 function convertBigNumbers(obj) {
   if (BN.isBigNumber(obj)) {
     return obj.toFixed();
+  } else if (
+    obj &&
+    typeof obj === 'object' &&
+    typeof obj.toString === 'function' &&
+    obj.constructor &&
+    obj.constructor.name === 'BN' &&
+    typeof obj.toArray === 'function'
+  ) {
+    // Handle bn.js instances without importing the module directly to avoid
+    // duplicating large dependencies. bn.js signatures include these objects
+    // when encoding signed integers for EIP-712 payloads.
+    return obj.toString(10);
+  } else if (Buffer.isBuffer(obj) || obj instanceof Uint8Array) {
+    // Preserve binary data (e.g. CBOR payloads) instead of recursively cloning
+    // into plain objects which breaks downstream hashing logic.
+    return obj;
   } else if (Array.isArray(obj)) {
     return obj.map(convertBigNumbers);
   } else if (typeof obj === 'object' && obj !== null) {
@@ -114,6 +145,69 @@ function convertBigNumbers(obj) {
   } else {
     return obj;
   }
+}
+
+function normalizeTypedDataForHashing(value: any): any {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (/^0x[0-9a-fA-F]+$/.test(trimmed)) {
+      try {
+        const asBigInt = BigInt(trimmed);
+        if (asBigInt <= BigInt(Number.MAX_SAFE_INTEGER) && asBigInt >= BigInt(Number.MIN_SAFE_INTEGER)) {
+          return Number(asBigInt);
+        }
+        return asBigInt.toString(10);
+      } catch {
+        return trimmed;
+      }
+    }
+    return trimmed;
+  }
+
+  if (typeof value === 'bigint') {
+    const asNumber = Number(value);
+    return Number.isSafeInteger(asNumber) ? asNumber : value.toString(10);
+  }
+
+  if (BN.isBigNumber(value)) {
+    const asNumber = Number(value.toString(10));
+    return Number.isSafeInteger(asNumber) ? asNumber : value.toString(10);
+  }
+
+  if (
+    value &&
+    typeof value === 'object' &&
+    typeof value.toString === 'function' &&
+    value.constructor &&
+    value.constructor.name === 'BN' &&
+    typeof value.toArray === 'function'
+  ) {
+    const str = value.toString(10);
+    const asNumber = Number(str);
+    return Number.isSafeInteger(asNumber) ? asNumber : str;
+  }
+
+  if (Buffer.isBuffer(value) || value instanceof Uint8Array) {
+    return `0x${Buffer.from(value).toString('hex')}`;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(item => normalizeTypedDataForHashing(item));
+  }
+
+  if (typeof value === 'object') {
+    const normalized: Record<string, any> = {};
+    for (const [key, entry] of Object.entries(value)) {
+      normalized[key] = normalizeTypedDataForHashing(entry);
+    }
+    return normalized;
+  }
+
+  return value;
 }
 
 const buildEthereumTxRequest = function (data) {
@@ -467,6 +561,11 @@ export function addRecoveryParam(hashBuf, sig, address, txData = {}) {
   try {
     // Rebuild the keccak256 hash here so we can `ecrecover`
     const hash = new Uint8Array(hashBuf);
+    const expectedAddrBuf = Buffer.isBuffer(address)
+      ? address
+      : ensureHexBuffer(address, false);
+    if (expectedAddrBuf.length !== 20)
+      throw new Error('Invalid signer address provided.');
     let v = 0;
     // Fix signature componenet lengths to 32 bytes each
     const r = fixLen(sig.r, 32);
@@ -476,23 +575,32 @@ export function addRecoveryParam(hashBuf, sig, address, txData = {}) {
     // Calculate the recovery param
     const rs = new Uint8Array(Buffer.concat([r, s]));
     let pubkey = secp256k1.ecdsaRecover(rs, v, hash, false).slice(1);
+    const expectedAddrHex = expectedAddrBuf.toString('hex');
+    const recoveredAddrs: string[] = [];
     // If the first `v` value is a match, return the sig!
-    if (pubToAddrStr(pubkey) === address.toString('hex')) {
+    let recovered = pubToAddrStr(pubkey);
+    recoveredAddrs.push(recovered);
+    if (recovered === expectedAddrHex) {
       sig.v = getRecoveryParam(v, txData);
       return sig;
     }
     // Otherwise, try the other `v` value
     v = 1;
     pubkey = secp256k1.ecdsaRecover(rs, v, hash, false).slice(1);
-    if (pubToAddrStr(pubkey) === address.toString('hex')) {
+    recovered = pubToAddrStr(pubkey);
+    recoveredAddrs.push(recovered);
+    if (recovered === expectedAddrHex) {
       sig.v = getRecoveryParam(v, txData);
       return sig;
     } else {
       // If neither is a match, we should return an error
-      throw new Error('Invalid Ethereum signature returned.');
+      throw new Error(
+        `Invalid Ethereum signature returned. expected=${expectedAddrHex}, recovered=${recoveredAddrs.join(',')}`,
+      );
     }
   } catch (err) {
-    throw new Error(err);
+    if (err instanceof Error) throw err;
+    throw new Error(String(err));
   }
 }
 
@@ -765,18 +873,24 @@ function buildEIP712Request(req, input) {
   // We need two different encodings: one to send to the Lattice in a format that plays
   // nicely with our firmware CBOR decoder. The other is formatted to be consumable by
   // our EIP712 validation module.
-  input.payload.message = parseEIP712Msg(
+  // IMPORTANT: Create a new object for the validation payload instead of modifying input.payload
+  // in place, so that validation uses the correctly formatted data
+  const validationPayload = JSON.parse(JSON.stringify(data));
+  validationPayload.message = parseEIP712Msg(
     JSON.parse(JSON.stringify(data.message)),
     JSON.parse(JSON.stringify(data.primaryType)),
     JSON.parse(JSON.stringify(data.types)),
     true,
   );
-  input.payload.domain = parseEIP712Msg(
+  validationPayload.domain = parseEIP712Msg(
     JSON.parse(JSON.stringify(data.domain)),
     'EIP712Domain',
     JSON.parse(JSON.stringify(data.types)),
     true,
   );
+  // Store the validation payload separately without modifying input.payload
+  req.validationPayload = validationPayload;
+
   data.domain = parseEIP712Msg(data.domain, 'EIP712Domain', data.types, false);
   data.message = parseEIP712Msg(
     data.message,
@@ -784,6 +898,10 @@ function buildEIP712Request(req, input) {
     data.types,
     false,
   );
+  if (process.env.DEBUG_SIGNING) {
+    console.log('[buildEIP712Request] Data to be CBOR-encoded for firmware:', JSON.stringify(data, null, 2));
+    console.log('[buildEIP712Request] input.payload for SDK validation:', JSON.stringify(input.payload, null, 2));
+  }
   // Now build the message to be sent to the Lattice
   const payload = Buffer.from(cbor.encode(data));
   const fwConst = input.fwConstants;
@@ -801,7 +919,7 @@ function buildEIP712Request(req, input) {
     req.payload.writeUInt16LE(payload.length, off);
     off += 2;
     const prehash = TypedDataUtils.eip712Hash(
-      req.input.payload,
+      req.validationPayload,
       SignTypedDataVersion.V4,
     );
     const prehashBuf = Buffer.from(prehash);
@@ -968,15 +1086,23 @@ function parseEIP712Item(data, type, forJSParser = false) {
     type.indexOf('int') > -1
   ) {
     // Handle signed integers using bignumber.js directly
-    // `bignumber.js` is needed for `cbor` encoding, which gets sent to the Lattice and plays
-    // nicely with its firmware cbor lib.
-    // NOTE: If we instantiate a `bignumber.js` object, it will not match what `borc` creates
-    // when run inside of the browser (i.e. MetaMask). Thus we introduce this hack to make sure
-    // we are creating a compatible type.
-    // TODO: Find another cbor lib that is compataible with the firmware's lib in a browser
-    // context. This is surprisingly difficult - I tried several libs and only cbor/borc have
-    // worked (borc is a supposedly "browser compatible" version of cbor)
-    data = new BN(data);
+    if (forJSParser) {
+      // For EIP712 encoding in this module we need hex strings for signed ints too
+      const bn = new BN(data);
+      // For negative numbers, we need to handle two's complement
+      // But for now, convert to decimal number since metamask eth-sig-util handles it
+      data = Number(bn.toString(10));
+    } else {
+      // `bignumber.js` is needed for `cbor` encoding, which gets sent to the Lattice and plays
+      // nicely with its firmware cbor lib.
+      // NOTE: If we instantiate a `bignumber.js` object, it will not match what `borc` creates
+      // when run inside of the browser (i.e. MetaMask). Thus we introduce this hack to make sure
+      // we are creating a compatible type.
+      // TODO: Find another cbor lib that is compataible with the firmware's lib in a browser
+      // context. This is surprisingly difficult - I tried several libs and only cbor/borc have
+      // worked (borc is a supposedly "browser compatible" version of cbor)
+      data = new BN(data);
+    }
   } else if (
     ethMsgProtocol.TYPED_DATA.typeCodes[type] &&
     (type.indexOf('uint') > -1 || type.indexOf('int') > -1)
@@ -991,7 +1117,7 @@ function parseEIP712Item(data, type, forJSParser = false) {
     }
     // Uint256s should be encoded as bignums.
     if (forJSParser) {
-      // For EIP712 encoding in this module we need strings to represent the numbers
+      // For EIP712 encoding in this module we need hex strings to represent the numbers
       data = `0x${b.toString('hex')}`;
     } else {
       // Load into bignumber.js used by cbor lib

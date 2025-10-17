@@ -27,12 +27,13 @@ import {
 import { initializeSeed } from '../../utils/initializeClient';
 import { runTestCase } from '../../utils/runners';
 import { setupClient } from '../../utils/setup';
+import type { WalletPath } from '../../../types';
 let seed: Buffer;
 
 describe('[Determinism]', () => {
   let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
   });
 
@@ -134,21 +135,18 @@ describe('[Determinism]', () => {
         n: 1,
       };
       const latAddr0 = await client.getAddresses(req);
-      //@ts-expect-error - Returns strings sometimes
       expect(latAddr0[0].toLowerCase()).toEqualElseLog(
         addr0.toLowerCase(),
         'Incorrect address 0 fetched.',
       );
       req.startPath = path1;
       const latAddr1 = await client.getAddresses(req);
-      //@ts-expect-error - Returns strings sometimes
       expect(latAddr1[0].toLowerCase()).toEqualElseLog(
         addr1.toLowerCase(),
         'Incorrect address 1 fetched.',
       );
       req.startPath = path8;
       const latAddr8 = await client.getAddresses(req);
-      //@ts-expect-error - Returns strings sometimes
       expect(latAddr8[0].toLowerCase()).toEqualElseLog(
         addr8.toLowerCase(),
         'Incorrect address 8 fetched.',

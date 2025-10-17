@@ -3,8 +3,9 @@ import bip32 from 'bip32';
 import { mnemonicToSeedSync } from 'bip39';
 import { ecsign, privateToAddress } from 'ethereumjs-util';
 import { Hash } from 'ox';
+import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
 import { Client } from '../../client';
-import { TestRequestPayload } from '../../types/utils';
+import { TestRequestPayload, WalletPath } from '../../types';
 import { buildTestRequestPayload } from './builders';
 import { ethPersonalSignMsg, getSigStr, jobTypes } from './helpers';
 import { getPathStr } from '../../shared/utilities';
@@ -87,6 +88,16 @@ export function signPersonalJS(_msg: string, path: WalletPath) {
   const msg = ethPersonalSignMsg(_msg);
   const hash = Buffer.from(Hash.keccak256(Buffer.from(msg)));
   const sig = ecsign(hash, priv);
+  const v = (sig.v - 27).toString(16).padStart(2, '0');
+  return `${sig.r.toString('hex')}${sig.s.toString('hex')}${v}`;
+}
+
+export function signEip712JS(payload: any, path: WalletPath) {
+  const wallet = bip32.fromSeed(TEST_SEED);
+  const priv = wallet.derivePath(getPathStr(path)).privateKey;
+  // Calculate the EIP712 hash using the same method as the SDK validation
+  const hash = TypedDataUtils.eip712Hash(payload, SignTypedDataVersion.V4);
+  const sig = ecsign(Buffer.from(hash), priv);
   const v = (sig.v - 27).toString(16).padStart(2, '0');
   return `${sig.r.toString('hex')}${sig.s.toString('hex')}${v}`;
 }
