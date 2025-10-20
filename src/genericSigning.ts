@@ -286,7 +286,13 @@ export const parseGenericSigningResponse = function (res, off, req) {
           populateViemSignedTx(parsed.sig.v, req, parsed);
         } catch (err) {
           // Fall back to simple recovery if getV fails (e.g., malformed RLP)
-          const msgHash = Buffer.from(Hash.keccak256(req.origPayloadBuf));
+          // Use the correct hash type specified in the request
+          let msgHash: Buffer;
+          if (req.hashType === Constants.SIGNING.HASHES.SHA256) {
+            msgHash = Buffer.from(Hash.sha256(req.origPayloadBuf));
+          } else {
+            msgHash = Buffer.from(Hash.keccak256(req.origPayloadBuf));
+          }
           const yParity = getYParity({
             messageHash: msgHash,
             signature: parsed.sig,
@@ -296,7 +302,13 @@ export const parseGenericSigningResponse = function (res, off, req) {
         }
       } else {
         // Generic message - use simple recovery (v = 27 + recoveryId)
-        const msgHash = Buffer.from(Hash.keccak256(req.origPayloadBuf));
+        // Use the correct hash type specified in the request
+        let msgHash: Buffer;
+        if (req.hashType === Constants.SIGNING.HASHES.SHA256) {
+          msgHash = Buffer.from(Hash.sha256(req.origPayloadBuf));
+        } else {
+          msgHash = Buffer.from(Hash.keccak256(req.origPayloadBuf));
+        }
         const yParity = getYParity({
           messageHash: msgHash,
           signature: parsed.sig,
