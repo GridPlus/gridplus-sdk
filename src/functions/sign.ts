@@ -118,21 +118,24 @@ export const encodeSignRequest = ({
     };
     const nextExtraPayload = typedCachedData.extraDataPayloads.shift();
     if (!nextExtraPayload) {
-      throw new Error('No cached extra payload available for multipart sign request.');
+      throw new Error(
+        'No cached extra payload available for multipart sign request.',
+      );
     }
     if (typedRequestData.extraDataPayloads) {
       typedRequestData.extraDataPayloads = typedCachedData.extraDataPayloads;
     }
-    reqPayload = Buffer.concat([
-      nextCode,
-      nextExtraPayload,
-    ]);
+    reqPayload = Buffer.concat([nextCode, nextExtraPayload]);
     schema = LatticeSignSchema.extraData;
-    hasExtraPayloads = Number((typedCachedData.extraDataPayloads?.length ?? 0) > 0);
+    hasExtraPayloads = Number(
+      (typedCachedData.extraDataPayloads?.length ?? 0) > 0,
+    );
   } else {
     reqPayload = typedRequestData.payload;
     schema = typedRequestData.schema;
-    hasExtraPayloads = Number((typedRequestData.extraDataPayloads?.length ?? 0) > 0);
+    hasExtraPayloads = Number(
+      (typedRequestData.extraDataPayloads?.length ?? 0) > 0,
+    );
   }
 
   const payload = Buffer.alloc(2 + fwConstants.reqMaxDataSz);
