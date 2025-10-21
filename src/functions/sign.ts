@@ -105,7 +105,9 @@ export const encodeSignRequest = ({
   cachedData,
   nextCode,
 }: EncodeSignRequestParams) => {
-  let reqPayload: Buffer, schema: number;
+  let reqPayload: Buffer;
+  let schema: number;
+  let hasExtraPayloads = 0;
   const typedRequestData = requestData as SignRequest & {
     extraDataPayloads?: Buffer[];
   };
@@ -114,22 +116,30 @@ export const encodeSignRequest = ({
     const typedCachedData = cachedData as SignRequest & {
       extraDataPayloads: Buffer[];
     };
-    reqPayload = Buffer.concat([
-      nextCode,
-      typedCachedData.extraDataPayloads.shift() as Buffer,
-    ]);
+    const nextExtraPayload = typedCachedData.extraDataPayloads.shift();
+    if (!nextExtraPayload) {
+      throw new Error(
+        'No cached extra payload available for multipart sign request.',
+      );
+    }
+    if (typedRequestData.extraDataPayloads) {
+      typedRequestData.extraDataPayloads = typedCachedData.extraDataPayloads;
+    }
+    reqPayload = Buffer.concat([nextCode, nextExtraPayload]);
     schema = LatticeSignSchema.extraData;
+    hasExtraPayloads = Number(
+      (typedCachedData.extraDataPayloads?.length ?? 0) > 0,
+    );
   } else {
     reqPayload = typedRequestData.payload;
     schema = typedRequestData.schema;
+    hasExtraPayloads = Number(
+      (typedRequestData.extraDataPayloads?.length ?? 0) > 0,
+    );
   }
 
   const payload = Buffer.alloc(2 + fwConstants.reqMaxDataSz);
   let off = 0;
-
-  const hasExtraPayloads =
-    typedRequestData.extraDataPayloads &&
-    Number(typedRequestData.extraDataPayloads.length > 0);
 
   payload.writeUInt8(hasExtraPayloads, off);
   off += 1;

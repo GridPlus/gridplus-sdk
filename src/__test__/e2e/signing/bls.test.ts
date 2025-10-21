@@ -38,7 +38,7 @@ import { testRequest } from '../../utils/testRequest';
 
 const globalVectors = getTestVectors();
 
-let client, origWalletSeed, encPw;
+let client, origWalletSeed, encPw, supportsBLS;
 const DEPOSIT_PATH = [12381, 3600, 0, 0, 0];
 const WITHDRAWAL_PATH = [12381, 3600, 0, 0];
 // Number of signers to test for each of deposit and withdrawal paths
@@ -47,16 +47,42 @@ const KNOWN_MNEMONIC = globalVectors.ethDeposit.mnemonic;
 const KNOWN_SEED = mnemonicToSeedSync(KNOWN_MNEMONIC);
 
 describe('[BLS keys]', () => {
-  let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
-  });
+    if (process.env.CI) {
+      encPw = process.env.ENC_PW;
+    } else {
+      encPw = getEncPw();
+      if (!encPw) {
+        encPw = await question('Enter your Lattice encryption password: ');
+      }
+    }
 
-  it('Should get the device encryption password', async () => {
-    encPw = getEncPw();
-    if (!encPw) {
-      encPw = await question('Enter your Lattice encryption password: ');
+    // Check if firmware supports BLS (requires >= 0.17.0)
+    const fwVersion = client.fwVersion;
+    const versionStr = fwVersion && fwVersion.length >= 3
+      ? `${fwVersion[2]}.${fwVersion[1]}.${fwVersion[0]}`
+      : 'unknown';
+
+    console.log(`\n[BLS Test] Firmware version: ${versionStr}`);
+    console.log(`[BLS Test] Raw fwVersion buffer:`, fwVersion);
+
+    const fwConstants = client.getFwConstants();
+    console.log(`[BLS Test] getAddressFlags:`, fwConstants?.getAddressFlags);
+    console.log(`[BLS Test] BLS12_381_G1_PUB constant:`, Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB);
+
+    supportsBLS = fwConstants?.getAddressFlags?.includes(
+      Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB
+    );
+
+    console.log(`[BLS Test] supportsBLS: ${supportsBLS}\n`);
+
+    if (!supportsBLS) {
+      console.warn(
+        `\nSkipping BLS tests: Firmware version ${versionStr} does not support BLS operations.\n` +
+        `BLS support requires firmware version >= 0.17.0\n`
+      );
     }
   });
 
@@ -69,7 +95,11 @@ describe('[BLS keys]', () => {
     await loadSeed(client, KNOWN_SEED, KNOWN_MNEMONIC);
   });
 
-  it('Should validate exported EIP2335 keystores', async () => {
+  it('Should validate exported EIP2335 keystores', async (ctx) => {
+    if (!supportsBLS) {
+      ctx.skip();
+      return;
+    }
     const req = {
       schema: Constants.ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4,
       params: {
@@ -99,7 +129,11 @@ describe('[BLS keys]', () => {
     describe(`[Validate Derived Signature #${i + 1}/${N_TEST_SIGS}]`, () => {
       it(`Should validate derivation and signing at deposit index #${
         i + 1
-      }`, async () => {
+      }`, async (ctx) => {
+        if (!supportsBLS) {
+          ctx.skip();
+          return;
+        }
         const depositPath = JSON.parse(JSON.stringify(DEPOSIT_PATH));
         depositPath[2] = i;
         await testBLSDerivationAndSig(KNOWN_SEED, depositPath);
@@ -107,7 +141,11 @@ describe('[BLS keys]', () => {
 
       it(`Should validate derivation and signing at withdrawal index #${
         i + 1
-      }`, async () => {
+      }`, async (ctx) => {
+        if (!supportsBLS) {
+          ctx.skip();
+          return;
+        }
         const withdrawalPath = JSON.parse(JSON.stringify(WITHDRAWAL_PATH));
         withdrawalPath[2] = i;
         await testBLSDerivationAndSig(KNOWN_SEED, withdrawalPath);

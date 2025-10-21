@@ -13,10 +13,8 @@ import { mainnet, polygon, bsc, avalanche } from 'viem/chains';
 import { sign } from '../../api';
 import { deriveAddress } from './determinism';
 import { normalizeLatticeSignature } from '../../ethereum';
+import { FOUNDRY_TEST_MNEMONIC } from './testConstants';
 
-// Foundry test mnemonic
-const FOUNDRY_TEST_MNEMONIC =
-  'test test test test test test test test test test test junk';
 const FOUNDRY_TEST_SEED = mnemonicToSeedSync(FOUNDRY_TEST_MNEMONIC);
 
 // Utility function to create foundry account address for comparison

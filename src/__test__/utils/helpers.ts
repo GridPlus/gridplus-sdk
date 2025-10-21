@@ -1016,7 +1016,11 @@ export const validateGenericSig = function (
     }
     const { priv } = deriveSECP256K1Key(signerPath, seed);
     const key = secp256k1.keyFromPrivate(priv);
-    expect(key.verify(hash, sig)).toEqualElseLog(
+    const normalizedSig = {
+      r: normalizeSigComponent(sig.r).toString('hex'),
+      s: normalizeSigComponent(sig.s).toString('hex'),
+    };
+    expect(key.verify(hash, normalizedSig)).toEqualElseLog(
       true,
       'Signature failed verification.',
     );
