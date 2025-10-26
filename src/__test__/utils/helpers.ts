@@ -898,12 +898,26 @@ export const buildRandomEip712Object = function (randInt) {
   function getRandomEIP712Val(type) {
     if (type !== 'bytes' && type.slice(0, 5) === 'bytes') {
       return `0x${randomBytes(parseInt(type.slice(5))).toString('hex')}`;
-    } else if (type === 'uint' || type === 'int') {
-      return `0x${randomBytes(32).toString('hex')}`;
-    } else if (type.indexOf('uint') > -1) {
-      return `0x${randomBytes(parseInt(type.slice(4)) / 8).toString('hex')}`;
-    } else if (type.indexOf('int') > -1) {
-      return `0x${randomBytes(parseInt(type.slice(3)) / 8).toString('hex')}`;
+    }
+
+    if (type === 'uint' || type.indexOf('uint') === 0) {
+      const bits = parseInt(type.slice(4) || '256', 10);
+      const byteLength = Math.max(1, Math.ceil(bits / 8));
+      return `0x${randomBytes(byteLength).toString('hex')}`;
+    }
+
+    if (type === 'int' || type.indexOf('int') === 0) {
+      const bits = parseInt(type.slice(3) || '256', 10);
+      const byteLength = Math.max(1, Math.ceil(bits / 8));
+      const raw = randomBytes(byteLength).toString('hex');
+      const modulus = 1n << BigInt(bits);
+      const halfModulus = modulus >> 1n;
+      let value = BigInt(`0x${raw}`);
+      value = ((value % modulus) + modulus) % modulus;
+      if (value >= halfModulus) {
+        value -= modulus;
+      }
+      return value.toString();
     }
     switch (type) {
       case 'bytes':
