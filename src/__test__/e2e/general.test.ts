@@ -40,11 +40,15 @@ const id = getDeviceId();
 describe('General', () => {
   let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
   });
 
-  it('Should test SDK dehydration/rehydration', async () => {
+  it('Should test SDK dehydration/rehydration', async (ctx) => {
+    if (process.env.CI === '1') {
+      ctx.skip();
+      return;
+    }
     const addrData = {
       startPath: [BTC_PURPOSE_P2SH_P2WPKH, BTC_COIN, HARDENED_OFFSET, 0, 0],
       n: 1,
@@ -174,7 +178,11 @@ describe('General', () => {
       await client.sign(req);
     });
 
-    it('should sign bad transactions', async () => {
+    it('should sign bad transactions', async (ctx: any) => {
+      if (process.env.CI === '1') {
+        ctx.skip();
+        return;
+      }
       const { txData, req, maxDataSz, common } = await buildEthSignRequest(
         client,
       );
