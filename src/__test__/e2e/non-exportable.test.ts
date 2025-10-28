@@ -23,6 +23,7 @@ import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { question } from 'readline-sync';
 import { ecdsaRecover } from 'secp256k1';
+import { keccak256 } from 'ethereumjs-util';
 import { Constants } from '../..';
 import { DEFAULT_SIGNER } from '../utils/builders';
 import { getSigStr } from '../utils/helpers';
@@ -35,12 +36,17 @@ let runTests = true;
 describe('Non-Exportable Seed', () => {
   let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
   });
 
   describe('Setup', () => {
-    it('Should ask if the user wants to test a card with a non-exportable seed', async () => {
+    it('Should ask if the user wants to test a card with a non-exportable seed', async (ctx: any) => {
+      if (process.env.CI === '1') {
+        runTests = false;
+        ctx.skip();
+        return;
+      }
       // NOTE: non-exportable seeds were deprecated from the normal setup pathway in firmware v0.12.0
       const result = await question(
         'Do you have a non-exportable SafeCard seed loaded and wish to continue? (Y/N) ',
@@ -52,11 +58,10 @@ describe('Non-Exportable Seed', () => {
   });
 
   describe('Test non-exportable seed on SafeCard', () => {
-    beforeEach(() => {
-      expect(runTests).to.equal(
-        true,
-        'Skipping tests due to lack of non-exportable seed SafeCard.',
-      );
+    beforeEach((ctx: any) => {
+      if (!runTests) {
+        ctx.skip('Skipping tests due to lack of non-exportable seed SafeCard.');
+      }
     });
     it('Should test that ETH transaction sigs differ and validate on secp256k1', async () => {
       // Test ETH transactions
@@ -171,7 +176,32 @@ describe('Non-Exportable Seed', () => {
   });
 });
 
-function validateSig(resp: any, hash: Buffer) {
+function toBuffer(data: string | Buffer | Uint8Array): Buffer {
+  if (Buffer.isBuffer(data)) {
+    return data;
+  }
+  if (data instanceof Uint8Array) {
+    return Buffer.from(data);
+  }
+  return ensureHexBuffer(data as string | Buffer);
+}
+
+function toUint8Array(data: Buffer): Uint8Array {
+  return new Uint8Array(data.buffer, data.byteOffset, data.length);
+}
+
+function ensureHash32(
+  message: string | Buffer | Uint8Array,
+): Uint8Array {
+  const msgBuffer = toBuffer(message);
+  const digest = msgBuffer.length === 32 ? msgBuffer : keccak256(msgBuffer);
+  if (digest.length !== 32) {
+    throw new Error('Failed to derive 32-byte hash for signature validation.');
+  }
+  return toUint8Array(digest);
+}
+
+function validateSig(resp: any, message: string | Buffer | Uint8Array) {
   if (!resp.sig?.r || !resp.sig?.s) {
     throw new Error('Missing signature components');
   }
@@ -181,6 +211,7 @@ function validateSig(resp: any, hash: Buffer) {
       ensureHexBuffer(resp.sig.s as string | Buffer),
     ]),
   );
+  const hash = ensureHash32(message);
   const pubkeyA = Buffer.from(ecdsaRecover(rs, 0, hash, false)).toString('hex');
   const pubkeyB = Buffer.from(ecdsaRecover(rs, 1, hash, false)).toString('hex');
   if (
