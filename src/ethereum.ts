@@ -1,4 +1,4 @@
-// Utils for Ethereum transactions. This is effecitvely a shim of ethereumjs-util, which
+// Utils for Ethereum transactions. This is effectively a shim of ethereumjs-util, which
 // does not have browser (or, by proxy, React-Native) support.
 import BN from 'bignumber.js';
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
@@ -43,7 +43,7 @@ bdec(cbor);
 const buildEthereumMsgRequest = function (input) {
   if (!input.payload || !input.protocol || !input.signerPath)
     throw new Error(
-      'You must provide `payload`, `signerPath`, and `protocol` arguments in the messsage request',
+      'You must provide `payload`, `signerPath`, and `protocol` arguments in the message request',
     );
   if (input.signerPath.length > 5 || input.signerPath.length < 2)
     throw new Error('Please provide a signer path with 2-5 indices');
@@ -537,7 +537,7 @@ export function addRecoveryParam(hashBuf, sig, address, txData = {}) {
     if (expectedAddrBuf.length !== 20)
       throw new Error('Invalid signer address provided.');
     let v = 0;
-    // Fix signature componenet lengths to 32 bytes each
+    // Fix signature component lengths to 32 bytes each
     const r = fixLen(sig.r, 32);
     sig.r = r;
     const s = fixLen(sig.s, 32);
@@ -726,7 +726,7 @@ function isValidChainIdHexNumStr(s) {
   }
 }
 
-// If this is a nubmer that fits in one byte, we don't need to add it
+// If this is a number that fits in one byte, we don't need to add it
 // to the `data` buffer of the main transaction.
 // Note the one edge case: we still need to use the `data` field for chainID=255.
 function useChainIdBuffer(id) {
@@ -1064,7 +1064,7 @@ function parseEIP712Item(data, type, forJSParser = false) {
       // NOTE: If we instantiate a `bignumber.js` object, it will not match what `borc` creates
       // when run inside of the browser (i.e. MetaMask). Thus we introduce this hack to make sure
       // we are creating a compatible type.
-      // TODO: Find another cbor lib that is compataible with the firmware's lib in a browser
+      // TODO: Find another cbor lib that is compatible with the firmware's lib in a browser
       // context. This is surprisingly difficult - I tried several libs and only cbor/borc have
       // worked (borc is a supposedly "browser compatible" version of cbor)
       data = new BN(data);

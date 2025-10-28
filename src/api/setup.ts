@@ -32,7 +32,7 @@ type SetupParameters =
  * resolves to a boolean that indicates whether the Client is paired to the application to which it's
  * attempting to connect.
  *
- * @param {Object} SetupParameters - paramaters for the setup function
+ * @param {Object} SetupParameters - parameters for the setup function
  * @param {string} SetupParameters.deviceId - the device id of the client
  * @param {string} SetupParameters.password - the password of the client
  * @param {string} SetupParameters.name - the name of the client

@@ -89,7 +89,7 @@ export async function connectSecureRequest({
  * Also updates ephemeral public key in the client.
  * This is a wrapper around several local util functions.
  * @param data - Unencrypted raw calldata for function
- * @param requestType - Type of encrypted reques to make
+ * @param requestType - Type of encrypted request to make
  * @return {Buffer} Decrypted response data (excluding metadata)
  */
 export async function encryptedSecureRequest({
