@@ -60,6 +60,52 @@ const DataSchema = z
   .refine(isHex, 'Data must be a valid hex string')
   .default('0x');
 
+const NonceSchema = z
+  .union([
+    z
+      .string()
+      .regex(/^(0x[0-9a-fA-F]+|[0-9]+)$/, 'Invalid nonce format'),
+    z.number().int().nonnegative(),
+    z.bigint(),
+  ])
+  .transform((val, ctx) => {
+    try {
+      const bigVal =
+        typeof val === 'string'
+          ? isHex(val as Hex)
+            ? hexToBigInt(val as Hex)
+            : BigInt(val)
+          : typeof val === 'number'
+            ? BigInt(val)
+            : val;
+
+      if (bigVal < 0n) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Nonce must be non-negative',
+        });
+        return z.NEVER;
+      }
+
+      const maxSafe = BigInt(Number.MAX_SAFE_INTEGER);
+      if (bigVal > maxSafe) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Nonce exceeds JavaScript safe integer range',
+        });
+        return z.NEVER;
+      }
+
+      return Number(bigVal);
+    } catch {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Invalid nonce value',
+      });
+      return z.NEVER;
+    }
+  });
+
 // Schema for access list entries.
 const AccessListEntrySchema = z.object({
   address: AddressSchema,
@@ -83,7 +129,7 @@ const BaseTxSchema = z.object({
   to: AddressSchema.optional(),
   value: toPositiveBigInt.optional(),
   data: DataSchema,
-  nonce: z.number().int().nonnegative().optional(),
+  nonce: NonceSchema.optional(),
   gas: GasValueSchema.optional(),
   gasLimit: GasValueSchema.optional(),
   chainId: ChainIdSchema.optional().default(1),
@@ -152,6 +198,11 @@ export const TransactionSchema = z
     if (tx.gasLimit) {
       tx.gas = tx.gasLimit;
     }
+
+    if (tx.data === null || tx.data === undefined || tx.data === '') {
+      tx.data = '0x';
+    }
+
     // Normalize EIP-7702 `authorization` to `authorizationList`
     if (tx.authorization) {
       tx.authorizationList = [tx.authorization];
@@ -204,6 +255,7 @@ export const TransactionSchema = z
       delete data.maxFeePerGas;
       delete data.maxPriorityFeePerGas;
     }
+    delete data.gasLimit;
     if (type !== 'eip7702') delete data.authorizationList;
 
     return data;
