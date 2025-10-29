@@ -31,6 +31,7 @@ import { TypedTransaction } from '@ethereumjs/tx';
 import { getEnv } from './getters';
 import { setStoredClient } from './setup';
 import BN from 'bn.js';
+import { ecdsaRecover } from 'secp256k1';
 const SIGHASH_ALL = 0x01;
 const secp256k1 = new EC('secp256k1');
 
@@ -1091,6 +1092,84 @@ export const getSigStr = function (resp: any, tx?: TypedTransaction) {
   const sHex = normalizeSigComponent(resp.sig.s).toString('hex');
   return `${rHex}${sHex}${v}`;
 };
+
+export function toBuffer(
+  data: string | number | Buffer | Uint8Array,
+): Buffer {
+  if (data === null || data === undefined) {
+    throw new Error('Invalid data');
+  }
+  if (Buffer.isBuffer(data)) {
+    return data;
+  }
+  if (data instanceof Uint8Array) {
+    return Buffer.from(data.buffer, data.byteOffset, data.length);
+  }
+  if (typeof data === 'number') {
+    return ensureHexBuffer(data);
+  }
+  if (typeof data === 'string') {
+    const trimmed = data.trim();
+    const isHex =
+      trimmed.startsWith('0x') ||
+      (/^[0-9a-fA-F]+$/.test(trimmed) && trimmed.length % 2 === 0);
+    return isHex
+      ? ensureHexBuffer(trimmed)
+      : Buffer.from(trimmed, 'utf8');
+  }
+  throw new Error('Unsupported data type');
+}
+
+export function toUint8Array(data: Buffer): Uint8Array {
+  return new Uint8Array(data.buffer, data.byteOffset, data.length);
+}
+
+export function ensureHash32(
+  message: string | number | Buffer | Uint8Array,
+): Uint8Array {
+  const msgBuffer = toBuffer(message);
+  const digest =
+    msgBuffer.length === 32
+      ? msgBuffer
+      : Buffer.from(Hash.keccak256(msgBuffer));
+  if (digest.length !== 32) {
+    throw new Error('Failed to derive 32-byte hash for signature validation.');
+  }
+  return toUint8Array(digest);
+}
+
+export function validateSig(
+  resp: any,
+  message: string | number | Buffer | Uint8Array,
+) {
+  if (!resp.sig?.r || !resp.sig?.s || !resp.pubkey) {
+    throw new Error('Missing signature components');
+  }
+  const rBuf = normalizeSigComponent(resp.sig.r);
+  const sBuf = normalizeSigComponent(resp.sig.s);
+  const rs = new Uint8Array(Buffer.concat([rBuf, sBuf]));
+  const hash = ensureHash32(message);
+
+  const pubkeyInput = toBuffer(resp.pubkey);
+  const normalizedPubkey =
+    pubkeyInput.length === 64
+      ? Buffer.concat([Buffer.from([0x04]), pubkeyInput])
+      : pubkeyInput;
+  const isCompressed =
+    normalizedPubkey.length === 33 &&
+    (normalizedPubkey[0] === 0x02 || normalizedPubkey[0] === 0x03);
+
+  const recoveredA = Buffer.from(
+    ecdsaRecover(rs, 0, hash, isCompressed),
+  ).toString('hex');
+  const recoveredB = Buffer.from(
+    ecdsaRecover(rs, 1, hash, isCompressed),
+  ).toString('hex');
+  const expected = normalizedPubkey.toString('hex');
+  if (expected !== recoveredA && expected !== recoveredB) {
+    throw new Error('Signature did not validate.');
+  }
+}
 
 export const compressPubKey = function (pub) {
   if (pub.length !== 65) {

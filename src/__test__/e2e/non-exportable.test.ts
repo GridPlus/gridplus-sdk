@@ -22,14 +22,11 @@
 import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { question } from 'readline-sync';
-import { ecdsaRecover } from 'secp256k1';
-import { keccak256 } from 'ethereumjs-util';
 import { Constants } from '../..';
 import { DEFAULT_SIGNER } from '../utils/builders';
-import { getSigStr } from '../utils/helpers';
+import { getSigStr, validateSig } from '../utils/helpers';
 
 import { setupClient } from '../utils/setup';
-import { ensureHexBuffer } from '../../util';
 
 let runTests = true;
 
@@ -175,49 +172,3 @@ describe('Non-Exportable Seed', () => {
     });
   });
 });
-
-function toBuffer(data: string | Buffer | Uint8Array): Buffer {
-  if (Buffer.isBuffer(data)) {
-    return data;
-  }
-  if (data instanceof Uint8Array) {
-    return Buffer.from(data);
-  }
-  return ensureHexBuffer(data as string | Buffer);
-}
-
-function toUint8Array(data: Buffer): Uint8Array {
-  return new Uint8Array(data.buffer, data.byteOffset, data.length);
-}
-
-function ensureHash32(
-  message: string | Buffer | Uint8Array,
-): Uint8Array {
-  const msgBuffer = toBuffer(message);
-  const digest = msgBuffer.length === 32 ? msgBuffer : keccak256(msgBuffer);
-  if (digest.length !== 32) {
-    throw new Error('Failed to derive 32-byte hash for signature validation.');
-  }
-  return toUint8Array(digest);
-}
-
-function validateSig(resp: any, message: string | Buffer | Uint8Array) {
-  if (!resp.sig?.r || !resp.sig?.s) {
-    throw new Error('Missing signature components');
-  }
-  const rs = new Uint8Array(
-    Buffer.concat([
-      ensureHexBuffer(resp.sig.r as string | Buffer),
-      ensureHexBuffer(resp.sig.s as string | Buffer),
-    ]),
-  );
-  const hash = ensureHash32(message);
-  const pubkeyA = Buffer.from(ecdsaRecover(rs, 0, hash, false)).toString('hex');
-  const pubkeyB = Buffer.from(ecdsaRecover(rs, 1, hash, false)).toString('hex');
-  if (
-    resp.pubkey.toString('hex') !== pubkeyA &&
-    resp.pubkey.toString('hex') !== pubkeyB
-  ) {
-    throw new Error('Signature did not validate.');
-  }
-}
