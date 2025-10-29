@@ -35,3 +35,72 @@ jobs:
 
       - name: Release a nightly build
         run: pnpx pkg-pr-new publish
+
+      - name: Checkout lattice-simulator
+        uses: actions/checkout@v3
+        with:
+          repository: GridPlus/lattice-simulator
+          path: lattice-simulator
+
+      - name: Install simulator dependencies
+        working-directory: lattice-simulator
+        run: pnpm install
+
+      - name: Start simulator in background
+        working-directory: lattice-simulator
+        env:
+          CI: "1"
+          DEBUG_SIGNING: "1"
+          DEBUG: "lattice*"
+          LATTICE_MNEMONIC: "test test test test test test test test test test test junk"
+          PORT: "3000"
+          DEVICE_ID: "SD0001"
+          PASSWORD: "12345678"
+          PAIRING_SECRET: "12345678"
+          ENC_PW: "12345678"
+        run: |
+          pnpm run dev > simulator.log 2>&1 &
+          echo $! > simulator.pid
+          echo "Simulator PID: $(cat simulator.pid)"
+
+          # Wait for simulator to be ready
+          echo "Waiting for simulator to start..."
+          for i in {1..30}; do
+            if curl -s http://localhost:3000 > /dev/null 2>&1; then
+              echo "Simulator is ready!"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "Simulator failed to start within 30 seconds"
+              cat simulator.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Run SDK e2e tests with simulator
+        env:
+          CI: "1"
+          DEBUG_SIGNING: "1"
+          baseUrl: "http://127.0.0.1:3000"
+          DEVICE_ID: "SD0001"
+          PASSWORD: "12345678"
+          PAIRING_SECRET: "12345678"
+          ENC_PW: "12345678"
+          APP_NAME: "lattice-manager"
+        run: pnpm run e2e --reporter=basic
+
+      - name: Show simulator logs on failure
+        if: failure()
+        working-directory: lattice-simulator
+        run: |
+          echo "=== Simulator logs ==="
+          cat simulator.log || echo "No simulator logs found"
+
+      - name: Stop simulator
+        if: always()
+        working-directory: lattice-simulator
+        run: |
+          if [ -f simulator.pid ]; then
+            kill $(cat simulator.pid) || true
+          fi
