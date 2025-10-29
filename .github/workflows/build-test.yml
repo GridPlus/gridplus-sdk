@@ -44,7 +44,7 @@ jobs:
         with:
           repository: GridPlus/lattice-simulator
           path: lattice-simulator
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GRIDPLUS_SIM_PAT }}
 
       - name: Install simulator dependencies
         working-directory: lattice-simulator
