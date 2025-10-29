@@ -14,7 +14,7 @@ on:
 
 jobs:
   build:
-    name: Build
+    name: Lint, Build & Unit, E2E Tests
     runs-on: ubuntu-latest
     permissions:
       contents: read
