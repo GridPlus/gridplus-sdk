@@ -50,7 +50,11 @@ export const sign = async (
     : serializeTransaction(transaction as TransactionSerializable);
 
   // Determine the encoding type based on transaction type
-  let encodingType = Constants.SIGNING.ENCODINGS.EVM;
+  let encodingType:
+    | typeof Constants.SIGNING.ENCODINGS.EVM
+    | typeof Constants.SIGNING.ENCODINGS.EIP7702_AUTH
+    | typeof Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST =
+    Constants.SIGNING.ENCODINGS.EVM;
   if (!isRaw && (transaction as TransactionSerializable).type === 'eip7702') {
     const eip7702Tx = transaction as TransactionSerializableEIP7702;
     const hasAuthList =
@@ -108,7 +112,7 @@ export function signMessage(
   };
 
   const tx: SignRequestParams = {
-    data: basePayload,
+    data: basePayload as SignRequestParams['data'],
     currency: overrides?.currency ?? CURRENCIES.ETH_MSG,
     ...(overrides ?? {}),
   };
