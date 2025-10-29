@@ -6,6 +6,9 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
 
     steps:
       - name: Checkout code
@@ -41,6 +44,7 @@ jobs:
         with:
           repository: GridPlus/lattice-simulator
           path: lattice-simulator
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install simulator dependencies
         working-directory: lattice-simulator
