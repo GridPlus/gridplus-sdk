@@ -62,9 +62,7 @@ const DataSchema = z
 
 const NonceSchema = z
   .union([
-    z
-      .string()
-      .regex(/^(0x[0-9a-fA-F]+|[0-9]+)$/, 'Invalid nonce format'),
+    z.string().regex(/^(0x[0-9a-fA-F]+|[0-9]+)$/, 'Invalid nonce format'),
     z.number().int().nonnegative(),
     z.bigint(),
   ])
