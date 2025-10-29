@@ -214,6 +214,7 @@ export const parseGenericSigningResponse = function (res, off, req) {
     pubkey: null,
     sig: null,
   };
+  let digestFromResponse: Buffer | undefined;
   // Parse BIP44 path
   // Parse pubkey and then sig
   if (req.curveType === Constants.SIGNING.CURVES.SECP256K1) {
@@ -240,7 +241,9 @@ export const parseGenericSigningResponse = function (res, off, req) {
       off += 65;
     }
     // Handle `GpECDSASig_t`
-    const derSig = parseDER(res.slice(off, off + 2 + res[off + 1]));
+    const sigLength = 2 + res[off + 1];
+    const derSlice = res.slice(off, off + sigLength);
+    const derSig = parseDER(derSlice);
     // Remove any leading zeros in signature components to ensure
     // the result is a 64 byte sig
     const rBuf = fixLen(derSig.r, 32);
@@ -250,6 +253,11 @@ export const parseGenericSigningResponse = function (res, off, req) {
       r: `0x${rBuf.toString('hex')}`,
       s: `0x${sBuf.toString('hex')}`,
     };
+    off += sigLength;
+    if (res.length >= off + 32) {
+      digestFromResponse = Buffer.from(res.slice(off, off + 32));
+      off += 32;
+    }
 
     if (req.encodingType === Constants.SIGNING.ENCODINGS.EVM) {
       // Full EVM transaction - use getV for proper chainId/EIP-155 handling
@@ -287,12 +295,7 @@ export const parseGenericSigningResponse = function (res, off, req) {
         } catch (err) {
           // Fall back to simple recovery if getV fails (e.g., malformed RLP)
           // Use the correct hash type specified in the request
-          let msgHash: Buffer;
-          if (req.hashType === Constants.SIGNING.HASHES.SHA256) {
-            msgHash = Buffer.from(Hash.sha256(req.origPayloadBuf));
-          } else {
-            msgHash = Buffer.from(Hash.keccak256(req.origPayloadBuf));
-          }
+          const msgHash = computeMessageHash(req, digestFromResponse);
           const yParity = getYParity({
             messageHash: msgHash,
             signature: parsed.sig,
@@ -303,12 +306,7 @@ export const parseGenericSigningResponse = function (res, off, req) {
       } else {
         // Generic message - use simple recovery (v = 27 + recoveryId)
         // Use the correct hash type specified in the request
-        let msgHash: Buffer;
-        if (req.hashType === Constants.SIGNING.HASHES.SHA256) {
-          msgHash = Buffer.from(Hash.sha256(req.origPayloadBuf));
-        } else {
-          msgHash = Buffer.from(Hash.keccak256(req.origPayloadBuf));
-        }
+        const msgHash = computeMessageHash(req, digestFromResponse);
         const yParity = getYParity({
           messageHash: msgHash,
           signature: parsed.sig,
@@ -329,6 +327,7 @@ export const parseGenericSigningResponse = function (res, off, req) {
       r: `0x${res.slice(off, off + 32).toString('hex')}`,
       s: `0x${res.slice(off + 32, off + 64).toString('hex')}`,
     };
+    off += 64;
   } else if (req.curveType === Constants.SIGNING.CURVES.BLS12_381_G2) {
     if (!req.omitPubkey) {
       // Handle `GpBLS12_381_G1Pub_t`
@@ -339,11 +338,35 @@ export const parseGenericSigningResponse = function (res, off, req) {
     // Handle `GpBLS12_381_G2Sig_t`
     parsed.sig = Buffer.alloc(96);
     res.slice(off, off + 96).copy(parsed.sig);
+    off += 96;
   } else {
     throw new Error('Unsupported curve.');
   }
   return parsed;
 };
+
+function computeMessageHash(
+  req: {
+    hashType: number;
+    origPayloadBuf: Buffer;
+  },
+  digestFromResponse?: Buffer,
+): Buffer {
+  if (
+    digestFromResponse &&
+    digestFromResponse.length === 32 &&
+    digestFromResponse.some((byte) => byte !== 0)
+  ) {
+    return digestFromResponse;
+  }
+  if (req.hashType === Constants.SIGNING.HASHES.SHA256) {
+    return Buffer.from(Hash.sha256(req.origPayloadBuf));
+  }
+  if (req.hashType === Constants.SIGNING.HASHES.KECCAK256) {
+    return Buffer.from(Hash.keccak256(req.origPayloadBuf));
+  }
+  throw new Error('Unsupported hash type for message hash computation.');
+}
 
 // Reconstruct a viem-compatible signed transaction string from the raw payload and
 // recovered signature so consumers can compare or broadcast without extra parsing.

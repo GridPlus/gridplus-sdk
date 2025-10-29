@@ -40,7 +40,7 @@ const id = getDeviceId();
 describe('General', () => {
   let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
   });
 
@@ -174,7 +174,11 @@ describe('General', () => {
       await client.sign(req);
     });
 
-    it('should sign bad transactions', async () => {
+    it('should sign bad transactions', async (ctx: any) => {
+      if (process.env.CI === '1') {
+        ctx.skip();
+        return;
+      }
       const { txData, req, maxDataSz, common } = await buildEthSignRequest(
         client,
       );

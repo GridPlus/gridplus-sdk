@@ -20,13 +20,14 @@ import {
 import { fetchDecoder } from '../functions/fetchDecoder';
 import {
   BitcoinSignPayload,
+  EIP712MessagePayload,
   SignData,
   SigningPayload,
   SignRequestParams,
   TransactionRequest,
 } from '../types';
 import { getYParity } from '../util';
-import { queue } from './utilities';
+import { isEIP712Payload, queue } from './utilities';
 
 // Define the authorization request type based on Viem's structure
 type AuthorizationRequest = {
@@ -37,38 +38,44 @@ type AuthorizationRequest = {
 /**
  * Sign a transaction using Viem-compatible transaction types
  */
+type RawTransaction = Hex | Uint8Array | Buffer;
+
 export const sign = async (
-  transaction: TransactionSerializable,
+  transaction: TransactionSerializable | RawTransaction,
   overrides?: Omit<SignRequestParams, 'data'>,
 ): Promise<SignData> => {
-  // Serialize the transaction using Viem's native serializer
-  const serializedTx = serializeTransaction(transaction);
+  const isRaw = isRawTransaction(transaction);
+  const serializedTx = isRaw
+    ? normalizeRawTransaction(transaction)
+    : serializeTransaction(transaction as TransactionSerializable);
 
   // Determine the encoding type based on transaction type
-  let encodingType: number;
-  if (transaction.type === 'eip7702') {
-    // Check if it has single authorization or authorization list
+  let encodingType:
+    | typeof Constants.SIGNING.ENCODINGS.EVM
+    | typeof Constants.SIGNING.ENCODINGS.EIP7702_AUTH
+    | typeof Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST =
+    Constants.SIGNING.ENCODINGS.EVM;
+  if (!isRaw && (transaction as TransactionSerializable).type === 'eip7702') {
     const eip7702Tx = transaction as TransactionSerializableEIP7702;
     const hasAuthList =
       eip7702Tx.authorizationList && eip7702Tx.authorizationList.length > 0;
     encodingType = hasAuthList
       ? Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST
       : Constants.SIGNING.ENCODINGS.EIP7702_AUTH;
-  } else {
-    encodingType = Constants.SIGNING.ENCODINGS.EVM;
   }
 
   // Only fetch decoder if we have the required fields
   let decoder: Buffer | undefined;
   if (
-    'data' in transaction &&
-    'to' in transaction &&
-    'chainId' in transaction
+    !isRaw &&
+    'data' in (transaction as TransactionSerializable) &&
+    'to' in (transaction as TransactionSerializable) &&
+    'chainId' in (transaction as TransactionSerializable)
   ) {
     decoder = await fetchDecoder({
-      data: transaction.data,
-      to: transaction.to,
-      chainId: transaction.chainId,
+      data: (transaction as TransactionSerializable).data,
+      to: (transaction as TransactionSerializable).to,
+      chainId: (transaction as TransactionSerializable).chainId,
     } as TransactionRequest);
   }
 
@@ -88,24 +95,46 @@ export const sign = async (
  * Sign a message with support for EIP-712 typed data and const assertions
  */
 export function signMessage(
-  payload: string | Uint8Array | Buffer | Buffer[],
+  payload:
+    | string
+    | Uint8Array
+    | Buffer
+    | Buffer[]
+    | EIP712MessagePayload<Record<string, unknown>>,
   overrides?: Omit<SignRequestParams, 'data'>,
 ): Promise<SignData> {
-  const basePayload: SigningPayload = {
+  const basePayload: SigningPayload<Record<string, unknown>> = {
     signerPath: DEFAULT_ETH_DERIVATION,
     curveType: Constants.SIGNING.CURVES.SECP256K1,
     hashType: Constants.SIGNING.HASHES.KECCAK256,
-    protocol: 'signPersonal',
-    payload: payload as Hex,
-    ...overrides,
+    protocol: isEIP712Payload(payload) ? 'eip712' : 'signPersonal',
+    payload: payload as SigningPayload<Record<string, unknown>>['payload'],
   };
 
   const tx: SignRequestParams = {
-    data: basePayload,
-    currency: CURRENCIES.ETH_MSG,
+    data: basePayload as SignRequestParams['data'],
+    currency: overrides?.currency ?? CURRENCIES.ETH_MSG,
+    ...(overrides ?? {}),
   };
 
   return queue((client) => client.sign(tx));
+}
+
+function isRawTransaction(
+  value: TransactionSerializable | RawTransaction,
+): value is RawTransaction {
+  return (
+    typeof value === 'string' ||
+    value instanceof Uint8Array ||
+    Buffer.isBuffer(value)
+  );
+}
+
+function normalizeRawTransaction(tx: RawTransaction): Hex | Buffer {
+  if (typeof tx === 'string') {
+    return tx.startsWith('0x') ? (tx as Hex) : (`0x${tx}` as Hex);
+  }
+  return Buffer.from(tx);
 }
 
 /**

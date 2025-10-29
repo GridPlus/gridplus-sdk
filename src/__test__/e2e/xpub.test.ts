@@ -1,16 +1,11 @@
 /* eslint-disable quotes */
-import { question } from 'readline-sync';
 import { fetchAddressesByDerivationPath, pair } from '../../api';
 import { setupClient } from '../utils/setup';
 import { LatticeGetAddressesFlag } from '../../protocol';
 
 describe('XPUB', () => {
-  test('pair', async () => {
-    const isPaired = await setupClient();
-    if (!isPaired) {
-      const secret = question('Please enter the pairing secret: ');
-      await pair(secret.toUpperCase());
-    }
+  beforeAll(async () => {
+    await setupClient();
   });
 
   test('fetch bitcoin xpub', async () => {

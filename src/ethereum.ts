@@ -89,9 +89,10 @@ const validateEthereumMsgResponse = function (res, req) {
     // Use the validationPayload that was created in buildEIP712Request
     // This payload has been parsed with forJSParser=true, converting all numbers
     // to the format that TypedDataUtils.eip712Hash expects
-    const payloadForHashing = normalizeTypedDataForHashing(
-      req.validationPayload || req.input.payload,
-    );
+    const rawPayloadForHashing = req.validationPayload || req.input.payload;
+    const payloadForHashing = req.validationPayload
+      ? JSON.parse(JSON.stringify(req.validationPayload))
+      : normalizeTypedDataForHashing(rawPayloadForHashing);
     const encoded = TypedDataUtils.eip712Hash(
       payloadForHashing,
       SignTypedDataVersion.V4,
@@ -1055,9 +1056,8 @@ function parseEIP712Item(data, type, forJSParser = false) {
     if (forJSParser) {
       // For EIP712 encoding in this module we need hex strings for signed ints too
       const bn = new BN(data);
-      // For negative numbers, we need to handle two's complement
-      // But for now, convert to decimal number since metamask eth-sig-util handles it
-      data = Number(bn.toString(10));
+      // Preserve full precision by returning the decimal string representation
+      data = bn.toFixed();
     } else {
       // `bignumber.js` is needed for `cbor` encoding, which gets sent to the Lattice and plays
       // nicely with its firmware cbor lib.
