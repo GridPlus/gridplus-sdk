@@ -107,7 +107,7 @@ async function runTestSet(
 describe('Bitcoin', () => {
   let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
   });
 

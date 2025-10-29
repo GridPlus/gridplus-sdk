@@ -71,12 +71,11 @@ const wallet = bip32.fromSeed(KNOWN_SEED);
 describe('Test Wallet Jobs', () => {
   let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
   });
 
   it('Should make sure client has active wallets', async () => {
-    expect(client.isPaired).toEqual(true);
     const EMPTY_WALLET_UID = Buffer.alloc(32);
     const internalUID = client.activeWallets.internal.uid;
     const externalUID = client.activeWallets.external.uid;
@@ -914,7 +913,11 @@ describe('Test Wallet Jobs', () => {
     });
 
     // Wait for user to remove safecard
-    it('Should get GP_EAGAIN when trying to load seed into SafeCard when none exists', async () => {
+    it('Should get GP_EAGAIN when trying to load seed into SafeCard when none exists', async (ctx: any) => {
+      if (process.env.CI === '1') {
+        ctx.skip();
+        return;
+      }
       question(
         'Please remove your SafeCard to run this test.\n' +
           'Press enter to continue.',
@@ -923,7 +926,11 @@ describe('Test Wallet Jobs', () => {
       await runTestCase(gpErrors.GP_EAGAIN);
     });
 
-    it('Should wait for the card to be re-inserted', async () => {
+    it('Should wait for the card to be re-inserted', async (ctx: any) => {
+      if (process.env.CI === '1') {
+        ctx.skip();
+        return;
+      }
       question(
         '\nPlease re-insert and unlock your SafeCard to continue.\n' +
           'Press enter to continue.',

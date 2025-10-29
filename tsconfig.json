@@ -36,6 +36,6 @@
     ],
     "types": ["node"]
   },
-  "exclude": ["node_modules", "**/__test__", "**/*.spec.ts", "**/*.test.ts"],
+  "exclude": ["node_modules"],
   "include": ["src"]
 }

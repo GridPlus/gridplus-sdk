@@ -27,4 +27,5 @@ export default defineConfig({
     js: '.mjs',
   }),
   external,
+  tsconfig: './tsconfig.build.json',
 });

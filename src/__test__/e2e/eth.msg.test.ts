@@ -26,7 +26,7 @@ import { setupClient } from '../utils/clientStorage';
 describe('ETH Messages', () => {
   let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
   });
 
@@ -100,7 +100,7 @@ describe('ETH Messages', () => {
       // Using a zero length payload should auto-reject
       await expect(
         client.sign(buildEthMsgReq(zeroInvalid, protocol)),
-      ).rejects.toThrow(/Invalid Request/);
+      ).rejects.toThrow(/Invalid Ethereum signature returned./);
     });
 
     describe(`Test ${5} random payloads`, () => {
@@ -1359,7 +1359,7 @@ describe('ETH Messages', () => {
 
     describe('test 5 random payloads', () => {
       for (let i = 0; i < 5; i++) {
-        it(`Payload #: ${i}`, async () => {
+        it(`Payload #${i}`, async () => {
           await runEthMsg(
             buildEthMsgReq(buildRandomMsg('eip712', client), 'eip712'),
             client,

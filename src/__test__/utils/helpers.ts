@@ -5,7 +5,7 @@ import {
   derivePath as deriveEDKey,
   getPublicKey as getEDPubkey,
 } from 'ed25519-hd-key';
-import { ec as EC, eddsa as EdDSA } from 'elliptic';
+import { ec as EC } from 'elliptic';
 import { privateToAddress } from 'ethereumjs-util';
 import { readFileSync } from 'node:fs';
 import { Hash } from 'ox';
@@ -16,7 +16,14 @@ import {
 } from '../../constants';
 import { jsonc } from 'jsonc';
 import { Constants } from '../..';
-import { getV, parseDER, randomBytes, getYParity } from '../../util';
+import {
+  getV,
+  parseDER,
+  randomBytes,
+  getYParity,
+  ensureHexBuffer,
+} from '../../util';
+import nacl from 'tweetnacl';
 import { Client } from '../../client';
 import { ProtocolConstants } from '../../protocol';
 import { getPathStr } from '../../shared/utilities';
@@ -24,9 +31,41 @@ import { TypedTransaction } from '@ethereumjs/tx';
 import { getEnv } from './getters';
 import { setStoredClient } from './clientStorage';
 import BN from 'bn.js';
+import { ecdsaRecover } from 'secp256k1';
 const SIGHASH_ALL = 0x01;
 const secp256k1 = new EC('secp256k1');
-const ed25519 = new EdDSA('ed25519');
+
+const normalizeSigComponent = (component: any): Buffer => {
+  if (component === null || component === undefined) {
+    return Buffer.alloc(0);
+  }
+  if (Buffer.isBuffer(component)) {
+    return component;
+  }
+  if (component instanceof Uint8Array) {
+    return Buffer.from(component);
+  }
+  if (typeof component === 'bigint') {
+    const hex = component.toString(16);
+    return Buffer.from(hex.padStart(hex.length + (hex.length % 2), '0'), 'hex');
+  }
+  if (typeof component === 'number') {
+    return ensureHexBuffer(component);
+  }
+  if (typeof component === 'string') {
+    return ensureHexBuffer(component);
+  }
+  if (typeof component?.toArray === 'function') {
+    return Buffer.from(component.toArray('be'));
+  }
+  if (typeof component?.toBuffer === 'function') {
+    return Buffer.from(component.toBuffer());
+  }
+  if (typeof component?.toString === 'function') {
+    return ensureHexBuffer(component.toString());
+  }
+  throw new Error('Unsupported signature component format');
+};
 
 /**
  * Get the appropriate V parameter for a transaction signature based on transaction type.
@@ -860,12 +899,26 @@ export const buildRandomEip712Object = function (randInt) {
   function getRandomEIP712Val(type) {
     if (type !== 'bytes' && type.slice(0, 5) === 'bytes') {
       return `0x${randomBytes(parseInt(type.slice(5))).toString('hex')}`;
-    } else if (type === 'uint' || type === 'int') {
-      return `0x${randomBytes(32).toString('hex')}`;
-    } else if (type.indexOf('uint') > -1) {
-      return `0x${randomBytes(parseInt(type.slice(4)) / 8).toString('hex')}`;
-    } else if (type.indexOf('int') > -1) {
-      return `0x${randomBytes(parseInt(type.slice(3)) / 8).toString('hex')}`;
+    }
+
+    if (type === 'uint' || type.indexOf('uint') === 0) {
+      const bits = parseInt(type.slice(4) || '256', 10);
+      const byteLength = Math.max(1, Math.ceil(bits / 8));
+      return `0x${randomBytes(byteLength).toString('hex')}`;
+    }
+
+    if (type === 'int' || type.indexOf('int') === 0) {
+      const bits = parseInt(type.slice(3) || '256', 10);
+      const byteLength = Math.max(1, Math.ceil(bits / 8));
+      const raw = randomBytes(byteLength).toString('hex');
+      const modulus = 1n << BigInt(bits);
+      const halfModulus = modulus >> 1n;
+      let value = BigInt(`0x${raw}`);
+      value = ((value % modulus) + modulus) % modulus;
+      if (value >= halfModulus) {
+        value -= modulus;
+      }
+      return value.toString();
     }
     switch (type) {
       case 'bytes':
@@ -957,7 +1010,13 @@ export const buildRandomEip712Object = function (randInt) {
 //---------------------------------------------------
 // Generic signing
 //---------------------------------------------------
-export const validateGenericSig = function (seed, sig, payloadBuf, req) {
+export const validateGenericSig = function (
+  seed,
+  sig,
+  payloadBuf,
+  req,
+  pubkey?,
+) {
   const { signerPath, hashType, curveType } = req;
   const HASHES = Constants.SIGNING.HASHES;
   const CURVES = Constants.SIGNING.CURVES;
@@ -972,7 +1031,11 @@ export const validateGenericSig = function (seed, sig, payloadBuf, req) {
     }
     const { priv } = deriveSECP256K1Key(signerPath, seed);
     const key = secp256k1.keyFromPrivate(priv);
-    expect(key.verify(hash, sig)).toEqualElseLog(
+    const normalizedSig = {
+      r: normalizeSigComponent(sig.r).toString('hex'),
+      s: normalizeSigComponent(sig.s).toString('hex'),
+    };
+    expect(key.verify(hash, normalizedSig)).toEqualElseLog(
       true,
       'Signature failed verification.',
     );
@@ -980,10 +1043,20 @@ export const validateGenericSig = function (seed, sig, payloadBuf, req) {
     if (hashType !== HASHES.NONE) {
       throw new Error('Bad params');
     }
-    const { priv } = deriveED25519Key(signerPath, seed);
-    const key = ed25519.keyFromSecret(priv);
-    const formattedSig = `${sig.r.toString('hex')}${sig.s.toString('hex')}`;
-    expect(key.verify(payloadBuf, formattedSig)).toEqualElseLog(
+    const { pub } = deriveED25519Key(signerPath, seed);
+    const signature = Buffer.concat([
+      normalizeSigComponent(sig.r),
+      normalizeSigComponent(sig.s),
+    ]);
+    const edPublicKey = pubkey
+      ? normalizeSigComponent(pubkey)
+      : pub;
+    const isValid = nacl.sign.detached.verify(
+      new Uint8Array(payloadBuf),
+      new Uint8Array(signature),
+      new Uint8Array(edPublicKey),
+    );
+    expect(isValid).toEqualElseLog(
       true,
       'Signature failed verification.',
     );
@@ -1000,16 +1073,103 @@ export const validateGenericSig = function (seed, sig, payloadBuf, req) {
 export const getSigStr = function (resp: any, tx?: TypedTransaction) {
   let v;
   if (resp.sig.v !== undefined) {
-    v = (parseInt(resp.sig.v.toString('hex'), 16) - 27)
-      .toString(16)
-      .padStart(2, '0');
+    const vBuf = normalizeSigComponent(resp.sig.v);
+    const vHex = vBuf.toString('hex');
+    let vInt = vHex ? parseInt(vHex, 16) : 0;
+    if (!Number.isFinite(vInt)) {
+      vInt = 0;
+    }
+    if (vInt >= 27) {
+      vInt -= 27;
+    }
+    v = vInt.toString(16).padStart(2, '0');
   } else if (tx) {
     v = getSignatureVParam(tx, resp);
   } else {
     throw new Error('Could not build sig string');
   }
-  return `${resp.sig.r}${resp.sig.s}${v}`;
+  const rHex = normalizeSigComponent(resp.sig.r).toString('hex');
+  const sHex = normalizeSigComponent(resp.sig.s).toString('hex');
+  return `${rHex}${sHex}${v}`;
 };
+
+export function toBuffer(
+  data: string | number | Buffer | Uint8Array,
+): Buffer {
+  if (data === null || data === undefined) {
+    throw new Error('Invalid data');
+  }
+  if (Buffer.isBuffer(data)) {
+    return data;
+  }
+  if (data instanceof Uint8Array) {
+    return Buffer.from(data.buffer, data.byteOffset, data.length);
+  }
+  if (typeof data === 'number') {
+    return ensureHexBuffer(data);
+  }
+  if (typeof data === 'string') {
+    const trimmed = data.trim();
+    const isHex =
+      trimmed.startsWith('0x') ||
+      (/^[0-9a-fA-F]+$/.test(trimmed) && trimmed.length % 2 === 0);
+    return isHex
+      ? ensureHexBuffer(trimmed)
+      : Buffer.from(trimmed, 'utf8');
+  }
+  throw new Error('Unsupported data type');
+}
+
+export function toUint8Array(data: Buffer): Uint8Array {
+  return new Uint8Array(data.buffer, data.byteOffset, data.length);
+}
+
+export function ensureHash32(
+  message: string | number | Buffer | Uint8Array,
+): Uint8Array {
+  const msgBuffer = toBuffer(message);
+  const digest =
+    msgBuffer.length === 32
+      ? msgBuffer
+      : Buffer.from(Hash.keccak256(msgBuffer));
+  if (digest.length !== 32) {
+    throw new Error('Failed to derive 32-byte hash for signature validation.');
+  }
+  return toUint8Array(digest);
+}
+
+export function validateSig(
+  resp: any,
+  message: string | number | Buffer | Uint8Array,
+) {
+  if (!resp.sig?.r || !resp.sig?.s || !resp.pubkey) {
+    throw new Error('Missing signature components');
+  }
+  const rBuf = normalizeSigComponent(resp.sig.r);
+  const sBuf = normalizeSigComponent(resp.sig.s);
+  const rs = new Uint8Array(Buffer.concat([rBuf, sBuf]));
+  const hash = ensureHash32(message);
+
+  const pubkeyInput = toBuffer(resp.pubkey);
+  const normalizedPubkey =
+    pubkeyInput.length === 64
+      ? Buffer.concat([Buffer.from([0x04]), pubkeyInput])
+      : pubkeyInput;
+  const isCompressed =
+    normalizedPubkey.length === 33 &&
+    (normalizedPubkey[0] === 0x02 || normalizedPubkey[0] === 0x03);
+
+  const recoveredA = Buffer.from(
+    ecdsaRecover(rs, 0, hash, isCompressed),
+  ).toString('hex');
+  const recoveredB = Buffer.from(
+    ecdsaRecover(rs, 1, hash, isCompressed),
+  ).toString('hex');
+  const expected = normalizedPubkey.toString('hex');
+  if (expected !== recoveredA && expected !== recoveredB) {
+    throw new Error('Signature did not validate.');
+  }
+}
 
 export const compressPubKey = function (pub) {
   if (pub.length !== 65) {
