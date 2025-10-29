@@ -1026,6 +1026,10 @@ function parseEIP712Item(data, type, forJSParser = false) {
     // Fixed sizes bytes need to be buffer type. We also add some sanity checks.
     const nBytes = parseInt(type.slice(5));
     data = ensureHexBuffer(data);
+    // Edge case to handle empty bytesN values
+    if (data.length === 0) {
+      data = Buffer.alloc(nBytes);
+    }
     if (data.length !== nBytes)
       throw new Error(`Expected ${type} type, but got ${data.length} bytes`);
     if (forJSParser) {
