@@ -2,6 +2,7 @@ import fetch, { Request } from 'node-fetch';
 import * as fs from 'fs';
 import { question } from 'readline-sync';
 import { getClient, pair, setup } from '../..';
+import { EMPTY_WALLET_UID } from '../../constants';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
@@ -64,5 +65,14 @@ export const setupClient = async () => {
     }
     await pair(pairingSecret.toUpperCase());
   }
-  return getClient();
+
+  const client = await getClient();
+  if (!client) {
+    throw new Error('Client not initialized');
+  }
+  const externalUid = client.activeWallets?.external?.uid;
+  if (!externalUid || EMPTY_WALLET_UID.equals(externalUid)) {
+    await client.fetchActiveWallet();
+  }
+  return client;
 };

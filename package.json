@@ -18,7 +18,7 @@
     "unit-validators": "vitest run ./src/__test__/unit/validators.test.ts",
     "test-int": "vitest run ./src/__test__/integration/",
     "test-utils": "vitest run src/__test__/utils/__test__/",
-    "e2e": "vitest run src/__test__/e2e",
+    "e2e": "vitest run ./src/__test__/e2e/",
     "e2e-btc": "vitest run ./src/__test__/e2e/btc.test.ts",
     "e2e-eth": "vitest run ./src/__test__/e2e/eth.msg.test.ts",
     "e2e-gen": "vitest run ./src/__test__/e2e/general.test.ts",
@@ -33,8 +33,6 @@
     "e2e-sign-unformatted": "vitest run ./src/__test__/e2e/signing/unformatted.test.ts",
     "e2e-wj": "vitest run ./src/__test__/e2e/wallet-jobs.test.ts",
     "e2e-api": "vitest run ./src/__test__/e2e/api.test.ts",
-    "e2e-iter": "vitest run ./src/__test__/e2e/iter.test.ts",
-    "e2e-eip7702": "vitest run ./src/__test__/e2e/eip7702.test.ts",
     "contracts": "vitest run ./src/__test__/e2e/contracts.test.ts",
     "setup:anvil": "cd forge && chmod +x scripts/setup.sh && ./scripts/setup.sh",
     "cleanup:anvil": "cd forge && chmod +x scripts/cleanup.sh && ./scripts/cleanup.sh"
