@@ -1,6 +1,5 @@
 import { TypedDataUtils, SignTypedDataVersion } from '@metamask/eth-sig-util';
-import { mnemonicToSeedSync } from 'bip39';
-import bip32 from 'bip32';
+import { mnemonicToAccount } from 'viem/accounts';
 import { ecsign, privateToAddress } from 'ethereumjs-util';
 import ethereum from '../../ethereum';
 import { buildFirmwareConstants, DEFAULT_SIGNER } from '../utils/builders';
@@ -27,10 +26,8 @@ const typedData = {
 
 describe('validateEthereumMsgResponse', () => {
   it('recovers expected signature for EIP712 payload', () => {
-    const seed = mnemonicToSeedSync(TEST_MNEMONIC);
-    const priv = bip32
-      .fromSeed(seed)
-      .derivePath("m/44'/60'/0'/0/0").privateKey!;
+    const account = mnemonicToAccount(TEST_MNEMONIC);
+    const priv = Buffer.from(account.getHdKey().privateKey!);
     const signer = privateToAddress(priv);
     const digest = TypedDataUtils.eip712Hash(
       typedData,
@@ -63,10 +60,8 @@ describe('validateEthereumMsgResponse', () => {
       fwConstants,
     });
 
-    const seed = mnemonicToSeedSync(TEST_MNEMONIC);
-    const priv = bip32
-      .fromSeed(seed)
-      .derivePath("m/44'/60'/0'/0/0").privateKey!;
+    const account = mnemonicToAccount(TEST_MNEMONIC);
+    const priv = Buffer.from(account.getHdKey().privateKey!);
     const signer = privateToAddress(priv);
     const digest = TypedDataUtils.eip712Hash(
       typedData,
