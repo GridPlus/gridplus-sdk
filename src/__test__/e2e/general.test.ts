@@ -44,11 +44,7 @@ describe('General', () => {
     client = await setupClient();
   });
 
-  it('Should test SDK dehydration/rehydration', async (ctx) => {
-    if (process.env.CI === '1') {
-      ctx.skip();
-      return;
-    }
+  it('Should test SDK dehydration/rehydration', async () => {
     const addrData = {
       startPath: [BTC_PURPOSE_P2SH_P2WPKH, BTC_COIN, HARDENED_OFFSET, 0, 0],
       n: 1,
