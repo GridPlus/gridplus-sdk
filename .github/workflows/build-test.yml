@@ -83,6 +83,7 @@ jobs:
           done
 
       - name: Run SDK e2e tests with simulator
+        working-directory: ${{ github.workspace }}
         env:
           CI: "1"
           DEBUG_SIGNING: "1"
