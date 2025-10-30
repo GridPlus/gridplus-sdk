@@ -1,10 +1,13 @@
 import {
   BTC_LEGACY_CHANGE_DERIVATION,
   BTC_LEGACY_DERIVATION,
+  BTC_LEGACY_XPUB_PATH,
   BTC_SEGWIT_CHANGE_DERIVATION,
   BTC_SEGWIT_DERIVATION,
+  BTC_SEGWIT_ZPUB_PATH,
   BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION,
   BTC_WRAPPED_SEGWIT_DERIVATION,
+  BTC_WRAPPED_SEGWIT_YPUB_PATH,
   DEFAULT_ETH_DERIVATION,
   HARDENED_OFFSET,
   LEDGER_LEGACY_DERIVATION,
@@ -12,6 +15,7 @@ import {
   MAX_ADDR,
   SOLANA_DERIVATION,
 } from '../constants';
+import { LatticeGetAddressesFlag } from '../protocol/latticeConstants';
 import { GetAddressesRequestParams, WalletPath } from '../types';
 import {
   getStartPath,
@@ -232,4 +236,55 @@ export async function fetchAddressesByDerivationPath(
   }
 
   return addresses;
+}
+
+/**
+ * Fetches Bitcoin legacy extended public key (xpub) for BIP44 derivation.
+ * Path: m/44'/0'/0'
+ *
+ * @returns Promise<string> - xpub string
+ * @example
+ * const xpub = await fetchBtcXpub();
+ * // => "xpub6Cz6Xn7b2Bs8BmphKvbrxU4JYYtaGEVCzyjiF1JaCNq6vWz9hvjMwohSN2qxsACCHN3Eb97Q5jVYQeURG3tikwCJKPfgnT2Yu9Wjjb1TKJf"
+ */
+export async function fetchBtcXpub(): Promise<string> {
+  const result = await fetchAddressesByDerivationPath(BTC_LEGACY_XPUB_PATH, {
+    flag: LatticeGetAddressesFlag.secp256k1Xpub,
+  });
+  return result[0];
+}
+
+/**
+ * Fetches Bitcoin wrapped segwit extended public key (ypub) for BIP49 derivation.
+ * Path: m/49'/0'/0'
+ *
+ * @returns Promise<string> - ypub string
+ * @example
+ * const ypub = await fetchBtcYpub();
+ * // => "ypub6XXSRWmd7WHq7Ldg9Jfd5PzymnACwdzzAybXEu9k1GddFBxvYtve8kj4jbHnEbkeQfyLQWyErDT57Emo8xpX3M8bveqfQXrnTJBagKxJNwV"
+ */
+export async function fetchBtcYpub(): Promise<string> {
+  const result = await fetchAddressesByDerivationPath(
+    BTC_WRAPPED_SEGWIT_YPUB_PATH,
+    {
+      flag: LatticeGetAddressesFlag.secp256k1Xpub,
+    },
+  );
+  return result[0];
+}
+
+/**
+ * Fetches Bitcoin native segwit extended public key (zpub) for BIP84 derivation.
+ * Path: m/84'/0'/0'
+ *
+ * @returns Promise<string> - zpub string
+ * @example
+ * const zpub = await fetchBtcZpub();
+ * // => "zpub6r4Yd5jP1Vvxx47aZ7a1s4LtqyybkL4Y5QXLU8FoyLDvj7Z9FM6L1uiAnqHDJ8gFq23MgVPVbV5N8UbgCsvbo7v83efxUqQT5XQ68JkTsNN"
+ */
+export async function fetchBtcZpub(): Promise<string> {
+  const result = await fetchAddressesByDerivationPath(BTC_SEGWIT_ZPUB_PATH, {
+    flag: LatticeGetAddressesFlag.secp256k1Xpub,
+  });
+  return result[0];
 }

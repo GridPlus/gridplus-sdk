@@ -586,6 +586,36 @@ export const BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION = [
   0,
 ];
 
+/**
+ * Derivation path for Bitcoin legacy xpub (BIP44).
+ * Use with fetchAddressesByDerivationPath() and LatticeGetAddressesFlag.secp256k1Xpub
+ * @example
+ * const xpub = await fetchAddressesByDerivationPath(BTC_LEGACY_XPUB_PATH, {
+ *   flag: LatticeGetAddressesFlag.secp256k1Xpub
+ * });
+ */
+export const BTC_LEGACY_XPUB_PATH = "44'/0'/0'";
+
+/**
+ * Derivation path for Bitcoin wrapped segwit ypub (BIP49).
+ * Use with fetchAddressesByDerivationPath() and LatticeGetAddressesFlag.secp256k1Xpub
+ * @example
+ * const ypub = await fetchAddressesByDerivationPath(BTC_WRAPPED_SEGWIT_YPUB_PATH, {
+ *   flag: LatticeGetAddressesFlag.secp256k1Xpub
+ * });
+ */
+export const BTC_WRAPPED_SEGWIT_YPUB_PATH = "49'/0'/0'";
+
+/**
+ * Derivation path for Bitcoin native segwit zpub (BIP84).
+ * Use with fetchAddressesByDerivationPath() and LatticeGetAddressesFlag.secp256k1Xpub
+ * @example
+ * const zpub = await fetchAddressesByDerivationPath(BTC_SEGWIT_ZPUB_PATH, {
+ *   flag: LatticeGetAddressesFlag.secp256k1Xpub
+ * });
+ */
+export const BTC_SEGWIT_ZPUB_PATH = "84'/0'/0'";
+
 /** @internal */
 export const SOLANA_DERIVATION = [
   HARDENED_OFFSET + 44,
