@@ -239,13 +239,8 @@ export async function fetchAddressesByDerivationPath(
 }
 
 /**
- * Fetches Bitcoin legacy extended public key (xpub) for BIP44 derivation.
- * Path: m/44'/0'/0'
- *
- * @returns Promise<string> - xpub string
- * @example
- * const xpub = await fetchBtcXpub();
- * // => "xpub6Cz6Xn7b2Bs8BmphKvbrxU4JYYtaGEVCzyjiF1JaCNq6vWz9hvjMwohSN2qxsACCHN3Eb97Q5jVYQeURG3tikwCJKPfgnT2Yu9Wjjb1TKJf"
+ * Fetches Bitcoin legacy extended public key (xpub) for BIP44 (m/44'/0'/0').
+ * @returns xpub string
  */
 export async function fetchBtcXpub(): Promise<string> {
   const result = await fetchAddressesByDerivationPath(BTC_LEGACY_XPUB_PATH, {
@@ -255,13 +250,8 @@ export async function fetchBtcXpub(): Promise<string> {
 }
 
 /**
- * Fetches Bitcoin wrapped segwit extended public key (ypub) for BIP49 derivation.
- * Path: m/49'/0'/0'
- *
- * @returns Promise<string> - ypub string
- * @example
- * const ypub = await fetchBtcYpub();
- * // => "ypub6XXSRWmd7WHq7Ldg9Jfd5PzymnACwdzzAybXEu9k1GddFBxvYtve8kj4jbHnEbkeQfyLQWyErDT57Emo8xpX3M8bveqfQXrnTJBagKxJNwV"
+ * Fetches Bitcoin wrapped segwit extended public key (ypub) for BIP49 (m/49'/0'/0').
+ * @returns ypub string
  */
 export async function fetchBtcYpub(): Promise<string> {
   const result = await fetchAddressesByDerivationPath(
@@ -274,13 +264,8 @@ export async function fetchBtcYpub(): Promise<string> {
 }
 
 /**
- * Fetches Bitcoin native segwit extended public key (zpub) for BIP84 derivation.
- * Path: m/84'/0'/0'
- *
- * @returns Promise<string> - zpub string
- * @example
- * const zpub = await fetchBtcZpub();
- * // => "zpub6r4Yd5jP1Vvxx47aZ7a1s4LtqyybkL4Y5QXLU8FoyLDvj7Z9FM6L1uiAnqHDJ8gFq23MgVPVbV5N8UbgCsvbo7v83efxUqQT5XQ68JkTsNN"
+ * Fetches Bitcoin native segwit extended public key (zpub) for BIP84 (m/84'/0'/0').
+ * @returns zpub string
  */
 export async function fetchBtcZpub(): Promise<string> {
   const result = await fetchAddressesByDerivationPath(BTC_SEGWIT_ZPUB_PATH, {
