@@ -1,15 +1,10 @@
 /* eslint-disable quotes */
-import { question } from 'readline-sync';
 import { fetchBtcXpub, fetchBtcYpub, fetchBtcZpub, pair } from '../../api';
 import { setupClient } from '../utils/setup';
 
 describe('XPUB', () => {
-  test('pair', async () => {
-    const isPaired = await setupClient();
-    if (!isPaired) {
-      const secret = question('Please enter the pairing secret: ');
-      await pair(secret.toUpperCase());
-    }
+  beforeAll(async () => {
+    await setupClient();
   });
 
   test('fetchBtcXpub returns xpub', async () => {
