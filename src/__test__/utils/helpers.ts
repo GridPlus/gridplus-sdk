@@ -194,6 +194,8 @@ export function _start_tx_builder(
   purpose,
 ) {
   const tx = new bitcoin.Transaction();
+  // Match serialization logic (version 2) used by device and serializer
+  tx.version = 2;
   const inputSum = _getSumInputs(inputs);
   const recipientScript = bitcoin.address.toOutputScript(recipient, network);
   tx.addOutput(recipientScript, value);
@@ -220,12 +222,8 @@ export function _start_tx_builder(
     const keyPair = wallet.derivePath(path);
     const pubkeyBuf = Buffer.from(keyPair.publicKey);
     const p2pkh = bitcoin.payments.p2pkh({ pubkey: pubkeyBuf, network });
-    const p2wpkh = bitcoin.payments.p2wpkh({ pubkey: pubkeyBuf, network });
-    // Match legacy TransactionBuilder behavior used in dev branch tests:
-    // for segwit and nested segwit, use the witness program as scriptCode;
-    // for legacy, use the P2PKH script.
-    const scriptCode =
-      purpose === BTC_PURPOSE_P2PKH ? p2pkh.output! : p2wpkh.output!;
+    // For P2WPKH and P2SH-P2WPKH the BIP143 scriptCode is the standard P2PKH script
+    const scriptCode = p2pkh.output!;
     inputsMeta.push({ scriptCode, value: input.value });
   });
   return { tx, inputsMeta };
