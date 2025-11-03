@@ -200,9 +200,9 @@ export const ensureHexBuffer = function (
     if (hexString.length % 2 > 0) hexString = `0${hexString}`;
     if (hexString === '00' && !isNumber) return Buffer.alloc(0);
     return Buffer.from(hexString, 'hex');
-  } catch (err) {
+  } catch (_err) {
     throw new Error(
-      `Cannot convert ${x.toString()} to hex buffer (${(err as Error).message})`,
+      `Cannot convert ${x.toString()} to hex buffer (${(_err as Error).message})`,
     );
   }
 };
@@ -359,8 +359,8 @@ async function fetchExternalNetworkForChainId(
     } else {
       return undefined;
     }
-  } catch (err) {
-    console.warn('Fetching external networks failed.\n', err);
+  } catch (_err) {
+    console.warn('Fetching external networks failed.\n', _err);
   }
 }
 
@@ -469,7 +469,13 @@ async function fetchSupportedChainData(
     .then((res) => res.json())
     .then((body) => {
       if (body && body.result) {
-        return JSON.parse(body.result);
+        try {
+          return JSON.parse(body.result);
+        } catch (_parseError) {
+          throw new Error(
+            `Invalid JSON in response: ${body.result.substring(0, 50)}`,
+          );
+        }
       } else {
         throw new Error('Server response was malformed');
       }
