@@ -70,7 +70,7 @@ export async function runEvm(
   }
   // Request signature and validate it
   await client.connect(getDeviceId());
-  const resp = await client.sign(req);
+  const resp: any = await client.sign(req);
   const sig = resp.sig ? resp.sig : null;
   if (shouldFail || !sig) {
     // Exit here without continuing tests. If this block is reached it indicates

@@ -1,12 +1,17 @@
-import { TypedDataUtils, SignTypedDataVersion } from '@metamask/eth-sig-util';
-import { mnemonicToAccount } from 'viem/accounts';
+import {
+  SignTypedDataVersion,
+  TypedDataUtils,
+  type MessageTypes,
+  type TypedMessage,
+} from '@metamask/eth-sig-util';
 import { ecsign, privateToAddress } from 'ethereumjs-util';
+import { mnemonicToAccount } from 'viem/accounts';
+import { HARDENED_OFFSET } from '../../constants';
 import ethereum from '../../ethereum';
 import { buildFirmwareConstants, DEFAULT_SIGNER } from '../utils/builders';
-import { HARDENED_OFFSET } from '../../constants';
 import { TEST_MNEMONIC } from '../utils/testConstants';
 
-const typedData = {
+const typedData: TypedMessage<MessageTypes> = {
   types: {
     EIP712Domain: [{ name: 'chainId', type: 'uint256' }],
     Greeting: [
@@ -20,7 +25,7 @@ const typedData = {
   message: {
     salutation: 'Hello',
     target: 'Ethereum',
-    born: '2015',
+    born: 2015,
   },
 };
 
@@ -34,15 +39,19 @@ describe('validateEthereumMsgResponse', () => {
       SignTypedDataVersion.V4,
     );
     const sig = ecsign(Buffer.from(digest), priv);
+    const fwConstants = buildFirmwareConstants();
+    const request = ethereum.buildEthereumMsgRequest({
+      signerPath: DEFAULT_SIGNER,
+      protocol: 'eip712',
+      payload: JSON.parse(JSON.stringify(typedData)),
+      fwConstants,
+    });
     const result = ethereum.validateEthereumMsgResponse(
       {
         signer: `0x${signer.toString('hex')}`,
         sig: { r: Buffer.from(sig.r), s: Buffer.from(sig.s) },
       },
-      {
-        input: { protocol: 'eip712', payload: typedData },
-        prehash: null,
-      },
+      request,
     );
 
     expect(result.v.toString('hex')).toBe('1c');

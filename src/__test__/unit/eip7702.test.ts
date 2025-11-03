@@ -34,7 +34,7 @@ describe('EIP-7702 Transaction Serialization', () => {
       authorization: {
         chainId: 1,
         address: '0x2222222222222222222222222222222222222222',
-        nonce: 0n,
+        nonce: 0,
         yParity: 0, // Valid ECDSA signature values
         r: '0xbfa71d3b2c96bd4f573ee8e2b0da387999eb521b8c09f68499f4ed528cbeeb40',
         s: '0x171bb6415a3ff1207ddf5314aa05ffc168bd82f3abd0c8a7c91ef22ff58c4698',
@@ -86,7 +86,7 @@ describe('EIP-7702 Transaction Serialization', () => {
         {
           chainId: 1,
           address: '0x2222222222222222222222222222222222222222',
-          nonce: 0n,
+          nonce: 0,
           yParity: 0, // Valid ECDSA signature values
           r: '0xbfa71d3b2c96bd4f573ee8e2b0da387999eb521b8c09f68499f4ed528cbeeb40',
           s: '0x171bb6415a3ff1207ddf5314aa05ffc168bd82f3abd0c8a7c91ef22ff58c4698',
@@ -94,7 +94,7 @@ describe('EIP-7702 Transaction Serialization', () => {
         {
           chainId: 1,
           address: '0x3333333333333333333333333333333333333333',
-          nonce: 0n,
+          nonce: 0,
           yParity: 0, // Valid ECDSA signature values
           r: '0x888acc1e501f052175c59fa2167699341709bd72f9809182bdf580c1c3bf6cf',
           s: '0x7e03cfbc948cf6b8c4cd946d511b3ea1c4c64e8c70e0259573183ef22d565034',
@@ -150,7 +150,7 @@ describe('EIP-7702 Transaction Serialization', () => {
       authorization: {
         chainId: 1,
         address: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', // WETH contract
-        nonce: 0n,
+        nonce: 0,
         // Valid ECDSA signature values for chainId=1, address=WETH, nonce=0
         yParity: 1,
         r: '0x7afecf0fa2f0c5f3cee3bf477dc4b0787afaecf5c8b0e2f7ec6c47c893bb06f0',

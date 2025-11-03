@@ -82,7 +82,8 @@ export const getSignatureVParam = (tx: any, resp: any): string => {
     return getYParity(tx, resp).toString(16).padStart(2, '0');
   } else {
     // For legacy transactions, return full V value
-    return getV(tx, resp);
+    const vBn = getV(tx, resp);
+    return vBn.toString(16).padStart(2, '0');
   }
 };
 
@@ -94,7 +95,7 @@ export const getSignatureVParam = (tx: any, resp: any): string => {
 export const getSignatureVBN = (tx: any, resp: any): BN => {
   if (tx._type && tx._type > 0) {
     // For EIP-1559 and newer transaction types, get y-parity (0 or 1)
-    return getYParity(tx, resp);
+    return new BN(getYParity(tx, resp));
   } else {
     // For legacy transactions, use the v value from signature
     return new BN(resp.sig.v);
@@ -192,9 +193,10 @@ export function _start_tx_builder(
   network,
   purpose,
 ) {
-  const txb = new bitcoin.TransactionBuilder(network);
+  const tx = new bitcoin.Transaction();
   const inputSum = _getSumInputs(inputs);
-  txb.addOutput(recipient, value);
+  const recipientScript = bitcoin.address.toOutputScript(recipient, network);
+  tx.addOutput(recipientScript, value);
   const changeValue = inputSum - value - fee;
   if (changeValue > 0) {
     const networkIdx = network === bitcoin.networks.testnet ? 1 : 0;
@@ -204,46 +206,52 @@ export function _start_tx_builder(
       btc_0_change.publicKey,
     ).publicKey;
     const changeAddr = _get_btc_addr(btc_0_change_pub, purpose, network);
-    txb.addOutput(changeAddr, changeValue);
+    const changeScript = bitcoin.address.toOutputScript(changeAddr, network);
+    tx.addOutput(changeScript, changeValue);
   } else if (changeValue < 0) {
     throw new Error('Value + fee > sumInputs!');
   }
+  const inputsMeta: { scriptCode: Buffer; value: number }[] = [];
   inputs.forEach((input) => {
-    let scriptSig = null;
-    // here we use `i` as the index of the input. This value is arbitrary, but needs to be consistent
-    if (purpose === BTC_PURPOSE_P2WPKH) {
-      // For native segwit we need to add a scriptSig to the input
-      const coin =
-        network === bitcoin.networks.testnet ? BTC_TESTNET_COIN : BTC_COIN;
-      const path = buildPath([purpose, coin, harden(0), 0, input.signerIdx]);
-      const keyPair = wallet.derivePath(path);
-      const p2wpkh = bitcoin.payments.p2wpkh({
-        pubkey: Buffer.from(keyPair.publicKey),
-        network,
-      });
-      scriptSig = p2wpkh.output;
-    }
-    txb.addInput(input.hash, input.idx, null, scriptSig);
+    const hashLE = Buffer.from(input.hash, 'hex').reverse();
+    tx.addInput(hashLE, input.idx);
+    const coin = network === bitcoin.networks.testnet ? BTC_TESTNET_COIN : BTC_COIN;
+    const path = buildPath([purpose, coin, harden(0), 0, input.signerIdx]);
+    const keyPair = wallet.derivePath(path);
+    const pubkeyBuf = Buffer.from(keyPair.publicKey);
+    const p2pkh = bitcoin.payments.p2pkh({ pubkey: pubkeyBuf, network });
+    inputsMeta.push({ scriptCode: p2pkh.output, value: input.value });
   });
-  return txb;
+  return { tx, inputsMeta };
 }
 
-function _build_sighashes(txb, purpose) {
+function _build_sighashes(txb_or_tx, purpose) {
   const hashes: any = [];
-  txb.__inputs.forEach((input, i) => {
-    if (purpose === BTC_PURPOSE_P2PKH) {
-      hashes.push(txb.__tx.hashForSignature(i, input.signScript, SIGHASH_ALL));
-    } else {
+  const txb = txb_or_tx as any;
+  const isLegacy = purpose === BTC_PURPOSE_P2PKH;
+  if (txb.inputsMeta) {
+    txb.inputsMeta.forEach((meta, i) => {
       hashes.push(
-        txb.__tx.hashForWitnessV0(
-          i,
-          input.signScript,
-          input.value,
-          SIGHASH_ALL,
-        ),
+        isLegacy
+          ? txb.tx.hashForSignature(i, meta.scriptCode, SIGHASH_ALL)
+          : txb.tx.hashForWitnessV0(i, meta.scriptCode, meta.value, SIGHASH_ALL),
       );
-    }
-  });
+    });
+  } else {
+    // Fallback for prior structure (should not be used)
+    txb.__inputs.forEach((input, i) => {
+      hashes.push(
+        isLegacy
+          ? txb.__tx.hashForSignature(i, input.signScript, SIGHASH_ALL)
+          : txb.__tx.hashForWitnessV0(
+              i,
+              input.signScript,
+              input.value,
+              SIGHASH_ALL,
+            ),
+      );
+    });
+  }
   return hashes;
 }
 
@@ -260,7 +268,7 @@ function _get_reference_sighashes(
   const network = isTestnet
     ? bitcoin.networks.testnet
     : bitcoin.networks.bitcoin;
-  const txb = _start_tx_builder(
+  const built = _start_tx_builder(
     wallet,
     recipient,
     value,
@@ -269,28 +277,8 @@ function _get_reference_sighashes(
     network,
     purpose,
   );
-  inputs.forEach((input, i) => {
-    const path = buildPath([purpose, coin, harden(0), 0, input.signerIdx]);
-    const keyPair = wallet.derivePath(path);
-    const priv = ECPair.fromPrivateKey(keyPair.privateKey, { network });
-    if (purpose === BTC_PURPOSE_P2SH_P2WPKH) {
-      const p2wpkh = bitcoin.payments.p2wpkh({
-        pubkey: keyPair.publicKey,
-        network,
-      });
-      const p2sh = bitcoin.payments.p2sh({
-        redeem: p2wpkh,
-        network,
-      });
-      txb.sign(i, priv, p2sh.redeem.output, null, input.value);
-    } else if (purpose === BTC_PURPOSE_P2WPKH) {
-      txb.sign(i, priv, null, null, input.value);
-    } else {
-      // Legacy
-      txb.sign(i, priv);
-    }
-  });
-  return _build_sighashes(txb, purpose);
+  // built has shape { tx, inputsMeta }
+  return _build_sighashes(built, purpose);
 }
 
 function _btc_tx_request_builder(

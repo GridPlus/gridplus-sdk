@@ -26,8 +26,8 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
       authorization: {
         chainId: 1,
         address: '0x2222222222222222222222222222222222222222',
-        nonce: 0n,
-        yParity: '0x00',
+        nonce: 0,
+        yParity: 0,
         r: '0x0000000000000000000000000000000000000000000000000000000000000001',
         s: '0x0000000000000000000000000000000000000000000000000000000000000002',
       },
@@ -49,7 +49,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         {
           chainId: 1,
           address: '0x2222222222222222222222222222222222222222',
-          nonce: 0n,
+          nonce: 0,
           signature: {
             yParity: 0,
             r: '0x0000000000000000000000000000000000000000000000000000000000000001',
@@ -111,8 +111,8 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
       authorization: {
         chainId: 1,
         address: '0x2222222222222222222222222222222222222222',
-        nonce: 0n,
-        yParity: '0x00', // Known signature values for deterministic test
+        nonce: 0,
+        yParity: 0, // Known signature values for deterministic test
         r: '0x1111111111111111111111111111111111111111111111111111111111111111',
         s: '0x2222222222222222222222222222222222222222222222222222222222222222',
       },
@@ -134,7 +134,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         {
           chainId: 1,
           address: '0x2222222222222222222222222222222222222222',
-          nonce: 0n,
+          nonce: 0,
           signature: {
             yParity: 0,
             r: '0x1111111111111111111111111111111111111111111111111111111111111111',
@@ -192,16 +192,16 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         {
           chainId: 1,
           address: '0x2222222222222222222222222222222222222222',
-          nonce: 0n,
-          yParity: '0x00', // Known signature values for deterministic test
+          nonce: 0,
+          yParity: 0, // Known signature values for deterministic test
           r: '0x1111111111111111111111111111111111111111111111111111111111111111',
           s: '0x2222222222222222222222222222222222222222222222222222222222222222',
         },
         {
           chainId: 1,
           address: '0x3333333333333333333333333333333333333333',
-          nonce: 0n,
-          yParity: '0x01', // Different signature
+          nonce: 0,
+          yParity: 1, // Different signature
           r: '0x3333333333333333333333333333333333333333333333333333333333333333',
           s: '0x4444444444444444444444444444444444444444444444444444444444444444',
         },
@@ -224,7 +224,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         {
           chainId: 1,
           address: '0x2222222222222222222222222222222222222222',
-          nonce: 0n,
+          nonce: 0,
           signature: {
             yParity: 0,
             r: '0x1111111111111111111111111111111111111111111111111111111111111111',
@@ -234,7 +234,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         {
           chainId: 1,
           address: '0x3333333333333333333333333333333333333333',
-          nonce: 0n,
+          nonce: 0,
           signature: {
             yParity: 1,
             r: '0x3333333333333333333333333333333333333333333333333333333333333333',
@@ -293,7 +293,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         address: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', // WETH contract
         nonce: 0,
         // Standard test signature values
-        yParity: '0x00',
+        yParity: 0,
         r: '0x0000000000000000000000000000000000000000000000000000000000000001',
         s: '0x0000000000000000000000000000000000000000000000000000000000000002',
       },
@@ -373,7 +373,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         chainId: 1,
         address: '0x2222222222222222222222222222222222222222',
         nonce: 5, // Contract auth has non-zero nonce
-        yParity: '0x00',
+        yParity: 0,
         r: '0x1111111111111111111111111111111111111111111111111111111111111111',
         s: '0x2222222222222222222222222222222222222222222222222222222222222222',
       },

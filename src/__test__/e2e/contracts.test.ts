@@ -4,16 +4,8 @@ import { readFileSync } from "fs";
 import path from "path";
 import { question } from "readline-sync";
 import { fileURLToPath } from "url";
-import {
-	Account,
-	type Address,
-	createPublicClient,
-	createWalletClient,
-	getContract,
-	http,
-	PublicClient,
-	WalletClient,
-} from "viem";
+import { type Account, type Address, createPublicClient, createWalletClient, http } from "viem";
+import type { PublicClient as ViemPublicClient, WalletClient as ViemWalletClient } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
 import { pair, signMessage } from "../..";
@@ -48,10 +40,10 @@ describeContract("NegativeAmountHandler", () => {
 	let domain;
 	let data;
 	let types;
-	let publicClient;
-	let walletClient;
-	let account;
-	let contract;
+  let publicClient;
+  let walletClient;
+  let account: Account;
+  let contract: undefined;
 	let abi: any[];
 
 	beforeAll(async () => {
@@ -59,17 +51,17 @@ describeContract("NegativeAmountHandler", () => {
 			"NegativeAmountHandler",
 		)) as Address;
 
-		publicClient = createPublicClient({
-			chain: foundry,
-			transport: http(ETH_PROVIDER_URL),
-		});
+    publicClient = createPublicClient({
+      chain: foundry,
+      transport: http(ETH_PROVIDER_URL),
+    });
 
 		account = privateKeyToAccount(WALLET_PRIVATE_KEY);
-		walletClient = createWalletClient({
-			chain: foundry,
-			transport: http(ETH_PROVIDER_URL),
-			account,
-		});
+    walletClient = createWalletClient({
+      chain: foundry,
+      transport: http(ETH_PROVIDER_URL),
+      account,
+    });
 
 		chainId = await publicClient.getChainId();
 
@@ -79,17 +71,9 @@ describeContract("NegativeAmountHandler", () => {
 			__dirname,
 			"../../../forge/out/NegativeAmountHandler.sol/NegativeAmountHandler.json",
 		);
-		const artifact = JSON.parse(readFileSync(artifactPath, "utf8"));
-		abi = artifact.abi;
+    const artifact = JSON.parse(readFileSync(artifactPath, "utf8"));
+    abi = artifact.abi;
 
-		contract = getContract({
-			address: CONTRACT_ADDRESS,
-			abi,
-			client: {
-				public: publicClient,
-				wallet: walletClient,
-			},
-		});
 
 		domain = {
 			name: "NegativeAmountHandler",
@@ -131,9 +115,14 @@ describeContract("NegativeAmountHandler", () => {
 			message: data,
 		});
 
-		const viemTx = await contract.write.verify([data, viemSignature], {
-			gas: BigInt(100000),
-		});
+    const viemTx = await walletClient.writeContract({
+      address: CONTRACT_ADDRESS,
+      abi,
+      functionName: 'verify',
+      args: [data, viemSignature],
+      gas: BigInt(100000),
+      chain: foundry,
+    });
 		expect(viemTx).toBeTruthy();
 
 		/**
@@ -200,9 +189,14 @@ describeContract("NegativeAmountHandler", () => {
 
 		expect(latticeSignature).toEqual(viemSignature);
 
-		const tx = await contract.write.verify([data, latticeSignature], {
-			gas: BigInt(100000),
-		});
+    const tx = await walletClient.writeContract({
+      address: CONTRACT_ADDRESS,
+      abi,
+      functionName: 'verify',
+      args: [data, latticeSignature],
+      gas: BigInt(100000),
+      chain: foundry,
+    });
 
 		expect(tx).toBeTruthy();
 	});

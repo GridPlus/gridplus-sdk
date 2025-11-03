@@ -323,9 +323,9 @@ export function buildRandomMsg(type = "signPersonal", client: Client) {
 }
 
 export function buildEthMsgReq(
-	payload: any,
-	protocol: string,
-	signerPath = [
+  payload: any,
+  protocol: 'signPersonal' | 'eip712',
+  signerPath = [
 		BTC_PURPOSE_P2PKH,
 		ETH_COIN,
 		HARDENED_OFFSET,
@@ -333,14 +333,16 @@ export function buildEthMsgReq(
 		0,
 	] as SigningPath,
 ): SignRequestParams {
-	return {
-		currency: CURRENCIES.ETH_MSG,
-		data: {
-			signerPath,
-			payload,
-			protocol,
-		},
-	};
+  return {
+    currency: CURRENCIES.ETH_MSG,
+    data: {
+      signerPath,
+      curveType: Constants.SIGNING.CURVES.SECP256K1,
+      hashType: Constants.SIGNING.HASHES.KECCAK256,
+      payload,
+      protocol,
+    },
+  };
 }
 
 export const buildValidateConnectObject = (overrides?) => ({
