@@ -47,7 +47,6 @@ const KNOWN_MNEMONIC = globalVectors.ethDeposit.mnemonic;
 const KNOWN_SEED = mnemonicToSeedSync(KNOWN_MNEMONIC);
 
 describe('[BLS keys]', () => {
-
   beforeAll(async () => {
     client = await setupClient();
     if (process.env.CI) {
@@ -61,19 +60,23 @@ describe('[BLS keys]', () => {
 
     // Check if firmware supports BLS (requires >= 0.17.0)
     const fwVersion = client.fwVersion;
-    const versionStr = fwVersion && fwVersion.length >= 3
-      ? `${fwVersion[2]}.${fwVersion[1]}.${fwVersion[0]}`
-      : 'unknown';
+    const versionStr =
+      fwVersion && fwVersion.length >= 3
+        ? `${fwVersion[2]}.${fwVersion[1]}.${fwVersion[0]}`
+        : 'unknown';
 
     console.log(`\n[BLS Test] Firmware version: ${versionStr}`);
     console.log(`[BLS Test] Raw fwVersion buffer:`, fwVersion);
 
     const fwConstants = client.getFwConstants();
     console.log(`[BLS Test] getAddressFlags:`, fwConstants?.getAddressFlags);
-    console.log(`[BLS Test] BLS12_381_G1_PUB constant:`, Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB);
+    console.log(
+      `[BLS Test] BLS12_381_G1_PUB constant:`,
+      Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB,
+    );
 
     supportsBLS = fwConstants?.getAddressFlags?.includes(
-      Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB
+      Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB,
     );
 
     console.log(`[BLS Test] supportsBLS: ${supportsBLS}\n`);
@@ -81,7 +84,7 @@ describe('[BLS keys]', () => {
     if (!supportsBLS) {
       console.warn(
         `\nSkipping BLS tests: Firmware version ${versionStr} does not support BLS operations.\n` +
-        `BLS support requires firmware version >= 0.17.0\n`
+          `BLS support requires firmware version >= 0.17.0\n`,
       );
     }
   });

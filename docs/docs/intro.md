@@ -80,13 +80,13 @@ import { setup } from 'gridplus-sdk';
 const isPaired = await setup({
   // Your app name (shown on Lattice screen during pairing)
   name: 'My DeFi App',
-  
+
   // The 6-character ID from your Lattice1 device
   deviceId: 'ABC123',
-  
+
   // Password for local encryption (not sent to device)
   password: 'my-secure-password',
-  
+
   // Functions to persist the encrypted client state
   getStoredClient: () => localStorage.getItem('lattice-client'),
   setStoredClient: (client) => localStorage.setItem('lattice-client', client),
@@ -118,10 +118,10 @@ import { pair } from 'gridplus-sdk';
 try {
   // User must read the 6-digit code from their Lattice screen
   const pairingCode = prompt('Enter the 6-digit code from your Lattice:');
-  
+
   // Establish the secure connection
   const success = await pair(pairingCode);
-  
+
   if (success) {
     console.log('✅ Pairing successful! Your app is now trusted.');
   } else {
@@ -198,35 +198,35 @@ import { fetchAddresses, HARDENED_OFFSET } from 'gridplus-sdk';
 // Ethereum (m/44'/60'/0'/0/0)
 const ethAddresses = await fetchAddresses({
   startPath: [
-    HARDENED_OFFSET + 44,  // purpose: BIP44
-    HARDENED_OFFSET + 60,  // coin_type: Ethereum
-    HARDENED_OFFSET + 0,   // account: first account
-    0,                     // change: external chain
-    0                      // index: first address
+    HARDENED_OFFSET + 44, // purpose: BIP44
+    HARDENED_OFFSET + 60, // coin_type: Ethereum
+    HARDENED_OFFSET + 0, // account: first account
+    0, // change: external chain
+    0, // index: first address
   ],
-  n: 10  // Get 10 addresses
+  n: 10, // Get 10 addresses
 });
 
 // Bitcoin Legacy (m/44'/0'/0'/0/0)
 const btcLegacy = await fetchAddresses({
   startPath: [
-    HARDENED_OFFSET + 44,  // purpose: BIP44
-    HARDENED_OFFSET + 0,   // coin_type: Bitcoin
-    HARDENED_OFFSET + 0,   // account
-    0,                     // change
-    0                      // index
-  ]
+    HARDENED_OFFSET + 44, // purpose: BIP44
+    HARDENED_OFFSET + 0, // coin_type: Bitcoin
+    HARDENED_OFFSET + 0, // account
+    0, // change
+    0, // index
+  ],
 });
 
 // Bitcoin Segwit (m/84'/0'/0'/0/0)
 const btcSegwit = await fetchAddresses({
   startPath: [
-    HARDENED_OFFSET + 84,  // purpose: BIP84 (segwit)
-    HARDENED_OFFSET + 0,   // coin_type: Bitcoin
-    HARDENED_OFFSET + 0,   // account
-    0,                     // change
-    0                      // index
-  ]
+    HARDENED_OFFSET + 84, // purpose: BIP84 (segwit)
+    HARDENED_OFFSET + 0, // coin_type: Bitcoin
+    HARDENED_OFFSET + 0, // account
+    0, // change
+    0, // index
+  ],
 });
 ```
 
@@ -236,11 +236,11 @@ For common blockchains, use these helper functions:
 
 ```ts
 import {
-  fetchAddresses,           // Ethereum/EVM addresses
-  fetchBtcLegacyAddresses,  // Bitcoin P2PKH (1...)
-  fetchBtcSegwitAddresses,  // Bitcoin P2WPKH (bc1...)
+  fetchAddresses, // Ethereum/EVM addresses
+  fetchBtcLegacyAddresses, // Bitcoin P2PKH (1...)
+  fetchBtcSegwitAddresses, // Bitcoin P2WPKH (bc1...)
   fetchBtcWrappedSegwitAddresses, // Bitcoin P2SH-P2WPKH (3...)
-  fetchSolanaAddresses,     // Solana addresses
+  fetchSolanaAddresses, // Solana addresses
 } from 'gridplus-sdk/api/addresses';
 
 // Each returns an array of address strings
@@ -294,6 +294,7 @@ When you call `sign()`, the SDK orchestrates a secure signing process:
 6. **Response Delivery** - Signed transaction returned to your app
 
 The Lattice1 displays key transaction information:
+
 - Recipient address
 - Transfer amount
 - Gas fees
