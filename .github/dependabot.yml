@@ -1,0 +1,32 @@
+version: 2
+updates:
+  # npm dependencies - daily checks, grouped security updates, individual PRs for others
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    versioning-strategy: "increase-if-necessary"
+    open-pull-requests-limit: 10
+    commit-message:
+        prefix: "deps"
+        prefix-development: "deps"
+        include: "scope"
+    labels:
+      - "dependencies"
+    groups:
+      security-patches:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  # GitHub Actions - monthly
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    commit-message:
+        prefix: "ci"
+        include: "scope"
+    labels:
+      - "github-actions"
