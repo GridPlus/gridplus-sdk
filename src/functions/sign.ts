@@ -89,10 +89,13 @@ export async function sign({
   } catch (err) {
     console.error('Error signing transaction:', {
       message: err.message,
-      payload: JSON.stringify({
-        data,
-        currency,
-      }),
+      payload: JSON.stringify(
+        {
+          data,
+          currency,
+        },
+        (_key, value) => (typeof value === 'bigint' ? value.toString() : value),
+      ),
     });
     throw err;
   }
