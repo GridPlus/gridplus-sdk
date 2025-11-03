@@ -29,12 +29,7 @@
     "sourceMap": true,
     "strict": false,
     "target": "ES2022",
-    "typeRoots": [
-      "node_modules/@types",
-      "../../node_modules/@types",
-      "src/**/types"
-    ],
-    "types": ["node"]
+    "types": ["node", "vitest", "vitest/globals"]
   },
   "exclude": ["node_modules"],
   "include": ["src"]

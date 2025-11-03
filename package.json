@@ -68,6 +68,7 @@
     "cbor": "^10.0.11",
     "cbor-bigdecimal": "^10.0.11",
     "crc-32": "^1.2.2",
+    "ecpair": "^3.0.0",
     "elliptic": "6.6.1",
     "hash.js": "^1.1.7",
     "lodash": "^4.17.21",
@@ -111,8 +112,8 @@
     "seedrandom": "^3.0.5",
     "tsup": "^8.5.0",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.2",
     "tweetnacl": "^1.0.3",
+    "typescript": "^5.9.2",
     "vite": "^7.1.7",
     "vite-plugin-dts": "^4.5.4",
     "vitest": "3.2.4"

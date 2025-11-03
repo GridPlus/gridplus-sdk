@@ -1,5 +1,6 @@
 import { TypedTransaction } from '@ethereumjs/tx';
-import bip32 from 'bip32';
+import BIP32Factory from 'bip32';
+import * as ecc from 'tiny-secp256k1';
 import { mnemonicToSeedSync } from 'bip39';
 import { ecsign, privateToAddress } from 'ethereumjs-util';
 import { Hash } from 'ox';
@@ -72,12 +73,14 @@ export async function testUniformSigs(
 }
 
 export function deriveAddress(seed: Buffer, path: WalletPath) {
+  const bip32 = BIP32Factory(ecc);
   const wallet = bip32.fromSeed(seed);
   const priv = wallet.derivePath(getPathStr(path)).privateKey;
   return `0x${privateToAddress(priv).toString('hex')}`;
 }
 
 export function signPersonalJS(_msg: string, path: WalletPath) {
+  const bip32 = BIP32Factory(ecc);
   const wallet = bip32.fromSeed(TEST_SEED);
   const priv = wallet.derivePath(getPathStr(path)).privateKey;
   const msg = ethPersonalSignMsg(_msg);
@@ -88,6 +91,7 @@ export function signPersonalJS(_msg: string, path: WalletPath) {
 }
 
 export function signEip712JS(payload: any, path: WalletPath) {
+  const bip32 = BIP32Factory(ecc);
   const wallet = bip32.fromSeed(TEST_SEED);
   const priv = wallet.derivePath(getPathStr(path)).privateKey;
   // Calculate the EIP712 hash using the same method as the SDK validation

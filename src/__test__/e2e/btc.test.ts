@@ -5,7 +5,8 @@
  * Ensure `FEATURE_TEST_RUNNER=0` is active before executing these tests.
  */
 
-import bip32 from 'bip32';
+import BIP32Factory, { BIP32Interface } from 'bip32';
+import * as ecc from 'tiny-secp256k1';
 import { getPrng, getTestnet } from '../utils/getters';
 import {
   BTC_PURPOSE_P2PKH,
@@ -21,9 +22,9 @@ import {
 } from '../utils/helpers';
 import { testRequest } from '../utils/testRequest';
 import { setupClient } from '../utils/clientStorage';
-import { BIP32Interface } from 'bip32';
 
 const prng = getPrng();
+const bip32 = BIP32Factory(ecc);
 const TEST_TESTNET = !!getTestnet() || false;
 let wallet: BIP32Interface | null = null;
 type InputObj = { hash: string; value: number; signerIdx: number; idx: number };
@@ -67,7 +68,7 @@ async function testSign({ txReq, signingKeys, sigHashes, client }: any) {
 
 async function runTestSet(
   opts: any,
-  wallet: Wallet | null,
+  wallet: BIP32Interface | null,
   inputsSlice: InputObj[],
   client,
 ) {
@@ -130,7 +131,6 @@ describe('Bitcoin', () => {
         }
         throw err;
       });
-      //@ts-expect-error - accessing private property
       const _res = parseWalletJobResp(res, client.fwVersion);
       expect(_res.resultStatus).toEqual(0);
       const data = deserializeExportSeedJobResult(_res.result);

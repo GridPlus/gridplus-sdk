@@ -10,7 +10,8 @@ import { getDeviceId, getPrng } from '../utils/getters';
  * To run these tests you will need a dev Lattice with: `FEATURE_TEST_RUNNER=1`
  */
 
-import bip32 from 'bip32';
+import BIP32Factory from 'bip32';
+import * as ecc from 'tiny-secp256k1';
 import { mnemonicToSeedSync } from 'bip39';
 import { privateToAddress, privateToPublic } from 'ethereumjs-util';
 import { question } from 'readline-sync';
@@ -66,6 +67,7 @@ const BTC_PARENT_PATH = {
 const KNOWN_MNEMONIC =
   'erosion loan violin drip laundry harsh social mercy leaf original habit buffalo';
 const KNOWN_SEED = mnemonicToSeedSync(KNOWN_MNEMONIC);
+const bip32 = BIP32Factory(ecc);
 const wallet = bip32.fromSeed(KNOWN_SEED);
 
 describe('Test Wallet Jobs', () => {

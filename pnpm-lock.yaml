@@ -53,6 +53,9 @@ importers:
       crc-32:
         specifier: ^1.2.2
         version: 1.2.2
+      ecpair:
+        specifier: ^3.0.0
+        version: 3.0.0(typescript@5.9.2)
       elliptic:
         specifier: 6.6.1
         version: 6.6.1
@@ -1525,6 +1528,10 @@ packages:
   eastasianwidth@0.2.0:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
 
+  ecpair@3.0.0:
+    resolution: {integrity: sha512-kf4JxjsRQoD4EBzpYjGAcR0t9i/4oAeRPtyCpKvSwyotgkc6oA4E4M0/e+kep7cXe+mgxAvoeh/jdgH9h5+Wxw==}
+    engines: {node: '>=20.0.0'}
+
   ed25519-hd-key@1.3.0:
     resolution: {integrity: sha512-IWwAyiiuJQhgu3L8NaHb68eJxTu2pgCwxIBdgpLJdKpYZM46+AXePSVTr7fkNKaUOfOL4IrjEUaQvyVRIDP7fg==}
 
@@ -2737,6 +2744,10 @@ packages:
   ufo@1.6.1:
     resolution: {integrity: sha512-9a4/uxlTWJ4+a5i0ooc1rU7C7YOw3wT+UGqdeNNHWnOF9qcMBgLRS+4IYUqbczewFx4mLEig6gawh7X6mFlEkA==}
 
+  uint8array-tools@0.0.8:
+    resolution: {integrity: sha512-xS6+s8e0Xbx++5/0L+yyexukU7pz//Yg6IHg3BKhXotg1JcYtgxVcUctQ0HxLByiJzpAkNFawz1Nz5Xadzo82g==}
+    engines: {node: '>=14.0.0'}
+
   undici-types@7.12.0:
     resolution: {integrity: sha512-goOacqME2GYyOZZfb5Lgtu+1IDmAlAEu5xnD3+xTzS10hT0vzpf0SPjkXwAw9Jm+4n/mQGDP3LO8CPbYROeBfQ==}
 
@@ -2768,6 +2779,14 @@ packages:
   uuid@9.0.1:
     resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
     hasBin: true
+
+  valibot@0.37.0:
+    resolution: {integrity: sha512-FQz52I8RXgFgOHym3XHYSREbNtkgSjF9prvMFH1nBsRyfL6SfCzoT1GuSDTlbsuPubM7/6Kbw0ZMQb8A+V+VsQ==}
+    peerDependencies:
+      typescript: '>=5'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   varuint-bitcoin@1.1.2:
     resolution: {integrity: sha512-4EVb+w4rx+YfVM32HQX42AbbT7/1f5zwAYhIujKXKk8NQK+JfRVl3pqT3hjNn/L+RstigmGGKVwHA/P0wgITZw==}
@@ -2895,6 +2914,9 @@ packages:
 
   wif@2.0.6:
     resolution: {integrity: sha512-HIanZn1zmduSF+BQhkE+YXIbEiH0xPr1012QbFEGB0xsKqJii0/SqJjyn8dFv6y36kOznMgMB+LGcbZTJ1xACQ==}
+
+  wif@5.0.0:
+    resolution: {integrity: sha512-iFzrC/9ne740qFbNjTZ2FciSRJlHIXoxqk/Y5EnE08QOXu1WjJyCCswwDTYbohAOEnlCtLaAAQBhyaLRFh2hMA==}
 
   word-wrap@1.2.5:
     resolution: {integrity: sha512-BN22B5eaMMI9UMtjrGd5g5eCYPpCPDUy0FJXbYsaT5zYxjFOckS53SQDE3pWkVoWpHXVb3BrYcEN4Twa55B5cA==}
@@ -4310,6 +4332,14 @@ snapshots:
 
   eastasianwidth@0.2.0: {}
 
+  ecpair@3.0.0(typescript@5.9.2):
+    dependencies:
+      uint8array-tools: 0.0.8
+      valibot: 0.37.0(typescript@5.9.2)
+      wif: 5.0.0
+    transitivePeerDependencies:
+      - typescript
+
   ed25519-hd-key@1.3.0:
     dependencies:
       create-hmac: 1.1.7
@@ -5616,6 +5646,8 @@ snapshots:
 
   ufo@1.6.1: {}
 
+  uint8array-tools@0.0.8: {}
+
   undici-types@7.12.0: {}
 
   universalify@2.0.1: {}
@@ -5638,6 +5670,10 @@ snapshots:
   uuid@8.3.2: {}
 
   uuid@9.0.1: {}
+
+  valibot@0.37.0(typescript@5.9.2):
+    optionalDependencies:
+      typescript: 5.9.2
 
   varuint-bitcoin@1.1.2:
     dependencies:
@@ -5798,6 +5834,10 @@ snapshots:
   wif@2.0.6:
     dependencies:
       bs58check: 2.1.2
+
+  wif@5.0.0:
+    dependencies:
+      bs58check: 4.0.0
 
   word-wrap@1.2.5: {}
 

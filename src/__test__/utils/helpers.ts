@@ -1,6 +1,8 @@
-import bip32 from 'bip32';
+import BIP32Factory from 'bip32';
+import * as ecc from 'tiny-secp256k1';
 import { wordlists } from 'bip39';
 import bitcoin from 'bitcoinjs-lib';
+import { ECPairFactory } from 'ecpair';
 import {
   derivePath as deriveEDKey,
   getPublicKey as getEDPubkey,
@@ -34,6 +36,8 @@ import BN from 'bn.js';
 import { ecdsaRecover } from 'secp256k1';
 const SIGHASH_ALL = 0x01;
 const secp256k1 = new EC('secp256k1');
+const bip32 = BIP32Factory(ecc);
+const ECPair = ECPairFactory(ecc);
 
 const normalizeSigComponent = (component: any): Buffer => {
   if (component === null || component === undefined) {
@@ -195,7 +199,7 @@ export function _start_tx_builder(
     const networkIdx = network === bitcoin.networks.testnet ? 1 : 0;
     const path = buildPath([purpose, harden(networkIdx), harden(0), 1, 0]);
     const btc_0_change = wallet.derivePath(path);
-    const btc_0_change_pub = bitcoin.ECPair.fromPublicKey(
+    const btc_0_change_pub = ECPair.fromPublicKey(
       btc_0_change.publicKey,
     ).publicKey;
     const changeAddr = _get_btc_addr(btc_0_change_pub, purpose, network);
@@ -267,7 +271,7 @@ function _get_reference_sighashes(
   inputs.forEach((input, i) => {
     const path = buildPath([purpose, coin, harden(0), 0, input.signerIdx]);
     const keyPair = wallet.derivePath(path);
-    const priv = bitcoin.ECPair.fromPrivateKey(keyPair.privateKey, { network });
+    const priv = ECPair.fromPrivateKey(keyPair.privateKey, { network });
     if (purpose === BTC_PURPOSE_P2SH_P2WPKH) {
       const p2wpkh = bitcoin.payments.p2wpkh({
         pubkey: keyPair.publicKey,
@@ -351,7 +355,7 @@ function _generate_btc_address(isTestnet, purpose, rand) {
     // 32 bits of randomness per call
     priv.writeUInt32BE(Math.floor(rand.quick() * 2 ** 32), j * 4);
   }
-  const keyPair = bitcoin.ECPair.fromPrivateKey(priv);
+  const keyPair = ECPair.fromPrivateKey(priv);
   const network =
     isTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.mainnet;
   return _get_btc_addr(keyPair.publicKey, purpose, network);
