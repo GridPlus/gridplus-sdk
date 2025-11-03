@@ -220,7 +220,13 @@ export function _start_tx_builder(
     const keyPair = wallet.derivePath(path);
     const pubkeyBuf = Buffer.from(keyPair.publicKey);
     const p2pkh = bitcoin.payments.p2pkh({ pubkey: pubkeyBuf, network });
-    inputsMeta.push({ scriptCode: p2pkh.output, value: input.value });
+    const p2wpkh = bitcoin.payments.p2wpkh({ pubkey: pubkeyBuf, network });
+    // Match legacy TransactionBuilder behavior used in dev branch tests:
+    // for segwit and nested segwit, use the witness program as scriptCode;
+    // for legacy, use the P2PKH script.
+    const scriptCode =
+      purpose === BTC_PURPOSE_P2PKH ? p2pkh.output! : p2wpkh.output!;
+    inputsMeta.push({ scriptCode, value: input.value });
   });
   return { tx, inputsMeta };
 }
