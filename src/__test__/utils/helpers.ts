@@ -166,18 +166,19 @@ export function _getSumInputs(inputs) {
 }
 
 export function _get_btc_addr(pubkey, purpose, network) {
+  const pk = Buffer.isBuffer(pubkey) ? pubkey : Buffer.from(pubkey);
   let obj;
   if (purpose === BTC_PURPOSE_P2SH_P2WPKH) {
     // Wrapped segwit requires p2sh wrapping
     obj = bitcoin.payments.p2sh({
-      redeem: bitcoin.payments.p2wpkh({ pubkey, network }),
+      redeem: bitcoin.payments.p2wpkh({ pubkey: pk, network }),
       network,
     });
   } else if (purpose === BTC_PURPOSE_P2WPKH) {
-    obj = bitcoin.payments.p2wpkh({ pubkey, network });
+    obj = bitcoin.payments.p2wpkh({ pubkey: pk, network });
   } else {
     // Native segwit and legacy addresses are treated teh same
-    obj = bitcoin.payments.p2pkh({ pubkey, network });
+    obj = bitcoin.payments.p2pkh({ pubkey: pk, network });
   }
   return obj.address;
 }
@@ -217,7 +218,7 @@ export function _start_tx_builder(
       const path = buildPath([purpose, coin, harden(0), 0, input.signerIdx]);
       const keyPair = wallet.derivePath(path);
       const p2wpkh = bitcoin.payments.p2wpkh({
-        pubkey: keyPair.publicKey,
+        pubkey: Buffer.from(keyPair.publicKey),
         network,
       });
       scriptSig = p2wpkh.output;
@@ -258,7 +259,7 @@ function _get_reference_sighashes(
   const coin = isTestnet ? BTC_TESTNET_COIN : BTC_COIN;
   const network = isTestnet
     ? bitcoin.networks.testnet
-    : bitcoin.networks.mainnet;
+    : bitcoin.networks.bitcoin;
   const txb = _start_tx_builder(
     wallet,
     recipient,
@@ -357,7 +358,7 @@ function _generate_btc_address(isTestnet, purpose, rand) {
   }
   const keyPair = ECPair.fromPrivateKey(priv);
   const network =
-    isTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.mainnet;
+    isTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
   return _get_btc_addr(keyPair.publicKey, purpose, network);
 }
 
@@ -646,7 +647,7 @@ export const validateBTCAddresses = function (
   const wallet = bip32.fromSeed(seed);
   const path = JSON.parse(JSON.stringify(jobData.path));
   const network =
-    useTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.mainnet;
+    useTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
   for (let i = 0; i < jobData.count; i++) {
     path.idx[jobData.iterIdx] = jobData.path.idx[jobData.iterIdx] + i;
     // Validate the address
@@ -655,16 +656,20 @@ export const validateBTCAddresses = function (
     let address;
     if (purpose === BTC_PURPOSE_P2WPKH) {
       // Bech32
-      address = bitcoin.payments.p2wpkh({ pubkey, network }).address;
+      address = bitcoin.payments
+        .p2wpkh({ pubkey: Buffer.from(pubkey), network })
+        .address;
     } else if (purpose === BTC_PURPOSE_P2SH_P2WPKH) {
       // Wrapped segwit
       address = bitcoin.payments.p2sh({
-        redeem: bitcoin.payments.p2wpkh({ pubkey, network }),
+        redeem: bitcoin.payments.p2wpkh({ pubkey: Buffer.from(pubkey), network }),
       }).address;
     } else {
       // Legacy
       // This is the default and any unrecognized purpose will yield a legacy address.
-      address = bitcoin.payments.p2pkh({ pubkey, network }).address;
+      address = bitcoin.payments
+        .p2pkh({ pubkey: Buffer.from(pubkey), network })
+        .address;
     }
     expect(address).toEqual(resp.addresses[i]);
   }

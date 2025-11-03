@@ -1,8 +1,7 @@
 import { Hash } from 'ox';
 import { parseEther, serializeTransaction, toHex } from 'viem';
-import { describe, expect, test } from 'vitest';
 import { serializeEIP7702Transaction } from '../../ethereum';
-import {
+import type {
   EIP7702AuthListTransactionRequest as EIP7702AuthListTransaction,
   EIP7702AuthTransactionRequest as EIP7702AuthTransaction,
 } from '../../types';

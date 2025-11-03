@@ -954,7 +954,6 @@ describe('Test Wallet Jobs', () => {
   //---------------------------------------
   async function runTestCase(expectedCode: any) {
     const res = await testRequest(jobReq);
-    //@ts-expect-error - accessing private property
     const parsedRes = parseWalletJobResp(res, client.fwVersion);
     expect(parsedRes.resultStatus).toEqualElseLog(
       expectedCode,
@@ -968,7 +967,7 @@ describe('Test Wallet Jobs', () => {
   }
 
   async function runZerosTest(
-    path: Array,
+    path: number[],
     parentPathStr: string,
     idx: any,
     numZeros: number,

@@ -1,10 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { RLP } from '@ethereumjs/rlp';
 import { Buffer } from 'buffer';
+import { Hash } from 'ox';
+import secp256k1 from 'secp256k1';
 import { parseGenericSigningResponse } from '../../genericSigning';
 import { Constants } from '../../index';
-import secp256k1 from 'secp256k1';
-import { Hash } from 'ox';
-import { RLP } from '@ethereumjs/rlp';
 
 describe('parseGenericSigningResponse', () => {
   // Helper to create a DER signature

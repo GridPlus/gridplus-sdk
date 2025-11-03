@@ -22,9 +22,10 @@ export const addAddressTags = async (
 /**
  * Fetches Address Tags from the Lattice.
  */
-export const fetchAddressTags = async (
-  { n, start } = { n: MAX_ADDR, start: 0 },
-) => {
+export const fetchAddressTags = async ({
+  n = MAX_ADDR,
+  start = 0,
+}: { n?: number; start?: number } = {}) => {
   const addressTags: AddressTag[] = [];
   let remainingToFetch = n;
   let fetched = start;

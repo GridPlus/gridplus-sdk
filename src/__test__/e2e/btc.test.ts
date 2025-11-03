@@ -132,7 +132,8 @@ describe("Bitcoin", () => {
 				}
 				throw err;
 			});
-			const _res = parseWalletJobResp(res, client.fwVersion);
+      //@ts-expect-error - accessing private property for test parsing
+      const _res = parseWalletJobResp(res, client.fwVersion);
 			expect(_res.resultStatus).toEqual(0);
 			const data = deserializeExportSeedJobResult(_res.result);
 			const activeWalletSeed = copyBuffer(data.seed);

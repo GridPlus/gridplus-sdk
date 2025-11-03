@@ -65,7 +65,7 @@ describe('connect', () => {
     await client.addKvRecords({ records: { test: `${Math.random()}` } });
     const { records } = await client.getKvRecords({ start: 0 });
     const activeWallet = await client.removeKvRecords({
-      ids: records.map((r) => r.id),
+      ids: records.map((r) => `${r.id}`),
     });
     expect(activeWallet).toMatchSnapshot();
   });

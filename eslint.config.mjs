@@ -40,6 +40,7 @@ export default [
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
         // Test globals
+        vi: 'readonly',
         describe: 'readonly',
         it: 'readonly',
         test: 'readonly',

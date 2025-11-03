@@ -1,4 +1,5 @@
 import { Client } from '../../client';
+import type { TestRequestPayload, SignRequestParams } from '../../types';
 import { getEncodedPayload } from '../../genericSigning';
 import {
   deriveSECP256K1Key,
@@ -26,25 +27,22 @@ export async function runTestCase(
   return parsedRes;
 }
 
+type MaybeGenericData = { encodingType?: number; payload?: unknown };
+
 export async function runGeneric(request: SignRequestParams, client: Client) {
   const response = await client.sign(request);
-  // If no encoding type is specified we encode in hex or ascii
-  const encodingType = request.data.encodingType || null;
+  const data = request.data as unknown as MaybeGenericData;
+  const encodingType = data?.encodingType ?? null;
   const allowedEncodings = client.getFwConstants().genericSigning.encodingTypes;
   const { payloadBuf } = getEncodedPayload(
-    request.data.payload,
+    (data as any)?.payload,
     encodingType,
     allowedEncodings,
   );
   const seed = await initializeSeed(client);
-  validateGenericSig(
-    seed,
-    response.sig,
-    payloadBuf,
-    request.data,
-    response.pubkey,
-  );
-  return response;
+  const resp: any = response as any;
+  validateGenericSig(seed, resp.sig, payloadBuf, request.data, resp.pubkey);
+  return resp;
 }
 
 export async function runEvm(
