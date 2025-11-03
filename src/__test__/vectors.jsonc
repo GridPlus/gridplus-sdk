@@ -14,18 +14,18 @@
           // If you look at this example on Polygonscan, you'll notice the function being
           // called is not actually available in the source code of the contract...
           // So we needed to add a param to skip that test.
-          "skipBlockExplorerReq": true,
+          "skipBlockExplorerReq": true
         },
         //  swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] path,
         //  address to, uint256 deadline)
         {
           "chainID": 1,
-          "hash": "0xeee0752109c6d31038bab6c2b0a3e3857e8bffb9c229de71f0196fda6fb28a5e",
+          "hash": "0xeee0752109c6d31038bab6c2b0a3e3857e8bffb9c229de71f0196fda6fb28a5e"
         },
         //  remove_liquidity_one_coin(uint256 _token_amount, int128 i, uint256 _min_amount)
         {
           "chainID": 1,
-          "hash": "0xa6173b4890303e12ca1b195ea4a04d8891b0d83768b734d2ecdb9c6dd9d828c4",
+          "hash": "0xa6173b4890303e12ca1b195ea4a04d8891b0d83768b734d2ecdb9c6dd9d828c4"
         },
         //  atomicMatch_(address[14],uint256[18],uint8[8],bytes,bytes,bytes,bytes,bytes,bytes,
         //  uint8[2],bytes32[5])
@@ -34,39 +34,39 @@
         //  exactInput((bytes,address,uint256,uint256,uint256))
         {
           "chainID": 1,
-          "hash": "0xee9710119c13dba6fe2de240ef1e24a2489e98d9c7dd5881e2901056764ee234",
+          "hash": "0xee9710119c13dba6fe2de240ef1e24a2489e98d9c7dd5881e2901056764ee234"
         },
         //  exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))
         {
           "chainID": 1,
-          "hash": "0xc33308ca105630b99a0c24ddde4f4506aa4115ec6f1a25f1138f3bd8cfa32b49",
+          "hash": "0xc33308ca105630b99a0c24ddde4f4506aa4115ec6f1a25f1138f3bd8cfa32b49"
         },
         //  proveAndClaimWithResolver(bytes,(bytes,bytes)[],bytes,address,address)
         {
           "chainID": 1,
-          "hash": "0xe15e6205c6696d444fc426468defdf08e89a0f5b3b8a17c68428f7aeefd53ca1",
+          "hash": "0xe15e6205c6696d444fc426468defdf08e89a0f5b3b8a17c68428f7aeefd53ca1"
         },
         // bulkTransfer(((uint8,address,uint256,uint256)[],address,bool)[],bytes32)
         {
           "chainID": 1,
-          "hash": "0x6f0ba3cb3c08e0ee443e4b7a78e1397413762e63287e348829c18f287c5a457f",
+          "hash": "0x6f0ba3cb3c08e0ee443e4b7a78e1397413762e63287e348829c18f287c5a457f"
         },
         // RECURSIVE DEFS
         // multicall(bytes[])
         {
           "chainID": 1,
-          "hash": "0xf4c48f0300acb2982fe8861ffd9291634115a33dc4107a66b4f9f43efb66896b",
+          "hash": "0xf4c48f0300acb2982fe8861ffd9291634115a33dc4107a66b4f9f43efb66896b"
         },
         // execTransaction(address,uint256,(disperseTokenSimple(address,address[],uint256[])),uint8,uint256,uint256,uint256,address,address,bytes)
         {
           "chainID": 1,
-          "hash": "0xb6349347a1dec402c59cd94c5715513af7ecf3e532376f2a5a47c99ee224de2a",
+          "hash": "0xb6349347a1dec402c59cd94c5715513af7ecf3e532376f2a5a47c99ee224de2a"
         },
         // execTransaction(address,uint256,(multicall(bytes[])),uint8,uint256,uint256,uint256,address,address,bytes)
         {
           "chainID": 1,
-          "hash": "0x2af244a02066c0a8e3998d247e071a03cd38ecbec60f93ddf63da0dce3932f86",
-        },
+          "hash": "0x2af244a02066c0a8e3998d247e071a03cd38ecbec60f93ddf63da0dce3932f86"
+        }
       ],
       // These are canonical ABI definitions that we use to test more unusual function types.
       // The names are parsed and dummy data is filled in (see helpers in ./evm.ts).
@@ -159,7 +159,7 @@
         "nestedTup((uint256,(bytes)[2],bool))",
         "nestedTup((bytes,(bytes)[2],bool))",
         "nestedTup(bytes,(uint256,(bool)[2],bool))",
-        "nestedTup(bytes,(uint256,(bytes)[2],bool))",
+        "nestedTup(bytes,(uint256,(bytes)[2],bool))"
         // ---
         // Extreme edge cases that do not currently decode
         // ---
@@ -170,8 +170,8 @@
         // "nestedTup(bytes,(uint256,(bool,bytes)[2],bool)[])", // does not decode
         // "nestedTup(bytes,(uint256,(bool,bytes)[2],bool)[2])", // does not decode
         // "nestedTup(bytes,(uint256,(bool,bytes)[][],bool)[2][])", // too large
-      ],
-    },
+      ]
+    }
   },
   "ethDeposit": {
     "mnemonic": "winner much erosion weird rubber onion diagram mandate assist fluid slush theory",
@@ -188,7 +188,7 @@
           "deposit_data_root": "aa95cc7b31056cbc524fb82bc5641f60a0f3592bf960bdc875d24b332cd730ca",
           "fork_version": "00000000",
           "network_name": "mainnet",
-          "deposit_cli_version": "2.3.0",
+          "deposit_cli_version": "2.3.0"
         },
         "eth1WithdrawalRef": {
           "pubkey": "b77d6918d5edb4073a4ea4408073b698f00df478ff2726cdb8190e3be1fe5496f22b089f6ae4cf7cafaccb74683be5e4",
@@ -199,8 +199,8 @@
           "deposit_data_root": "603160dc42fe11f2e2c057c85179cc008dd64c9d11ae20b8ffc9a5ceecece847",
           "fork_version": "00000000",
           "network_name": "mainnet",
-          "deposit_cli_version": "2.3.0",
-        },
+          "deposit_cli_version": "2.3.0"
+        }
       },
       {
         "depositPath": [12381, 3600, 1, 0, 0],
@@ -214,7 +214,7 @@
           "deposit_data_root": "2dd6d49609584c73ec12194cb9a5f39841b6854e04e0df043bdb9eaa5b65bb86",
           "fork_version": "00000000",
           "network_name": "mainnet",
-          "deposit_cli_version": "2.3.0",
+          "deposit_cli_version": "2.3.0"
         },
         "eth1WithdrawalRef": {
           "pubkey": "a0aa536f68981cb705e506036e40b4373f67e10ff66f64835d63ffb3ca5e5eeea5396b2569315b060f0b90a2862a740c",
@@ -225,11 +225,11 @@
           "deposit_data_root": "1cc71b9a34ef5730154985c36ac2f9e4f9017959c144e9083d0e8f79311eed59",
           "fork_version": "00000000",
           "network_name": "mainnet",
-          "deposit_cli_version": "2.3.0",
-        },
-      },
-    ],
+          "deposit_cli_version": "2.3.0"
+        }
+      }
+    ]
   },
   // Dehydrated state for unit/integration tests
-  "dehydratedClientState": "{\"activeWallets\":{\"internal\":{\"uid\":\"162b56efe561c12bc93f703dc7026b3ec3d53923270c9259e2b08015fb9defd2\"},\"external\":{\"uid\":\"0000000000000000000000000000000000000000000000000000000000000000\"}},\"ephemeralPub\":\"04627c74680bee7907c07fdea2bde0ab1ac17c95213f379ccc1dce87f3586babe8ba0ed02688fd5539a54ea1b7b8ab0860d1853006f55f22a2e3ea4e190a17ab30\",\"fwVersion\":\"00110000\",\"deviceId\":\"Cd3dtg\",\"name\":\"SDK Test\",\"baseUrl\":\"https: //signing.gridpl.us\",\"privKey\":\"3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca\",\"retryCount\":3,\"timeout\":120000}",
+  "dehydratedClientState": "{\"activeWallets\":{\"internal\":{\"uid\":\"162b56efe561c12bc93f703dc7026b3ec3d53923270c9259e2b08015fb9defd2\"},\"external\":{\"uid\":\"0000000000000000000000000000000000000000000000000000000000000000\"}},\"ephemeralPub\":\"04627c74680bee7907c07fdea2bde0ab1ac17c95213f379ccc1dce87f3586babe8ba0ed02688fd5539a54ea1b7b8ab0860d1853006f55f22a2e3ea4e190a17ab30\",\"fwVersion\":\"00110000\",\"deviceId\":\"Cd3dtg\",\"name\":\"SDK Test\",\"baseUrl\":\"https: //signing.gridpl.us\",\"privKey\":\"3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca\",\"retryCount\":3,\"timeout\":120000}"
 }
