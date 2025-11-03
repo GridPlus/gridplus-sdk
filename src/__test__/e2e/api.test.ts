@@ -262,7 +262,9 @@ describe("API", () => {
 					},
 				);
 				expect(addresses).toHaveLength(5);
-				addresses.forEach((address) => expect(address).toBeTruthy());
+				addresses.forEach((address) => {
+					expect(address).toBeTruthy();
+				});
 			});
 
 			test("fetch addresses with offset", async () => {
@@ -274,7 +276,9 @@ describe("API", () => {
 					},
 				);
 				expect(addresses).toHaveLength(3);
-				addresses.forEach((address) => expect(address).toBeTruthy());
+				addresses.forEach((address) => {
+					expect(address).toBeTruthy();
+				});
 			});
 
 			test("fetch addresses with lowercase x wildcard", async () => {
@@ -285,7 +289,9 @@ describe("API", () => {
 					},
 				);
 				expect(addresses).toHaveLength(2);
-				addresses.forEach((address) => expect(address).toBeTruthy());
+				addresses.forEach((address) => {
+					expect(address).toBeTruthy();
+				});
 			});
 
 			test("fetch addresses with wildcard in middle of path", async () => {
@@ -296,7 +302,9 @@ describe("API", () => {
 					},
 				);
 				expect(addresses).toHaveLength(3);
-				addresses.forEach((address) => expect(address).toBeTruthy());
+				addresses.forEach((address) => {
+					expect(address).toBeTruthy();
+				});
 			});
 
 			test("fetch solana addresses with wildcard in middle of path", async () => {
@@ -307,7 +315,9 @@ describe("API", () => {
 					},
 				);
 				expect(addresses).toHaveLength(1);
-				addresses.forEach((address) => expect(address).toBeTruthy());
+				addresses.forEach((address) => {
+					expect(address).toBeTruthy();
+				});
 			});
 
 			test("error on invalid derivation path", async () => {
