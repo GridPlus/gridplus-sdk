@@ -314,18 +314,18 @@ function _btc_tx_request_builder(
 // Convert DER signature to buffer of form `${r}${s}`
 export function stripDER(derSig) {
   const parsed = parseDER(derSig);
-  parsed.s = Buffer.from(parsed.s.slice(-32));
-  parsed.r = Buffer.from(parsed.r.slice(-32));
+  // Left-pad r and s to 32 bytes and concatenate (no extra normalization)
+  const r = Buffer.from(parsed.r.slice(-32));
+  const s = Buffer.from(parsed.s.slice(-32));
   const sig = Buffer.alloc(64);
-  parsed.r.copy(sig, 32 - parsed.r.length);
-  parsed.s.copy(sig, 64 - parsed.s.length);
+  r.copy(sig, 32 - r.length);
+  s.copy(sig, 64 - s.length);
   return sig;
 }
 
 function _get_signing_keys(wallet, inputs, isTestnet, purpose) {
-  const currencyIdx = isTestnet === true ? 1 : 0;
-  const keys: any = [];
-  inputs.forEach((input) => {
+  const currencyIdx = isTestnet ? 1 : 0;
+  return inputs.map((input) => {
     const path = buildPath([
       purpose,
       harden(currencyIdx),
@@ -333,9 +333,19 @@ function _get_signing_keys(wallet, inputs, isTestnet, purpose) {
       0,
       input.signerIdx,
     ]);
-    keys.push(wallet.derivePath(path));
+    const node = wallet.derivePath(path);
+    const priv = Buffer.from(node.privateKey);
+    const key = secp256k1.keyFromPrivate(priv);
+    return {
+      privateKey: priv,
+      verify(hash: Buffer, sig: Buffer) {
+        return key.verify(hash, {
+          r: sig.slice(0, 32).toString('hex'),
+          s: sig.slice(32).toString('hex'),
+        });
+      },
+    };
   });
-  return keys;
 }
 
 function _generate_btc_address(isTestnet, purpose, rand) {
