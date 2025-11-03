@@ -1,10 +1,13 @@
 import {
   BTC_LEGACY_CHANGE_DERIVATION,
   BTC_LEGACY_DERIVATION,
+  BTC_LEGACY_XPUB_PATH,
   BTC_SEGWIT_CHANGE_DERIVATION,
   BTC_SEGWIT_DERIVATION,
+  BTC_SEGWIT_ZPUB_PATH,
   BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION,
   BTC_WRAPPED_SEGWIT_DERIVATION,
+  BTC_WRAPPED_SEGWIT_YPUB_PATH,
   DEFAULT_ETH_DERIVATION,
   HARDENED_OFFSET,
   LEDGER_LEGACY_DERIVATION,
@@ -12,6 +15,7 @@ import {
   MAX_ADDR,
   SOLANA_DERIVATION,
 } from '../constants';
+import { LatticeGetAddressesFlag } from '../protocol/latticeConstants';
 import { GetAddressesRequestParams, WalletPath } from '../types';
 import {
   getStartPath,
@@ -232,4 +236,40 @@ export async function fetchAddressesByDerivationPath(
   }
 
   return addresses;
+}
+
+/**
+ * Fetches Bitcoin legacy extended public key (xpub) for BIP44 (m/44'/0'/0').
+ * @returns xpub string
+ */
+export async function fetchBtcXpub(): Promise<string> {
+  const result = await fetchAddressesByDerivationPath(BTC_LEGACY_XPUB_PATH, {
+    flag: LatticeGetAddressesFlag.secp256k1Xpub,
+  });
+  return result[0];
+}
+
+/**
+ * Fetches Bitcoin wrapped segwit extended public key (ypub) for BIP49 (m/49'/0'/0').
+ * @returns ypub string
+ */
+export async function fetchBtcYpub(): Promise<string> {
+  const result = await fetchAddressesByDerivationPath(
+    BTC_WRAPPED_SEGWIT_YPUB_PATH,
+    {
+      flag: LatticeGetAddressesFlag.secp256k1Xpub,
+    },
+  );
+  return result[0];
+}
+
+/**
+ * Fetches Bitcoin native segwit extended public key (zpub) for BIP84 (m/84'/0'/0').
+ * @returns zpub string
+ */
+export async function fetchBtcZpub(): Promise<string> {
+  const result = await fetchAddressesByDerivationPath(BTC_SEGWIT_ZPUB_PATH, {
+    flag: LatticeGetAddressesFlag.secp256k1Xpub,
+  });
+  return result[0];
 }

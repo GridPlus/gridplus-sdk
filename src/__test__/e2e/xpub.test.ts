@@ -1,18 +1,30 @@
 /* eslint-disable quotes */
-import { fetchAddressesByDerivationPath, pair } from '../../api';
-import { setupClient } from '../utils/clientStorage';
-import { LatticeGetAddressesFlag } from '../../protocol';
+import { fetchBtcXpub, fetchBtcYpub, fetchBtcZpub } from "../../api";
+import { setupClient } from "../utils/clientStorage";
 
-describe('XPUB', () => {
-  beforeAll(async () => {
-    await setupClient();
-  });
+describe("XPUB", () => {
+	beforeAll(async () => {
+		await setupClient();
+	});
 
-  test('fetch bitcoin xpub', async () => {
-    const xpub = await fetchAddressesByDerivationPath("44'/0'/0'", {
-      flag: LatticeGetAddressesFlag.secp256k1Xpub,
-    });
-    expect(xpub).toHaveLength(1);
-    expect(xpub[0].startsWith('xpub')).toBe(true);
-  });
+	test("fetchBtcXpub returns xpub", async () => {
+		const xpub = await fetchBtcXpub();
+		expect(xpub).toBeTruthy();
+		expect(xpub.startsWith("xpub")).toBe(true);
+		expect(xpub.length).toBeGreaterThan(100);
+	});
+
+	test("fetchBtcYpub returns ypub", async () => {
+		const ypub = await fetchBtcYpub();
+		expect(ypub).toBeTruthy();
+		expect(ypub.startsWith("ypub")).toBe(true);
+		expect(ypub.length).toBeGreaterThan(100);
+	});
+
+	test("fetchBtcZpub returns zpub", async () => {
+		const zpub = await fetchBtcZpub();
+		expect(zpub).toBeTruthy();
+		expect(zpub.startsWith("zpub")).toBe(true);
+		expect(zpub.length).toBeGreaterThan(100);
+	});
 });
