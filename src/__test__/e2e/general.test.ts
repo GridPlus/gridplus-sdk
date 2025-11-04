@@ -33,7 +33,7 @@ import {
   setupTestClient,
 } from '../utils/helpers';
 
-import { setupClient } from '../utils/clientStorage';
+import { setupClient } from '../utils/setup';
 
 const id = getDeviceId();
 
@@ -179,9 +179,8 @@ describe('General', () => {
         ctx.skip();
         return;
       }
-      const { txData, req, maxDataSz, common } = await buildEthSignRequest(
-        client,
-      );
+      const { txData, req, maxDataSz, common } =
+        await buildEthSignRequest(client);
       await question(
         'Please REJECT the next request if the warning screen displays. Press enter to continue.',
       );

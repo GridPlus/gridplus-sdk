@@ -21,7 +21,7 @@ import { SigningPath } from '../../types';
 import { randomBytes } from '../../util';
 import { buildEthMsgReq, buildRandomMsg } from '../utils/builders';
 import { runEthMsg } from '../utils/runners';
-import { setupClient } from '../utils/clientStorage';
+import { setupClient } from '../utils/setup';
 
 describe('ETH Messages', () => {
   let client;

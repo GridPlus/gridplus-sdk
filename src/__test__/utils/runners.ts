@@ -66,7 +66,9 @@ export async function runEvm(
   if (!bypassSetPayload) {
     const msgToSign = tx.getMessageToSign();
     // Legacy tx returns an array of RLP components, typed tx returns Uint8Array
-    req.data.payload = Array.isArray(msgToSign) ? RLP.encode(msgToSign) : msgToSign;
+    req.data.payload = Array.isArray(msgToSign)
+      ? RLP.encode(msgToSign)
+      : msgToSign;
   }
   // Request signature and validate it
   await client.connect(getDeviceId());
@@ -137,7 +139,8 @@ export async function runEvm(
       'toArray' in value &&
       typeof (value as { toArray: unknown }).toArray === 'function'
     ) {
-      const toArray = (value as { toArray: (endian: string) => number[] }).toArray;
+      const toArray = (value as { toArray: (endian: string) => number[] })
+        .toArray;
       const hex = Buffer.from(toArray('be')).toString('hex');
       return hex ? BigInt(`0x${hex}`) : 0n;
     }

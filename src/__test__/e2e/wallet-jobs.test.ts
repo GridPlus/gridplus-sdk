@@ -42,7 +42,7 @@ import {
   validateETHAddresses,
 } from '../utils/helpers';
 import { testRequest } from '../utils/testRequest';
-import { setupClient } from '../utils/clientStorage';
+import { setupClient } from '../utils/setup';
 
 const id = getDeviceId();
 //---------------------------------------

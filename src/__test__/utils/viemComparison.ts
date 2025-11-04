@@ -1,10 +1,15 @@
 import { mnemonicToSeedSync } from 'bip39';
-import { parseTransaction, serializeTransaction, type Address, type Hex, type TransactionSerializable } from 'viem';
+import {
+  type Address,
+  type Hex,
+  parseTransaction,
+  serializeTransaction,
+  type TransactionSerializable,
+} from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-// Chains & wallet client not needed currently; compare via account signing.
 import { sign } from '../../api';
-import { deriveAddress } from './determinism';
 import { normalizeLatticeSignature } from '../../ethereum';
+import { deriveAddress } from './determinism';
 import { FOUNDRY_TEST_MNEMONIC } from './testConstants';
 
 const FOUNDRY_TEST_SEED = mnemonicToSeedSync(FOUNDRY_TEST_MNEMONIC);
@@ -27,11 +32,8 @@ export const getFoundryAccount = () => {
   return privateKeyToAccount(privateKey);
 };
 
-// (Wallet client helper removed as unused)
-
 // Transaction type for our test vectors - use viem's TransactionSerializable
 export type TestTransaction = TransactionSerializable;
-
 
 // Sign transaction with both Lattice and viem, then compare
 export const signAndCompareTransaction = async (

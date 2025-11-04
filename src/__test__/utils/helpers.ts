@@ -31,7 +31,7 @@ import { ProtocolConstants } from '../../protocol';
 import { getPathStr } from '../../shared/utilities';
 import { TypedTransaction } from '@ethereumjs/tx';
 import { getEnv } from './getters';
-import { setStoredClient } from './clientStorage';
+import { setStoredClient } from './setup';
 import BN from 'bn.js';
 import { ecdsaRecover } from 'secp256k1';
 const SIGHASH_ALL = 0x01;
@@ -217,7 +217,8 @@ export function _start_tx_builder(
   inputs.forEach((input) => {
     const hashLE = Buffer.from(input.hash, 'hex').reverse();
     tx.addInput(hashLE, input.idx);
-    const coin = network === bitcoin.networks.testnet ? BTC_TESTNET_COIN : BTC_COIN;
+    const coin =
+      network === bitcoin.networks.testnet ? BTC_TESTNET_COIN : BTC_COIN;
     const path = buildPath([purpose, coin, harden(0), 0, input.signerIdx]);
     const keyPair = wallet.derivePath(path);
     const pubkeyBuf = Buffer.from(keyPair.publicKey);
@@ -238,7 +239,12 @@ function _build_sighashes(txb_or_tx, purpose) {
       hashes.push(
         isLegacy
           ? txb.tx.hashForSignature(i, meta.scriptCode, SIGHASH_ALL)
-          : txb.tx.hashForWitnessV0(i, meta.scriptCode, meta.value, SIGHASH_ALL),
+          : txb.tx.hashForWitnessV0(
+              i,
+              meta.scriptCode,
+              meta.value,
+              SIGHASH_ALL,
+            ),
       );
     });
   } else {
@@ -658,20 +664,25 @@ export const validateBTCAddresses = function (
     let address;
     if (purpose === BTC_PURPOSE_P2WPKH) {
       // Bech32
-      address = bitcoin.payments
-        .p2wpkh({ pubkey: Buffer.from(pubkey), network })
-        .address;
+      address = bitcoin.payments.p2wpkh({
+        pubkey: Buffer.from(pubkey),
+        network,
+      }).address;
     } else if (purpose === BTC_PURPOSE_P2SH_P2WPKH) {
       // Wrapped segwit
       address = bitcoin.payments.p2sh({
-        redeem: bitcoin.payments.p2wpkh({ pubkey: Buffer.from(pubkey), network }),
+        redeem: bitcoin.payments.p2wpkh({
+          pubkey: Buffer.from(pubkey),
+          network,
+        }),
       }).address;
     } else {
       // Legacy
       // This is the default and any unrecognized purpose will yield a legacy address.
-      address = bitcoin.payments
-        .p2pkh({ pubkey: Buffer.from(pubkey), network })
-        .address;
+      address = bitcoin.payments.p2pkh({
+        pubkey: Buffer.from(pubkey),
+        network,
+      }).address;
     }
     expect(address).toEqual(resp.addresses[i]);
   }
@@ -1059,18 +1070,13 @@ export const validateGenericSig = function (
       normalizeSigComponent(sig.r),
       normalizeSigComponent(sig.s),
     ]);
-    const edPublicKey = pubkey
-      ? normalizeSigComponent(pubkey)
-      : pub;
+    const edPublicKey = pubkey ? normalizeSigComponent(pubkey) : pub;
     const isValid = nacl.sign.detached.verify(
       new Uint8Array(payloadBuf),
       new Uint8Array(signature),
       new Uint8Array(edPublicKey),
     );
-    expect(isValid).toEqualElseLog(
-      true,
-      'Signature failed verification.',
-    );
+    expect(isValid).toEqualElseLog(true, 'Signature failed verification.');
   } else {
     throw new Error('Bad params');
   }
@@ -1104,9 +1110,7 @@ export const getSigStr = function (resp: any, tx?: TypedTransaction) {
   return `${rHex}${sHex}${v}`;
 };
 
-export function toBuffer(
-  data: string | number | Buffer | Uint8Array,
-): Buffer {
+export function toBuffer(data: string | number | Buffer | Uint8Array): Buffer {
   if (data === null || data === undefined) {
     throw new Error('Invalid data');
   }
@@ -1124,9 +1128,7 @@ export function toBuffer(
     const isHex =
       trimmed.startsWith('0x') ||
       (/^[0-9a-fA-F]+$/.test(trimmed) && trimmed.length % 2 === 0);
-    return isHex
-      ? ensureHexBuffer(trimmed)
-      : Buffer.from(trimmed, 'utf8');
+    return isHex ? ensureHexBuffer(trimmed) : Buffer.from(trimmed, 'utf8');
   }
   throw new Error('Unsupported data type');
 }
