@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsup",
     "commit": "git-cz",
-    "lint:fix": "eslint src --c .ts,.tsx --config eslint.config.mjs --fix",
+    "lint:fix": "eslint src --c .ts,.tsx --config eslint.config.mjs --fix && prettier --write .",
     "lint": "eslint src --c .ts,.tsx --config eslint.config.mjs",
     "format": "prettier --write .",
     "pair-device": "tsx scripts/pair-device.ts",
