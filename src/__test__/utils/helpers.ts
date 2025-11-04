@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import type { TypedTransaction } from '@ethereumjs/tx';
 import BIP32Factory from 'bip32';
 import { wordlists } from 'bip39';
+import type { Payment } from 'bitcoinjs-lib';
 import bitcoin from 'bitcoinjs-lib';
 import BN from 'bn.js';
 import { ECPairFactory } from 'ecpair';
@@ -169,7 +170,7 @@ export function _getSumInputs(inputs) {
 
 export function _get_btc_addr(pubkey, purpose, network) {
   const pk = Buffer.isBuffer(pubkey) ? pubkey : Buffer.from(pubkey);
-  let obj;
+  let obj: Payment;
   if (purpose === BTC_PURPOSE_P2SH_P2WPKH) {
     // Wrapped segwit requires p2sh wrapping
     obj = bitcoin.payments.p2sh({
@@ -508,7 +509,7 @@ export const parseWalletJobResp = (res, v) => {
 };
 
 export const serializeJobData = (job, walletUID, data) => {
-  let serData;
+  let serData: Buffer;
   switch (job) {
     case jobTypes.WALLET_JOB_GET_ADDRESSES:
       serData = serializeGetAddressesJobData(data);
@@ -655,7 +656,7 @@ export const validateBTCAddresses = (resp, jobData, seed, useTestnet?) => {
     // Validate the address
     const purpose = jobData.path.idx[0];
     const pubkey = wallet.derivePath(stringifyPath(path)).publicKey;
-    let address;
+    let address: string;
     if (purpose === BTC_PURPOSE_P2WPKH) {
       // Bech32
       address = bitcoin.payments.p2wpkh({
@@ -1027,7 +1028,7 @@ export const validateGenericSig = (seed, sig, payloadBuf, req, pubkey?) => {
   const { signerPath, hashType, curveType } = req;
   const HASHES = Constants.SIGNING.HASHES;
   const CURVES = Constants.SIGNING.CURVES;
-  let hash;
+  let hash: Buffer;
   if (curveType === CURVES.SECP256K1) {
     if (hashType === HASHES.SHA256) {
       hash = Buffer.from(Hash.sha256(payloadBuf));
@@ -1073,7 +1074,7 @@ export const validateGenericSig = (seed, sig, payloadBuf, req, pubkey?) => {
  * @param tx - optional, an @ethereumjs/tx Transaction object
  */
 export const getSigStr = (resp: any, tx?: TypedTransaction) => {
-  let v;
+  let v: string;
   if (resp.sig.v !== undefined) {
     const vBuf = normalizeSigComponent(resp.sig.v);
     const vHex = vBuf.toString('hex');
