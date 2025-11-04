@@ -1,7 +1,9 @@
+import { readFileSync } from 'node:fs';
+import type { TypedTransaction } from '@ethereumjs/tx';
 import BIP32Factory from 'bip32';
-import * as ecc from 'tiny-secp256k1';
 import { wordlists } from 'bip39';
 import bitcoin from 'bitcoinjs-lib';
+import BN from 'bn.js';
 import { ECPairFactory } from 'ecpair';
 import {
   derivePath as deriveEDKey,
@@ -9,31 +11,30 @@ import {
 } from 'ed25519-hd-key';
 import { ec as EC } from 'elliptic';
 import { privateToAddress } from 'ethereumjs-util';
-import { readFileSync } from 'node:fs';
+import { jsonc } from 'jsonc';
 import { Hash } from 'ox';
+import { ecdsaRecover } from 'secp256k1';
+import * as ecc from 'tiny-secp256k1';
+import nacl from 'tweetnacl';
+import { Constants } from '../..';
+import { Client } from '../../client';
 import {
   BIP_CONSTANTS,
-  HARDENED_OFFSET,
   ethMsgProtocol,
+  HARDENED_OFFSET,
 } from '../../constants';
-import { jsonc } from 'jsonc';
-import { Constants } from '../..';
-import {
-  getV,
-  parseDER,
-  randomBytes,
-  getYParity,
-  ensureHexBuffer,
-} from '../../util';
-import nacl from 'tweetnacl';
-import { Client } from '../../client';
 import { ProtocolConstants } from '../../protocol';
 import { getPathStr } from '../../shared/utilities';
-import { TypedTransaction } from '@ethereumjs/tx';
+import {
+  ensureHexBuffer,
+  getV,
+  getYParity,
+  parseDER,
+  randomBytes,
+} from '../../util';
 import { getEnv } from './getters';
 import { setStoredClient } from './setup';
-import BN from 'bn.js';
-import { ecdsaRecover } from 'secp256k1';
+
 const SIGHASH_ALL = 0x01;
 const secp256k1 = new EC('secp256k1');
 const bip32 = BIP32Factory(ecc);
@@ -412,7 +413,7 @@ export const harden = (x) => {
   return x + HARDENED_OFFSET;
 };
 
-export const prandomBuf = function (prng, maxSz, forceSize = false) {
+export const prandomBuf = (prng, maxSz, forceSize = false) => {
   // Build a random payload that can fit in the base request
   const sz = forceSize ? maxSz : Math.floor(maxSz * prng.quick());
   const buf = Buffer.alloc(sz);
@@ -422,7 +423,7 @@ export const prandomBuf = function (prng, maxSz, forceSize = false) {
   return buf;
 };
 
-export const deriveED25519Key = function (path, seed) {
+export const deriveED25519Key = (path, seed) => {
   const { key } = deriveEDKey(getPathStr(path), seed);
   const pub = getEDPubkey(key, false); // `false` removes the leading zero byte
   return {
@@ -431,7 +432,7 @@ export const deriveED25519Key = function (path, seed) {
   };
 };
 
-export const deriveSECP256K1Key = function (path, seed) {
+export const deriveSECP256K1Key = (path, seed) => {
   const wallet = bip32.fromSeed(seed);
   const key = wallet.derivePath(getPathStr(path));
   return {
@@ -470,7 +471,7 @@ export const gpErrors = {
 //---------------------------------------------------
 // General helpers
 //---------------------------------------------------
-export const getCodeMsg = function (code, expected) {
+export const getCodeMsg = (code, expected) => {
   if (code !== expected) {
     let codeTxt = code,
       expectedTxt = expected;
@@ -487,7 +488,7 @@ export const getCodeMsg = function (code, expected) {
   return '';
 };
 
-export const parseWalletJobResp = function (res, v) {
+export const parseWalletJobResp = (res, v) => {
   const jobRes = {
     resultStatus: null,
     result: null,
@@ -506,7 +507,7 @@ export const parseWalletJobResp = function (res, v) {
   return jobRes;
 };
 
-export const serializeJobData = function (job, walletUID, data) {
+export const serializeJobData = (job, walletUID, data) => {
   let serData;
   switch (job) {
     case jobTypes.WALLET_JOB_GET_ADDRESSES:
@@ -547,9 +548,7 @@ export const serializeJobData = function (job, walletUID, data) {
 };
 
 // First byte of the result data is the error code
-export const jobResErrCode = function (res) {
-  return res.result.readUInt32LE(0);
-};
+export const jobResErrCode = (res) => res.result.readUInt32LE(0);
 
 // Have to do this weird copy because `Buffer`s from the client are not real buffers
 // which is a vestige of requiring support on react native
@@ -604,7 +603,7 @@ export const stringifyPath = (parent) => {
 //---------------------------------------------------
 // Get Addresses helpers
 //---------------------------------------------------
-export const serializeGetAddressesJobData = function (data) {
+export const serializeGetAddressesJobData = (data) => {
   const req = Buffer.alloc(33);
   let off = 0;
   req.writeUInt32LE(data.path.pathDepth, off);
@@ -622,7 +621,7 @@ export const serializeGetAddressesJobData = function (data) {
   return req;
 };
 
-export const deserializeGetAddressesJobResult = function (res) {
+export const deserializeGetAddressesJobResult = (res) => {
   let off = 0;
   const getAddrResult = {
     count: 0,
@@ -645,12 +644,7 @@ export const deserializeGetAddressesJobResult = function (res) {
   return getAddrResult;
 };
 
-export const validateBTCAddresses = function (
-  resp,
-  jobData,
-  seed,
-  useTestnet?,
-) {
+export const validateBTCAddresses = (resp, jobData, seed, useTestnet?) => {
   expect(resp.count).toEqual(jobData.count);
   const wallet = bip32.fromSeed(seed);
   const path = JSON.parse(JSON.stringify(jobData.path));
@@ -688,7 +682,7 @@ export const validateBTCAddresses = function (
   }
 };
 
-export const validateETHAddresses = function (resp, jobData, seed) {
+export const validateETHAddresses = (resp, jobData, seed) => {
   expect(resp.count).toEqual(jobData.count);
   // Confirm it is an Ethereum address
   expect(resp.addresses[0].slice(0, 2)).toEqual('0x');
@@ -704,12 +698,12 @@ export const validateETHAddresses = function (resp, jobData, seed) {
   }
 };
 
-export const validateDerivedPublicKeys = function (
+export const validateDerivedPublicKeys = (
   pubKeys,
   firstPath,
   seed,
   flag?: number,
-) {
+) => {
   const wallet = bip32.fromSeed(seed);
   // We assume the keys were derived in sequential order
   pubKeys.forEach((pub, i) => {
@@ -733,14 +727,13 @@ export const validateDerivedPublicKeys = function (
   });
 };
 
-export const ethPersonalSignMsg = function (msg) {
-  return '\u0019Ethereum Signed Message:\n' + String(msg.length) + msg;
-};
+export const ethPersonalSignMsg = (msg) =>
+  '\u0019Ethereum Signed Message:\n' + String(msg.length) + msg;
 
 //---------------------------------------------------
 // Sign Transaction helpers
 //---------------------------------------------------
-export const serializeSignTxJobDataLegacy = function (data) {
+export const serializeSignTxJobDataLegacy = (data) => {
   // Serialize a signTX request using the legacy option
   // (see `WalletJobData_SignTx_t` and `SignatureRequest_t`)
   // in firmware for more info on legacy vs generic (new)
@@ -770,7 +763,7 @@ export const serializeSignTxJobDataLegacy = function (data) {
   return req;
 };
 
-export const deserializeSignTxJobResult = function (res: any) {
+export const deserializeSignTxJobResult = (res: any) => {
   let off = 0;
   const getTxResult: any = {
     numOutputs: null,
@@ -831,11 +824,9 @@ export const deserializeSignTxJobResult = function (res: any) {
 //---------------------------------------------------
 // Export Seed helpers
 //---------------------------------------------------
-export const serializeExportSeedJobData = function () {
-  return Buffer.alloc(0);
-};
+export const serializeExportSeedJobData = () => Buffer.alloc(0);
 
-export const deserializeExportSeedJobResult = function (res) {
+export const deserializeExportSeedJobResult = (res) => {
   let off = 0;
   const seed = res.slice(off, 64);
   off += 64;
@@ -856,7 +847,7 @@ export const deserializeExportSeedJobResult = function (res) {
 //---------------------------------------------------
 // Delete Seed helpers
 //---------------------------------------------------
-export const serializeDeleteSeedJobData = function (data) {
+export const serializeDeleteSeedJobData = (data) => {
   const req = Buffer.alloc(1);
   req.writeUInt8(data.iface, 0);
   return req;
@@ -865,7 +856,7 @@ export const serializeDeleteSeedJobData = function (data) {
 //---------------------------------------------------
 // Load Seed helpers
 //---------------------------------------------------
-export const serializeLoadSeedJobData = function (data) {
+export const serializeLoadSeedJobData = (data) => {
   const req = Buffer.alloc(217);
   let off = 0;
   req.writeUInt8(data.iface, off);
@@ -894,7 +885,7 @@ export const serializeLoadSeedJobData = function (data) {
 //---------------------------------------------------
 // Struct builders
 //---------------------------------------------------
-export const buildRandomEip712Object = function (randInt) {
+export const buildRandomEip712Object = (randInt) => {
   function randStr(n) {
     const words = wordlists['english'];
     let s = '';
@@ -1032,13 +1023,7 @@ export const buildRandomEip712Object = function (randInt) {
 //---------------------------------------------------
 // Generic signing
 //---------------------------------------------------
-export const validateGenericSig = function (
-  seed,
-  sig,
-  payloadBuf,
-  req,
-  pubkey?,
-) {
+export const validateGenericSig = (seed, sig, payloadBuf, req, pubkey?) => {
   const { signerPath, hashType, curveType } = req;
   const HASHES = Constants.SIGNING.HASHES;
   const CURVES = Constants.SIGNING.CURVES;
@@ -1087,7 +1072,7 @@ export const validateGenericSig = function (
  * @param resp - response from Lattice. Can be either legacy or generic signing variety
  * @param tx - optional, an @ethereumjs/tx Transaction object
  */
-export const getSigStr = function (resp: any, tx?: TypedTransaction) {
+export const getSigStr = (resp: any, tx?: TypedTransaction) => {
   let v;
   if (resp.sig.v !== undefined) {
     const vBuf = normalizeSigComponent(resp.sig.v);
@@ -1184,7 +1169,7 @@ export function validateSig(
   }
 }
 
-export const compressPubKey = function (pub) {
+export const compressPubKey = (pub) => {
   if (pub.length !== 65) {
     return pub;
   }
@@ -1198,8 +1183,16 @@ export const compressPubKey = function (pub) {
   return compressed;
 };
 
-export const getTestVectors = function () {
-  return jsonc.parse(
-    readFileSync(`${process.cwd()}/src/__test__/vectors.jsonc`).toString(),
+function _stripTrailingCommas(input: string): string {
+  return input.replace(
+    /,\s*(?:(?:\/\/[^\n]*\n)|\/\*[\s\S]*?\*\/|\s)*([}\]])/g,
+    '$1',
   );
+}
+
+export const getTestVectors = () => {
+  const raw = readFileSync(
+    `${process.cwd()}/src/__test__/vectors.jsonc`,
+  ).toString();
+  return jsonc.parse(_stripTrailingCommas(raw));
 };
