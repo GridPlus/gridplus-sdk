@@ -27,22 +27,25 @@ export async function runTestCase(
   return parsedRes;
 }
 
-type MaybeGenericData = { encodingType?: number; payload?: unknown };
-
 export async function runGeneric(request: SignRequestParams, client: Client) {
   const response = await client.sign(request);
-  const data = request.data as unknown as MaybeGenericData;
-  const encodingType = data?.encodingType ?? null;
+  // If no encoding type is specified we encode in hex or ascii
+  const encodingType = request.data.encodingType || null;
   const allowedEncodings = client.getFwConstants().genericSigning.encodingTypes;
   const { payloadBuf } = getEncodedPayload(
-    (data as any)?.payload,
+    request.data.payload,
     encodingType,
     allowedEncodings,
   );
   const seed = await initializeSeed(client);
-  const resp: any = response as any;
-  validateGenericSig(seed, resp.sig, payloadBuf, request.data, resp.pubkey);
-  return resp;
+  validateGenericSig(
+    seed,
+    response.sig,
+    payloadBuf,
+    request.data,
+    response.pubkey,
+  );
+  return response;
 }
 
 export async function runEvm(
@@ -72,7 +75,7 @@ export async function runEvm(
   }
   // Request signature and validate it
   await client.connect(getDeviceId());
-  const resp: any = await client.sign(req);
+  const resp = await client.sign(req);
   const sig = resp.sig ? resp.sig : null;
   if (shouldFail || !sig) {
     // Exit here without continuing tests. If this block is reached it indicates
