@@ -36,11 +36,11 @@ jobs:
     steps:
       - name: Checkout code
         if: github.event_name != 'pull_request_target'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Checkout code (Dependabot PR)
         if: github.event_name == 'pull_request_target'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
@@ -70,7 +70,7 @@ jobs:
         run: pnpx pkg-pr-new publish
 
       - name: Checkout lattice-simulator
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           repository: GridPlus/lattice-simulator
           path: lattice-simulator
