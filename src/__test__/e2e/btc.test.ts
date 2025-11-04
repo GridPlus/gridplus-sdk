@@ -5,7 +5,7 @@
  * Ensure `FEATURE_TEST_RUNNER=0` is active before executing these tests.
  */
 
-import bip32 from 'bip32';
+import bip32, { BIP32Interface } from 'bip32';
 import { getPrng, getTestnet } from '../utils/getters';
 import {
   BTC_PURPOSE_P2PKH,
@@ -21,7 +21,6 @@ import {
 } from '../utils/helpers';
 import { testRequest } from '../utils/testRequest';
 import { setupClient } from '../utils/setup';
-import { BIP32Interface } from 'bip32';
 
 const prng = getPrng();
 const TEST_TESTNET = !!getTestnet() || false;
@@ -67,7 +66,7 @@ async function testSign({ txReq, signingKeys, sigHashes, client }: any) {
 
 async function runTestSet(
   opts: any,
-  wallet: Wallet | null,
+  wallet: BIP32Interface | null,
   inputsSlice: InputObj[],
   client,
 ) {

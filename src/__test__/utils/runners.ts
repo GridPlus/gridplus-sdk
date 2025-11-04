@@ -13,6 +13,8 @@ import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { RLP } from '@ethereumjs/rlp';
 import { getDeviceId } from './getters';
 import { ensureHexBuffer } from '../../util';
+import { TestRequestPayload } from '../../types/utils';
+import { SignRequestParams } from '../../types/sign';
 
 export async function runTestCase(
   payload: TestRequestPayload,

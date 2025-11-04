@@ -1,4 +1,3 @@
-/* eslint-disable quotes */
 import { vi } from 'vitest';
 
 vi.mock('../../functions/fetchDecoder.ts', () => ({

@@ -1,4 +1,3 @@
-/* eslint-disable quotes */
 import { fetchBtcXpub, fetchBtcYpub, fetchBtcZpub, pair } from '../../api';
 import { setupClient } from '../utils/setup';
 
