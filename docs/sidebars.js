@@ -21,6 +21,10 @@ const sidebars = {
       id: 'index',
     },
     {
+      type: 'doc',
+      id: 'migration-v3-to-v4',
+    },
+    {
       type: 'category',
       label: 'Basic Functionality',
       collapsible: false,
