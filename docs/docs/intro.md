@@ -10,6 +10,17 @@ custom_edit_url: null
 
 The [GridPlus SDK](https://github.com/GridPlus/gridplus-sdk) is the official TypeScript/JavaScript library for interacting with the [Lattice1 hardware wallet](https://gridplus.io/lattice). It provides a secure communication layer between your application and the Lattice1 device.
 
+:::warning v4.0.0 Breaking Changes
+**You're viewing documentation for v4.0.0**, which introduces significant breaking changes from v3.x:
+
+- **New dependency**: Now uses `viem` instead of `ethers.js`
+- **Transaction format**: Different object structure for signing
+- **EIP-7702 support**: New account abstraction features
+- **Bitcoin helpers**: New XPUB/YPUB/ZPUB functions
+
+**Upgrading from v3.x?** See the [Migration Guide](./migration-v3-to-v4) for step-by-step upgrade instructions.
+:::
+
 ## How It Works
 
 ### Architecture Overview
@@ -123,6 +134,29 @@ try {
 
 :::warning
 Pairing codes expire after 2 minutes. If the code expires, you'll need to restart the pairing process to get a new code.
+:::
+
+#### Alternative: CLI Pairing Tool
+
+**New in v4.0**: For development and testing, you can use the built-in CLI pairing script:
+
+```bash
+npm run pair-device
+```
+
+This interactive script will:
+1. Prompt for your device ID
+2. Prompt for your app name
+3. Trigger pairing on your Lattice
+4. Ask you to enter the 6-digit code
+5. Save the connection for future use
+
+:::tip
+The CLI pairing tool is perfect for:
+- Quick testing and development
+- One-time device setup
+- Verifying your Lattice connection
+- Learning how the pairing flow works
 :::
 
 ### Step 3: Fetching Addresses

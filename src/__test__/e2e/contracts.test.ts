@@ -1,19 +1,17 @@
 import { execSync } from 'child_process';
 import * as dotenv from 'dotenv';
-import { readFileSync } from 'fs';
-import path from 'path';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { question } from 'readline-sync';
-import { fileURLToPath } from 'url';
+import { fileURLToPath } from 'node:url';
 import {
   type Account,
   type Address,
+  type PublicClient as ViemPublicClient,
+  type WalletClient as ViemWalletClient,
   createPublicClient,
   createWalletClient,
   http,
-} from 'viem';
-import type {
-  PublicClient as ViemPublicClient,
-  WalletClient as ViemWalletClient,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { foundry } from 'viem/chains';

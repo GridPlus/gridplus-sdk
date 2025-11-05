@@ -27,6 +27,45 @@ The GridPlus SDK provides a comprehensive signing interface for transactions and
 - **Physical approval required** - No remote signing without user consent
 - **End-to-end encryption** - All communication is encrypted with session keys
 
+### Type Safety & Validation
+
+**New in v4.0**: Automatic transaction validation using Zod schemas ensures your transactions are correct before they're sent to the device.
+
+```ts
+// ❌ This will throw a clear validation error
+const invalidTx = {
+  type: 'eip1559',
+  to: 'not-an-address',      // Invalid hex address
+  value: '0.1',               // Should be bigint
+  gas: 21000,                 // Should be bigint (21000n)
+  // Missing required fields...
+};
+
+await sign(invalidTx);
+// Error: Transaction validation failed:
+//   - to: Invalid Ethereum address format
+//   - value: Expected bigint, received string
+//   - gas: Expected bigint, received number
+//   - maxFeePerGas: Required field missing
+```
+
+**What gets validated**:
+- Transaction type matches structure (legacy, eip1559, eip2930, eip7702)
+- Required fields present for each type
+- Correct data types (bigint for numbers, hex for addresses/hashes)
+- Valid Ethereum addresses and hashes
+- Properly formatted access lists and authorization lists
+
+**Benefits**:
+- **Catch errors early** - Before sending to device
+- **Clear error messages** - Know exactly what's wrong
+- **TypeScript integration** - Full IDE autocomplete support
+- **Automatic normalization** - Handles `0x` prefix variations
+
+:::tip
+Zod validation helps you catch common mistakes like forgetting the `n` suffix on bigint values or using the wrong field names. This saves development time and prevents frustrating debugging sessions.
+:::
+
 ### Active Wallet
 
 The Lattice1 signs from its currently active wallet:

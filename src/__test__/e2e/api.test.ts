@@ -1,4 +1,5 @@
 /* eslint-disable quotes */
+
 vi.mock('../../functions/fetchDecoder.ts', () => ({
   fetchDecoder: vi.fn().mockResolvedValue(undefined),
 }));
@@ -23,6 +24,7 @@ vi.mock('../../util', async () => {
 
 import { RLP } from '@ethereumjs/rlp';
 import { question } from 'readline-sync';
+import { getClient } from './../../api/utilities';
 import {
   fetchActiveWallets,
   fetchAddress,
@@ -46,7 +48,6 @@ import {
   sign,
   signSolanaTx,
 } from '../../api/index';
-import { getClient } from './../../api/utilities';
 import { HARDENED_OFFSET } from '../../constants';
 import { buildRandomMsg } from '../utils/builders';
 import { setupClient } from '../utils/setup';

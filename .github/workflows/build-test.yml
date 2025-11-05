@@ -11,6 +11,15 @@ on:
       - main
       - dev
       - 'release/**'
+  pull_request_target:
+    branches:
+      - main
+      - dev
+      - 'release/**'
+    types:
+      - opened
+      - reopened
+      - synchronize
 
 jobs:
   build:
@@ -19,10 +28,21 @@ jobs:
     permissions:
       contents: read
       packages: read
+    if: >
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]') ||
+      (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]')
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        if: github.event_name != 'pull_request_target'
+        uses: actions/checkout@v5
+
+      - name: Checkout code (Dependabot PR)
+        if: github.event_name == 'pull_request_target'
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Install Node.js
         uses: actions/setup-node@v3
@@ -50,7 +70,7 @@ jobs:
         run: pnpx pkg-pr-new publish
 
       - name: Checkout lattice-simulator
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           repository: GridPlus/lattice-simulator
           path: lattice-simulator

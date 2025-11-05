@@ -2,8 +2,7 @@ import { readFileSync } from 'node:fs';
 import type { TypedTransaction } from '@ethereumjs/tx';
 import BIP32Factory from 'bip32';
 import { wordlists } from 'bip39';
-import type { Payment } from 'bitcoinjs-lib';
-import bitcoin from 'bitcoinjs-lib';
+import bitcoin, { type Payment } from 'bitcoinjs-lib';
 import BN from 'bn.js';
 import { ECPairFactory } from 'ecpair';
 import {
@@ -154,7 +153,6 @@ export const unharden = (x) => {
 export const buildPath = (indices) => {
   let path = 'm';
   indices.forEach((idx) => {
-    // eslint-disable-next-line quotes
     path += `/${unharden(idx)}${idx >= HARDENED_OFFSET ? "'" : ''}`;
   });
   return path;

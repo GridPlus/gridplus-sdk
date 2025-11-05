@@ -17,20 +17,24 @@ There are three methods used to manage tags:
 The following code snippet and accompanying comments should show you how to manage address tags. We will be replacing an address tag if it exists on the Lattice already, or adding a new tag if an existing one does not exist:
 
 ```ts
-import { Constants, Utils, setup, pair } from 'gridplus-sdk';
-import { question } from 'readline-sync';
-const deviceID = 'XXXXXX';
+import { setup, pair } from 'gridplus-sdk';
+import {
+  addAddressTags,
+  fetchAddressTags,
+  removeAddressTags,
+} from 'gridplus-sdk/api/addressTags';
 
 // Set up your client and connect to the Lattice
 const isPaired = await setup({
   name: 'My Wallet',
-  deviceId: 'XXXXXX',
-  password: 'password',
-  getStoredClient: () => localStorage.getItem('client'),
-  setStoredClient: (client) => localStorage.setItem('client', client),
+  deviceId: 'ABC123',
+  password: 'my-secure-password',
+  getStoredClient: () => localStorage.getItem('lattice-client'),
+  setStoredClient: (client) => localStorage.setItem('lattice-client', client),
 });
+
 if (!isPaired) {
-  const secret = await question('Enter pairing secret: ');
+  const secret = prompt('Enter the 6-digit code from your Lattice:');
   await pair(secret);
 }
 
@@ -75,5 +79,5 @@ const newTags = [
     [uniswapRouter]: newTag,
   },
 ];
-await addKvRecords({ records: newTags });
+await addAddressTags({ records: newTags });
 ```
