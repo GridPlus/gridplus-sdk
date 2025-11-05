@@ -147,7 +147,6 @@ export const unharden = (x) => {
 export const buildPath = (indices) => {
   let path = 'm';
   indices.forEach((idx) => {
-    // eslint-disable-next-line quotes
     path += `/${unharden(idx)}${idx >= HARDENED_OFFSET ? "'" : ''}`;
   });
   return path;
@@ -1048,18 +1047,13 @@ export const validateGenericSig = function (
       normalizeSigComponent(sig.r),
       normalizeSigComponent(sig.s),
     ]);
-    const edPublicKey = pubkey
-      ? normalizeSigComponent(pubkey)
-      : pub;
+    const edPublicKey = pubkey ? normalizeSigComponent(pubkey) : pub;
     const isValid = nacl.sign.detached.verify(
       new Uint8Array(payloadBuf),
       new Uint8Array(signature),
       new Uint8Array(edPublicKey),
     );
-    expect(isValid).toEqualElseLog(
-      true,
-      'Signature failed verification.',
-    );
+    expect(isValid).toEqualElseLog(true, 'Signature failed verification.');
   } else {
     throw new Error('Bad params');
   }
@@ -1093,9 +1087,7 @@ export const getSigStr = function (resp: any, tx?: TypedTransaction) {
   return `${rHex}${sHex}${v}`;
 };
 
-export function toBuffer(
-  data: string | number | Buffer | Uint8Array,
-): Buffer {
+export function toBuffer(data: string | number | Buffer | Uint8Array): Buffer {
   if (data === null || data === undefined) {
     throw new Error('Invalid data');
   }
@@ -1113,9 +1105,7 @@ export function toBuffer(
     const isHex =
       trimmed.startsWith('0x') ||
       (/^[0-9a-fA-F]+$/.test(trimmed) && trimmed.length % 2 === 0);
-    return isHex
-      ? ensureHexBuffer(trimmed)
-      : Buffer.from(trimmed, 'utf8');
+    return isHex ? ensureHexBuffer(trimmed) : Buffer.from(trimmed, 'utf8');
   }
   throw new Error('Unsupported data type');
 }

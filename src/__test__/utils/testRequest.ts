@@ -2,6 +2,7 @@ import {
   LatticeSecureEncryptedRequestType,
   encryptedSecureRequest,
 } from '../../protocol';
+import { TestRequestPayload } from '../../types/utils';
 
 /**
  * `test` takes a data object with a testID and a payload, and sends them to the device.

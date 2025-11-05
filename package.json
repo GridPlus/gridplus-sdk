@@ -6,8 +6,9 @@
   "scripts": {
     "build": "tsup",
     "commit": "git-cz",
-    "lint:fix": "eslint src --c .ts,.tsx --config eslint.config.mjs --fix",
+    "lint:fix": "eslint src --c .ts,.tsx --config eslint.config.mjs --fix && prettier --write .",
     "lint": "eslint src --c .ts,.tsx --config eslint.config.mjs",
+    "format": "prettier --write .",
     "pair-device": "tsx scripts/pair-device.ts",
     "precommit": "npm run lint:fix && npm run test",
     "test": "vitest run ./src/__test__/unit ./src/__test__/integration",

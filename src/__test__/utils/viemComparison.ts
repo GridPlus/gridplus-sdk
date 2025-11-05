@@ -55,7 +55,6 @@ export const createFoundryWalletClient = (chainId = 1) => {
 // Transaction type for our test vectors - use viem's TransactionSerializable
 export type TestTransaction = TransactionSerializable;
 
-
 // Sign transaction with both Lattice and viem, then compare
 export const signAndCompareTransaction = async (
   tx: TestTransaction,

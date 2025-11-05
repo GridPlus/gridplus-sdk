@@ -1,4 +1,3 @@
-/* eslint-disable quotes */
 import { vi } from 'vitest';
 
 vi.mock('../../functions/fetchDecoder.ts', () => ({
@@ -6,9 +5,8 @@ vi.mock('../../functions/fetchDecoder.ts', () => ({
 }));
 
 vi.mock('../../util', async () => {
-  const actual = await vi.importActual<typeof import('../../util')>(
-    '../../util',
-  );
+  const actual =
+    await vi.importActual<typeof import('../../util')>('../../util');
   return {
     ...actual,
     fetchCalldataDecoder: vi.fn().mockResolvedValue({
@@ -23,7 +21,6 @@ vi.mock('../../util', async () => {
     }),
   };
 });
-
 
 import { getClient } from './../../api/utilities';
 import { question } from 'readline-sync';

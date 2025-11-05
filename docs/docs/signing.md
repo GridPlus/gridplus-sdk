@@ -21,6 +21,7 @@ The GridPlus SDK provides a comprehensive signing interface for transactions and
 ## Core Principles
 
 ### Security First
+
 - **Private keys never leave the device** - All signing happens in the secure element
 - **What you see is what you sign** - Transaction details are decoded and displayed
 - **Physical approval required** - No remote signing without user consent
@@ -66,12 +67,16 @@ Zod validation helps you catch common mistakes like forgetting the `n` suffix on
 :::
 
 ### Active Wallet
+
 The Lattice1 signs from its currently active wallet:
+
 - **Internal Wallet** - The device's built-in HD wallet
 - **SafeCard** - When inserted and unlocked, becomes the active wallet
 
 ### Derivation Paths
+
 Every signing request needs a derivation path to identify which key to use:
+
 - Follows BIP32/BIP44 standards
 - Path determines which private key signs the transaction
 - Must match the blockchain's expected format
@@ -86,7 +91,7 @@ For signing plain text messages (like login challenges), use `signMessage`:
 import { signMessage } from 'gridplus-sdk/api/signing';
 
 // Simple text message
-const message = "Sign this message to prove you own this address";
+const message = 'Sign this message to prove you own this address';
 const result = await signMessage(message);
 
 // What the user sees on Lattice1:
@@ -95,7 +100,7 @@ const result = await signMessage(message);
 // - Signing address
 
 // Result structure:
-console.log(result.sig);    // { r: '0x...', s: '0x...', v: 27 }
+console.log(result.sig); // { r: '0x...', s: '0x...', v: 27 }
 console.log(result.signer); // '0x742d35Cc6634C0532925a3b844Bc9e7595f8b2dc'
 
 // The signature can be verified with:
@@ -117,6 +122,7 @@ console.log(result.signer); // '0x742d35Cc6634C0532925a3b844Bc9e7595f8b2dc'
 The Lattice1 decodes and displays transaction details based on the transaction type:
 
 #### Standard Transfers
+
 ```
 To: 0x742d...b2dc
 Value: 0.1 ETH
@@ -127,6 +133,7 @@ Chain: Ethereum
 ```
 
 #### Contract Interactions
+
 ```
 To: Uniswap V3 Router
 Function: swapExactTokensForTokens
@@ -147,7 +154,7 @@ import { sign } from 'gridplus-sdk/api/signing';
 const tx = {
   type: 'eip1559',
   to: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D', // Uniswap Router
-  data: '0x38ed1739...',  // swapExactTokensForTokens calldata
+  data: '0x38ed1739...', // swapExactTokensForTokens calldata
   value: 0n,
   // ... gas parameters
 };
@@ -160,14 +167,14 @@ const result = await sign(tx);
 
 The SDK automatically detects and applies the appropriate encoding:
 
-| Transaction Type | What User Sees | Encoding Used |
-|:----------------|:---------------|:--------------|
-| ETH Transfer | To, Value, Gas details | `EVM` |
-| ERC20 Transfer | Token, Recipient, Amount | `EVM` with ABI |
-| Contract Call | Function name, Parameters | `EVM` with ABI |
-| Solana Transfer | From, To, Lamports | `SOLANA` |
-| Bitcoin | Inputs, Outputs, Fee | `BTC` |
-| Raw Message | Hex or ASCII display | `NONE` |
+| Transaction Type | What User Sees            | Encoding Used  |
+| :--------------- | :------------------------ | :------------- |
+| ETH Transfer     | To, Value, Gas details    | `EVM`          |
+| ERC20 Transfer   | Token, Recipient, Amount  | `EVM` with ABI |
+| Contract Call    | Function name, Parameters | `EVM` with ABI |
+| Solana Transfer  | From, To, Lamports        | `SOLANA`       |
+| Bitcoin          | Inputs, Outputs, Fee      | `BTC`          |
+| Raw Message      | Hex or ASCII display      | `NONE`         |
 
 ## EVM Transaction Signing
 
@@ -176,6 +183,7 @@ The SDK automatically detects and applies the appropriate encoding:
 The SDK supports all Ethereum transaction types using Viem's format:
 
 #### EIP-1559 (Type 2) - Recommended
+
 ```ts
 import { sign } from 'gridplus-sdk/api/signing';
 import { parseEther, parseGwei } from 'viem';
@@ -195,6 +203,7 @@ const result = await sign(tx);
 ```
 
 #### Legacy (Type 0)
+
 ```ts
 const tx = {
   type: 'legacy',
@@ -210,6 +219,7 @@ const result = await sign(tx);
 ```
 
 #### EIP-2930 (Type 1) - With Access List
+
 ```ts
 const tx = {
   type: 'eip2930',
@@ -222,8 +232,8 @@ const tx = {
   accessList: [
     {
       address: '0x...',
-      storageKeys: ['0x...', '0x...']
-    }
+      storageKeys: ['0x...', '0x...'],
+    },
   ],
 };
 
@@ -234,14 +244,15 @@ const result = await sign(tx);
 
 ```ts
 interface SignData {
-  tx: string;        // Complete signed transaction (ready to broadcast)
-  txHash: string;    // Transaction hash (keccak256)
-  sig: {            // Signature components
-    r: string;      // Signature r value
-    s: string;      // Signature s value
-    v: number;      // Recovery parameter
+  tx: string; // Complete signed transaction (ready to broadcast)
+  txHash: string; // Transaction hash (keccak256)
+  sig: {
+    // Signature components
+    r: string; // Signature r value
+    s: string; // Signature s value
+    v: number; // Recovery parameter
   };
-  signer: string;   // Address that signed
+  signer: string; // Address that signed
 }
 ```
 
@@ -255,7 +266,7 @@ const erc20Transfer = {
   data: encodeFunctionData({
     abi: erc20Abi,
     functionName: 'transfer',
-    args: [recipientAddress, parseUnits('100', 6)] // 100 USDC
+    args: [recipientAddress, parseUnits('100', 6)], // 100 USDC
   }),
   value: 0n,
   // ... gas parameters
@@ -298,7 +309,7 @@ const authRequest = {
   // Contract that will handle your account's logic
   address: '0x0000000000219ab540356cBB839Cbe05303d7705',
   chainId: 1,
-  nonce: 0,  // 0 = reusable, or use current nonce for one-time
+  nonce: 0, // 0 = reusable, or use current nonce for one-time
 };
 
 // User sees on device:
@@ -320,12 +331,12 @@ import { sign } from 'gridplus-sdk/api/signing';
 const tx = {
   type: 'eip7702',
   authorizationList: [authorization],
-  to: myEOA,  // Call your own EOA with the delegated code
+  to: myEOA, // Call your own EOA with the delegated code
   value: 0n,
   data: encodeFunctionData({
     abi: accountAbstractionAbi,
     functionName: 'executeBatch',
-    args: [operations]
+    args: [operations],
   }),
   chainId: 1,
   nonce: currentNonce,
@@ -385,6 +396,7 @@ const bscTx = {
 #### What is EIP-712?
 
 EIP-712 provides structured, human-readable message signing:
+
 - **Structured Data** - JSON-like format instead of raw bytes
 - **Domain Separation** - Prevents signature replay across dApps
 - **Type Safety** - Explicit types for each field
@@ -449,12 +461,15 @@ The SDK provides dedicated functions for Bitcoin transactions based on address t
 import { signBtcLegacyTx } from 'gridplus-sdk/api/signing';
 
 const payload = {
-  prevOuts: [{
-    txHash: '2aba3db3dc5b1b3ded7231d90fe333e184d24672eb0b6466dbc86228b8996112',
-    value: 100000, // satoshis
-    index: 3,
-    signerPath: [0x80000000 + 44, 0x80000000, 0x80000000, 0, 12],
-  }],
+  prevOuts: [
+    {
+      txHash:
+        '2aba3db3dc5b1b3ded7231d90fe333e184d24672eb0b6466dbc86228b8996112',
+      value: 100000, // satoshis
+      index: 3,
+      signerPath: [0x80000000 + 44, 0x80000000, 0x80000000, 0, 12],
+    },
+  ],
   recipient: '1FKpGnhtR3ZrVcU8hfEdMe8NpweFb2sj5F',
   value: 50000,
   fee: 20000,
@@ -471,12 +486,15 @@ const result = await signBtcLegacyTx(payload);
 import { signBtcSegwitTx } from 'gridplus-sdk/api/signing';
 
 const payload = {
-  prevOuts: [{
-    txHash: '2aba3db3dc5b1b3ded7231d90fe333e184d24672eb0b6466dbc86228b8996112',
-    value: 100000,
-    index: 3,
-    signerPath: [0x80000000 + 84, 0x80000000, 0x80000000, 0, 12],
-  }],
+  prevOuts: [
+    {
+      txHash:
+        '2aba3db3dc5b1b3ded7231d90fe333e184d24672eb0b6466dbc86228b8996112',
+      value: 100000,
+      index: 3,
+      signerPath: [0x80000000 + 84, 0x80000000, 0x80000000, 0, 12],
+    },
+  ],
   recipient: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
   value: 50000,
   fee: 20000,
@@ -492,12 +510,15 @@ const result = await signBtcSegwitTx(payload);
 import { signBtcWrappedSegwitTx } from 'gridplus-sdk/api/signing';
 
 const payload = {
-  prevOuts: [{
-    txHash: '2aba3db3dc5b1b3ded7231d90fe333e184d24672eb0b6466dbc86228b8996112',
-    value: 100000,
-    index: 3,
-    signerPath: [0x80000000 + 49, 0x80000000, 0x80000000, 0, 12],
-  }],
+  prevOuts: [
+    {
+      txHash:
+        '2aba3db3dc5b1b3ded7231d90fe333e184d24672eb0b6466dbc86228b8996112',
+      value: 100000,
+      index: 3,
+      signerPath: [0x80000000 + 49, 0x80000000, 0x80000000, 0, 12],
+    },
+  ],
   recipient: '3JvL6Ymt8MVWiCNHC7oWU6nLeHNJKLZGLN',
   value: 50000,
   fee: 20000,
