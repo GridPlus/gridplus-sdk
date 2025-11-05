@@ -5,6 +5,21 @@ import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
 import { Hash } from 'ox';
 import { RLP } from '@ethereumjs/rlp';
 import * as secp256k1 from 'secp256k1';
+import * as cbor from 'cbor2';
+import {
+  TransactionSerializable,
+  serializeTransaction,
+  type Hex,
+  hexToNumber,
+} from 'viem';
+import {
+  type SigningPath,
+  type FirmwareConstants,
+  TransactionRequest,
+  TRANSACTION_TYPE,
+} from './types';
+import { buildGenericSigningMsgRequest } from './genericSigning';
+import { TransactionSchema, type FlexibleTransaction } from './schemas';
 import {
   ASCII_REGEX,
   HANDLE_LARGER_CHAIN_ID,
@@ -21,26 +36,8 @@ import {
   splitFrames,
   convertRecoveryToV,
 } from './util';
-import * as cbor from 'cbor';
-import bdec from 'cbor-bigdecimal';
-import {
-  TransactionSerializable,
-  serializeTransaction,
-  type Hex,
-  hexToNumber,
-} from 'viem';
-import {
-  type SigningPath,
-  type FirmwareConstants,
-  TransactionRequest,
-  TRANSACTION_TYPE,
-} from './types';
-import { buildGenericSigningMsgRequest } from './genericSigning';
-import { TransactionSchema, type FlexibleTransaction } from './schemas';
 
-bdec(cbor);
-
-const buildEthereumMsgRequest = function (input) {
+const buildEthereumMsgRequest = (input) => {
   if (!input.payload || !input.protocol || !input.signerPath)
     throw new Error(
       'You must provide `payload`, `signerPath`, and `protocol` arguments in the messsage request',
@@ -67,7 +64,7 @@ const buildEthereumMsgRequest = function (input) {
   }
 };
 
-const validateEthereumMsgResponse = function (res, req) {
+const validateEthereumMsgResponse = (res, req) => {
   const { signer, sig } = res;
   const { input, msg, prehash = null } = req;
   if (input.protocol === 'signPersonal') {
@@ -181,7 +178,7 @@ function normalizeTypedDataForHashing(value: any): any {
   return value;
 }
 
-const buildEthereumTxRequest = function (data) {
+const buildEthereumTxRequest = (data) => {
   try {
     let { chainId = 1 } = data;
     const { signerPath, eip155 = null, fwConstants, type = null } = data;
@@ -497,7 +494,7 @@ function stripZeros(a) {
 
 // Given a 64-byte signature [r,s] we need to figure out the v value
 // and attah the full signature to the end of the transaction payload
-const buildEthRawTx = function (tx, sig, address) {
+const buildEthRawTx = (tx, sig, address) => {
   // RLP-encode the data we sent to the lattice
   const hash = Buffer.from(
     Hash.keccak256(get_rlp_encoded_preimage(tx.rawTx, tx.type)),
@@ -1024,7 +1021,7 @@ function parseEIP712Item(data, type, forJSParser = false) {
     }
   } else if (type.slice(0, 5) === 'bytes') {
     // Fixed sizes bytes need to be buffer type. We also add some sanity checks.
-    const nBytes = parseInt(type.slice(5));
+    const nBytes = Number.parseInt(type.slice(5));
     data = ensureHexBuffer(data);
     // Edge case to handle empty bytesN values
     if (data.length === 0) {
