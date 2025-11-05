@@ -6,7 +6,12 @@ import {
   LatticeSignEncoding,
   LatticeSignHash,
 } from './protocol/latticeConstants';
-import { FirmwareConstants, FirmwareArr, ActiveWallets } from './types';
+import {
+  FirmwareConstants,
+  FirmwareArr,
+  ActiveWallets,
+  WalletPath,
+} from './types/index.js';
 
 /**
  * Externally exported constants used for building requests
@@ -37,6 +42,8 @@ export const EXTERNAL = {
       SOLANA: LatticeSignEncoding.solana,
       EVM: LatticeSignEncoding.evm,
       ETH_DEPOSIT: LatticeSignEncoding.eth_deposit,
+      EIP7702_AUTH: LatticeSignEncoding.eip7702_auth,
+      EIP7702_AUTH_LIST: LatticeSignEncoding.eip7702_auth_list,
     },
     BLS_DST: {
       BLS_DST_NUL: LatticeSignBlsDst.NUL,
@@ -443,6 +450,17 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
       EXTERNAL.SIGNING.ENCODINGS.ETH_DEPOSIT;
   }
 
+  // --- V0.18.X ---
+  // V0.18.0 added support for EIP7702 signing
+  // TODO: update patch version when this is released
+  if (!legacy && gte(v, [0, 18, 0])) {
+    c.genericSigning.encodingTypes = {
+      ...c.genericSigning.encodingTypes,
+      EIP7702_AUTH: EXTERNAL.SIGNING.ENCODINGS.EIP7702_AUTH,
+      EIP7702_AUTH_LIST: EXTERNAL.SIGNING.ENCODINGS.EIP7702_AUTH_LIST,
+    };
+  }
+
   return c;
 }
 
@@ -506,7 +524,7 @@ export const DEFAULT_ACTIVE_WALLETS: ActiveWallets = {
 };
 
 /** @internal */
-export const DEFAULT_ETH_DERIVATION = [
+export const DEFAULT_ETH_DERIVATION: WalletPath = [
   HARDENED_OFFSET + 44,
   HARDENED_OFFSET + 60,
   HARDENED_OFFSET,
@@ -567,6 +585,36 @@ export const BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION = [
   0,
   0,
 ];
+
+/**
+ * Derivation path for Bitcoin legacy xpub (BIP44).
+ * Use with fetchAddressesByDerivationPath() and LatticeGetAddressesFlag.secp256k1Xpub
+ * @example
+ * const xpub = await fetchAddressesByDerivationPath(BTC_LEGACY_XPUB_PATH, {
+ *   flag: LatticeGetAddressesFlag.secp256k1Xpub
+ * });
+ */
+export const BTC_LEGACY_XPUB_PATH = "44'/0'/0'";
+
+/**
+ * Derivation path for Bitcoin wrapped segwit ypub (BIP49).
+ * Use with fetchAddressesByDerivationPath() and LatticeGetAddressesFlag.secp256k1Xpub
+ * @example
+ * const ypub = await fetchAddressesByDerivationPath(BTC_WRAPPED_SEGWIT_YPUB_PATH, {
+ *   flag: LatticeGetAddressesFlag.secp256k1Xpub
+ * });
+ */
+export const BTC_WRAPPED_SEGWIT_YPUB_PATH = "49'/0'/0'";
+
+/**
+ * Derivation path for Bitcoin native segwit zpub (BIP84).
+ * Use with fetchAddressesByDerivationPath() and LatticeGetAddressesFlag.secp256k1Xpub
+ * @example
+ * const zpub = await fetchAddressesByDerivationPath(BTC_SEGWIT_ZPUB_PATH, {
+ *   flag: LatticeGetAddressesFlag.secp256k1Xpub
+ * });
+ */
+export const BTC_SEGWIT_ZPUB_PATH = "84'/0'/0'";
 
 /** @internal */
 export const SOLANA_DERIVATION = [

@@ -37,37 +37,58 @@ const ETH_REQ = {
 describe('key-value', () => {
   let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
   });
 
   it('Should ask if the user wants to reset state', async () => {
-    const answer = question(
-      'Do you want to clear all kv records and start anew? (Y/N) ',
-    );
+    let answer = 'Y';
+    if (process.env.CI !== '1') {
+      answer = question(
+        'Do you want to clear all kv records and start anew? (Y/N) ',
+      );
+    } else {
+      answer = 'Y';
+    }
     if (answer.toUpperCase() === 'Y') {
-      let cont = true;
-      const numRmv = 0;
-      while (cont) {
-        const data = await client.getKvRecords({ start: numRmv });
-        if (data.total === numRmv) {
-          cont = false;
-        } else {
-          const ids: string[] = [];
-          for (let i = 0; i < Math.min(100, data.records.length); i++) {
-            ids.push(data?.records[i]?.id ?? '');
-          }
-          await client.removeKvRecords({ ids });
+      const batchSize = 10;
+      let lastTotal: number | null = null;
+      let iterations = 0;
+
+      while (iterations < 100) {
+        iterations += 1;
+        const data = await client.getKvRecords({ n: batchSize, start: 0 });
+        console.log('[getKvRecords] data:', JSON.stringify(data, null, 2));
+
+        const { records = [], total = 0 } = data;
+        if (!records.length || total === 0) {
+          break;
         }
+
+        if (lastTotal !== null && total >= lastTotal) {
+          console.warn(
+            '[kv.test] KV cleanup halted to avoid infinite loop (no progress detected).',
+          );
+          break;
+        }
+
+        const ids = records
+          .slice(0, batchSize)
+          .map((record: any) => (record?.id ?? '').toString())
+          .filter((id: string) => id.length > 0);
+
+        if (!ids.length) {
+          break;
+        }
+
+        await client.removeKvRecords({ type: 0, ids });
+        if (total <= ids.length) {
+          break;
+        }
+
+        lastTotal = total;
       }
     }
-  });
-
-  it('Should notify the user when to approve requests', async () => {
-    question(
-      '\nNOTE: ONLY APPROVE REQUESTS THAT RENDER TAGS FOR THIS TEST SCRIPT.\n' +
-        'Press ENTER to continue.',
-    );
   });
 
   it('Should make a request to an unknown address', async () => {

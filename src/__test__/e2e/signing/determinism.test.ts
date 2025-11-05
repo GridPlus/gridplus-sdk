@@ -27,12 +27,13 @@ import {
 import { initializeSeed } from '../../utils/initializeClient';
 import { runTestCase } from '../../utils/runners';
 import { setupClient } from '../../utils/setup';
+import type { WalletPath } from '../../../types';
 let seed: Buffer;
 
 describe('[Determinism]', () => {
   let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
   });
 
@@ -134,21 +135,18 @@ describe('[Determinism]', () => {
         n: 1,
       };
       const latAddr0 = await client.getAddresses(req);
-      //@ts-expect-error - Returns strings sometimes
       expect(latAddr0[0].toLowerCase()).toEqualElseLog(
         addr0.toLowerCase(),
         'Incorrect address 0 fetched.',
       );
       req.startPath = path1;
       const latAddr1 = await client.getAddresses(req);
-      //@ts-expect-error - Returns strings sometimes
       expect(latAddr1[0].toLowerCase()).toEqualElseLog(
         addr1.toLowerCase(),
         'Incorrect address 1 fetched.',
       );
       req.startPath = path8;
       const latAddr8 = await client.getAddresses(req);
-      //@ts-expect-error - Returns strings sometimes
       expect(latAddr8[0].toLowerCase()).toEqualElseLog(
         addr8.toLowerCase(),
         'Incorrect address 8 fetched.',
@@ -157,42 +155,42 @@ describe('[Determinism]', () => {
   });
 
   describe('Test uniformity of Ethereum transaction sigs', () => {
-    it('Should validate uniformity sigs on m/44\'/60\'/0\'/0/0', async () => {
+    it("Should validate uniformity sigs on m/44'/60'/0'/0/0", async () => {
       const tx = buildTx();
       const txReq = buildTxReq(tx);
       txReq.data.signerPath[2] = HARDENED_OFFSET;
       await testUniformSigs(txReq, tx, client);
     });
 
-    it('Should validate uniformity sigs on m/44\'/60\'/1\'/0/0', async () => {
+    it("Should validate uniformity sigs on m/44'/60'/1'/0/0", async () => {
       const tx = buildTx();
       const txReq = buildTxReq(tx);
       txReq.data.signerPath[2] = HARDENED_OFFSET + 1;
       await testUniformSigs(txReq, tx, client);
     });
 
-    it('Should validate uniformity sigs on m/44\'/60\'/8\'/0/0', async () => {
+    it("Should validate uniformity sigs on m/44'/60'/8'/0/0", async () => {
       const tx = buildTx();
       const txReq = buildTxReq(tx);
       txReq.data.signerPath[2] = HARDENED_OFFSET + 8;
       await testUniformSigs(txReq, tx, client);
     });
 
-    it('Should validate uniformity sigs on m/44\'/60\'/0\'/0/0', async () => {
+    it("Should validate uniformity sigs on m/44'/60'/0'/0/0", async () => {
       const tx = buildTx(`0x${randomBytes(4000).toString('hex')}`);
       const txReq = buildTxReq(tx);
       txReq.data.signerPath[2] = HARDENED_OFFSET;
       await testUniformSigs(txReq, tx, client);
     });
 
-    it('Should validate uniformity sigs on m/44\'/60\'/1\'/0/0', async () => {
+    it("Should validate uniformity sigs on m/44'/60'/1'/0/0", async () => {
       const tx = buildTx(`0x${randomBytes(4000).toString('hex')}`);
       const txReq = buildTxReq(tx);
       txReq.data.signerPath[2] = HARDENED_OFFSET + 1;
       await testUniformSigs(txReq, tx, client);
     });
 
-    it('Should validate uniformity sigs on m/44\'/60\'/8\'/0/0', async () => {
+    it("Should validate uniformity sigs on m/44'/60'/8'/0/0", async () => {
       const tx = buildTx(`0x${randomBytes(4000).toString('hex')}`);
       const txReq = buildTxReq(tx);
       txReq.data.signerPath[2] = HARDENED_OFFSET + 8;

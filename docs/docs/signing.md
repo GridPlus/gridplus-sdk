@@ -3,237 +3,553 @@ id: 'signing'
 sidebar_position: 3
 ---
 
-# 🧾 Signing Messages
+# 🧾 Signing Guide
 
-The Lattice1 is capable of signing messages (e.g. Ethereum transactions) on supported elliptic curves. For certain message types, Lattice firmware is capable of decoding and displaying the requests in more readable ways. All requests must include a **derivation path** and must be made against the **current active wallet** on the target Lattice; if a [SafeCard](https://gridplus.io/safe-cards) is inserted and unlocked, it is considered the active wallet.
+## Overview
 
-# ✍️ General Signing
+The GridPlus SDK provides a comprehensive signing interface for transactions and messages across multiple blockchains. All signing operations use Viem-compatible formats and maintain end-to-end encryption with your Lattice1 device.
 
-:::info
-General signing was introduced Lattice firmare `v0.14.0`. GridPlus plans on deprecating the legacy signing mode and replacing it with corresponding [Encoding Types](#encoding-types). This document will be updated as that happens.
+### How Signing Works
+
+1. **Create** - Build your transaction using Viem's `TransactionSerializable` format
+2. **Serialize** - SDK converts to RLP encoding for transmission
+3. **Encrypt** - Request sent through secure channel to device
+4. **Display** - Lattice1 decodes and shows transaction details
+5. **Approve** - User physically confirms on device screen
+6. **Return** - Signed transaction returned, ready to broadcast
+
+## Core Principles
+
+### Security First
+
+- **Private keys never leave the device** - All signing happens in the secure element
+- **What you see is what you sign** - Transaction details are decoded and displayed
+- **Physical approval required** - No remote signing without user consent
+- **End-to-end encryption** - All communication is encrypted with session keys
+
+### Type Safety & Validation
+
+**New in v4.0**: Automatic transaction validation using Zod schemas ensures your transactions are correct before they're sent to the device.
+
+```ts
+// ❌ This will throw a clear validation error
+const invalidTx = {
+  type: 'eip1559',
+  to: 'not-an-address',      // Invalid hex address
+  value: '0.1',               // Should be bigint
+  gas: 21000,                 // Should be bigint (21000n)
+  // Missing required fields...
+};
+
+await sign(invalidTx);
+// Error: Transaction validation failed:
+//   - to: Invalid Ethereum address format
+//   - value: Expected bigint, received string
+//   - gas: Expected bigint, received number
+//   - maxFeePerGas: Required field missing
+```
+
+**What gets validated**:
+- Transaction type matches structure (legacy, eip1559, eip2930, eip7702)
+- Required fields present for each type
+- Correct data types (bigint for numbers, hex for addresses/hashes)
+- Valid Ethereum addresses and hashes
+- Properly formatted access lists and authorization lists
+
+**Benefits**:
+- **Catch errors early** - Before sending to device
+- **Clear error messages** - Know exactly what's wrong
+- **TypeScript integration** - Full IDE autocomplete support
+- **Automatic normalization** - Handles `0x` prefix variations
+
+:::tip
+Zod validation helps you catch common mistakes like forgetting the `n` suffix on bigint values or using the wrong field names. This saves development time and prevents frustrating debugging sessions.
 :::
 
-General signing allows you to request a signature on **any message** from a private key derived on **any supported curve**. You will need to specify, at a minimum, a `Curve` and a `Hash` for your signing request. Options can be found in [`Constants`](./reference/constants#external):
+### Active Wallet
+
+The Lattice1 signs from its currently active wallet:
+
+- **Internal Wallet** - The device's built-in HD wallet
+- **SafeCard** - When inserted and unlocked, becomes the active wallet
+
+### Derivation Paths
+
+Every signing request needs a derivation path to identify which key to use:
+
+- Follows BIP32/BIP44 standards
+- Path determines which private key signs the transaction
+- Must match the blockchain's expected format
+
+## Message Signing
+
+### Simple Messages
+
+For signing plain text messages (like login challenges), use `signMessage`:
 
 ```ts
-import { Constants } from `gridplus-sdk`
+import { signMessage } from 'gridplus-sdk/api/signing';
+
+// Simple text message
+const message = 'Sign this message to prove you own this address';
+const result = await signMessage(message);
+
+// What the user sees on Lattice1:
+// - Message type: "Personal Message"
+// - Full message text (scrollable)
+// - Signing address
+
+// Result structure:
+console.log(result.sig); // { r: '0x...', s: '0x...', v: 27 }
+console.log(result.signer); // '0x742d35Cc6634C0532925a3b844Bc9e7595f8b2dc'
+
+// The signature can be verified with:
+// - ethers: verifyMessage(message, signature)
+// - viem: verifyMessage({ message, signature, address })
 ```
 
-:::note
-Some curves (e.g. `SECP256K1`) require a hashing algorithm to be specified so that Lattice firmware can hash the message before signing. Other curves (e.g. `ED25519`, `BLS12_381_G2`) hash the message as part of the signing process and require `curveType=NONE`.
-:::
+### How Personal Sign Works
 
-| Param | Location in `Constants`    | Options                                | Description                                                                                                          |
-| :---- | :------------------------- | :------------------------------------- | :------------------------------------------------------------------------------------------------------------------- |
-| Curve | `Constants.SIGNING.CURVES` | `SECP256K1`, `ED25519`, `BLS12_381_G2` | Curve on which to derive the signer's private key                                                                    |
-| Hash  | `Constants.SIGNING.HASHES` | `KECCAK256`, `SHA256`, `NONE`          | Hash to use prior to signing. Note that `ED25519` and `BLS12_381_G2` require `NONE` as messages cannot be prehashed. |
+1. **Message Preparation** - Prefixed with `"\x19Ethereum Signed Message:\n" + length`
+2. **Display** - Shows as ASCII text on device (hex if not readable)
+3. **Signing** - Uses secp256k1 curve with keccak256 hash
+4. **Recovery** - Signature includes recovery parameter (v) for address recovery
 
-### Example: General Signing
+## Transaction Display & Decoding
+
+### How Transactions Are Displayed
+
+The Lattice1 decodes and displays transaction details based on the transaction type:
+
+#### Standard Transfers
+
+```
+To: 0x742d...b2dc
+Value: 0.1 ETH
+Gas: 21000
+Max Fee: 20 gwei
+Priority: 2 gwei
+Chain: Ethereum
+```
+
+#### Contract Interactions
+
+```
+To: Uniswap V3 Router
+Function: swapExactTokensForTokens
+Amount In: 1000 USDC
+Amount Out Min: 0.95 ETH
+Path: USDC -> ETH
+Deadline: 30 mins
+```
+
+### ABI Decoding
+
+The SDK automatically fetches and caches contract ABIs to show human-readable function calls:
 
 ```ts
-const msg = "I am the captain now"
-const req = {
-  signerPath: [ 0x80000000 + 44, 0x80000000 + 60, 0x80000000, ];
-  curveType: Constants.SIGNING.CURVES.SECP256K1,
-  hashType: Constants.SIGNING.HASHES.KECCAK256,
-  payload: msg
+import { sign } from 'gridplus-sdk/api/signing';
+
+// Contract interaction - will be decoded on device
+const tx = {
+  type: 'eip1559',
+  to: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D', // Uniswap Router
+  data: '0x38ed1739...', // swapExactTokensForTokens calldata
+  value: 0n,
+  // ... gas parameters
 };
-const sig = await sign(req)
+
+const result = await sign(tx);
+// User sees decoded function name and parameters on device
 ```
 
-## 📃 Encoding Types
+### Supported Encoding Types
 
-You may specify an **Encoding Type** in your signing request if you want the message to render the signing request in a **formatted** way, such as for an EVM transaction. If no encoding type is specified, the message will be displayed on the Lattice in full as either a hex or ASCII string, depending on the contents of the message. If you do specify an encoding type, the message **must** conform to the expected format (e.g. EVM transaction) or else Lattice firmware will reject the request.
+The SDK automatically detects and applies the appropriate encoding:
 
-Encoding Types can be accessed inside of `Constants`:
+| Transaction Type | What User Sees            | Encoding Used  |
+| :--------------- | :------------------------ | :------------- |
+| ETH Transfer     | To, Value, Gas details    | `EVM`          |
+| ERC20 Transfer   | Token, Recipient, Amount  | `EVM` with ABI |
+| Contract Call    | Function name, Parameters | `EVM` with ABI |
+| Solana Transfer  | From, To, Lamports        | `SOLANA`       |
+| Bitcoin          | Inputs, Outputs, Fee      | `BTC`          |
+| Raw Message      | Hex or ASCII display      | `NONE`         |
+
+## EVM Transaction Signing
+
+### Transaction Types
+
+The SDK supports all Ethereum transaction types using Viem's format:
+
+#### EIP-1559 (Type 2) - Recommended
 
 ```ts
-const encodings = Constants.SIGNING.ENCODINGS;
-```
+import { sign } from 'gridplus-sdk/api/signing';
+import { parseEther, parseGwei } from 'viem';
 
-| Encoding      | Description                                                                                                                                                                                                                                       |
-| :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `NONE`        | Can also use `null` or not specify the `encodingType`. Lattice will display either an ASCII or a hex string depending on the payload.                                                                                                             |
-| `EVM`         | Used to decode an EVM contract function call. To deploy a contract, set `to` as `null`.                                                                                                                                                           |
-| `SOLANA`      | Used to decode a Solana transaction. Transactions that cannot be decoded will be rejected.                                                                                                                                                        |
-| `ETH_DEPOSIT` | Can be used to display a [`DepositData`](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#depositdata) signing root and associated validator public key in order to build deposit data for a new ETH2 validator. |
-
-### Example: EVM Encoding
-
-```ts
-// Create an `@ethereumjs/tx` object. Contents of `txData` are out of scope
-// for this example.
-import { TransactionFactory } from '@ethereumjs/tx';
-const tx = TransactionFactory.fromTxData(txData, { common: req.common });
-// Full, serialized EVM transaction
-const msg = tx.getMessageToSign(false);
-
-// Build the request with the EVM encoding
-const req = {
-  signerPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
-  curveType: Constants.SIGNING.CURVES.SECP256K1,
-  hashType: Constants.SIGNING.HASHES.KECCAK256,
-  encodingType: Constants.SIGNING.ENCODINGS.EVM,
-  payload: msg,
+const tx = {
+  type: 'eip1559',
+  to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+  value: parseEther('0.1'),
+  nonce: 0,
+  gas: 21000n,
+  maxFeePerGas: parseGwei('20'),
+  maxPriorityFeePerGas: parseGwei('2'),
+  chainId: 1,
 };
-const sig = await sign(req);
+
+const result = await sign(tx);
 ```
 
-### Example: SOLANA Encoding
+#### Legacy (Type 0)
 
 ```ts
-// Setup the Solana transaction using `@solana/web3.js`.
-// The specifics are out of scope for this example.
+const tx = {
+  type: 'legacy',
+  to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+  value: parseEther('0.1'),
+  nonce: 0,
+  gasPrice: parseGwei('20'),
+  gasLimit: 21000n,
+  chainId: 1,
+};
+
+const result = await sign(tx);
+```
+
+#### EIP-2930 (Type 1) - With Access List
+
+```ts
+const tx = {
+  type: 'eip2930',
+  to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
+  value: 0n,
+  nonce: 0,
+  gasPrice: parseGwei('20'),
+  gasLimit: 100000n,
+  chainId: 1,
+  accessList: [
+    {
+      address: '0x...',
+      storageKeys: ['0x...', '0x...'],
+    },
+  ],
+};
+
+const result = await sign(tx);
+```
+
+### Return Values
+
+```ts
+interface SignData {
+  tx: string; // Complete signed transaction (ready to broadcast)
+  txHash: string; // Transaction hash (keccak256)
+  sig: {
+    // Signature components
+    r: string; // Signature r value
+    s: string; // Signature s value
+    v: number; // Recovery parameter
+  };
+  signer: string; // Address that signed
+}
+```
+
+### Contract Interactions
+
+```ts
+// ERC20 Transfer
+const erc20Transfer = {
+  type: 'eip1559',
+  to: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
+  data: encodeFunctionData({
+    abi: erc20Abi,
+    functionName: 'transfer',
+    args: [recipientAddress, parseUnits('100', 6)], // 100 USDC
+  }),
+  value: 0n,
+  // ... gas parameters
+};
+
+// DeFi Protocol Interaction
+const swapTx = {
+  type: 'eip1559',
+  to: uniswapRouterAddress,
+  data: swapCalldata,
+  value: parseEther('1'), // If swapping ETH
+  // ... gas parameters
+};
+
+// The Lattice1 will show:
+// - Contract name (if verified)
+// - Function being called
+// - Decoded parameters
+// - Token amounts (for known tokens)
+```
+
+## EIP-7702 Account Abstraction
+
+### Understanding EIP-7702
+
+EIP-7702 allows an EOA (Externally Owned Account) to temporarily act as a smart contract:
+
+1. **Authorization** - EOA signs permission to delegate to a contract
+2. **Delegation** - Transaction sets the EOA's code to point to the contract
+3. **Execution** - EOA can now execute smart contract logic
+4. **Reversion** - Code returns to empty after transaction
+
+### Step 1: Sign Authorization
+
+```ts
+import { signAuthorization } from 'gridplus-sdk/api/signing';
+
+// Grant permission for your EOA to use smart contract logic
+const authRequest = {
+  // Contract that will handle your account's logic
+  address: '0x0000000000219ab540356cBB839Cbe05303d7705',
+  chainId: 1,
+  nonce: 0, // 0 = reusable, or use current nonce for one-time
+};
+
+// User sees on device:
+// "Authorize Contract"
+// Contract: 0x0000...7705
+// Chain ID: 1
+// Nonce: 0
+
+const authorization = await signAuthorization(authRequest);
+// Returns: { address, chainId, nonce, r, s, yParity }
+```
+
+### Step 2: Use in Transaction
+
+```ts
+import { sign } from 'gridplus-sdk/api/signing';
+
+// Create transaction with authorization
+const tx = {
+  type: 'eip7702',
+  authorizationList: [authorization],
+  to: myEOA, // Call your own EOA with the delegated code
+  value: 0n,
+  data: encodeFunctionData({
+    abi: accountAbstractionAbi,
+    functionName: 'executeBatch',
+    args: [operations],
+  }),
+  chainId: 1,
+  nonce: currentNonce,
+  gas: 200000n,
+  maxFeePerGas: parseGwei('20'),
+  maxPriorityFeePerGas: parseGwei('2'),
+};
+
+const result = await sign(tx);
+```
+
+### Use Cases
+
+1. **Batched Transactions** - Execute multiple operations in one transaction
+2. **Gas Sponsorship** - Have someone else pay for your gas
+3. **Advanced Logic** - Conditional execution, limits, automation
+4. **Session Keys** - Temporary permissions for dApps
+
+## Advanced Signing Scenarios
+
+### Multi-Chain Support
+
+The SDK supports any EVM-compatible chain:
+
+```ts
+// Polygon
+const polygonTx = {
+  type: 'eip1559',
+  to: recipient,
+  value: parseEther('10'), // 10 MATIC
+  chainId: 137,
+  // ... other fields
+};
+
+// Arbitrum
+const arbitrumTx = {
+  type: 'eip1559',
+  to: recipient,
+  value: parseEther('0.01'),
+  chainId: 42161,
+  // ... other fields
+};
+
+// BSC (uses legacy transactions)
+const bscTx = {
+  type: 'legacy',
+  to: recipient,
+  value: parseEther('1'), // 1 BNB
+  chainId: 56,
+  gasPrice: parseGwei('5'),
+  // ... other fields
+};
+```
+
+### EIP-712 Typed Data Signing
+
+#### What is EIP-712?
+
+EIP-712 provides structured, human-readable message signing:
+
+- **Structured Data** - JSON-like format instead of raw bytes
+- **Domain Separation** - Prevents signature replay across dApps
+- **Type Safety** - Explicit types for each field
+
+#### Example: DeFi Permit
+
+```ts
+import { signMessage } from 'gridplus-sdk/api/signing';
+
+const permit = {
+  domain: {
+    name: 'USD Coin',
+    version: '2',
+    chainId: 1,
+    verifyingContract: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+  },
+  types: {
+    Permit: [
+      { name: 'owner', type: 'address' },
+      { name: 'spender', type: 'address' },
+      { name: 'value', type: 'uint256' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'deadline', type: 'uint256' },
+    ],
+  },
+  primaryType: 'Permit',
+  message: {
+    owner: myAddress,
+    spender: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D', // Uniswap
+    value: parseUnits('1000', 6), // 1000 USDC
+    nonce: 0,
+    deadline: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+  },
+};
+
+// User sees on Lattice1:
+// "Sign Typed Data"
+// Domain: USD Coin v2
+// Permit:
+//   Owner: 0x742d...b2dc
+//   Spender: Uniswap V2 Router
+//   Value: 1000 USDC
+//   Deadline: in 1 hour
+
+const result = await signMessage(permit);
+```
+
+#### Common EIP-712 Use Cases
+
+1. **Token Permits** - Gasless token approvals
+2. **Order Signing** - DEX limit orders
+3. **Governance Votes** - Off-chain voting
+4. **Meta Transactions** - Gasless transactions
+
+## Bitcoin
+
+The SDK provides dedicated functions for Bitcoin transactions based on address type:
+
+### Legacy (P2PKH)
+
+```ts
+import { signBtcLegacyTx } from 'gridplus-sdk/api/signing';
+
+const payload = {
+  prevOuts: [
+    {
+      txHash:
+        '2aba3db3dc5b1b3ded7231d90fe333e184d24672eb0b6466dbc86228b8996112',
+      value: 100000, // satoshis
+      index: 3,
+      signerPath: [0x80000000 + 44, 0x80000000, 0x80000000, 0, 12],
+    },
+  ],
+  recipient: '1FKpGnhtR3ZrVcU8hfEdMe8NpweFb2sj5F',
+  value: 50000,
+  fee: 20000,
+  changePath: [0x80000000 + 44, 0x80000000, 0x80000000, 1, 0],
+};
+
+const result = await signBtcLegacyTx(payload);
+// Returns: { tx, txHash, changeRecipient }
+```
+
+### Segwit (P2WPKH)
+
+```ts
+import { signBtcSegwitTx } from 'gridplus-sdk/api/signing';
+
+const payload = {
+  prevOuts: [
+    {
+      txHash:
+        '2aba3db3dc5b1b3ded7231d90fe333e184d24672eb0b6466dbc86228b8996112',
+      value: 100000,
+      index: 3,
+      signerPath: [0x80000000 + 84, 0x80000000, 0x80000000, 0, 12],
+    },
+  ],
+  recipient: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+  value: 50000,
+  fee: 20000,
+  changePath: [0x80000000 + 84, 0x80000000, 0x80000000, 1, 0],
+};
+
+const result = await signBtcSegwitTx(payload);
+```
+
+### Wrapped Segwit (P2SH-P2WPKH)
+
+```ts
+import { signBtcWrappedSegwitTx } from 'gridplus-sdk/api/signing';
+
+const payload = {
+  prevOuts: [
+    {
+      txHash:
+        '2aba3db3dc5b1b3ded7231d90fe333e184d24672eb0b6466dbc86228b8996112',
+      value: 100000,
+      index: 3,
+      signerPath: [0x80000000 + 49, 0x80000000, 0x80000000, 0, 12],
+    },
+  ],
+  recipient: '3JvL6Ymt8MVWiCNHC7oWU6nLeHNJKLZGLN',
+  value: 50000,
+  fee: 20000,
+  changePath: [0x80000000 + 49, 0x80000000, 0x80000000, 1, 0],
+};
+
+const result = await signBtcWrappedSegwitTx(payload);
+```
+
+## Solana
+
+For Solana transactions, use `signSolanaTx`:
+
+```ts
+import { signSolanaTx } from 'gridplus-sdk/api/signing';
 import { Transaction, SystemProgram } from '@solana/web3.js';
+
+// Create a Solana transaction
 const transfer = SystemProgram.transfer({
-  fromPubkey: '...',
-  toPubkey: '...',
+  fromPubkey: fromPublicKey,
+  toPubkey: toPublicKey,
   lamports: 1234,
 });
-const recentBlockhash = '...';
-const tx = new Transaction({ recentBlockhash }).add(transfer);
-// Full, serialized Solana transaction
-const msg = tx.compileMessage().serialize();
 
-// Build the request with the SOLANA encoding
-const req = {
-  signerPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000],
-  curveType: Constants.SIGNING.CURVES.ED25519,
-  hashType: Constants.SIGNING.HASHES.NONE,
-  encodingType: Constants.SIGNING.ENCODINGS.SOLANA,
-  payload: msg,
-};
-const sig = await sign(req);
-```
+const transaction = new Transaction({ recentBlockhash }).add(transfer);
 
-# 📜 Legacy Signing
-
-Prior to general signing, request data was sent to the Lattice in preformatted ways and was used to build the transaction in firmware. We are phasing out this mechanism, but for now it is how you request Ethereum, Bitcoin, and Ethereum-Message signatures. These signing methods are accessed using the `currency` flag in the request data.
-
-## Ξ Ethereum (Transaction)
-
-All six Ethereum transactions must be specified in the request data along with a signer path.
-
-_Example: requesting signature on Ethereum transaction_
-
-```ts
-const txData = {
-  nonce: '0x02',
-  gasPrice: '0x1fe5d61a00',
-  gasLimit: '0x034e97',
-  to: '0x1af768c0a217804cfe1a0fb739230b546a566cd6',
-  value: '0x01cba1761f7ab9870c',
-  data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
+// Sign the transaction
+const payload = {
+  tx: transaction,
 };
 
-const reqData = {
-  currency: 'ETH',
-  data: {
-    signerPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
-    ...txData,
-    chain: 5, // Defaults to 1 (i.e. mainnet)
-  },
-};
-
-const sig = await sign(reqData);
-```
-
-## Ξ Ethereum (Message)
-
-Two message protocols are supported for Ethereum: `personal_sign` and `sign_typed_data`.
-
-#### `personal_sign`
-
-This is a protocol to display a simple, human readable message. It includes a prefix to avoid accidentally signing sensitive data. The message included should be a string.
-
-**`protocol` must be specified as `"signPersonal"`**.
-
-#### Example: requesting signature on Ethereum `personal_sign` message
-
-```ts
-const reqData = {
-  currency: 'ETH_MSG',
-  data: {
-    signerPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
-    protocol: 'signPersonal' // You must use this string to specify this protocol
-    payload: 'my message to sign'
-  }
-}
-
-const sig = await sign(reqData)
-```
-
-### `sign_typed_data`
-
-This is used in protocols such as [EIP712](https://eips.ethereum.org/EIPS/eip-712). It is meant to be an encoding for JSON-like data that can be more human readable.
-
-:::note
-Only `sign_typed_data` V3 and V4 are supported.
-:::
-
-**`protocol` must be specified as `"eip712"`**.
-
-```ts
-const message = {
-  hello: 'i am a message',
-  goodbye: 1
-}
-const reqData = {
-  currency: 'ETH_MSG',
-  data: {
-    signerPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
-    protocol: 'eip712' // You must use this string to specify this protocol
-    payload: message
-  }
-}
-
-const sig = await sign(reqData)
-```
-
-## ₿ Bitcoin
-
-Bitcoin transactions can be requested by including a set of UTXOs, which include the signer derivation path and spend type. The same `purpose` values are used to determine how UTXOs should be signed:
-
-- If `purpose = 44'`, the input will be signed with p2pkh
-- If `purpose = 49'`, the input will signed with p2sh-p2wpkh
-- If `purpose = 84'`, the input will be signed with p2wpkh
-
-The `purpose` of the `signerPath` in the given previous output (a.k.a. UTXO) is used to make the above determination.
-
-### Example: requesting BTC transactions
-
-```ts
-const p2wpkhInputs = [
-  {
-    // Hash of transaction that produced this UTXO
-    txHash: '2aba3db3dc5b1b3ded7231d90fe333e184d24672eb0b6466dbc86228b8996112',
-    // Value of this UTXO in satoshis (1e8 sat = 1 BTC)
-    value: 100000,
-    // Index of this UTXO in the set of outputs in this transaction
-    index: 3,
-    // Owner of this UTXO. Since `purpose` is 84' this will be spent with p2wpkh,
-    // meaning this is assumed to be a segwit address (starting with bc1)
-    signerPath: [0x80000000 + 84, 0x80000000, 0x80000000, 0, 12],
-  },
-];
-
-const reqData = {
-  currency: 'BTC',
-  data: {
-    prevOuts: p2wpkhInputs,
-    // Recipient can be any legacy, wrapped segwit, or segwit address
-    recipient: '1FKpGnhtR3ZrVcU8hfEdMe8NpweFb2sj5F',
-    // Value (in sats) must be <= (SUM(prevOuts) - fee)
-    value: 50000,
-    // Fee (in sats) goes to the miner
-    fee: 20000,
-    // SUM(prevOuts) - fee goes to the change recipient, which is an
-    // address derived in the same wallet. Again, the `purpose` in this path
-    // determines what address the BTC will be sent to, or more accurately how
-    // the UTXO is locked -- e.g., p2wpkh unlocks differently than p2sh-p2wpkh
-    changePath: [0x80000000 + 84, 0x80000000, 0x80000000, 1, 0],
-  },
-};
-
-const sig = await sign(reqData);
+const result = await signSolanaTx(payload);
+// Returns: { tx, txHash, sigs }
 ```

@@ -2,6 +2,7 @@ import fetch, { Request } from 'node-fetch';
 import * as fs from 'fs';
 import { question } from 'readline-sync';
 import { getClient, pair, setup } from '../..';
+import { EMPTY_WALLET_UID } from '../../constants';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
@@ -40,18 +41,40 @@ export const getStoredClient = async () => {
 
 export const setupClient = async () => {
   const deviceId = process.env.DEVICE_ID;
+  const baseUrl = process.env.baseUrl || 'https://signing.gridpl.us';
   const password = process.env.PASSWORD || 'password';
   const name = process.env.APP_NAME || 'SDK Test';
+  let pairingSecret = process.env.PAIRING_SECRET;
   const isPaired = await setup({
     deviceId,
     password,
     name,
+    baseUrl,
     getStoredClient,
     setStoredClient,
   });
   if (!isPaired) {
-    const secret = question('Please enter the pairing secret: ');
-    await pair(secret.toUpperCase());
+    if (!pairingSecret) {
+      if (process.env.CI) {
+        throw new Error(
+          'Pairing secret is required. If simulator is running, set PAIRING_SECRET environment variable.',
+        );
+      }
+      pairingSecret = question('Enter pairing secret:');
+      if (!pairingSecret) {
+        throw new Error('Pairing secret is required.');
+      }
+    }
+    await pair(pairingSecret.toUpperCase());
   }
-  return getClient();
+
+  const client = await getClient();
+  if (!client) {
+    throw new Error('Client not initialized');
+  }
+  const externalUid = client.activeWallets?.external?.uid;
+  if (!externalUid || EMPTY_WALLET_UID.equals(externalUid)) {
+    await client.fetchActiveWallet();
+  }
+  return client;
 };

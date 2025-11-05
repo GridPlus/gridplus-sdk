@@ -1,5 +1,6 @@
 import { CURRENCIES } from '../constants';
 import { KeyPair } from './shared';
+import type { Address, Hash, Signature } from 'viem';
 
 export type Currency = keyof typeof CURRENCIES;
 
@@ -7,20 +8,21 @@ export type SigningPath = number[];
 
 export interface SignData {
   tx?: string;
-  txHash?: string;
+  txHash?: Hash;
   changeRecipient?: string;
-  sig?: {
-    v: Buffer;
-    r: Buffer;
-    s: Buffer;
-  };
+  sig?: Signature;
   sigs?: Buffer[];
-  signer?: Buffer;
+  signer?: Address;
   err?: string;
 }
 
 export type SigningRequestResponse = SignData | { pubkey: null; sig: null };
 
+/**
+ * @deprecated This type uses legacy field names and number types instead of viem-compatible bigint.
+ * Use viem's TransactionSerializable types directly, or create viem-aligned request types.
+ * This will be removed in a future version.
+ */
 export interface TransactionPayload {
   type: number;
   gasPrice: number;
