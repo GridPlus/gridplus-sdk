@@ -46,7 +46,7 @@ importers:
         version: 6.0.3
       cbor:
         specifier: ^10.0.2
-        version: 10.0.2
+        version: 10.0.11
       cbor-bigdecimal:
         specifier: ^10.0.2
         version: 10.0.2(bignumber.js@9.3.1)
@@ -1581,9 +1581,9 @@ packages:
     peerDependencies:
       bignumber.js: ^9.1.0
 
-  cbor@10.0.2:
-    resolution: {integrity: sha512-wJjyC0Efg8yUKpq9/+5SIcUbmBtyw+ZbvE8nNwbfGEKUkrL01h5CQ7h9/OPWtSt5oikmx6E5MuB5rTFz8zmMww==}
-    engines: {node: '>=18'}
+  cbor@10.0.11:
+    resolution: {integrity: sha512-vIwORDd/WyB8Nc23o2zNN5RrtFGlR6Fca61TtjkUXueI3Jf2DOZDl1zsshvBntZ3wZHBM9ztjnkXSmzQDaq3WA==}
+    engines: {node: '>=20'}
 
   chai@5.1.1:
     resolution: {integrity: sha512-pT1ZgP8rPNqUgieVaEY+ryQr6Q4HXNg8Ei9UnLUrjN4IA7dvQC5JB+/kxVcPNDHyBcc/26CXPkbNzq3qwrOEKA==}
@@ -4472,7 +4472,7 @@ snapshots:
     dependencies:
       bignumber.js: 9.3.1
 
-  cbor@10.0.2:
+  cbor@10.0.11:
     dependencies:
       nofilter: 3.1.0
 
