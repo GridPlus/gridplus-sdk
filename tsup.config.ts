@@ -16,15 +16,15 @@ const external = Object.keys({
 export default defineConfig({
   entry: ['src/index.ts'],
   outDir: './dist',
-  format: ['esm'],
+  format: ['esm', 'cjs'],
   target: 'node20',
   sourcemap: true,
   clean: true,
   bundle: true,
   dts: true,
   silent: true,
-  outExtension: () => ({
-    js: '.mjs',
+  outExtension: ({ format }) => ({
+    js: format === 'esm' ? '.mjs' : '.cjs',
   }),
   external,
   tsconfig: './tsconfig.build.json',
