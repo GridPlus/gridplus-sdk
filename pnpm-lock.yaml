@@ -12,8 +12,8 @@ importers:
         specifier: ^4.4.0
         version: 4.4.0
       '@ethereumjs/rlp':
-        specifier: ^5.0.2
-        version: 5.0.2
+        specifier: ^10.0.0
+        version: 10.0.0
       '@ethereumjs/tx':
         specifier: ^5.4.0
         version: 5.4.0
@@ -743,6 +743,11 @@ packages:
 
   '@ethereumjs/common@4.4.0':
     resolution: {integrity: sha512-Fy5hMqF6GsE6DpYTyqdDIJPJgUtDn4dL120zKw+Pswuo+iLyBsEYuSyzMw6NVzD2vDzcBG9fE4+qX4X2bPc97w==}
+
+  '@ethereumjs/rlp@10.0.0':
+    resolution: {integrity: sha512-h2SK6RxFBfN5ZGykbw8LTNNLckSXZeuUZ6xqnmtF22CzZbHflFMcIOyfVGdvyCVQqIoSbGMHtvyxMCWnOyB9RA==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   '@ethereumjs/rlp@4.0.1':
     resolution: {integrity: sha512-tqsQiBQDQdmPWE1xkkBq4rlSW5QZpLOUJ5RJh2/9fug+q9tnUhuZoVLk7s0scUIKTOzEtR72DFBXI4WiZcMpvw==}
@@ -3558,6 +3563,8 @@ snapshots:
   '@ethereumjs/common@4.4.0':
     dependencies:
       '@ethereumjs/util': 9.1.0
+
+  '@ethereumjs/rlp@10.0.0': {}
 
   '@ethereumjs/rlp@4.0.1': {}
 
