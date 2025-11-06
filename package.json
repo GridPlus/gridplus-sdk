@@ -61,7 +61,7 @@
     "url": "https://github.com/GridPlus/gridplus-sdk.git"
   },
   "dependencies": {
-    "@ethereumjs/common": "^4.4.0",
+    "@ethereumjs/common": "^10.0.0",
     "@ethereumjs/rlp": "^5.0.2",
     "@ethereumjs/tx": "^5.4.0",
     "@metamask/eth-sig-util": "^8.0.0",
