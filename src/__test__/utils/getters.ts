@@ -12,5 +12,5 @@ export const getEtherscanKey = (): string => getEnv()['ETHERSCAN_KEY'] ?? '';
 export const getEncPw = (): string => getEnv()['ENC_PW'] ?? null;
 
 export const getPrng = (seed?: string) => {
-  return new seedrandom(seed ? seed : getSeed());
+  return seedrandom(seed ? seed : getSeed());
 };

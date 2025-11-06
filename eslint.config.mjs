@@ -4,6 +4,16 @@ import tsParser from '@typescript-eslint/parser';
 import prettierConfig from 'eslint-config-prettier';
 import prettierPlugin from 'eslint-plugin-prettier';
 
+const restrictedNodeImports = [
+  { name: 'crypto', message: 'Use node:crypto instead.' },
+  { name: 'fs', message: 'Use node:fs instead.' },
+  { name: 'os', message: 'Use node:os instead.' },
+  { name: 'path', message: 'Use node:path instead.' },
+  { name: 'stream', message: 'Use node:stream instead.' },
+  { name: 'url', message: 'Use node:url instead.' },
+  { name: 'util', message: 'Use node:util instead.' },
+];
+
 export default [
   js.configs.recommended,
   {
@@ -30,6 +40,7 @@ export default [
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
         // Test globals
+        vi: 'readonly',
         describe: 'readonly',
         it: 'readonly',
         test: 'readonly',
@@ -40,10 +51,6 @@ export default [
         afterEach: 'readonly',
         // Node.js globals
         process: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        module: 'readonly',
-        require: 'readonly',
         // Browser globals
         window: 'readonly',
         document: 'readonly',
@@ -70,6 +77,19 @@ export default [
         'warn',
         'single',
         { avoidEscape: true, allowTemplateLiterals: true },
+      ],
+      'no-restricted-imports': ['error', { paths: restrictedNodeImports }],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.name='require']",
+          message: 'Use ESM imports instead of require.',
+        },
+        {
+          selector:
+            "AssignmentExpression[left.object.name='module'][left.property.name='exports']",
+          message: 'Use ESM exports instead of module.exports.',
+        },
       ],
     },
   },

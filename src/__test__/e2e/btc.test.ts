@@ -5,7 +5,10 @@
  * Ensure `FEATURE_TEST_RUNNER=0` is active before executing these tests.
  */
 
-import bip32, { BIP32Interface } from 'bip32';
+import BIP32Factory, { type BIP32Interface } from 'bip32';
+import * as ecc from 'tiny-secp256k1';
+import type { Client } from '../../client';
+import { setupClient } from '../utils/setup';
 import { getPrng, getTestnet } from '../utils/getters';
 import {
   BTC_PURPOSE_P2PKH,
@@ -20,9 +23,9 @@ import {
   stripDER,
 } from '../utils/helpers';
 import { testRequest } from '../utils/testRequest';
-import { setupClient } from '../utils/setup';
 
 const prng = getPrng();
+const bip32 = BIP32Factory(ecc);
 const TEST_TESTNET = !!getTestnet() || false;
 let wallet: BIP32Interface | null = null;
 type InputObj = { hash: string; value: number; signerIdx: number; idx: number };
@@ -104,7 +107,7 @@ async function runTestSet(
 }
 
 describe('Bitcoin', () => {
-  let client;
+  let client: Client;
 
   beforeAll(async () => {
     client = await setupClient();
@@ -129,7 +132,7 @@ describe('Bitcoin', () => {
         }
         throw err;
       });
-      //@ts-expect-error - accessing private property
+      //@ts-expect-error - accessing private property for test parsing
       const _res = parseWalletJobResp(res, client.fwVersion);
       expect(_res.resultStatus).toEqual(0);
       const data = deserializeExportSeedJobResult(_res.result);
@@ -142,7 +145,7 @@ describe('Bitcoin', () => {
     const inputsSlice = inputs.slice(0, i + 1);
 
     describe(`Input Set ${i}`, () => {
-      describe('segwit spender (p2wpkh)', function () {
+      describe('segwit spender (p2wpkh)', () => {
         it('p2wpkh->p2pkh', async () => {
           const opts = {
             spenderPurpose: BTC_PURPOSE_P2WPKH,
@@ -168,7 +171,7 @@ describe('Bitcoin', () => {
         });
       });
 
-      describe('wrapped segwit spender (p2sh-p2wpkh)', function () {
+      describe('wrapped segwit spender (p2sh-p2wpkh)', () => {
         it('p2sh-p2wpkh->p2pkh', async () => {
           const opts = {
             spenderPurpose: BTC_PURPOSE_P2SH_P2WPKH,
@@ -194,7 +197,7 @@ describe('Bitcoin', () => {
         });
       });
 
-      describe('legacy spender (p2pkh)', function () {
+      describe('legacy spender (p2pkh)', () => {
         it('p2pkh->p2pkh', async () => {
           const opts = {
             spenderPurpose: BTC_PURPOSE_P2PKH,

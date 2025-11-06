@@ -6,13 +6,13 @@ import {
 } from '@solana/web3.js';
 import { Constants } from '../../../..';
 import { HARDENED_OFFSET } from '../../../../constants';
+import { ensureHexBuffer } from '../../../../util';
+import { setupClient } from '../../../utils/setup';
 import { getPrng } from '../../../utils/getters';
 import { deriveED25519Key, prandomBuf } from '../../../utils/helpers';
 import { initializeSeed } from '../../../utils/initializeClient';
 import { runGeneric } from '../../../utils/runners';
-import { setupClient } from '../../../utils/setup';
-import { ensureHexBuffer } from '../../../../util';
-import { beforeAll, describe, expect, it } from 'vitest';
+
 //---------------------------------------
 // STATE DATA
 //---------------------------------------

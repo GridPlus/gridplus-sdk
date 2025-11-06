@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import { Buffer } from 'buffer';
 import { Hash } from 'ox';
 import secp256k1 from 'secp256k1';

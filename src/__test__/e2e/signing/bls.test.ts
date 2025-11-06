@@ -21,6 +21,7 @@ import { question } from 'readline-sync';
 
 import { Constants } from '../../../index';
 import { getPathStr } from '../../../shared/utilities';
+import { setupClient } from '../../utils/setup';
 import { getEncPw } from '../../utils/getters';
 import {
   buildPath,
@@ -33,7 +34,6 @@ import {
   serializeJobData,
 } from '../../utils/helpers';
 import { initializeSeed } from '../../utils/initializeClient';
-import { setupClient } from '../../utils/setup';
 import { testRequest } from '../../utils/testRequest';
 
 const globalVectors = getTestVectors();
@@ -224,7 +224,6 @@ async function loadSeed(client, seed, mnemonic = null) {
       },
     ),
   });
-  //@ts-expect-error - accessing private property
   const parsedRes = parseWalletJobResp(res, client.fwVersion);
   expect(parsedRes.resultStatus).toEqualElseLog(
     gpErrors.GP_SUCCESS,
@@ -242,7 +241,6 @@ async function removeSeed(client) {
       { iface: 1 },
     ),
   });
-  //@ts-expect-error - accessing private property
   const parsedRes = parseWalletJobResp(res, client.fwVersion);
   expect(parsedRes.resultStatus).toEqualElseLog(
     gpErrors.GP_SUCCESS,

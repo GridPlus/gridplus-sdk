@@ -2,9 +2,9 @@
  * Test ABI decoding of various EVM smart contract function calls.
  * These transactions use contract addresses so the device can fetch ABI data dynamically.
  */
-import { describe, it, beforeAll, expect } from 'vitest';
-import { setupClient } from '../../utils/setup';
+
 import { sign } from '../../../api';
+import { setupClient } from '../../utils/setup';
 import { ABI_TEST_VECTORS } from '../../vectors/abi-vectors';
 
 describe('[EVM ABI] ABI Decoding Tests', () => {

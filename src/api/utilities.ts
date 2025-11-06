@@ -1,11 +1,11 @@
 import { Client } from '../client';
+import { EXTERNAL, HARDENED_OFFSET } from '../constants';
 import {
   getFunctionQueue,
   loadClient,
   saveClient,
   setFunctionQueue,
 } from './state';
-import { EXTERNAL, HARDENED_OFFSET } from '../constants';
 
 /**
  * `queue` is a function that wraps all functional API calls. It limits the number of concurrent
@@ -40,7 +40,11 @@ export const queue = async (fn: (client: Client) => Promise<any>) => {
   return getFunctionQueue();
 };
 
-export const getClient = () => (loadClient ? loadClient() : null);
+export const getClient = async (): Promise<Client> => {
+  const client = loadClient ? await loadClient() : undefined;
+  if (!client) throw new Error('Client not initialized');
+  return client;
+};
 
 const encodeClientData = (clientData: string) => {
   return Buffer.from(clientData).toString('base64');

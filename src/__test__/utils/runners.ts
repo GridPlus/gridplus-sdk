@@ -1,4 +1,5 @@
 import { Client } from '../../client';
+import type { TestRequestPayload, SignRequestParams } from '../../types';
 import { getEncodedPayload } from '../../genericSigning';
 import {
   deriveSECP256K1Key,
@@ -9,12 +10,10 @@ import {
 import { initializeSeed } from './initializeClient';
 import { testRequest } from './testRequest';
 import { Constants } from '../..';
-import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
+import { createTx } from '@ethereumjs/tx';
 import { RLP } from '@ethereumjs/rlp';
 import { getDeviceId } from './getters';
 import { ensureHexBuffer } from '../../util';
-import { TestRequestPayload } from '../../types/utils';
-import { SignRequestParams } from '../../types/sign';
 
 export async function runTestCase(
   payload: TestRequestPayload,
@@ -59,7 +58,7 @@ export async function runEvm(
 ) {
   // Construct an @ethereumjs/tx object with data
   const txData = JSON.parse(JSON.stringify(req.txData));
-  const tx = EthTxFactory.fromTxData(txData, { common: req.common });
+  const tx = createTx(txData, { common: req.common });
   if (useLegacySigning) {
     // [TODO: Deprecate]
     req.data = {
@@ -67,14 +66,12 @@ export async function runEvm(
       ...req.txData,
     };
   }
-  //@ts-expect-error - Accessing private property
-  if (tx._type === 0 && !bypassSetPayload) {
-    // The @ethereumjs/tx Transaction APIs differ here
-    // Legacy transaction
-    req.data.payload = RLP.encode(tx.getMessageToSign(false));
-  } else if (!bypassSetPayload) {
-    // Newer transaction type
-    req.data.payload = tx.getMessageToSign(false);
+  if (!bypassSetPayload) {
+    const msgToSign = tx.getMessageToSign();
+    // Legacy tx returns an array of RLP components, typed tx returns Uint8Array
+    req.data.payload = Array.isArray(msgToSign)
+      ? RLP.encode(msgToSign)
+      : msgToSign;
   }
   // Request signature and validate it
   await client.connect(getDeviceId());
@@ -104,7 +101,7 @@ export async function runEvm(
   validateGenericSig(seed, resp.sig, payloadBuf, req.data, resp.pubkey);
   // Sign the original tx and compare
   const { priv } = deriveSECP256K1Key(req.data.signerPath, seed);
-  const signedTx: any = tx.sign(priv);
+  const signedTx = tx.sign(priv);
   expect(signedTx.verifySignature()).toEqualElseLog(
     true,
     'Signature failed to verify',
@@ -115,7 +112,7 @@ export async function runEvm(
 
   // Handle the V parameter differently based on transaction type
   let refV;
-  if (tx._type && tx._type > 0) {
+  if (tx.type && tx.type > 0) {
     // For EIP-1559 and newer transaction types, use y-parity (0 or 1)
     refV = signedTx.v?.toString();
   } else {
@@ -127,16 +124,10 @@ export async function runEvm(
   const latticeR = Buffer.from(sig.r);
   const latticeS = Buffer.from(sig.s);
   const latticeV = (() => {
-    const value = sig.v;
-    if (value === null || value === undefined) {
-      return 0n;
-    }
-    if (typeof value === 'bigint') {
-      return value;
-    }
-    if (typeof value === 'number') {
-      return BigInt(value);
-    }
+    const value: unknown = sig.v;
+    if (value === null || value === undefined) return 0n;
+    if (typeof value === 'bigint') return value;
+    if (typeof value === 'number') return BigInt(value);
     if (typeof value === 'string') {
       const normalized = value.startsWith('0x') ? value : `0x${value}`;
       return BigInt(normalized);
@@ -145,12 +136,24 @@ export async function runEvm(
       const hex = Buffer.from(value).toString('hex');
       return hex ? BigInt(`0x${hex}`) : 0n;
     }
-    if (typeof (value as any)?.toArray === 'function') {
-      const hex = Buffer.from((value as any).toArray('be')).toString('hex');
+    if (
+      typeof value === 'object' &&
+      value !== null &&
+      'toArray' in value &&
+      typeof (value as { toArray: unknown }).toArray === 'function'
+    ) {
+      const toArray = (value as { toArray: (endian: string) => number[] })
+        .toArray;
+      const hex = Buffer.from(toArray('be')).toString('hex');
       return hex ? BigInt(`0x${hex}`) : 0n;
     }
-    if (typeof (value as any)?.toString === 'function') {
-      const str = (value as any).toString();
+    if (
+      typeof value === 'object' &&
+      value !== null &&
+      'toString' in value &&
+      typeof (value as { toString: () => string }).toString === 'function'
+    ) {
+      const str = (value as { toString: () => string }).toString();
       if (/^0x[0-9a-f]+$/i.test(str) || /^[0-9]+$/i.test(str)) {
         return BigInt(str.startsWith('0x') ? str : `0x${str}`);
       }
@@ -177,7 +180,7 @@ export async function runEvm(
   signedTxData.r = latticeR;
   signedTxData.s = latticeS;
 
-  const verifTx = EthTxFactory.fromTxData(signedTxData, {
+  const verifTx = createTx(signedTxData, {
     common: req.common,
   });
   expect(verifTx.verifySignature()).toEqualElseLog(

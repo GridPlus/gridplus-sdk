@@ -1,39 +1,44 @@
-import bip32 from 'bip32';
+import { readFileSync } from 'node:fs';
+import type { TypedTransaction } from '@ethereumjs/tx';
+import BIP32Factory from 'bip32';
 import { wordlists } from 'bip39';
-import bitcoin from 'bitcoinjs-lib';
+import bitcoin, { type Payment } from 'bitcoinjs-lib';
+import BN from 'bn.js';
+import { ECPairFactory } from 'ecpair';
 import {
   derivePath as deriveEDKey,
   getPublicKey as getEDPubkey,
 } from 'ed25519-hd-key';
 import { ec as EC } from 'elliptic';
 import { privateToAddress } from 'ethereumjs-util';
-import { readFileSync } from 'fs';
+import { jsonc } from 'jsonc';
 import { Hash } from 'ox';
+import { ecdsaRecover } from 'secp256k1';
+import * as ecc from 'tiny-secp256k1';
+import nacl from 'tweetnacl';
+import { Constants } from '../..';
+import { Client } from '../../client';
 import {
   BIP_CONSTANTS,
-  HARDENED_OFFSET,
   ethMsgProtocol,
+  HARDENED_OFFSET,
 } from '../../constants';
-import { jsonc } from 'jsonc';
-import { Constants } from '../..';
-import {
-  getV,
-  parseDER,
-  randomBytes,
-  getYParity,
-  ensureHexBuffer,
-} from '../../util';
-import nacl from 'tweetnacl';
-import { Client } from '../../client';
 import { ProtocolConstants } from '../../protocol';
 import { getPathStr } from '../../shared/utilities';
-import { TypedTransaction } from '@ethereumjs/tx';
+import {
+  ensureHexBuffer,
+  getV,
+  getYParity,
+  parseDER,
+  randomBytes,
+} from '../../util';
 import { getEnv } from './getters';
 import { setStoredClient } from './setup';
-import BN from 'bn.js';
-import { ecdsaRecover } from 'secp256k1';
+
 const SIGHASH_ALL = 0x01;
 const secp256k1 = new EC('secp256k1');
+const bip32 = BIP32Factory(ecc);
+const ECPair = ECPairFactory(ecc);
 
 const normalizeSigComponent = (component: any): Buffer => {
   if (component === null || component === undefined) {
@@ -78,7 +83,8 @@ export const getSignatureVParam = (tx: any, resp: any): string => {
     return getYParity(tx, resp).toString(16).padStart(2, '0');
   } else {
     // For legacy transactions, return full V value
-    return getV(tx, resp);
+    const vBn = getV(tx, resp);
+    return vBn.toString(16).padStart(2, '0');
   }
 };
 
@@ -90,7 +96,7 @@ export const getSignatureVParam = (tx: any, resp: any): string => {
 export const getSignatureVBN = (tx: any, resp: any): BN => {
   if (tx._type && tx._type > 0) {
     // For EIP-1559 and newer transaction types, get y-parity (0 or 1)
-    return getYParity(tx, resp);
+    return new BN(getYParity(tx, resp));
   } else {
     // For legacy transactions, use the v value from signature
     return new BN(resp.sig.v);
@@ -161,18 +167,19 @@ export function _getSumInputs(inputs) {
 }
 
 export function _get_btc_addr(pubkey, purpose, network) {
-  let obj;
+  const pk = Buffer.isBuffer(pubkey) ? pubkey : Buffer.from(pubkey);
+  let obj: Payment;
   if (purpose === BTC_PURPOSE_P2SH_P2WPKH) {
     // Wrapped segwit requires p2sh wrapping
     obj = bitcoin.payments.p2sh({
-      redeem: bitcoin.payments.p2wpkh({ pubkey, network }),
+      redeem: bitcoin.payments.p2wpkh({ pubkey: pk, network }),
       network,
     });
   } else if (purpose === BTC_PURPOSE_P2WPKH) {
-    obj = bitcoin.payments.p2wpkh({ pubkey, network });
+    obj = bitcoin.payments.p2wpkh({ pubkey: pk, network });
   } else {
     // Native segwit and legacy addresses are treated teh same
-    obj = bitcoin.payments.p2pkh({ pubkey, network });
+    obj = bitcoin.payments.p2pkh({ pubkey: pk, network });
   }
   return obj.address;
 }
@@ -186,58 +193,75 @@ export function _start_tx_builder(
   network,
   purpose,
 ) {
-  const txb = new bitcoin.TransactionBuilder(network);
+  const tx = new bitcoin.Transaction();
+  // Match serialization logic (version 2) used by device and serializer
+  tx.version = 2;
   const inputSum = _getSumInputs(inputs);
-  txb.addOutput(recipient, value);
+  const recipientScript = bitcoin.address.toOutputScript(recipient, network);
+  tx.addOutput(recipientScript, value);
   const changeValue = inputSum - value - fee;
   if (changeValue > 0) {
     const networkIdx = network === bitcoin.networks.testnet ? 1 : 0;
     const path = buildPath([purpose, harden(networkIdx), harden(0), 1, 0]);
     const btc_0_change = wallet.derivePath(path);
-    const btc_0_change_pub = bitcoin.ECPair.fromPublicKey(
+    const btc_0_change_pub = ECPair.fromPublicKey(
       btc_0_change.publicKey,
     ).publicKey;
     const changeAddr = _get_btc_addr(btc_0_change_pub, purpose, network);
-    txb.addOutput(changeAddr, changeValue);
+    const changeScript = bitcoin.address.toOutputScript(changeAddr, network);
+    tx.addOutput(changeScript, changeValue);
   } else if (changeValue < 0) {
     throw new Error('Value + fee > sumInputs!');
   }
+  const inputsMeta: { scriptCode: Buffer; value: number }[] = [];
   inputs.forEach((input) => {
-    let scriptSig = null;
-    // here we use `i` as the index of the input. This value is arbitrary, but needs to be consistent
-    if (purpose === BTC_PURPOSE_P2WPKH) {
-      // For native segwit we need to add a scriptSig to the input
-      const coin =
-        network === bitcoin.networks.testnet ? BTC_TESTNET_COIN : BTC_COIN;
-      const path = buildPath([purpose, coin, harden(0), 0, input.signerIdx]);
-      const keyPair = wallet.derivePath(path);
-      const p2wpkh = bitcoin.payments.p2wpkh({
-        pubkey: keyPair.publicKey,
-        network,
-      });
-      scriptSig = p2wpkh.output;
-    }
-    txb.addInput(input.hash, input.idx, null, scriptSig);
+    const hashLE = Buffer.from(input.hash, 'hex').reverse();
+    tx.addInput(hashLE, input.idx);
+    const coin =
+      network === bitcoin.networks.testnet ? BTC_TESTNET_COIN : BTC_COIN;
+    const path = buildPath([purpose, coin, harden(0), 0, input.signerIdx]);
+    const keyPair = wallet.derivePath(path);
+    const pubkeyBuf = Buffer.from(keyPair.publicKey);
+    const p2pkh = bitcoin.payments.p2pkh({ pubkey: pubkeyBuf, network });
+    // For P2WPKH and P2SH-P2WPKH the BIP143 scriptCode is the standard P2PKH script
+    const scriptCode = p2pkh.output!;
+    inputsMeta.push({ scriptCode, value: input.value });
   });
-  return txb;
+  return { tx, inputsMeta };
 }
 
-function _build_sighashes(txb, purpose) {
+function _build_sighashes(txb_or_tx, purpose) {
   const hashes: any = [];
-  txb.__inputs.forEach((input, i) => {
-    if (purpose === BTC_PURPOSE_P2PKH) {
-      hashes.push(txb.__tx.hashForSignature(i, input.signScript, SIGHASH_ALL));
-    } else {
+  const txb = txb_or_tx as any;
+  const isLegacy = purpose === BTC_PURPOSE_P2PKH;
+  if (txb.inputsMeta) {
+    txb.inputsMeta.forEach((meta, i) => {
       hashes.push(
-        txb.__tx.hashForWitnessV0(
-          i,
-          input.signScript,
-          input.value,
-          SIGHASH_ALL,
-        ),
+        isLegacy
+          ? txb.tx.hashForSignature(i, meta.scriptCode, SIGHASH_ALL)
+          : txb.tx.hashForWitnessV0(
+              i,
+              meta.scriptCode,
+              meta.value,
+              SIGHASH_ALL,
+            ),
       );
-    }
-  });
+    });
+  } else {
+    // Fallback for prior structure (should not be used)
+    txb.__inputs.forEach((input, i) => {
+      hashes.push(
+        isLegacy
+          ? txb.__tx.hashForSignature(i, input.signScript, SIGHASH_ALL)
+          : txb.__tx.hashForWitnessV0(
+              i,
+              input.signScript,
+              input.value,
+              SIGHASH_ALL,
+            ),
+      );
+    });
+  }
   return hashes;
 }
 
@@ -253,8 +277,8 @@ function _get_reference_sighashes(
   const coin = isTestnet ? BTC_TESTNET_COIN : BTC_COIN;
   const network = isTestnet
     ? bitcoin.networks.testnet
-    : bitcoin.networks.mainnet;
-  const txb = _start_tx_builder(
+    : bitcoin.networks.bitcoin;
+  const built = _start_tx_builder(
     wallet,
     recipient,
     value,
@@ -263,28 +287,8 @@ function _get_reference_sighashes(
     network,
     purpose,
   );
-  inputs.forEach((input, i) => {
-    const path = buildPath([purpose, coin, harden(0), 0, input.signerIdx]);
-    const keyPair = wallet.derivePath(path);
-    const priv = bitcoin.ECPair.fromPrivateKey(keyPair.privateKey, { network });
-    if (purpose === BTC_PURPOSE_P2SH_P2WPKH) {
-      const p2wpkh = bitcoin.payments.p2wpkh({
-        pubkey: keyPair.publicKey,
-        network,
-      });
-      const p2sh = bitcoin.payments.p2sh({
-        redeem: p2wpkh,
-        network,
-      });
-      txb.sign(i, priv, p2sh.redeem.output, null, input.value);
-    } else if (purpose === BTC_PURPOSE_P2WPKH) {
-      txb.sign(i, priv, null, null, input.value);
-    } else {
-      // Legacy
-      txb.sign(i, priv);
-    }
-  });
-  return _build_sighashes(txb, purpose);
+  // built has shape { tx, inputsMeta }
+  return _build_sighashes(built, purpose);
 }
 
 function _btc_tx_request_builder(
@@ -320,18 +324,18 @@ function _btc_tx_request_builder(
 // Convert DER signature to buffer of form `${r}${s}`
 export function stripDER(derSig) {
   const parsed = parseDER(derSig);
-  parsed.s = Buffer.from(parsed.s.slice(-32));
-  parsed.r = Buffer.from(parsed.r.slice(-32));
+  // Left-pad r and s to 32 bytes and concatenate (no extra normalization)
+  const r = Buffer.from(parsed.r.slice(-32));
+  const s = Buffer.from(parsed.s.slice(-32));
   const sig = Buffer.alloc(64);
-  parsed.r.copy(sig, 32 - parsed.r.length);
-  parsed.s.copy(sig, 64 - parsed.s.length);
+  r.copy(sig, 32 - r.length);
+  s.copy(sig, 64 - s.length);
   return sig;
 }
 
 function _get_signing_keys(wallet, inputs, isTestnet, purpose) {
-  const currencyIdx = isTestnet === true ? 1 : 0;
-  const keys: any = [];
-  inputs.forEach((input) => {
+  const currencyIdx = isTestnet ? 1 : 0;
+  return inputs.map((input) => {
     const path = buildPath([
       purpose,
       harden(currencyIdx),
@@ -339,9 +343,19 @@ function _get_signing_keys(wallet, inputs, isTestnet, purpose) {
       0,
       input.signerIdx,
     ]);
-    keys.push(wallet.derivePath(path));
+    const node = wallet.derivePath(path);
+    const priv = Buffer.from(node.privateKey);
+    const key = secp256k1.keyFromPrivate(priv);
+    return {
+      privateKey: priv,
+      verify(hash: Buffer, sig: Buffer) {
+        return key.verify(hash, {
+          r: sig.slice(0, 32).toString('hex'),
+          s: sig.slice(32).toString('hex'),
+        });
+      },
+    };
   });
-  return keys;
 }
 
 function _generate_btc_address(isTestnet, purpose, rand) {
@@ -350,9 +364,9 @@ function _generate_btc_address(isTestnet, purpose, rand) {
     // 32 bits of randomness per call
     priv.writeUInt32BE(Math.floor(rand.quick() * 2 ** 32), j * 4);
   }
-  const keyPair = bitcoin.ECPair.fromPrivateKey(priv);
+  const keyPair = ECPair.fromPrivateKey(priv);
   const network =
-    isTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.mainnet;
+    isTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
   return _get_btc_addr(keyPair.publicKey, purpose, network);
 }
 
@@ -398,7 +412,7 @@ export const harden = (x) => {
   return x + HARDENED_OFFSET;
 };
 
-export const prandomBuf = function (prng, maxSz, forceSize = false) {
+export const prandomBuf = (prng, maxSz, forceSize = false) => {
   // Build a random payload that can fit in the base request
   const sz = forceSize ? maxSz : Math.floor(maxSz * prng.quick());
   const buf = Buffer.alloc(sz);
@@ -408,7 +422,7 @@ export const prandomBuf = function (prng, maxSz, forceSize = false) {
   return buf;
 };
 
-export const deriveED25519Key = function (path, seed) {
+export const deriveED25519Key = (path, seed) => {
   const { key } = deriveEDKey(getPathStr(path), seed);
   const pub = getEDPubkey(key, false); // `false` removes the leading zero byte
   return {
@@ -417,7 +431,7 @@ export const deriveED25519Key = function (path, seed) {
   };
 };
 
-export const deriveSECP256K1Key = function (path, seed) {
+export const deriveSECP256K1Key = (path, seed) => {
   const wallet = bip32.fromSeed(seed);
   const key = wallet.derivePath(getPathStr(path));
   return {
@@ -456,7 +470,7 @@ export const gpErrors = {
 //---------------------------------------------------
 // General helpers
 //---------------------------------------------------
-export const getCodeMsg = function (code, expected) {
+export const getCodeMsg = (code, expected) => {
   if (code !== expected) {
     let codeTxt = code,
       expectedTxt = expected;
@@ -473,7 +487,7 @@ export const getCodeMsg = function (code, expected) {
   return '';
 };
 
-export const parseWalletJobResp = function (res, v) {
+export const parseWalletJobResp = (res, v) => {
   const jobRes = {
     resultStatus: null,
     result: null,
@@ -492,8 +506,8 @@ export const parseWalletJobResp = function (res, v) {
   return jobRes;
 };
 
-export const serializeJobData = function (job, walletUID, data) {
-  let serData;
+export const serializeJobData = (job, walletUID, data) => {
+  let serData: Buffer;
   switch (job) {
     case jobTypes.WALLET_JOB_GET_ADDRESSES:
       serData = serializeGetAddressesJobData(data);
@@ -533,9 +547,7 @@ export const serializeJobData = function (job, walletUID, data) {
 };
 
 // First byte of the result data is the error code
-export const jobResErrCode = function (res) {
-  return res.result.readUInt32LE(0);
-};
+export const jobResErrCode = (res) => res.result.readUInt32LE(0);
 
 // Have to do this weird copy because `Buffer`s from the client are not real buffers
 // which is a vestige of requiring support on react native
@@ -590,7 +602,7 @@ export const stringifyPath = (parent) => {
 //---------------------------------------------------
 // Get Addresses helpers
 //---------------------------------------------------
-export const serializeGetAddressesJobData = function (data) {
+export const serializeGetAddressesJobData = (data) => {
   const req = Buffer.alloc(33);
   let off = 0;
   req.writeUInt32LE(data.path.pathDepth, off);
@@ -608,7 +620,7 @@ export const serializeGetAddressesJobData = function (data) {
   return req;
 };
 
-export const deserializeGetAddressesJobResult = function (res) {
+export const deserializeGetAddressesJobResult = (res) => {
   let off = 0;
   const getAddrResult = {
     count: 0,
@@ -631,41 +643,45 @@ export const deserializeGetAddressesJobResult = function (res) {
   return getAddrResult;
 };
 
-export const validateBTCAddresses = function (
-  resp,
-  jobData,
-  seed,
-  useTestnet?,
-) {
+export const validateBTCAddresses = (resp, jobData, seed, useTestnet?) => {
   expect(resp.count).toEqual(jobData.count);
   const wallet = bip32.fromSeed(seed);
   const path = JSON.parse(JSON.stringify(jobData.path));
   const network =
-    useTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.mainnet;
+    useTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
   for (let i = 0; i < jobData.count; i++) {
     path.idx[jobData.iterIdx] = jobData.path.idx[jobData.iterIdx] + i;
     // Validate the address
     const purpose = jobData.path.idx[0];
     const pubkey = wallet.derivePath(stringifyPath(path)).publicKey;
-    let address;
+    let address: string;
     if (purpose === BTC_PURPOSE_P2WPKH) {
       // Bech32
-      address = bitcoin.payments.p2wpkh({ pubkey, network }).address;
+      address = bitcoin.payments.p2wpkh({
+        pubkey: Buffer.from(pubkey),
+        network,
+      }).address;
     } else if (purpose === BTC_PURPOSE_P2SH_P2WPKH) {
       // Wrapped segwit
       address = bitcoin.payments.p2sh({
-        redeem: bitcoin.payments.p2wpkh({ pubkey, network }),
+        redeem: bitcoin.payments.p2wpkh({
+          pubkey: Buffer.from(pubkey),
+          network,
+        }),
       }).address;
     } else {
       // Legacy
       // This is the default and any unrecognized purpose will yield a legacy address.
-      address = bitcoin.payments.p2pkh({ pubkey, network }).address;
+      address = bitcoin.payments.p2pkh({
+        pubkey: Buffer.from(pubkey),
+        network,
+      }).address;
     }
     expect(address).toEqual(resp.addresses[i]);
   }
 };
 
-export const validateETHAddresses = function (resp, jobData, seed) {
+export const validateETHAddresses = (resp, jobData, seed) => {
   expect(resp.count).toEqual(jobData.count);
   // Confirm it is an Ethereum address
   expect(resp.addresses[0].slice(0, 2)).toEqual('0x');
@@ -681,12 +697,12 @@ export const validateETHAddresses = function (resp, jobData, seed) {
   }
 };
 
-export const validateDerivedPublicKeys = function (
+export const validateDerivedPublicKeys = (
   pubKeys,
   firstPath,
   seed,
   flag?: number,
-) {
+) => {
   const wallet = bip32.fromSeed(seed);
   // We assume the keys were derived in sequential order
   pubKeys.forEach((pub, i) => {
@@ -710,14 +726,13 @@ export const validateDerivedPublicKeys = function (
   });
 };
 
-export const ethPersonalSignMsg = function (msg) {
-  return '\u0019Ethereum Signed Message:\n' + String(msg.length) + msg;
-};
+export const ethPersonalSignMsg = (msg) =>
+  '\u0019Ethereum Signed Message:\n' + String(msg.length) + msg;
 
 //---------------------------------------------------
 // Sign Transaction helpers
 //---------------------------------------------------
-export const serializeSignTxJobDataLegacy = function (data) {
+export const serializeSignTxJobDataLegacy = (data) => {
   // Serialize a signTX request using the legacy option
   // (see `WalletJobData_SignTx_t` and `SignatureRequest_t`)
   // in firmware for more info on legacy vs generic (new)
@@ -747,7 +762,7 @@ export const serializeSignTxJobDataLegacy = function (data) {
   return req;
 };
 
-export const deserializeSignTxJobResult = function (res: any) {
+export const deserializeSignTxJobResult = (res: any) => {
   let off = 0;
   const getTxResult: any = {
     numOutputs: null,
@@ -808,11 +823,9 @@ export const deserializeSignTxJobResult = function (res: any) {
 //---------------------------------------------------
 // Export Seed helpers
 //---------------------------------------------------
-export const serializeExportSeedJobData = function () {
-  return Buffer.alloc(0);
-};
+export const serializeExportSeedJobData = () => Buffer.alloc(0);
 
-export const deserializeExportSeedJobResult = function (res) {
+export const deserializeExportSeedJobResult = (res) => {
   let off = 0;
   const seed = res.slice(off, 64);
   off += 64;
@@ -833,7 +846,7 @@ export const deserializeExportSeedJobResult = function (res) {
 //---------------------------------------------------
 // Delete Seed helpers
 //---------------------------------------------------
-export const serializeDeleteSeedJobData = function (data) {
+export const serializeDeleteSeedJobData = (data) => {
   const req = Buffer.alloc(1);
   req.writeUInt8(data.iface, 0);
   return req;
@@ -842,7 +855,7 @@ export const serializeDeleteSeedJobData = function (data) {
 //---------------------------------------------------
 // Load Seed helpers
 //---------------------------------------------------
-export const serializeLoadSeedJobData = function (data) {
+export const serializeLoadSeedJobData = (data) => {
   const req = Buffer.alloc(217);
   let off = 0;
   req.writeUInt8(data.iface, off);
@@ -871,7 +884,7 @@ export const serializeLoadSeedJobData = function (data) {
 //---------------------------------------------------
 // Struct builders
 //---------------------------------------------------
-export const buildRandomEip712Object = function (randInt) {
+export const buildRandomEip712Object = (randInt) => {
   function randStr(n) {
     const words = wordlists['english'];
     let s = '';
@@ -1009,17 +1022,11 @@ export const buildRandomEip712Object = function (randInt) {
 //---------------------------------------------------
 // Generic signing
 //---------------------------------------------------
-export const validateGenericSig = function (
-  seed,
-  sig,
-  payloadBuf,
-  req,
-  pubkey?,
-) {
+export const validateGenericSig = (seed, sig, payloadBuf, req, pubkey?) => {
   const { signerPath, hashType, curveType } = req;
   const HASHES = Constants.SIGNING.HASHES;
   const CURVES = Constants.SIGNING.CURVES;
-  let hash;
+  let hash: Buffer;
   if (curveType === CURVES.SECP256K1) {
     if (hashType === HASHES.SHA256) {
       hash = Buffer.from(Hash.sha256(payloadBuf));
@@ -1064,8 +1071,8 @@ export const validateGenericSig = function (
  * @param resp - response from Lattice. Can be either legacy or generic signing variety
  * @param tx - optional, an @ethereumjs/tx Transaction object
  */
-export const getSigStr = function (resp: any, tx?: TypedTransaction) {
-  let v;
+export const getSigStr = (resp: any, tx?: TypedTransaction) => {
+  let v: string;
   if (resp.sig.v !== undefined) {
     const vBuf = normalizeSigComponent(resp.sig.v);
     const vHex = vBuf.toString('hex');
@@ -1161,7 +1168,7 @@ export function validateSig(
   }
 }
 
-export const compressPubKey = function (pub) {
+export const compressPubKey = (pub) => {
   if (pub.length !== 65) {
     return pub;
   }
@@ -1175,8 +1182,16 @@ export const compressPubKey = function (pub) {
   return compressed;
 };
 
-export const getTestVectors = function () {
-  return jsonc.parse(
-    readFileSync(`${process.cwd()}/src/__test__/vectors.jsonc`).toString(),
+function _stripTrailingCommas(input: string): string {
+  return input.replace(
+    /,\s*(?:(?:\/\/[^\n]*\n)|\/\*[\s\S]*?\*\/|\s)*([}\]])/g,
+    '$1',
   );
+}
+
+export const getTestVectors = () => {
+  const raw = readFileSync(
+    `${process.cwd()}/src/__test__/vectors.jsonc`,
+  ).toString();
+  return jsonc.parse(_stripTrailingCommas(raw));
 };

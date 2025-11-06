@@ -5,15 +5,15 @@
  * Each transaction type has its own describe block with comprehensive test vectors.
  * This replaces all individual EVM test files to avoid duplication and provide unified testing.
  */
-import { describe, it, beforeAll } from 'vitest';
-import { signAndCompareTransaction } from '../../utils/viemComparison';
+
 import { setupClient } from '../../utils/setup';
+import { signAndCompareTransaction } from '../../utils/viemComparison';
 import {
-  LEGACY_VECTORS,
+  EDGE_CASE_TEST_VECTORS,
   EIP1559_TEST_VECTORS,
   EIP2930_TEST_VECTORS,
   EIP7702_TEST_VECTORS,
-  EDGE_CASE_TEST_VECTORS,
+  LEGACY_VECTORS,
 } from './vectors';
 
 describe('EVM Transaction Signing - Unified Test Suite', () => {

@@ -12,7 +12,6 @@ import {
 } from '@solana/web3.js';
 import { fetchSolanaAddresses, signSolanaTx } from '../../../..';
 import { setupClient } from '../../../utils/setup';
-import { beforeAll, describe, expect, test } from 'vitest';
 
 const SOLANA_RPC = new Connection('https://api.devnet.solana.com', 'confirmed');
 

@@ -1,14 +1,15 @@
-import { TypedTransaction } from '@ethereumjs/tx';
-import bip32 from 'bip32';
+import type { TypedTransaction } from '@ethereumjs/tx';
+import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
+import BIP32Factory from 'bip32';
 import { mnemonicToSeedSync } from 'bip39';
 import { ecsign, privateToAddress } from 'ethereumjs-util';
 import { Hash } from 'ox';
-import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
-import { Client } from '../../client';
-import { TestRequestPayload, WalletPath } from '../../types';
+import * as ecc from 'tiny-secp256k1';
+import type { Client } from '../../client';
+import { getPathStr } from '../../shared/utilities';
+import type { SigningPath, TestRequestPayload } from '../../types';
 import { buildTestRequestPayload } from './builders';
 import { ethPersonalSignMsg, getSigStr, jobTypes } from './helpers';
-import { getPathStr } from '../../shared/utilities';
 import { TEST_MNEMONIC } from './testConstants';
 
 export const TEST_SEED = mnemonicToSeedSync(TEST_MNEMONIC);
@@ -71,13 +72,15 @@ export async function testUniformSigs(
   expect(getSigStr(tx5Resp, tx)).toEqual(getSigStr(tx4Resp, tx));
 }
 
-export function deriveAddress(seed: Buffer, path: WalletPath) {
+export function deriveAddress(seed: Buffer, path: SigningPath) {
+  const bip32 = BIP32Factory(ecc);
   const wallet = bip32.fromSeed(seed);
   const priv = wallet.derivePath(getPathStr(path)).privateKey;
   return `0x${privateToAddress(priv).toString('hex')}`;
 }
 
-export function signPersonalJS(_msg: string, path: WalletPath) {
+export function signPersonalJS(_msg: string, path: SigningPath) {
+  const bip32 = BIP32Factory(ecc);
   const wallet = bip32.fromSeed(TEST_SEED);
   const priv = wallet.derivePath(getPathStr(path)).privateKey;
   const msg = ethPersonalSignMsg(_msg);
@@ -87,7 +90,8 @@ export function signPersonalJS(_msg: string, path: WalletPath) {
   return `${sig.r.toString('hex')}${sig.s.toString('hex')}${v}`;
 }
 
-export function signEip712JS(payload: any, path: WalletPath) {
+export function signEip712JS(payload: any, path: SigningPath) {
+  const bip32 = BIP32Factory(ecc);
   const wallet = bip32.fromSeed(TEST_SEED);
   const priv = wallet.derivePath(getPathStr(path)).privateKey;
   // Calculate the EIP712 hash using the same method as the SDK validation

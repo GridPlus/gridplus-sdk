@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+/* eslint-disable quotes */
 
 vi.mock('../../functions/fetchDecoder.ts', () => ({
   fetchDecoder: vi.fn().mockResolvedValue(undefined),
@@ -22,17 +22,17 @@ vi.mock('../../util', async () => {
   };
 });
 
-import { getClient } from './../../api/utilities';
-import { question } from 'readline-sync';
 import { RLP } from '@ethereumjs/rlp';
+import { question } from 'readline-sync';
+import { getClient } from './../../api/utilities';
 import {
   fetchActiveWallets,
   fetchAddress,
   fetchAddresses,
+  fetchAddressesByDerivationPath,
   fetchBip44ChangeAddresses,
   fetchBtcLegacyAddresses,
   fetchBtcSegwitAddresses,
-  fetchAddressesByDerivationPath,
   fetchSolanaAddresses,
   pair,
   signBtcLegacyTx,
@@ -40,9 +40,6 @@ import {
   signBtcWrappedSegwitTx,
   signMessage,
 } from '../../api';
-import { HARDENED_OFFSET } from '../../constants';
-import { BTC_PURPOSE_P2SH_P2WPKH, BTC_TESTNET_COIN } from '../utils/helpers';
-import { dexlabProgram } from './signing/solana/__mocks__/programs';
 import {
   addAddressTags,
   fetchAddressTags,
@@ -51,8 +48,11 @@ import {
   sign,
   signSolanaTx,
 } from '../../api/index';
-import { setupClient } from '../utils/setup';
+import { HARDENED_OFFSET } from '../../constants';
 import { buildRandomMsg } from '../utils/builders';
+import { setupClient } from '../utils/setup';
+import { BTC_PURPOSE_P2SH_P2WPKH, BTC_TESTNET_COIN } from '../utils/helpers';
+import { dexlabProgram } from './signing/solana/__mocks__/programs';
 
 describe('API', () => {
   beforeAll(async () => {
@@ -108,20 +108,21 @@ describe('API', () => {
         });
 
         test('eip712', async () => {
-          await signMessage(buildRandomMsg('eip712', getClient()));
+          const client = await getClient();
+          await signMessage(buildRandomMsg('eip712', client));
         });
       });
 
       describe('transactions', () => {
         const txData = {
-          type: 1,
+          type: 'eip2930',
           chainId: 1,
           nonce: 0,
-          gasLimit: '50000',
+          gas: 50000n,
           to: '0x7a250d5630b4cf539739df2c5dacb4c659f2488d',
-          value: '1000000000000',
+          value: 1000000000000n,
           data: '0x38ed17390000000000000000000000000000000000000000000c1c173c5b782a5b154ab900000000000000000000000000000000000000000000000f380d77022fe8c32600000000000000000000000000000000000000000000000000000000000000a00000000000000000000000007ae7684581f0298241c3d6a6567a48d56b42b15c00000000000000000000000000000000000000000000000000000000622f8d27000000000000000000000000000000000000000000000000000000000000000300000000000000000000000095ad61b0a150d79219dcf64e1e6cc01f0b64c4ce000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000050522c769e01eb06c02bd299066509d8f97a69ae',
-          gasPrice: '1200000000',
+          gasPrice: 1200000000n,
         } as const;
 
         test('generic', async () => {
@@ -129,12 +130,14 @@ describe('API', () => {
         });
 
         test('legacy', async () => {
+          const toHex = (v: bigint | number) =>
+            typeof v === 'bigint' ? `0x${v.toString(16)}` : v;
           const rawTx = RLP.encode([
             txData.nonce,
-            txData.gasPrice,
-            txData.gasLimit,
+            toHex(txData.gasPrice),
+            toHex(txData.gas),
             txData.to,
-            txData.value,
+            toHex(txData.value),
             txData.data,
           ]);
           await sign(rawTx);
@@ -262,7 +265,9 @@ describe('API', () => {
           },
         );
         expect(addresses).toHaveLength(5);
-        addresses.forEach((address) => expect(address).toBeTruthy());
+        addresses.forEach((address) => {
+          expect(address).toBeTruthy();
+        });
       });
 
       test('fetch addresses with offset', async () => {
@@ -274,7 +279,9 @@ describe('API', () => {
           },
         );
         expect(addresses).toHaveLength(3);
-        addresses.forEach((address) => expect(address).toBeTruthy());
+        addresses.forEach((address) => {
+          expect(address).toBeTruthy();
+        });
       });
 
       test('fetch addresses with lowercase x wildcard', async () => {
@@ -285,7 +292,9 @@ describe('API', () => {
           },
         );
         expect(addresses).toHaveLength(2);
-        addresses.forEach((address) => expect(address).toBeTruthy());
+        addresses.forEach((address) => {
+          expect(address).toBeTruthy();
+        });
       });
 
       test('fetch addresses with wildcard in middle of path', async () => {
@@ -296,7 +305,9 @@ describe('API', () => {
           },
         );
         expect(addresses).toHaveLength(3);
-        addresses.forEach((address) => expect(address).toBeTruthy());
+        addresses.forEach((address) => {
+          expect(address).toBeTruthy();
+        });
       });
 
       test('fetch solana addresses with wildcard in middle of path', async () => {
@@ -307,7 +318,9 @@ describe('API', () => {
           },
         );
         expect(addresses).toHaveLength(1);
-        addresses.forEach((address) => expect(address).toBeTruthy());
+        addresses.forEach((address) => {
+          expect(address).toBeTruthy();
+        });
       });
 
       test('error on invalid derivation path', async () => {

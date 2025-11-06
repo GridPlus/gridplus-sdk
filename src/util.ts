@@ -7,8 +7,8 @@ import { Buffer } from 'buffer';
 import crc32 from 'crc-32';
 import elliptic from 'elliptic';
 import { Hash } from 'ox';
-import inRange from 'lodash/inRange';
-import isInteger from 'lodash/isInteger';
+import inRange from 'lodash/inRange.js';
+import isInteger from 'lodash/isInteger.js';
 import secp256k1 from 'secp256k1';
 import { parseTransaction, type Hex } from 'viem';
 

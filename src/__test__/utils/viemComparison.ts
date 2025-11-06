@@ -1,18 +1,15 @@
 import { mnemonicToSeedSync } from 'bip39';
 import {
-  createWalletClient,
-  http,
-  parseTransaction,
-  serializeTransaction,
   type Address,
   type Hex,
+  parseTransaction,
+  serializeTransaction,
   type TransactionSerializable,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { mainnet, polygon, bsc, avalanche } from 'viem/chains';
 import { sign } from '../../api';
-import { deriveAddress } from './determinism';
 import { normalizeLatticeSignature } from '../../ethereum';
+import { deriveAddress } from './determinism';
 import { FOUNDRY_TEST_MNEMONIC } from './testConstants';
 
 const FOUNDRY_TEST_SEED = mnemonicToSeedSync(FOUNDRY_TEST_MNEMONIC);
@@ -33,23 +30,6 @@ export const getFoundryPrivateKey = (): Hex => {
 export const getFoundryAccount = () => {
   const privateKey = getFoundryPrivateKey();
   return privateKeyToAccount(privateKey);
-};
-
-// Create a wallet client for Foundry account
-export const createFoundryWalletClient = (chainId = 1) => {
-  const account = getFoundryAccount();
-  const chains = {
-    1: mainnet,
-    137: polygon,
-    56: bsc,
-    43114: avalanche,
-  };
-
-  return createWalletClient({
-    account,
-    chain: chains[chainId] || mainnet,
-    transport: http(),
-  });
 };
 
 // Transaction type for our test vectors - use viem's TransactionSerializable

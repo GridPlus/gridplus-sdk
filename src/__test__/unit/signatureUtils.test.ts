@@ -1,8 +1,7 @@
-import { describe, expect, it } from 'vitest';
 import { Buffer } from 'buffer';
 import { Hash } from 'ox';
-import { getYParity, getV, randomBytes } from '../../util';
 import secp256k1 from 'secp256k1';
+import { getV, getYParity, randomBytes } from '../../util';
 
 describe('getYParity', () => {
   // Helper function to create a valid signature

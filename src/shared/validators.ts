@@ -2,7 +2,7 @@ import { UInt4 } from 'bitwise/types';
 import { Client } from '../client';
 import { ASCII_REGEX, EMPTY_WALLET_UID, MAX_ADDR } from '../constants';
 import { isUInt4 } from '../util';
-import isEmpty from 'lodash/isEmpty';
+import isEmpty from 'lodash/isEmpty.js';
 import {
   FirmwareConstants,
   FirmwareVersion,

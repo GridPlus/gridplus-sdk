@@ -1,4 +1,5 @@
-import { fetchBtcXpub, fetchBtcYpub, fetchBtcZpub, pair } from '../../api';
+/* eslint-disable quotes */
+import { fetchBtcXpub, fetchBtcYpub, fetchBtcZpub } from '../../api';
 import { setupClient } from '../utils/setup';
 
 describe('XPUB', () => {

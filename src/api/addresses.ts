@@ -30,7 +30,9 @@ type FetchAddressesParams = {
   flag?: number;
 };
 
-export const fetchAddresses = async (overrides?: GetAddressesRequestParams) => {
+export const fetchAddresses = async (
+  overrides?: Partial<GetAddressesRequestParams>,
+) => {
   let allAddresses: string[] = [];
   let totalFetched = 0;
   const totalToFetch = overrides?.n || MAX_ADDR;
