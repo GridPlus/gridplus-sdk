@@ -77,7 +77,7 @@ export const getStartPath = (
   addressIndex = 0, // The value to increment `defaultStartPath`
   pathIndex = 4, // Which index in `defaultStartPath` array to increment
 ): number[] => {
-  const startPath = defaultStartPath;
+  const startPath = [...defaultStartPath];
   if (addressIndex > 0) {
     startPath[pathIndex] = defaultStartPath[pathIndex] + addressIndex;
   }
