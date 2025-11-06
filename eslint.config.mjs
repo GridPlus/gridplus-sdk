@@ -85,9 +85,6 @@ export default [
       'build/**',
       'docs/**',
       'patches/**',
-      'src/__test__/e2e/**',
-      'src/__test__/integration/**',
-      'src/__test__/utils/**',
     ],
   },
 ];

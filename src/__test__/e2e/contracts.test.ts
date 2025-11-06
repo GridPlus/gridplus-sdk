@@ -15,8 +15,10 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { foundry } from 'viem/chains';
-// @ts-ignore
-import NegativeAmountHandler from '../../../forge/out/NegativeAmountHandler.sol/NegativeAmountHandler.json';
+import { readFileSync } from 'fs';
+import path from 'path';
+import { ensureHexBuffer } from '../../util';
+import { execSync } from 'child_process';
 
 dotenv.config();
 
@@ -24,7 +26,22 @@ const ETH_PROVIDER_URL = 'http://localhost:8545';
 const WALLET_PRIVATE_KEY =
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 
-describe('NegativeAmountHandler', () => {
+const forgeAvailable = (() => {
+  try {
+    execSync('forge --version', { stdio: 'pipe' });
+    return true;
+  } catch (err) {
+    console.warn(
+      'Forge CLI not available; skipping NegativeAmountHandler tests:',
+      (err as Error).message,
+    );
+    return false;
+  }
+})();
+
+const describeContract = forgeAvailable ? describe : describe.skip;
+
+describeContract('NegativeAmountHandler', () => {
   let CONTRACT_ADDRESS: Address;
   let chainId: number;
   let domain;
@@ -34,6 +51,7 @@ describe('NegativeAmountHandler', () => {
   let walletClient: WalletClient;
   let account: Account;
   let contract;
+  let abi: any[];
 
   beforeAll(async () => {
     CONTRACT_ADDRESS = (await deployContract(
@@ -54,9 +72,16 @@ describe('NegativeAmountHandler', () => {
 
     chainId = await publicClient.getChainId();
 
+    const artifactPath = path.resolve(
+      __dirname,
+      '../../../forge/out/NegativeAmountHandler.sol/NegativeAmountHandler.json',
+    );
+    const artifact = JSON.parse(readFileSync(artifactPath, 'utf8'));
+    abi = artifact.abi;
+
     contract = getContract({
       address: CONTRACT_ADDRESS,
-      abi: NegativeAmountHandler.abi,
+      abi,
       client: {
         public: publicClient,
         wallet: walletClient,
@@ -128,7 +153,46 @@ describe('NegativeAmountHandler', () => {
     };
 
     const response = await signMessage(msg);
-    const latticeSignature = `0x${response.sig.r.toString('hex')}${response.sig.s.toString('hex')}${response.sig.v.toString('hex').padStart(2, '0')}`;
+
+    const normalizeHex = (value: any): string => {
+      if (value === null || value === undefined) {
+        return '';
+      }
+      if (typeof value === 'bigint') {
+        let hex = value.toString(16);
+        if (hex.length % 2 !== 0) hex = `0${hex}`;
+        return hex;
+      }
+      if (typeof value === 'number') {
+        return value.toString(16);
+      }
+      if (typeof value === 'string') {
+        return value.startsWith('0x') ? value.slice(2) : value;
+      }
+      if (Buffer.isBuffer(value) || value instanceof Uint8Array) {
+        return Buffer.from(value).toString('hex');
+      }
+      if (typeof value?.toString === 'function') {
+        const str = value.toString();
+        if (/^0x[0-9a-f]+$/i.test(str)) {
+          return str.slice(2);
+        }
+        if (/^[0-9a-f]+$/i.test(str)) {
+          return str;
+        }
+      }
+      return ensureHexBuffer(value as string | number | Buffer).toString('hex');
+    };
+
+    const rHex = normalizeHex(response.sig.r);
+    const sHex = normalizeHex(response.sig.s);
+    let vHex = normalizeHex(response.sig.v);
+    if (!vHex) {
+      vHex = '00';
+    }
+    vHex = vHex.padStart(2, '0');
+
+    const latticeSignature = `0x${rHex}${sHex}${vHex}`;
 
     expect(latticeSignature).toEqual(viemSignature);
 

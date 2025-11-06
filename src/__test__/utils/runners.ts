@@ -4,15 +4,17 @@ import {
   deriveSECP256K1Key,
   parseWalletJobResp,
   validateGenericSig,
+  getSignatureVBN,
 } from './helpers';
 import { initializeSeed } from './initializeClient';
 import { testRequest } from './testRequest';
-import BN from 'bn.js';
 import { Constants } from '../..';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { RLP } from '@ethereumjs/rlp';
 import { getDeviceId } from './getters';
 import { ensureHexBuffer } from '../../util';
+import { TestRequestPayload } from '../../types/utils';
+import { SignRequestParams } from '../../types/sign';
 
 export async function runTestCase(
   payload: TestRequestPayload,
@@ -37,7 +39,13 @@ export async function runGeneric(request: SignRequestParams, client: Client) {
     allowedEncodings,
   );
   const seed = await initializeSeed(client);
-  validateGenericSig(seed, response.sig, payloadBuf, request.data);
+  validateGenericSig(
+    seed,
+    response.sig,
+    payloadBuf,
+    request.data,
+    response.pubkey,
+  );
   return response;
 }
 
@@ -93,7 +101,7 @@ export async function runEvm(
   if (!seed) {
     seed = await initializeSeed(client);
   }
-  validateGenericSig(seed, resp.sig, payloadBuf, req.data);
+  validateGenericSig(seed, resp.sig, payloadBuf, req.data, resp.pubkey);
   // Sign the original tx and compare
   const { priv } = deriveSECP256K1Key(req.data.signerPath, seed);
   const signedTx: any = tx.sign(priv);
@@ -101,13 +109,54 @@ export async function runEvm(
     true,
     'Signature failed to verify',
   );
+
   const refR = ensureHexBuffer(signedTx.r?.toString(16));
   const refS = ensureHexBuffer(signedTx.s?.toString(16));
-  const refV = signedTx.v?.toString();
+
+  // Handle the V parameter differently based on transaction type
+  let refV;
+  if (tx._type && tx._type > 0) {
+    // For EIP-1559 and newer transaction types, use y-parity (0 or 1)
+    refV = signedTx.v?.toString();
+  } else {
+    // For legacy transactions
+    refV = signedTx.v?.toString();
+  }
+
   // Get params from Lattice sig
   const latticeR = Buffer.from(sig.r);
   const latticeS = Buffer.from(sig.s);
-  const latticeV = new BN(sig.v);
+  const latticeV = (() => {
+    const value = sig.v;
+    if (value === null || value === undefined) {
+      return 0n;
+    }
+    if (typeof value === 'bigint') {
+      return value;
+    }
+    if (typeof value === 'number') {
+      return BigInt(value);
+    }
+    if (typeof value === 'string') {
+      const normalized = value.startsWith('0x') ? value : `0x${value}`;
+      return BigInt(normalized);
+    }
+    if (Buffer.isBuffer(value) || value instanceof Uint8Array) {
+      const hex = Buffer.from(value).toString('hex');
+      return hex ? BigInt(`0x${hex}`) : 0n;
+    }
+    if (typeof (value as any)?.toArray === 'function') {
+      const hex = Buffer.from((value as any).toArray('be')).toString('hex');
+      return hex ? BigInt(`0x${hex}`) : 0n;
+    }
+    if (typeof (value as any)?.toString === 'function') {
+      const str = (value as any).toString();
+      if (/^0x[0-9a-f]+$/i.test(str) || /^[0-9]+$/i.test(str)) {
+        return BigInt(str.startsWith('0x') ? str : `0x${str}`);
+      }
+    }
+    return 0n;
+  })();
 
   // Validate the signature
   expect(latticeR.equals(refR)).toEqualElseLog(
@@ -122,11 +171,12 @@ export async function runEvm(
     refV.toString(),
     'Signature V component does not match reference',
   );
-  // One more check -- create a new tx with the signatre params and verify it
+  // One more check -- create a new tx with the signature params and verify it
   const signedTxData = JSON.parse(JSON.stringify(txData));
   signedTxData.v = latticeV;
   signedTxData.r = latticeR;
   signedTxData.s = latticeS;
+
   const verifTx = EthTxFactory.fromTxData(signedTxData, {
     common: req.common,
   });

@@ -63,6 +63,61 @@ const reqData = {
 const addr0 = await fetchAddresses(reqData);
 ```
 
+### Convenience Functions for Bitcoin Addresses
+
+**New in v4.0**: Helper functions for common Bitcoin address types:
+
+```ts
+import {
+  fetchBtcLegacyAddresses,
+  fetchBtcSegwitAddresses,
+  fetchBtcWrappedSegwitAddresses,
+} from 'gridplus-sdk/api/addresses';
+
+// Legacy addresses (1...)
+const legacyAddrs = await fetchBtcLegacyAddresses(5);
+
+// Native Segwit addresses (bc1...)
+const segwitAddrs = await fetchBtcSegwitAddresses(5);
+
+// Wrapped Segwit addresses (3...)
+const wrappedSegwitAddrs = await fetchBtcWrappedSegwitAddresses(5);
+```
+
+### Bitcoin Extended Public Keys (XPUB/YPUB/ZPUB)
+
+**New in v4.0**: Fetch Bitcoin extended public keys for wallet derivation:
+
+```ts
+import {
+  fetchBtcXpub,
+  fetchBtcYpub,
+  fetchBtcZpub,
+} from 'gridplus-sdk/api/addresses';
+
+// Legacy XPUB (m/44'/0'/0')
+const xpub = await fetchBtcXpub();
+// Returns: "xpub6C..."
+
+// Wrapped Segwit YPUB (m/49'/0'/0')
+const ypub = await fetchBtcYpub();
+// Returns: "ypub6X..."
+
+// Native Segwit ZPUB (m/84'/0'/0')
+const zpub = await fetchBtcZpub();
+// Returns: "zpub6r..."
+```
+
+:::info
+Extended public keys (XPUB/YPUB/ZPUB) allow you to derive addresses without the Lattice. They're useful for:
+- Generating receive addresses in watch-only wallets
+- Address monitoring and balance tracking
+- Integration with accounting software
+- Public portfolio viewing
+
+**Security note**: XPUB/YPUB/ZPUB reveal all public keys and addresses for an account. Share these carefully.
+:::
+
 ## 🗝️ Public Keys
 
 In addition to formatted addresses, the Lattice can return public keys on any supported curve for any BIP32 derivation path.

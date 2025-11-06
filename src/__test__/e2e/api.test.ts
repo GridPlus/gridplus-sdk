@@ -1,4 +1,27 @@
-/* eslint-disable quotes */
+import { vi } from 'vitest';
+
+vi.mock('../../functions/fetchDecoder.ts', () => ({
+  fetchDecoder: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../util', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../util')>('../../util');
+  return {
+    ...actual,
+    fetchCalldataDecoder: vi.fn().mockResolvedValue({
+      def: Buffer.alloc(0),
+      abi: [
+        {
+          name: 'mockFunction',
+          type: 'function',
+          inputs: [],
+        },
+      ],
+    }),
+  };
+});
+
 import { getClient } from './../../api/utilities';
 import { question } from 'readline-sync';
 import { RLP } from '@ethereumjs/rlp';
@@ -32,12 +55,8 @@ import { setupClient } from '../utils/setup';
 import { buildRandomMsg } from '../utils/builders';
 
 describe('API', () => {
-  test('pair', async () => {
-    const isPaired = await setupClient();
-    if (!isPaired) {
-      const secret = question('Please enter the pairing secret: ');
-      await pair(secret.toUpperCase());
-    }
+  beforeAll(async () => {
+    await setupClient();
   });
 
   describe('signing', () => {
@@ -131,19 +150,56 @@ describe('API', () => {
   });
 
   describe('address tags', () => {
-    test('addAddressTags', async () => {
-      await addAddressTags([{ test: 'test' }]);
+    beforeAll(async () => {
+      try {
+        await Promise.race([
+          fetchAddressTags({ n: 1 }),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error('Address tag RPC timed out')),
+              5000,
+            ),
+          ),
+        ]);
+      } catch (err) {
+        console.warn(
+          'Skipping address tag tests due to connectivity issue:',
+          (err as Error).message,
+        );
+      }
     });
 
-    test('fetchAddressTags', async () => {
+    it('addAddressTags', async () => {
+      const key = `tag-${Date.now()}`;
+      await addAddressTags([{ [key]: 'test' }]);
       const addressTags = await fetchAddressTags();
-      expect(addressTags.some((tag) => tag.key === 'test')).toBeTruthy();
+      expect(addressTags.some((tag) => tag.key === key)).toBeTruthy();
+      const tagsToRemove = addressTags.filter((tag) => tag.key === key);
+      if (tagsToRemove.length) {
+        await removeAddressTags(tagsToRemove);
+      }
     });
 
-    test('removeAddressTags', async () => {
+    it('fetchAddressTags', async () => {
+      const key = `fetch-tag-${Date.now()}`;
+      await addAddressTags([{ [key]: 'value' }]);
       const addressTags = await fetchAddressTags();
-      await removeAddressTags(addressTags);
-      expect(await fetchAddressTags()).toHaveLength(0);
+      expect(addressTags.some((tag) => tag.key === key)).toBeTruthy();
+      const tagsToRemove = addressTags.filter((tag) => tag.key === key);
+      if (tagsToRemove.length) {
+        await removeAddressTags(tagsToRemove);
+      }
+    });
+
+    it('removeAddressTags', async () => {
+      const key = `remove-tag-${Date.now()}`;
+      await addAddressTags([{ [key]: 'value' }]);
+      const addressTags = await fetchAddressTags();
+      const tagsToRemove = addressTags.filter((tag) => tag.key === key);
+      expect(tagsToRemove).not.toHaveLength(0);
+      await removeAddressTags(tagsToRemove);
+      const remainingTags = await fetchAddressTags();
+      expect(remainingTags.some((tag) => tag.key === key)).toBeFalsy();
     });
   });
 

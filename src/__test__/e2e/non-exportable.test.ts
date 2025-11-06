@@ -22,10 +22,9 @@
 import { Chain, Common, Hardfork } from '@ethereumjs/common';
 import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
 import { question } from 'readline-sync';
-import { ecdsaRecover } from 'secp256k1';
 import { Constants } from '../..';
 import { DEFAULT_SIGNER } from '../utils/builders';
-import { getSigStr } from '../utils/helpers';
+import { getSigStr, validateSig } from '../utils/helpers';
 
 import { setupClient } from '../utils/setup';
 
@@ -34,12 +33,17 @@ let runTests = true;
 describe('Non-Exportable Seed', () => {
   let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
   });
 
   describe('Setup', () => {
-    it('Should ask if the user wants to test a card with a non-exportable seed', async () => {
+    it('Should ask if the user wants to test a card with a non-exportable seed', async (ctx: any) => {
+      if (process.env.CI === '1') {
+        runTests = false;
+        ctx.skip();
+        return;
+      }
       // NOTE: non-exportable seeds were deprecated from the normal setup pathway in firmware v0.12.0
       const result = await question(
         'Do you have a non-exportable SafeCard seed loaded and wish to continue? (Y/N) ',
@@ -51,11 +55,10 @@ describe('Non-Exportable Seed', () => {
   });
 
   describe('Test non-exportable seed on SafeCard', () => {
-    beforeEach(() => {
-      expect(runTests).to.equal(
-        true,
-        'Skipping tests due to lack of non-exportable seed SafeCard.',
-      );
+    beforeEach((ctx: any) => {
+      if (!runTests) {
+        ctx.skip('Skipping tests due to lack of non-exportable seed SafeCard.');
+      }
     });
     it('Should test that ETH transaction sigs differ and validate on secp256k1', async () => {
       // Test ETH transactions
@@ -169,15 +172,3 @@ describe('Non-Exportable Seed', () => {
     });
   });
 });
-
-function validateSig(resp: any, hash: Buffer) {
-  const rs = new Uint8Array(Buffer.concat([resp.sig.r, resp.sig.s]));
-  const pubkeyA = Buffer.from(ecdsaRecover(rs, 0, hash, false)).toString('hex');
-  const pubkeyB = Buffer.from(ecdsaRecover(rs, 1, hash, false)).toString('hex');
-  if (
-    resp.pubkey.toString('hex') !== pubkeyA &&
-    resp.pubkey.toString('hex') !== pubkeyB
-  ) {
-    throw new Error('Signature did not validate.');
-  }
-}

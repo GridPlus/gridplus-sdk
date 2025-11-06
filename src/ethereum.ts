@@ -1,17 +1,16 @@
 // Utils for Ethereum transactions. This is effecitvely a shim of ethereumjs-util, which
 // does not have browser (or, by proxy, React-Native) support.
-import { Chain, Common, Hardfork } from '@ethereumjs/common';
-import { TransactionFactory } from '@ethereumjs/tx';
 import BN from 'bignumber.js';
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
-import { keccak256 } from 'js-sha3';
+import { Hash } from 'ox';
 import { RLP } from '@ethereumjs/rlp';
-import secp256k1 from 'secp256k1';
+import * as secp256k1 from 'secp256k1';
 import {
   ASCII_REGEX,
   HANDLE_LARGER_CHAIN_ID,
   MAX_CHAIN_ID_BYTES,
   ethMsgProtocol,
+  EXTERNAL,
 } from './constants';
 import { LatticeSignSchema } from './protocol';
 import {
@@ -20,11 +19,24 @@ import {
   fixLen,
   isAsciiStr,
   splitFrames,
+  convertRecoveryToV,
 } from './util';
-import cbor from 'cbor';
+import * as cbor from 'cbor';
 import bdec from 'cbor-bigdecimal';
-import { TransactionSerializable } from 'viem';
-import { TRANSACTION_TYPE, TransactionRequest } from './types';
+import {
+  TransactionSerializable,
+  serializeTransaction,
+  type Hex,
+  hexToNumber,
+} from 'viem';
+import {
+  type SigningPath,
+  type FirmwareConstants,
+  TransactionRequest,
+  TRANSACTION_TYPE,
+} from './types';
+import { buildGenericSigningMsgRequest } from './genericSigning';
+import { TransactionSchema, type FlexibleTransaction } from './schemas';
 
 bdec(cbor);
 
@@ -64,8 +76,9 @@ const validateEthereumMsgResponse = function (res, req) {
     const hash = prehash
       ? prehash
       : Buffer.from(
-          keccak256(Buffer.concat([get_personal_sign_prefix(msg.length), msg])),
-          'hex',
+          Hash.keccak256(
+            Buffer.concat([get_personal_sign_prefix(msg.length), msg]),
+          ),
         );
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
     return addRecoveryParam(hash, sig, signer, {
@@ -73,13 +86,28 @@ const validateEthereumMsgResponse = function (res, req) {
       useEIP155: false,
     });
   } else if (input.protocol === 'eip712') {
-    req = convertBigNumbers(req);
+    // Use the validationPayload that was created in buildEIP712Request
+    // This payload has been parsed with forJSParser=true, converting all numbers
+    // to the format that TypedDataUtils.eip712Hash expects
+    const rawPayloadForHashing = req.validationPayload || req.input.payload;
+    const payloadForHashing = req.validationPayload
+      ? JSON.parse(JSON.stringify(req.validationPayload))
+      : normalizeTypedDataForHashing(rawPayloadForHashing);
     const encoded = TypedDataUtils.eip712Hash(
-      req.input.payload,
+      payloadForHashing,
       SignTypedDataVersion.V4,
     );
     const digest = prehash ? prehash : encoded;
-    const chainId = parseInt(input.payload.domain.chainId, 16);
+    // Parse chainId - it could be a number, hex string, decimal string, or bigint
+    let chainId =
+      input.payload.domain?.chainId || payloadForHashing.domain?.chainId;
+    if (typeof chainId === 'string') {
+      chainId = chainId.startsWith('0x')
+        ? parseInt(chainId, 16)
+        : parseInt(chainId, 10);
+    } else if (typeof chainId === 'bigint') {
+      chainId = Number(chainId);
+    }
     // Get recovery param with a `v` value of [27,28] by setting `useEIP155=false`
     return addRecoveryParam(digest, sig, signer, { chainId, useEIP155: false });
   } else {
@@ -87,20 +115,70 @@ const validateEthereumMsgResponse = function (res, req) {
   }
 };
 
-function convertBigNumbers(obj) {
-  if (BN.isBigNumber(obj)) {
-    return obj.toFixed();
-  } else if (Array.isArray(obj)) {
-    return obj.map(convertBigNumbers);
-  } else if (typeof obj === 'object' && obj !== null) {
-    const newObj = {};
-    for (const [key, value] of Object.entries(obj)) {
-      newObj[key] = convertBigNumbers(value);
-    }
-    return newObj;
-  } else {
-    return obj;
+function normalizeTypedDataForHashing(value: any): any {
+  if (value === null || value === undefined) {
+    return value;
   }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (/^0x[0-9a-fA-F]+$/.test(trimmed)) {
+      try {
+        const asBigInt = BigInt(trimmed);
+        if (
+          asBigInt <= BigInt(Number.MAX_SAFE_INTEGER) &&
+          asBigInt >= BigInt(Number.MIN_SAFE_INTEGER)
+        ) {
+          return Number(asBigInt);
+        }
+        return asBigInt.toString(10);
+      } catch {
+        return trimmed;
+      }
+    }
+    return trimmed;
+  }
+
+  if (typeof value === 'bigint') {
+    const asNumber = Number(value);
+    return Number.isSafeInteger(asNumber) ? asNumber : value.toString(10);
+  }
+
+  if (BN.isBigNumber(value)) {
+    const asNumber = Number(value.toString(10));
+    return Number.isSafeInteger(asNumber) ? asNumber : value.toString(10);
+  }
+
+  if (
+    value &&
+    typeof value === 'object' &&
+    typeof value.toString === 'function' &&
+    value.constructor &&
+    value.constructor.name === 'BN' &&
+    typeof value.toArray === 'function'
+  ) {
+    const str = value.toString(10);
+    const asNumber = Number(str);
+    return Number.isSafeInteger(asNumber) ? asNumber : str;
+  }
+
+  if (Buffer.isBuffer(value) || value instanceof Uint8Array) {
+    return `0x${Buffer.from(value).toString('hex')}`;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeTypedDataForHashing(item));
+  }
+
+  if (typeof value === 'object') {
+    const normalized: Record<string, any> = {};
+    for (const [key, entry] of Object.entries(value)) {
+      normalized[key] = normalizeTypedDataForHashing(entry);
+    }
+    return normalized;
+  }
+
+  return value;
 }
 
 const buildEthereumTxRequest = function (data) {
@@ -342,8 +420,7 @@ const buildEthereumTxRequest = function (data) {
       if (prehashAllowed && totalSz > maxSzAllowed) {
         // If this payload is too large to send, but the Lattice allows a prehashed message, do that
         prehash = Buffer.from(
-          keccak256(get_rlp_encoded_preimage(rawTx, type)),
-          'hex',
+          Hash.keccak256(get_rlp_encoded_preimage(rawTx, type)),
         );
       } else {
         if (
@@ -370,8 +447,7 @@ const buildEthereumTxRequest = function (data) {
       // If something is unsupported in firmware but we want to allow such transactions,
       // we prehash the message here.
       prehash = Buffer.from(
-        keccak256(get_rlp_encoded_preimage(rawTx, type)),
-        'hex',
+        Hash.keccak256(get_rlp_encoded_preimage(rawTx, type)),
       );
     }
 
@@ -424,8 +500,7 @@ function stripZeros(a) {
 const buildEthRawTx = function (tx, sig, address) {
   // RLP-encode the data we sent to the lattice
   const hash = Buffer.from(
-    keccak256(get_rlp_encoded_preimage(tx.rawTx, tx.type)),
-    'hex',
+    Hash.keccak256(get_rlp_encoded_preimage(tx.rawTx, tx.type)),
   );
   const newSig = addRecoveryParam(hash, sig, address, tx);
   // Use the signature to generate a new raw transaction payload
@@ -436,21 +511,32 @@ const buildEthRawTx = function (tx, sig, address) {
   // See: https://github.com/ethereumjs/ethereumjs-tx/blob/master/src/transaction.ts#L187
   newRawTx.push(stripZeros(newSig.r));
   newRawTx.push(stripZeros(newSig.s));
-  let rlpEncodedWithSig = Buffer.from(RLP.encode(newRawTx));
-  if (tx.type) {
-    rlpEncodedWithSig = Buffer.concat([
-      Buffer.from([tx.type]),
-      rlpEncodedWithSig,
-    ]);
+  const rlpEncoded = Buffer.from(RLP.encode(newRawTx));
+  const rlpEncodedWithSig = tx.type
+    ? Buffer.concat([Buffer.from([tx.type]), rlpEncoded])
+    : rlpEncoded;
+
+  if (
+    tx.type === TRANSACTION_TYPE.EIP7702_AUTH ||
+    tx.type === TRANSACTION_TYPE.EIP7702_AUTH_LIST
+  ) {
+    // For EIP-7702 transactions, we return just the hex string
+    return rlpEncodedWithSig.toString('hex');
   }
+
   return { rawTx: rlpEncodedWithSig.toString('hex'), sigWithV: newSig };
 };
 
 // Attach a recovery parameter to a signature by brute-forcing ECRecover
-function addRecoveryParam(hashBuf, sig, address, txData = {}) {
+export function addRecoveryParam(hashBuf, sig, address, txData = {}) {
   try {
     // Rebuild the keccak256 hash here so we can `ecrecover`
     const hash = new Uint8Array(hashBuf);
+    const expectedAddrBuf = Buffer.isBuffer(address)
+      ? address
+      : ensureHexBuffer(address, false);
+    if (expectedAddrBuf.length !== 20)
+      throw new Error('Invalid signer address provided.');
     let v = 0;
     // Fix signature componenet lengths to 32 bytes each
     const r = fixLen(sig.r, 32);
@@ -460,60 +546,125 @@ function addRecoveryParam(hashBuf, sig, address, txData = {}) {
     // Calculate the recovery param
     const rs = new Uint8Array(Buffer.concat([r, s]));
     let pubkey = secp256k1.ecdsaRecover(rs, v, hash, false).slice(1);
+    const expectedAddrHex = expectedAddrBuf.toString('hex');
+    const recoveredAddrs: string[] = [];
     // If the first `v` value is a match, return the sig!
-    if (pubToAddrStr(pubkey) === address.toString('hex')) {
+    let recovered = pubToAddrStr(pubkey);
+    recoveredAddrs.push(recovered);
+    if (recovered === expectedAddrHex) {
       sig.v = getRecoveryParam(v, txData);
       return sig;
     }
     // Otherwise, try the other `v` value
     v = 1;
     pubkey = secp256k1.ecdsaRecover(rs, v, hash, false).slice(1);
-    if (pubToAddrStr(pubkey) === address.toString('hex')) {
+    recovered = pubToAddrStr(pubkey);
+    recoveredAddrs.push(recovered);
+    if (recovered === expectedAddrHex) {
       sig.v = getRecoveryParam(v, txData);
       return sig;
     } else {
       // If neither is a match, we should return an error
-      throw new Error('Invalid Ethereum signature returned.');
+      throw new Error(
+        `Invalid Ethereum signature returned. expected=${expectedAddrHex}, recovered=${recoveredAddrs.join(',')}`,
+      );
     }
   } catch (err) {
-    throw new Error(err);
+    if (err instanceof Error) throw err;
+    throw new Error(String(err));
+  }
+}
+
+/**
+ * Normalize Lattice signature components to viem format.
+ * Handles Buffer v value conversion and yParity vs v for different transaction types.
+ */
+export function normalizeLatticeSignature(
+  latticeResult: any,
+  originalTx: TransactionSerializable,
+) {
+  // Convert Buffer v value to number
+  let vValue: number;
+  if (Buffer.isBuffer(latticeResult.sig.v)) {
+    // Read entire buffer as big-endian integer
+    // Single byte: <Buffer 26> = 0x26 = 38
+    // Multi-byte: <Buffer 01 35> = 0x0135 = 309 (Polygon chainId 137 with EIP-155)
+    const bufferLength = latticeResult.sig.v.length;
+    if (bufferLength === 1) {
+      vValue = latticeResult.sig.v.readUInt8(0);
+    } else if (bufferLength === 2) {
+      vValue = latticeResult.sig.v.readUInt16BE(0);
+    } else if (bufferLength <= 4) {
+      vValue = latticeResult.sig.v.readUInt32BE(Math.max(0, 4 - bufferLength));
+    } else {
+      // For very large buffers, read as hex and convert
+      vValue = parseInt(latticeResult.sig.v.toString('hex'), 16);
+    }
+  } else if (typeof latticeResult.sig.v === 'number') {
+    vValue = latticeResult.sig.v;
+  } else if (typeof latticeResult.sig.v === 'string') {
+    vValue = hexToNumber(latticeResult.sig.v as Hex);
+  } else {
+    vValue = Number(latticeResult.sig.v);
+  }
+
+  // For typed transactions (non-legacy), viem expects yParity instead of v
+  if (originalTx.type !== 'legacy') {
+    // Convert v to yParity (v is either 27/28 or 0/1)
+    const yParity = vValue >= 27 ? vValue - 27 : vValue;
+    return {
+      ...originalTx,
+      r: latticeResult.sig.r as Hex,
+      s: latticeResult.sig.s as Hex,
+      yParity,
+    };
+  } else {
+    // Legacy transactions use v directly as BigInt
+    const result = {
+      ...originalTx,
+      r: latticeResult.sig.r as Hex,
+      s: latticeResult.sig.s as Hex,
+      v: BigInt(vValue),
+    };
+
+    // For legacy transactions, remove the type field to ensure Viem treats it as legacy
+    delete result.type;
+
+    // Also remove any typed transaction fields that might confuse viem
+    delete result.maxFeePerGas;
+    delete result.maxPriorityFeePerGas;
+    delete result.accessList;
+    delete result.authorizationList;
+
+    return result;
   }
 }
 
 // Convert an RLP-serialized transaction (plus signature) into a transaction hash
 const hashTransaction = function (serializedTx) {
-  return keccak256(Buffer.from(serializedTx, 'hex'));
+  return Hash.keccak256(Buffer.from(serializedTx, 'hex'));
 };
 
 // Returns address string given public key buffer
 function pubToAddrStr(pub) {
-  return keccak256(pub).slice(-40);
+  return Buffer.from(Hash.keccak256(pub)).slice(-20).toString('hex');
 }
 
 // Convert a 0/1 `v` into a recovery param:
 // * For non-EIP155 transactions, return `27 + v`
 // * For EIP155 transactions, return `(CHAIN_ID*2) + 35 + v`
+// Uses the consolidated convertRecoveryToV function from util.ts
 function getRecoveryParam(v, txData: any = {}) {
-  const { chainId, useEIP155, type } = txData;
-  // For EIP1559 and EIP2930 transactions, we want the recoveryParam (0 or 1)
-  // rather than the `v` value because the `chainId` is already included in the
-  // transaction payload.
-  if (type === 1 || type === 2) {
-    return ensureHexBuffer(v, true); // 0 or 1, with 0 expected as an empty buffer
-  } else if (!useEIP155 || !chainId) {
-    // For ETH messages and non-EIP155 chains the set should be [27, 28] for `v`
-    return Buffer.from(new BN(v).plus(27).toString(16), 'hex');
-  }
+  const result = convertRecoveryToV(v, txData);
 
-  // We will use EIP155 in most cases. Convert v to a bignum and operate on it.
-  // Note that the protocol calls for v = (CHAIN_ID*2) + 35/36, where 35 or 36
-  // is decided on based on the ecrecover result. `v` is passed in as either 0 or 1
-  // so we add 35 to that.
-  const chainIdBuf = getChainIdBuf(chainId);
-  const chainIdBN = new BN(chainIdBuf.toString('hex'), 16);
-  return ensureHexBuffer(
-    `0x${chainIdBN.times(2).plus(35).plus(v).toString(16)}`,
-  );
+  // convertRecoveryToV returns Buffer for typed transactions, BN for legacy
+  // Always return Buffer to maintain compatibility with existing code
+  if (Buffer.isBuffer(result)) {
+    return result;
+  } else {
+    // Convert BN result to hex buffer
+    return ensureHexBuffer(`0x${result.toString(16)}`);
+  }
 }
 
 const chainIds = {
@@ -640,10 +791,9 @@ function buildPersonalSignRequest(req, input) {
     req.payload.writeUInt16LE(payload.length, off);
     off += 2;
     const prehash = Buffer.from(
-      keccak256(
+      Hash.keccak256(
         Buffer.concat([get_personal_sign_prefix(payload.length), payload]),
       ),
-      'hex',
     );
     prehash.copy(req.payload, off);
     req.prehash = prehash;
@@ -694,18 +844,24 @@ function buildEIP712Request(req, input) {
   // We need two different encodings: one to send to the Lattice in a format that plays
   // nicely with our firmware CBOR decoder. The other is formatted to be consumable by
   // our EIP712 validation module.
-  input.payload.message = parseEIP712Msg(
+  // IMPORTANT: Create a new object for the validation payload instead of modifying input.payload
+  // in place, so that validation uses the correctly formatted data
+  const validationPayload = JSON.parse(JSON.stringify(data));
+  validationPayload.message = parseEIP712Msg(
     JSON.parse(JSON.stringify(data.message)),
     JSON.parse(JSON.stringify(data.primaryType)),
     JSON.parse(JSON.stringify(data.types)),
     true,
   );
-  input.payload.domain = parseEIP712Msg(
+  validationPayload.domain = parseEIP712Msg(
     JSON.parse(JSON.stringify(data.domain)),
     'EIP712Domain',
     JSON.parse(JSON.stringify(data.types)),
     true,
   );
+  // Store the validation payload separately without modifying input.payload
+  req.validationPayload = validationPayload;
+
   data.domain = parseEIP712Msg(data.domain, 'EIP712Domain', data.types, false);
   data.message = parseEIP712Msg(
     data.message,
@@ -730,7 +886,7 @@ function buildEIP712Request(req, input) {
     req.payload.writeUInt16LE(payload.length, off);
     off += 2;
     const prehash = TypedDataUtils.eip712Hash(
-      req.input.payload,
+      req.validationPayload,
       SignTypedDataVersion.V4,
     );
     const prehashBuf = Buffer.from(prehash);
@@ -870,6 +1026,10 @@ function parseEIP712Item(data, type, forJSParser = false) {
     // Fixed sizes bytes need to be buffer type. We also add some sanity checks.
     const nBytes = parseInt(type.slice(5));
     data = ensureHexBuffer(data);
+    // Edge case to handle empty bytesN values
+    if (data.length === 0) {
+      data = Buffer.alloc(nBytes);
+    }
     if (data.length !== nBytes)
       throw new Error(`Expected ${type} type, but got ${data.length} bytes`);
     if (forJSParser) {
@@ -897,15 +1057,22 @@ function parseEIP712Item(data, type, forJSParser = false) {
     type.indexOf('int') > -1
   ) {
     // Handle signed integers using bignumber.js directly
-    // `bignumber.js` is needed for `cbor` encoding, which gets sent to the Lattice and plays
-    // nicely with its firmware cbor lib.
-    // NOTE: If we instantiate a `bignumber.js` object, it will not match what `borc` creates
-    // when run inside of the browser (i.e. MetaMask). Thus we introduce this hack to make sure
-    // we are creating a compatible type.
-    // TODO: Find another cbor lib that is compataible with the firmware's lib in a browser
-    // context. This is surprisingly difficult - I tried several libs and only cbor/borc have
-    // worked (borc is a supposedly "browser compatible" version of cbor)
-    data = new BN(data);
+    if (forJSParser) {
+      // For EIP712 encoding in this module we need hex strings for signed ints too
+      const bn = new BN(data);
+      // Preserve full precision by returning the decimal string representation
+      data = bn.toFixed();
+    } else {
+      // `bignumber.js` is needed for `cbor` encoding, which gets sent to the Lattice and plays
+      // nicely with its firmware cbor lib.
+      // NOTE: If we instantiate a `bignumber.js` object, it will not match what `borc` creates
+      // when run inside of the browser (i.e. MetaMask). Thus we introduce this hack to make sure
+      // we are creating a compatible type.
+      // TODO: Find another cbor lib that is compataible with the firmware's lib in a browser
+      // context. This is surprisingly difficult - I tried several libs and only cbor/borc have
+      // worked (borc is a supposedly "browser compatible" version of cbor)
+      data = new BN(data);
+    }
   } else if (
     ethMsgProtocol.TYPED_DATA.typeCodes[type] &&
     (type.indexOf('uint') > -1 || type.indexOf('int') > -1)
@@ -920,7 +1087,7 @@ function parseEIP712Item(data, type, forJSParser = false) {
     }
     // Uint256s should be encoded as bignums.
     if (forJSParser) {
-      // For EIP712 encoding in this module we need strings to represent the numbers
+      // For EIP712 encoding in this module we need hex strings to represent the numbers
       data = `0x${b.toString('hex')}`;
     } else {
       // Load into bignumber.js used by cbor lib
@@ -952,72 +1119,240 @@ function get_rlp_encoded_preimage(rawTx, txType) {
   }
 }
 
-// ======
-// TEMPORARY BRIDGE
-// We are migrating from all legacy signing paths to a single generic
-// signing route. If users are attempting a legacy transaction request
-// against a Lattice on firmware v0.15.0 and above, we need to convert
-// that to a generic signing request.
-//
-// NOTE: Once we deprecate, we will remove this entire file
-// ======
-const ethConvertLegacyToGenericReq = function (req) {
-  let common;
-  if (!req.chainId || ensureHexBuffer(req.chainId).toString('hex') === '01') {
-    common = new Common({ chain: Chain.Mainnet, hardfork: Hardfork.London });
-  } else {
-    // Not every network will support these EIPs but we will allow
-    // signing of transactions using them
-    common = Common.custom(
-      { chainId: Number(req.chainId) },
-      { hardfork: Hardfork.London, eips: [1559, 2930] },
-    );
-  }
-  const tx = TransactionFactory.fromTxData(req, { common });
-  // Get the raw transaction payload to be hashed and signed.
-  // Different `@ethereumjs/tx` Transaction object types have
-  // slightly different APIs around this.
-  if (req.type) {
-    // Newer transaction types
-    return tx.getMessageToSign();
-  } else {
-    // Legacy transaction type
-    return Buffer.from(RLP.encode(tx.getMessageToSign()));
-  }
-};
-
-// Convert an ethers `TransactionRequest` to a viem `TransactionSerializable`
-export const toViemTransaction = (
-  tx: TransactionRequest,
+/**
+ * Normalizes a flexible transaction input object into a `viem`-compatible
+ * `TransactionSerializable` object. It uses a comprehensive `zod` schema
+ * to validate, parse, and transform various input formats into a consistent,
+ * secure, and well-typed structure. This function serves as the single entry
+ * point for handling all EVM transaction types.
+ *
+ * @param tx - A flexible transaction object. Can be a legacy, EIP-1559,
+ * EIP-2930, or EIP-7702 transaction with fields in various formats (e.g.,
+ * hex strings, numbers, bigints).
+ * @returns A `viem`-compatible `TransactionSerializable` object.
+ */
+export const normalizeToViemTransaction = (
+  tx: unknown,
 ): TransactionSerializable => {
-  const base = {
-    to: tx.to as `0x${string}`,
-    value: tx.value ? BigInt(tx.value) : undefined,
-    data: tx.data as `0x${string}`,
-    nonce: tx.nonce,
-    gas: tx.gasLimit ? BigInt(tx.gasLimit) : undefined,
-  };
-
-  if (tx.type === TRANSACTION_TYPE.EIP1559) {
-    return {
-      ...base,
-      type: 'eip1559',
-      maxFeePerGas: tx.maxFeePerGas ? BigInt(tx.maxFeePerGas) : undefined,
-      maxPriorityFeePerGas: tx.maxPriorityFeePerGas
-        ? BigInt(tx.maxPriorityFeePerGas)
-        : undefined,
-      chainId: tx.chainId,
-      accessList: tx.accessList?.map((item) => ({
-        address: item.address as `0x${string}`,
-        storageKeys: item.storageKeys as `0x${string}`[],
-      })),
-    };
-  }
+  const parsed = TransactionSchema.parse(tx);
 
   return {
-    ...base,
-    gasPrice: tx.maxFeePerGas ? BigInt(tx.maxFeePerGas) : undefined,
+    ...parsed,
+    to: parsed.to as Hex,
+    data: parsed.data as Hex,
+    gas: parsed.gas,
+    value: parsed.value,
+    nonce: parsed.nonce,
+    chainId: parsed.chainId,
+    gasPrice: 'gasPrice' in parsed ? parsed.gasPrice : undefined,
+    maxFeePerGas: 'maxFeePerGas' in parsed ? parsed.maxFeePerGas : undefined,
+    maxPriorityFeePerGas:
+      'maxPriorityFeePerGas' in parsed
+        ? parsed.maxPriorityFeePerGas
+        : undefined,
+    accessList: 'accessList' in parsed ? parsed.accessList : undefined,
+    authorizationList:
+      'authorizationList' in parsed ? parsed.authorizationList : undefined,
   };
+};
+
+/**
+ * Convert Ethereum transaction to serialized bytes for generic signing.
+ * Bridge function for firmware v0.15.0+ which removed legacy ETH signing paths.
+ */
+const convertEthereumTransactionToGenericRequest = function (
+  req: FlexibleTransaction,
+) {
+  // Use the unified normalization and serialization pipeline.
+  // 1. Normalize the potentially varied input to a standard viem format.
+  const viemTx = normalizeToViemTransaction(req);
+  // 2. Serialize the transaction to RLP-encoded bytes.
+  const serializedTx = serializeTransaction(viemTx);
+  return Buffer.from(serializedTx.slice(2), 'hex');
+};
+
+// Type for Ethereum generic signing request
+type EthereumGenericSigningRequestParams = FlexibleTransaction & {
+  fwConstants: FirmwareConstants;
+  signerPath: SigningPath;
+};
+
+/**
+ * Build complete generic signing request for Ethereum transactions.
+ * One-step function combining transaction conversion and generic signing setup.
+ */
+export const buildEthereumGenericSigningRequest = function (
+  req: EthereumGenericSigningRequestParams,
+) {
+  const { fwConstants, signerPath, ...txData } = req;
+
+  const payload = convertEthereumTransactionToGenericRequest(txData);
+
+  return buildGenericSigningMsgRequest({
+    fwConstants,
+    encodingType: EXTERNAL.SIGNING.ENCODINGS.EVM,
+    curveType: EXTERNAL.SIGNING.CURVES.SECP256K1,
+    hashType: EXTERNAL.SIGNING.HASHES.KECCAK256,
+    signerPath,
+    payload,
+  });
+};
+
+/**
+ * Serializes an EIP7702 transaction using Viem.
+ *
+ * @param tx The EIP7702 transaction to serialize
+ * @returns The serialized transaction as a hex string
+ */
+export function serializeEIP7702Transaction(tx: TransactionRequest): Hex {
+  if (
+    tx.type !== TRANSACTION_TYPE.EIP7702_AUTH_LIST &&
+    tx.type !== TRANSACTION_TYPE.EIP7702_AUTH
+  ) {
+    throw new Error(
+      `Only EIP-7702 auth transactions (type ${TRANSACTION_TYPE.EIP7702_AUTH}) and auth-list transactions (type ${TRANSACTION_TYPE.EIP7702_AUTH_LIST}) are supported`,
+    );
+  }
+
+  // Type guard to ensure we have an EIP7702 transaction with appropriate authorization data
+  const hasAuthList = 'authorizationList' in tx;
+  const hasSingleAuth = 'authorization' in tx;
+
+  if (!hasAuthList && !hasSingleAuth) {
+    throw new Error(
+      'Transaction does not have authorization or authorizationList property',
+    );
+  }
+
+  // For type 4 transactions, convert single authorization to array format
+  let authorizationList: any[];
+  if (tx.type === TRANSACTION_TYPE.EIP7702_AUTH) {
+    if (!hasSingleAuth) {
+      throw new Error(
+        'EIP-7702 auth transaction (type 4) must contain authorization property',
+      );
+    }
+    authorizationList = [(tx as any).authorization];
+  } else {
+    // Type 5 transaction - only handle authorizationList field
+    if (hasAuthList) {
+      authorizationList = (tx as any).authorizationList;
+    } else {
+      throw new Error(
+        'EIP-7702 auth list transaction (type 5) must contain authorizationList property',
+      );
+    }
+  }
+
+  // Validate that all required fields exist
+  if (
+    !authorizationList ||
+    !Array.isArray(authorizationList) ||
+    authorizationList.length === 0
+  ) {
+    throw new Error(
+      'EIP-7702 transaction must contain at least one authorization',
+    );
+  }
+
+  // Validate each authorization
+  authorizationList.forEach((auth, index) => {
+    if (!auth.address) {
+      throw new Error(
+        `Authorization at index ${index} is missing a contract address`,
+      );
+    }
+  });
+
+  // Validate required transaction fields
+  if (!tx.to) {
+    throw new Error('EIP-7702 transaction must include a valid "to" address');
+  }
+
+  // Convert to Viem's expected format
+  const viemTx = {
+    type: 'eip7702' as const,
+    chainId: tx.chainId,
+    nonce: tx.nonce,
+    maxPriorityFeePerGas:
+      typeof tx.maxPriorityFeePerGas === 'string'
+        ? BigInt(tx.maxPriorityFeePerGas)
+        : tx.maxPriorityFeePerGas,
+    maxFeePerGas:
+      typeof tx.maxFeePerGas === 'string'
+        ? BigInt(tx.maxFeePerGas)
+        : tx.maxFeePerGas,
+    gas:
+      typeof (tx as any).gas === 'string'
+        ? BigInt((tx as any).gas)
+        : (tx as any).gas ||
+          (typeof (tx as any).gasLimit === 'string'
+            ? BigInt((tx as any).gasLimit)
+            : (tx as any).gasLimit),
+    to: tx.to as `0x${string}`,
+    value: typeof tx.value === 'string' ? BigInt(tx.value) : tx.value,
+    data: tx.data || '0x',
+    authorizationList: authorizationList.map((auth, idx) => {
+      // Create the Viem-formatted authorization
+      // Ensure proper address handling with 0x prefix
+      const address = auth.address || '';
+      const addressStr =
+        typeof address === 'string'
+          ? address.startsWith('0x')
+            ? address
+            : `0x${address}`
+          : `0x`;
+
+      if (!addressStr || addressStr === '0x') {
+        throw new Error(
+          `Authorization at index ${idx} is missing a valid address`,
+        );
+      }
+
+      // Handle viem's SignedAuthorization format
+      if ('signature' in auth && auth.signature) {
+        // Viem format with nested signature
+        return {
+          chainId: auth.chainId,
+          address: addressStr as `0x${string}`,
+          nonce: BigInt(auth.nonce || 0),
+          signature: auth.signature,
+        };
+      } else {
+        // Direct signature properties (r, s, yParity/v)
+        return {
+          chainId: auth.chainId,
+          address: addressStr as `0x${string}`,
+          nonce: BigInt(auth.nonce || 0),
+          signature: {
+            yParity:
+              typeof auth.yParity === 'number'
+                ? auth.yParity
+                : typeof auth.yParity === 'string'
+                  ? auth.yParity === '0x01' ||
+                    auth.yParity === '0x1' ||
+                    auth.yParity === '1'
+                    ? 1
+                    : 0
+                  : 0,
+            r: auth.r || '0x0',
+            s: auth.s || '0x0',
+          },
+        };
+      }
+    }),
+  };
+
+  return serializeTransaction(viemTx as any);
+}
+
+export const isEip7702Transaction = (tx: TransactionRequest): boolean => {
+  return (
+    typeof tx === 'object' &&
+    'type' in tx &&
+    (tx.type === TRANSACTION_TYPE.EIP7702_AUTH_LIST ||
+      tx.type === TRANSACTION_TYPE.EIP7702_AUTH)
+  );
 };
 
 export default {
@@ -1028,6 +1363,7 @@ export default {
   hashTransaction,
   chainIds,
   ensureHexBuffer,
-
-  ethConvertLegacyToGenericReq,
+  normalizeToViemTransaction,
+  convertEthereumTransactionToGenericRequest,
+  buildEthereumGenericSigningRequest,
 };

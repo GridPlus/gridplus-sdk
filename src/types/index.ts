@@ -90,7 +90,6 @@ export type {
 export type {
   KVRecords,
   EncrypterParams,
-  Signature,
   KeyPair,
   WalletPath,
   DecryptedResponse,
