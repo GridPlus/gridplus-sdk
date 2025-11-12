@@ -11,15 +11,6 @@ on:
       - main
       - dev
       - 'release/**'
-  pull_request_target:
-    branches:
-      - main
-      - dev
-      - 'release/**'
-    types:
-      - opened
-      - reopened
-      - synchronize
 
 jobs:
   build:
@@ -28,21 +19,12 @@ jobs:
     permissions:
       contents: read
       packages: read
-    if: >
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]') ||
-      (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]')
+    env:
+      INTERNAL_EVENT: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
     steps:
       - name: Checkout code
-        if: github.event_name != 'pull_request_target'
         uses: actions/checkout@v5
-
-      - name: Checkout code (Dependabot PR)
-        if: github.event_name == 'pull_request_target'
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Install Node.js
         uses: actions/setup-node@v3
@@ -67,9 +49,11 @@ jobs:
         run: pnpm run build
 
       - name: Release a nightly build
+        if: env.INTERNAL_EVENT == 'true'
         run: pnpx pkg-pr-new publish
 
       - name: Checkout lattice-simulator
+        if: env.INTERNAL_EVENT == 'true'
         uses: actions/checkout@v5
         with:
           repository: GridPlus/lattice-simulator
@@ -77,10 +61,12 @@ jobs:
           token: ${{ secrets.GRIDPLUS_SIM_PAT }}
 
       - name: Install simulator dependencies
+        if: env.INTERNAL_EVENT == 'true'
         working-directory: lattice-simulator
         run: pnpm install
 
       - name: Start simulator in background
+        if: env.INTERNAL_EVENT == 'true'
         working-directory: lattice-simulator
         env:
           CI: '1'
@@ -113,6 +99,7 @@ jobs:
           done
 
       - name: Run SDK e2e tests with simulator
+        if: env.INTERNAL_EVENT == 'true'
         working-directory: ${{ github.workspace }}
         env:
           CI: '1'
@@ -126,14 +113,14 @@ jobs:
         run: pnpm run e2e --reporter=basic
 
       - name: Show simulator logs on failure
-        if: failure()
+        if: failure() && env.INTERNAL_EVENT == 'true'
         working-directory: lattice-simulator
         run: |
           echo "=== Simulator logs ==="
           cat simulator.log || echo "No simulator logs found"
 
       - name: Stop simulator
-        if: always()
+        if: always() && env.INTERNAL_EVENT == 'true'
         working-directory: lattice-simulator
         run: |
           if [ -f simulator.pid ]; then
