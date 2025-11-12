@@ -43,6 +43,7 @@ export const buildTransaction = ({
     try {
       payload = ethereum.convertEthereumTransactionToGenericRequest(data);
     } catch (err) {
+      console.error('Failed to convert legacy Ethereum transaction:', err);
       throw new Error(
         'Could not convert legacy request. Please switch to a general signing ' +
           'request. See gridplus-sdk docs for more information.',

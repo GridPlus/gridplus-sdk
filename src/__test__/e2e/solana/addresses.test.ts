@@ -27,6 +27,7 @@ describe('Solana Addresses', () => {
           expect(isOnCurve).toBe(true);
           return true;
         } catch (e) {
+          console.error('Invalid Solana public key:', e);
           return false;
         }
       })

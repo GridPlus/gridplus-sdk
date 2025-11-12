@@ -7,8 +7,6 @@ import { fileURLToPath } from 'node:url';
 import {
   type Account,
   type Address,
-  type PublicClient as ViemPublicClient,
-  type WalletClient as ViemWalletClient,
   createPublicClient,
   createWalletClient,
   http,
@@ -50,7 +48,6 @@ describeContract('NegativeAmountHandler', () => {
   let publicClient;
   let walletClient;
   let account: Account;
-  let contract: undefined;
   let abi: any[];
 
   beforeAll(async () => {

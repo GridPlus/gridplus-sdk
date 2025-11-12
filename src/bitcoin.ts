@@ -394,6 +394,7 @@ function decodeAddress(address) {
     versionByte = bs58check.decode(address)[0];
     pkh = Buffer.from(bs58check.decode(address).slice(1));
   } catch (err) {
+    console.error('Failed to decode base58 address, trying bech32:', err);
     // If we could not base58 decode, the address must be bech32 encoded.
     // If neither decoding method works, the address is invalid.
     try {

@@ -5,7 +5,6 @@ import {
   deriveSECP256K1Key,
   parseWalletJobResp,
   validateGenericSig,
-  getSignatureVBN,
 } from './helpers';
 import { initializeSeed } from './initializeClient';
 import { testRequest } from './testRequest';

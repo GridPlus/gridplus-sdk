@@ -401,6 +401,7 @@ export function selectDefFrom4byteABI(abiData: any[], selector: string) {
         );
         return !!def;
       } catch (_err) {
+        console.error('Failed to parse canonical name:', _err);
         return false;
       }
     });
@@ -574,6 +575,7 @@ async function replaceNestedDefs(possNestedDefs) {
             );
             _nestedDefs.push(_nestedDef);
           } catch (_err) {
+            console.error('Failed to fetch nested 4byte data:', _err);
             shouldInclude = false;
             _nestedDefs.push(null);
           }
@@ -590,6 +592,7 @@ async function replaceNestedDefs(possNestedDefs) {
           const nestedDef = selectDefFrom4byteABI(nestedAbi, nestedSelector);
           nestedDefs.push(nestedDef);
         } catch (_err) {
+          console.error('Failed to fetch nested definition:', _err);
           nestedDefs.push(null);
         }
       }
@@ -749,6 +752,7 @@ export const getV = function (tx: any, resp: any) {
         }
       }
     } catch (err) {
+      console.error('Failed to parse transaction, trying legacy format:', err);
       try {
         const txBufRaw = Buffer.isBuffer(tx)
           ? tx

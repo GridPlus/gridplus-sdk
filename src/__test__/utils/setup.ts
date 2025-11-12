@@ -10,6 +10,7 @@ export async function setStoredClient(data: string) {
   try {
     fs.writeFileSync(TEMP_CLIENT_FILE, data);
   } catch (err) {
+    console.error('Failed to store client data:', err);
     return;
   }
 }
@@ -18,6 +19,7 @@ export async function getStoredClient() {
   try {
     return fs.readFileSync(TEMP_CLIENT_FILE, 'utf8');
   } catch (err) {
+    console.error('Failed to read stored client data:', err);
     return '';
   }
 }

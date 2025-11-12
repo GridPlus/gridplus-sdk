@@ -723,6 +723,7 @@ function isValidChainIdHexNumStr(s) {
     const b = new BN(s, 16);
     return b.isNaN() === false;
   } catch (err) {
+    console.error('Invalid chain ID hex string:', err);
     return false;
   }
 }
