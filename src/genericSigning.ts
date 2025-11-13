@@ -293,6 +293,10 @@ export const parseGenericSigningResponse = function (res, off, req) {
           parsed.sig.v = BigInt(vBn.toString());
           populateViemSignedTx(parsed.sig.v, req, parsed);
         } catch (err) {
+          console.error(
+            'Failed to get V from transaction, using fallback:',
+            err,
+          );
           // Fall back to simple recovery if getV fails (e.g., malformed RLP)
           // Use the correct hash type specified in the request
           const msgHash = computeMessageHash(req, digestFromResponse);

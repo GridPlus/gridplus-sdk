@@ -401,7 +401,7 @@ export class Client {
       };
       return JSON.stringify(data);
     } catch (err) {
-      console.warn('Could not pack state data.');
+      console.warn('Could not pack state data:', err);
       return null;
     }
   }
@@ -449,7 +449,7 @@ export class Client {
       this.timeout = unpacked.timeout;
       this.retryWrapper = buildRetryWrapper(this, this.retryCount);
     } catch (err) {
-      console.warn('Could not apply state data.');
+      console.warn('Could not apply state data:', err);
     }
   }
 }

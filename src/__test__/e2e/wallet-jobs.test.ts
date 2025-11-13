@@ -437,6 +437,7 @@ describe('Test Wallet Jobs', () => {
         // Should fail to export keys from a path with unhardened indices
         await client.getAddresses(req);
       } catch (err) {
+        console.error('Expected error for unhardened indices:', err);
         // Convert to all hardened indices and expect success
         req.startPath[2] = HARDENED_OFFSET;
         const pubkeys = await client.getAddresses(req);

@@ -274,7 +274,6 @@ function _get_reference_sighashes(
   isTestnet,
   purpose,
 ) {
-  const coin = isTestnet ? BTC_TESTNET_COIN : BTC_COIN;
   const network = isTestnet
     ? bitcoin.networks.testnet
     : bitcoin.networks.bitcoin;
