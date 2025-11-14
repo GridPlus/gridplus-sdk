@@ -54,7 +54,11 @@ export const Lattice = ({ label }) => {
 
       <div>
         <h3>Addresses</h3>
-        <ul>{addresses?.map((address) => <li key={address}>{address}</li>)}</ul>
+        <ul>
+          {addresses?.map((address) => (
+            <li key={address}>{address}</li>
+          ))}
+        </ul>
       </div>
       <Button
         onClick={async () => {

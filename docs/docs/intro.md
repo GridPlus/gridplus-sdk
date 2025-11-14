@@ -145,6 +145,7 @@ npm run pair-device
 ```
 
 This interactive script will:
+
 1. Prompt for your device ID
 2. Prompt for your app name
 3. Trigger pairing on your Lattice
@@ -153,11 +154,12 @@ This interactive script will:
 
 :::tip
 The CLI pairing tool is perfect for:
+
 - Quick testing and development
 - One-time device setup
 - Verifying your Lattice connection
 - Learning how the pairing flow works
-:::
+  :::
 
 ### Step 3: Fetching Addresses
 

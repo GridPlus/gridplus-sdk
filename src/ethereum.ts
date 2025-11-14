@@ -211,7 +211,7 @@ function basicTypedDataClone<T>(value: T): T {
     (value as { constructor?: { name?: string } }).constructor?.name === 'BN' &&
     typeof (value as { clone?: () => unknown }).clone === 'function'
   ) {
-    return ((value as unknown) as { clone: () => unknown }).clone() as T;
+    return (value as unknown as { clone: () => unknown }).clone() as T;
   }
   if (value instanceof Date) {
     return new Date(value.getTime()) as T;
@@ -223,10 +223,12 @@ function basicTypedDataClone<T>(value: T): T {
   return cloned as T;
 }
 
-const structuredCloneFn: typeof structuredClone | null =
+type StructuredCloneFn = <T>(value: T, transfer?: unknown) => T;
+const structuredCloneFn: StructuredCloneFn | null =
   typeof globalThis !== 'undefined' &&
-  typeof globalThis.structuredClone === 'function'
-    ? globalThis.structuredClone
+  typeof (globalThis as { structuredClone?: unknown }).structuredClone ===
+    'function'
+    ? (globalThis as { structuredClone: StructuredCloneFn }).structuredClone
     : null;
 
 const buildEthereumTxRequest = function (data) {

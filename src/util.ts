@@ -478,7 +478,7 @@ async function fetchSupportedChainData(
       if (body && body.result) {
         try {
           return JSON.parse(body.result);
-        } catch (_parseError) {
+        } catch {
           throw new Error(
             `Invalid JSON in response: ${body.result.substring(0, 50)}`,
           );

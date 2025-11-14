@@ -234,9 +234,7 @@ export const EIP712_MESSAGE_VECTORS: Array<{
         verifyingContract: MOCK_CONTRACT_ADDRESS,
       },
       types: {
-        Data: [
-          { name: 'value', type: 'string' },
-        ],
+        Data: [{ name: 'value', type: 'string' }],
       },
       primaryType: 'Data',
       message: {
@@ -254,13 +252,13 @@ export const EIP712_MESSAGE_VECTORS: Array<{
         verifyingContract: MOCK_CONTRACT_ADDRESS,
       },
       types: {
-        Data: [
-          { name: 'value', type: 'uint256' },
-        ],
+        Data: [{ name: 'value', type: 'uint256' }],
       },
       primaryType: 'Data',
       message: {
-        value: BigInt('115792089237316195423570985008687907853269984665640564039457584007913129639935'),
+        value: BigInt(
+          '115792089237316195423570985008687907853269984665640564039457584007913129639935',
+        ),
       },
     },
   },
@@ -274,13 +272,13 @@ export const EIP712_MESSAGE_VECTORS: Array<{
         verifyingContract: MOCK_CONTRACT_ADDRESS,
       },
       types: {
-        Data: [
-          { name: 'value', type: 'int256' },
-        ],
+        Data: [{ name: 'value', type: 'int256' }],
       },
       primaryType: 'Data',
       message: {
-        value: BigInt('-57896044618658097711785492504343953926634992332820282019728792003956564819968'),
+        value: BigInt(
+          '-57896044618658097711785492504343953926634992332820282019728792003956564819968',
+        ),
       },
     },
   },
@@ -294,9 +292,7 @@ export const EIP712_MESSAGE_VECTORS: Array<{
         verifyingContract: MOCK_CONTRACT_ADDRESS,
       },
       types: {
-        Data: [
-          { name: 'message', type: 'string' },
-        ],
+        Data: [{ name: 'message', type: 'string' }],
       },
       primaryType: 'Data',
       message: {
@@ -314,9 +310,7 @@ export const EIP712_MESSAGE_VECTORS: Array<{
         verifyingContract: MOCK_CONTRACT_ADDRESS,
       },
       types: {
-        Data: [
-          { name: 'message', type: 'string' },
-        ],
+        Data: [{ name: 'message', type: 'string' }],
       },
       primaryType: 'Data',
       message: {
