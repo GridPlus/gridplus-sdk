@@ -13,7 +13,7 @@ importers:
         version: 10.0.0
       '@ethereumjs/rlp':
         specifier: ^10.0.0
-        version: 10.0.0
+        version: 10.1.0
       '@ethereumjs/tx':
         specifier: ^10.0.0
         version: 10.0.0
@@ -516,8 +516,8 @@ packages:
   '@ethereumjs/common@3.2.0':
     resolution: {integrity: sha512-pksvzI0VyLgmuEF2FA/JR/4/y6hcPq8OUail3/AvycBaW1d5VSauOZzqGvJ3RTmR4MU35lWE8KseKOsEhrFRBA==}
 
-  '@ethereumjs/rlp@10.0.0':
-    resolution: {integrity: sha512-h2SK6RxFBfN5ZGykbw8LTNNLckSXZeuUZ6xqnmtF22CzZbHflFMcIOyfVGdvyCVQqIoSbGMHtvyxMCWnOyB9RA==}
+  '@ethereumjs/rlp@10.1.0':
+    resolution: {integrity: sha512-r67BJbwilammAqYI4B5okA66cNdTlFzeWxPNJOolKV52ZS/flo0tUBf4x4gxWXBgh48OgsdFV1Qp5pRoSe8IhQ==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -3466,14 +3466,14 @@ snapshots:
       '@ethereumjs/util': 8.1.0
       crc-32: 1.2.2
 
-  '@ethereumjs/rlp@10.0.0': {}
+  '@ethereumjs/rlp@10.1.0': {}
 
   '@ethereumjs/rlp@4.0.1': {}
 
   '@ethereumjs/tx@10.0.0':
     dependencies:
       '@ethereumjs/common': 10.0.0
-      '@ethereumjs/rlp': 10.0.0
+      '@ethereumjs/rlp': 10.1.0
       '@ethereumjs/util': 10.0.0
       ethereum-cryptography: 3.2.0
 
@@ -3486,7 +3486,7 @@ snapshots:
 
   '@ethereumjs/util@10.0.0':
     dependencies:
-      '@ethereumjs/rlp': 10.0.0
+      '@ethereumjs/rlp': 10.1.0
       ethereum-cryptography: 3.2.0
 
   '@ethereumjs/util@8.1.0':
