@@ -91,7 +91,7 @@ const validateEthereumMsgResponse = function (res, req) {
     // to the format that TypedDataUtils.eip712Hash expects
     const rawPayloadForHashing = req.validationPayload || req.input.payload;
     const payloadForHashing = req.validationPayload
-      ? JSON.parse(JSON.stringify(req.validationPayload))
+      ? cloneTypedDataPayload(req.validationPayload)
       : normalizeTypedDataForHashing(rawPayloadForHashing);
     const encoded = TypedDataUtils.eip712Hash(
       payloadForHashing,
@@ -180,6 +180,54 @@ function normalizeTypedDataForHashing(value: any): any {
 
   return value;
 }
+
+function cloneTypedDataPayload<T>(payload: T): T {
+  if (payload === undefined) return payload;
+  if (structuredCloneFn) {
+    return structuredCloneFn(payload);
+  }
+  return basicTypedDataClone(payload);
+}
+
+function basicTypedDataClone<T>(value: T): T {
+  if (value === null || typeof value !== 'object') {
+    return value;
+  }
+  if (Buffer.isBuffer(value)) {
+    return Buffer.from(value) as T;
+  }
+  if (value instanceof Uint8Array) {
+    return new Uint8Array(value) as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => basicTypedDataClone(item)) as unknown as T;
+  }
+  if (BN.isBigNumber(value)) {
+    return new BN(value) as T;
+  }
+  if (
+    value &&
+    typeof value === 'object' &&
+    (value as { constructor?: { name?: string } }).constructor?.name === 'BN' &&
+    typeof (value as { clone?: () => unknown }).clone === 'function'
+  ) {
+    return ((value as unknown) as { clone: () => unknown }).clone() as T;
+  }
+  if (value instanceof Date) {
+    return new Date(value.getTime()) as T;
+  }
+  const cloned: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    cloned[key] = basicTypedDataClone(entry);
+  }
+  return cloned as T;
+}
+
+const structuredCloneFn: typeof structuredClone | null =
+  typeof globalThis !== 'undefined' &&
+  typeof globalThis.structuredClone === 'function'
+    ? globalThis.structuredClone
+    : null;
 
 const buildEthereumTxRequest = function (data) {
   try {
@@ -831,7 +879,7 @@ function buildEIP712Request(req, input) {
   signerPathBuf.copy(req.payload, off);
   off += signerPathBuf.length;
   // Parse/clean the EIP712 payload, serialize with CBOR, and write to the payload
-  const data = JSON.parse(JSON.stringify(input.payload));
+  const data = cloneTypedDataPayload(input.payload);
   if (!data.primaryType || !data.types[data.primaryType])
     throw new Error(
       'primaryType must be specified and the type must be included.',
@@ -847,17 +895,17 @@ function buildEIP712Request(req, input) {
   // our EIP712 validation module.
   // IMPORTANT: Create a new object for the validation payload instead of modifying input.payload
   // in place, so that validation uses the correctly formatted data
-  const validationPayload = JSON.parse(JSON.stringify(data));
+  const validationPayload = cloneTypedDataPayload(data);
   validationPayload.message = parseEIP712Msg(
-    JSON.parse(JSON.stringify(data.message)),
-    JSON.parse(JSON.stringify(data.primaryType)),
-    JSON.parse(JSON.stringify(data.types)),
+    cloneTypedDataPayload(data.message),
+    cloneTypedDataPayload(data.primaryType),
+    cloneTypedDataPayload(data.types),
     true,
   );
   validationPayload.domain = parseEIP712Msg(
-    JSON.parse(JSON.stringify(data.domain)),
+    cloneTypedDataPayload(data.domain),
     'EIP712Domain',
-    JSON.parse(JSON.stringify(data.types)),
+    cloneTypedDataPayload(data.types),
     true,
   );
   // Store the validation payload separately without modifying input.payload

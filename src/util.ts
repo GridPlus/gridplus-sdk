@@ -180,16 +180,23 @@ function isBase10NumStr(x: string): boolean {
 
 /** @internal Ensure a param is represented by a buffer */
 export const ensureHexBuffer = function (
-  x: string | number | Buffer,
+  x: string | number | bigint | Buffer,
   zeroIsNull = true,
 ): Buffer {
   try {
-    if (x === null || (x === 0 && zeroIsNull === true)) return Buffer.alloc(0);
-    const isNumber =
-      typeof x === 'number' || (typeof x === 'string' && isBase10NumStr(x));
+    const isZeroNumber = typeof x === 'number' && x === 0;
+    const isZeroBigInt = typeof x === 'bigint' && x === 0n;
+    if (x === null || ((isZeroNumber || isZeroBigInt) && zeroIsNull === true))
+      return Buffer.alloc(0);
+    const isDecimalInput =
+      typeof x === 'number' ||
+      typeof x === 'bigint' ||
+      (typeof x === 'string' && isBase10NumStr(x));
     let hexString: string;
-    if (isNumber) {
-      hexString = new BigNum(x).toString(16);
+    if (isDecimalInput) {
+      const formatted =
+        typeof x === 'bigint' ? x.toString(10) : (x as string | number);
+      hexString = new BigNum(formatted).toString(16);
     } else if (typeof x === 'string' && x.slice(0, 2) === '0x') {
       hexString = x.slice(2);
     } else if (Buffer.isBuffer(x)) {
@@ -198,7 +205,7 @@ export const ensureHexBuffer = function (
       hexString = x.toString();
     }
     if (hexString.length % 2 > 0) hexString = `0${hexString}`;
-    if (hexString === '00' && !isNumber) return Buffer.alloc(0);
+    if (hexString === '00' && !isDecimalInput) return Buffer.alloc(0);
     return Buffer.from(hexString, 'hex');
   } catch (_err) {
     throw new Error(
