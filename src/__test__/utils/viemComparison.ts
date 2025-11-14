@@ -5,12 +5,14 @@ import {
   parseTransaction,
   serializeTransaction,
   type TransactionSerializable,
+  type TypedDataDefinition,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { sign } from '../../api';
+import { sign, signMessage } from '../../api';
 import { normalizeLatticeSignature } from '../../ethereum';
 import { deriveAddress } from './determinism';
 import { FOUNDRY_TEST_MNEMONIC } from './testConstants';
+import { ensureHexBuffer } from '../../util';
 
 const FOUNDRY_TEST_SEED = mnemonicToSeedSync(FOUNDRY_TEST_MNEMONIC);
 
@@ -132,6 +134,117 @@ export const signAndCompareTransaction = async (
   } catch (error) {
     console.error(`❌ Test failed for ${testName}:`, error.message);
 
+    throw error;
+  }
+};
+
+// EIP-712 message type for test vectors
+export type EIP712TestMessage = {
+  domain: TypedDataDefinition['domain'];
+  types: TypedDataDefinition['types'];
+  primaryType: string;
+  message: Record<string, unknown>;
+};
+
+// Sign EIP-712 typed data with both Lattice and viem, then compare
+export const signAndCompareEIP712Message = async (
+  eip712Message: EIP712TestMessage,
+  testName: string,
+) => {
+  const foundryAccount = getFoundryAccount();
+
+  try {
+    // Sign with viem wallet
+    const viemSignature = await foundryAccount.signTypedData({
+      domain: eip712Message.domain,
+      types: eip712Message.types,
+      primaryType: eip712Message.primaryType,
+      message: eip712Message.message,
+    });
+
+    // Sign with Lattice - need to add EIP712Domain to types
+    const latticeTypes = {
+      ...eip712Message.types,
+      EIP712Domain: [
+        { name: 'name', type: 'string' },
+        { name: 'version', type: 'string' },
+        { name: 'chainId', type: 'uint256' },
+        { name: 'verifyingContract', type: 'address' },
+      ],
+    };
+
+    const latticePayload = {
+      types: latticeTypes,
+      domain: eip712Message.domain,
+      primaryType: eip712Message.primaryType,
+      message: eip712Message.message,
+    };
+
+    const latticeResult = await signMessage(latticePayload).catch((err) => {
+      if (err.responseCode === 128) {
+        err.message =
+          'NOTE: You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.\n' +
+          err.message;
+      }
+      if (err.responseCode === 132) {
+        err.message =
+          'NOTE: Please approve the message signature on your Lattice device.\n' +
+          err.message;
+      }
+      throw err;
+    });
+
+    // Normalize signature components
+    const normalizeHex = (value: any): string => {
+      if (value === null || value === undefined) {
+        return '';
+      }
+      if (typeof value === 'bigint') {
+        let hex = value.toString(16);
+        if (hex.length % 2 !== 0) hex = `0${hex}`;
+        return hex;
+      }
+      if (typeof value === 'number') {
+        return value.toString(16);
+      }
+      if (typeof value === 'string') {
+        return value.startsWith('0x') ? value.slice(2) : value;
+      }
+      if (Buffer.isBuffer(value) || value instanceof Uint8Array) {
+        return Buffer.from(value).toString('hex');
+      }
+      if (typeof value?.toString === 'function') {
+        const str = value.toString();
+        if (/^0x[0-9a-f]+$/i.test(str)) {
+          return str.slice(2);
+        }
+        if (/^[0-9a-f]+$/i.test(str)) {
+          return str;
+        }
+      }
+      return ensureHexBuffer(value as string | number | Buffer).toString('hex');
+    };
+
+    const rHex = normalizeHex(latticeResult.sig.r);
+    const sHex = normalizeHex(latticeResult.sig.s);
+    let vHex = normalizeHex(latticeResult.sig.v);
+    if (!vHex) {
+      vHex = '00';
+    }
+    vHex = vHex.padStart(2, '0');
+
+    const latticeSignature = `0x${rHex}${sHex}${vHex}`;
+
+    // Compare signatures
+    expect(latticeSignature).toBe(viemSignature);
+
+    return {
+      lattice: latticeResult,
+      viem: viemSignature,
+      success: true,
+    };
+  } catch (error) {
+    console.error(`❌ Test failed for ${testName}:`, error.message);
     throw error;
   }
 };

@@ -34,9 +34,7 @@
     "e2e-sign-unformatted": "vitest run ./src/__test__/e2e/signing/unformatted.test.ts",
     "e2e-wj": "vitest run ./src/__test__/e2e/wallet-jobs.test.ts",
     "e2e-api": "vitest run ./src/__test__/e2e/api.test.ts",
-    "contracts": "vitest run ./src/__test__/e2e/contracts.test.ts",
-    "setup:anvil": "cd forge && chmod +x scripts/setup.sh && ./scripts/setup.sh",
-    "cleanup:anvil": "cd forge && chmod +x scripts/cleanup.sh && ./scripts/cleanup.sh"
+    "e2e-sign-eip712": "vitest run ./src/__test__/e2e/signing/eip712-msg.test.ts"
   },
   "files": [
     "dist"

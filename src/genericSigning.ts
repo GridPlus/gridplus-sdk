@@ -431,8 +431,8 @@ function populateViemSignedTx(
       baseTx as TransactionSerializable,
       signature as any,
     );
-  } catch (err) {
-    console.debug('Failed to build viemTx from response', err);
+  } catch (_err) {
+    console.debug('Failed to build viemTx from response', _err);
   }
 }
 

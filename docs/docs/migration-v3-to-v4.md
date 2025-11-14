@@ -16,6 +16,7 @@ GridPlus SDK v4.0.0 introduces significant improvements focused on modernization
 **v4.0 uses**: `viem` and `zod`
 
 This change affects:
+
 - Transaction object format
 - Transaction serialization
 - Type definitions
@@ -107,13 +108,13 @@ const result = await sign(tx);
 
 ### Key Differences
 
-| Aspect | v3.x (Ethers) | v4.0 (Viem) |
-|:-------|:--------------|:------------|
-| **Type field** | `type: 2` | `type: 'eip1559'` |
-| **Value parsing** | `ethers.utils.parseEther()` | `parseEther()` |
-| **Gas field** | `gasLimit` | `gas` |
-| **BigNumber** | `BigNumber` class | Native `bigint` |
-| **Import** | `ethers` package | `viem` package |
+| Aspect            | v3.x (Ethers)               | v4.0 (Viem)       |
+| :---------------- | :-------------------------- | :---------------- |
+| **Type field**    | `type: 2`                   | `type: 'eip1559'` |
+| **Value parsing** | `ethers.utils.parseEther()` | `parseEther()`    |
+| **Gas field**     | `gasLimit`                  | `gas`             |
+| **BigNumber**     | `BigNumber` class           | Native `bigint`   |
+| **Import**        | `ethers` package            | `viem` package    |
 
 ---
 
@@ -488,6 +489,7 @@ If you encounter issues during migration:
 3. Consult the [signing guide](./signing) for transaction examples
 
 **Common gotchas**:
+
 - Forgetting to convert numbers to `bigint`
 - Using `gasLimit` instead of `gas`
 - Numeric transaction types instead of strings

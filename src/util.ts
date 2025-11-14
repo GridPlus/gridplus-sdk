@@ -180,16 +180,23 @@ function isBase10NumStr(x: string): boolean {
 
 /** @internal Ensure a param is represented by a buffer */
 export const ensureHexBuffer = function (
-  x: string | number | Buffer,
+  x: string | number | bigint | Buffer,
   zeroIsNull = true,
 ): Buffer {
   try {
-    if (x === null || (x === 0 && zeroIsNull === true)) return Buffer.alloc(0);
-    const isNumber =
-      typeof x === 'number' || (typeof x === 'string' && isBase10NumStr(x));
+    const isZeroNumber = typeof x === 'number' && x === 0;
+    const isZeroBigInt = typeof x === 'bigint' && x === 0n;
+    if (x === null || ((isZeroNumber || isZeroBigInt) && zeroIsNull === true))
+      return Buffer.alloc(0);
+    const isDecimalInput =
+      typeof x === 'number' ||
+      typeof x === 'bigint' ||
+      (typeof x === 'string' && isBase10NumStr(x));
     let hexString: string;
-    if (isNumber) {
-      hexString = new BigNum(x).toString(16);
+    if (isDecimalInput) {
+      const formatted =
+        typeof x === 'bigint' ? x.toString(10) : (x as string | number);
+      hexString = new BigNum(formatted).toString(16);
     } else if (typeof x === 'string' && x.slice(0, 2) === '0x') {
       hexString = x.slice(2);
     } else if (Buffer.isBuffer(x)) {
@@ -198,11 +205,11 @@ export const ensureHexBuffer = function (
       hexString = x.toString();
     }
     if (hexString.length % 2 > 0) hexString = `0${hexString}`;
-    if (hexString === '00' && !isNumber) return Buffer.alloc(0);
+    if (hexString === '00' && !isDecimalInput) return Buffer.alloc(0);
     return Buffer.from(hexString, 'hex');
-  } catch (err) {
+  } catch (_err) {
     throw new Error(
-      `Cannot convert ${x.toString()} to hex buffer (${(err as Error).message})`,
+      `Cannot convert ${x.toString()} to hex buffer (${(_err as Error).message})`,
     );
   }
 };
@@ -359,8 +366,8 @@ async function fetchExternalNetworkForChainId(
     } else {
       return undefined;
     }
-  } catch (err) {
-    console.warn('Fetching external networks failed.\n', err);
+  } catch (_err) {
+    console.warn('Fetching external networks failed.\n', _err);
   }
 }
 
@@ -469,7 +476,13 @@ async function fetchSupportedChainData(
     .then((res) => res.json())
     .then((body) => {
       if (body && body.result) {
-        return JSON.parse(body.result);
+        try {
+          return JSON.parse(body.result);
+        } catch {
+          throw new Error(
+            `Invalid JSON in response: ${body.result.substring(0, 50)}`,
+          );
+        }
       } else {
         throw new Error('Server response was malformed');
       }

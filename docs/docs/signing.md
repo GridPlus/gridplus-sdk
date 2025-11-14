@@ -35,9 +35,9 @@ The GridPlus SDK provides a comprehensive signing interface for transactions and
 // ❌ This will throw a clear validation error
 const invalidTx = {
   type: 'eip1559',
-  to: 'not-an-address',      // Invalid hex address
-  value: '0.1',               // Should be bigint
-  gas: 21000,                 // Should be bigint (21000n)
+  to: 'not-an-address', // Invalid hex address
+  value: '0.1', // Should be bigint
+  gas: 21000, // Should be bigint (21000n)
   // Missing required fields...
 };
 
@@ -50,6 +50,7 @@ await sign(invalidTx);
 ```
 
 **What gets validated**:
+
 - Transaction type matches structure (legacy, eip1559, eip2930, eip7702)
 - Required fields present for each type
 - Correct data types (bigint for numbers, hex for addresses/hashes)
@@ -57,6 +58,7 @@ await sign(invalidTx);
 - Properly formatted access lists and authorization lists
 
 **Benefits**:
+
 - **Catch errors early** - Before sending to device
 - **Clear error messages** - Know exactly what's wrong
 - **TypeScript integration** - Full IDE autocomplete support

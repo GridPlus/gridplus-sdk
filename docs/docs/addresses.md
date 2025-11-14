@@ -110,6 +110,7 @@ const zpub = await fetchBtcZpub();
 
 :::info
 Extended public keys (XPUB/YPUB/ZPUB) allow you to derive addresses without the Lattice. They're useful for:
+
 - Generating receive addresses in watch-only wallets
 - Address monitoring and balance tracking
 - Integration with accounting software

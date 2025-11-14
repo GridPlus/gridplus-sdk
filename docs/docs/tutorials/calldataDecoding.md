@@ -135,6 +135,7 @@ You might wonder: "Can someone submit a malicious ABI to trick users?"
 ### Calldata Mismatch Detection
 
 If an ABI definition doesn't match the transaction calldata:
+
 - Lattice firmware detects the mismatch
 - Falls back to displaying raw hex
 - User sees something is wrong
@@ -236,12 +237,18 @@ If your function isn't on 4byte.directory:
 ## Migration from v3.x
 
 **v3.x required manual decoder setup**:
+
 ```ts
-const { def } = await Utils.fetchCalldataDecoder(calldata, contractAddress, chainId);
+const { def } = await Utils.fetchCalldataDecoder(
+  calldata,
+  contractAddress,
+  chainId,
+);
 const req = { ...txData, decoder: def };
 ```
 
 **v4.0 handles it automatically**:
+
 ```ts
 // Just sign - decoding happens behind the scenes!
 const result = await sign(tx);

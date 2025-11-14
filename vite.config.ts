@@ -6,7 +6,7 @@ export default defineConfig({
     environment: 'node',
     include: ['**/*.{test,spec}.{js,mjs,ts,mts,jsx,tsx}'],
     /** connect.test.ts is excluded because it is still a WIP (https://github.com/GridPlus/gridplus-sdk/issues/420) */
-    exclude: ['./src/__test__/integration/connect.test.ts', './forge'],
+    exclude: ['./src/__test__/integration/connect.test.ts'],
     testTimeout: 120000,
     maxConcurrency: 1,
     fileParallelism: false,
