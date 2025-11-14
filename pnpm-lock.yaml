@@ -16,7 +16,7 @@ importers:
         version: 10.1.0
       '@ethereumjs/tx':
         specifier: ^10.0.0
-        version: 10.0.0
+        version: 10.1.0
       '@metamask/eth-sig-util':
         specifier: ^8.2.0
         version: 8.2.0
@@ -526,17 +526,13 @@ packages:
     engines: {node: '>=14'}
     hasBin: true
 
-  '@ethereumjs/tx@10.0.0':
-    resolution: {integrity: sha512-DApm04kp2nbvaOuHy2Rkcz1ZeJkTVgW6oCuNnQf9bRtGc+LsvLrdULE3LoGtBItEoNEcgXLJqrV0foooWFX6jw==}
+  '@ethereumjs/tx@10.1.0':
+    resolution: {integrity: sha512-svG6pyzUZDpunafszf2BaolA6Izuvo8ZTIETIegpKxAXYudV1hmzPQDdSI+d8nHCFyQfEFbQ6tfUq95lNArmmg==}
     engines: {node: '>=18'}
 
   '@ethereumjs/tx@4.2.0':
     resolution: {integrity: sha512-1nc6VO4jtFd172BbSnTnDQVr9IYBFl1y4xPzZdtkrkKIncBCkdbgfdRV+MiTkJYAtTxvV12GRZLqBFT1PNK6Yw==}
     engines: {node: '>=14'}
-
-  '@ethereumjs/util@10.0.0':
-    resolution: {integrity: sha512-lO23alM4uQsv8dp6/yEm4Xw4328+wIRjSeuBO1mRTToUWRcByEMTk87yzBpXgpixpgHrl+9LTn9KB2vvKKtOQQ==}
-    engines: {node: '>=18'}
 
   '@ethereumjs/util@10.1.0':
     resolution: {integrity: sha512-GGTCkRu1kWXbz2JoUnIYtJBOoA9T5akzsYa91Bh+DZQ3Cj4qXj3hkNU0Rx6wZlbcmkmhQfrjZfVt52eJO/y2nA==}
@@ -3509,11 +3505,11 @@ snapshots:
 
   '@ethereumjs/rlp@4.0.1': {}
 
-  '@ethereumjs/tx@10.0.0':
+  '@ethereumjs/tx@10.1.0':
     dependencies:
       '@ethereumjs/common': 10.1.0
       '@ethereumjs/rlp': 10.1.0
-      '@ethereumjs/util': 10.0.0
+      '@ethereumjs/util': 10.1.0
       ethereum-cryptography: 3.2.0
 
   '@ethereumjs/tx@4.2.0':
@@ -3522,11 +3518,6 @@ snapshots:
       '@ethereumjs/rlp': 4.0.1
       '@ethereumjs/util': 8.1.0
       ethereum-cryptography: 2.2.1
-
-  '@ethereumjs/util@10.0.0':
-    dependencies:
-      '@ethereumjs/rlp': 10.1.0
-      ethereum-cryptography: 3.2.0
 
   '@ethereumjs/util@10.1.0':
     dependencies:
