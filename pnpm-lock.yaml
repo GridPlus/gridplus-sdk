@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@ethereumjs/common':
         specifier: ^10.0.0
-        version: 10.0.0
+        version: 10.1.0
       '@ethereumjs/rlp':
         specifier: ^10.0.0
         version: 10.1.0
@@ -510,8 +510,8 @@ packages:
     resolution: {integrity: sha512-Z5kJ+wU3oA7MMIqVR9tyZRtjYPr4OC004Q4Rw7pgOKUOKkJfZ3O24nz3WYfGRpMDNmcOi3TwQOmgm7B7Tpii0w==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@ethereumjs/common@10.0.0':
-    resolution: {integrity: sha512-qb0M1DGdXzMAf3O6Zg5Wr5UDjoxBmplLPbQyC6DQ0LfgVDBRdqn0Pk+/hHm4q0McE22Of0MxbV4hhiDTkSgKag==}
+  '@ethereumjs/common@10.1.0':
+    resolution: {integrity: sha512-zIHCy0i2LFmMDp+QkENyoPGxcoD3QzeNVhx6/vE4nJk4uWGNXzO8xJ2UC4gtGW4UJTAOXja8Z1yZMVeRc2/+Ew==}
 
   '@ethereumjs/common@3.2.0':
     resolution: {integrity: sha512-pksvzI0VyLgmuEF2FA/JR/4/y6hcPq8OUail3/AvycBaW1d5VSauOZzqGvJ3RTmR4MU35lWE8KseKOsEhrFRBA==}
@@ -536,6 +536,10 @@ packages:
 
   '@ethereumjs/util@10.0.0':
     resolution: {integrity: sha512-lO23alM4uQsv8dp6/yEm4Xw4328+wIRjSeuBO1mRTToUWRcByEMTk87yzBpXgpixpgHrl+9LTn9KB2vvKKtOQQ==}
+    engines: {node: '>=18'}
+
+  '@ethereumjs/util@10.1.0':
+    resolution: {integrity: sha512-GGTCkRu1kWXbz2JoUnIYtJBOoA9T5akzsYa91Bh+DZQ3Cj4qXj3hkNU0Rx6wZlbcmkmhQfrjZfVt52eJO/y2nA==}
     engines: {node: '>=18'}
 
   '@ethereumjs/util@8.1.0':
@@ -3491,9 +3495,9 @@ snapshots:
       '@eslint/core': 0.15.2
       levn: 0.4.1
 
-  '@ethereumjs/common@10.0.0':
+  '@ethereumjs/common@10.1.0':
     dependencies:
-      '@ethereumjs/util': 10.0.0
+      '@ethereumjs/util': 10.1.0
       eventemitter3: 5.0.1
 
   '@ethereumjs/common@3.2.0':
@@ -3507,7 +3511,7 @@ snapshots:
 
   '@ethereumjs/tx@10.0.0':
     dependencies:
-      '@ethereumjs/common': 10.0.0
+      '@ethereumjs/common': 10.1.0
       '@ethereumjs/rlp': 10.1.0
       '@ethereumjs/util': 10.0.0
       ethereum-cryptography: 3.2.0
@@ -3520,6 +3524,11 @@ snapshots:
       ethereum-cryptography: 2.2.1
 
   '@ethereumjs/util@10.0.0':
+    dependencies:
+      '@ethereumjs/rlp': 10.1.0
+      ethereum-cryptography: 3.2.0
+
+  '@ethereumjs/util@10.1.0':
     dependencies:
       '@ethereumjs/rlp': 10.1.0
       ethereum-cryptography: 3.2.0
