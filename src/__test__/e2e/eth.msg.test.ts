@@ -100,7 +100,7 @@ describe('ETH Messages', () => {
       // Using a zero length payload should auto-reject
       await expect(
         client.sign(buildEthMsgReq(zeroInvalid, protocol)),
-      ).rejects.toThrow(/Invalid Ethereum signature returned./);
+      ).rejects.toThrow(/Invalid Request/);
     });
 
     describe(`Test ${5} random payloads`, () => {
