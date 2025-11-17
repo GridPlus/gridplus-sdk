@@ -9,11 +9,10 @@ import elliptic from 'elliptic';
 import { Hash } from 'ox';
 import inRange from 'lodash/inRange.js';
 import isInteger from 'lodash/isInteger.js';
-import secp256k1 from 'secp256k1';
+import { ecdsaRecover } from 'secp256k1';
 import { parseTransaction, type Hex } from 'viem';
 
 const EC = elliptic.ec;
-const { ecdsaRecover } = secp256k1;
 import { Calldata } from '.';
 import {
   BIP_CONSTANTS,

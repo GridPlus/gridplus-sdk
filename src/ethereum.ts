@@ -4,7 +4,7 @@ import BN from 'bignumber.js';
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
 import { Hash } from 'ox';
 import { RLP } from '@ethereumjs/rlp';
-import * as secp256k1 from 'secp256k1';
+import { ecdsaRecover } from 'secp256k1';
 import {
   ASCII_REGEX,
   HANDLE_LARGER_CHAIN_ID,
@@ -21,7 +21,7 @@ import {
   splitFrames,
   convertRecoveryToV,
 } from './util';
-import * as cbor from 'cbor';
+import cbor from 'cbor';
 import bdec from 'cbor-bigdecimal';
 import {
   TransactionSerializable,
@@ -595,7 +595,7 @@ export function addRecoveryParam(hashBuf, sig, address, txData = {}) {
     sig.s = s;
     // Calculate the recovery param
     const rs = new Uint8Array(Buffer.concat([r, s]));
-    let pubkey = secp256k1.ecdsaRecover(rs, v, hash, false).slice(1);
+    let pubkey = ecdsaRecover(rs, v, hash, false).slice(1);
     const expectedAddrHex = expectedAddrBuf.toString('hex');
     const recoveredAddrs: string[] = [];
     // If the first `v` value is a match, return the sig!
@@ -607,7 +607,7 @@ export function addRecoveryParam(hashBuf, sig, address, txData = {}) {
     }
     // Otherwise, try the other `v` value
     v = 1;
-    pubkey = secp256k1.ecdsaRecover(rs, v, hash, false).slice(1);
+    pubkey = ecdsaRecover(rs, v, hash, false).slice(1);
     recovered = pubToAddrStr(pubkey);
     recoveredAddrs.push(recovered);
     if (recovered === expectedAddrHex) {
