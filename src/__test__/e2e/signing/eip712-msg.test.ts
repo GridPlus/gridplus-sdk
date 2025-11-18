@@ -4,7 +4,6 @@
  * Tests EIP-712 message signing compatibility between Lattice and viem.
  * Replaces the forge-based contract test with a pure signature comparison approach.
  */
-import { describe, it, beforeAll } from 'vitest';
 import { signAndCompareEIP712Message } from '../../utils/viemComparison';
 import { setupClient } from '../../utils/setup';
 import { EIP712_MESSAGE_VECTORS } from './eip712-vectors';
