@@ -11,17 +11,14 @@ import {
 } from '../../constants';
 import type { Currency, SigningPath, SignRequestParams } from '../../types';
 import type { FirmwareConstants } from '../../types/firmware';
-import type { TestRequestPayload } from '../../types/utils';
 import { randomBytes } from '../../util';
 import { MSG_PAYLOAD_METADATA_SZ } from './constants';
 import { getN, getPrng } from './getters';
 import {
   BTC_PURPOSE_P2PKH,
   buildRandomEip712Object,
-  copyBuffer,
   ETH_COIN,
   getTestVectors,
-  serializeJobData,
 } from './helpers';
 
 const prng = getPrng();
@@ -135,19 +132,6 @@ export const buildRandomVectors = (n: number | string | undefined = getN()) => {
     RANDOM_VEC.push(Math.floor(1000000000 * prng.quick()).toString(16));
   }
   return RANDOM_VEC;
-};
-
-export const buildTestRequestPayload = (
-  client: Client,
-  jobType: number,
-  jobData: any,
-): TestRequestPayload => {
-  const activeWalletUID = copyBuffer(client.getActiveWallet()?.uid);
-  return {
-    client,
-    testID: 0, // wallet_job test ID
-    payload: serializeJobData(jobType, activeWalletUID, jobData),
-  };
 };
 
 export const DEFAULT_SIGNER = [
