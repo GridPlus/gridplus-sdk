@@ -10,8 +10,8 @@ import { ensureHexBuffer } from '../../../../util';
 import { setupClient } from '../../../utils/setup';
 import { getPrng } from '../../../utils/getters';
 import { deriveED25519Key, prandomBuf } from '../../../utils/helpers';
-import { initializeSeed } from '../../../utils/initializeClient';
 import { runGeneric } from '../../../utils/runners';
+import { TEST_SEED } from '../../../utils/testConstants';
 
 //---------------------------------------
 // STATE DATA
@@ -49,7 +49,7 @@ describe('[Solana]', () => {
     // NOTE: Solana addresses are just base58 encoded public keys. We do not
     // currently support exporting of Solana addresses in firmware but we can
     // derive them here using the exported seed.
-    const seed = await initializeSeed(client);
+    const seed = TEST_SEED;
     const derivedAPath = [...DEFAULT_SOLANA_SIGNER_PATH];
     const derivedBPath = [...DEFAULT_SOLANA_SIGNER_PATH];
     derivedBPath[3] += 1;

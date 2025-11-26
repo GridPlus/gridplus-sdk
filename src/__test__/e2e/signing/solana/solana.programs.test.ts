@@ -5,10 +5,10 @@ import { dexlabProgram, raydiumProgram } from './__mocks__/programs';
 describe('Solana Programs', () => {
   let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
   });
-
+  
   it('should sign Dexlab program', async () => {
     const payload = dexlabProgram;
     const signedMessage = await client.sign({
