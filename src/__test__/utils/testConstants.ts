@@ -22,11 +22,3 @@ export const TEST_MNEMONIC =
  */
 export const TEST_SEED = mnemonicToSeedSync(TEST_MNEMONIC);
 
-/**
- * Foundry-compatible test mnemonic
- *
- * This mnemonic matches the standard Foundry test mnemonic for compatibility
- * with Foundry-based testing frameworks.
- */
-export const FOUNDRY_TEST_MNEMONIC =
-  'test test test test test test test test test test test junk';

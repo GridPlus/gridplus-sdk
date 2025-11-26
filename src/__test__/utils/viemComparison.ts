@@ -1,4 +1,3 @@
-import { mnemonicToSeedSync } from 'bip39';
 import {
   type Address,
   type Hex,
@@ -11,16 +10,14 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { sign, signMessage } from '../../api';
 import { normalizeLatticeSignature } from '../../ethereum';
 import { deriveAddress } from './determinism';
-import { FOUNDRY_TEST_MNEMONIC } from './testConstants';
+import { TEST_SEED } from './testConstants';
 import { ensureHexBuffer } from '../../util';
-
-const FOUNDRY_TEST_SEED = mnemonicToSeedSync(FOUNDRY_TEST_MNEMONIC);
 
 // Utility function to create foundry account address for comparison
 export const getFoundryAddress = (): Address => {
   // Use first account derivation path: m/44'/60'/0'/0/0
   const foundryPath = [44 + 0x80000000, 60 + 0x80000000, 0x80000000, 0, 0];
-  return deriveAddress(FOUNDRY_TEST_SEED, foundryPath as any) as Address;
+  return deriveAddress(TEST_SEED, foundryPath as any) as Address;
 };
 
 // Get Foundry private key for signing
