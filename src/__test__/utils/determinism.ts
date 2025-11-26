@@ -1,7 +1,6 @@
 import type { TypedTransaction } from '@ethereumjs/tx';
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
 import BIP32Factory from 'bip32';
-import { mnemonicToSeedSync } from 'bip39';
 import { ecsign, privateToAddress } from 'ethereumjs-util';
 import { Hash } from 'ox';
 import * as ecc from 'tiny-secp256k1';
@@ -10,10 +9,7 @@ import { getPathStr } from '../../shared/utilities';
 import type { SigningPath, TestRequestPayload } from '../../types';
 import { buildTestRequestPayload } from './builders';
 import { ethPersonalSignMsg, getSigStr, jobTypes } from './helpers';
-import { TEST_MNEMONIC } from './testConstants';
-
-export const TEST_SEED = mnemonicToSeedSync(TEST_MNEMONIC);
-
+import { TEST_SEED } from './testConstants';
 export function setupJob(
   type: number,
   client: Client,

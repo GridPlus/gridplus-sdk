@@ -1,3 +1,4 @@
+import { mnemonicToSeedSync } from 'bip39';
 /**
  * Common test constants used across the GridPlus SDK test suite
  *
@@ -12,10 +13,15 @@
  * test behavior and deterministic results.
  */
 export const TEST_MNEMONIC =
-  'nose elder baby marriage frequent list ' +
-  'cargo swallow memory universe smooth involve ' +
-  'iron purity throw vintage crew artefact ' +
-  'pyramid dash split announce trend grain';
+  'test test test test test test ' +
+  'test test test test test junk';
+
+/**
+ * Shared seed derived from TEST_MNEMONIC
+ *
+ * Consumers can reuse this to avoid re-deriving the seed in each test.
+ */
+export const TEST_SEED = mnemonicToSeedSync(TEST_MNEMONIC);
 
 /**
  * Foundry-compatible test mnemonic
