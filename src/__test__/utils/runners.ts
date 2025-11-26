@@ -1,10 +1,7 @@
 import { Client } from '../../client';
 import type { TestRequestPayload, SignRequestParams } from '../../types';
 import { getEncodedPayload } from '../../genericSigning';
-import {
-  parseWalletJobResp,
-  validateGenericSig,
-} from './helpers';
+import { parseWalletJobResp, validateGenericSig } from './helpers';
 import { testRequest } from './testRequest';
 import { TEST_SEED } from './testConstants';
 

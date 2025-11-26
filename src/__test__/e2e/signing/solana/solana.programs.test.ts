@@ -8,7 +8,7 @@ describe('Solana Programs', () => {
   beforeAll(async () => {
     client = await setupClient();
   });
-  
+
   it('should sign Dexlab program', async () => {
     const payload = dexlabProgram;
     const signedMessage = await client.sign({

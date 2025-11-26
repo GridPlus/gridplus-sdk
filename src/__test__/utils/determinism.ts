@@ -10,7 +10,6 @@ import type { SigningPath } from '../../types';
 import { ethPersonalSignMsg, getSigStr } from './helpers';
 import { TEST_SEED } from './testConstants';
 
-
 export async function testUniformSigs(
   payload: any,
   tx: TypedTransaction,

@@ -14,11 +14,7 @@ import {
   signEip712JS,
   testUniformSigs,
 } from '../../utils/determinism';
-import {
-  BTC_PURPOSE_P2PKH,
-  ETH_COIN,
-  getSigStr,
-} from '../../utils/helpers';
+import { BTC_PURPOSE_P2PKH, ETH_COIN, getSigStr } from '../../utils/helpers';
 import { setupClient } from '../../utils/setup';
 import { TEST_SEED } from '../../utils/testConstants';
 import type { WalletPath } from '../../../types';
