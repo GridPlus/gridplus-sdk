@@ -21,4 +21,3 @@ export const TEST_MNEMONIC =
  * Consumers can reuse this to avoid re-deriving the seed in each test.
  */
 export const TEST_SEED = mnemonicToSeedSync(TEST_MNEMONIC);
-
