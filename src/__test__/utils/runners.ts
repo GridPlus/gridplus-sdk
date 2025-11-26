@@ -13,6 +13,7 @@ import { createTx } from '@ethereumjs/tx';
 import { RLP } from '@ethereumjs/rlp';
 import { getDeviceId } from './getters';
 import { ensureHexBuffer } from '../../util';
+import { TEST_SEED } from './testConstants';
 
 export async function runTestCase(
   payload: TestRequestPayload,
@@ -36,7 +37,7 @@ export async function runGeneric(request: SignRequestParams, client: Client) {
     encodingType,
     allowedEncodings,
   );
-  const seed = await initializeSeed(client);
+  const seed = TEST_SEED;
   validateGenericSig(
     seed,
     response.sig,
