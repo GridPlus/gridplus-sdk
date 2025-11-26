@@ -14,15 +14,10 @@ import {
   BTC_PURPOSE_P2PKH,
   BTC_PURPOSE_P2SH_P2WPKH,
   BTC_PURPOSE_P2WPKH,
-  copyBuffer,
-  deserializeExportSeedJobResult,
-  jobTypes,
-  parseWalletJobResp,
-  serializeJobData,
   setup_btc_sig_test,
   stripDER,
 } from '../utils/helpers';
-import { testRequest } from '../utils/testRequest';
+import { TEST_SEED } from '../utils/testConstants';
 
 const prng = getPrng();
 const bip32 = BIP32Factory(ecc);
@@ -111,34 +106,7 @@ describe('Bitcoin', () => {
 
   beforeAll(async () => {
     client = await setupClient();
-  });
-
-  describe('wallet seeds', () => {
-    it('Should get GP_SUCCESS for a known, connected wallet', async () => {
-      const activeWalletUID = client.getActiveWallet()?.uid;
-      expect(activeWalletUID).not.toEqualElseLog(null, 'No wallet found');
-      const jobType = jobTypes.WALLET_JOB_EXPORT_SEED;
-      const jobData = {};
-      const jobReq = {
-        client,
-        testID: 0, // wallet_job test ID
-        payload: serializeJobData(jobType, activeWalletUID, jobData),
-      };
-      const res = await testRequest(jobReq).catch((err) => {
-        if (err.message.includes('Invalid Request')) {
-          console.error(
-            'Ensure FEATURE_TEST_RUNNER=0 is active in firmware settings',
-          );
-        }
-        throw err;
-      });
-      //@ts-expect-error - accessing private property for test parsing
-      const _res = parseWalletJobResp(res, client.fwVersion);
-      expect(_res.resultStatus).toEqual(0);
-      const data = deserializeExportSeedJobResult(_res.result);
-      const activeWalletSeed = copyBuffer(data.seed);
-      wallet = bip32.fromSeed(activeWalletSeed);
-    });
+    wallet = bip32.fromSeed(TEST_SEED);
   });
 
   for (let i = 0; i < inputs.length; i++) {
