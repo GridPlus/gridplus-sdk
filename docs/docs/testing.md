@@ -98,6 +98,32 @@ FEATURE_TEST_RUNNER = 1;
 
 See table in the next section.
 
+## SafeCard Setup for End-to-End Tests
+
+:::warning Important
+
+Many end-to-end tests (especially those marked with `FEATURE_TEST_RUNNER=1`) require a **SafeCard loaded with a specific test mnemonic** to ensure deterministic test results.
+
+:::
+
+The tests use a standardized test mnemonic for consistent, reproducible results across all test environments:
+
+```
+test test test test test test test test test test test junk
+```
+
+### Setting Up Your Test SafeCard
+
+Before running end-to-end tests that require `FEATURE_TEST_RUNNER=1`, you must:
+
+1. **Create a SafeCard** on your development Lattice
+2. **Load the test mnemonic** shown above into the SafeCard
+3. **Set the SafeCard as active** before running tests
+
+If you run tests with a different mnemonic or seed, the tests will fail with incorrect address derivations and signature mismatches. When debugging test failures, always verify your SafeCard is loaded with the correct test mnemonic.
+
+For details on which tests require the test SafeCard, refer to the table in the next section.
+
 ## Reference: Tests and Options
 
 You can run the following tests with `npm run <test name>`.

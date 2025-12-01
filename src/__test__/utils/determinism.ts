@@ -1,39 +1,14 @@
 import type { TypedTransaction } from '@ethereumjs/tx';
 import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
 import BIP32Factory from 'bip32';
-import { mnemonicToSeedSync } from 'bip39';
 import { ecsign, privateToAddress } from 'ethereumjs-util';
 import { Hash } from 'ox';
 import * as ecc from 'tiny-secp256k1';
 import type { Client } from '../../client';
 import { getPathStr } from '../../shared/utilities';
-import type { SigningPath, TestRequestPayload } from '../../types';
-import { buildTestRequestPayload } from './builders';
-import { ethPersonalSignMsg, getSigStr, jobTypes } from './helpers';
-import { TEST_MNEMONIC } from './testConstants';
-
-export const TEST_SEED = mnemonicToSeedSync(TEST_MNEMONIC);
-
-export function setupJob(
-  type: number,
-  client: Client,
-  seed?: Buffer,
-): TestRequestPayload {
-  if (type === jobTypes.WALLET_JOB_EXPORT_SEED) {
-    return buildTestRequestPayload(client, type, {});
-  } else if (type === jobTypes.WALLET_JOB_DELETE_SEED) {
-    return buildTestRequestPayload(client, type, {
-      iface: 1,
-    });
-  } else if (type === jobTypes.WALLET_JOB_LOAD_SEED) {
-    return buildTestRequestPayload(client, type, {
-      iface: 1, // external SafeCard interface
-      seed,
-      exportability: 2, // always exportable
-    });
-  }
-  return buildTestRequestPayload(client, type, {});
-}
+import type { SigningPath } from '../../types';
+import { ethPersonalSignMsg, getSigStr } from './helpers';
+import { TEST_SEED } from './testConstants';
 
 export async function testUniformSigs(
   payload: any,

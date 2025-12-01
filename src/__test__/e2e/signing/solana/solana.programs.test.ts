@@ -1,3 +1,11 @@
+/**
+ * REQUIRED TEST MNEMONIC:
+ * These tests require a SafeCard loaded with the standard test mnemonic:
+ * "test test test test test test test test test test test junk"
+ *
+ * Running with a different mnemonic will cause test failures due to
+ * incorrect key derivations and signature mismatches.
+ */
 import { Constants } from '../../../..';
 import { setupClient } from '../../../utils/setup';
 import { dexlabProgram, raydiumProgram } from './__mocks__/programs';
@@ -5,7 +13,7 @@ import { dexlabProgram, raydiumProgram } from './__mocks__/programs';
 describe('Solana Programs', () => {
   let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
   });
 

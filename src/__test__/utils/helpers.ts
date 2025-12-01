@@ -505,46 +505,6 @@ export const parseWalletJobResp = (res, v) => {
   return jobRes;
 };
 
-export const serializeJobData = (job, walletUID, data) => {
-  let serData: Buffer;
-  switch (job) {
-    case jobTypes.WALLET_JOB_GET_ADDRESSES:
-      serData = serializeGetAddressesJobData(data);
-      break;
-    case jobTypes.WALLET_JOB_SIGN_TX:
-      serData = serializeSignTxJobDataLegacy(data);
-      break;
-    case jobTypes.WALLET_JOB_EXPORT_SEED:
-      serData = serializeExportSeedJobData();
-      break;
-    case jobTypes.WALLET_JOB_DELETE_SEED:
-      serData = serializeDeleteSeedJobData(data);
-      break;
-    case jobTypes.WALLET_JOB_LOAD_SEED:
-      serData = serializeLoadSeedJobData(data);
-      break;
-    default:
-      throw new Error('Unsupported job type');
-  }
-  if (
-    false === Buffer.isBuffer(serData) ||
-    false === Buffer.isBuffer(walletUID) ||
-    32 !== walletUID.length
-  )
-    throw new Error('Invalid params');
-
-  const req = Buffer.alloc(serData.length + 40);
-  let off = 0;
-  walletUID.copy(req, off);
-  off += walletUID.length;
-  req.writeUInt32LE(0, off);
-  off += 4; // 0 for callback -- it isn't used
-  req.writeUInt32LE(job, off);
-  off += 4;
-  serData.copy(req, off);
-  return req;
-};
-
 // First byte of the result data is the error code
 export const jobResErrCode = (res) => res.result.readUInt32LE(0);
 
