@@ -3,6 +3,13 @@
  *
  * Failure to enable this setting will result in an `Invalid Request` error.
  * Ensure `FEATURE_TEST_RUNNER=0` is active before executing these tests.
+ *
+ * REQUIRED TEST MNEMONIC:
+ * These tests require a SafeCard loaded with the standard test mnemonic:
+ * "test test test test test test test test test test test junk"
+ *
+ * Running with a different mnemonic will cause test failures due to
+ * incorrect address derivations and signature mismatches.
  */
 
 import BIP32Factory, { type BIP32Interface } from 'bip32';

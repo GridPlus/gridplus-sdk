@@ -7,6 +7,13 @@
  *
  * For ETH2-specific operations, see `lattice-eth2-utils`:
  * https://github.com/GridPlus/lattice-eth2-utils
+ *
+ * REQUIRED TEST MNEMONIC:
+ * These tests require a SafeCard loaded with the standard test mnemonic:
+ * "test test test test test test test test test test test junk"
+ *
+ * Running with a different mnemonic will cause test failures due to
+ * incorrect key derivations.
  */
 import {
   create as createKeystore,

@@ -1,3 +1,11 @@
+/**
+ * REQUIRED TEST MNEMONIC:
+ * These tests require a SafeCard loaded with the standard test mnemonic:
+ * "test test test test test test test test test test test junk"
+ *
+ * Running with a different mnemonic will cause test failures due to
+ * incorrect address derivations and signature mismatches.
+ */
 import { getDeviceId } from '../../utils/getters';
 import { HARDENED_OFFSET } from '../../../constants';
 import { randomBytes } from '../../../util';
@@ -69,19 +77,19 @@ describe('[Determinism]', () => {
       const latAddr0 = await client.getAddresses(req);
       expect(latAddr0[0].toLowerCase()).toEqualElseLog(
         addr0.toLowerCase(),
-        'Incorrect address 0 fetched.',
+        'Incorrect address 0 fetched. Ensure your SafeCard is loaded with the test mnemonic: "test test test test test test test test test test test junk"',
       );
       req.startPath = path1;
       const latAddr1 = await client.getAddresses(req);
       expect(latAddr1[0].toLowerCase()).toEqualElseLog(
         addr1.toLowerCase(),
-        'Incorrect address 1 fetched.',
+        'Incorrect address 1 fetched. Ensure your SafeCard is loaded with the test mnemonic: "test test test test test test test test test test test junk"',
       );
       req.startPath = path8;
       const latAddr8 = await client.getAddresses(req);
       expect(latAddr8[0].toLowerCase()).toEqualElseLog(
         addr8.toLowerCase(),
-        'Incorrect address 8 fetched.',
+        'Incorrect address 8 fetched. Ensure your SafeCard is loaded with the test mnemonic: "test test test test test test test test test test test junk"',
       );
     });
   });
