@@ -1,5 +1,4 @@
 import { selectDefFrom4byteABI } from '../../util';
-import { vi } from 'vitest';
 
 describe('selectDefFrom4byteAbi', () => {
   beforeAll(() => {

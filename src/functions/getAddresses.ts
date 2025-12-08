@@ -160,6 +160,8 @@ export const decodeGetAddressesResponse = (
   flag: number,
 ): Buffer[] => {
   let off = 0;
+  const addressOffset =
+    flag === LatticeGetAddressesFlag.ed25519Pubkey ? 113 : 65;
   // Look for addresses until we reach the end (a 4 byte checksum)
   const addrs: any[] = [];
   // Pubkeys are formatted differently in the response
@@ -177,7 +179,7 @@ export const decodeGetAddressesResponse = (
   while (off < respDataLength) {
     if (arePubkeys) {
       // Pubkeys are shorter and are returned as buffers
-      const pubBytes = data.slice(off, off + 65);
+      const pubBytes = data.slice(off, off + addressOffset);
       const isEmpty = pubBytes.every((byte: number) => byte === 0x00);
       if (!isEmpty && flag === LatticeGetAddressesFlag.ed25519Pubkey) {
         // ED25519 pubkeys are 32 bytes
@@ -190,7 +192,7 @@ export const decodeGetAddressesResponse = (
         // (uncompressed) ECC pubkeys
         addrs.push(pubBytes);
       }
-      off += 65;
+      off += addressOffset;
     } else {
       // Otherwise we are dealing with address strings or XPUB strings
       const addrBytes = data.slice(off, off + ProtocolConstants.addrStrLen);

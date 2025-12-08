@@ -1,42 +1,14 @@
-import { TypedTransaction } from '@ethereumjs/tx';
-import bip32 from 'bip32';
-import { mnemonicToSeedSync } from 'bip39';
+import type { TypedTransaction } from '@ethereumjs/tx';
+import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
+import BIP32Factory from 'bip32';
 import { ecsign, privateToAddress } from 'ethereumjs-util';
-import { keccak256 } from 'js-sha3';
-import { Client } from '../../client';
-import { TestRequestPayload } from '../../types/utils';
-import { buildTestRequestPayload } from './builders';
-import { ethPersonalSignMsg, getSigStr, jobTypes } from './helpers';
+import { Hash } from 'ox';
+import * as ecc from 'tiny-secp256k1';
+import type { Client } from '../../client';
 import { getPathStr } from '../../shared/utilities';
-
-const TEST_MNEMONIC =
-  'nose elder baby marriage frequent list ' +
-  'cargo swallow memory universe smooth involve ' +
-  'iron purity throw vintage crew artefact ' +
-  'pyramid dash split announce trend grain';
-
-export const TEST_SEED = mnemonicToSeedSync(TEST_MNEMONIC);
-
-export function setupJob(
-  type: number,
-  client: Client,
-  seed?: Buffer,
-): TestRequestPayload {
-  if (type === jobTypes.WALLET_JOB_EXPORT_SEED) {
-    return buildTestRequestPayload(client, type, {});
-  } else if (type === jobTypes.WALLET_JOB_DELETE_SEED) {
-    return buildTestRequestPayload(client, type, {
-      iface: 1,
-    });
-  } else if (type === jobTypes.WALLET_JOB_LOAD_SEED) {
-    return buildTestRequestPayload(client, type, {
-      iface: 1, // external SafeCard interface
-      seed,
-      exportability: 2, // always exportable
-    });
-  }
-  return buildTestRequestPayload(client, type, {});
-}
+import type { SigningPath } from '../../types';
+import { ethPersonalSignMsg, getSigStr } from './helpers';
+import { TEST_SEED } from './testConstants';
 
 export async function testUniformSigs(
   payload: any,
@@ -75,18 +47,31 @@ export async function testUniformSigs(
   expect(getSigStr(tx5Resp, tx)).toEqual(getSigStr(tx4Resp, tx));
 }
 
-export function deriveAddress(seed: Buffer, path: WalletPath) {
+export function deriveAddress(seed: Buffer, path: SigningPath) {
+  const bip32 = BIP32Factory(ecc);
   const wallet = bip32.fromSeed(seed);
   const priv = wallet.derivePath(getPathStr(path)).privateKey;
   return `0x${privateToAddress(priv).toString('hex')}`;
 }
 
-export function signPersonalJS(_msg: string, path: WalletPath) {
+export function signPersonalJS(_msg: string, path: SigningPath) {
+  const bip32 = BIP32Factory(ecc);
   const wallet = bip32.fromSeed(TEST_SEED);
   const priv = wallet.derivePath(getPathStr(path)).privateKey;
   const msg = ethPersonalSignMsg(_msg);
-  const hash = new Uint8Array(Buffer.from(keccak256(msg), 'hex')) as Buffer;
+  const hash = Buffer.from(Hash.keccak256(Buffer.from(msg)));
   const sig = ecsign(hash, priv);
+  const v = (sig.v - 27).toString(16).padStart(2, '0');
+  return `${sig.r.toString('hex')}${sig.s.toString('hex')}${v}`;
+}
+
+export function signEip712JS(payload: any, path: SigningPath) {
+  const bip32 = BIP32Factory(ecc);
+  const wallet = bip32.fromSeed(TEST_SEED);
+  const priv = wallet.derivePath(getPathStr(path)).privateKey;
+  // Calculate the EIP712 hash using the same method as the SDK validation
+  const hash = TypedDataUtils.eip712Hash(payload, SignTypedDataVersion.V4);
+  const sig = ecsign(Buffer.from(hash), priv);
   const v = (sig.v - 27).toString(16).padStart(2, '0');
   return `${sig.r.toString('hex')}${sig.s.toString('hex')}${v}`;
 }

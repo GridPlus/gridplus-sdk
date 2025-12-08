@@ -9,6 +9,7 @@ import {
   isValid4ByteResponse,
   isValidBlockExplorerResponse,
 } from '../../shared/validators';
+import { normalizeToViemTransaction } from '../../ethereum';
 import {
   buildGetAddressesObject,
   buildValidateConnectObject,
@@ -138,6 +139,165 @@ describe('validators', () => {
           results: [],
         };
         expect(isValid4ByteResponse(response)).toBe(false);
+      });
+    });
+  });
+
+  describe('transaction validation', () => {
+    describe('EIP-7702 transactions', () => {
+      test('rejects missing fee fields', () => {
+        const tx = {
+          to: '0x' + '1'.repeat(40),
+          value: '1000000000000000000',
+          chainId: 1,
+          authorizationList: [
+            { chainId: 1, address: '0x' + '2'.repeat(40), nonce: 0 },
+          ],
+          gasPrice: '15000000000',
+        };
+
+        expect(() => normalizeToViemTransaction(tx)).toThrow();
+      });
+    });
+
+    describe('negative values', () => {
+      test('rejects negative value', () => {
+        const tx = {
+          to: '0x' + '1'.repeat(40),
+          value: -100,
+          gasPrice: '10000000000',
+        };
+
+        expect(() => normalizeToViemTransaction(tx)).toThrow();
+      });
+
+      test('rejects negative nonce', () => {
+        const tx = {
+          to: '0x' + '1'.repeat(40),
+          value: '100',
+          gasPrice: '10000000000',
+          nonce: -1,
+        };
+
+        expect(() => normalizeToViemTransaction(tx)).toThrow();
+      });
+
+      test('rejects negative gas price', () => {
+        const tx = {
+          to: '0x' + '1'.repeat(40),
+          value: '100',
+          gasPrice: -10,
+        };
+
+        expect(() => normalizeToViemTransaction(tx)).toThrow();
+      });
+    });
+
+    describe('invalid data types', () => {
+      test('rejects boolean data field', () => {
+        const tx = {
+          to: '0x1234567890123456789012345678901234567890',
+          value: true,
+          chainId: '0x1',
+          gasPrice: NaN,
+          nonce: null,
+          data: false,
+        };
+
+        expect(() => normalizeToViemTransaction(tx as any)).toThrow();
+      });
+    });
+
+    describe('authorization list validation', () => {
+      test('rejects invalid authorization data', () => {
+        const tx = {
+          to: '0x1234567890123456789012345678901234567890',
+          value: '1000000000000000000',
+          chainId: 1,
+          maxFeePerGas: '20000000000',
+          maxPriorityFeePerGas: '2000000000',
+          authorizationList: [
+            {
+              chainId: 'not-a-number',
+              address: '0x123',
+              nonce: undefined,
+            },
+          ],
+        };
+
+        expect(() => normalizeToViemTransaction(tx as any)).toThrow();
+      });
+    });
+
+    describe('circular references', () => {
+      test('rejects circular references', () => {
+        const tx: any = {
+          to: '0x1234567890123456789012345678901234567890',
+          value: '1000000000000000000',
+          chainId: 1,
+          maxFeePerGas: '20000000000',
+          maxPriorityFeePerGas: '2000000000',
+        };
+
+        tx.self = tx;
+        tx.authorizationList = [tx];
+
+        expect(() => normalizeToViemTransaction(tx)).toThrow();
+      });
+    });
+
+    describe('gas field handling', () => {
+      test('gasLimit takes precedence over gas', () => {
+        const tx = {
+          to: '0x1234567890123456789012345678901234567890',
+          value: '1000000000000000000',
+          chainId: 1,
+          gasPrice: '15000000000',
+          gas: '50000',
+          gasLimit: '21000',
+        };
+
+        const result = normalizeToViemTransaction(tx);
+        expect(result.gas).toBe(21000n);
+      });
+
+      test('accepts zero gas values', () => {
+        const tx = {
+          to: '0x1234567890123456789012345678901234567890',
+          value: '1000000000000000000',
+          chainId: 1,
+          gasPrice: '0',
+          gasLimit: '0',
+        };
+
+        const result = normalizeToViemTransaction(tx);
+        expect(result.gas).toBe(0n);
+        expect(result.type).toBe('legacy');
+        expect((result as any).gasPrice).toBe(0n);
+      });
+    });
+
+    describe('chainId validation', () => {
+      test('rejects zero chainId', () => {
+        const tx = {
+          to: '0x1234567890123456789012345678901234567890',
+          value: '1000000000000000000',
+          chainId: 0,
+          gasPrice: '15000000000',
+        };
+
+        expect(() => normalizeToViemTransaction(tx)).toThrow();
+      });
+
+      test('rejects non-integer chainId', () => {
+        const tx = {
+          to: '0x1234567890123456789012345678901234567890',
+          value: '1000000000000000000',
+          chainId: 1.5,
+          gasPrice: '15000000000',
+        };
+
+        expect(() => normalizeToViemTransaction(tx)).toThrow();
       });
     });
   });

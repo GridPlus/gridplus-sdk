@@ -26,7 +26,7 @@ import { setupClient } from '../utils/setup';
 describe('ETH Messages', () => {
   let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
   });
 
@@ -1359,7 +1359,7 @@ describe('ETH Messages', () => {
 
     describe('test 5 random payloads', () => {
       for (let i = 0; i < 5; i++) {
-        it(`Payload #: ${i}`, async () => {
+        it(`Payload #${i}`, async () => {
           await runEthMsg(
             buildEthMsgReq(buildRandomMsg('eip712', client), 'eip712'),
             client,

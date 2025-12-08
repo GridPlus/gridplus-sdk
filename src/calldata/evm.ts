@@ -1,6 +1,5 @@
-import { keccak256 } from 'js-sha3';
-import { AbiCoder } from '@ethersproject/abi';
-
+import { Hash } from 'ox';
+import { decodeAbiParameters, parseAbiParameters } from 'viem';
 /**
  * Look through an ABI definition to see if there is a function that matches the signature provided.
  * @param sig    a 0x-prefixed hex string containing 4 bytes of info
@@ -76,11 +75,19 @@ export const getNestedCalldata = function (def, calldata) {
   // Skip past first item, which is the function name
   const defParams = def.slice(1);
   const strParams = getParamStrNames(defParams);
-  const coder = new AbiCoder();
-  const decoded = coder.decode(
-    strParams,
-    '0x' + calldata.slice(4).toString('hex'),
-  );
+  const hexStr = ('0x' + calldata.slice(4).toString('hex')) as `0x${string}`;
+  // Convert strParams to viem's format
+  const viemParams = strParams.map((type) => {
+    // Convert tuple format from 'tuple(uint256,uint128)' to '(uint256,uint128)'
+    if (type.startsWith('tuple(')) {
+      return type.replace('tuple', '');
+    }
+    return type;
+  });
+
+  const abiParams = parseAbiParameters(viemParams.join(','));
+  const decoded = decodeAbiParameters(abiParams, hexStr);
+
   function couldBeNestedDef(x) {
     return (x.length - 4) % 32 === 0;
   }
@@ -94,19 +101,40 @@ export const getNestedCalldata = function (def, calldata) {
         // extend to more complex array structures if we see nested defs
         // in this pattern. However, we have only ever seen `bytes[]`, which
         // is typically used in `multicall` patterns
-        paramData.forEach((nestedParamDatum) => {
-          const nestedParamDatumBuf = Buffer.from(
-            nestedParamDatum.slice(2),
-            'hex',
-          );
-          if (!couldBeNestedDef(nestedParamDatumBuf)) {
-            nestedDefIsPossible = false;
-          }
-        });
+        // Ensure paramData is an array for bytes[] type
+        if (Array.isArray(paramData)) {
+          paramData.forEach((nestedParamDatum) => {
+            // Ensure nestedParamDatum is a hex string
+            if (
+              typeof nestedParamDatum !== 'string' ||
+              !nestedParamDatum.startsWith('0x')
+            ) {
+              nestedDefIsPossible = false;
+              return;
+            }
+            const nestedParamDatumBuf = Buffer.from(
+              nestedParamDatum.slice(2),
+              'hex',
+            );
+            if (!couldBeNestedDef(nestedParamDatumBuf)) {
+              nestedDefIsPossible = false;
+            }
+          });
+        } else {
+          nestedDefIsPossible = false;
+        }
       } else if (isBytesItem(defParams[i])) {
         // Regular `bytes` type - perform size check
-        const paramDataBuf = Buffer.from(paramData.slice(2), 'hex');
-        nestedDefIsPossible = couldBeNestedDef(paramDataBuf);
+        if (
+          typeof paramData !== 'string' ||
+          !(paramData as string).startsWith('0x')
+        ) {
+          nestedDefIsPossible = false;
+        } else {
+          const data = paramData as string;
+          const paramDataBuf = Buffer.from(data.slice(2), 'hex');
+          nestedDefIsPossible = couldBeNestedDef(paramDataBuf);
+        }
       } else {
         // Unknown `bytes` item type
         nestedDefIsPossible = false;
@@ -156,7 +184,9 @@ export const replaceNestedDefs = function (def, nestedDefs) {
  * @internal
  */
 function getFuncSig(canonicalName: string): string {
-  return `0x${keccak256(canonicalName).slice(0, 8)}`;
+  return `0x${Buffer.from(Hash.keccak256(Buffer.from(canonicalName)))
+    .toString('hex')
+    .slice(0, 8)}`;
 }
 
 /**

@@ -1,15 +1,30 @@
-name: Build
+name: CI
 
-on: push
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - 'release/**'
+  pull_request:
+    branches:
+      - main
+      - dev
+      - 'release/**'
 
 jobs:
   build:
-    name: Build
+    name: Lint, Build & Unit, E2E Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    env:
+      INTERNAL_EVENT: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Install Node.js
         uses: actions/setup-node@v3
@@ -34,4 +49,80 @@ jobs:
         run: pnpm run build
 
       - name: Release a nightly build
+        if: env.INTERNAL_EVENT == 'true'
         run: pnpx pkg-pr-new publish
+
+      - name: Checkout lattice-simulator
+        if: env.INTERNAL_EVENT == 'true'
+        uses: actions/checkout@v5
+        with:
+          repository: GridPlus/lattice-simulator
+          path: lattice-simulator
+          token: ${{ secrets.GRIDPLUS_SIM_PAT }}
+
+      - name: Install simulator dependencies
+        if: env.INTERNAL_EVENT == 'true'
+        working-directory: lattice-simulator
+        run: pnpm install
+
+      - name: Start simulator in background
+        if: env.INTERNAL_EVENT == 'true'
+        working-directory: lattice-simulator
+        env:
+          CI: '1'
+          DEBUG_SIGNING: '1'
+          DEBUG: 'lattice*'
+          LATTICE_MNEMONIC: 'test test test test test test test test test test test junk'
+          PORT: '3000'
+          DEVICE_ID: 'SD0001'
+          PASSWORD: '12345678'
+          PAIRING_SECRET: '12345678'
+          ENC_PW: '12345678'
+        run: |
+          pnpm run dev > simulator.log 2>&1 &
+          echo $! > simulator.pid
+          echo "Simulator PID: $(cat simulator.pid)"
+
+          # Wait for simulator to be ready
+          echo "Waiting for simulator to start..."
+          for i in {1..30}; do
+            if curl -s http://localhost:3000 > /dev/null 2>&1; then
+              echo "Simulator is ready!"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "Simulator failed to start within 30 seconds"
+              cat simulator.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Run SDK e2e tests with simulator
+        if: env.INTERNAL_EVENT == 'true'
+        working-directory: ${{ github.workspace }}
+        env:
+          CI: '1'
+          DEBUG_SIGNING: '1'
+          baseUrl: 'http://127.0.0.1:3000'
+          DEVICE_ID: 'SD0001'
+          PASSWORD: '12345678'
+          PAIRING_SECRET: '12345678'
+          ENC_PW: '12345678'
+          APP_NAME: 'lattice-manager'
+        run: pnpm run e2e --reporter=basic
+
+      - name: Show simulator logs on failure
+        if: failure() && env.INTERNAL_EVENT == 'true'
+        working-directory: lattice-simulator
+        run: |
+          echo "=== Simulator logs ==="
+          cat simulator.log || echo "No simulator logs found"
+
+      - name: Stop simulator
+        if: always() && env.INTERNAL_EVENT == 'true'
+        working-directory: lattice-simulator
+        run: |
+          if [ -f simulator.pid ]; then
+            kill $(cat simulator.pid) || true
+          fi

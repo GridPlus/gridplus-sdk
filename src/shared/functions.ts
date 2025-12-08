@@ -1,4 +1,4 @@
-import { sha256 } from 'hash.js/lib/hash/sha';
+import { Hash } from 'ox';
 import { Client } from '..';
 import bitcoin from '../bitcoin';
 import { EXTERNAL } from '../constants';
@@ -41,8 +41,9 @@ export const buildTransaction = ({
     );
     let payload;
     try {
-      payload = ethereum.ethConvertLegacyToGenericReq(data);
+      payload = ethereum.convertEthereumTransactionToGenericRequest(data);
     } catch (err) {
+      console.error('Failed to convert legacy Ethereum transaction:', err);
       throw new Error(
         'Could not convert legacy request. Please switch to a general signing ' +
           'request. See gridplus-sdk docs for more information.',
@@ -204,6 +205,6 @@ export const retryWrapper = async ({
  */
 export const getEphemeralId = (sharedSecret: Buffer) => {
   // EphemId is the first 4 bytes of the hash of the shared secret
-  const hash = Buffer.from(sha256().update(sharedSecret).digest('hex'), 'hex');
+  const hash = Buffer.from(Hash.sha256(sharedSecret));
   return parseInt(hash.slice(0, 4).toString('hex'), 16);
 };

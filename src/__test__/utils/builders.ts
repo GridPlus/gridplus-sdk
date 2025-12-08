@@ -1,31 +1,26 @@
-import { Chain, Common, Hardfork } from '@ethereumjs/common';
-import {
-  TransactionFactory as EthTxFactory,
-  TypedTransaction,
-} from '@ethereumjs/tx';
-import { AbiCoder } from '@ethersproject/abi';
-import { keccak256 } from 'js-sha3';
-import randomWords from 'random-words';
+import { Common, Hardfork, Mainnet } from '@ethereumjs/common';
 import { RLP } from '@ethereumjs/rlp';
-import { Calldata, Constants } from '../..';
+import { createTx, type TypedTransaction } from '@ethereumjs/tx';
+import { generate as randomWords } from 'random-words';
+import { Constants } from '../..';
 import { Client } from '../../client';
 import {
   CURRENCIES,
-  HARDENED_OFFSET,
   getFwVersionConst,
+  HARDENED_OFFSET,
 } from '../../constants';
+import type { Currency, SigningPath, SignRequestParams } from '../../types';
+import type { FirmwareConstants } from '../../types/firmware';
 import { randomBytes } from '../../util';
 import { MSG_PAYLOAD_METADATA_SZ } from './constants';
-import { convertDecoderToEthers } from './ethers';
 import { getN, getPrng } from './getters';
 import {
   BTC_PURPOSE_P2PKH,
-  ETH_COIN,
   buildRandomEip712Object,
-  copyBuffer,
+  ETH_COIN,
   getTestVectors,
-  serializeJobData,
 } from './helpers';
+
 const prng = getPrng();
 
 export const getFwVersionsList = () => {
@@ -105,7 +100,7 @@ export const buildSignObject = (fwVersion, overrides?) => {
       to: '0xc0c8f96C2fE011cc96770D2e37CfbfeAFB585F0e',
       from: '0xc0c8f96C2fE011cc96770D2e37CfbfeAFB585F0e',
       value: 0x80000000,
-      data: 0x0,
+      data: '0x0',
       signerPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
       nonce: 0x80000000,
       gasLimit: 0x80000000,
@@ -139,19 +134,6 @@ export const buildRandomVectors = (n: number | string | undefined = getN()) => {
   return RANDOM_VEC;
 };
 
-export const buildTestRequestPayload = (
-  client: Client,
-  jobType: number,
-  jobData: any,
-): TestRequestPayload => {
-  const activeWalletUID = copyBuffer(client.getActiveWallet()?.uid);
-  return {
-    client,
-    testID: 0, // wallet_job test ID
-    payload: serializeJobData(jobType, activeWalletUID, jobData),
-  };
-};
-
 export const DEFAULT_SIGNER = [
   BTC_PURPOSE_P2PKH,
   ETH_COIN,
@@ -160,8 +142,8 @@ export const DEFAULT_SIGNER = [
   0,
 ];
 
-export const buildTx = (data = '0xdeadbeef') => {
-  return EthTxFactory.fromTxData(
+export const buildTx = (data: `0x${string}` = '0xdeadbeef') => {
+  return createTx(
     {
       type: 2,
       maxFeePerGas: 1200000000,
@@ -174,7 +156,7 @@ export const buildTx = (data = '0xdeadbeef') => {
     },
     {
       common: new Common({
-        chain: Chain.Mainnet,
+        chain: Mainnet,
         hardfork: Hardfork.London,
       }),
     },
@@ -193,7 +175,7 @@ export const buildEthSignRequest = async (
   const fwConstants = client.getFwConstants();
   const signerPath = [BTC_PURPOSE_P2PKH, ETH_COIN, HARDENED_OFFSET, 0, 0];
   const common = new Common({
-    chain: Chain.Mainnet,
+    chain: Mainnet,
     hardfork: Hardfork.London,
   });
   const txData = {
@@ -207,11 +189,11 @@ export const buildEthSignRequest = async (
     data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
     ...txDataOverrides,
   };
-  const tx = EthTxFactory.fromTxData(txData, { common });
+  const tx = createTx(txData, { common });
   const req = {
     data: {
       signerPath,
-      payload: tx.getMessageToSign(false),
+      payload: tx.getMessageToSign(),
       curveType: Constants.SIGNING.CURVES.SECP256K1,
       hashType: Constants.SIGNING.HASHES.KECCAK256,
       encodingType: Constants.SIGNING.ENCODINGS.EVM,
@@ -234,7 +216,7 @@ export const buildEthSignRequest = async (
 export const buildTxReq = (tx: TypedTransaction) => ({
   data: {
     signerPath: DEFAULT_SIGNER,
-    payload: tx.getMessageToSign(false),
+    payload: tx.getMessageToSign(),
     curveType: Constants.SIGNING.CURVES.SECP256K1,
     hashType: Constants.SIGNING.HASHES.KECCAK256,
     encodingType: Constants.SIGNING.ENCODINGS.EVM,
@@ -261,13 +243,8 @@ export const buildEvmReq = (overrides?: {
   let chainInfo = null;
   if (overrides?.common) {
     chainInfo = overrides.common;
-  } else if (overrides?.txData?.chainId !== '0x1') {
-    chainInfo = Common.custom({ chainId: 137 }, { hardfork: Hardfork.London });
   } else {
-    chainInfo = new Common({
-      chain: Chain.Mainnet,
-      hardfork: Hardfork.London,
-    });
+    chainInfo = new Common({ chain: Mainnet, hardfork: Hardfork.London });
   }
   const req = {
     data: {
@@ -295,20 +272,19 @@ export const buildEvmReq = (overrides?: {
 };
 
 export const buildEncDefs = (vectors: any) => {
-  const coder = new AbiCoder();
-  const EVMCalldata = Calldata.EVM;
-  const encDefs: any[] = [];
-  const encDefsCalldata: any[] = [];
-  for (let i = 0; i < vectors.canonicalNames.length; i++) {
-    const name = vectors.canonicalNames[i];
-    const selector = `0x${keccak256(name).slice(0, 8)}`;
-    const def = EVMCalldata.parsers.parseCanonicalName(selector, name);
-    const encDef = Buffer.from(RLP.encode(def));
-    encDefs.push(encDef);
-    const { types, data } = convertDecoderToEthers(RLP.decode(encDef).slice(1));
-    const calldata = coder.encode(types, data);
-    encDefsCalldata.push(`${selector}${calldata.slice(2)}`);
-  }
+  const encDefs = vectors.canonicalNames.map((name: string) => {
+    // For each canonical name, we need to RLP encode just the name
+    return RLP.encode([name]);
+  });
+
+  // The calldata is already in hex format, we just need to ensure it has 0x prefix
+  const encDefsCalldata = vectors.canonicalNames.map(
+    (_: string, idx: number) => {
+      const calldata = `0x${idx.toString(16).padStart(8, '0')}`;
+      return calldata;
+    },
+  );
+
   return { encDefs, encDefsCalldata };
 };
 
@@ -332,7 +308,7 @@ export function buildRandomMsg(type = 'signPersonal', client: Client) {
 
 export function buildEthMsgReq(
   payload: any,
-  protocol: string,
+  protocol: 'signPersonal' | 'eip712',
   signerPath = [
     BTC_PURPOSE_P2PKH,
     ETH_COIN,
@@ -345,6 +321,8 @@ export function buildEthMsgReq(
     currency: CURRENCIES.ETH_MSG,
     data: {
       signerPath,
+      curveType: Constants.SIGNING.CURVES.SECP256K1,
+      hashType: Constants.SIGNING.HASHES.KECCAK256,
       payload,
       protocol,
     },

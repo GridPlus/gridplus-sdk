@@ -76,6 +76,8 @@ export enum LatticeSignEncoding {
   solana = 2,
   evm = 4,
   eth_deposit = 5,
+  eip7702_auth = 6,
+  eip7702_auth_list = 7,
 }
 
 export enum LatticeSignBlsDst {

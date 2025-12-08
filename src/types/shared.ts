@@ -1,4 +1,5 @@
 import type { ec } from 'elliptic';
+
 export interface KVRecords {
   [key: string]: string;
 }
@@ -6,12 +7,6 @@ export interface KVRecords {
 export interface EncrypterParams {
   payload: Buffer;
   sharedSecret: Buffer;
-}
-
-export interface Signature {
-  r: Buffer;
-  s: Buffer;
-  v?: Buffer;
 }
 
 export type KeyPair = ec.KeyPair;

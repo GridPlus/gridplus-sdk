@@ -1,5 +1,4 @@
 import { fetchCalldataDecoder } from '../../util';
-import { vi } from 'vitest';
 import { setup as setupMockServiceWorker } from './__mocks__/setup';
 
 describe('fetchCalldataDecoder', () => {

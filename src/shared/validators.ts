@@ -2,7 +2,7 @@ import { UInt4 } from 'bitwise/types';
 import { Client } from '../client';
 import { ASCII_REGEX, EMPTY_WALLET_UID, MAX_ADDR } from '../constants';
 import { isUInt4 } from '../util';
-import isEmpty from 'lodash/isEmpty';
+import isEmpty from 'lodash/isEmpty.js';
 import {
   FirmwareConstants,
   FirmwareVersion,
@@ -68,6 +68,7 @@ export const validateUrl = (url?: string) => {
   try {
     new URL(url);
   } catch (err) {
+    console.error('Invalid URL format:', err);
     throw new Error('Invalid URL provided. Please use a valid URL.');
   }
   return url;
@@ -80,6 +81,7 @@ export const validateBaseUrl = (baseUrl?: string) => {
   try {
     new URL(baseUrl);
   } catch (err) {
+    console.error('Invalid Base URL format:', err);
     throw new Error('Invalid Base URL provided. Please use a valid URL.');
   }
   return baseUrl;
@@ -227,6 +229,7 @@ export const isValidBlockExplorerResponse = (data: any) => {
     const result = JSON.parse(data.result);
     return !isEmpty(result);
   } catch (err) {
+    console.error('Invalid block explorer response:', err);
     return false;
   }
 };
@@ -235,6 +238,7 @@ export const isValid4ByteResponse = (data: any) => {
   try {
     return !isEmpty(data.results);
   } catch (err) {
+    console.error('Invalid 4byte response:', err);
     return false;
   }
 };

@@ -8,8 +8,15 @@ This payload should be coupled with:
 * Curve on which to derive the signing key
 * Hash function to use on the message
 */
-import { sha256 } from 'hash.js/lib/hash/sha';
-import { keccak256 } from 'js-sha3';
+import { Hash } from 'ox';
+import { RLP } from '@ethereumjs/rlp';
+import {
+  parseTransaction,
+  serializeTransaction,
+  type Hex,
+  type TransactionSerializable,
+} from 'viem';
+// keccak256 now imported from ox via Hash module
 import { HARDENED_OFFSET } from './constants';
 import { Constants } from './index';
 import { LatticeSignSchema } from './protocol';
@@ -17,6 +24,7 @@ import {
   buildSignerPathBuf,
   existsIn,
   fixLen,
+  getYParity,
   getV,
   parseDER,
   splitFrames,
@@ -154,12 +162,9 @@ export const buildGenericSigningMsgRequest = function (req) {
           'Message too large to send and could not be prehashed (hashType=NONE).',
         );
       } else if (hashType === hashTypes.KECCAK256) {
-        prehash = Buffer.from(keccak256(payloadData), 'hex');
+        prehash = Buffer.from(Hash.keccak256(payloadData));
       } else if (hashType === hashTypes.SHA256) {
-        prehash = Buffer.from(
-          sha256().update(payloadData).digest('hex'),
-          'hex',
-        );
+        prehash = Buffer.from(Hash.sha256(payloadData));
       } else {
         throw new Error('Unsupported hash type.');
       }
@@ -209,6 +214,7 @@ export const parseGenericSigningResponse = function (res, off, req) {
     pubkey: null,
     sig: null,
   };
+  let digestFromResponse: Buffer | undefined;
   // Parse BIP44 path
   // Parse pubkey and then sig
   if (req.curveType === Constants.SIGNING.CURVES.SECP256K1) {
@@ -235,20 +241,83 @@ export const parseGenericSigningResponse = function (res, off, req) {
       off += 65;
     }
     // Handle `GpECDSASig_t`
-    parsed.sig = parseDER(res.slice(off, off + 2 + res[off + 1]));
+    const sigLength = 2 + res[off + 1];
+    const derSlice = res.slice(off, off + sigLength);
+    const derSig = parseDER(derSlice);
     // Remove any leading zeros in signature components to ensure
     // the result is a 64 byte sig
-    parsed.sig.r = fixLen(parsed.sig.r, 32);
-    parsed.sig.s = fixLen(parsed.sig.s, 32);
-    // If this is an EVM request, we want to add a `v`. Other request
-    // types do not require this additional signature param.
+    const rBuf = fixLen(derSig.r, 32);
+    const sBuf = fixLen(derSig.s, 32);
+
+    parsed.sig = {
+      r: `0x${rBuf.toString('hex')}`,
+      s: `0x${sBuf.toString('hex')}`,
+    };
+    off += sigLength;
+    if (res.length >= off + 32) {
+      digestFromResponse = Buffer.from(res.slice(off, off + 32));
+      off += 32;
+    }
+
     if (req.encodingType === Constants.SIGNING.ENCODINGS.EVM) {
+      // Full EVM transaction - use getV for proper chainId/EIP-155 handling
       const vBn = getV(req.origPayloadBuf, parsed);
-      // NOTE: For backward-compatibility reasons we are returning
-      // a Buffer for `v` here. In the future, we will switch to
-      // returning `v` as a BN and `r`,`s` as Buffers (they are hex
-      // strings right now).
-      parsed.sig.v = vBn.toArrayLike(Buffer);
+      parsed.sig.v = BigInt(vBn.toString());
+      populateViemSignedTx(parsed.sig.v, req, parsed);
+    } else if (
+      req.hashType === Constants.SIGNING.HASHES.KECCAK256 &&
+      req.encodingType !== Constants.SIGNING.ENCODINGS.EVM
+    ) {
+      // Generic Keccak256 message - determine if it looks like a transaction
+      let isTransaction = false;
+
+      try {
+        let bufferToDecode = req.origPayloadBuf;
+
+        // Try to skip EIP-2718 type byte if present
+        if (bufferToDecode[0] <= 0x7f) {
+          bufferToDecode = bufferToDecode.slice(1);
+        }
+
+        const decoded = RLP.decode(bufferToDecode);
+        // A legacy transaction has 9 fields (or 6 if pre-EIP155)
+        isTransaction = Array.isArray(decoded) && decoded.length >= 6;
+      } catch {
+        isTransaction = false;
+      }
+
+      if (isTransaction) {
+        try {
+          // If it looks like a transaction, use the robust getV
+          const vBn = getV(req.origPayloadBuf, parsed);
+          parsed.sig.v = BigInt(vBn.toString());
+          populateViemSignedTx(parsed.sig.v, req, parsed);
+        } catch (err) {
+          console.error(
+            'Failed to get V from transaction, using fallback:',
+            err,
+          );
+          // Fall back to simple recovery if getV fails (e.g., malformed RLP)
+          // Use the correct hash type specified in the request
+          const msgHash = computeMessageHash(req, digestFromResponse);
+          const yParity = getYParity({
+            messageHash: msgHash,
+            signature: parsed.sig,
+            publicKey: parsed.pubkey,
+          });
+          parsed.sig.v = BigInt(27 + yParity);
+        }
+      } else {
+        // Generic message - use simple recovery (v = 27 + recoveryId)
+        // Use the correct hash type specified in the request
+        const msgHash = computeMessageHash(req, digestFromResponse);
+        const yParity = getYParity({
+          messageHash: msgHash,
+          signature: parsed.sig,
+          publicKey: parsed.pubkey,
+        });
+        parsed.sig.v = BigInt(27 + yParity);
+      }
     }
   } else if (req.curveType === Constants.SIGNING.CURVES.ED25519) {
     if (!req.omitPubkey) {
@@ -259,9 +328,10 @@ export const parseGenericSigningResponse = function (res, off, req) {
     off += 32;
     // Handle `GpEdDSASig_t`
     parsed.sig = {
-      r: res.slice(off, off + 32),
-      s: res.slice(off + 32, off + 64),
+      r: `0x${res.slice(off, off + 32).toString('hex')}`,
+      s: `0x${res.slice(off + 32, off + 64).toString('hex')}`,
     };
+    off += 64;
   } else if (req.curveType === Constants.SIGNING.CURVES.BLS12_381_G2) {
     if (!req.omitPubkey) {
       // Handle `GpBLS12_381_G1Pub_t`
@@ -272,11 +342,99 @@ export const parseGenericSigningResponse = function (res, off, req) {
     // Handle `GpBLS12_381_G2Sig_t`
     parsed.sig = Buffer.alloc(96);
     res.slice(off, off + 96).copy(parsed.sig);
+    off += 96;
   } else {
     throw new Error('Unsupported curve.');
   }
   return parsed;
 };
+
+function computeMessageHash(
+  req: {
+    hashType: number;
+    origPayloadBuf: Buffer;
+  },
+  digestFromResponse?: Buffer,
+): Buffer {
+  if (
+    digestFromResponse &&
+    digestFromResponse.length === 32 &&
+    digestFromResponse.some((byte) => byte !== 0)
+  ) {
+    return digestFromResponse;
+  }
+  if (req.hashType === Constants.SIGNING.HASHES.SHA256) {
+    return Buffer.from(Hash.sha256(req.origPayloadBuf));
+  }
+  if (req.hashType === Constants.SIGNING.HASHES.KECCAK256) {
+    return Buffer.from(Hash.keccak256(req.origPayloadBuf));
+  }
+  throw new Error('Unsupported hash type for message hash computation.');
+}
+
+// Reconstruct a viem-compatible signed transaction string from the raw payload and
+// recovered signature so consumers can compare or broadcast without extra parsing.
+function populateViemSignedTx(
+  sigV: bigint,
+  req: any,
+  parsed: { sig: { r: string; s: string; v?: bigint }; viemTx?: string },
+) {
+  if (req.encodingType !== Constants.SIGNING.ENCODINGS.EVM) return;
+
+  try {
+    const rawTxHex = `0x${req.origPayloadBuf.toString('hex')}` as Hex;
+    const parsedTx: any = parseTransaction(rawTxHex);
+
+    const baseTx: any = {
+      chainId: parsedTx.chainId,
+      to: parsedTx.to ?? undefined,
+      value: parsedTx.value ?? 0n,
+      data: (parsedTx.data ?? '0x') as Hex,
+      nonce: parsedTx.nonce ?? 0n,
+      gas: parsedTx.gas ?? parsedTx.gasLimit ?? 0n,
+    };
+
+    if (parsedTx.maxFeePerGas !== undefined) {
+      baseTx.maxFeePerGas = parsedTx.maxFeePerGas;
+    }
+    if (parsedTx.maxPriorityFeePerGas !== undefined) {
+      baseTx.maxPriorityFeePerGas = parsedTx.maxPriorityFeePerGas;
+    }
+    if (parsedTx.gasPrice !== undefined) {
+      baseTx.gasPrice = parsedTx.gasPrice;
+    }
+    if (parsedTx.accessList !== undefined) {
+      baseTx.accessList = parsedTx.accessList;
+    }
+    if (parsedTx.authorizationList !== undefined) {
+      baseTx.authorizationList = parsedTx.authorizationList;
+    }
+
+    if (parsedTx.type !== undefined && parsedTx.type !== null) {
+      baseTx.type = parsedTx.type;
+    }
+
+    const signature =
+      parsedTx.type === 'legacy' || parsedTx.type === undefined
+        ? {
+            v: sigV,
+            r: parsed.sig.r as Hex,
+            s: parsed.sig.s as Hex,
+          }
+        : {
+            yParity: Number(sigV),
+            r: parsed.sig.r as Hex,
+            s: parsed.sig.s as Hex,
+          };
+
+    parsed.viemTx = serializeTransaction(
+      baseTx as TransactionSerializable,
+      signature as any,
+    );
+  } catch (_err) {
+    console.debug('Failed to build viemTx from response', _err);
+  }
+}
 
 export const getEncodedPayload = function (
   payload,

@@ -16,7 +16,7 @@
  *    the connection you can run this without any `env` params and it will attempt to
  *    pair with a target Lattice.
  */
-import { TransactionFactory as EthTxFactory } from '@ethereumjs/tx';
+import { createTx } from '@ethereumjs/tx';
 import { question } from 'readline-sync';
 import { HARDENED_OFFSET } from '../../constants';
 import { LatticeResponseCode, ProtocolConstants } from '../../protocol';
@@ -40,7 +40,7 @@ const id = getDeviceId();
 describe('General', () => {
   let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
   });
 
@@ -169,22 +169,25 @@ describe('General', () => {
       // NOTE: This will display a prehashed payload for bridged general signing
       // requests because `ethMaxDataSz` represents the `data` field for legacy
       // requests, but it represents the entire payload for general signing requests.
-      const tx = EthTxFactory.fromTxData(txData, { common });
-      req.data.payload = tx.getMessageToSign(false);
+      const tx = createTx(txData, { common });
+      req.data.payload = tx.getMessageToSign();
       await client.sign(req);
     });
 
-    it('should sign bad transactions', async () => {
-      const { txData, req, maxDataSz, common } = await buildEthSignRequest(
-        client,
-      );
+    it('should sign bad transactions', async (ctx: any) => {
+      if (process.env.CI === '1') {
+        ctx.skip();
+        return;
+      }
+      const { txData, req, maxDataSz, common } =
+        await buildEthSignRequest(client);
       await question(
         'Please REJECT the next request if the warning screen displays. Press enter to continue.',
       );
       txData.data = randomBytes(maxDataSz);
       req.data.data = randomBytes(maxDataSz + 1);
-      const tx = EthTxFactory.fromTxData(txData, { common });
-      req.data.payload = tx.getMessageToSign(false);
+      const tx = createTx(txData, { common });
+      req.data.payload = tx.getMessageToSign();
       await expect(client.sign(req)).rejects.toThrow(
         `${ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined]}`,
       );

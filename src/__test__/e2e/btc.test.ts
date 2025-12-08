@@ -3,29 +3,33 @@
  *
  * Failure to enable this setting will result in an `Invalid Request` error.
  * Ensure `FEATURE_TEST_RUNNER=0` is active before executing these tests.
+ *
+ * REQUIRED TEST MNEMONIC:
+ * These tests require a SafeCard loaded with the standard test mnemonic:
+ * "test test test test test test test test test test test junk"
+ *
+ * Running with a different mnemonic will cause test failures due to
+ * incorrect address derivations and signature mismatches.
  */
 
-import bip32 from 'bip32';
+import BIP32Factory, { type BIP32Interface } from 'bip32';
+import * as ecc from 'tiny-secp256k1';
+import type { Client } from '../../client';
+import { setupClient } from '../utils/setup';
 import { getPrng, getTestnet } from '../utils/getters';
 import {
   BTC_PURPOSE_P2PKH,
   BTC_PURPOSE_P2SH_P2WPKH,
   BTC_PURPOSE_P2WPKH,
-  copyBuffer,
-  deserializeExportSeedJobResult,
-  jobTypes,
-  parseWalletJobResp,
-  serializeJobData,
   setup_btc_sig_test,
   stripDER,
 } from '../utils/helpers';
-import { testRequest } from '../utils/testRequest';
-import { setupClient } from '../utils/setup';
-import { Wallet } from 'ethers';
+import { TEST_SEED } from '../utils/testConstants';
 
 const prng = getPrng();
+const bip32 = BIP32Factory(ecc);
 const TEST_TESTNET = !!getTestnet() || false;
-let wallet: Wallet | null = null;
+let wallet: BIP32Interface | null = null;
 type InputObj = { hash: string; value: number; signerIdx: number; idx: number };
 
 // Build the inputs. By default we will build 10. Note that there are `n` tests for
@@ -67,7 +71,7 @@ async function testSign({ txReq, signingKeys, sigHashes, client }: any) {
 
 async function runTestSet(
   opts: any,
-  wallet: Wallet | null,
+  wallet: BIP32Interface | null,
   inputsSlice: InputObj[],
   client,
 ) {
@@ -105,45 +109,18 @@ async function runTestSet(
 }
 
 describe('Bitcoin', () => {
-  let client;
+  let client: Client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
-  });
-
-  describe('wallet seeds', () => {
-    it('Should get GP_SUCCESS for a known, connected wallet', async () => {
-      const activeWalletUID = client.getActiveWallet()?.uid;
-      expect(activeWalletUID).not.toEqualElseLog(null, 'No wallet found');
-      const jobType = jobTypes.WALLET_JOB_EXPORT_SEED;
-      const jobData = {};
-      const jobReq = {
-        client,
-        testID: 0, // wallet_job test ID
-        payload: serializeJobData(jobType, activeWalletUID, jobData),
-      };
-      const res = await testRequest(jobReq).catch((err) => {
-        if (err.message.includes('Invalid Request')) {
-          console.error(
-            'Ensure FEATURE_TEST_RUNNER=0 is active in firmware settings',
-          );
-        }
-        throw err;
-      });
-      //@ts-expect-error - accessing private property
-      const _res = parseWalletJobResp(res, client.fwVersion);
-      expect(_res.resultStatus).toEqual(0);
-      const data = deserializeExportSeedJobResult(_res.result);
-      const activeWalletSeed = copyBuffer(data.seed);
-      wallet = bip32.fromSeed(activeWalletSeed);
-    });
+    wallet = bip32.fromSeed(TEST_SEED);
   });
 
   for (let i = 0; i < inputs.length; i++) {
     const inputsSlice = inputs.slice(0, i + 1);
 
     describe(`Input Set ${i}`, () => {
-      describe('segwit spender (p2wpkh)', function () {
+      describe('segwit spender (p2wpkh)', () => {
         it('p2wpkh->p2pkh', async () => {
           const opts = {
             spenderPurpose: BTC_PURPOSE_P2WPKH,
@@ -169,7 +146,7 @@ describe('Bitcoin', () => {
         });
       });
 
-      describe('wrapped segwit spender (p2sh-p2wpkh)', function () {
+      describe('wrapped segwit spender (p2sh-p2wpkh)', () => {
         it('p2sh-p2wpkh->p2pkh', async () => {
           const opts = {
             spenderPurpose: BTC_PURPOSE_P2SH_P2WPKH,
@@ -195,7 +172,7 @@ describe('Bitcoin', () => {
         });
       });
 
-      describe('legacy spender (p2pkh)', function () {
+      describe('legacy spender (p2pkh)', () => {
         it('p2pkh->p2pkh', async () => {
           const opts = {
             spenderPurpose: BTC_PURPOSE_P2PKH,

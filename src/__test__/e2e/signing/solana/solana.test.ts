@@ -1,3 +1,11 @@
+/**
+ * REQUIRED TEST MNEMONIC:
+ * These tests require a SafeCard loaded with the standard test mnemonic:
+ * "test test test test test test test test test test test junk"
+ *
+ * Running with a different mnemonic will cause test failures due to
+ * incorrect key derivations and signature mismatches.
+ */
 import {
   Keypair as SolanaKeypair,
   PublicKey as SolanaPublicKey,
@@ -6,16 +14,17 @@ import {
 } from '@solana/web3.js';
 import { Constants } from '../../../..';
 import { HARDENED_OFFSET } from '../../../../constants';
+import { ensureHexBuffer } from '../../../../util';
+import { setupClient } from '../../../utils/setup';
 import { getPrng } from '../../../utils/getters';
 import { deriveED25519Key, prandomBuf } from '../../../utils/helpers';
-import { initializeSeed } from '../../../utils/initializeClient';
 import { runGeneric } from '../../../utils/runners';
-import { setupClient } from '../../../utils/setup';
+import { TEST_SEED } from '../../../utils/testConstants';
 
 //---------------------------------------
 // STATE DATA
 //---------------------------------------
-const DEFAULT_SOLANA_SIGNER = [
+const DEFAULT_SOLANA_SIGNER_PATH = [
   HARDENED_OFFSET + 44,
   HARDENED_OFFSET + 501,
   HARDENED_OFFSET,
@@ -26,7 +35,7 @@ const prng = getPrng();
 describe('[Solana]', () => {
   let client;
 
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
   });
 
@@ -48,11 +57,11 @@ describe('[Solana]', () => {
     // NOTE: Solana addresses are just base58 encoded public keys. We do not
     // currently support exporting of Solana addresses in firmware but we can
     // derive them here using the exported seed.
-    const seed = await initializeSeed(client);
-    const derivedAPath = DEFAULT_SOLANA_SIGNER;
-    const derivedBPath = DEFAULT_SOLANA_SIGNER;
+    const seed = TEST_SEED;
+    const derivedAPath = [...DEFAULT_SOLANA_SIGNER_PATH];
+    const derivedBPath = [...DEFAULT_SOLANA_SIGNER_PATH];
     derivedBPath[3] += 1;
-    const derivedCPath = DEFAULT_SOLANA_SIGNER;
+    const derivedCPath = [...DEFAULT_SOLANA_SIGNER_PATH];
     derivedCPath[3] += 2;
     const derivedA = deriveED25519Key(derivedAPath, seed);
     const derivedB = deriveED25519Key(derivedBPath, seed);
@@ -98,30 +107,45 @@ describe('[Solana]', () => {
     txFw.setSigners(pubA, pubB);
     // We want to sign the Solana message, not the full transaction
     const payload = txFw.compileMessage().serialize();
+    const payloadHex = `0x${payload.toString('hex')}`;
 
     // Sign payload from Lattice and add signatures to tx object
-    const req = getReq({
-      signerPath: derivedAPath,
-      payload: `0x${payload.toString('hex')}`,
-    });
-    const sigA = await runGeneric(req, client).then((resp) => {
-      const sigR = resp.sig?.r.toString('hex') ?? '';
-      const sigS = resp.sig?.s.toString('hex') ?? '';
-      return Buffer.from(`${sigR}${sigS}`, 'hex');
+    const sigA = await runGeneric(
+      getReq({
+        signerPath: derivedAPath,
+        payload: payloadHex,
+      }),
+      client,
+    ).then((resp) => {
+      if (!resp.sig?.r || !resp.sig?.s) {
+        throw new Error('Missing signature components in response');
+      }
+      return Buffer.concat([
+        ensureHexBuffer(resp.sig.r as string | Buffer),
+        ensureHexBuffer(resp.sig.s as string | Buffer),
+      ]);
     });
 
-    req.data.signerPath = derivedBPath;
-
-    const sigB = await runGeneric(req, client).then((resp) => {
-      const sigR = resp.sig?.r.toString('hex') ?? '';
-      const sigS = resp.sig?.s.toString('hex') ?? '';
-      return Buffer.from(`${sigR}${sigS}`, 'hex');
+    const sigB = await runGeneric(
+      getReq({
+        signerPath: derivedBPath,
+        payload: payloadHex,
+      }),
+      client,
+    ).then((resp) => {
+      if (!resp.sig?.r || !resp.sig?.s) {
+        throw new Error('Missing signature components in response');
+      }
+      return Buffer.concat([
+        ensureHexBuffer(resp.sig.r as string | Buffer),
+        ensureHexBuffer(resp.sig.s as string | Buffer),
+      ]);
     });
     txFw.addSignature(pubA, sigA);
     txFw.addSignature(pubB, sigB);
 
     // Validate the signatures from the Lattice match those of the Solana library
     const serTxFw = txFw.serialize().toString('hex');
-    expect(serTxFw).toEqualElseLog(serTxJs, 'Signed tx mismatch');
+    expect(serTxFw).toEqual(serTxJs);
   });
 });

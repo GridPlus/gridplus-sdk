@@ -7,6 +7,13 @@
  *
  * For ETH2-specific operations, see `lattice-eth2-utils`:
  * https://github.com/GridPlus/lattice-eth2-utils
+ *
+ * REQUIRED TEST MNEMONIC:
+ * These tests require a SafeCard loaded with the standard test mnemonic:
+ * "test test test test test test test test test test test junk"
+ *
+ * Running with a different mnemonic will cause test failures due to
+ * incorrect key derivations.
  */
 import {
   create as createKeystore,
@@ -15,61 +22,71 @@ import {
   verifyPassword,
 } from '@chainsafe/bls-keystore';
 import { getPublicKey, sign } from '@noble/bls12-381';
-import { mnemonicToSeedSync } from 'bip39';
 import { deriveSeedTree } from 'bls12-381-keygen';
 import { question } from 'readline-sync';
 
 import { Constants } from '../../../index';
 import { getPathStr } from '../../../shared/utilities';
-import { getEncPw } from '../../utils/getters';
-import {
-  buildPath,
-  copyBuffer,
-  getCodeMsg,
-  getTestVectors,
-  gpErrors,
-  jobTypes,
-  parseWalletJobResp,
-  serializeJobData,
-} from '../../utils/helpers';
-import { initializeSeed } from '../../utils/initializeClient';
 import { setupClient } from '../../utils/setup';
-import { testRequest } from '../../utils/testRequest';
+import { getEncPw } from '../../utils/getters';
+import { buildPath } from '../../utils/helpers';
+import { TEST_SEED } from '../../utils/testConstants';
 
-const globalVectors = getTestVectors();
-
-let client, origWalletSeed, encPw;
+let client, encPw, supportsBLS;
 const DEPOSIT_PATH = [12381, 3600, 0, 0, 0];
 const WITHDRAWAL_PATH = [12381, 3600, 0, 0];
 // Number of signers to test for each of deposit and withdrawal paths
 const N_TEST_SIGS = 5;
-const KNOWN_MNEMONIC = globalVectors.ethDeposit.mnemonic;
-const KNOWN_SEED = mnemonicToSeedSync(KNOWN_MNEMONIC);
+const KNOWN_SEED = TEST_SEED;
 
 describe('[BLS keys]', () => {
-  let client;
-
-  test('pair', async () => {
+  beforeAll(async () => {
     client = await setupClient();
-  });
+    if (process.env.CI) {
+      encPw = process.env.ENC_PW;
+    } else {
+      encPw = getEncPw();
+      if (!encPw) {
+        encPw = await question('Enter your Lattice encryption password: ');
+      }
+    }
 
-  it('Should get the device encryption password', async () => {
-    encPw = getEncPw();
-    if (!encPw) {
-      encPw = await question('Enter your Lattice encryption password: ');
+    // Check if firmware supports BLS (requires >= 0.17.0)
+    const fwVersion = client.fwVersion;
+    const versionStr =
+      fwVersion && fwVersion.length >= 3
+        ? `${fwVersion[2]}.${fwVersion[1]}.${fwVersion[0]}`
+        : 'unknown';
+
+    console.log(`\n[BLS Test] Firmware version: ${versionStr}`);
+    console.log(`[BLS Test] Raw fwVersion buffer:`, fwVersion);
+
+    const fwConstants = client.getFwConstants();
+    console.log(`[BLS Test] getAddressFlags:`, fwConstants?.getAddressFlags);
+    console.log(
+      `[BLS Test] BLS12_381_G1_PUB constant:`,
+      Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB,
+    );
+
+    supportsBLS = fwConstants?.getAddressFlags?.includes(
+      Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB,
+    );
+
+    console.log(`[BLS Test] supportsBLS: ${supportsBLS}\n`);
+
+    if (!supportsBLS) {
+      console.warn(
+        `\nSkipping BLS tests: Firmware version ${versionStr} does not support BLS operations.\n` +
+          `BLS support requires firmware version >= 0.17.0\n`,
+      );
     }
   });
 
-  it('Should get the current wallet seed', async () => {
-    origWalletSeed = await initializeSeed(client);
-  });
-
-  it('Should remove the current seed and load a known one', async () => {
-    await removeSeed(client);
-    await loadSeed(client, KNOWN_SEED, KNOWN_MNEMONIC);
-  });
-
-  it('Should validate exported EIP2335 keystores', async () => {
+  it('Should validate exported EIP2335 keystores', async (ctx) => {
+    if (!supportsBLS) {
+      ctx.skip();
+      return;
+    }
     const req = {
       schema: Constants.ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4,
       params: {
@@ -99,7 +116,11 @@ describe('[BLS keys]', () => {
     describe(`[Validate Derived Signature #${i + 1}/${N_TEST_SIGS}]`, () => {
       it(`Should validate derivation and signing at deposit index #${
         i + 1
-      }`, async () => {
+      }`, async (ctx) => {
+        if (!supportsBLS) {
+          ctx.skip();
+          return;
+        }
         const depositPath = JSON.parse(JSON.stringify(DEPOSIT_PATH));
         depositPath[2] = i;
         await testBLSDerivationAndSig(KNOWN_SEED, depositPath);
@@ -107,18 +128,17 @@ describe('[BLS keys]', () => {
 
       it(`Should validate derivation and signing at withdrawal index #${
         i + 1
-      }`, async () => {
+      }`, async (ctx) => {
+        if (!supportsBLS) {
+          ctx.skip();
+          return;
+        }
         const withdrawalPath = JSON.parse(JSON.stringify(WITHDRAWAL_PATH));
         withdrawalPath[2] = i;
         await testBLSDerivationAndSig(KNOWN_SEED, withdrawalPath);
       });
     });
   }
-
-  it('Should restore the original seed', async () => {
-    await removeSeed(client);
-    await loadSeed(client, origWalletSeed);
-  });
 });
 
 //=========================================================
@@ -167,48 +187,6 @@ async function testBLSDerivationAndSig(seed, signerPath) {
     'Signature mismatch',
   );
 }
-
-async function loadSeed(client, seed, mnemonic = null) {
-  const res = await testRequest({
-    client,
-    testID: 0,
-    payload: serializeJobData(
-      jobTypes.WALLET_JOB_LOAD_SEED,
-      copyBuffer(client.getActiveWallet()?.uid),
-      {
-        iface: 1, // external SafeCard interface
-        mnemonic,
-        seed,
-        exportability: 2, // always exportable
-      },
-    ),
-  });
-  //@ts-expect-error - accessing private property
-  const parsedRes = parseWalletJobResp(res, client.fwVersion);
-  expect(parsedRes.resultStatus).toEqualElseLog(
-    gpErrors.GP_SUCCESS,
-    getCodeMsg(parsedRes.resultStatus, gpErrors.GP_SUCCESS),
-  );
-}
-
-async function removeSeed(client) {
-  const res = await testRequest({
-    client,
-    testID: 0,
-    payload: serializeJobData(
-      jobTypes.WALLET_JOB_DELETE_SEED,
-      copyBuffer(client.getActiveWallet()?.uid),
-      { iface: 1 },
-    ),
-  });
-  //@ts-expect-error - accessing private property
-  const parsedRes = parseWalletJobResp(res, client.fwVersion);
-  expect(parsedRes.resultStatus).toEqualElseLog(
-    gpErrors.GP_SUCCESS,
-    getCodeMsg(parsedRes.resultStatus, gpErrors.GP_SUCCESS),
-  );
-}
-
 async function validateExportedKeystore(seed, path, pw, expKeystoreBuffer) {
   const exportedKeystore = JSON.parse(expKeystoreBuffer.toString());
   const priv = deriveSeedTree(seed, buildPath(path));
