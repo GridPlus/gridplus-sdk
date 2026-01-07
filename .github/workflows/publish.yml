@@ -19,9 +19,9 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
 
       - name: Install dependencies
         run: pnpm install
@@ -30,7 +30,6 @@ jobs:
         run: pnpm run build
 
       - name: Publish to NPM
-        run: pnpm publish --no-git-checks
-
+        run: pnpm --filter gridplus-sdk publish --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
