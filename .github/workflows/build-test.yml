@@ -63,7 +63,7 @@ jobs:
       - name: Install simulator dependencies
         if: env.INTERNAL_EVENT == 'true'
         working-directory: lattice-simulator
-        run: pnpm install
+        run: pnpm install --ignore-workspace
 
       - name: Start simulator in background
         if: env.INTERNAL_EVENT == 'true'
