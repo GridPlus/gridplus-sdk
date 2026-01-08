@@ -28,6 +28,9 @@ export * from './messages';
 // Re-export everything from pair.ts
 export * from './pair';
 
+// Re-export everything from event.ts
+export * from './event';
+
 // Re-export everything from removeKvRecords.ts
 export * from './removeKvRecords';
 
@@ -71,6 +74,13 @@ export type {
   FetchEncDataRequestFunctionParams,
   EIP2335KeyExportData,
 } from './fetchEncData';
+
+// Exports from message.ts
+export type {
+  SendEventParams,
+  SendEventRequestFunctionParams,
+  SendEventResponse,
+} from './event';
 
 // Exports from getKvRecords.ts
 export type {
