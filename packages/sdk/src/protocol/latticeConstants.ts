@@ -41,6 +41,7 @@ export enum LatticeSecureEncryptedRequestType {
   removeKvRecords = 9,
   fetchEncryptedData = 12,
   test = 13,
+  event = 14,
 }
 
 export enum LatticeGetAddressesFlag {
@@ -176,6 +177,7 @@ export const ProtocolConstants = {
             [LatticeSecureEncryptedRequestType.removeKvRecords]: 405,
             [LatticeSecureEncryptedRequestType.fetchEncryptedData]: 1025,
             [LatticeSecureEncryptedRequestType.test]: 506,
+            [LatticeSecureEncryptedRequestType.event]: 1722,
           },
         },
         // All responses also have a `responseCode`, which is omitted
@@ -196,6 +198,7 @@ export const ProtocolConstants = {
             [LatticeSecureEncryptedRequestType.removeKvRecords]: 0,
             [LatticeSecureEncryptedRequestType.fetchEncryptedData]: 1608,
             [LatticeSecureEncryptedRequestType.test]: 1646,
+            [LatticeSecureEncryptedRequestType.event]: 1,
           },
         },
       },

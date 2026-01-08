@@ -15,6 +15,7 @@ import {
   pair,
   removeKvRecords,
   sign,
+  sendEvent,
 } from './functions/index';
 import { buildRetryWrapper } from './shared/functions';
 import { getPubKeyBytes } from './shared/utilities';
@@ -30,6 +31,8 @@ import {
   GetKvRecordsData,
   RemoveKvRecordsRequestParams,
   FetchEncDataRequest,
+  SendEventParams,
+  SendEventResponse,
 } from './types';
 import { getP256KeyPair, getP256KeyPairFromPub, randomBytes } from './util';
 
@@ -259,6 +262,18 @@ export class Client {
     ids = [],
   }: RemoveKvRecordsRequestParams): Promise<Buffer> {
     return this.retryWrapper(removeKvRecords, { type, ids });
+  }
+
+  /**
+   * Send a simple message to the device firmware.
+   * @category Lattice
+   */
+  public async sendEvent({
+    eventType,
+    eventId,
+    message,
+  }: SendEventParams): Promise<SendEventResponse> {
+    return this.retryWrapper(sendEvent, { eventType, eventId, message });
   }
 
   /**
