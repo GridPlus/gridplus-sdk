@@ -7,7 +7,6 @@ export interface AddKvRecordsRequestParams {
   caseSensitive?: boolean;
 }
 
-export interface AddKvRecordsRequestFunctionParams
-  extends AddKvRecordsRequestParams {
+export interface AddKvRecordsRequestFunctionParams extends AddKvRecordsRequestParams {
   client: Client;
 }

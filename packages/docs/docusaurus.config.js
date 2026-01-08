@@ -9,7 +9,7 @@ const excludedFiles = [
   'genericSigning',
   'index',
   'calldata/index',
-].map((s) => `../src/${s}.ts`);
+].map((s) => `../sdk/src/${s}.ts`);
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -27,8 +27,8 @@ const config = {
       'docusaurus-plugin-typedoc',
       {
         id: 'gridplus-sdk',
-        tsconfig: '../tsconfig.json',
-        entryPoints: ['../src/api', '../src/constants.ts', '../src/util.ts'],
+        tsconfig: '../sdk/tsconfig.json',
+        entryPoints: ['../sdk/src/api', '../sdk/src/constants.ts', '../sdk/src/util.ts'],
         entryFileName: 'index',
         out: './docs/reference',
         outputFileStrategy: 'modules',
