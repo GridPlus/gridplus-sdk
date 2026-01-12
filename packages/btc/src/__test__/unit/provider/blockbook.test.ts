@@ -1,7 +1,7 @@
 import {
   BlockbookProvider,
   createBlockbookProvider,
-} from '../../../../btc/provider/blockbook';
+} from '../../../provider/blockbook';
 
 const buildResponse = (data: unknown, ok = true, status = 200) => ({
   ok,
@@ -122,7 +122,9 @@ describe('btc/provider/blockbook', () => {
 
   it('throws on non-ok responses', async () => {
     const provider = new BlockbookProvider({ baseUrl: 'https://example.com' });
-    fetchMock.mockResolvedValueOnce(buildResponse({ error: 'bad' }, false, 500));
+    fetchMock.mockResolvedValueOnce(
+      buildResponse({ error: 'bad' }, false, 500),
+    );
 
     await expect(provider.getSummary('xpub123')).rejects.toThrow(
       'Blockbook request failed: 500',

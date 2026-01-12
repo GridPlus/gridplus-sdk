@@ -2,7 +2,7 @@ vi.mock('../../../api/utilities', () => ({
   queue: vi.fn(),
 }));
 
-import { BTC_COIN_TYPES, BTC_PURPOSES } from '../../../btc/constants';
+import { BTC_COIN_TYPES, BTC_PURPOSES } from '@gridplus/btc';
 import { getAllXpubs, getXpub, getXpubs } from '../../../btc/xpub';
 import { queue } from '../../../api/utilities';
 

@@ -1,0 +1,50 @@
+{
+  "name": "@gridplus/btc",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "BTC utilities for GridPlus SDK - SLIP-132, network inference, transaction building, wallet utilities",
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run ./src/__test__/unit",
+    "lint": "eslint src --config eslint.config.mjs",
+    "lint:fix": "eslint src --config eslint.config.mjs --fix"
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GridPlus/gridplus-sdk.git",
+    "directory": "packages/btc"
+  },
+  "dependencies": {
+    "bs58check": "^4.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.36.0",
+    "@typescript-eslint/eslint-plugin": "^8.44.1",
+    "@typescript-eslint/parser": "^8.44.1",
+    "eslint": "^9.36.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "prettier": "^3.6.2",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "3.2.4"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
+}

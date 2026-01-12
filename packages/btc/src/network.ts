@@ -1,4 +1,8 @@
-import { BTC_COIN_TYPES, BTC_NETWORKS, SLIP132_VERSION_BYTES } from './constants';
+import {
+  BTC_COIN_TYPES,
+  BTC_NETWORKS,
+  SLIP132_VERSION_BYTES,
+} from './constants';
 import type { BtcCoinType, BtcNetwork } from './types';
 import { getVersionBytes } from './slip132';
 
@@ -34,7 +38,9 @@ export function inferFromXpub(xpub: string): BtcNetwork {
  */
 export function getCoinType(network: BtcNetwork): BtcCoinType;
 export function getCoinType(override: BtcCoinType): BtcCoinType;
-export function getCoinType(networkOrOverride: BtcNetwork | BtcCoinType): BtcCoinType {
+export function getCoinType(
+  networkOrOverride: BtcNetwork | BtcCoinType,
+): BtcCoinType {
   if (typeof networkOrOverride === 'number') {
     return networkOrOverride;
   }

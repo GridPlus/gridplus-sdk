@@ -1,6 +1,6 @@
-import type { WalletUtxo } from '../../../btc/types';
-import { buildTxReq, estimateFee } from '../../../btc/tx';
-import { HARDENED_OFFSET } from '../../../constants';
+import type { WalletUtxo } from '../../types';
+import { buildTxReq, estimateFee } from '../../tx';
+import { HARDENED_OFFSET } from '../../constants';
 
 const utxos: WalletUtxo[] = [
   {
@@ -9,13 +9,7 @@ const utxos: WalletUtxo[] = [
     value: 100000,
     confirmations: 6,
     address: 'bc1qtest',
-    path: [
-      HARDENED_OFFSET + 84,
-      HARDENED_OFFSET,
-      HARDENED_OFFSET,
-      0,
-      0,
-    ],
+    path: [HARDENED_OFFSET + 84, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0],
     scriptType: 'p2wpkh',
   },
 ];

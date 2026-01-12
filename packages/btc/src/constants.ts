@@ -1,3 +1,6 @@
+/** BIP32 hardened offset (2^31) */
+export const HARDENED_OFFSET = 0x80000000;
+
 export const SLIP132_VERSION_BYTES = {
   // Mainnet
   xpub: { public: 0x0488b21e, private: 0x0488ade4 }, // BIP44 - Legacy (P2PKH)

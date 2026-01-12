@@ -1,9 +1,15 @@
 import { HARDENED_OFFSET } from '../constants';
 import { LatticeGetAddressesFlag } from '../protocol/latticeConstants';
 import { queue } from '../api/utilities';
-import { BTC_PURPOSES, BTC_COIN_TYPES } from './constants';
-import { format } from './slip132';
-import type { BtcPurpose, BtcCoinType, XpubOptions, XpubsOptions } from './types';
+import {
+  BTC_PURPOSES,
+  BTC_COIN_TYPES,
+  format,
+  type BtcPurpose,
+  type BtcCoinType,
+  type XpubOptions,
+  type XpubsOptions,
+} from '@gridplus/btc';
 
 /**
  * Build the derivation path for fetching an xpub.

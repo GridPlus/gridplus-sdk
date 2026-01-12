@@ -8,6 +8,43 @@ importers:
 
   .: {}
 
+  packages/btc:
+    dependencies:
+      bs58check:
+        specifier: ^4.0.0
+        version: 4.0.0
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.36.0
+        version: 9.39.2
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.44.1
+        version: 8.52.0(@typescript-eslint/parser@8.52.0(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3))(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.44.1
+        version: 8.52.0(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)
+      eslint:
+        specifier: ^9.36.0
+        version: 9.39.2(jiti@1.21.7)
+      eslint-config-prettier:
+        specifier: ^10.1.8
+        version: 10.1.8(eslint@9.39.2(jiti@1.21.7))
+      eslint-plugin-prettier:
+        specifier: ^5.5.4
+        version: 5.5.4(@types/eslint@9.6.1)(eslint-config-prettier@10.1.8(eslint@9.39.2(jiti@1.21.7)))(eslint@9.39.2(jiti@1.21.7))(prettier@3.7.4)
+      prettier:
+        specifier: ^3.6.2
+        version: 3.7.4
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@microsoft/api-extractor@7.55.2(@types/node@24.10.4))(jiti@1.21.7)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      vitest:
+        specifier: 3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.10.4)(jiti@1.21.7)(msw@2.12.7(@types/node@24.10.4)(typescript@5.9.3))(terser@5.44.1)(tsx@4.21.0)
+
   packages/docs:
     dependencies:
       '@docusaurus/core':
@@ -108,6 +145,9 @@ importers:
       '@ethereumjs/tx':
         specifier: ^10.0.0
         version: 10.1.0
+      '@gridplus/btc':
+        specifier: workspace:*
+        version: link:../btc
       '@metamask/eth-sig-util':
         specifier: ^8.2.0
         version: 8.2.0

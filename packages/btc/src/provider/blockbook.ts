@@ -4,9 +4,56 @@ import type {
   BlockbookSummary,
   BlockbookTransaction,
   BlockbookUtxo,
+  BlockbookBroadcastResponse,
+  BlockbookFeeEstimateResponse,
   FeeRates,
   PagingOptions,
 } from './types';
+
+/**
+ * Type guard for xpub response with transactions.
+ * The response is an object that may contain a transactions array.
+ */
+function isXpubWithTransactionsResponse(
+  value: unknown,
+): value is { transactions?: BlockbookTransaction[] } {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const obj = value as Record<string, unknown>;
+  if ('transactions' in obj && obj.transactions !== undefined) {
+    return Array.isArray(obj.transactions);
+  }
+  return true;
+}
+
+/**
+ * Type guard for BlockbookBroadcastResponse
+ */
+function isBroadcastResponse(
+  value: unknown,
+): value is BlockbookBroadcastResponse {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'result' in value &&
+    typeof (value as BlockbookBroadcastResponse).result === 'string'
+  );
+}
+
+/**
+ * Type guard for BlockbookFeeEstimateResponse
+ */
+function isFeeEstimateResponse(
+  value: unknown,
+): value is BlockbookFeeEstimateResponse {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'result' in value &&
+    typeof (value as BlockbookFeeEstimateResponse).result === 'string'
+  );
+}
 
 const DEFAULT_BLOCKBOOK_URLS = {
   mainnet: 'https://btc1.trezor.io',
@@ -51,7 +98,10 @@ export class BlockbookProvider implements BtcProvider {
     });
 
     const response = await this.fetch(`/api/v2/xpub/${xpub}?${params}`);
-    return (response as any).transactions ?? [];
+    if (!isXpubWithTransactionsResponse(response)) {
+      throw new Error('Invalid response from Blockbook xpub endpoint');
+    }
+    return response.transactions ?? [];
   }
 
   /**
@@ -71,10 +121,10 @@ export class BlockbookProvider implements BtcProvider {
       body: rawTx,
     });
 
-    if (typeof response === 'object' && response && 'result' in response) {
-      return (response as any).result;
+    if (isBroadcastResponse(response)) {
+      return response.result;
     }
-    throw new Error('Unexpected broadcast response');
+    throw new Error('Unexpected broadcast response format from Blockbook');
   }
 
   /**
@@ -97,14 +147,20 @@ export class BlockbookProvider implements BtcProvider {
 
   private async fetchFeeEstimate(blocks: number): Promise<number> {
     const response = await this.fetch(`/api/v2/estimatefee/${blocks}`);
-    const btcPerKb = parseFloat((response as any).result);
-    if (isNaN(btcPerKb) || btcPerKb <= 0) {
+    if (!isFeeEstimateResponse(response)) {
+      return 1;
+    }
+    const btcPerKb = parseFloat(response.result);
+    if (Number.isNaN(btcPerKb) || btcPerKb <= 0) {
       return 1;
     }
     return btcPerKb * 100000;
   }
 
-  private async fetch(path: string, options: RequestInit = {}): Promise<unknown> {
+  private async fetch(
+    path: string,
+    options: RequestInit = {},
+  ): Promise<unknown> {
     const url = `${this.baseUrl}${path}`;
     const response = await fetch(url, {
       ...options,

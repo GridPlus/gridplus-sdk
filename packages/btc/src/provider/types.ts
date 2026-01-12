@@ -98,3 +98,18 @@ export interface BlockbookProviderConfig {
   baseUrl?: string;
   network?: 'mainnet' | 'testnet';
 }
+
+/** Response from xpub endpoint with transaction details */
+export interface BlockbookXpubResponse extends BlockbookSummary {
+  transactions?: BlockbookTransaction[];
+}
+
+/** Response from broadcast endpoint */
+export interface BlockbookBroadcastResponse {
+  result: string;
+}
+
+/** Response from fee estimate endpoint */
+export interface BlockbookFeeEstimateResponse {
+  result: string;
+}

@@ -1,11 +1,11 @@
-import { HARDENED_OFFSET } from '../constants';
-import { BTC_COIN_TYPES } from './constants';
+import { HARDENED_OFFSET, BTC_COIN_TYPES } from './constants';
 import type {
   TxBuildInput,
   TxBuildResult,
   WalletUtxo,
   BtcPurpose,
   BtcCoinType,
+  ScriptType,
 } from './types';
 
 const VBYTE_SIZES = {
@@ -28,7 +28,7 @@ const VBYTE_SIZES = {
 function estimateTxVbytes(
   inputCount: number,
   outputCount: number,
-  inputType: 'p2pkh' | 'p2sh-p2wpkh' | 'p2wpkh',
+  inputType: ScriptType,
 ): number {
   let inputSize: number;
   switch (inputType) {
@@ -183,7 +183,7 @@ export function buildTxReq(input: TxBuildInput): TxBuildResult {
 export function estimateFee(
   utxoCount: number,
   feeRate: number,
-  inputType: 'p2pkh' | 'p2sh-p2wpkh' | 'p2wpkh' = 'p2wpkh',
+  inputType: ScriptType = 'p2wpkh',
 ): number {
   const vbytes = estimateTxVbytes(utxoCount, 2, inputType);
   return Math.ceil(vbytes * feeRate);

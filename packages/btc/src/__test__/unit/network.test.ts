@@ -1,18 +1,21 @@
 import bs58check from 'bs58check';
-import { SLIP132_VERSION_BYTES } from '../../../btc/constants';
+import { SLIP132_VERSION_BYTES } from '../../constants';
 import {
   inferFromXpub,
   getCoinType,
   getNetworkFromCoinType,
   isTestnet,
-} from '../../../btc/network';
+} from '../../network';
 
 const TEST_XPUB =
   'xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8';
 const toVersion = (xpub: string, version: number) => {
-  const decoded = Buffer.from(bs58check.decode(xpub));
-  decoded.writeUInt32BE(version, 0);
-  return bs58check.encode(decoded);
+  const decoded = bs58check.decode(xpub);
+  const converted = new Uint8Array(decoded.length);
+  const view = new DataView(converted.buffer);
+  view.setUint32(0, version, false);
+  converted.set(decoded.subarray(4), 4);
+  return bs58check.encode(converted);
 };
 
 const TEST_TPUB = toVersion(TEST_XPUB, SLIP132_VERSION_BYTES.tpub.public);

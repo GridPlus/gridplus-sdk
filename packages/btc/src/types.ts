@@ -1,9 +1,8 @@
-import type { PreviousOutput } from '../types/sign';
-
 export type BtcPurpose = 44 | 49 | 84;
 export type BtcCoinType = 0 | 1;
 export type BtcNetwork = 'mainnet' | 'testnet' | 'regtest';
 export type XpubPrefix = 'xpub' | 'ypub' | 'zpub' | 'tpub' | 'upub' | 'vpub';
+export type ScriptType = 'p2pkh' | 'p2sh-p2wpkh' | 'p2wpkh';
 
 export interface XpubOptions {
   purpose: BtcPurpose;
@@ -17,6 +16,14 @@ export interface XpubsOptions {
   account?: number;
 }
 
+/** UTXO input for transaction signing (compatible with Lattice SDK) */
+export interface PreviousOutput {
+  txHash: string;
+  value: number;
+  index: number;
+  signerPath: number[];
+}
+
 /** Wallet UTXO with derivation info */
 export interface WalletUtxo {
   txid: string;
@@ -25,7 +32,7 @@ export interface WalletUtxo {
   confirmations: number;
   address: string;
   path: number[]; // derivation path
-  scriptType: 'p2pkh' | 'p2sh-p2wpkh' | 'p2wpkh';
+  scriptType: ScriptType;
 }
 
 /** Wallet summary */

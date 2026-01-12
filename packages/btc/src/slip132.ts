@@ -7,7 +7,11 @@ import type { BtcNetwork, BtcPurpose, XpubPrefix } from './types';
  */
 export function getVersionBytes(xpub: string): number {
   const decoded = bs58check.decode(xpub);
-  const view = new DataView(decoded.buffer, decoded.byteOffset, decoded.byteLength);
+  const view = new DataView(
+    decoded.buffer,
+    decoded.byteOffset,
+    decoded.byteLength,
+  );
   return view.getUint32(0, false); // false = big-endian
 }
 

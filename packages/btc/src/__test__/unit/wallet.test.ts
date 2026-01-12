@@ -1,6 +1,6 @@
-import type { BtcProvider } from '../../../btc/provider/types';
-import { getSnapshot, getSummary } from '../../../btc/wallet';
-import { HARDENED_OFFSET } from '../../../constants';
+import type { BtcProvider } from '../../provider/types';
+import { getSnapshot, getSummary } from '../../wallet';
+import { HARDENED_OFFSET } from '../../constants';
 
 const provider: BtcProvider = {
   getSummary: vi.fn(),

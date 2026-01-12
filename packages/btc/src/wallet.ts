@@ -3,12 +3,31 @@ import type {
   WalletSnapshot,
   WalletUtxo,
   BtcPurpose,
+  ScriptType,
 } from './types';
 import type { BtcProvider, BlockbookUtxo } from './provider/types';
 import { inferPurpose } from './slip132';
-import { HARDENED_OFFSET } from '../constants';
+import { HARDENED_OFFSET } from './constants';
 
-interface WalletOptions {
+/**
+ * Safely parse a string to an integer, throwing a descriptive error if invalid.
+ *
+ * @param value - The string value to parse
+ * @param fieldName - The name of the field for error messages
+ * @returns The parsed integer
+ * @throws Error if the value cannot be parsed to a valid integer
+ */
+function safeParseInt(value: string, fieldName: string): number {
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed)) {
+    throw new Error(
+      `Invalid ${fieldName}: expected numeric string but received "${value}"`,
+    );
+  }
+  return parsed;
+}
+
+export interface WalletOptions {
   xpub: string;
   purpose?: BtcPurpose;
   provider: BtcProvider;
@@ -23,7 +42,8 @@ function parsePath(pathStr: string): number[] {
     .split('/')
     .map((part) => {
       const isHardened = part.endsWith("'") || part.endsWith('h');
-      const index = parseInt(part.replace(/['h]/g, ''), 10);
+      const indexStr = part.replace(/['h]/g, '');
+      const index = safeParseInt(indexStr, `path component "${part}"`);
       return isHardened ? index + HARDENED_OFFSET : index;
     });
 }
@@ -31,9 +51,7 @@ function parsePath(pathStr: string): number[] {
 /**
  * Determine script type from purpose.
  */
-function getScriptType(
-  purpose: BtcPurpose,
-): 'p2pkh' | 'p2sh-p2wpkh' | 'p2wpkh' {
+function getScriptType(purpose: BtcPurpose): ScriptType {
   switch (purpose) {
     case 44:
       return 'p2pkh';
@@ -53,7 +71,7 @@ function toWalletUtxo(utxo: BlockbookUtxo, purpose: BtcPurpose): WalletUtxo {
   return {
     txid: utxo.txid,
     vout: utxo.vout,
-    value: parseInt(utxo.value, 10),
+    value: safeParseInt(utxo.value, 'utxo.value'),
     confirmations: utxo.confirmations,
     address: utxo.address ?? '',
     path: utxo.path ? parsePath(utxo.path) : [],
@@ -74,17 +92,25 @@ function toWalletUtxo(utxo: BlockbookUtxo, purpose: BtcPurpose): WalletUtxo {
  * });
  * console.log(`Balance: ${summary.balance} sats`);
  */
-export async function getSummary(options: WalletOptions): Promise<WalletSummary> {
+export async function getSummary(
+  options: WalletOptions,
+): Promise<WalletSummary> {
   const { xpub, provider } = options;
 
   const blockbookSummary = await provider.getSummary(xpub);
   const utxos = await provider.getUtxos(xpub);
 
   return {
-    balance: parseInt(blockbookSummary.balance, 10),
-    unconfirmedBalance: parseInt(blockbookSummary.unconfirmedBalance, 10),
-    totalReceived: parseInt(blockbookSummary.totalReceived, 10),
-    totalSent: parseInt(blockbookSummary.totalSent, 10),
+    balance: safeParseInt(blockbookSummary.balance, 'balance'),
+    unconfirmedBalance: safeParseInt(
+      blockbookSummary.unconfirmedBalance,
+      'unconfirmedBalance',
+    ),
+    totalReceived: safeParseInt(
+      blockbookSummary.totalReceived,
+      'totalReceived',
+    ),
+    totalSent: safeParseInt(blockbookSummary.totalSent, 'totalSent'),
     txCount: blockbookSummary.txs,
     utxoCount: utxos.length,
   };
@@ -126,7 +152,11 @@ export async function getSnapshot(
     if (token.path) {
       const parts = token.path.split('/');
       const isChange = parts[parts.length - 2] === '1';
-      const index = parseInt(parts[parts.length - 1], 10);
+      const indexPart = parts[parts.length - 1];
+      const index = safeParseInt(
+        indexPart,
+        `address index in path "${token.path}"`,
+      );
 
       if (isChange) {
         changeAddresses.push(token.name);
@@ -139,10 +169,16 @@ export async function getSnapshot(
   }
 
   const summary: WalletSummary = {
-    balance: parseInt(blockbookSummary.balance, 10),
-    unconfirmedBalance: parseInt(blockbookSummary.unconfirmedBalance, 10),
-    totalReceived: parseInt(blockbookSummary.totalReceived, 10),
-    totalSent: parseInt(blockbookSummary.totalSent, 10),
+    balance: safeParseInt(blockbookSummary.balance, 'balance'),
+    unconfirmedBalance: safeParseInt(
+      blockbookSummary.unconfirmedBalance,
+      'unconfirmedBalance',
+    ),
+    totalReceived: safeParseInt(
+      blockbookSummary.totalReceived,
+      'totalReceived',
+    ),
+    totalSent: safeParseInt(blockbookSummary.totalSent, 'totalSent'),
     txCount: blockbookSummary.txs,
     utxoCount: utxos.length,
   };
