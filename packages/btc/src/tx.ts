@@ -23,6 +23,20 @@ const VBYTE_SIZES = {
 } as const;
 
 /**
+ * Get output size based on script type.
+ */
+function getOutputSize(scriptType: ScriptType): number {
+  switch (scriptType) {
+    case 'p2pkh':
+      return VBYTE_SIZES.P2PKH_OUTPUT;
+    case 'p2sh-p2wpkh':
+      return VBYTE_SIZES.P2SH_OUTPUT;
+    case 'p2wpkh':
+      return VBYTE_SIZES.P2WPKH_OUTPUT;
+  }
+}
+
+/**
  * Estimate transaction size in virtual bytes.
  */
 function estimateTxVbytes(
@@ -52,7 +66,7 @@ function estimateTxVbytes(
   const hasSegwit = inputType !== 'p2pkh';
   const segwitOverhead = hasSegwit ? VBYTE_SIZES.SEGWIT_MARKER : 0;
 
-  const outputSize = VBYTE_SIZES.P2WPKH_OUTPUT;
+  const outputSize = getOutputSize(inputType);
 
   return (
     overhead +
@@ -93,17 +107,29 @@ function selectUtxos(
 }
 
 /**
+ * Extract account index from a derivation path.
+ * Path format: [purpose', coinType', account', change, index]
+ */
+function extractAccountFromPath(path: number[]): number {
+  if (path.length < 3) {
+    throw new Error('Invalid derivation path: too short to extract account');
+  }
+  return path[2];
+}
+
+/**
  * Build derivation path for change address.
  */
 function buildChangePath(
   purpose: BtcPurpose,
   coinType: BtcCoinType,
+  account: number,
   changeIndex: number,
 ): number[] {
   return [
     purpose + HARDENED_OFFSET,
     coinType + HARDENED_OFFSET,
-    HARDENED_OFFSET,
+    account,
     1,
     changeIndex,
   ];
@@ -154,7 +180,9 @@ export function buildTxReq(input: TxBuildInput): TxBuildResult {
   const changeValue = totalInput - value - fee;
 
   if (changeValue < 0) {
-    throw new Error('Insufficient funds after fee calculation');
+    throw new Error(
+      `Insufficient funds: need ${value + fee} sats, have ${totalInput} sats`,
+    );
   }
 
   const prevOuts = selected.map((utxo) => ({
@@ -164,7 +192,8 @@ export function buildTxReq(input: TxBuildInput): TxBuildResult {
     signerPath: utxo.path,
   }));
 
-  const changePath = buildChangePath(purpose, coinType, changeIndex);
+  const account = extractAccountFromPath(selected[0].path);
+  const changePath = buildChangePath(purpose, coinType, account, changeIndex);
 
   return {
     prevOuts,

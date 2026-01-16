@@ -148,11 +148,15 @@ export class BlockbookProvider implements BtcProvider {
   private async fetchFeeEstimate(blocks: number): Promise<number> {
     const response = await this.fetch(`/api/v2/estimatefee/${blocks}`);
     if (!isFeeEstimateResponse(response)) {
-      return 1;
+      throw new Error(
+        `Fee estimation failed: invalid response format for ${blocks} blocks`,
+      );
     }
     const btcPerKb = parseFloat(response.result);
     if (Number.isNaN(btcPerKb) || btcPerKb <= 0) {
-      return 1;
+      throw new Error(
+        `Fee estimation failed: invalid fee rate "${response.result}" for ${blocks} blocks`,
+      );
     }
     return btcPerKb * 100000;
   }
