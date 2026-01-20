@@ -2,10 +2,11 @@
   "name": "gridplus-sdk-monorepo",
   "private": true,
   "scripts": {
-    "build": "pnpm --filter gridplus-sdk run build",
-    "test": "pnpm --filter gridplus-sdk run test",
-    "lint": "pnpm --filter gridplus-sdk run lint",
-    "lint:fix": "pnpm --filter gridplus-sdk run lint:fix",
+    "build": "pnpm --filter @gridplus/btc run build && pnpm --filter gridplus-sdk run build",
+    "test": "pnpm --filter @gridplus/btc run build && pnpm --filter @gridplus/btc run test && pnpm --filter gridplus-sdk run test",
+    "test-unit": "pnpm --filter @gridplus/btc run build && pnpm --filter @gridplus/btc run test && pnpm --filter gridplus-sdk run test-unit",
+    "lint": "pnpm --filter @gridplus/btc run lint && pnpm --filter gridplus-sdk run lint",
+    "lint:fix": "pnpm --filter @gridplus/btc run lint:fix && pnpm --filter gridplus-sdk run lint:fix",
     "e2e": "pnpm --filter gridplus-sdk run e2e",
     "docs:build": "pnpm --filter gridplus-sdk-docs run build",
     "docs:start": "pnpm --filter gridplus-sdk-docs run start"

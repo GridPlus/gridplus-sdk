@@ -114,15 +114,17 @@ jobs:
 
       - name: Show simulator logs on failure
         if: failure() && env.INTERNAL_EVENT == 'true'
-        working-directory: lattice-simulator
         run: |
-          echo "=== Simulator logs ==="
-          cat simulator.log || echo "No simulator logs found"
+          if [ -d lattice-simulator ]; then
+            echo "=== Simulator logs ==="
+            cat lattice-simulator/simulator.log || echo "No simulator logs found"
+          else
+            echo "Simulator directory not found, skipping logs"
+          fi
 
       - name: Stop simulator
         if: always() && env.INTERNAL_EVENT == 'true'
-        working-directory: lattice-simulator
         run: |
-          if [ -f simulator.pid ]; then
-            kill $(cat simulator.pid) || true
+          if [ -f lattice-simulator/simulator.pid ]; then
+            kill $(cat lattice-simulator/simulator.pid) || true
           fi
