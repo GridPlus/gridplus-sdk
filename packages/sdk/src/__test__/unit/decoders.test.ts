@@ -1,4 +1,10 @@
-import { decodeConnectResponse, decodeFetchEncData, decodeGetAddressesResponse, decodeGetKvRecordsResponse, decodeSignResponse } from '../../functions'
+import {
+	decodeConnectResponse,
+	decodeFetchEncData,
+	decodeGetAddressesResponse,
+	decodeGetKvRecordsResponse,
+	decodeSignResponse,
+} from '../../functions'
 import type { DecodeSignResponseParams } from '../../types'
 import {
 	clientKeyPair,
@@ -17,11 +23,15 @@ import {
 
 describe('decoders', () => {
 	test('connect', () => {
-		expect(decodeConnectResponse(connectDecoderData, clientKeyPair)).toMatchSnapshot()
+		expect(
+			decodeConnectResponse(connectDecoderData, clientKeyPair),
+		).toMatchSnapshot()
 	})
 
 	test('getAddresses', () => {
-		expect(decodeGetAddressesResponse(getAddressesDecoderData, getAddressesFlag)).toMatchSnapshot()
+		expect(
+			decodeGetAddressesResponse(getAddressesDecoderData, getAddressesFlag),
+		).toMatchSnapshot()
 	})
 
 	test('sign - bitcoin', () => {
@@ -44,7 +54,12 @@ describe('decoders', () => {
 	})
 
 	test('getKvRecords', () => {
-		expect(decodeGetKvRecordsResponse(getKvRecordsDecoderData, decoderTestsFwConstants)).toMatchSnapshot()
+		expect(
+			decodeGetKvRecordsResponse(
+				getKvRecordsDecoderData,
+				decoderTestsFwConstants,
+			),
+		).toMatchSnapshot()
 	})
 
 	test('fetchEncryptedData', () => {

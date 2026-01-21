@@ -16,6 +16,7 @@ jobs:
   build:
     name: Lint, Build & Unit, E2E Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     permissions:
       contents: read
       packages: read
@@ -23,36 +24,30 @@ jobs:
       INTERNAL_EVENT: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-      - name: Install Node.js
-        uses: actions/setup-node@v3
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20.x
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
-      - name: Setup Turborepo cache
-        uses: actions/cache@v4
-        with:
-          path: .turbo
-          key: turbo-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ github.sha }}
-          restore-keys: |
-            turbo-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-
+      - name: Lint
+        run: pnpm turbo run lint
 
-      - name: Run linter
-        run: pnpm run lint
+      - name: Type check
+        run: pnpm turbo run typecheck
 
-      - name: Run tests
-        run: pnpm run test
+      - name: Test
+        run: pnpm turbo run test
 
-      - name: Build project
-        run: pnpm run build
+      - name: Build
+        run: pnpm turbo run build
 
       - name: Release a nightly build
         if: env.INTERNAL_EVENT == 'true'

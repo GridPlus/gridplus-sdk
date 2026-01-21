@@ -7,7 +7,10 @@ import { decodeAbiParameters, parseAbiParameters } from 'viem'
  * @returns      Buffer containing RLP-serialized array of calldata info to pass to signing request
  * @public
  */
-export const parseSolidityJSONABI = (sig: string, abi: any[]): { def: EVMDef } => {
+export const parseSolidityJSONABI = (
+	sig: string,
+	abi: any[],
+): { def: EVMDef } => {
 	sig = coerceSig(sig)
 	// Find the first match in the ABI
 	const match = abi
@@ -102,11 +105,17 @@ export const getNestedCalldata = (def, calldata) => {
 				if (Array.isArray(paramData)) {
 					paramData.forEach((nestedParamDatum) => {
 						// Ensure nestedParamDatum is a hex string
-						if (typeof nestedParamDatum !== 'string' || !nestedParamDatum.startsWith('0x')) {
+						if (
+							typeof nestedParamDatum !== 'string' ||
+							!nestedParamDatum.startsWith('0x')
+						) {
 							nestedDefIsPossible = false
 							return
 						}
-						const nestedParamDatumBuf = Buffer.from(nestedParamDatum.slice(2), 'hex')
+						const nestedParamDatumBuf = Buffer.from(
+							nestedParamDatum.slice(2),
+							'hex',
+						)
 						if (!couldBeNestedDef(nestedParamDatumBuf)) {
 							nestedDefIsPossible = false
 						}
@@ -116,7 +125,10 @@ export const getNestedCalldata = (def, calldata) => {
 				}
 			} else if (isBytesItem(defParams[i])) {
 				// Regular `bytes` type - perform size check
-				if (typeof paramData !== 'string' || !(paramData as string).startsWith('0x')) {
+				if (
+					typeof paramData !== 'string' ||
+					!(paramData as string).startsWith('0x')
+				) {
 					nestedDefIsPossible = false
 				} else {
 					const data = paramData as string
@@ -294,7 +306,8 @@ function parseBasicTypeStr(typeStr: string): EVMParamInfo {
 		if (typeStr.indexOf(t) > -1 && !found) {
 			param.typeIdx = i
 			param.arraySzs = getArraySzs(typeStr)
-			const arrStart = param.arraySzs.length > 0 ? typeStr.indexOf('[') : typeStr.length
+			const arrStart =
+				param.arraySzs.length > 0 ? typeStr.indexOf('[') : typeStr.length
 			const typeStrNum = typeStr.slice(t.length, arrStart)
 			if (Number.parseInt(typeStrNum)) {
 				param.szBytes = Number.parseInt(typeStrNum) / 8
@@ -316,7 +329,12 @@ function parseBasicTypeStr(typeStr: string): EVMParamInfo {
  * (EVMDef). This function may recurse if there are tuple types.
  * @internal
  */
-function parseDef(item, canonicalName = '', def = [], recursed = false): EVMDef {
+function parseDef(
+	item,
+	canonicalName = '',
+	def = [],
+	recursed = false,
+): EVMDef {
 	// Function name. Can be an empty string.
 	if (!recursed) {
 		const nameStr = item.name || ''
@@ -331,7 +349,12 @@ function parseDef(item, canonicalName = '', def = [], recursed = false): EVMDef 
 			const flatParam = getFlatParam(input)
 			if (input.type.indexOf('tuple') > -1 && input.components) {
 				// For tuples we need to recurse
-				const recursed = parseDef({ inputs: input.components }, canonicalName, [], true)
+				const recursed = parseDef(
+					{ inputs: input.components },
+					canonicalName,
+					[],
+					true,
+				)
 				canonicalName = recursed.canonicalName
 				// Add brackets if this is a tuple array and also add a comma
 				canonicalName += `${input.type.slice(5)},`
@@ -369,7 +392,12 @@ function parseParamDef(def: any[], prefix = ''): any[] {
 			parsedDef[parsedDef.length - 1].push(parseParamDef(param, `${i}-`))
 		} else {
 			// If this is not tuple info, add the flat param info to the def
-			parsedDef.push([`#${prefix}${i + 1 - numTuples}`, param.typeIdx, param.szBytes, param.arraySzs])
+			parsedDef.push([
+				`#${prefix}${i + 1 - numTuples}`,
+				param.typeIdx,
+				param.szBytes,
+				param.arraySzs,
+			])
 		}
 		// Tuple
 		if (param.typeIdx === EVM_TYPES.indexOf('tuple')) {
@@ -482,7 +510,8 @@ function getTupleName(name, withArr = true) {
 		} else if (name[i] === ')') {
 			brackets -= 1
 		}
-		let canBreak = name[i + 1] === ',' || name[i + 1] === ')' || i === name.length - 1
+		let canBreak =
+			name[i + 1] === ',' || name[i + 1] === ')' || i === name.length - 1
 		if (!withArr && name[i + 1] === '[') {
 			canBreak = true
 		}
@@ -510,7 +539,17 @@ function isBytesArrItem(param) {
 }
 
 const BAD_CANONICAL_ERR = 'Could not parse canonical function name.'
-const EVM_TYPES = [null, 'address', 'bool', 'uint', 'int', 'bytes', 'string', 'tuple', 'nestedDef']
+const EVM_TYPES = [
+	null,
+	'address',
+	'bool',
+	'uint',
+	'int',
+	'bytes',
+	'string',
+	'tuple',
+	'nestedDef',
+]
 
 type EVMParamInfo = {
 	szBytes: number

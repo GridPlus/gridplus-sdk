@@ -47,7 +47,9 @@ describe('Non-Exportable Seed', () => {
 				return
 			}
 			// NOTE: non-exportable seeds were deprecated from the normal setup pathway in firmware v0.12.0
-			const result = await question('Do you have a non-exportable SafeCard seed loaded and wish to continue? (Y/N) ')
+			const result = await question(
+				'Do you have a non-exportable SafeCard seed loaded and wish to continue? (Y/N) ',
+			)
 			if (result.toLowerCase() !== 'y') {
 				runTests = false
 			}
@@ -91,7 +93,9 @@ describe('Non-Exportable Seed', () => {
 			}
 			// Validate that tx sigs are non-uniform
 			const unsignedMsg = tx.getMessageToSign()
-			const unsigned = Array.isArray(unsignedMsg) ? RLP.encode(unsignedMsg) : unsignedMsg
+			const unsigned = Array.isArray(unsignedMsg)
+				? RLP.encode(unsignedMsg)
+				: unsignedMsg
 			const tx1Resp = await client.sign(txReq)
 			validateSig(tx1Resp, unsigned)
 			const tx2Resp = await client.sign(txReq)

@@ -229,8 +229,11 @@ export const EIP2930_TEST_VECTORS: TestVector[] = [
 			chainId: 1,
 			accessList: [
 				{
-					address: '0xe242e54155b1abc71fc118065270cecaaf8b7768' as `0x${string}`,
-					storageKeys: ['0x0000000000000000000000000000000000000000000000000000000000000001' as `0x${string}`],
+					address:
+						'0xe242e54155b1abc71fc118065270cecaaf8b7768' as `0x${string}`,
+					storageKeys: [
+						'0x0000000000000000000000000000000000000000000000000000000000000001' as `0x${string}`,
+					],
 				},
 			],
 		},
@@ -249,12 +252,19 @@ export const EIP2930_TEST_VECTORS: TestVector[] = [
 			chainId: 1,
 			accessList: [
 				{
-					address: '0x6B175474E89094C44Da98b954EedeAC495271d0F' as `0x${string}`, // DAI contract
-					storageKeys: ['0x0000000000000000000000000000000000000000000000000000000000000001' as `0x${string}`, '0x0000000000000000000000000000000000000000000000000000000000000002' as `0x${string}`],
+					address:
+						'0x6B175474E89094C44Da98b954EedeAC495271d0F' as `0x${string}`, // DAI contract
+					storageKeys: [
+						'0x0000000000000000000000000000000000000000000000000000000000000001' as `0x${string}`,
+						'0x0000000000000000000000000000000000000000000000000000000000000002' as `0x${string}`,
+					],
 				},
 				{
-					address: '0xe242e54155b1abc71fc118065270cecaaf8b7768' as `0x${string}`, // Recipient
-					storageKeys: ['0x0000000000000000000000000000000000000000000000000000000000000003' as `0x${string}`],
+					address:
+						'0xe242e54155b1abc71fc118065270cecaaf8b7768' as `0x${string}`, // Recipient
+					storageKeys: [
+						'0x0000000000000000000000000000000000000000000000000000000000000003' as `0x${string}`,
+					],
 				},
 			],
 		},
@@ -287,16 +297,27 @@ export const EIP2930_TEST_VECTORS: TestVector[] = [
 			chainId: 1,
 			accessList: [
 				{
-					address: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D' as `0x${string}`, // Router
-					storageKeys: ['0x0000000000000000000000000000000000000000000000000000000000000001' as `0x${string}`, '0x0000000000000000000000000000000000000000000000000000000000000002' as `0x${string}`],
+					address:
+						'0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D' as `0x${string}`, // Router
+					storageKeys: [
+						'0x0000000000000000000000000000000000000000000000000000000000000001' as `0x${string}`,
+						'0x0000000000000000000000000000000000000000000000000000000000000002' as `0x${string}`,
+					],
 				},
 				{
-					address: '0x6B175474E89094C44Da98b954EedeAC495271d0F' as `0x${string}`, // DAI
-					storageKeys: ['0x0000000000000000000000000000000000000000000000000000000000000003' as `0x${string}`, '0x0000000000000000000000000000000000000000000000000000000000000004' as `0x${string}`],
+					address:
+						'0x6B175474E89094C44Da98b954EedeAC495271d0F' as `0x${string}`, // DAI
+					storageKeys: [
+						'0x0000000000000000000000000000000000000000000000000000000000000003' as `0x${string}`,
+						'0x0000000000000000000000000000000000000000000000000000000000000004' as `0x${string}`,
+					],
 				},
 				{
-					address: '0xdAC17F958D2ee523a2206206994597C13D831ec7' as `0x${string}`, // USDT
-					storageKeys: ['0x0000000000000000000000000000000000000000000000000000000000000005' as `0x${string}`],
+					address:
+						'0xdAC17F958D2ee523a2206206994597C13D831ec7' as `0x${string}`, // USDT
+					storageKeys: [
+						'0x0000000000000000000000000000000000000000000000000000000000000005' as `0x${string}`,
+					],
 				},
 			],
 		},
@@ -325,7 +346,8 @@ export const EIP7702_TEST_VECTORS: TestVector[] = [
 			authorizationList: [
 				{
 					chainId: 1,
-					address: '0x000000004f43c49e93c970e84001853a70923b03' as `0x${string}`,
+					address:
+						'0x000000004f43c49e93c970e84001853a70923b03' as `0x${string}`,
 					nonce: 1,
 					yParity: 1,
 					r: '0xc9f7e0af53f516744bc34827bef7236df3123c3a07a601dca75d7698416adc4a' as `0x${string}`,
@@ -351,7 +373,8 @@ export const EIP7702_TEST_VECTORS: TestVector[] = [
 			authorizationList: [
 				{
 					chainId: 1,
-					address: '0x000000004f43c49e93c970e84001853a70923b03' as `0x${string}`,
+					address:
+						'0x000000004f43c49e93c970e84001853a70923b03' as `0x${string}`,
 					nonce: 1,
 					yParity: 0,
 					r: '0x948c69c40057e9fd4c9bb55506ef764bf80d1bbaf980fe8c09d9d9c0b67d0e49' as `0x${string}`,
@@ -377,7 +400,8 @@ export const EIP7702_TEST_VECTORS: TestVector[] = [
 			authorizationList: [
 				{
 					chainId: 1,
-					address: '0x163193c89de836e82bb121bd0dbcaba7e8ba67dc' as `0x${string}`,
+					address:
+						'0x163193c89de836e82bb121bd0dbcaba7e8ba67dc' as `0x${string}`,
 					nonce: 4999,
 					yParity: 1,
 					r: '0x806cbbf8a3cfb25b660e03147984ff95725252b6c95aceed91d5c0bfca6ad0d1' as `0x${string}`,
@@ -590,7 +614,9 @@ export const EDGE_CASE_TEST_VECTORS: TestVector[] = [
 		tx: {
 			type: 'eip1559',
 			to: '0xe242e54155b1abc71fc118065270cecaaf8b7768' as `0x${string}`,
-			value: BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'), // Max uint256
+			value: BigInt(
+				'0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+			), // Max uint256
 			data: '0x' as `0x${string}`, // Add missing data field
 			nonce: 0,
 			maxFeePerGas: BigInt('20000000000'), // 20 gwei
@@ -643,11 +669,15 @@ export const EDGE_CASE_TEST_VECTORS: TestVector[] = [
 			chainId: 1,
 			accessList: [
 				{
-					address: '0xe242e54155b1abc71fc118065270cecaaf8b7768' as `0x${string}`,
-					storageKeys: ['0x7154f8b310ad6ce97ce3b15e3419d9863865dfe2d8635802f7f4a52a206255a6' as `0x${string}`],
+					address:
+						'0xe242e54155b1abc71fc118065270cecaaf8b7768' as `0x${string}`,
+					storageKeys: [
+						'0x7154f8b310ad6ce97ce3b15e3419d9863865dfe2d8635802f7f4a52a206255a6' as `0x${string}`,
+					],
 				},
 				{
-					address: '0xe0f8ff08ef0242c461da688b8b85e438db724860' as `0x${string}`,
+					address:
+						'0xe0f8ff08ef0242c461da688b8b85e438db724860' as `0x${string}`,
 					storageKeys: [], // Empty storage keys
 				},
 			],
@@ -668,11 +698,15 @@ export const EDGE_CASE_TEST_VECTORS: TestVector[] = [
 			chainId: 1,
 			accessList: [
 				{
-					address: '0xe242e54155b1abc71fc118065270cecaaf8b7768' as `0x${string}`,
-					storageKeys: ['0x7154f8b310ad6ce97ce3b15e3419d9863865dfe2d8635802f7f4a52a206255a6' as `0x${string}`],
+					address:
+						'0xe242e54155b1abc71fc118065270cecaaf8b7768' as `0x${string}`,
+					storageKeys: [
+						'0x7154f8b310ad6ce97ce3b15e3419d9863865dfe2d8635802f7f4a52a206255a6' as `0x${string}`,
+					],
 				},
 				{
-					address: '0xe0f8ff08ef0242c461da688b8b85e438db724860' as `0x${string}`,
+					address:
+						'0xe0f8ff08ef0242c461da688b8b85e438db724860' as `0x${string}`,
 					storageKeys: [], // Empty storage keys
 				},
 			],
@@ -1018,7 +1052,9 @@ export const ALL_COMPREHENSIVE_VECTORS: TestVector[] = [
  * Get vectors by category for targeted testing
  */
 export function getVectorsByCategory(category: string): TestVector[] {
-	return ALL_COMPREHENSIVE_VECTORS.filter((vector) => vector.category === category)
+	return ALL_COMPREHENSIVE_VECTORS.filter(
+		(vector) => vector.category === category,
+	)
 }
 
 /**
@@ -1030,14 +1066,23 @@ export function getBalancedTestVectors(perType = 3): TestVector[] {
 	const eip2930Vectors = EIP2930_TEST_VECTORS.slice(0, perType)
 	const eip7702Vectors = EIP7702_TEST_VECTORS.slice(0, perType)
 
-	return [...legacyVectors, ...eip1559Vectors, ...eip2930Vectors, ...eip7702Vectors]
+	return [
+		...legacyVectors,
+		...eip1559Vectors,
+		...eip2930Vectors,
+		...eip7702Vectors,
+	]
 }
 
 /**
  * Get vectors for boundary testing specifically
  */
 export function getBoundaryTestVectors(): TestVector[] {
-	return [...BOUNDARY_CONDITION_VECTORS, ...EDGE_CASE_TEST_VECTORS, ...PAYLOAD_SIZE_VECTORS]
+	return [
+		...BOUNDARY_CONDITION_VECTORS,
+		...EDGE_CASE_TEST_VECTORS,
+		...PAYLOAD_SIZE_VECTORS,
+	]
 }
 
 /**

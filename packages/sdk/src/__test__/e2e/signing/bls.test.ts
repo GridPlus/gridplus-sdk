@@ -15,7 +15,12 @@
  * Running with a different mnemonic will cause test failures due to
  * incorrect key derivations.
  */
-import { create as createKeystore, decrypt as decryptKeystore, isValidKeystore, verifyPassword } from '@chainsafe/bls-keystore'
+import {
+	create as createKeystore,
+	decrypt as decryptKeystore,
+	isValidKeystore,
+	verifyPassword,
+} from '@chainsafe/bls-keystore'
 import { getPublicKey, sign } from '@noble/bls12-381'
 import { deriveSeedTree } from 'bls12-381-keygen'
 import { question } from 'readline-sync'
@@ -51,21 +56,30 @@ describe('[BLS keys]', () => {
 
 		// Check if firmware supports BLS (requires >= 0.17.0)
 		const fwVersion = client.getFwVersion()
-		const versionStr = fwVersion ? `${fwVersion.major}.${fwVersion.minor}.${fwVersion.fix}` : 'unknown'
+		const versionStr = fwVersion
+			? `${fwVersion.major}.${fwVersion.minor}.${fwVersion.fix}`
+			: 'unknown'
 
 		console.log(`\n[BLS Test] Firmware version: ${versionStr}`)
 		console.log('[BLS Test] Raw fwVersion:', fwVersion)
 
 		const fwConstants = client.getFwConstants()
 		console.log('[BLS Test] getAddressFlags:', fwConstants?.getAddressFlags)
-		console.log('[BLS Test] BLS12_381_G1_PUB constant:', Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB)
+		console.log(
+			'[BLS Test] BLS12_381_G1_PUB constant:',
+			Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB,
+		)
 
-		supportsBLS = fwConstants?.getAddressFlags?.includes(Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB as number)
+		supportsBLS = fwConstants?.getAddressFlags?.includes(
+			Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB as number,
+		)
 
 		console.log(`[BLS Test] supportsBLS: ${supportsBLS}\n`)
 
 		if (!supportsBLS) {
-			console.warn(`\nSkipping BLS tests: Firmware version ${versionStr} does not support BLS operations.\nBLS support requires firmware version >= 0.17.0\n`)
+			console.warn(
+				`\nSkipping BLS tests: Firmware version ${versionStr} does not support BLS operations.\nBLS support requires firmware version >= 0.17.0\n`,
+			)
 		}
 	})
 
@@ -158,9 +172,17 @@ async function testBLSDerivationAndSig(seed, signerPath) {
 	const refPubStr = Buffer.from(refPub).toString('hex')
 	const refSig = await sign(msg, priv)
 	const refSigStr = Buffer.from(refSig).toString('hex')
-	expect(latticePub.toString('hex')).to.equal(refPubStr, 'Deposit public key mismatch')
-	expect(latticeSig.pubkey.toString('hex')).to.equal(refPubStr, 'Lattice signature returned wrong pubkey')
-	expect(Buffer.from(latticeSig.sig as unknown as Buffer).toString('hex')).to.equal(refSigStr, 'Signature mismatch')
+	expect(latticePub.toString('hex')).to.equal(
+		refPubStr,
+		'Deposit public key mismatch',
+	)
+	expect(latticeSig.pubkey.toString('hex')).to.equal(
+		refPubStr,
+		'Lattice signature returned wrong pubkey',
+	)
+	expect(
+		Buffer.from(latticeSig.sig as unknown as Buffer).toString('hex'),
+	).to.equal(refSigStr, 'Signature mismatch')
 }
 async function validateExportedKeystore(seed, path, pw, expKeystoreBuffer) {
 	const exportedKeystore = JSON.parse(expKeystoreBuffer.toString())
@@ -168,18 +190,39 @@ async function validateExportedKeystore(seed, path, pw, expKeystoreBuffer) {
 	const pub = getPublicKey(priv)
 
 	// Validate the keystore in isolation
-	expect(isValidKeystore(exportedKeystore)).to.equal(true, 'Exported keystore invalid!')
+	expect(isValidKeystore(exportedKeystore)).to.equal(
+		true,
+		'Exported keystore invalid!',
+	)
 	const expPwVerified = await verifyPassword(exportedKeystore, pw)
-	expect(expPwVerified).to.equal(true, `Password could not be verified in exported keystore. Expected "${pw}"`)
+	expect(expPwVerified).to.equal(
+		true,
+		`Password could not be verified in exported keystore. Expected "${pw}"`,
+	)
 	const expDec = await decryptKeystore(exportedKeystore, pw)
-	expect(Buffer.from(expDec).toString('hex')).to.equal(Buffer.from(priv).toString('hex'), 'Exported keystore did not properly encrypt key!')
-	expect(exportedKeystore.pubkey).to.equal(Buffer.from(pub).toString('hex'), 'Wrong public key exported from Lattice')
+	expect(Buffer.from(expDec).toString('hex')).to.equal(
+		Buffer.from(priv).toString('hex'),
+		'Exported keystore did not properly encrypt key!',
+	)
+	expect(exportedKeystore.pubkey).to.equal(
+		Buffer.from(pub).toString('hex'),
+		'Wrong public key exported from Lattice',
+	)
 
 	// Generate an independent keystore and compare decrypted contents
 	const genKeystore = await createKeystore(pw, priv, pub, getPathStr(path))
-	expect(isValidKeystore(genKeystore)).to.equal(true, 'Generated keystore invalid?')
+	expect(isValidKeystore(genKeystore)).to.equal(
+		true,
+		'Generated keystore invalid?',
+	)
 	const genPwVerified = await verifyPassword(genKeystore, pw)
-	expect(genPwVerified).to.equal(true, 'Password could not be verified in generated keystore?')
+	expect(genPwVerified).to.equal(
+		true,
+		'Password could not be verified in generated keystore?',
+	)
 	const genDec = await decryptKeystore(genKeystore, pw)
-	expect(Buffer.from(expDec).toString('hex')).to.equal(Buffer.from(genDec).toString('hex'), 'Exported encrypted privkey did not match factory test example...')
+	expect(Buffer.from(expDec).toString('hex')).to.equal(
+		Buffer.from(genDec).toString('hex'),
+		'Exported encrypted privkey did not match factory test example...',
+	)
 }

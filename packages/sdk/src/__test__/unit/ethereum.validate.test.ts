@@ -1,4 +1,9 @@
-import { type MessageTypes, SignTypedDataVersion, TypedDataUtils, type TypedMessage } from '@metamask/eth-sig-util'
+import {
+	type MessageTypes,
+	SignTypedDataVersion,
+	TypedDataUtils,
+	type TypedMessage,
+} from '@metamask/eth-sig-util'
 import { ecsign, privateToAddress } from 'ethereumjs-util'
 import { mnemonicToAccount } from 'viem/accounts'
 import { HARDENED_OFFSET } from '../../constants'

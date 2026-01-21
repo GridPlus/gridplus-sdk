@@ -1,5 +1,14 @@
 import { useState } from 'react'
-import { addAddressTags, fetchAddressTags, fetchAddresses, fetchLedgerLiveAddresses, removeAddressTags, sign, signMessage, type AddressTag } from 'gridplus-sdk'
+import {
+	addAddressTags,
+	fetchAddressTags,
+	fetchAddresses,
+	fetchLedgerLiveAddresses,
+	removeAddressTags,
+	sign,
+	signMessage,
+	type AddressTag,
+} from 'gridplus-sdk'
 import { Button } from './Button'
 
 interface LatticeProps {
@@ -28,8 +37,20 @@ export const Lattice = ({ label }: LatticeProps) => {
 			}}
 		>
 			<h2>{label}</h2>
-			<Button onClick={async () => { await sign(getTxPayload()) }}>Sign</Button>
-			<Button onClick={async () => { await signMessage('test message') }}>Sign Message</Button>
+			<Button
+				onClick={async () => {
+					await sign(getTxPayload())
+				}}
+			>
+				Sign
+			</Button>
+			<Button
+				onClick={async () => {
+					await signMessage('test message')
+				}}
+			>
+				Sign Message
+			</Button>
 
 			<div>
 				<h3>Addresses</h3>

@@ -1,7 +1,16 @@
 import { EMPTY_WALLET_UID } from '../constants'
-import { LatticeSecureEncryptedRequestType, encryptedSecureRequest } from '../protocol'
-import { validateActiveWallets, validateConnectedClient } from '../shared/validators'
-import type { ActiveWallets, FetchActiveWalletRequestFunctionParams } from '../types'
+import {
+	LatticeSecureEncryptedRequestType,
+	encryptedSecureRequest,
+} from '../protocol'
+import {
+	validateActiveWallets,
+	validateConnectedClient,
+} from '../shared/validators'
+import type {
+	ActiveWallets,
+	FetchActiveWalletRequestFunctionParams,
+} from '../types'
 
 /**
  * Fetch the active wallet in the device.
@@ -10,7 +19,9 @@ import type { ActiveWallets, FetchActiveWalletRequestFunctionParams } from '../t
  * unlocked, the external interface is considered "active" and this will return its {@link Wallet}
  * data. Otherwise it will return the info for the internal Lattice wallet.
  */
-export async function fetchActiveWallet({ client }: FetchActiveWalletRequestFunctionParams): Promise<ActiveWallets> {
+export async function fetchActiveWallet({
+	client,
+}: FetchActiveWalletRequestFunctionParams): Promise<ActiveWallets> {
 	const { url, sharedSecret, ephemeralPub } = validateConnectedClient(client)
 
 	const { decryptedData, newEphemeralPub } = await encryptedSecureRequest({

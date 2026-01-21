@@ -1,6 +1,21 @@
-import { LatticeGetAddressesFlag, LatticeSecureEncryptedRequestType, ProtocolConstants, encryptedSecureRequest } from '../protocol'
-import { validateConnectedClient, validateIsUInt4, validateNAddresses, validateStartPath, validateWallet } from '../shared/validators'
-import type { FirmwareConstants, GetAddressesRequestFunctionParams, Wallet } from '../types'
+import {
+	LatticeGetAddressesFlag,
+	LatticeSecureEncryptedRequestType,
+	ProtocolConstants,
+	encryptedSecureRequest,
+} from '../protocol'
+import {
+	validateConnectedClient,
+	validateIsUInt4,
+	validateNAddresses,
+	validateStartPath,
+	validateWallet,
+} from '../shared/validators'
+import type {
+	FirmwareConstants,
+	GetAddressesRequestFunctionParams,
+	Wallet,
+} from '../types'
 import { isValidAssetPath } from '../util'
 
 /**
@@ -9,8 +24,15 @@ import { isValidAssetPath } from '../util'
  * @category Lattice
  * @returns An array of addresses or public keys.
  */
-export async function getAddresses({ client, startPath: _startPath, n: _n, flag: _flag, iterIdx }: GetAddressesRequestFunctionParams): Promise<Buffer[]> {
-	const { url, sharedSecret, ephemeralPub, fwConstants } = validateConnectedClient(client)
+export async function getAddresses({
+	client,
+	startPath: _startPath,
+	n: _n,
+	flag: _flag,
+	iterIdx,
+}: GetAddressesRequestFunctionParams): Promise<Buffer[]> {
+	const { url, sharedSecret, ephemeralPub, fwConstants } =
+		validateConnectedClient(client)
 	const activeWallet = validateWallet(client.getActiveWallet())
 
 	const { startPath, n, flag } = validateGetAddressesRequest({
@@ -75,10 +97,16 @@ export const encodeGetAddressesRequest = ({
 	iterIdx?: number
 }) => {
 	const flags = fwConstants.getAddressFlags || ([] as any[])
-	const isPubkeyOnly = flags.indexOf(flag) > -1 && (flag === LatticeGetAddressesFlag.ed25519Pubkey || flag === LatticeGetAddressesFlag.secp256k1Pubkey || flag === LatticeGetAddressesFlag.bls12_381Pubkey)
+	const isPubkeyOnly =
+		flags.indexOf(flag) > -1 &&
+		(flag === LatticeGetAddressesFlag.ed25519Pubkey ||
+			flag === LatticeGetAddressesFlag.secp256k1Pubkey ||
+			flag === LatticeGetAddressesFlag.bls12_381Pubkey)
 	const isXpub = flag === LatticeGetAddressesFlag.secp256k1Xpub
 	if (!isPubkeyOnly && !isXpub && !isValidAssetPath(startPath, fwConstants)) {
-		throw new Error('Derivation path or flag is not supported. Try updating Lattice firmware.')
+		throw new Error(
+			'Derivation path or flag is not supported. Try updating Lattice firmware.',
+		)
 	}
 
 	// Ensure path depth is valid (2-5 indices)
@@ -127,17 +155,27 @@ export const encodeGetAddressesRequest = ({
  * @internal
  * @return an array of address strings or pubkey buffers
  */
-export const decodeGetAddressesResponse = (data: Buffer, flag: number): Buffer[] => {
+export const decodeGetAddressesResponse = (
+	data: Buffer,
+	flag: number,
+): Buffer[] => {
 	let off = 0
-	const addressOffset = flag === LatticeGetAddressesFlag.ed25519Pubkey ? 113 : 65
+	const addressOffset =
+		flag === LatticeGetAddressesFlag.ed25519Pubkey ? 113 : 65
 	// Look for addresses until we reach the end (a 4 byte checksum)
 	const addrs: any[] = []
 	// Pubkeys are formatted differently in the response
-	const arePubkeys = flag === LatticeGetAddressesFlag.secp256k1Pubkey || flag === LatticeGetAddressesFlag.ed25519Pubkey || flag === LatticeGetAddressesFlag.bls12_381Pubkey
+	const arePubkeys =
+		flag === LatticeGetAddressesFlag.secp256k1Pubkey ||
+		flag === LatticeGetAddressesFlag.ed25519Pubkey ||
+		flag === LatticeGetAddressesFlag.bls12_381Pubkey
 	if (arePubkeys) {
 		off += 1 // skip uint8 representing pubkey type
 	}
-	const respDataLength = ProtocolConstants.msgSizes.secure.data.response.encrypted[LatticeSecureEncryptedRequestType.getAddresses]
+	const respDataLength =
+		ProtocolConstants.msgSizes.secure.data.response.encrypted[
+			LatticeSecureEncryptedRequestType.getAddresses
+		]
 	while (off < respDataLength) {
 		if (arePubkeys) {
 			// Pubkeys are shorter and are returned as buffers

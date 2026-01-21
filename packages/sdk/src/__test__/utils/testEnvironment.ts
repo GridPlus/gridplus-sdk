@@ -6,7 +6,8 @@ expect.extend({
 	toEqualElseLog(received: unknown, expected: unknown, message?: string) {
 		return {
 			pass: received === expected,
-			message: () => message ?? `Expected ${String(received)} to equal ${String(expected)}`,
+			message: () =>
+				message ?? `Expected ${String(received)} to equal ${String(expected)}`,
 		}
 	},
 })

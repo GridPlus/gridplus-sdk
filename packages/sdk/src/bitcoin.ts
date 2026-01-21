@@ -52,7 +52,8 @@ const BTC_SCRIPT_TYPE_P2WPKH_V0 = 0x04
 const buildBitcoinTxRequest = (data) => {
 	const { prevOuts, recipient, value, changePath, fee } = data
 	if (!changePath) throw new Error('No changePath provided.')
-	if (changePath.length !== 5) throw new Error('Please provide a full change path.')
+	if (changePath.length !== 5)
+		throw new Error('Please provide a full change path.')
 	// Serialize the request
 	const payload = Buffer.alloc(59 + 69 * prevOuts.length)
 	let off = 0
@@ -104,7 +105,8 @@ const buildBitcoinTxRequest = (data) => {
 		const scriptType = getScriptType(input)
 		payload.writeUInt8(scriptType, off)
 		off++
-		if (!Buffer.isBuffer(input.txHash)) input.txHash = Buffer.from(input.txHash, 'hex')
+		if (!Buffer.isBuffer(input.txHash))
+			input.txHash = Buffer.from(input.txHash, 'hex')
 		input.txHash.copy(payload, off)
 		off += input.txHash.length
 	})
@@ -234,7 +236,10 @@ const getBitcoinAddress = (pubkeyhash, version) => {
 function buildRedeemScript(pubkey) {
 	const redeemScript = Buffer.alloc(22)
 	const shaHash = Buffer.from(Hash.sha256(pubkey))
-	const pubkeyhash = Buffer.from(ripemd160().update(shaHash).digest('hex'), 'hex')
+	const pubkeyhash = Buffer.from(
+		ripemd160().update(shaHash).digest('hex'),
+		'hex',
+	)
 	redeemScript.writeUInt8(OP.ZERO, 0)
 	redeemScript.writeUInt8(pubkeyhash.length, 1)
 	pubkeyhash.copy(redeemScript, 2)
@@ -283,7 +288,9 @@ function buildLockingScript(address) {
 		case FMT_LEGACY_TESTNET:
 			return buildP2pkhLockingScript(dec.pkh)
 		default:
-			throw new Error(`Unknown version byte: ${dec.versionByte}. Cannot build BTC transaction.`)
+			throw new Error(
+				`Unknown version byte: ${dec.versionByte}. Cannot build BTC transaction.`,
+			)
 	}
 }
 
@@ -400,7 +407,9 @@ function decodeAddress(address) {
 			}
 			// Make sure we decoded
 			if (bech32Dec.words[0] !== 0) {
-				throw new Error(`Unsupported segwit version: must be 0, got ${bech32Dec.words[0]}`)
+				throw new Error(
+					`Unsupported segwit version: must be 0, got ${bech32Dec.words[0]}`,
+				)
 			}
 			// Make sure address type is supported.
 			// We currently only support P2WPKH addresses, which bech-32decode to 33 words.
@@ -409,7 +418,9 @@ function decodeAddress(address) {
 			// support them either.
 			if (bech32Dec.words.length !== 33) {
 				const isP2wpsh = bech32Dec.words.length === 53
-				throw new Error(`Unsupported address${isP2wpsh ? ' (P2WSH not supported)' : ''}: ${address}`)
+				throw new Error(
+					`Unsupported address${isP2wpsh ? ' (P2WSH not supported)' : ''}: ${address}`,
+				)
 			}
 
 			pkh = Buffer.from(bech32.fromWords(bech32Dec.words.slice(1)))
@@ -432,14 +443,19 @@ function getAddressFormat(path) {
 		return FMT_SEGWIT_NATIVE_V0_TESTNET
 	} else if (purpose === PURPOSES.BTC_WRAPPED_SEGWIT && coin === COINS.BTC) {
 		return FMT_SEGWIT_WRAPPED
-	} else if (purpose === PURPOSES.BTC_WRAPPED_SEGWIT && coin === COINS.BTC_TESTNET) {
+	} else if (
+		purpose === PURPOSES.BTC_WRAPPED_SEGWIT &&
+		coin === COINS.BTC_TESTNET
+	) {
 		return FMT_SEGWIT_WRAPPED_TESTNET
 	} else if (purpose === PURPOSES.BTC_LEGACY && coin === COINS.BTC) {
 		return FMT_LEGACY
 	} else if (purpose === PURPOSES.BTC_LEGACY && coin === COINS.BTC_TESTNET) {
 		return FMT_LEGACY_TESTNET
 	} else {
-		throw new Error('Invalid Bitcoin path provided. Cannot determine address format.')
+		throw new Error(
+			'Invalid Bitcoin path provided. Cannot determine address format.',
+		)
 	}
 }
 
@@ -456,7 +472,9 @@ function getScriptType(input) {
 		case PURPOSES.BTC_SEGWIT:
 			return BTC_SCRIPT_TYPE_P2WPKH_V0
 		default:
-			throw new Error(`Unsupported path purpose (${input.signerPath[0]}): cannot determine BTC script type.`)
+			throw new Error(
+				`Unsupported path purpose (${input.signerPath[0]}): cannot determine BTC script type.`,
+			)
 	}
 }
 
@@ -466,7 +484,10 @@ function getScriptType(input) {
 function needsWitness(inputs) {
 	let w = false
 	inputs.forEach((input) => {
-		if (input.signerPath[0] === PURPOSES.BTC_SEGWIT || input.signerPath[0] === PURPOSES.BTC_WRAPPED_SEGWIT) {
+		if (
+			input.signerPath[0] === PURPOSES.BTC_SEGWIT ||
+			input.signerPath[0] === PURPOSES.BTC_WRAPPED_SEGWIT
+		) {
 			w = true
 		}
 	})

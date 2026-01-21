@@ -8,24 +8,24 @@ jobs:
   publish-npm:
     name: Publish
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-      - name: Install Node.js
-        uses: actions/setup-node@v3
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 22
           registry-url: 'https://registry.npmjs.org'
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build project
-        run: pnpm run build
+        run: pnpm turbo run build
 
       - name: Publish to NPM
         run: pnpm --filter gridplus-sdk publish --no-git-checks

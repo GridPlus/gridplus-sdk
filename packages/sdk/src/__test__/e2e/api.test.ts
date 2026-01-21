@@ -3,7 +3,8 @@ vi.mock('../../functions/fetchDecoder.ts', () => ({
 }))
 
 vi.mock('../../util', async () => {
-	const actual = await vi.importActual<typeof import('../../util')>('../../util')
+	const actual =
+		await vi.importActual<typeof import('../../util')>('../../util')
 	return {
 		...actual,
 		fetchCalldataDecoder: vi.fn().mockResolvedValue({
@@ -34,7 +35,14 @@ import {
 	signBtcWrappedSegwitTx,
 	signMessage,
 } from '../../api'
-import { addAddressTags, fetchAddressTags, fetchLedgerLiveAddresses, removeAddressTags, sign, signSolanaTx } from '../../api/index'
+import {
+	addAddressTags,
+	fetchAddressTags,
+	fetchLedgerLiveAddresses,
+	removeAddressTags,
+	sign,
+	signSolanaTx,
+} from '../../api/index'
 import { HARDENED_OFFSET } from '../../constants'
 import { buildRandomMsg } from '../utils/builders'
 import { BTC_PURPOSE_P2SH_P2WPKH, BTC_TESTNET_COIN } from '../utils/helpers'
@@ -52,16 +60,29 @@ describe('API', () => {
 			const btcTxData = {
 				prevOuts: [
 					{
-						txHash: '6e78493091f80d89a92ae3152df7fbfbdc44df09cf01a9b76c5113c02eaf2e0f',
+						txHash:
+							'6e78493091f80d89a92ae3152df7fbfbdc44df09cf01a9b76c5113c02eaf2e0f',
 						value: 10000,
 						index: 1,
-						signerPath: [BTC_PURPOSE_P2SH_P2WPKH, BTC_TESTNET_COIN, HARDENED_OFFSET, 0, 0],
+						signerPath: [
+							BTC_PURPOSE_P2SH_P2WPKH,
+							BTC_TESTNET_COIN,
+							HARDENED_OFFSET,
+							0,
+							0,
+						],
 					},
 				],
 				recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
 				value: 1000,
 				fee: 1000,
-				changePath: [BTC_PURPOSE_P2SH_P2WPKH, BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
+				changePath: [
+					BTC_PURPOSE_P2SH_P2WPKH,
+					BTC_TESTNET_COIN,
+					HARDENED_OFFSET,
+					1,
+					0,
+				],
 			}
 			test('legacy', async () => {
 				await signBtcLegacyTx(btcTxData)
@@ -105,8 +126,16 @@ describe('API', () => {
 				})
 
 				test('legacy', async () => {
-					const toHex = (v: bigint | number) => (typeof v === 'bigint' ? `0x${v.toString(16)}` : v)
-					const rawTx = RLP.encode([txData.nonce, toHex(txData.gasPrice), toHex(txData.gas), txData.to, toHex(txData.value), txData.data])
+					const toHex = (v: bigint | number) =>
+						typeof v === 'bigint' ? `0x${v.toString(16)}` : v
+					const rawTx = RLP.encode([
+						txData.nonce,
+						toHex(txData.gasPrice),
+						toHex(txData.gas),
+						txData.to,
+						toHex(txData.value),
+						txData.data,
+					])
 					await sign(rawTx)
 				})
 			})
@@ -122,9 +151,20 @@ describe('API', () => {
 	describe('address tags', () => {
 		beforeAll(async () => {
 			try {
-				await Promise.race([fetchAddressTags({ n: 1 }), new Promise((_, reject) => setTimeout(() => reject(new Error('Address tag RPC timed out')), 5000))])
+				await Promise.race([
+					fetchAddressTags({ n: 1 }),
+					new Promise((_, reject) =>
+						setTimeout(
+							() => reject(new Error('Address tag RPC timed out')),
+							5000,
+						),
+					),
+				])
 			} catch (err) {
-				console.warn('Skipping address tag tests due to connectivity issue:', (err as Error).message)
+				console.warn(
+					'Skipping address tag tests due to connectivity issue:',
+					(err as Error).message,
+				)
 			}
 		})
 
@@ -213,9 +253,12 @@ describe('API', () => {
 			})
 
 			test('fetch multiple addresses with wildcard', async () => {
-				const addresses = await fetchAddressesByDerivationPath("44'/60'/0'/0/X", {
-					n: 5,
-				})
+				const addresses = await fetchAddressesByDerivationPath(
+					"44'/60'/0'/0/X",
+					{
+						n: 5,
+					},
+				)
 				expect(addresses).toHaveLength(5)
 				addresses.forEach((address) => {
 					expect(address).toBeTruthy()
@@ -223,10 +266,13 @@ describe('API', () => {
 			})
 
 			test('fetch addresses with offset', async () => {
-				const addresses = await fetchAddressesByDerivationPath("44'/60'/0'/0/X", {
-					n: 3,
-					startPathIndex: 10,
-				})
+				const addresses = await fetchAddressesByDerivationPath(
+					"44'/60'/0'/0/X",
+					{
+						n: 3,
+						startPathIndex: 10,
+					},
+				)
 				expect(addresses).toHaveLength(3)
 				addresses.forEach((address) => {
 					expect(address).toBeTruthy()
@@ -234,9 +280,12 @@ describe('API', () => {
 			})
 
 			test('fetch addresses with lowercase x wildcard', async () => {
-				const addresses = await fetchAddressesByDerivationPath("44'/60'/0'/0/x", {
-					n: 2,
-				})
+				const addresses = await fetchAddressesByDerivationPath(
+					"44'/60'/0'/0/x",
+					{
+						n: 2,
+					},
+				)
 				expect(addresses).toHaveLength(2)
 				addresses.forEach((address) => {
 					expect(address).toBeTruthy()
@@ -244,9 +293,12 @@ describe('API', () => {
 			})
 
 			test('fetch addresses with wildcard in middle of path', async () => {
-				const addresses = await fetchAddressesByDerivationPath("44'/60'/X'/0/0", {
-					n: 3,
-				})
+				const addresses = await fetchAddressesByDerivationPath(
+					"44'/60'/X'/0/0",
+					{
+						n: 3,
+					},
+				)
 				expect(addresses).toHaveLength(3)
 				addresses.forEach((address) => {
 					expect(address).toBeTruthy()
@@ -254,9 +306,12 @@ describe('API', () => {
 			})
 
 			test('fetch solana addresses with wildcard in middle of path', async () => {
-				const addresses = await fetchAddressesByDerivationPath("44'/501'/X'/0'", {
-					n: 1,
-				})
+				const addresses = await fetchAddressesByDerivationPath(
+					"44'/501'/X'/0'",
+					{
+						n: 1,
+					},
+				)
 				expect(addresses).toHaveLength(1)
 				addresses.forEach((address) => {
 					expect(address).toBeTruthy()
@@ -264,21 +319,29 @@ describe('API', () => {
 			})
 
 			test('error on invalid derivation path', async () => {
-				await expect(fetchAddressesByDerivationPath('invalid/path')).rejects.toThrow()
+				await expect(
+					fetchAddressesByDerivationPath('invalid/path'),
+				).rejects.toThrow()
 			})
 
 			test('fetch single address when n=1 with wildcard', async () => {
-				const addresses = await fetchAddressesByDerivationPath("44'/60'/0'/0/X", {
-					n: 1,
-				})
+				const addresses = await fetchAddressesByDerivationPath(
+					"44'/60'/0'/0/X",
+					{
+						n: 1,
+					},
+				)
 				expect(addresses).toHaveLength(1)
 				expect(addresses[0]).toBeTruthy()
 			})
 
 			test('fetch no addresses when n=0', async () => {
-				const addresses = await fetchAddressesByDerivationPath("44'/60'/0'/0/X", {
-					n: 0,
-				})
+				const addresses = await fetchAddressesByDerivationPath(
+					"44'/60'/0'/0/X",
+					{
+						n: 0,
+					},
+				)
 				expect(addresses).toHaveLength(0)
 			})
 		})

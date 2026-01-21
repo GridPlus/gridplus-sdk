@@ -1,8 +1,19 @@
 import { HARDENED_OFFSET } from '../../../constants'
 import type { SignRequestParams, WalletPath } from '../../../types'
 import { randomBytes } from '../../../util'
-import { DEFAULT_SIGNER, buildMsgReq, buildRandomVectors, buildTx, buildTxReq } from '../../utils/builders'
-import { deriveAddress, signEip712JS, signPersonalJS, testUniformSigs } from '../../utils/determinism'
+import {
+	DEFAULT_SIGNER,
+	buildMsgReq,
+	buildRandomVectors,
+	buildTx,
+	buildTxReq,
+} from '../../utils/builders'
+import {
+	deriveAddress,
+	signEip712JS,
+	signPersonalJS,
+	testUniformSigs,
+} from '../../utils/determinism'
 /**
  * REQUIRED TEST MNEMONIC:
  * These tests require a SafeCard loaded with the standard test mnemonic:
@@ -33,11 +44,29 @@ describe('[Determinism]', () => {
 		})
 
 		it('Should validate some Ledger addresses derived from the test seed', async () => {
-			const path0 = [BTC_PURPOSE_P2PKH, ETH_COIN, HARDENED_OFFSET, 0, 0] as WalletPath
+			const path0 = [
+				BTC_PURPOSE_P2PKH,
+				ETH_COIN,
+				HARDENED_OFFSET,
+				0,
+				0,
+			] as WalletPath
 			const addr0 = deriveAddress(TEST_SEED, path0)
-			const path1 = [BTC_PURPOSE_P2PKH, ETH_COIN, HARDENED_OFFSET + 1, 0, 0] as WalletPath
+			const path1 = [
+				BTC_PURPOSE_P2PKH,
+				ETH_COIN,
+				HARDENED_OFFSET + 1,
+				0,
+				0,
+			] as WalletPath
 			const addr1 = deriveAddress(TEST_SEED, path1)
-			const path8 = [BTC_PURPOSE_P2PKH, ETH_COIN, HARDENED_OFFSET + 8, 0, 0] as WalletPath
+			const path8 = [
+				BTC_PURPOSE_P2PKH,
+				ETH_COIN,
+				HARDENED_OFFSET + 8,
+				0,
+				0,
+			] as WalletPath
 			const addr8 = deriveAddress(TEST_SEED, path8)
 			// Fetch these addresses from the Lattice and validate
 
@@ -47,13 +76,22 @@ describe('[Determinism]', () => {
 				n: 1,
 			}
 			const latAddr0 = await client.getAddresses(req)
-			expect((latAddr0[0] as string).toLowerCase()).toEqualElseLog(addr0.toLowerCase(), 'Incorrect address 0 fetched. Ensure your SafeCard is loaded with the test mnemonic: "test test test test test test test test test test test junk"')
+			expect((latAddr0[0] as string).toLowerCase()).toEqualElseLog(
+				addr0.toLowerCase(),
+				'Incorrect address 0 fetched. Ensure your SafeCard is loaded with the test mnemonic: "test test test test test test test test test test test junk"',
+			)
 			req.startPath = path1
 			const latAddr1 = await client.getAddresses(req)
-			expect((latAddr1[0] as string).toLowerCase()).toEqualElseLog(addr1.toLowerCase(), 'Incorrect address 1 fetched. Ensure your SafeCard is loaded with the test mnemonic: "test test test test test test test test test test test junk"')
+			expect((latAddr1[0] as string).toLowerCase()).toEqualElseLog(
+				addr1.toLowerCase(),
+				'Incorrect address 1 fetched. Ensure your SafeCard is loaded with the test mnemonic: "test test test test test test test test test test test junk"',
+			)
 			req.startPath = path8
 			const latAddr8 = await client.getAddresses(req)
-			expect((latAddr8[0] as string).toLowerCase()).toEqualElseLog(addr8.toLowerCase(), 'Incorrect address 8 fetched. Ensure your SafeCard is loaded with the test mnemonic: "test test test test test test test test test test test junk"')
+			expect((latAddr8[0] as string).toLowerCase()).toEqualElseLog(
+				addr8.toLowerCase(),
+				'Incorrect address 8 fetched. Ensure your SafeCard is loaded with the test mnemonic: "test test test test test test test test test test test junk"',
+			)
 		})
 	})
 
@@ -108,7 +146,10 @@ describe('[Determinism]', () => {
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice sig does not match JS reference',
+			)
 		})
 
 		it('Should validate signature from addr1', async () => {
@@ -117,7 +158,10 @@ describe('[Determinism]', () => {
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice sig does not match JS reference',
+			)
 		})
 
 		it('Should validate signature from addr8', async () => {
@@ -126,7 +170,10 @@ describe('[Determinism]', () => {
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice sig does not match JS reference',
+			)
 		})
 	})
 
@@ -137,7 +184,10 @@ describe('[Determinism]', () => {
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice sig does not match JS reference',
+			)
 		})
 
 		it('Should validate signature from addr1', async () => {
@@ -146,7 +196,10 @@ describe('[Determinism]', () => {
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice sig does not match JS reference',
+			)
 		})
 
 		it('Should validate signature from addr8', async () => {
@@ -155,7 +208,10 @@ describe('[Determinism]', () => {
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice sig does not match JS reference',
+			)
 		})
 	})
 
@@ -166,7 +222,10 @@ describe('[Determinism]', () => {
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice sig does not match JS reference',
+			)
 		})
 
 		it('Should validate signature from addr1', async () => {
@@ -175,7 +234,10 @@ describe('[Determinism]', () => {
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice sig does not match JS reference',
+			)
 		})
 
 		it('Should validate signature from addr8', async () => {
@@ -184,7 +246,10 @@ describe('[Determinism]', () => {
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signPersonalJS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice sig does not match JS reference',
+			)
 		})
 	})
 
@@ -235,7 +300,10 @@ describe('[Determinism]', () => {
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signEip712JS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice EIP712 sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice EIP712 sig does not match JS reference',
+			)
 		})
 
 		it('Should validate signature from addr1', async () => {
@@ -243,7 +311,10 @@ describe('[Determinism]', () => {
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signEip712JS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice EIP712 sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice EIP712 sig does not match JS reference',
+			)
 		})
 
 		it('Should validate signature from addr8', async () => {
@@ -251,7 +322,10 @@ describe('[Determinism]', () => {
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signEip712JS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice EIP712 sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice EIP712 sig does not match JS reference',
+			)
 		})
 	})
 
@@ -292,7 +366,10 @@ describe('[Determinism]', () => {
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signEip712JS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice EIP712 sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice EIP712 sig does not match JS reference',
+			)
 		})
 
 		it('Should validate signature from addr1', async () => {
@@ -300,7 +377,10 @@ describe('[Determinism]', () => {
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signEip712JS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice EIP712 sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice EIP712 sig does not match JS reference',
+			)
 		})
 
 		it('Should validate signature from addr8', async () => {
@@ -308,7 +388,10 @@ describe('[Determinism]', () => {
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signEip712JS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice EIP712 sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice EIP712 sig does not match JS reference',
+			)
 		})
 	})
 
@@ -349,21 +432,30 @@ describe('[Determinism]', () => {
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signEip712JS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice EIP712 sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice EIP712 sig does not match JS reference',
+			)
 		})
 		it('Should validate signature from addr1', async () => {
 			msgReq.data.signerPath[2] = HARDENED_OFFSET + 1
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signEip712JS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice EIP712 sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice EIP712 sig does not match JS reference',
+			)
 		})
 		it('Should validate signature from addr8', async () => {
 			msgReq.data.signerPath[2] = HARDENED_OFFSET + 8
 			const res = await client.sign(msgReq as unknown as SignRequestParams)
 			const sig = getSigStr(res)
 			const jsSig = signEip712JS(msgReq.data.payload, msgReq.data.signerPath)
-			expect(sig).toEqualElseLog(jsSig, 'Lattice EIP712 sig does not match JS reference')
+			expect(sig).toEqualElseLog(
+				jsSig,
+				'Lattice EIP712 sig does not match JS reference',
+			)
 		})
 	})
 

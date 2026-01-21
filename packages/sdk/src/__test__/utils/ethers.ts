@@ -1,4 +1,13 @@
-const EVM_TYPES = [null, 'address', 'bool', 'uint', 'int', 'bytes', 'string', 'tuple']
+const EVM_TYPES = [
+	null,
+	'address',
+	'bool',
+	'uint',
+	'int',
+	'bytes',
+	'string',
+	'tuple',
+]
 
 export function convertDecoderToEthers(def: unknown[]) {
 	const converted = getConvertedDef(def)
@@ -68,7 +77,9 @@ function genTupleData(tupleParam: unknown[]) {
 	const nestedData: unknown[] = []
 	tupleParam.forEach((nestedParam: unknown) => {
 		const np = nestedParam as { toString: (fmt: string) => string }[]
-		nestedData.push(genData(EVM_TYPES[Number.parseInt(np[1].toString('hex'), 16)] ?? '', np))
+		nestedData.push(
+			genData(EVM_TYPES[Number.parseInt(np[1].toString('hex'), 16)] ?? '', np),
+		)
 	})
 	return nestedData
 }
@@ -79,14 +90,21 @@ function genParamData(param: { toString: (fmt: string) => string }[]) {
 	return getArrayData(param, baseData)
 }
 
-function getArrayData(param: { toString: (fmt: string) => string }[], baseData: unknown) {
+function getArrayData(
+	param: { toString: (fmt: string) => string }[],
+	baseData: unknown,
+) {
 	let arrayData: unknown[] | undefined
 	let data: unknown
 	const arrSzs = param[3] as unknown as { toString: (fmt: string) => string }[]
 	for (let i = 0; i < arrSzs.length; i++) {
 		// let sz = parseInt(arrSzs[i].toString('hex')); TODO: fix this
 		const dimData: unknown[] = []
-		let sz = Number.parseInt((param[3] as unknown as { toString: (fmt: string) => string }[])[i].toString('hex'))
+		let sz = Number.parseInt(
+			(param[3] as unknown as { toString: (fmt: string) => string }[])[
+				i
+			].toString('hex'),
+		)
 		if (Number.isNaN(sz)) {
 			sz = 2 //1;
 		}

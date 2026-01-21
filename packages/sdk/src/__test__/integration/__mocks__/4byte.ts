@@ -38,7 +38,8 @@ export const fourbyteResponse0x38ed1739 = {
 			created_at: '2020-08-09T08:56:14.110995Z',
 			hex_signature: '0x38ed1739',
 			id: 171806,
-			text_signature: 'swapExactTokensForTokens(uint256,uint256,address[],address,uint256)',
+			text_signature:
+				'swapExactTokensForTokens(uint256,uint256,address[],address,uint256)',
 		},
 	],
 }
@@ -60,7 +61,8 @@ export const fourbyteResponse0c49ccbe = {
 		{
 			id: 186682,
 			created_at: '2021-05-09T03:48:17.627742Z',
-			text_signature: 'decreaseLiquidity((uint256,uint128,uint256,uint256,uint256))',
+			text_signature:
+				'decreaseLiquidity((uint256,uint128,uint256,uint256,uint256))',
 			hex_signature: '0x0c49ccbe',
 			bytes_signature: '\\fIÌ¾',
 		},
@@ -84,7 +86,8 @@ export const fourbyteResponse0x6a761202 = {
 		{
 			id: 169422,
 			created_at: '2020-01-28T10:40:07.614936Z',
-			text_signature: 'execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)',
+			text_signature:
+				'execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)',
 			hex_signature: '0x6a761202',
 			bytes_signature: 'jv\\u0012\\u0002',
 		},

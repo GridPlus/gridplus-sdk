@@ -17,14 +17,16 @@ describe('selectDefFrom4byteAbi', () => {
 				created_at: '2020-08-09T08:56:14.110995Z',
 				hex_signature: '0x38ed1739',
 				id: 171801,
-				text_signature: 'swapExactTokensForTokens(uint256,uint256,address[],address,uint256)',
+				text_signature:
+					'swapExactTokensForTokens(uint256,uint256,address[],address,uint256)',
 			},
 			{
 				bytes_signature: '8í9',
 				created_at: '2020-01-09T08:56:14.110995Z',
 				hex_signature: '0x38ed1739',
 				id: 171806,
-				text_signature: 'swapExactTokensForTokens(uint256,uint256,address[],address,uint256)',
+				text_signature:
+					'swapExactTokensForTokens(uint256,uint256,address[],address,uint256)',
 			},
 			{
 				bytes_signature: '',

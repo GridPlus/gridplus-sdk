@@ -1,6 +1,17 @@
-import { LatticeSecureEncryptedRequestType, encryptedSecureRequest } from '../protocol'
-import { validateConnectedClient, validateKvRecord, validateKvRecords } from '../shared/validators'
-import type { AddKvRecordsRequestFunctionParams, FirmwareConstants, KVRecords } from '../types'
+import {
+	LatticeSecureEncryptedRequestType,
+	encryptedSecureRequest,
+} from '../protocol'
+import {
+	validateConnectedClient,
+	validateKvRecord,
+	validateKvRecords,
+} from '../shared/validators'
+import type {
+	AddKvRecordsRequestFunctionParams,
+	FirmwareConstants,
+	KVRecords,
+} from '../types'
 
 /**
  * `addKvRecords` takes in a set of key-value records and sends a request to add them to the
@@ -8,8 +19,14 @@ import type { AddKvRecordsRequestFunctionParams, FirmwareConstants, KVRecords } 
  * @category Lattice
  * @returns A callback with an error or null.
  */
-export async function addKvRecords({ client, records, type, caseSensitive }: AddKvRecordsRequestFunctionParams): Promise<Buffer> {
-	const { url, sharedSecret, ephemeralPub, fwConstants } = validateConnectedClient(client)
+export async function addKvRecords({
+	client,
+	records,
+	type,
+	caseSensitive,
+}: AddKvRecordsRequestFunctionParams): Promise<Buffer> {
+	const { url, sharedSecret, ephemeralPub, fwConstants } =
+		validateConnectedClient(client)
 	validateAddKvRequest({ records, fwConstants })
 
 	// Build the data for this request

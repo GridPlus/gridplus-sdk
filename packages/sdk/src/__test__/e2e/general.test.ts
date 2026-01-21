@@ -23,7 +23,15 @@ import { LatticeResponseCode, ProtocolConstants } from '../../protocol'
 import { randomBytes } from '../../util'
 import { buildEthSignRequest } from '../utils/builders'
 import { getDeviceId } from '../utils/getters'
-import { BTC_COIN, BTC_PURPOSE_P2PKH, BTC_PURPOSE_P2SH_P2WPKH, BTC_PURPOSE_P2WPKH, BTC_TESTNET_COIN, ETH_COIN, setupTestClient } from '../utils/helpers'
+import {
+	BTC_COIN,
+	BTC_PURPOSE_P2PKH,
+	BTC_PURPOSE_P2SH_P2WPKH,
+	BTC_PURPOSE_P2WPKH,
+	BTC_TESTNET_COIN,
+	ETH_COIN,
+	setupTestClient,
+} from '../utils/helpers'
 
 import { setupClient } from '../utils/setup'
 import type { Client } from '../../client'
@@ -172,13 +180,18 @@ describe('General', () => {
 				ctx.skip()
 				return
 			}
-			const { txData, req, maxDataSz, common } = await buildEthSignRequest(client)
-			await question('Please REJECT the next request if the warning screen displays. Press enter to continue.')
+			const { txData, req, maxDataSz, common } =
+				await buildEthSignRequest(client)
+			await question(
+				'Please REJECT the next request if the warning screen displays. Press enter to continue.',
+			)
 			txData.data = randomBytes(maxDataSz)
 			req.data.data = randomBytes(maxDataSz + 1)
 			const tx = createTx(txData, { common })
 			req.data.payload = tx.getMessageToSign()
-			await expect(client.sign(req)).rejects.toThrow(`${ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined]}`)
+			await expect(client.sign(req)).rejects.toThrow(
+				`${ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined]}`,
+			)
 		})
 	})
 
@@ -187,17 +200,30 @@ describe('General', () => {
 			const txData = {
 				prevOuts: [
 					{
-						txHash: '6e78493091f80d89a92ae3152df7fbfbdc44df09cf01a9b76c5113c02eaf2e0f',
+						txHash:
+							'6e78493091f80d89a92ae3152df7fbfbdc44df09cf01a9b76c5113c02eaf2e0f',
 						value: 10000,
 						index: 1,
-						signerPath: [BTC_PURPOSE_P2SH_P2WPKH, BTC_TESTNET_COIN, HARDENED_OFFSET, 0, 0],
+						signerPath: [
+							BTC_PURPOSE_P2SH_P2WPKH,
+							BTC_TESTNET_COIN,
+							HARDENED_OFFSET,
+							0,
+							0,
+						],
 					},
 				],
 				recipient: 'mhifA1DwiMPHTjSJM8FFSL8ibrzWaBCkVT',
 				value: 1000,
 				fee: 1000,
 				// isSegwit: false, // old encoding
-				changePath: [BTC_PURPOSE_P2SH_P2WPKH, BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
+				changePath: [
+					BTC_PURPOSE_P2SH_P2WPKH,
+					BTC_TESTNET_COIN,
+					HARDENED_OFFSET,
+					1,
+					0,
+				],
 			}
 			const req = {
 				currency: 'BTC' as const,
@@ -214,16 +240,29 @@ describe('General', () => {
 			const txData = {
 				prevOuts: [
 					{
-						txHash: 'ab8288ef207f11186af98db115aa7120aa36ceb783e8792fb7b2f39c88109a99',
+						txHash:
+							'ab8288ef207f11186af98db115aa7120aa36ceb783e8792fb7b2f39c88109a99',
 						value: 10000,
 						index: 1,
-						signerPath: [BTC_PURPOSE_P2SH_P2WPKH, BTC_TESTNET_COIN, HARDENED_OFFSET, 0, 0],
+						signerPath: [
+							BTC_PURPOSE_P2SH_P2WPKH,
+							BTC_TESTNET_COIN,
+							HARDENED_OFFSET,
+							0,
+							0,
+						],
 					},
 				],
 				recipient: '2NGZrVvZG92qGYqzTLjCAewvPZ7JE8S8VxE',
 				value: 1000,
 				fee: 1000,
-				changePath: [BTC_PURPOSE_P2SH_P2WPKH, BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
+				changePath: [
+					BTC_PURPOSE_P2SH_P2WPKH,
+					BTC_TESTNET_COIN,
+					HARDENED_OFFSET,
+					1,
+					0,
+				],
 			}
 			const req = {
 				currency: 'BTC' as const,
@@ -239,16 +278,29 @@ describe('General', () => {
 			const txData = {
 				prevOuts: [
 					{
-						txHash: 'f93d0a77f58b4274d84f427d647f1f27e38b4db79fd975691e15109fde7ea06e',
+						txHash:
+							'f93d0a77f58b4274d84f427d647f1f27e38b4db79fd975691e15109fde7ea06e',
 						value: 1802440,
 						index: 1,
-						signerPath: [BTC_PURPOSE_P2SH_P2WPKH, BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
+						signerPath: [
+							BTC_PURPOSE_P2SH_P2WPKH,
+							BTC_TESTNET_COIN,
+							HARDENED_OFFSET,
+							1,
+							0,
+						],
 					},
 				],
 				recipient: 'tb1qym0z2a939lefrgw67ep5flhf43dvpg3h4s96tn',
 				value: 1000,
 				fee: 1000,
-				changePath: [BTC_PURPOSE_P2SH_P2WPKH, BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
+				changePath: [
+					BTC_PURPOSE_P2SH_P2WPKH,
+					BTC_TESTNET_COIN,
+					HARDENED_OFFSET,
+					1,
+					0,
+				],
 			}
 			const req = {
 				currency: 'BTC' as const,
@@ -264,17 +316,30 @@ describe('General', () => {
 			const txData = {
 				prevOuts: [
 					{
-						txHash: 'b2efdbdd3340d2bc547671ce3993a6f05d70343c07578f9d7f5626fdfc06fa35',
+						txHash:
+							'b2efdbdd3340d2bc547671ce3993a6f05d70343c07578f9d7f5626fdfc06fa35',
 						value: 76800,
 						index: 0,
-						signerPath: [BTC_PURPOSE_P2WPKH, BTC_TESTNET_COIN, HARDENED_OFFSET, 0, 0],
+						signerPath: [
+							BTC_PURPOSE_P2WPKH,
+							BTC_TESTNET_COIN,
+							HARDENED_OFFSET,
+							0,
+							0,
+						],
 					},
 				],
 				recipient: '2N4gqWT4oqWL2gz9ps92z9fm2Bg3FUkqG7Q',
 				value: 70000,
 				fee: 4380,
 				isSegwit: true,
-				changePath: [BTC_PURPOSE_P2WPKH, BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
+				changePath: [
+					BTC_PURPOSE_P2WPKH,
+					BTC_TESTNET_COIN,
+					HARDENED_OFFSET,
+					1,
+					0,
+				],
 			}
 			const req = {
 				currency: 'BTC' as const,
