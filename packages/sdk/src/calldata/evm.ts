@@ -7,10 +7,10 @@ import { decodeAbiParameters, parseAbiParameters } from 'viem';
  * @returns      Buffer containing RLP-serialized array of calldata info to pass to signing request
  * @public
  */
-export const parseSolidityJSONABI = function (
+export const parseSolidityJSONABI = (
   sig: string,
   abi: any[],
-): { def: EVMDef } {
+): { def: EVMDef } => {
   sig = coerceSig(sig);
   // Find the first match in the ABI
   const match = abi
@@ -35,7 +35,7 @@ export const parseSolidityJSONABI = function (
  * @returns      Buffer containing RLP-serialized array of calldata info to pass to signing request
  * @public
  */
-export const parseCanonicalName = function (sig: string, name: string) {
+export const parseCanonicalName = (sig: string, name: string) => {
   sig = coerceSig(sig);
   if (sig !== getFuncSig(name)) {
     throw new Error('Name does not match provided sig.');
@@ -70,12 +70,12 @@ export const parseCanonicalName = function (sig: string, name: string) {
  *            item has data (0x-prefixed hex string), it should be
  *            checked as a possible nested def
  */
-export const getNestedCalldata = function (def, calldata) {
+export const getNestedCalldata = (def, calldata) => {
   const possibleNestedDefs = [];
   // Skip past first item, which is the function name
   const defParams = def.slice(1);
   const strParams = getParamStrNames(defParams);
-  const hexStr = ('0x' + calldata.slice(4).toString('hex')) as `0x${string}`;
+  const hexStr = `0x${calldata.slice(4).toString('hex')}` as `0x${string}`;
   // Convert strParams to viem's format
   const viemParams = strParams.map((type) => {
     // Convert tuple format from 'tuple(uint256,uint128)' to '(uint256,uint128)'
@@ -160,7 +160,7 @@ export const getNestedCalldata = function (def, calldata) {
  *                     defs which must be added to `def`
  * @return - Possibly modified version of `def`
  */
-export const replaceNestedDefs = function (def, nestedDefs) {
+export const replaceNestedDefs = (def, nestedDefs) => {
   for (let i = 0; i < nestedDefs.length; i++) {
     const isArrItem = isBytesArrItem(def[1 + i]);
     const isItem = isBytesItem(def[1 + i]);
@@ -309,8 +309,8 @@ function parseBasicTypeStr(typeStr: string): EVMParamInfo {
       const arrStart =
         param.arraySzs.length > 0 ? typeStr.indexOf('[') : typeStr.length;
       const typeStrNum = typeStr.slice(t.length, arrStart);
-      if (parseInt(typeStrNum)) {
-        param.szBytes = parseInt(typeStrNum) / 8;
+      if (Number.parseInt(typeStrNum)) {
+        param.szBytes = Number.parseInt(typeStrNum) / 8;
         if (param.szBytes > 32) {
           throw new Error(BAD_CANONICAL_ERR);
         }
@@ -453,7 +453,7 @@ function getParamTypeInfo(type: string): EVMParamInfo {
   const szIdx = param.arraySzs.length > 0 ? type.indexOf('[') : type.length;
   if (['uint', 'int', 'bytes'].indexOf(baseType) > -1) {
     // If this can have a fixed size, capture that
-    const szBits = parseInt(type.slice(baseType.length, szIdx)) || 0;
+    const szBits = Number.parseInt(type.slice(baseType.length, szIdx)) || 0;
     if (szBits > 256) {
       throw new Error('Invalid param size');
     }
@@ -492,7 +492,7 @@ function getArraySzs(type: string): number[] {
       szs.push(0);
     } else {
       // Fixed size
-      szs.push(parseInt(t3));
+      szs.push(Number.parseInt(t3));
     }
     t1 = t2.slice(closeIdx + 1);
   }
@@ -501,8 +501,8 @@ function getArraySzs(type: string): number[] {
 
 /** @internal */
 function getTupleName(name, withArr = true) {
-  let brackets = 0,
-    addedFirstBracket = false;
+  let brackets = 0;
+  let addedFirstBracket = false;
   for (let i = 0; i < name.length; i++) {
     if (name[i] === '(') {
       brackets += 1;

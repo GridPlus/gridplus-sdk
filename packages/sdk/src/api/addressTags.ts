@@ -1,6 +1,6 @@
-import { Client } from '../client';
+import type { Client } from '../client';
 import { MAX_ADDR } from '../constants';
-import { AddressTag } from '../types';
+import type { AddressTag } from '../types';
 import { queue } from './utilities';
 
 /**

@@ -15,10 +15,10 @@ import {
 import { Constants } from '../../../..';
 import { HARDENED_OFFSET } from '../../../../constants';
 import { ensureHexBuffer } from '../../../../util';
-import { setupClient } from '../../../utils/setup';
 import { getPrng } from '../../../utils/getters';
 import { deriveED25519Key, prandomBuf } from '../../../utils/helpers';
 import { runGeneric } from '../../../utils/runners';
+import { setupClient } from '../../../utils/setup';
 import { TEST_SEED } from '../../../utils/testConstants';
 
 //---------------------------------------

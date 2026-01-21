@@ -1,14 +1,14 @@
 import {
+  type MessageTypes,
   SignTypedDataVersion,
   TypedDataUtils,
-  type MessageTypes,
   type TypedMessage,
 } from '@metamask/eth-sig-util';
 import { ecsign, privateToAddress } from 'ethereumjs-util';
 import { mnemonicToAccount } from 'viem/accounts';
 import { HARDENED_OFFSET } from '../../constants';
 import ethereum from '../../ethereum';
-import { buildFirmwareConstants, DEFAULT_SIGNER } from '../utils/builders';
+import { DEFAULT_SIGNER, buildFirmwareConstants } from '../utils/builders';
 import { TEST_MNEMONIC } from '../utils/testConstants';
 
 const typedData: TypedMessage<MessageTypes> = {

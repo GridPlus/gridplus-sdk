@@ -151,16 +151,12 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
     const viemSerialized = serializeTransaction(viemTx as any);
 
     // Compute hashes for comparison
-    const ourHash =
-      '0x' +
-      Buffer.from(
-        Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex')),
-      ).toString('hex');
-    const viemHash =
-      '0x' +
-      Buffer.from(
-        Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex')),
-      ).toString('hex');
+    const ourHash = `0x${Buffer.from(
+      Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex')),
+    ).toString('hex')}`;
+    const viemHash = `0x${Buffer.from(
+      Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex')),
+    ).toString('hex')}`;
 
     // Output for debugging
     console.log('Our serialized:', ourSerialized);
@@ -251,16 +247,12 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
     const viemSerialized = serializeTransaction(viemTx as any);
 
     // Compute hashes for comparison
-    const ourHash =
-      '0x' +
-      Buffer.from(
-        Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex')),
-      ).toString('hex');
-    const viemHash =
-      '0x' +
-      Buffer.from(
-        Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex')),
-      ).toString('hex');
+    const ourHash = `0x${Buffer.from(
+      Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex')),
+    ).toString('hex')}`;
+    const viemHash = `0x${Buffer.from(
+      Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex')),
+    ).toString('hex')}`;
 
     // Output for debugging
     console.log('Our serialized (auth list):', ourSerialized);
@@ -332,16 +324,12 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
     const viemSerialized = serializeTransaction(viemTx as any);
 
     // Compute hashes for comparison
-    const ourHash =
-      '0x' +
-      Buffer.from(
-        Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex')),
-      ).toString('hex');
-    const viemHash =
-      '0x' +
-      Buffer.from(
-        Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex')),
-      ).toString('hex');
+    const ourHash = `0x${Buffer.from(
+      Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex')),
+    ).toString('hex')}`;
+    const viemHash = `0x${Buffer.from(
+      Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex')),
+    ).toString('hex')}`;
 
     // Output for debugging
     console.log('Our serialized (realistic):', ourSerialized);
@@ -412,16 +400,12 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
     const viemSerialized = serializeTransaction(viemTx as any);
 
     // Compute hashes for comparison
-    const ourHash =
-      '0x' +
-      Buffer.from(
-        Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex')),
-      ).toString('hex');
-    const viemHash =
-      '0x' +
-      Buffer.from(
-        Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex')),
-      ).toString('hex');
+    const ourHash = `0x${Buffer.from(
+      Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex')),
+    ).toString('hex')}`;
+    const viemHash = `0x${Buffer.from(
+      Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex')),
+    ).toString('hex')}`;
 
     // Output for debugging
     console.log('Our serialized (contract auth):', ourSerialized);

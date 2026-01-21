@@ -1,4 +1,4 @@
-import { EXTERNAL } from '../constants';
+import type { EXTERNAL } from '../constants';
 
 export type FirmwareArr = [number, number, number];
 

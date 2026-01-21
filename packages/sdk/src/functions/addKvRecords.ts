@@ -7,10 +7,10 @@ import {
   validateKvRecord,
   validateKvRecords,
 } from '../shared/validators';
-import {
+import type {
   AddKvRecordsRequestFunctionParams,
-  KVRecords,
   FirmwareConstants,
+  KVRecords,
 } from '../types';
 
 /**

@@ -1,3 +1,21 @@
+import { getEphemeralId, request } from '../shared/functions';
+import { validateEphemeralPub } from '../shared/validators';
+import type {
+  DecryptedResponse,
+  KeyPair,
+  LatticeMessageHeader,
+  LatticeSecureConnectRequestPayloadData,
+  LatticeSecureDecryptedResponse,
+  LatticeSecureRequest,
+  LatticeSecureRequestPayload,
+} from '../types';
+import {
+  aes256_decrypt,
+  aes256_encrypt,
+  checksum,
+  getP256KeyPairFromPub,
+  randomBytes,
+} from '../util';
 /**
  * All messages sent to the Lattice from this SDK will be
  * "secure messages", of which there are two types:
@@ -22,27 +40,9 @@ import {
   ProtocolConstants as Constants,
   LatticeMsgType,
   LatticeProtocolVersion,
-  LatticeSecureEncryptedRequestType,
+  type LatticeSecureEncryptedRequestType,
   LatticeSecureMsgType,
 } from './latticeConstants';
-import {
-  aes256_decrypt,
-  aes256_encrypt,
-  checksum,
-  getP256KeyPairFromPub,
-  randomBytes,
-} from '../util';
-import { getEphemeralId, request } from '../shared/functions';
-import { validateEphemeralPub } from '../shared/validators';
-import {
-  DecryptedResponse,
-  LatticeSecureRequestPayload,
-  LatticeMessageHeader,
-  LatticeSecureRequest,
-  LatticeSecureConnectRequestPayloadData,
-  LatticeSecureDecryptedResponse,
-  KeyPair,
-} from '../types';
 
 const { msgSizes } = Constants;
 const { secure: szs } = msgSizes;

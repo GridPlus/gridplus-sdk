@@ -1,9 +1,13 @@
-import { Client } from '../../client';
-import type { TestRequestPayload, SignRequestParams } from '../../types';
+import type { Client } from '../../client';
 import { getEncodedPayload } from '../../genericSigning';
+import type {
+  SigningPayload,
+  SignRequestParams,
+  TestRequestPayload,
+} from '../../types';
 import { parseWalletJobResp, validateGenericSig } from './helpers';
-import { testRequest } from './testRequest';
 import { TEST_SEED } from './testConstants';
+import { testRequest } from './testRequest';
 
 export async function runTestCase(
   payload: TestRequestPayload,
@@ -19,22 +23,18 @@ export async function runTestCase(
 
 export async function runGeneric(request: SignRequestParams, client: Client) {
   const response = await client.sign(request);
+  // runGeneric is only used for generic signing, not Bitcoin
+  const data = request.data as SigningPayload;
   // If no encoding type is specified we encode in hex or ascii
-  const encodingType = request.data.encodingType || null;
+  const encodingType = data.encodingType || null;
   const allowedEncodings = client.getFwConstants().genericSigning.encodingTypes;
   const { payloadBuf } = getEncodedPayload(
-    request.data.payload,
+    data.payload,
     encodingType,
     allowedEncodings,
   );
   const seed = TEST_SEED;
-  validateGenericSig(
-    seed,
-    response.sig,
-    payloadBuf,
-    request.data,
-    response.pubkey,
-  );
+  validateGenericSig(seed, response.sig, payloadBuf, data, response.pubkey);
   return response;
 }
 

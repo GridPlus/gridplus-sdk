@@ -1,6 +1,6 @@
 import { Utils } from '..';
 import { Client } from '../client';
-import { setSaveClient, setLoadClient, saveClient, loadClient } from './state';
+import { loadClient, saveClient, setLoadClient, setSaveClient } from './state';
 import { buildLoadClientFn, buildSaveClientFn, queue } from './utilities';
 
 /**

@@ -1,13 +1,5 @@
-/**
- * REQUIRED TEST MNEMONIC:
- * These tests require a SafeCard loaded with the standard test mnemonic:
- * "test test test test test test test test test test test junk"
- *
- * Running with a different mnemonic will cause test failures due to
- * incorrect address derivations and signature mismatches.
- */
-import { getDeviceId } from '../../utils/getters';
 import { HARDENED_OFFSET } from '../../../constants';
+import type { WalletPath } from '../../../types';
 import { randomBytes } from '../../../util';
 import {
   DEFAULT_SIGNER,
@@ -18,14 +10,22 @@ import {
 } from '../../utils/builders';
 import {
   deriveAddress,
-  signPersonalJS,
   signEip712JS,
+  signPersonalJS,
   testUniformSigs,
 } from '../../utils/determinism';
+/**
+ * REQUIRED TEST MNEMONIC:
+ * These tests require a SafeCard loaded with the standard test mnemonic:
+ * "test test test test test test test test test test test junk"
+ *
+ * Running with a different mnemonic will cause test failures due to
+ * incorrect address derivations and signature mismatches.
+ */
+import { getDeviceId } from '../../utils/getters';
 import { BTC_PURPOSE_P2PKH, ETH_COIN, getSigStr } from '../../utils/helpers';
 import { setupClient } from '../../utils/setup';
 import { TEST_SEED } from '../../utils/testConstants';
-import type { WalletPath } from '../../../types';
 
 describe('[Determinism]', () => {
   let client;

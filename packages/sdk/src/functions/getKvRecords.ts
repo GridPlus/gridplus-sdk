@@ -3,10 +3,10 @@ import {
   encryptedSecureRequest,
 } from '../protocol';
 import { validateConnectedClient } from '../shared/validators';
-import {
-  GetKvRecordsRequestFunctionParams,
-  GetKvRecordsData,
+import type {
   FirmwareConstants,
+  GetKvRecordsData,
+  GetKvRecordsRequestFunctionParams,
 } from '../types';
 
 export async function getKvRecords({
@@ -97,7 +97,10 @@ export const decodeGetKvRecordsResponse = (
   let off = 0;
   const nTotal = data.readUInt32BE(off);
   off += 4;
-  const nFetched = parseInt(data.slice(off, off + 1).toString('hex'), 16);
+  const nFetched = Number.parseInt(
+    data.slice(off, off + 1).toString('hex'),
+    16,
+  );
   off += 1;
   if (nFetched > fwConstants.kvActionMaxNum)
     throw new Error('Too many records fetched. Firmware error.');
@@ -109,15 +112,13 @@ export const decodeGetKvRecordsResponse = (
     r.type = data.readUInt32BE(off);
     off += 4;
     r.caseSensitive =
-      parseInt(data.slice(off, off + 1).toString('hex'), 16) === 1
-        ? true
-        : false;
+      Number.parseInt(data.slice(off, off + 1).toString('hex'), 16) === 1;
     off += 1;
-    const keySz = parseInt(data.slice(off, off + 1).toString('hex'), 16);
+    const keySz = Number.parseInt(data.slice(off, off + 1).toString('hex'), 16);
     off += 1;
     r.key = data.slice(off, off + keySz - 1).toString();
     off += fwConstants.kvKeyMaxStrSz + 1;
-    const valSz = parseInt(data.slice(off, off + 1).toString('hex'), 16);
+    const valSz = Number.parseInt(data.slice(off, off + 1).toString('hex'), 16);
     off += 1;
     r.val = data.slice(off, off + valSz - 1).toString();
     off += fwConstants.kvValMaxStrSz + 1;

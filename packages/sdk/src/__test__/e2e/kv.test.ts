@@ -1,4 +1,3 @@
-import { DEFAULT_SIGNER } from '../utils/builders';
 /**
  * Test kv (key-value) file functionality. These types of files are simple mappings
  * between a 64 byte key and a 64 byte value of any type. The main use case for these
@@ -7,6 +6,7 @@ import { DEFAULT_SIGNER } from '../utils/builders';
 import { question } from 'readline-sync';
 import { HARDENED_OFFSET } from '../../constants';
 import { LatticeResponseCode, ProtocolConstants } from '../../protocol';
+import { DEFAULT_SIGNER } from '../utils/builders';
 import { BTC_PURPOSE_P2PKH, ETH_COIN } from '../utils/helpers';
 
 import { setupClient } from '../utils/setup';

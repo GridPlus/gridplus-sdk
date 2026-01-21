@@ -1,17 +1,17 @@
-import { UInt4 } from 'bitwise/types';
-import { Client } from '../client';
-import { ASCII_REGEX, EMPTY_WALLET_UID, MAX_ADDR } from '../constants';
-import { isUInt4 } from '../util';
+import type { UInt4 } from 'bitwise/types';
 import isEmpty from 'lodash/isEmpty.js';
-import {
+import type { Client } from '../client';
+import { ASCII_REGEX, EMPTY_WALLET_UID, MAX_ADDR } from '../constants';
+import type {
+  ActiveWallets,
   FirmwareConstants,
   FirmwareVersion,
+  KVRecords,
+  KeyPair,
   LatticeError,
   Wallet,
-  KeyPair,
-  ActiveWallets,
-  KVRecords,
 } from '../types';
+import { isUInt4 } from '../util';
 
 export const validateIsUInt4 = (n?: number) => {
   if (typeof n !== 'number' || !isUInt4(n)) {

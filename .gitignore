@@ -8,3 +8,4 @@ coverage
 *.temp
 ~/node_modules
 cache
+.turbo

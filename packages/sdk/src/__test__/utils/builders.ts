@@ -1,23 +1,23 @@
 import { Common, Hardfork, Mainnet } from '@ethereumjs/common';
 import { RLP } from '@ethereumjs/rlp';
-import { createTx, type TypedTransaction } from '@ethereumjs/tx';
+import { type TypedTransaction, createTx } from '@ethereumjs/tx';
 import { generate as randomWords } from 'random-words';
 import { Constants } from '../..';
 import { Client } from '../../client';
 import {
   CURRENCIES,
-  getFwVersionConst,
   HARDENED_OFFSET,
+  getFwVersionConst,
 } from '../../constants';
-import type { Currency, SigningPath, SignRequestParams } from '../../types';
+import type { Currency, SignRequestParams, SigningPath } from '../../types';
 import type { FirmwareConstants } from '../../types/firmware';
 import { randomBytes } from '../../util';
 import { MSG_PAYLOAD_METADATA_SZ } from './constants';
 import { getN, getPrng } from './getters';
 import {
   BTC_PURPOSE_P2PKH,
-  buildRandomEip712Object,
   ETH_COIN,
+  buildRandomEip712Object,
   getTestVectors,
 } from './helpers';
 
@@ -120,7 +120,7 @@ export const buildSharedSecret = () => {
 };
 
 export const getNumIter = (n: number | string | undefined = getN()) =>
-  n ? parseInt(`${n}`) : 5;
+  n ? Number.parseInt(`${n}`) : 5;
 
 /** Generate a bunch of random test vectors using the PRNG */
 export const buildRandomVectors = (n: number | string | undefined = getN()) => {
@@ -288,14 +288,14 @@ export const buildEncDefs = (vectors: any) => {
   return { encDefs, encDefsCalldata };
 };
 
-export function buildRandomMsg(type = 'signPersonal', client: Client) {
+export function buildRandomMsg(type, client: Client) {
   function randInt(n: number) {
     return Math.floor(n * prng.quick());
   }
 
   if (type === 'signPersonal') {
     // A random string will do
-    const isHexStr = randInt(2) > 0 ? true : false;
+    const isHexStr = randInt(2) > 0;
     const fwConstants = client.getFwConstants();
     const L = randInt(fwConstants.ethMaxDataSz - MSG_PAYLOAD_METADATA_SZ);
     if (isHexStr) return `0x${randomBytes(L).toString('hex')}`;

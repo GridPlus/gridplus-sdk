@@ -119,7 +119,7 @@ describe('getYParity', () => {
     it('should handle hex string as pre-computed hash', () => {
       // When passing a hex string, it's treated as a pre-computed hash
       const hash = randomBytes(32);
-      const txHex = '0x' + hash.toString('hex');
+      const txHex = `0x${hash.toString('hex')}`;
       const { signature, publicKey, recovery } = createValidSignature(hash);
 
       const resp = {
@@ -424,7 +424,7 @@ describe('getV function', () => {
         ),
       },
       // This is a fake pubkey, so recovery will fail
-      pubkey: Buffer.from('04' + '1'.repeat(128), 'hex'),
+      pubkey: Buffer.from(`04${'1'.repeat(128)}`, 'hex'),
     };
 
     expect(() => getV(signedTx, mockResp)).toThrow();
@@ -436,10 +436,10 @@ describe('getV function', () => {
 
     const mockResp = {
       sig: {
-        r: '0x' + '1'.repeat(64), // 32 bytes as hex string
-        s: '0x' + '2'.repeat(64), // 32 bytes as hex string
+        r: `0x${'1'.repeat(64)}`, // 32 bytes as hex string
+        s: `0x${'2'.repeat(64)}`, // 32 bytes as hex string
       },
-      pubkey: Buffer.from('04' + '1'.repeat(128), 'hex'),
+      pubkey: Buffer.from(`04${'1'.repeat(128)}`, 'hex'),
     };
 
     expect(() => getV(txHex, mockResp)).toThrow();

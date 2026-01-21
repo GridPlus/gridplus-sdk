@@ -1,4 +1,4 @@
-import { LatticeResponseCode, ProtocolConstants } from '../protocol';
+import { type LatticeResponseCode, ProtocolConstants } from '../protocol';
 
 const buildLatticeResponseErrorMessage = ({
   responseCode,

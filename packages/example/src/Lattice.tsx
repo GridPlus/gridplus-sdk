@@ -3,8 +3,8 @@ import { TransactionFactory } from '@ethereumjs/tx';
 import { useState } from 'react';
 import {
   addAddressTags,
-  fetchAddresses,
   fetchAddressTags,
+  fetchAddresses,
   fetchLedgerLiveAddresses,
   removeAddressTags,
   sign,

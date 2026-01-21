@@ -1,3 +1,4 @@
+import { normalizeToViemTransaction } from '../../ethereum';
 import {
   validateAddKvRequest,
   validateConnectRequest,
@@ -9,7 +10,6 @@ import {
   isValid4ByteResponse,
   isValidBlockExplorerResponse,
 } from '../../shared/validators';
-import { normalizeToViemTransaction } from '../../ethereum';
 import {
   buildGetAddressesObject,
   buildValidateConnectObject,
@@ -147,11 +147,11 @@ describe('validators', () => {
     describe('EIP-7702 transactions', () => {
       test('rejects missing fee fields', () => {
         const tx = {
-          to: '0x' + '1'.repeat(40),
+          to: `0x${'1'.repeat(40)}`,
           value: '1000000000000000000',
           chainId: 1,
           authorizationList: [
-            { chainId: 1, address: '0x' + '2'.repeat(40), nonce: 0 },
+            { chainId: 1, address: `0x${'2'.repeat(40)}`, nonce: 0 },
           ],
           gasPrice: '15000000000',
         };
@@ -163,7 +163,7 @@ describe('validators', () => {
     describe('negative values', () => {
       test('rejects negative value', () => {
         const tx = {
-          to: '0x' + '1'.repeat(40),
+          to: `0x${'1'.repeat(40)}`,
           value: -100,
           gasPrice: '10000000000',
         };
@@ -173,7 +173,7 @@ describe('validators', () => {
 
       test('rejects negative nonce', () => {
         const tx = {
-          to: '0x' + '1'.repeat(40),
+          to: `0x${'1'.repeat(40)}`,
           value: '100',
           gasPrice: '10000000000',
           nonce: -1,
@@ -184,7 +184,7 @@ describe('validators', () => {
 
       test('rejects negative gas price', () => {
         const tx = {
-          to: '0x' + '1'.repeat(40),
+          to: `0x${'1'.repeat(40)}`,
           value: '100',
           gasPrice: -10,
         };
@@ -199,7 +199,7 @@ describe('validators', () => {
           to: '0x1234567890123456789012345678901234567890',
           value: true,
           chainId: '0x1',
-          gasPrice: NaN,
+          gasPrice: Number.NaN,
           nonce: null,
           data: false,
         };

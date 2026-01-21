@@ -1,5 +1,5 @@
-import { RLP } from '@ethereumjs/rlp';
 import { Buffer } from 'buffer';
+import { RLP } from '@ethereumjs/rlp';
 import { Hash } from 'ox';
 import secp256k1 from 'secp256k1';
 import { parseGenericSigningResponse } from '../../genericSigning';

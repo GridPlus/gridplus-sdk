@@ -1,5 +1,5 @@
 import { Hash } from 'ox';
-import { type Hex, type Address } from 'viem';
+import type { Address, Hex } from 'viem';
 import bitcoin from '../bitcoin';
 import { CURRENCIES } from '../constants';
 import ethereum from '../ethereum';
@@ -11,16 +11,16 @@ import {
 } from '../protocol';
 import { buildTransaction } from '../shared/functions';
 import { validateConnectedClient, validateWallet } from '../shared/validators';
-import { parseDER } from '../util';
-import {
+import type {
+  BitcoinSignRequest,
+  DecodeSignResponseParams,
+  EncodeSignRequestParams,
+  SignData,
+  SignRequest,
   SignRequestFunctionParams,
   SigningRequestResponse,
-  EncodeSignRequestParams,
-  DecodeSignResponseParams,
-  SignData,
-  BitcoinSignRequest,
-  SignRequest,
 } from '../types';
+import { parseDER } from '../util';
 
 /**
  * `sign` builds and sends a request for signing to the device.

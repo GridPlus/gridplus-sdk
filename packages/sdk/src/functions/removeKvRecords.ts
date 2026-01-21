@@ -3,9 +3,9 @@ import {
   encryptedSecureRequest,
 } from '../protocol';
 import { validateConnectedClient } from '../shared/validators';
-import {
-  RemoveKvRecordsRequestFunctionParams,
+import type {
   FirmwareConstants,
+  RemoveKvRecordsRequestFunctionParams,
 } from '../types';
 
 /**
@@ -87,7 +87,7 @@ export const encodeRemoveKvRecordsRequest = ({
   payload.writeUInt32LE(type, 0);
   payload.writeUInt8(ids.length, 4);
   for (let i = 0; i < ids.length; i++) {
-    const id = parseInt(ids[i] as string);
+    const id = Number.parseInt(ids[i] as string);
     payload.writeUInt32LE(id, 5 + 4 * i);
   }
   return payload;

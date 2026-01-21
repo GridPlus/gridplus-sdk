@@ -467,7 +467,7 @@ export const EDGE_CASE_TEST_VECTORS: TestVector[] = [
       type: 'eip1559',
       to: '0xe242e54155b1abc71fc118065270cecaaf8b7768' as `0x${string}`,
       value: BigInt(0),
-      data: ('0x' + 'a'.repeat(1000)) as `0x${string}`, // Large data payload
+      data: `0x${'a'.repeat(1000)}` as `0x${string}`, // Large data payload
       nonce: 0,
       maxFeePerGas: BigInt('30000000000'), // 30 gwei
       maxPriorityFeePerGas: BigInt('2000000000'), // 2 gwei
@@ -632,7 +632,7 @@ export const EDGE_CASE_TEST_VECTORS: TestVector[] = [
       type: 'eip1559',
       to: undefined, // Contract creation
       value: BigInt(0),
-      data: ('0x' + '60'.repeat(96)) as `0x${string}`, // Simple contract bytecode
+      data: `0x${'60'.repeat(96)}` as `0x${string}`, // Simple contract bytecode
       nonce: 0,
       maxFeePerGas: BigInt('30000000000'), // 30 gwei
       maxPriorityFeePerGas: BigInt('2000000000'), // 2 gwei
@@ -647,7 +647,7 @@ export const EDGE_CASE_TEST_VECTORS: TestVector[] = [
       type: 'eip2930',
       to: undefined, // Contract creation
       value: BigInt(0),
-      data: ('0x' + '60'.repeat(96)) as `0x${string}`, // Simple contract bytecode
+      data: `0x${'60'.repeat(96)}` as `0x${string}`, // Simple contract bytecode
       nonce: 0,
       gasPrice: BigInt('25000000000'), // 25 gwei
       gas: BigInt('2000000'), // High gas for contract creation
@@ -865,7 +865,7 @@ export const PAYLOAD_SIZE_VECTORS: TestVector[] = [
       maxPriorityFeePerGas: BigInt('2000000000'), // 2 gwei
       gas: BigInt('50000'),
       chainId: 1,
-      data: ('0x' + '00'.repeat(32)) as `0x${string}`,
+      data: `0x${'00'.repeat(32)}` as `0x${string}`,
     },
     category: 'small-data',
   },
@@ -880,7 +880,7 @@ export const PAYLOAD_SIZE_VECTORS: TestVector[] = [
       maxPriorityFeePerGas: BigInt('2000000000'), // 2 gwei
       gas: BigInt('100000'),
       chainId: 1,
-      data: ('0x' + 'ab'.repeat(256)) as `0x${string}`,
+      data: `0x${'ab'.repeat(256)}` as `0x${string}`,
     },
     category: 'medium-data',
   },
@@ -895,7 +895,7 @@ export const PAYLOAD_SIZE_VECTORS: TestVector[] = [
       maxPriorityFeePerGas: BigInt('3000000000'), // 3 gwei
       gas: BigInt('500000'),
       chainId: 1,
-      data: ('0x' + 'cd'.repeat(1024)) as `0x${string}`,
+      data: `0x${'cd'.repeat(1024)}` as `0x${string}`,
     },
     category: 'large-data',
   },
@@ -910,7 +910,7 @@ export const PAYLOAD_SIZE_VECTORS: TestVector[] = [
       maxPriorityFeePerGas: BigInt('3000000000'), // 3 gwei
       gas: BigInt('1000000'),
       chainId: 1,
-      data: ('0x' + 'ef'.repeat(2000)) as `0x${string}`,
+      data: `0x${'ef'.repeat(2000)}` as `0x${string}`,
     },
     category: 'very-large-data',
   },
@@ -1021,7 +1021,7 @@ export const REAL_WORLD_PATTERN_VECTORS: TestVector[] = [
       type: 'eip1559',
       to: '0xe242e54155b1abc71fc118065270cecaaf8b7768' as `0x${string}`,
       value: BigInt(0),
-      data: ('0x8d80ff0a' + '00'.repeat(500)) as `0x${string}`, // multiSend with batch data
+      data: `0x8d80ff0a${'00'.repeat(500)}` as `0x${string}`, // multiSend with batch data
       nonce: 15,
       maxFeePerGas: BigInt('40000000000'), // 40 gwei
       maxPriorityFeePerGas: BigInt('4000000000'), // 4 gwei
@@ -1060,7 +1060,7 @@ export function getVectorsByCategory(category: string): TestVector[] {
 /**
  * Get a specific number of vectors from each transaction type for balanced testing
  */
-export function getBalancedTestVectors(perType: number = 3): TestVector[] {
+export function getBalancedTestVectors(perType = 3): TestVector[] {
   const legacyVectors = LEGACY_VECTORS.slice(0, perType);
   const eip1559Vectors = EIP1559_TEST_VECTORS.slice(0, perType);
   const eip2930Vectors = EIP2930_TEST_VECTORS.slice(0, perType);

@@ -1,9 +1,9 @@
 import { Constants } from '../../..';
+import { HARDENED_OFFSET } from '../../../constants';
 import { getNumIter } from '../../utils/builders';
+import { getPrng } from '../../utils/getters';
 import { ethPersonalSignMsg, prandomBuf } from '../../utils/helpers';
 import { runGeneric } from '../../utils/runners';
-import { HARDENED_OFFSET } from '../../../constants';
-import { getPrng } from '../../utils/getters';
 import { setupClient } from '../../utils/setup';
 
 const prng = getPrng();
@@ -129,10 +129,10 @@ describe('[Unformatted]', () => {
     };
     const respLegacy = await client.sign(legacyReq);
 
-    const genSigR = respGeneric.sig?.r.toString('hex') ?? '';
-    const genSigS = respGeneric.sig?.s.toString('hex') ?? '';
-    const legSigR = respLegacy.sig?.r.toString('hex') ?? '';
-    const legSigS = respLegacy.sig?.s.toString('hex') ?? '';
+    const genSigR = (respGeneric.sig?.r as Buffer)?.toString('hex') ?? '';
+    const genSigS = (respGeneric.sig?.s as Buffer)?.toString('hex') ?? '';
+    const legSigR = (respLegacy.sig?.r as Buffer)?.toString('hex') ?? '';
+    const legSigS = (respLegacy.sig?.s as Buffer)?.toString('hex') ?? '';
 
     const genSig = `${genSigR}${genSigS}`;
     const legSig = `${legSigR}${legSigS}`;

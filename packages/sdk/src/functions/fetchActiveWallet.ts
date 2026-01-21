@@ -7,9 +7,9 @@ import {
   validateActiveWallets,
   validateConnectedClient,
 } from '../shared/validators';
-import {
-  FetchActiveWalletRequestFunctionParams,
+import type {
   ActiveWallets,
+  FetchActiveWalletRequestFunctionParams,
 } from '../types';
 
 /**

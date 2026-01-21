@@ -25,8 +25,8 @@ import { createTx } from '@ethereumjs/tx';
 import { question } from 'readline-sync';
 import { Constants } from '../..';
 import { DEFAULT_SIGNER } from '../utils/builders';
-import { setupClient } from '../utils/setup';
 import { getSigStr, validateSig } from '../utils/helpers';
+import { setupClient } from '../utils/setup';
 
 let runTests = true;
 

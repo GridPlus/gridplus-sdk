@@ -6,7 +6,11 @@ import {
   validateDeviceId,
   validateKey,
 } from '../shared/validators';
-import { ConnectRequestFunctionParams, KeyPair, ActiveWallets } from '../types';
+import type {
+  ActiveWallets,
+  ConnectRequestFunctionParams,
+  KeyPair,
+} from '../types';
 import { aes256_decrypt, getP256KeyPairFromPub } from '../util';
 
 export async function connect({

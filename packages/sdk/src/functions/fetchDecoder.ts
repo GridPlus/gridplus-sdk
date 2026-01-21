@@ -1,8 +1,8 @@
 import { validateConnectedClient } from '../shared/validators';
 
 import { getClient } from '../api';
+import type { TransactionRequest } from '../types';
 import { fetchCalldataDecoder } from '../util';
-import { TransactionRequest } from '../types';
 
 /**
  * `fetchDecoder` fetches the ABI for a given contract address and chain ID.

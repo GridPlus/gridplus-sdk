@@ -21,7 +21,6 @@ vi.mock('../../util', async () => {
 });
 
 import { RLP } from '@ethereumjs/rlp';
-import { getClient } from './../../api/utilities';
 import {
   fetchActiveWallets,
   fetchAddress,
@@ -46,8 +45,9 @@ import {
 } from '../../api/index';
 import { HARDENED_OFFSET } from '../../constants';
 import { buildRandomMsg } from '../utils/builders';
-import { setupClient } from '../utils/setup';
 import { BTC_PURPOSE_P2SH_P2WPKH, BTC_TESTNET_COIN } from '../utils/helpers';
+import { setupClient } from '../utils/setup';
+import { getClient } from './../../api/utilities';
 import { dexlabProgram } from './signing/solana/__mocks__/programs';
 
 describe('API', () => {

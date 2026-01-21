@@ -28,9 +28,9 @@ function getConvertedDef(def) {
   const converted: any[] = [];
   def.forEach((param) => {
     const arrSzs = param[3];
-    const evmType = EVM_TYPES[parseInt(param[1].toString('hex'), 16)];
+    const evmType = EVM_TYPES[Number.parseInt(param[1].toString('hex'), 16)];
     let type = evmType;
-    const numBytes = parseInt(param[2].toString('hex'), 16);
+    const numBytes = Number.parseInt(param[2].toString('hex'), 16);
     if (numBytes > 0) {
       type = `${type}${numBytes * 8}`;
     }
@@ -51,8 +51,8 @@ function getConvertedDef(def) {
     const funcData = tupleData ? tupleData : genParamData(param);
     // Apply the data to arrays
     for (let i = 0; i < arrSzs.length; i++) {
-      const sz = parseInt(arrSzs[i].toString('hex'));
-      if (isNaN(sz)) {
+      const sz = Number.parseInt(arrSzs[i].toString('hex'));
+      if (Number.isNaN(sz)) {
         // This is a 0 size, which means we need to
         // define a size to generate data
         type = `${type}[]`;
@@ -77,7 +77,7 @@ function genTupleData(tupleParam) {
   tupleParam.forEach((nestedParam) => {
     nestedData.push(
       genData(
-        EVM_TYPES[parseInt(nestedParam[1].toString('hex'), 16)] ?? '',
+        EVM_TYPES[Number.parseInt(nestedParam[1].toString('hex'), 16)] ?? '',
         nestedParam,
       ),
     );
@@ -86,19 +86,21 @@ function genTupleData(tupleParam) {
 }
 
 function genParamData(param: any[]) {
-  const evmType = EVM_TYPES[parseInt(param[1].toString('hex'), 16)] ?? '';
+  const evmType =
+    EVM_TYPES[Number.parseInt(param[1].toString('hex'), 16)] ?? '';
   const baseData = genData(evmType, param);
   return getArrayData(param, baseData);
 }
 
 function getArrayData(param: any, baseData: any) {
-  let arrayData, data;
+  let arrayData;
+  let data;
   const arrSzs = param[3];
   for (let i = 0; i < arrSzs.length; i++) {
     // let sz = parseInt(arrSzs[i].toString('hex')); TODO: fix this
     const dimData: any = [];
-    let sz = parseInt(param[3][i].toString('hex'));
-    if (isNaN(sz)) {
+    let sz = Number.parseInt(param[3][i].toString('hex'));
+    if (Number.isNaN(sz)) {
       sz = 2; //1;
     }
     if (!arrayData) {

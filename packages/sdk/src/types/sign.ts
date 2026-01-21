@@ -1,15 +1,15 @@
 import type {
+  AccessList,
   Address,
   Hex,
-  TypedData,
-  TypedDataDefinition,
-  AccessList,
   SignedAuthorization,
   SignedAuthorizationList,
+  TypedData,
+  TypedDataDefinition,
 } from 'viem';
-import { Client } from '../client';
-import { Currency, SigningPath, Wallet } from './client';
-import { FirmwareConstants } from './firmware';
+import type { Client } from '../client';
+import type { Currency, SigningPath, Wallet } from './client';
+import type { FirmwareConstants } from './firmware';
 
 export type ETH_MESSAGE_PROTOCOLS = 'eip712' | 'signPersonal';
 

@@ -1,4 +1,4 @@
-import { Client } from '../client';
+import type { Client } from '../client';
 
 export interface GetKvRecordsRequestParams {
   type?: number;
@@ -6,7 +6,8 @@ export interface GetKvRecordsRequestParams {
   start?: number;
 }
 
-export interface GetKvRecordsRequestFunctionParams extends GetKvRecordsRequestParams {
+export interface GetKvRecordsRequestFunctionParams
+  extends GetKvRecordsRequestParams {
   client: Client;
 }
 

@@ -15,7 +15,6 @@
 import BIP32Factory, { type BIP32Interface } from 'bip32';
 import * as ecc from 'tiny-secp256k1';
 import type { Client } from '../../client';
-import { setupClient } from '../utils/setup';
 import { getPrng, getTestnet } from '../utils/getters';
 import {
   BTC_PURPOSE_P2PKH,
@@ -24,6 +23,7 @@ import {
   setup_btc_sig_test,
   stripDER,
 } from '../utils/helpers';
+import { setupClient } from '../utils/setup';
 import { TEST_SEED } from '../utils/testConstants';
 
 const prng = getPrng();

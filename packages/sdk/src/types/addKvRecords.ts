@@ -1,5 +1,5 @@
-import { Client } from '../client';
-import { KVRecords } from './shared';
+import type { Client } from '../client';
+import type { KVRecords } from './shared';
 
 export interface AddKvRecordsRequestParams {
   records: KVRecords;
@@ -7,6 +7,7 @@ export interface AddKvRecordsRequestParams {
   caseSensitive?: boolean;
 }
 
-export interface AddKvRecordsRequestFunctionParams extends AddKvRecordsRequestParams {
+export interface AddKvRecordsRequestFunctionParams
+  extends AddKvRecordsRequestParams {
   client: Client;
 }

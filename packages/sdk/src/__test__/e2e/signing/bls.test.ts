@@ -27,12 +27,14 @@ import { question } from 'readline-sync';
 
 import { Constants } from '../../../index';
 import { getPathStr } from '../../../shared/utilities';
-import { setupClient } from '../../utils/setup';
 import { getEncPw } from '../../utils/getters';
 import { buildPath } from '../../utils/helpers';
+import { setupClient } from '../../utils/setup';
 import { TEST_SEED } from '../../utils/testConstants';
 
-let client, encPw, supportsBLS;
+let client;
+let encPw;
+let supportsBLS;
 const DEPOSIT_PATH = [12381, 3600, 0, 0, 0];
 const WITHDRAWAL_PATH = [12381, 3600, 0, 0];
 // Number of signers to test for each of deposit and withdrawal paths
@@ -59,12 +61,12 @@ describe('[BLS keys]', () => {
         : 'unknown';
 
     console.log(`\n[BLS Test] Firmware version: ${versionStr}`);
-    console.log(`[BLS Test] Raw fwVersion buffer:`, fwVersion);
+    console.log('[BLS Test] Raw fwVersion buffer:', fwVersion);
 
     const fwConstants = client.getFwConstants();
-    console.log(`[BLS Test] getAddressFlags:`, fwConstants?.getAddressFlags);
+    console.log('[BLS Test] getAddressFlags:', fwConstants?.getAddressFlags);
     console.log(
-      `[BLS Test] BLS12_381_G1_PUB constant:`,
+      '[BLS Test] BLS12_381_G1_PUB constant:',
       Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB,
     );
 
@@ -76,8 +78,7 @@ describe('[BLS keys]', () => {
 
     if (!supportsBLS) {
       console.warn(
-        `\nSkipping BLS tests: Firmware version ${versionStr} does not support BLS operations.\n` +
-          `BLS support requires firmware version >= 0.17.0\n`,
+        `\nSkipping BLS tests: Firmware version ${versionStr} does not support BLS operations.\nBLS support requires firmware version >= 0.17.0\n`,
       );
     }
   });

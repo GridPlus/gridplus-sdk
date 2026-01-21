@@ -6,10 +6,10 @@ import {
   LatticeSignEncoding,
   LatticeSignHash,
 } from './protocol/latticeConstants';
-import {
-  FirmwareConstants,
-  FirmwareArr,
+import type {
   ActiveWallets,
+  FirmwareArr,
+  FirmwareConstants,
   WalletPath,
 } from './types/index.js';
 

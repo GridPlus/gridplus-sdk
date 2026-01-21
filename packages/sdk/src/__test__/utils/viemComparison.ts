@@ -1,17 +1,17 @@
 import {
   type Address,
   type Hex,
-  parseTransaction,
-  serializeTransaction,
   type TransactionSerializable,
   type TypedDataDefinition,
+  parseTransaction,
+  serializeTransaction,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sign, signMessage } from '../../api';
 import { normalizeLatticeSignature } from '../../ethereum';
+import { ensureHexBuffer } from '../../util';
 import { deriveAddress } from './determinism';
 import { TEST_SEED } from './testConstants';
-import { ensureHexBuffer } from '../../util';
 
 // Utility function to create foundry account address for comparison
 export const getFoundryAddress = (): Address => {
@@ -45,14 +45,10 @@ export const signAndCompareTransaction = async (
     // Sign with Lattice using the new sign API that accepts TransactionSerializable directly
     const latticeResult = await sign(tx).catch((err) => {
       if (err.responseCode === 128) {
-        err.message =
-          'NOTE: You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.\n' +
-          err.message;
+        err.message = `NOTE: You must have \`FEATURE_TEST_RUNNER=1\` enabled in firmware to run these tests.\n${err.message}`;
       }
       if (err.responseCode === 132) {
-        err.message =
-          'NOTE: Please approve the transaction on your Lattice device.\n' +
-          err.message;
+        err.message = `NOTE: Please approve the transaction on your Lattice device.\n${err.message}`;
       }
       throw err;
     });
@@ -109,7 +105,7 @@ export const signAndCompareTransaction = async (
       const hexString =
         typeof value === 'string'
           ? value
-          : '0x' + Buffer.from(value).toString('hex');
+          : `0x${Buffer.from(value).toString('hex')}`;
       const stripped = hexString.replace(/^0x/, '').toLowerCase();
       return `0x${stripped.padStart(64, '0')}`;
     };
@@ -179,14 +175,10 @@ export const signAndCompareEIP712Message = async (
 
     const latticeResult = await signMessage(latticePayload).catch((err) => {
       if (err.responseCode === 128) {
-        err.message =
-          'NOTE: You must have `FEATURE_TEST_RUNNER=1` enabled in firmware to run these tests.\n' +
-          err.message;
+        err.message = `NOTE: You must have \`FEATURE_TEST_RUNNER=1\` enabled in firmware to run these tests.\n${err.message}`;
       }
       if (err.responseCode === 132) {
-        err.message =
-          'NOTE: Please approve the message signature on your Lattice device.\n' +
-          err.message;
+        err.message = `NOTE: Please approve the message signature on your Lattice device.\n${err.message}`;
       }
       throw err;
     });
