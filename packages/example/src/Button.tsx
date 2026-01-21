@@ -1,6 +1,11 @@
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 
-export const Button = ({ onClick, children }) => {
+interface ButtonProps {
+	onClick: () => Promise<void>
+	children: ReactNode
+}
+
+export const Button = ({ onClick, children }: ButtonProps) => {
 	const [isLoading, setIsLoading] = useState(false)
 
 	const handleOnClick = () => {

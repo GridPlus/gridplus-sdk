@@ -1,8 +1,14 @@
+import type React from 'react'
 import Link from '@docusaurus/Link'
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext'
-import Layout from '@theme/Layout'
+import Layout, { type Props as LayoutProps } from '@theme/Layout'
 import clsx from 'clsx'
 import styles from './index.module.css'
+
+interface ExtendedLayoutProps extends LayoutProps {
+	title?: string
+	description?: string
+}
 
 function HomepageHeader() {
 	const { siteConfig } = useDocusaurusContext()
@@ -23,10 +29,11 @@ function HomepageHeader() {
 
 export default function Home(): JSX.Element {
 	const { siteConfig } = useDocusaurusContext()
+	const ExtendedLayout = Layout as React.ComponentType<ExtendedLayoutProps>
 	return (
-		<Layout title={`Hello from ${siteConfig.title}`} description="Description will go into a meta tag in <head />">
+		<ExtendedLayout title={`Hello from ${siteConfig.title}`} description="Description will go into a meta tag in <head />">
 			<HomepageHeader />
 			<main>{/* <HomepageFeatures /> */}</main>
-		</Layout>
+		</ExtendedLayout>
 	)
 }

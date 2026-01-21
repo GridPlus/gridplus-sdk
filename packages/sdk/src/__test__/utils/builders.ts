@@ -196,12 +196,14 @@ export const buildTxReq = (tx: TypedTransaction) => ({
 	},
 })
 
-export const buildMsgReq = (payload = 'hello ethereum', protocol = 'signPersonal') => ({
-	currency: 'ETH_MSG',
+export const buildMsgReq = (payload = 'hello ethereum', protocol: 'signPersonal' | 'eip712' = 'signPersonal') => ({
+	currency: 'ETH_MSG' as const,
 	data: {
 		signerPath: DEFAULT_SIGNER,
 		protocol,
 		payload,
+		curveType: Constants.SIGNING.CURVES.SECP256K1,
+		hashType: Constants.SIGNING.HASHES.KECCAK256,
 	},
 })
 

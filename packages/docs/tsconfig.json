@@ -2,8 +2,9 @@
   "extends": "@tsconfig/docusaurus/tsconfig.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "jsx": "react-jsx",
+    "types": ["node", "@docusaurus/module-type-aliases"]
   },
-  "include": ["../src"],
-  "types": ["node", "jest", "vitest", "vitest/globals"]
+  "include": ["src"]
 }

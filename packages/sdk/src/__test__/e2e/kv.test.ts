@@ -11,6 +11,7 @@ import { BTC_PURPOSE_P2PKH, ETH_COIN } from '../utils/helpers'
 
 import { setupClient } from '../utils/setup'
 import type { Client } from '../../client'
+import type { SignRequestParams } from '../../types'
 
 // Random address to test the screen with.
 // IMPORTANT NOTE: For Ethereum addresses you should always add the lower case variety since
@@ -89,7 +90,7 @@ describe('key-value', () => {
 	})
 
 	it('Should make a request to an unknown address', async () => {
-		await client.sign(ETH_REQ).catch((err) => {
+		await client.sign(ETH_REQ as unknown as SignRequestParams).catch((err) => {
 			expect(err.message).toContain(ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined])
 		})
 	})
@@ -135,7 +136,7 @@ describe('key-value', () => {
 	})
 
 	it('Should make a request to an address which is now known', async () => {
-		await client.sign(ETH_REQ)
+		await client.sign(ETH_REQ as unknown as SignRequestParams)
 	})
 
 	it('Should make an EIP712 request that uses the record', async () => {
@@ -168,7 +169,7 @@ describe('key-value', () => {
 				payload: msg,
 			},
 		}
-		await client.sign(req)
+		await client.sign(req as unknown as SignRequestParams)
 	})
 
 	it('Should make a request with calldata', async () => {
@@ -210,7 +211,7 @@ describe('key-value', () => {
 	})
 
 	it('Should make another request to make sure case sensitivity is enforced', async () => {
-		await client.sign(ETH_REQ).catch((err) => {
+		await client.sign(ETH_REQ as unknown as SignRequestParams).catch((err) => {
 			expect(err.message).toContain(ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined])
 		})
 	})

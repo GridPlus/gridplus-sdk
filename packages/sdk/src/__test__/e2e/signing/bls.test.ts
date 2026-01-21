@@ -50,17 +50,17 @@ describe('[BLS keys]', () => {
 		}
 
 		// Check if firmware supports BLS (requires >= 0.17.0)
-		const fwVersion = client.fwVersion
-		const versionStr = fwVersion && fwVersion.length >= 3 ? `${fwVersion[2]}.${fwVersion[1]}.${fwVersion[0]}` : 'unknown'
+		const fwVersion = client.getFwVersion()
+		const versionStr = fwVersion ? `${fwVersion.major}.${fwVersion.minor}.${fwVersion.fix}` : 'unknown'
 
 		console.log(`\n[BLS Test] Firmware version: ${versionStr}`)
-		console.log('[BLS Test] Raw fwVersion buffer:', fwVersion)
+		console.log('[BLS Test] Raw fwVersion:', fwVersion)
 
 		const fwConstants = client.getFwConstants()
 		console.log('[BLS Test] getAddressFlags:', fwConstants?.getAddressFlags)
 		console.log('[BLS Test] BLS12_381_G1_PUB constant:', Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB)
 
-		supportsBLS = fwConstants?.getAddressFlags?.includes(Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB)
+		supportsBLS = fwConstants?.getAddressFlags?.includes(Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB as number)
 
 		console.log(`[BLS Test] supportsBLS: ${supportsBLS}\n`)
 
@@ -127,11 +127,12 @@ describe('[BLS keys]', () => {
 //=========================================================
 // INTERNAL HELPERS
 //=========================================================
-async function getBLSPub(startPath) {
+async function getBLSPub(startPath: number[]) {
 	const pubs = await client.getAddresses({
 		startPath,
+		n: 1,
 		flag: Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB,
-	})
+	} as Parameters<typeof client.getAddresses>[0])
 	return pubs[0]
 }
 
@@ -159,7 +160,7 @@ async function testBLSDerivationAndSig(seed, signerPath) {
 	const refSigStr = Buffer.from(refSig).toString('hex')
 	expect(latticePub.toString('hex')).to.equal(refPubStr, 'Deposit public key mismatch')
 	expect(latticeSig.pubkey.toString('hex')).to.equal(refPubStr, 'Lattice signature returned wrong pubkey')
-	expect(latticeSig.sig.toString('hex')).to.equal(refSigStr, 'Signature mismatch')
+	expect(Buffer.from(latticeSig.sig as unknown as Buffer).toString('hex')).to.equal(refSigStr, 'Signature mismatch')
 }
 async function validateExportedKeystore(seed, path, pw, expKeystoreBuffer) {
 	const exportedKeystore = JSON.parse(expKeystoreBuffer.toString())

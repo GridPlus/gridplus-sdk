@@ -114,14 +114,16 @@ describe('[Unformatted]', () => {
 
 		// Legacy request
 		const legacyReq = {
-			currency: 'ETH_MSG',
+			currency: 'ETH_MSG' as const,
 			data: {
 				signerPath: req.data.signerPath,
 				payload: msg,
-				protocol: 'signPersonal',
+				protocol: 'signPersonal' as const,
+				curveType: Constants.SIGNING.CURVES.SECP256K1,
+				hashType: Constants.SIGNING.HASHES.KECCAK256,
 			},
 		}
-		const respLegacy = await client.sign(legacyReq)
+		const respLegacy = await client.sign(legacyReq as Parameters<typeof client.sign>[0])
 
 		const genSigR = (respGeneric.sig?.r as Buffer)?.toString('hex') ?? ''
 		const genSigS = (respGeneric.sig?.s as Buffer)?.toString('hex') ?? ''

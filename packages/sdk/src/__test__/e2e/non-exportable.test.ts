@@ -28,6 +28,7 @@ import { DEFAULT_SIGNER } from '../utils/builders'
 import { getSigStr, validateSig } from '../utils/helpers'
 import { setupClient } from '../utils/setup'
 import type { Client } from '../../client'
+import type { SignRequestParams } from '../../types'
 
 let runTests = true
 
@@ -131,20 +132,22 @@ describe('Non-Exportable Seed', () => {
 		it('Should test that ETH message sigs differ and validate on secp256k1', async () => {
 			// Validate that signPersonal message sigs are non-uniform
 			const msgReq = {
-				currency: 'ETH_MSG',
+				currency: 'ETH_MSG' as const,
 				data: {
 					signerPath: DEFAULT_SIGNER,
-					protocol: 'signPersonal',
+					protocol: 'signPersonal' as const,
 					payload: 'test message',
+					curveType: Constants.SIGNING.CURVES.SECP256K1,
+					hashType: Constants.SIGNING.HASHES.KECCAK256,
 				},
 			}
 			// NOTE: This uses the legacy signing pathway, which validates the signature
 			// Once we move this to generic signing, we will need to validate these.
-			const msg1Resp = await client.sign(msgReq)
-			const msg2Resp = await client.sign(msgReq)
-			const msg3Resp = await client.sign(msgReq)
-			const msg4Resp = await client.sign(msgReq)
-			const msg5Resp = await client.sign(msgReq)
+			const msg1Resp = await client.sign(msgReq as unknown as SignRequestParams)
+			const msg2Resp = await client.sign(msgReq as unknown as SignRequestParams)
+			const msg3Resp = await client.sign(msgReq as unknown as SignRequestParams)
+			const msg4Resp = await client.sign(msgReq as unknown as SignRequestParams)
+			const msg5Resp = await client.sign(msgReq as unknown as SignRequestParams)
 			// Check sig 1
 			expect(getSigStr(msg1Resp)).not.toEqual(getSigStr(msg2Resp))
 			expect(getSigStr(msg1Resp)).not.toEqual(getSigStr(msg3Resp))

@@ -69,7 +69,7 @@ describe('General', () => {
 		// Bitcoin addresses
 		// NOTE: The format of address will be based on the user's Lattice settings
 		//       By default, this will be P2SH(P2WPKH), i.e. addresses that start with `3`
-		addrs = await client.getAddresses(addrData)
+		addrs = (await client.getAddresses(addrData)) as string[]
 		expect(addrs.length).toEqual(5)
 		expect(addrs[0]?.[0]).toEqual('3')
 
@@ -77,7 +77,7 @@ describe('General', () => {
 		addrData.startPath[0] = BTC_PURPOSE_P2PKH
 		addrData.startPath[1] = ETH_COIN
 		addrData.n = 1
-		addrs = await client.getAddresses(addrData)
+		addrs = (await client.getAddresses(addrData)) as string[]
 		expect(addrs.length).toEqual(1)
 		expect(addrs[0]?.slice(0, 2)).toEqual('0x')
 		// If firmware supports it, try shorter paths
@@ -86,7 +86,7 @@ describe('General', () => {
 				startPath: [BTC_PURPOSE_P2PKH, ETH_COIN, HARDENED_OFFSET, 0],
 				n: 1,
 			}
-			addrs = await client.getAddresses(flexData)
+			addrs = (await client.getAddresses(flexData)) as string[]
 			expect(addrs.length).toEqual(1)
 			expect(addrs[0]?.slice(0, 2)).toEqual('0x')
 		}
@@ -102,7 +102,7 @@ describe('General', () => {
 		// Switch to BTC coin. Should work now.
 		addrData.startPath[1] = BTC_COIN
 		// Bech32
-		addrs = await client.getAddresses(addrData)
+		addrs = (await client.getAddresses(addrData)) as string[]
 		expect(addrs.length).toEqual(1)
 		expect(addrs[0]?.slice(0, 3)).to.be.oneOf(['bc1'])
 		addrData.startPath[0] = BTC_PURPOSE_P2SH_P2WPKH
@@ -110,7 +110,7 @@ describe('General', () => {
 
 		addrData.startPath[4] = 1000000
 		addrData.n = 3
-		addrs = await client.getAddresses(addrData)
+		addrs = (await client.getAddresses(addrData)) as string[]
 		expect(addrs.length).toEqual(addrData.n)
 		addrData.startPath[4] = 0
 		addrData.n = 1
@@ -118,7 +118,7 @@ describe('General', () => {
 		// Unsupported purpose (m/<purpose>/)
 		addrData.startPath[0] = 0 // Purpose 0 -- undefined
 		try {
-			addrs = await client.getAddresses(addrData)
+			addrs = (await client.getAddresses(addrData)) as string[]
 		} catch (err: any) {
 			expect(err.message).not.toEqual(null)
 		}
@@ -127,7 +127,7 @@ describe('General', () => {
 		// Unsupported currency
 		addrData.startPath[1] = HARDENED_OFFSET + 5 // 5' currency - aka unknown
 		try {
-			addrs = await client.getAddresses(addrData)
+			addrs = (await client.getAddresses(addrData)) as string[]
 			throw new Error(null)
 		} catch (err: any) {
 			expect(err.message).not.toEqual(null)
@@ -136,7 +136,7 @@ describe('General', () => {
 		// Too many addresses (n>10)
 		addrData.n = 11
 		try {
-			addrs = await client.getAddresses(addrData)
+			addrs = (await client.getAddresses(addrData)) as string[]
 			throw new Error(null)
 		} catch (err: any) {
 			expect(err.message).not.toEqual(null)
@@ -200,7 +200,7 @@ describe('General', () => {
 				changePath: [BTC_PURPOSE_P2SH_P2WPKH, BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
 			}
 			const req = {
-				currency: 'BTC',
+				currency: 'BTC' as const,
 				data: txData,
 			}
 
@@ -226,7 +226,7 @@ describe('General', () => {
 				changePath: [BTC_PURPOSE_P2SH_P2WPKH, BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
 			}
 			const req = {
-				currency: 'BTC',
+				currency: 'BTC' as const,
 				data: txData,
 			}
 			// Sign a legit tx
@@ -251,7 +251,7 @@ describe('General', () => {
 				changePath: [BTC_PURPOSE_P2SH_P2WPKH, BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
 			}
 			const req = {
-				currency: 'BTC',
+				currency: 'BTC' as const,
 				data: txData,
 			}
 			// Sign a legit tx
@@ -277,7 +277,7 @@ describe('General', () => {
 				changePath: [BTC_PURPOSE_P2WPKH, BTC_TESTNET_COIN, HARDENED_OFFSET, 1, 0],
 			}
 			const req = {
-				currency: 'BTC',
+				currency: 'BTC' as const,
 				data: txData,
 			}
 			// Sign a legit tx
