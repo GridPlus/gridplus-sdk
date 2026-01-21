@@ -1,11 +1,4 @@
-import {
-  type Address,
-  type Hex,
-  type TransactionSerializable,
-  type TypedDataDefinition,
-  parseTransaction,
-  serializeTransaction,
-} from 'viem';
+import { type Address, type Hex, type TransactionSerializable, type TypedDataDefinition, parseTransaction, serializeTransaction } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sign, signMessage } from '../../api';
 import { normalizeLatticeSignature } from '../../ethereum';
@@ -35,10 +28,7 @@ export const getFoundryAccount = () => {
 export type TestTransaction = TransactionSerializable;
 
 // Sign transaction with both Lattice and viem, then compare
-export const signAndCompareTransaction = async (
-  tx: TestTransaction,
-  testName: string,
-) => {
+export const signAndCompareTransaction = async (tx: TestTransaction, testName: string) => {
   const foundryAccount = getFoundryAccount();
 
   try {
@@ -102,18 +92,14 @@ export const signAndCompareTransaction = async (
     // Additional verification: compare signature components
     // Lattice returns r,s as hex strings with 0x prefix or as Buffer
     const normalizeSigComponent = (value: string | Buffer) => {
-      const hexString =
-        typeof value === 'string'
-          ? value
-          : `0x${Buffer.from(value).toString('hex')}`;
+      const hexString = typeof value === 'string' ? value : `0x${Buffer.from(value).toString('hex')}`;
       const stripped = hexString.replace(/^0x/, '').toLowerCase();
       return `0x${stripped.padStart(64, '0')}`;
     };
 
     const latticeR = normalizeSigComponent(latticeResult.sig.r);
     const latticeS = normalizeSigComponent(latticeResult.sig.s);
-    if (!parsedViemTx.r || !parsedViemTx.s)
-      throw new Error('Missing signature components');
+    if (!parsedViemTx.r || !parsedViemTx.s) throw new Error('Missing signature components');
     const viemR = normalizeSigComponent(parsedViemTx.r);
     const viemS = normalizeSigComponent(parsedViemTx.s);
 
@@ -142,10 +128,7 @@ export type EIP712TestMessage = {
 };
 
 // Sign EIP-712 typed data with both Lattice and viem, then compare
-export const signAndCompareEIP712Message = async (
-  eip712Message: EIP712TestMessage,
-  testName: string,
-) => {
+export const signAndCompareEIP712Message = async (eip712Message: EIP712TestMessage, testName: string) => {
   const foundryAccount = getFoundryAccount();
 
   try {

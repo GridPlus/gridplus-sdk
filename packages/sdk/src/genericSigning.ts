@@ -10,57 +10,18 @@ This payload should be coupled with:
 * Hash function to use on the message
 */
 import { Hash } from 'ox';
-import {
-  type Hex,
-  type TransactionSerializable,
-  parseTransaction,
-  serializeTransaction,
-} from 'viem';
+import { type Hex, type TransactionSerializable, parseTransaction, serializeTransaction } from 'viem';
 // keccak256 now imported from ox via Hash module
 import { HARDENED_OFFSET } from './constants';
 import { Constants } from './index';
 import { LatticeSignSchema } from './protocol';
-import {
-  buildSignerPathBuf,
-  existsIn,
-  fixLen,
-  getV,
-  getYParity,
-  parseDER,
-  splitFrames,
-} from './util';
+import { buildSignerPathBuf, existsIn, fixLen, getV, getYParity, parseDER, splitFrames } from './util';
 
 export const buildGenericSigningMsgRequest = (req) => {
-  const {
-    signerPath,
-    curveType,
-    hashType,
-    encodingType = null,
-    decoder = null,
-    omitPubkey = false,
-    fwConstants,
-    blsDst = Constants.SIGNING.BLS_DST.BLS_DST_NUL,
-  } = req;
-  const {
-    extraDataFrameSz,
-    extraDataMaxFrames,
-    prehashAllowed,
-    genericSigning,
-    varAddrPathSzAllowed,
-  } = fwConstants;
-  const {
-    curveTypes,
-    encodingTypes,
-    hashTypes,
-    baseDataSz,
-    baseReqSz,
-    calldataDecoding,
-  } = genericSigning;
-  const encodedPayload = getEncodedPayload(
-    req.payload,
-    encodingType,
-    encodingTypes,
-  );
+  const { signerPath, curveType, hashType, encodingType = null, decoder = null, omitPubkey = false, fwConstants, blsDst = Constants.SIGNING.BLS_DST.BLS_DST_NUL } = req;
+  const { extraDataFrameSz, extraDataMaxFrames, prehashAllowed, genericSigning, varAddrPathSzAllowed } = fwConstants;
+  const { curveTypes, encodingTypes, hashTypes, baseDataSz, baseReqSz, calldataDecoding } = genericSigning;
+  const encodedPayload = getEncodedPayload(req.payload, encodingType, encodingTypes);
   const { encoding } = encodedPayload;
   let { payloadBuf } = encodedPayload;
   const origPayloadBuf = payloadBuf;
@@ -70,12 +31,7 @@ export const buildGenericSigningMsgRequest = (req) => {
   // Sanity checks
   if (!payloadDataSz) {
     throw new Error('Payload could not be handled.');
-  } else if (
-    !genericSigning ||
-    !extraDataFrameSz ||
-    !extraDataMaxFrames ||
-    !prehashAllowed
-  ) {
+  } else if (!genericSigning || !extraDataFrameSz || !extraDataMaxFrames || !prehashAllowed) {
     throw new Error('Unsupported. Please update your Lattice firmware.');
   } else if (!existsIn(curveType, curveTypes)) {
     throw new Error('Unsupported curve type.');
@@ -85,13 +41,11 @@ export const buildGenericSigningMsgRequest = (req) => {
 
   // If there is a decoder attached to our payload, add it to
   // the data field of the request.
-  const hasDecoder =
-    decoder && calldataDecoding && decoder.length <= calldataDecoding.maxSz;
+  const hasDecoder = decoder && calldataDecoding && decoder.length <= calldataDecoding.maxSz;
   // Make sure the payload AND decoder data fits in the firmware buffer.
   // If it doesn't, we can't include the decoder because the payload will likely
   // be pre-hashed and the decoder data isn't part of the message to sign.
-  const decoderFits =
-    hasDecoder && payloadBuf.length + decoder.length <= maxExpandedSz;
+  const decoderFits = hasDecoder && payloadBuf.length + decoder.length <= maxExpandedSz;
   if (hasDecoder && decoderFits) {
     const decoderBuf = Buffer.alloc(8 + decoder.length);
     // First write th reserved word
@@ -109,9 +63,7 @@ export const buildGenericSigningMsgRequest = (req) => {
     }
     signerPath.forEach((idx) => {
       if (idx < HARDENED_OFFSET) {
-        throw new Error(
-          'Signing on ed25519 requires all signer path indices be hardened.',
-        );
+        throw new Error('Signing on ed25519 requires all signer path indices be hardened.');
       }
     });
   }
@@ -158,9 +110,7 @@ export const buildGenericSigningMsgRequest = (req) => {
       // If this payload is too large to send, but the Lattice allows a prehashed message, do that
       if (hashType === hashTypes.NONE) {
         // This cannot be done for ED25519 signing, which must sign the full message
-        throw new Error(
-          'Message too large to send and could not be prehashed (hashType=NONE).',
-        );
+        throw new Error('Message too large to send and could not be prehashed (hashType=NONE).');
       } else if (hashType === hashTypes.KECCAK256) {
         prehash = Buffer.from(Hash.keccak256(payloadData));
       } else if (hashType === hashTypes.SHA256) {
@@ -170,10 +120,7 @@ export const buildGenericSigningMsgRequest = (req) => {
       }
     } else {
       // Split overflow data into extraData frames
-      const frames = splitFrames(
-        payloadBuf.slice(baseDataSz),
-        extraDataFrameSz,
-      );
+      const frames = splitFrames(payloadBuf.slice(baseDataSz), extraDataFrameSz);
       frames.forEach((frame) => {
         const szLE = Buffer.alloc(4);
         szLE.writeUInt32LE(frame.length, 0);
@@ -264,10 +211,7 @@ export const parseGenericSigningResponse = (res, off, req) => {
       const vBn = getV(req.origPayloadBuf, parsed);
       parsed.sig.v = BigInt(vBn.toString());
       populateViemSignedTx(parsed.sig.v, req, parsed);
-    } else if (
-      req.hashType === Constants.SIGNING.HASHES.KECCAK256 &&
-      req.encodingType !== Constants.SIGNING.ENCODINGS.EVM
-    ) {
+    } else if (req.hashType === Constants.SIGNING.HASHES.KECCAK256 && req.encodingType !== Constants.SIGNING.ENCODINGS.EVM) {
       // Generic Keccak256 message - determine if it looks like a transaction
       let isTransaction = false;
 
@@ -293,10 +237,7 @@ export const parseGenericSigningResponse = (res, off, req) => {
           parsed.sig.v = BigInt(vBn.toString());
           populateViemSignedTx(parsed.sig.v, req, parsed);
         } catch (err) {
-          console.error(
-            'Failed to get V from transaction, using fallback:',
-            err,
-          );
+          console.error('Failed to get V from transaction, using fallback:', err);
           // Fall back to simple recovery if getV fails (e.g., malformed RLP)
           // Use the correct hash type specified in the request
           const msgHash = computeMessageHash(req, digestFromResponse);
@@ -356,11 +297,7 @@ function computeMessageHash(
   },
   digestFromResponse?: Buffer,
 ): Buffer {
-  if (
-    digestFromResponse &&
-    digestFromResponse.length === 32 &&
-    digestFromResponse.some((byte) => byte !== 0)
-  ) {
+  if (digestFromResponse && digestFromResponse.length === 32 && digestFromResponse.some((byte) => byte !== 0)) {
     return digestFromResponse;
   }
   if (req.hashType === Constants.SIGNING.HASHES.SHA256) {
@@ -374,11 +311,7 @@ function computeMessageHash(
 
 // Reconstruct a viem-compatible signed transaction string from the raw payload and
 // recovered signature so consumers can compare or broadcast without extra parsing.
-function populateViemSignedTx(
-  sigV: bigint,
-  req: any,
-  parsed: { sig: { r: string; s: string; v?: bigint }; viemTx?: string },
-) {
+function populateViemSignedTx(sigV: bigint, req: any, parsed: { sig: { r: string; s: string; v?: bigint }; viemTx?: string }) {
   if (req.encodingType !== Constants.SIGNING.ENCODINGS.EVM) return;
 
   try {
@@ -427,10 +360,7 @@ function populateViemSignedTx(
             s: parsed.sig.s as Hex,
           };
 
-    parsed.viemTx = serializeTransaction(
-      baseTx as TransactionSerializable,
-      signature as any,
-    );
+    parsed.viemTx = serializeTransaction(baseTx as TransactionSerializable, signature as any);
   } catch (_err) {
     console.debug('Failed to build viemTx from response', _err);
   }
@@ -442,9 +372,7 @@ export const getEncodedPayload = (payload, encoding, allowedEncodings) => {
   }
   // Make sure the encoding type specified is supported by firmware
   if (!existsIn(encoding, allowedEncodings)) {
-    throw new Error(
-      'Encoding not supported by Lattice firmware. You may want to update.',
-    );
+    throw new Error('Encoding not supported by Lattice firmware. You may want to update.');
   }
   let payloadBuf: Buffer;
   if (!payload) {

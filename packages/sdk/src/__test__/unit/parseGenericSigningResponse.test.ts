@@ -34,18 +34,12 @@ describe('parseGenericSigningResponse', () => {
     const hash = Buffer.from(Hash.keccak256(payload));
 
     // Create a fake signature
-    const privateKey = Buffer.from(
-      '0101010101010101010101010101010101010101010101010101010101010101',
-      'hex',
-    );
+    const privateKey = Buffer.from('0101010101010101010101010101010101010101010101010101010101010101', 'hex');
     const sigObj = secp256k1.ecdsaSign(hash, privateKey);
     const publicKey = secp256k1.publicKeyCreate(privateKey, false);
 
     // Create DER-encoded signature response
-    const derSig = createDERSignature(
-      Buffer.from(sigObj.signature.slice(0, 32)),
-      Buffer.from(sigObj.signature.slice(32, 64)),
-    );
+    const derSig = createDERSignature(Buffer.from(sigObj.signature.slice(0, 32)), Buffer.from(sigObj.signature.slice(32, 64)));
 
     // Create mock response buffer
     const mockResponse = Buffer.concat([
@@ -74,25 +68,16 @@ describe('parseGenericSigningResponse', () => {
 
   it('should handle EVM transaction encoding', () => {
     // Simulate an unsigned legacy transaction
-    const unsignedTx = Buffer.from(
-      'e9808504a817c800825208943535353535353535353535353535353535353535880de0b6b3a764000080',
-      'hex',
-    );
+    const unsignedTx = Buffer.from('e9808504a817c800825208943535353535353535353535353535353535353535880de0b6b3a764000080', 'hex');
     const hash = Buffer.from(Hash.keccak256(unsignedTx));
 
     // Create a fake signature
-    const privateKey = Buffer.from(
-      '0101010101010101010101010101010101010101010101010101010101010101',
-      'hex',
-    );
+    const privateKey = Buffer.from('0101010101010101010101010101010101010101010101010101010101010101', 'hex');
     const sigObj = secp256k1.ecdsaSign(hash, privateKey);
     const publicKey = secp256k1.publicKeyCreate(privateKey, false);
 
     // Create DER-encoded signature response
-    const derSig = createDERSignature(
-      Buffer.from(sigObj.signature.slice(0, 32)),
-      Buffer.from(sigObj.signature.slice(32, 64)),
-    );
+    const derSig = createDERSignature(Buffer.from(sigObj.signature.slice(0, 32)), Buffer.from(sigObj.signature.slice(32, 64)));
 
     // Create mock response buffer
     const mockResponse = Buffer.concat([
@@ -134,18 +119,12 @@ describe('parseGenericSigningResponse', () => {
     const hash = Buffer.from(Hash.keccak256(rlpEncoded));
 
     // Create a fake signature
-    const privateKey = Buffer.from(
-      '0101010101010101010101010101010101010101010101010101010101010101',
-      'hex',
-    );
+    const privateKey = Buffer.from('0101010101010101010101010101010101010101010101010101010101010101', 'hex');
     const sigObj = secp256k1.ecdsaSign(hash, privateKey);
     const publicKey = secp256k1.publicKeyCreate(privateKey, false);
 
     // Create DER-encoded signature response
-    const derSig = createDERSignature(
-      Buffer.from(sigObj.signature.slice(0, 32)),
-      Buffer.from(sigObj.signature.slice(32, 64)),
-    );
+    const derSig = createDERSignature(Buffer.from(sigObj.signature.slice(0, 32)), Buffer.from(sigObj.signature.slice(32, 64)));
 
     // Create mock response buffer
     const mockResponse = Buffer.concat([

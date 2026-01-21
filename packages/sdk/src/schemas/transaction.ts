@@ -4,32 +4,25 @@ import { TRANSACTION_TYPE } from '../types';
 
 // Helper to handle various numeric inputs and convert them to BigInt.
 // It also validates that the value is not negative.
-const toPositiveBigInt = z
-  .union([
-    z.string().regex(/^(0x[0-9a-fA-F]+|[0-9]+)$/, 'Invalid number format'),
-    z.number(),
-    z.bigint(),
-  ])
-  .transform((val, ctx) => {
-    try {
-      const b =
-        typeof val === 'string' && isHex(val) ? hexToBigInt(val) : BigInt(val);
-      if (b < 0n) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Value must be non-negative',
-        });
-        return z.NEVER;
-      }
-      return b;
-    } catch {
+const toPositiveBigInt = z.union([z.string().regex(/^(0x[0-9a-fA-F]+|[0-9]+)$/, 'Invalid number format'), z.number(), z.bigint()]).transform((val, ctx) => {
+  try {
+    const b = typeof val === 'string' && isHex(val) ? hexToBigInt(val) : BigInt(val);
+    if (b < 0n) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Invalid numeric value',
+        message: 'Value must be non-negative',
       });
       return z.NEVER;
     }
-  });
+    return b;
+  } catch {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Invalid numeric value',
+    });
+    return z.NEVER;
+  }
+});
 
 // Schema for gas-related fields, ensuring they are non-negative BigInts.
 const GasValueSchema = toPositiveBigInt.refine((val) => val >= 0n, {
@@ -39,11 +32,7 @@ const GasValueSchema = toPositiveBigInt.refine((val) => val >= 0n, {
 // Schema for chainId, ensuring it's a positive integer.
 const ChainIdSchema = z
   .union([z.string(), z.number()])
-  .transform((val) =>
-    typeof val === 'string' && isHex(val)
-      ? Number(hexToBigInt(val as Hex))
-      : Number(val),
-  )
+  .transform((val) => (typeof val === 'string' && isHex(val) ? Number(hexToBigInt(val as Hex)) : Number(val)))
   .refine((val) => Number.isInteger(val) && val > 0, {
     message: 'Chain ID must be a positive integer',
   });
@@ -55,61 +44,43 @@ const AddressSchema = z
   .transform((addr) => getAddress(addr));
 
 // Schema for hex data, ensuring it's a valid hex string.
-const DataSchema = z
-  .string()
-  .refine(isHex, 'Data must be a valid hex string')
-  .default('0x');
+const DataSchema = z.string().refine(isHex, 'Data must be a valid hex string').default('0x');
 
-const NonceSchema = z
-  .union([
-    z.string().regex(/^(0x[0-9a-fA-F]+|[0-9]+)$/, 'Invalid nonce format'),
-    z.number().int().nonnegative(),
-    z.bigint(),
-  ])
-  .transform((val, ctx) => {
-    try {
-      const bigVal =
-        typeof val === 'string'
-          ? isHex(val as Hex)
-            ? hexToBigInt(val as Hex)
-            : BigInt(val)
-          : typeof val === 'number'
-            ? BigInt(val)
-            : val;
+const NonceSchema = z.union([z.string().regex(/^(0x[0-9a-fA-F]+|[0-9]+)$/, 'Invalid nonce format'), z.number().int().nonnegative(), z.bigint()]).transform((val, ctx) => {
+  try {
+    const bigVal = typeof val === 'string' ? (isHex(val as Hex) ? hexToBigInt(val as Hex) : BigInt(val)) : typeof val === 'number' ? BigInt(val) : val;
 
-      if (bigVal < 0n) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Nonce must be non-negative',
-        });
-        return z.NEVER;
-      }
-
-      const maxSafe = BigInt(Number.MAX_SAFE_INTEGER);
-      if (bigVal > maxSafe) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Nonce exceeds JavaScript safe integer range',
-        });
-        return z.NEVER;
-      }
-
-      return Number(bigVal);
-    } catch {
+    if (bigVal < 0n) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Invalid nonce value',
+        message: 'Nonce must be non-negative',
       });
       return z.NEVER;
     }
-  });
+
+    const maxSafe = BigInt(Number.MAX_SAFE_INTEGER);
+    if (bigVal > maxSafe) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Nonce exceeds JavaScript safe integer range',
+      });
+      return z.NEVER;
+    }
+
+    return Number(bigVal);
+  } catch {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Invalid nonce value',
+    });
+    return z.NEVER;
+  }
+});
 
 // Schema for access list entries.
 const AccessListEntrySchema = z.object({
   address: AddressSchema,
-  storageKeys: z.array(
-    z.string().refine(isHex, 'Storage key must be a hex string'),
-  ),
+  storageKeys: z.array(z.string().refine(isHex, 'Storage key must be a hex string')),
 });
 
 // Schema for EIP-7702 authorization entries.
@@ -136,9 +107,7 @@ const BaseTxSchema = z.object({
 
 // Schema for Legacy (Type 0) transactions.
 const LegacyTxSchema = BaseTxSchema.extend({
-  type: z
-    .union([z.literal('legacy'), z.literal(TRANSACTION_TYPE.LEGACY)])
-    .optional(),
+  type: z.union([z.literal('legacy'), z.literal(TRANSACTION_TYPE.LEGACY)]).optional(),
   gasPrice: GasValueSchema,
 });
 
@@ -157,11 +126,7 @@ const EIP1559TxSchema = BaseTxSchema.extend({
 
 // Schema for EIP-7702 (Type 4/5) transactions.
 const EIP7702TxSchema = BaseTxSchema.extend({
-  type: z.union([
-    z.literal('eip7702'),
-    z.literal(TRANSACTION_TYPE.EIP7702_AUTH),
-    z.literal(TRANSACTION_TYPE.EIP7702_AUTH_LIST),
-  ]),
+  type: z.union([z.literal('eip7702'), z.literal(TRANSACTION_TYPE.EIP7702_AUTH), z.literal(TRANSACTION_TYPE.EIP7702_AUTH_LIST)]),
   maxFeePerGas: GasValueSchema,
   maxPriorityFeePerGas: GasValueSchema,
   authorizationList: z.array(AuthorizationSchema).min(1),
@@ -181,9 +146,7 @@ export const TransactionSchema = z
   .refine(
     (val) => {
       try {
-        JSON.stringify(val, (_, value) =>
-          typeof value === 'bigint' ? value.toString() : value,
-        );
+        JSON.stringify(val, (_, value) => (typeof value === 'bigint' ? value.toString() : value));
         return true;
       } catch {
         return false;
@@ -217,12 +180,7 @@ export const TransactionSchema = z
     let type: 'eip7702' | 'eip1559' | 'eip2930' | 'legacy' = 'legacy';
     let schema: z.ZodTypeAny = LegacyTxSchema;
 
-    if (
-      tx.type === 'eip7702' ||
-      tx.type === 4 ||
-      tx.type === 5 ||
-      hasAuthList
-    ) {
+    if (tx.type === 'eip7702' || tx.type === 4 || tx.type === 5 || hasAuthList) {
       type = 'eip7702';
       schema = EIP7702TxSchema;
     } else if (tx.type === 'eip1559' || tx.type === 2 || hasMaxFee) {

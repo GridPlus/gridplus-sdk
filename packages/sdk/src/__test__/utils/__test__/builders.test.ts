@@ -1,8 +1,4 @@
-import {
-  buildEvmReq,
-  buildRandomVectors,
-  getFwVersionsList,
-} from '../builders';
+import { buildEvmReq, buildRandomVectors, getFwVersionsList } from '../builders';
 
 describe('building', () => {
   test('should test client', () => {

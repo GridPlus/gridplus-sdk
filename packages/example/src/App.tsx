@@ -6,10 +6,7 @@ import { Lattice } from './Lattice';
 function App() {
   const [label, setLabel] = useState('No Device');
 
-  const getStoredClient = useCallback(
-    async () => window.localStorage.getItem('storedClient') || '',
-    [],
-  );
+  const getStoredClient = useCallback(async () => window.localStorage.getItem('storedClient') || '', []);
 
   const setStoredClient = useCallback(async (storedClient: string | null) => {
     if (!storedClient) return;
@@ -63,17 +60,10 @@ function App() {
             border: '1px solid black',
           }}
         >
-          <form
-            onSubmit={submitInit}
-            style={{ display: 'flex', flexDirection: 'column' }}
-          >
+          <form onSubmit={submitInit} style={{ display: 'flex', flexDirection: 'column' }}>
             <input type="text" placeholder="Device Id" />
             <input type="password" placeholder="Password" />
-            <input
-              type="text"
-              placeholder="App Name"
-              defaultValue="Example App"
-            />
+            <input type="text" placeholder="App Name" defaultValue="Example App" />
             <button type="submit">Submit</button>
           </form>
         </div>
@@ -86,10 +76,7 @@ function App() {
             border: '1px solid black',
           }}
         >
-          <form
-            onSubmit={submitPair}
-            style={{ display: 'flex', flexDirection: 'column' }}
-          >
+          <form onSubmit={submitPair} style={{ display: 'flex', flexDirection: 'column' }}>
             <input type="text" placeholder="pairing code" />
             <button type="submit">Submit</button>
           </form>

@@ -52,8 +52,6 @@ describe('parseDerivationPath', () => {
   });
 
   it('throws error for invalid input', () => {
-    expect(() => parseDerivationPath('invalid/path')).toThrow(
-      'Invalid part in derivation path: invalid',
-    );
+    expect(() => parseDerivationPath('invalid/path')).toThrow('Invalid part in derivation path: invalid');
   });
 });

@@ -41,10 +41,7 @@ export interface FirmwareConstants {
   extraDataFrameSz: number;
   extraDataMaxFrames: number;
   genericSigning: GenericSigningData;
-  getAddressFlags: [
-    typeof EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB,
-    typeof EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB,
-  ];
+  getAddressFlags: [typeof EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB, typeof EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB];
   kvActionMaxNum: number;
   kvActionsAllowed: boolean;
   kvKeyMaxStrSz: number;

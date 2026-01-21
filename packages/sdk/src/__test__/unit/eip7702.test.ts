@@ -1,10 +1,7 @@
 import { Hash } from 'ox';
 import { parseEther, toHex } from 'viem';
 import { serializeEIP7702Transaction } from '../../ethereum';
-import type {
-  EIP7702AuthListTransactionRequest,
-  EIP7702AuthTransactionRequest,
-} from '../../types';
+import type { EIP7702AuthListTransactionRequest, EIP7702AuthTransactionRequest } from '../../types';
 
 describe('EIP-7702 Transaction Serialization', () => {
   /**

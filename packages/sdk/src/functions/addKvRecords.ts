@@ -1,17 +1,6 @@
-import {
-  LatticeSecureEncryptedRequestType,
-  encryptedSecureRequest,
-} from '../protocol';
-import {
-  validateConnectedClient,
-  validateKvRecord,
-  validateKvRecords,
-} from '../shared/validators';
-import type {
-  AddKvRecordsRequestFunctionParams,
-  FirmwareConstants,
-  KVRecords,
-} from '../types';
+import { LatticeSecureEncryptedRequestType, encryptedSecureRequest } from '../protocol';
+import { validateConnectedClient, validateKvRecord, validateKvRecords } from '../shared/validators';
+import type { AddKvRecordsRequestFunctionParams, FirmwareConstants, KVRecords } from '../types';
 
 /**
  * `addKvRecords` takes in a set of key-value records and sends a request to add them to the
@@ -19,14 +8,8 @@ import type {
  * @category Lattice
  * @returns A callback with an error or null.
  */
-export async function addKvRecords({
-  client,
-  records,
-  type,
-  caseSensitive,
-}: AddKvRecordsRequestFunctionParams): Promise<Buffer> {
-  const { url, sharedSecret, ephemeralPub, fwConstants } =
-    validateConnectedClient(client);
+export async function addKvRecords({ client, records, type, caseSensitive }: AddKvRecordsRequestFunctionParams): Promise<Buffer> {
+  const { url, sharedSecret, ephemeralPub, fwConstants } = validateConnectedClient(client);
   validateAddKvRequest({ records, fwConstants });
 
   // Build the data for this request
@@ -77,10 +60,7 @@ export const encodeAddKvRecordsRequest = ({
   payload.writeUInt8(Object.keys(records).length, 0);
   let off = 1;
   Object.entries(records).forEach(([_key, _val]) => {
-    const { key, val } = validateKvRecord(
-      { key: _key, val: _val },
-      fwConstants,
-    );
+    const { key, val } = validateKvRecord({ key: _key, val: _val }, fwConstants);
     // Skip the ID portion. This will get added by firmware.
     payload.writeUInt32LE(0, off);
     off += 4;

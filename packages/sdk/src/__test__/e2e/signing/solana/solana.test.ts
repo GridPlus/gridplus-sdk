@@ -6,12 +6,7 @@
  * Running with a different mnemonic will cause test failures due to
  * incorrect key derivations and signature mismatches.
  */
-import {
-  Keypair as SolanaKeypair,
-  PublicKey as SolanaPublicKey,
-  SystemProgram as SolanaSystemProgram,
-  Transaction as SolanaTransaction,
-} from '@solana/web3.js';
+import { Keypair as SolanaKeypair, PublicKey as SolanaPublicKey, SystemProgram as SolanaSystemProgram, Transaction as SolanaTransaction } from '@solana/web3.js';
 import { Constants } from '../../../..';
 import { HARDENED_OFFSET } from '../../../../constants';
 import { ensureHexBuffer } from '../../../../util';
@@ -25,12 +20,7 @@ import type { Client } from '../../../../client';
 //---------------------------------------
 // STATE DATA
 //---------------------------------------
-const DEFAULT_SOLANA_SIGNER_PATH = [
-  HARDENED_OFFSET + 44,
-  HARDENED_OFFSET + 501,
-  HARDENED_OFFSET,
-  HARDENED_OFFSET,
-];
+const DEFAULT_SOLANA_SIGNER_PATH = [HARDENED_OFFSET + 44, HARDENED_OFFSET + 501, HARDENED_OFFSET, HARDENED_OFFSET];
 const prng = getPrng();
 
 describe('[Solana]', () => {
@@ -85,26 +75,16 @@ describe('[Solana]', () => {
 
     // Generate a pseudorandom blockhash, which is just a public key appearently.
     const randBuf = prandomBuf(prng, 32, true);
-    const recentBlockhash =
-      SolanaKeypair.fromSeed(randBuf).publicKey.toBase58();
+    const recentBlockhash = SolanaKeypair.fromSeed(randBuf).publicKey.toBase58();
 
     // Build a transaction and sign it using Solana's JS lib
-    const txJs = new SolanaTransaction({ recentBlockhash }).add(
-      transfer1,
-      transfer2,
-    );
+    const txJs = new SolanaTransaction({ recentBlockhash }).add(transfer1, transfer2);
     txJs.setSigners(pubA, pubB);
-    txJs.sign(
-      SolanaKeypair.fromSeed(derivedA.priv),
-      SolanaKeypair.fromSeed(derivedB.priv),
-    );
+    txJs.sign(SolanaKeypair.fromSeed(derivedA.priv), SolanaKeypair.fromSeed(derivedB.priv));
     const serTxJs = txJs.serialize().toString('hex');
 
     // Build a copy of the transaction and get the serialized payload for signing in firmware.
-    const txFw = new SolanaTransaction({ recentBlockhash }).add(
-      transfer1,
-      transfer2,
-    );
+    const txFw = new SolanaTransaction({ recentBlockhash }).add(transfer1, transfer2);
     txFw.setSigners(pubA, pubB);
     // We want to sign the Solana message, not the full transaction
     const payload = txFw.compileMessage().serialize();
@@ -121,10 +101,7 @@ describe('[Solana]', () => {
       if (!resp.sig?.r || !resp.sig?.s) {
         throw new Error('Missing signature components in response');
       }
-      return Buffer.concat([
-        ensureHexBuffer(resp.sig.r as string | Buffer),
-        ensureHexBuffer(resp.sig.s as string | Buffer),
-      ]);
+      return Buffer.concat([ensureHexBuffer(resp.sig.r as string | Buffer), ensureHexBuffer(resp.sig.s as string | Buffer)]);
     });
 
     const sigB = await runGeneric(
@@ -137,10 +114,7 @@ describe('[Solana]', () => {
       if (!resp.sig?.r || !resp.sig?.s) {
         throw new Error('Missing signature components in response');
       }
-      return Buffer.concat([
-        ensureHexBuffer(resp.sig.r as string | Buffer),
-        ensureHexBuffer(resp.sig.s as string | Buffer),
-      ]);
+      return Buffer.concat([ensureHexBuffer(resp.sig.r as string | Buffer), ensureHexBuffer(resp.sig.s as string | Buffer)]);
     });
     txFw.addSignature(pubA, sigA);
     txFw.addSignature(pubB, sigB);

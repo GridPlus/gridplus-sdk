@@ -12,8 +12,7 @@ import { mnemonicToSeedSync } from 'bip39';
  * This mnemonic is used across multiple test files to ensure consistent
  * test behavior and deterministic results.
  */
-export const TEST_MNEMONIC =
-  'test test test test test test test test test test test junk';
+export const TEST_MNEMONIC = 'test test test test test test test test test test test junk';
 
 /**
  * Shared seed derived from TEST_MNEMONIC

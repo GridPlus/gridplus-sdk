@@ -2,9 +2,7 @@ import type { Client } from '../client';
 
 export let saveClient: (clientData: string | null) => Promise<void>;
 
-export const setSaveClient = (
-  fn: (clientData: string | null) => Promise<void>,
-) => {
+export const setSaveClient = (fn: (clientData: string | null) => Promise<void>) => {
   saveClient = fn;
 };
 

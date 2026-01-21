@@ -1,36 +1,10 @@
 import { buildSaveClientFn } from './api/utilities';
-import {
-  BASE_URL,
-  DEFAULT_ACTIVE_WALLETS,
-  EMPTY_WALLET_UID,
-  getFwVersionConst,
-} from './constants';
-import {
-  addKvRecords,
-  connect,
-  fetchActiveWallet,
-  fetchEncData,
-  getAddresses,
-  getKvRecords,
-  pair,
-  removeKvRecords,
-  sign,
-} from './functions/index';
+import { BASE_URL, DEFAULT_ACTIVE_WALLETS, EMPTY_WALLET_UID, getFwVersionConst } from './constants';
+import { addKvRecords, connect, fetchActiveWallet, fetchEncData, getAddresses, getKvRecords, pair, removeKvRecords, sign } from './functions/index';
 import { buildRetryWrapper } from './shared/functions';
 import { getPubKeyBytes } from './shared/utilities';
 import { validateEphemeralPub } from './shared/validators';
-import type {
-  ActiveWallets,
-  AddKvRecordsRequestParams,
-  FetchEncDataRequest,
-  GetAddressesRequestParams,
-  GetKvRecordsData,
-  GetKvRecordsRequestParams,
-  KeyPair,
-  RemoveKvRecordsRequestParams,
-  SignData,
-  SignRequestParams,
-} from './types';
+import type { ActiveWallets, AddKvRecordsRequestParams, FetchEncDataRequest, GetAddressesRequestParams, GetKvRecordsData, GetKvRecordsRequestParams, KeyPair, RemoveKvRecordsRequestParams, SignData, SignRequestParams } from './types';
 import { getP256KeyPair, getP256KeyPairFromPub, randomBytes } from './util';
 
 /**
@@ -116,9 +90,7 @@ export class Client {
     this.privKey = privKey || randomBytes(32);
     this.key = getP256KeyPair(this.privKey);
     this.retryWrapper = buildRetryWrapper(this, this.retryCount);
-    this.setStoredClient = setStoredClient
-      ? buildSaveClientFn(setStoredClient)
-      : undefined;
+    this.setStoredClient = setStoredClient ? buildSaveClientFn(setStoredClient) : undefined;
 
     /** The user may pass in state data to rehydrate a session that was previously cached */
     if (stateData) {
@@ -158,9 +130,7 @@ export class Client {
   public get sharedSecret() {
     // Once every ~256 attempts, we will get a key that starts with a `00` byte, which can lead to
     // problems initializing AES if we don't force a 32 byte BE buffer.
-    return Buffer.from(
-      this.key.derive(this.ephemeralPub.getPublic()).toArray('be', 32),
-    );
+    return Buffer.from(this.key.derive(this.ephemeralPub.getPublic()).toArray('be', 32));
   }
 
   /** @internal */
@@ -197,12 +167,7 @@ export class Client {
    * Takes a starting path and a number to get the addresses associated with the active wallet.
    * @category Lattice
    */
-  public async getAddresses({
-    startPath,
-    n = 1,
-    flag = 0,
-    iterIdx = 0,
-  }: GetAddressesRequestParams): Promise<Buffer[] | string[]> {
+  public async getAddresses({ startPath, n = 1, flag = 0, iterIdx = 0 }: GetAddressesRequestParams): Promise<Buffer[] | string[]> {
     return this.retryWrapper(getAddresses, { startPath, n, flag, iterIdx });
   }
 
@@ -210,12 +175,7 @@ export class Client {
    * Builds and sends a request for signing to the Lattice.
    * @category Lattice
    */
-  public async sign({
-    data,
-    currency,
-    cachedData,
-    nextCode,
-  }: SignRequestParams): Promise<SignData> {
+  public async sign({ data, currency, cachedData, nextCode }: SignRequestParams): Promise<SignData> {
     return this.retryWrapper(sign, { data, currency, cachedData, nextCode });
   }
 
@@ -230,11 +190,7 @@ export class Client {
    * Takes in a set of key-value records and sends a request to add them to the Lattice.
    * @category Lattice
    */
-  async addKvRecords({
-    type = 0,
-    records,
-    caseSensitive = false,
-  }: AddKvRecordsRequestParams): Promise<Buffer> {
+  async addKvRecords({ type = 0, records, caseSensitive = false }: AddKvRecordsRequestParams): Promise<Buffer> {
     return this.retryWrapper(addKvRecords, { type, records, caseSensitive });
   }
 
@@ -242,11 +198,7 @@ export class Client {
    * Fetches a list of key-value records from the Lattice.
    * @category Lattice
    */
-  public async getKvRecords({
-    type = 0,
-    n = 1,
-    start = 0,
-  }: GetKvRecordsRequestParams): Promise<GetKvRecordsData> {
+  public async getKvRecords({ type = 0, n = 1, start = 0 }: GetKvRecordsRequestParams): Promise<GetKvRecordsData> {
     return this.retryWrapper(getKvRecords, { type, n, start });
   }
 
@@ -254,10 +206,7 @@ export class Client {
    * Takes in an array of ids and sends a request to remove them from the Lattice.
    * @category Lattice
    */
-  public async removeKvRecords({
-    type = 0,
-    ids = [],
-  }: RemoveKvRecordsRequestParams): Promise<Buffer> {
+  public async removeKvRecords({ type = 0, ids = [] }: RemoveKvRecordsRequestParams): Promise<Buffer> {
     return this.retryWrapper(removeKvRecords, { type, ids });
   }
 
@@ -267,23 +216,15 @@ export class Client {
    * data formatted according to the specified type.
    * @category Lattice
    */
-  public async fetchEncryptedData(
-    params: FetchEncDataRequest,
-  ): Promise<Buffer> {
+  public async fetchEncryptedData(params: FetchEncDataRequest): Promise<Buffer> {
     return this.retryWrapper(fetchEncData, params);
   }
 
   /** Get the active wallet */
   public getActiveWallet() {
-    if (
-      this.activeWallets.external.uid &&
-      !EMPTY_WALLET_UID.equals(this.activeWallets.external.uid)
-    ) {
+    if (this.activeWallets.external.uid && !EMPTY_WALLET_UID.equals(this.activeWallets.external.uid)) {
       return this.activeWallets.external;
-    } else if (
-      this.activeWallets.internal.uid &&
-      !EMPTY_WALLET_UID.equals(this.activeWallets.internal.uid)
-    ) {
+    } else if (this.activeWallets.internal.uid && !EMPTY_WALLET_UID.equals(this.activeWallets.internal.uid)) {
       return this.activeWallets.internal;
     } else {
       return undefined;
@@ -417,17 +358,13 @@ export class Client {
       // Attempt to parse the data
       const internalWallet = {
         uid: Buffer.from(unpacked.activeWallets.internal.uid, 'hex'),
-        name: unpacked.activeWallets.internal.name
-          ? Buffer.from(unpacked.activeWallets.internal.name)
-          : null,
+        name: unpacked.activeWallets.internal.name ? Buffer.from(unpacked.activeWallets.internal.name) : null,
         capabilities: unpacked.activeWallets.internal.capabilities,
         external: false,
       };
       const externalWallet = {
         uid: Buffer.from(unpacked.activeWallets.external.uid, 'hex'),
-        name: unpacked.activeWallets.external.name
-          ? Buffer.from(unpacked.activeWallets.external.name)
-          : null,
+        name: unpacked.activeWallets.external.name ? Buffer.from(unpacked.activeWallets.external.name) : null,
         capabilities: unpacked.activeWallets.external.capabilities,
         external: true,
       };

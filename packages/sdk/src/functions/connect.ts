@@ -1,22 +1,11 @@
 import { ProtocolConstants, connectSecureRequest } from '../protocol';
 import { doesFetchWalletsOnLoad } from '../shared/predicates';
 import { getSharedSecret, parseWallets } from '../shared/utilities';
-import {
-  validateBaseUrl,
-  validateDeviceId,
-  validateKey,
-} from '../shared/validators';
-import type {
-  ActiveWallets,
-  ConnectRequestFunctionParams,
-  KeyPair,
-} from '../types';
+import { validateBaseUrl, validateDeviceId, validateKey } from '../shared/validators';
+import type { ActiveWallets, ConnectRequestFunctionParams, KeyPair } from '../types';
 import { aes256_decrypt, getP256KeyPairFromPub } from '../util';
 
-export async function connect({
-  client,
-  id,
-}: ConnectRequestFunctionParams): Promise<boolean> {
+export async function connect({ client, id }: ConnectRequestFunctionParams): Promise<boolean> {
   const { deviceId, key, baseUrl } = validateConnectRequest({
     deviceId: id,
     // @ts-expect-error - private access
@@ -33,8 +22,7 @@ export async function connect({
 
   // Decode response data params.
   // Response payload data is *not* encrypted.
-  const { isPaired, fwVersion, activeWallets, ephemeralPub } =
-    await decodeConnectResponse(respPayloadData, key);
+  const { isPaired, fwVersion, activeWallets, ephemeralPub } = await decodeConnectResponse(respPayloadData, key);
 
   // Update client state with response data
 
@@ -104,8 +92,7 @@ export const decodeConnectResponse = (
   ephemeralPub: KeyPair;
 } => {
   let off = 0;
-  const isPaired =
-    response.readUInt8(off) === ProtocolConstants.pairingStatus.paired;
+  const isPaired = response.readUInt8(off) === ProtocolConstants.pairingStatus.paired;
   off++;
   // If we are already paired, we get the next ephemeral key
   const pub = response.slice(off, off + 65).toString('hex');
@@ -127,10 +114,7 @@ export const decodeConnectResponse = (
     const decWalletData = aes256_decrypt(encWalletData, sharedSecret);
     // Sanity check to make sure the last part of the decrypted data is empty. The last 2 bytes
     // are AES padding
-    if (
-      decWalletData[decWalletData.length - 2] !== 0 ||
-      decWalletData[decWalletData.length - 1] !== 0
-    ) {
+    if (decWalletData[decWalletData.length - 2] !== 0 || decWalletData[decWalletData.length - 1] !== 0) {
       throw new Error('Failed to connect to Lattice.');
     }
     const activeWallets = parseWallets(decWalletData);

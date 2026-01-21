@@ -17,12 +17,7 @@ import {
 } from '../constants';
 import { LatticeGetAddressesFlag } from '../protocol/latticeConstants';
 import type { GetAddressesRequestParams, WalletPath } from '../types';
-import {
-  getFlagFromPath,
-  getStartPath,
-  parseDerivationPathComponents,
-  queue,
-} from './utilities';
+import { getFlagFromPath, getStartPath, parseDerivationPathComponents, queue } from './utilities';
 
 type FetchAddressesParams = {
   n?: number;
@@ -30,9 +25,7 @@ type FetchAddressesParams = {
   flag?: number;
 };
 
-export const fetchAddresses = async (
-  overrides?: Partial<GetAddressesRequestParams>,
-) => {
+export const fetchAddresses = async (overrides?: Partial<GetAddressesRequestParams>) => {
   let allAddresses: string[] = [];
   let totalFetched = 0;
   const totalToFetch = overrides?.n || MAX_ADDR;
@@ -65,14 +58,9 @@ export const fetchAddresses = async (
  * @note By default, this function fetches m/44'/60'/0'/0/0
  * @param path - either the index of ETH signing path or the derivation path to fetch
  */
-export const fetchAddress = async (
-  path: number | WalletPath = 0,
-): Promise<string> => {
+export const fetchAddress = async (path: number | WalletPath = 0): Promise<string> => {
   return fetchAddresses({
-    startPath:
-      typeof path === 'number'
-        ? getStartPath(DEFAULT_ETH_DERIVATION, path)
-        : path,
+    startPath: typeof path === 'number' ? getStartPath(DEFAULT_ETH_DERIVATION, path) : path,
     n: 1,
   }).then((addrs) => addrs[0]);
 };
@@ -90,23 +78,12 @@ function createFetchBtcAddressesFunction(derivationPath: number[]) {
     });
   };
 }
-export const fetchBtcLegacyAddresses = createFetchBtcAddressesFunction(
-  BTC_LEGACY_DERIVATION,
-);
-export const fetchBtcSegwitAddresses = createFetchBtcAddressesFunction(
-  BTC_SEGWIT_DERIVATION,
-);
-export const fetchBtcWrappedSegwitAddresses = createFetchBtcAddressesFunction(
-  BTC_WRAPPED_SEGWIT_DERIVATION,
-);
-export const fetchBtcLegacyChangeAddresses = createFetchBtcAddressesFunction(
-  BTC_LEGACY_CHANGE_DERIVATION,
-);
-export const fetchBtcSegwitChangeAddresses = createFetchBtcAddressesFunction(
-  BTC_SEGWIT_CHANGE_DERIVATION,
-);
-export const fetchBtcWrappedSegwitChangeAddresses =
-  createFetchBtcAddressesFunction(BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION);
+export const fetchBtcLegacyAddresses = createFetchBtcAddressesFunction(BTC_LEGACY_DERIVATION);
+export const fetchBtcSegwitAddresses = createFetchBtcAddressesFunction(BTC_SEGWIT_DERIVATION);
+export const fetchBtcWrappedSegwitAddresses = createFetchBtcAddressesFunction(BTC_WRAPPED_SEGWIT_DERIVATION);
+export const fetchBtcLegacyChangeAddresses = createFetchBtcAddressesFunction(BTC_LEGACY_CHANGE_DERIVATION);
+export const fetchBtcSegwitChangeAddresses = createFetchBtcAddressesFunction(BTC_SEGWIT_CHANGE_DERIVATION);
+export const fetchBtcWrappedSegwitChangeAddresses = createFetchBtcAddressesFunction(BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION);
 
 export const fetchSolanaAddresses = async (
   { n, startPathIndex }: FetchAddressesParams = {
@@ -133,11 +110,7 @@ export const fetchLedgerLiveAddresses = async (
       queue((client) =>
         client
           .getAddresses({
-            startPath: getStartPath(
-              LEDGER_LIVE_DERIVATION,
-              startPathIndex + i,
-              2,
-            ),
+            startPath: getStartPath(LEDGER_LIVE_DERIVATION, startPathIndex + i, 2),
             n: 1,
           })
           .then((addresses) => addresses.map((address) => `${address}`)),
@@ -159,11 +132,7 @@ export const fetchLedgerLegacyAddresses = async (
       queue((client) =>
         client
           .getAddresses({
-            startPath: getStartPath(
-              LEDGER_LEGACY_DERIVATION,
-              startPathIndex + i,
-              3,
-            ),
+            startPath: getStartPath(LEDGER_LEGACY_DERIVATION, startPathIndex + i, 3),
             n: 1,
           })
           .then((addresses) => addresses.map((address) => `${address}`)),
@@ -173,20 +142,12 @@ export const fetchLedgerLegacyAddresses = async (
   return Promise.all(addresses);
 };
 
-export const fetchBip44ChangeAddresses = async ({
-  n = MAX_ADDR,
-  startPathIndex = 0,
-}: FetchAddressesParams = {}) => {
+export const fetchBip44ChangeAddresses = async ({ n = MAX_ADDR, startPathIndex = 0 }: FetchAddressesParams = {}) => {
   const addresses = [];
   for (let i = 0; i < n; i++) {
     addresses.push(
       queue((client) => {
-        const startPath = [
-          44 + HARDENED_OFFSET,
-          501 + HARDENED_OFFSET,
-          startPathIndex + i + HARDENED_OFFSET,
-          0 + HARDENED_OFFSET,
-        ];
+        const startPath = [44 + HARDENED_OFFSET, 501 + HARDENED_OFFSET, startPathIndex + i + HARDENED_OFFSET, 0 + HARDENED_OFFSET];
         return client
           .getAddresses({
             startPath,
@@ -200,16 +161,11 @@ export const fetchBip44ChangeAddresses = async ({
   return Promise.all(addresses);
 };
 
-export async function fetchAddressesByDerivationPath(
-  path: string,
-  { n = 1, startPathIndex = 0, flag }: FetchAddressesParams = {},
-): Promise<string[]> {
+export async function fetchAddressesByDerivationPath(path: string, { n = 1, startPathIndex = 0, flag }: FetchAddressesParams = {}): Promise<string[]> {
   const components = path.split('/').filter(Boolean);
   const parsedPath = parseDerivationPathComponents(components);
   const _flag = getFlagFromPath(parsedPath);
-  const wildcardIndex = components.findIndex((part) =>
-    part.toLowerCase().includes('x'),
-  );
+  const wildcardIndex = components.findIndex((part) => part.toLowerCase().includes('x'));
 
   if (wildcardIndex === -1) {
     return queue((client) =>
@@ -224,8 +180,7 @@ export async function fetchAddressesByDerivationPath(
   const addresses: string[] = [];
   for (let i = 0; i < n; i++) {
     const currentPath = [...parsedPath];
-    currentPath[wildcardIndex] =
-      currentPath[wildcardIndex] + startPathIndex + i;
+    currentPath[wildcardIndex] = currentPath[wildcardIndex] + startPathIndex + i;
 
     const result = await queue((client) =>
       client.getAddresses({
@@ -256,12 +211,9 @@ export async function fetchBtcXpub(): Promise<string> {
  * @returns ypub string
  */
 export async function fetchBtcYpub(): Promise<string> {
-  const result = await fetchAddressesByDerivationPath(
-    BTC_WRAPPED_SEGWIT_YPUB_PATH,
-    {
-      flag: LatticeGetAddressesFlag.secp256k1Xpub,
-    },
-  );
+  const result = await fetchAddressesByDerivationPath(BTC_WRAPPED_SEGWIT_YPUB_PATH, {
+    flag: LatticeGetAddressesFlag.secp256k1Xpub,
+  });
   return result[0];
 }
 

@@ -1,9 +1,4 @@
-import {
-  type MessageTypes,
-  SignTypedDataVersion,
-  TypedDataUtils,
-  type TypedMessage,
-} from '@metamask/eth-sig-util';
+import { type MessageTypes, SignTypedDataVersion, TypedDataUtils, type TypedMessage } from '@metamask/eth-sig-util';
 import { ecsign, privateToAddress } from 'ethereumjs-util';
 import { mnemonicToAccount } from 'viem/accounts';
 import { HARDENED_OFFSET } from '../../constants';
@@ -36,10 +31,7 @@ describe('validateEthereumMsgResponse', () => {
     if (!hdKey.privateKey) throw new Error('No private key');
     const priv = Buffer.from(hdKey.privateKey);
     const signer = privateToAddress(priv);
-    const digest = TypedDataUtils.eip712Hash(
-      typedData,
-      SignTypedDataVersion.V4,
-    );
+    const digest = TypedDataUtils.eip712Hash(typedData, SignTypedDataVersion.V4);
     const sig = ecsign(Buffer.from(digest), priv);
     const fwConstants = buildFirmwareConstants();
     const request = ethereum.buildEthereumMsgRequest({
@@ -76,10 +68,7 @@ describe('validateEthereumMsgResponse', () => {
     if (!hdKey.privateKey) throw new Error('No private key');
     const priv = Buffer.from(hdKey.privateKey);
     const signer = privateToAddress(priv);
-    const digest = TypedDataUtils.eip712Hash(
-      typedData,
-      SignTypedDataVersion.V4,
-    );
+    const digest = TypedDataUtils.eip712Hash(typedData, SignTypedDataVersion.V4);
     const sig = ecsign(Buffer.from(digest), priv);
 
     const result = ethereum.validateEthereumMsgResponse(

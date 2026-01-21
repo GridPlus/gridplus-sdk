@@ -46,9 +46,7 @@ describe('key-value', () => {
   it('Should ask if the user wants to reset state', async () => {
     let answer = 'Y';
     if (process.env.CI !== '1') {
-      answer = question(
-        'Do you want to clear all kv records and start anew? (Y/N) ',
-      );
+      answer = question('Do you want to clear all kv records and start anew? (Y/N) ');
     } else {
       answer = 'Y';
     }
@@ -68,9 +66,7 @@ describe('key-value', () => {
         }
 
         if (lastTotal !== null && total >= lastTotal) {
-          console.warn(
-            '[kv.test] KV cleanup halted to avoid infinite loop (no progress detected).',
-          );
+          console.warn('[kv.test] KV cleanup halted to avoid infinite loop (no progress detected).');
           break;
         }
 
@@ -95,9 +91,7 @@ describe('key-value', () => {
 
   it('Should make a request to an unknown address', async () => {
     await client.sign(ETH_REQ as unknown as SignRequestParams).catch((err) => {
-      expect(err.message).toContain(
-        ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined],
-      );
+      expect(err.message).toContain(ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined]);
     });
   });
 
@@ -117,23 +111,15 @@ describe('key-value', () => {
   it('Should fail to add records with unicode characters', async () => {
     const badKey = { '0x🔥🦍': 'Muh name' };
     const badVal = { UNISWAP_ADDR: 'val🔥🦍' };
-    await expect(client.addKvRecords({ records: badKey })).rejects.toThrow(
-      'Unicode characters are not supported.',
-    );
-    await expect(client.addKvRecords({ records: badVal })).rejects.toThrow(
-      'Unicode characters are not supported.',
-    );
+    await expect(client.addKvRecords({ records: badKey })).rejects.toThrow('Unicode characters are not supported.');
+    await expect(client.addKvRecords({ records: badVal })).rejects.toThrow('Unicode characters are not supported.');
   });
 
   it('Should fail to add zero length keys and values', async () => {
     const badKey = { '': 'Muh name' };
     const badVal = { UNISWAP_ADDR: '' };
-    await expect(client.addKvRecords({ records: badKey })).rejects.toThrow(
-      'Keys and values must be >0 characters.',
-    );
-    await expect(client.addKvRecords({ records: badVal })).rejects.toThrow(
-      'Keys and values must be >0 characters.',
-    );
+    await expect(client.addKvRecords({ records: badKey })).rejects.toThrow('Keys and values must be >0 characters.');
+    await expect(client.addKvRecords({ records: badVal })).rejects.toThrow('Keys and values must be >0 characters.');
   });
 
   it('Should fetch the newly created records', async () => {
@@ -226,9 +212,7 @@ describe('key-value', () => {
 
   it('Should make another request to make sure case sensitivity is enforced', async () => {
     await client.sign(ETH_REQ as unknown as SignRequestParams).catch((err) => {
-      expect(err.message).toContain(
-        ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined],
-      );
+      expect(err.message).toContain(ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined]);
     });
   });
 

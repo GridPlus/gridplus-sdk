@@ -1447,8 +1447,7 @@ export const etherscanResponse0xc36442b6 = [
             type: 'uint256',
           },
         ],
-        internalType:
-          'struct INonfungiblePositionManager.DecreaseLiquidityParams',
+        internalType: 'struct INonfungiblePositionManager.DecreaseLiquidityParams',
         name: 'params',
         type: 'tuple',
       },
@@ -1536,8 +1535,7 @@ export const etherscanResponse0xc36442b6 = [
             type: 'uint256',
           },
         ],
-        internalType:
-          'struct INonfungiblePositionManager.IncreaseLiquidityParams',
+        internalType: 'struct INonfungiblePositionManager.IncreaseLiquidityParams',
         name: 'params',
         type: 'tuple',
       },
@@ -2528,8 +2526,7 @@ export const etherscanResponse0x06412d7e = [
           { internalType: 'uint256', name: 'amount1Min', type: 'uint256' },
           { internalType: 'uint256', name: 'deadline', type: 'uint256' },
         ],
-        internalType:
-          'struct INonfungiblePositionManager.DecreaseLiquidityParams',
+        internalType: 'struct INonfungiblePositionManager.DecreaseLiquidityParams',
         name: 'params',
         type: 'tuple',
       },
@@ -2567,8 +2564,7 @@ export const etherscanResponse0x06412d7e = [
           { internalType: 'uint256', name: 'amount1Min', type: 'uint256' },
           { internalType: 'uint256', name: 'deadline', type: 'uint256' },
         ],
-        internalType:
-          'struct INonfungiblePositionManager.IncreaseLiquidityParams',
+        internalType: 'struct INonfungiblePositionManager.IncreaseLiquidityParams',
         name: 'params',
         type: 'tuple',
       },

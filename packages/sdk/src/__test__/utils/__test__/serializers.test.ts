@@ -1,7 +1,4 @@
-import {
-  deserializeObjectWithBuffers,
-  serializeObjectWithBuffers,
-} from '../serializers';
+import { deserializeObjectWithBuffers, serializeObjectWithBuffers } from '../serializers';
 
 describe('serializers', () => {
   test('serialize obj', () => {

@@ -6,9 +6,7 @@ import { queue } from './utilities';
 /**
  * Sends request to the Lattice to add Address Tags.
  */
-export const addAddressTags = async (
-  tags: [{ [key: string]: string }],
-): Promise<Buffer> => {
+export const addAddressTags = async (tags: [{ [key: string]: string }]): Promise<Buffer> => {
   // convert an array of objects to an object
   const records = tags.reduce((acc, tag) => {
     const key = Object.keys(tag)[0];
@@ -22,10 +20,7 @@ export const addAddressTags = async (
 /**
  * Fetches Address Tags from the Lattice.
  */
-export const fetchAddressTags = async ({
-  n = MAX_ADDR,
-  start = 0,
-}: { n?: number; start?: number } = {}) => {
+export const fetchAddressTags = async ({ n = MAX_ADDR, start = 0 }: { n?: number; start?: number } = {}) => {
   const addressTags: AddressTag[] = [];
   let remainingToFetch = n;
   let fetched = start;
@@ -50,9 +45,7 @@ export const fetchAddressTags = async ({
 /**
  * Removes Address Tags from the Lattice.
  */
-export const removeAddressTags = async (
-  tags: AddressTag[],
-): Promise<Buffer> => {
+export const removeAddressTags = async (tags: AddressTag[]): Promise<Buffer> => {
   const ids = tags.map((tag) => `${tag.id}`);
   return queue((client: Client) => client.removeKvRecords({ ids }));
 };

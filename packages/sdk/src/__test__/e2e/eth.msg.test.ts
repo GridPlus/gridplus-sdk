@@ -36,37 +36,21 @@ describe('ETH Messages', () => {
       const protocol = 'signPersonal';
       const msg = '⚠️';
       const msg2 = 'ASCII plus ⚠️';
-      await expect(client.sign(buildEthMsgReq(msg, protocol))).rejects.toThrow(
-        /Lattice can only display ASCII/,
-      );
-      await expect(client.sign(buildEthMsgReq(msg2, protocol))).rejects.toThrow(
-        /Lattice can only display ASCII/,
-      );
+      await expect(client.sign(buildEthMsgReq(msg, protocol))).rejects.toThrow(/Lattice can only display ASCII/);
+      await expect(client.sign(buildEthMsgReq(msg2, protocol))).rejects.toThrow(/Lattice can only display ASCII/);
     });
 
     it('Should test ASCII buffers', async () => {
-      await runEthMsg(
-        buildEthMsgReq(Buffer.from('i am an ascii buffer'), 'signPersonal'),
-        client,
-      );
-      await runEthMsg(
-        buildEthMsgReq(Buffer.from('{\n\ttest: foo\n}'), 'signPersonal'),
-        client,
-      );
+      await runEthMsg(buildEthMsgReq(Buffer.from('i am an ascii buffer'), 'signPersonal'), client);
+      await runEthMsg(buildEthMsgReq(Buffer.from('{\n\ttest: foo\n}'), 'signPersonal'), client);
     });
 
     it('Should test hex buffers', async () => {
-      await runEthMsg(
-        buildEthMsgReq(Buffer.from('abcdef', 'hex'), 'signPersonal'),
-        client,
-      );
+      await runEthMsg(buildEthMsgReq(Buffer.from('abcdef', 'hex'), 'signPersonal'), client);
     });
 
     it('Should test a message that needs to be prehashed', async () => {
-      await runEthMsg(
-        buildEthMsgReq(randomBytes(4000), 'signPersonal'),
-        client,
-      );
+      await runEthMsg(buildEthMsgReq(randomBytes(4000), 'signPersonal'), client);
     });
 
     it('Msg: sign_personal boundary conditions and auto-rejected requests', async () => {
@@ -75,10 +59,7 @@ describe('ETH Messages', () => {
       // `personal_sign` requests have a max size smaller than other requests because a header
       // is displayed in the text region of the screen. The size of this is captured
       // by `fwConstants.personalSignHeaderSz`.
-      const maxMsgSz =
-        fwConstants.ethMaxMsgSz +
-        fwConstants.personalSignHeaderSz +
-        fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
+      const maxMsgSz = fwConstants.ethMaxMsgSz + fwConstants.personalSignHeaderSz + fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
       const maxValid = `0x${randomBytes(maxMsgSz).toString('hex')}`;
       const minInvalid = `0x${randomBytes(maxMsgSz + 1).toString('hex')}`;
       const zeroInvalid = '0x';
@@ -90,30 +71,16 @@ describe('ETH Messages', () => {
       // I guess all this tests is that the first one is shown in plaintext while the second
       // one (which is too large) gets prehashed.
       const largeSignPath = [x, HARDENED_OFFSET + 60, x, x, x] as SigningPath;
-      await runEthMsg(
-        buildEthMsgReq(maxValid, protocol, largeSignPath),
-        client,
-      );
-      await runEthMsg(
-        buildEthMsgReq(minInvalid, protocol, largeSignPath),
-        client,
-      );
+      await runEthMsg(buildEthMsgReq(maxValid, protocol, largeSignPath), client);
+      await runEthMsg(buildEthMsgReq(minInvalid, protocol, largeSignPath), client);
       // Using a zero length payload should auto-reject
-      await expect(
-        client.sign(buildEthMsgReq(zeroInvalid, protocol)),
-      ).rejects.toThrow(/Invalid Request/);
+      await expect(client.sign(buildEthMsgReq(zeroInvalid, protocol))).rejects.toThrow(/Invalid Request/);
     });
 
     describe(`Test ${5} random payloads`, () => {
       for (let i = 0; i < 5; i++) {
         it(`Payload: ${i}`, async () => {
-          await runEthMsg(
-            buildEthMsgReq(
-              buildRandomMsg('signPersonal', client),
-              'signPersonal',
-            ),
-            client,
-          );
+          await runEthMsg(buildEthMsgReq(buildRandomMsg('signPersonal', client), 'signPersonal'), client);
         });
       }
     });
@@ -191,8 +158,7 @@ describe('ETH Messages', () => {
           side: '1',
           matchingPolicy: '0x00000000006411739da1c40b106f8511de5d1fac',
           collection: '0x7a15b36cb834aea88553de69077d3777460d73ac',
-          tokenId:
-            '5280336779268220421569573059971679349075200194886069432279714075018412552192',
+          tokenId: '5280336779268220421569573059971679349075200194886069432279714075018412552192',
           amount: '1',
           paymentToken: '0x0000000000000000000000000000000000000000',
           price: '990000000000000000',
@@ -267,8 +233,7 @@ describe('ETH Messages', () => {
           accountID: 32494,
           feeTokenID: 0,
           maxFee: 100,
-          publicKey:
-            '11413934541425201845815969801249874136651857829494005371571206042985258823663',
+          publicKey: '11413934541425201845815969801249874136651857829494005371571206042985258823663',
           validUntil: 1631655383,
           nonce: 0,
         },
@@ -301,8 +266,7 @@ describe('ETH Messages', () => {
           verifyingContract: '0xf03f457a30e598d5020164a339727ef40f2b8fbc',
         },
         message: {
-          sender:
-            '0x841fe4876763357975d60da128d8a54bb045d76a64656661756c740000000000',
+          sender: '0x841fe4876763357975d60da128d8a54bb045d76a64656661756c740000000000',
           priceX18: '28898000000000000000000',
           amount: '-10000000000000000',
           expiration: '4611687701117784255',
@@ -321,21 +285,17 @@ describe('ETH Messages', () => {
           version: '1',
         },
         message: {
-          getMakerAmount:
-            '0xf4a215c30000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000000018fae27693b40000',
-          getTakerAmount:
-            '0x296637bf0000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000000018fae27693b40000',
+          getMakerAmount: '0xf4a215c30000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000000018fae27693b40000',
+          getTakerAmount: '0x296637bf0000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000000000000000000000000000018fae27693b40000',
           interaction: '0x',
           makerAsset: '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270',
-          makerAssetData:
-            '0x23b872dd0000000000000000000000003e3e2ccdd7bae6bbd4a64e8d16ca8842061335eb00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000de0b6b3a7640000',
+          makerAssetData: '0x23b872dd0000000000000000000000003e3e2ccdd7bae6bbd4a64e8d16ca8842061335eb00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000de0b6b3a7640000',
           permit: '0x',
           predicate:
             '0x961d5b1e000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000002000000000000000000000000b707d89d29c189421163515c59e42147371d6857000000000000000000000000b707d89d29c189421163515c59e42147371d68570000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000044cf6fc6e30000000000000000000000003e3e2ccdd7bae6bbd4a64e8d16ca8842061335eb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002463592c2b00000000000000000000000000000000000000000000000000000000613e28e500000000000000000000000000000000000000000000000000000000',
           salt: '885135864076',
           takerAsset: '0x8f3cf7ad23cd3cadbd9735aff958023239c6a063',
-          takerAssetData:
-            '0x23b872dd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e3e2ccdd7bae6bbd4a64e8d16ca8842061335eb00000000000000000000000000000000000000000000000018fae27693b40000',
+          takerAssetData: '0x23b872dd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e3e2ccdd7bae6bbd4a64e8d16ca8842061335eb00000000000000000000000000000000000000000000000018fae27693b40000',
         },
         primaryType: 'Order',
         types: {
@@ -680,13 +640,11 @@ describe('ETH Messages', () => {
         message: {
           allocations: [
             {
-              reactorKey:
-                '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
+              reactorKey: '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
               amount: '1',
             },
             {
-              reactorKey:
-                '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
+              reactorKey: '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
               amount: '2',
             },
           ],
@@ -736,13 +694,11 @@ describe('ETH Messages', () => {
           integer: 56,
           allocations: [
             {
-              reactorKey:
-                '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
+              reactorKey: '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
               amount: '1',
             },
             {
-              reactorKey:
-                '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
+              reactorKey: '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
               amount: '2',
             },
           ],
@@ -781,13 +737,11 @@ describe('ETH Messages', () => {
         message: {
           allocations: [
             {
-              reactorKey:
-                '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
+              reactorKey: '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
               amount: ['1', '2'],
             },
             {
-              reactorKey:
-                '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
+              reactorKey: '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
               amount: ['2', '3'],
             },
           ],
@@ -840,8 +794,7 @@ describe('ETH Messages', () => {
           test: 'hello',
           allocations: [
             {
-              reactorKey:
-                '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
+              reactorKey: '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
               dummy: [
                 {
                   foo: '0xabcd',
@@ -852,8 +805,7 @@ describe('ETH Messages', () => {
               ],
             },
             {
-              reactorKey:
-                '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
+              reactorKey: '0x6f686d2d64656661756c74000000000000000000000000000000000000000000',
               dummy: [
                 {
                   foo: '0xdeadbeef',
@@ -931,12 +883,9 @@ describe('ETH Messages', () => {
           BYTES16: '0x7ace034ab088fdd434f1e817f32171a0',
           BYTES20: '0x4ab51f2d5bfdc0f1b96f83358d5f356c98583573',
           BYTES21: '0x6ecdc19b30c7fa712ba334458d77377b6a586bbab5',
-          BYTES31:
-            '0x06c21824a98643f96643b3220962f441210b007f4c19dfdf0dea53d097fc28',
-          BYTES32:
-            '0x59cfcbf35256451756b02fa644d3d0748bd98f5904febf3433e6df19b4df7452',
-          BYTES:
-            '0x0354b2c449772905b2598a93f5da69962f0444e0a6e2429e8f844f1011446f6fe81815846fb6ebe2d213968d1f8532749735f5702f565db0429b2fe596d295d9c06241389fe97fb2f3b91e1e0f2d978fb26e366737451f1193097bd0a2332e0bfc0cdb631005',
+          BYTES31: '0x06c21824a98643f96643b3220962f441210b007f4c19dfdf0dea53d097fc28',
+          BYTES32: '0x59cfcbf35256451756b02fa644d3d0748bd98f5904febf3433e6df19b4df7452',
+          BYTES: '0x0354b2c449772905b2598a93f5da69962f0444e0a6e2429e8f844f1011446f6fe81815846fb6ebe2d213968d1f8532749735f5702f565db0429b2fe596d295d9c06241389fe97fb2f3b91e1e0f2d978fb26e366737451f1193097bd0a2332e0bfc0cdb631005',
           STRING: 'I am a string hello there human',
           BOOL: true,
           ADDRESS: '0x078a8d6eba928e7ea787ed48f71c5936aed4625d',
@@ -1361,10 +1310,7 @@ describe('ETH Messages', () => {
     describe('test 5 random payloads', () => {
       for (let i = 0; i < 5; i++) {
         it(`Payload #${i}`, async () => {
-          await runEthMsg(
-            buildEthMsgReq(buildRandomMsg('eip712', client), 'eip712'),
-            client,
-          );
+          await runEthMsg(buildEthMsgReq(buildRandomMsg('eip712', client), 'eip712'), client);
         });
       }
     });

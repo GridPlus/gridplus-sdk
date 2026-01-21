@@ -5,7 +5,6 @@ export interface RemoveKvRecordsRequestParams {
   ids?: string[];
 }
 
-export interface RemoveKvRecordsRequestFunctionParams
-  extends RemoveKvRecordsRequestParams {
+export interface RemoveKvRecordsRequestFunctionParams extends RemoveKvRecordsRequestParams {
   client: Client;
 }

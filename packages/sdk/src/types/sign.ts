@@ -1,12 +1,4 @@
-import type {
-  AccessList,
-  Address,
-  Hex,
-  SignedAuthorization,
-  SignedAuthorizationList,
-  TypedData,
-  TypedDataDefinition,
-} from 'viem';
+import type { AccessList, Address, Hex, SignedAuthorization, SignedAuthorizationList, TypedData, TypedDataDefinition } from 'viem';
 import type { Client } from '../client';
 import type { Currency, SigningPath, Wallet } from './client';
 import type { FirmwareConstants } from './firmware';
@@ -72,24 +64,11 @@ export type EIP7702AuthListTransactionRequest = BaseTransactionRequest & {
 };
 
 // Main discriminated union for transaction requests
-export type TransactionRequest =
-  | LegacyTransactionRequest
-  | EIP2930TransactionRequest
-  | EIP1559TransactionRequest
-  | EIP7702AuthTransactionRequest
-  | EIP7702AuthListTransactionRequest;
+export type TransactionRequest = LegacyTransactionRequest | EIP2930TransactionRequest | EIP1559TransactionRequest | EIP7702AuthTransactionRequest | EIP7702AuthListTransactionRequest;
 
-export interface SigningPayload<
-  TTypedData extends TypedData | Record<string, unknown> = TypedData,
-> {
+export interface SigningPayload<TTypedData extends TypedData | Record<string, unknown> = TypedData> {
   signerPath: SigningPath;
-  payload:
-    | Uint8Array
-    | Uint8Array[]
-    | Buffer
-    | Buffer[]
-    | Hex
-    | EIP712MessagePayload<TTypedData>;
+  payload: Uint8Array | Uint8Array[] | Buffer | Buffer[] | Hex | EIP712MessagePayload<TTypedData>;
   curveType: number;
   hashType: number;
   encodingType?: number;
@@ -97,18 +76,14 @@ export interface SigningPayload<
   decoder?: Buffer;
 }
 
-export interface SignRequestParams<
-  TTypedData extends TypedData | Record<string, unknown> = TypedData,
-> {
+export interface SignRequestParams<TTypedData extends TypedData | Record<string, unknown> = TypedData> {
   data: SigningPayload<TTypedData> | BitcoinSignPayload;
   currency?: Currency;
   cachedData?: unknown;
   nextCode?: Buffer;
 }
 
-export interface SignRequestFunctionParams<
-  TTypedData extends TypedData | Record<string, unknown> = TypedData,
-> extends SignRequestParams<TTypedData> {
+export interface SignRequestFunctionParams<TTypedData extends TypedData | Record<string, unknown> = TypedData> extends SignRequestParams<TTypedData> {
   client: Client;
 }
 
@@ -178,16 +153,9 @@ export interface DecodeSignResponseParams {
 }
 
 // Align EIP712MessagePayload with Viem's TypedDataDefinition
-export interface EIP712MessagePayload<
-  TTypedData extends TypedData | Record<string, unknown> = TypedData,
-  TPrimaryType extends keyof TTypedData | 'EIP712Domain' = keyof TTypedData,
-> {
+export interface EIP712MessagePayload<TTypedData extends TypedData | Record<string, unknown> = TypedData, TPrimaryType extends keyof TTypedData | 'EIP712Domain' = keyof TTypedData> {
   types: TTypedData;
-  domain: TTypedData extends TypedData
-    ? TypedDataDefinition<TTypedData, 'EIP712Domain'>['domain']
-    : Record<string, unknown>;
+  domain: TTypedData extends TypedData ? TypedDataDefinition<TTypedData, 'EIP712Domain'>['domain'] : Record<string, unknown>;
   primaryType: TPrimaryType;
-  message: TTypedData extends TypedData
-    ? TypedDataDefinition<TTypedData, TPrimaryType>['message']
-    : Record<string, unknown>;
+  message: TTypedData extends TypedData ? TypedDataDefinition<TTypedData, TPrimaryType>['message'] : Record<string, unknown>;
 }

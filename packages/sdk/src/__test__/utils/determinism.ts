@@ -10,11 +10,7 @@ import type { SigningPath } from '../../types';
 import { ethPersonalSignMsg, getSigStr } from './helpers';
 import { TEST_SEED } from './testConstants';
 
-export async function testUniformSigs(
-  payload: any,
-  tx: TypedTransaction,
-  client: Client,
-) {
+export async function testUniformSigs(payload: any, tx: TypedTransaction, client: Client) {
   const tx1Resp = await client.sign(payload);
   const tx2Resp = await client.sign(payload);
   const tx3Resp = await client.sign(payload);

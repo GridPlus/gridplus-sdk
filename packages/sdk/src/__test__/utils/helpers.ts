@@ -5,10 +5,7 @@ import { wordlists } from 'bip39';
 import bitcoin, { type Payment } from 'bitcoinjs-lib';
 import BN from 'bn.js';
 import { ECPairFactory } from 'ecpair';
-import {
-  derivePath as deriveEDKey,
-  getPublicKey as getEDPubkey,
-} from 'ed25519-hd-key';
+import { derivePath as deriveEDKey, getPublicKey as getEDPubkey } from 'ed25519-hd-key';
 import { ec as EC } from 'elliptic';
 import { privateToAddress } from 'ethereumjs-util';
 import { jsonc } from 'jsonc';
@@ -18,20 +15,10 @@ import * as ecc from 'tiny-secp256k1';
 import nacl from 'tweetnacl';
 import { Constants } from '../..';
 import { Client } from '../../client';
-import {
-  BIP_CONSTANTS,
-  HARDENED_OFFSET,
-  ethMsgProtocol,
-} from '../../constants';
+import { BIP_CONSTANTS, HARDENED_OFFSET, ethMsgProtocol } from '../../constants';
 import { ProtocolConstants } from '../../protocol';
 import { getPathStr } from '../../shared/utilities';
-import {
-  ensureHexBuffer,
-  getV,
-  getYParity,
-  parseDER,
-  randomBytes,
-} from '../../util';
+import { ensureHexBuffer, getV, getYParity, parseDER, randomBytes } from '../../util';
 import { getEnv } from './getters';
 import { setStoredClient } from './setup';
 
@@ -107,19 +94,14 @@ export const getSignatureVBN = (tx: any, resp: any): BN => {
 //       For p2pkh-derived addresses, we use the legacy 44' purpose
 //       For p2wpkh-derived addresse (not yet supported) we will use 84'
 export const BTC_PURPOSE_P2WPKH = BIP_CONSTANTS.PURPOSES.BTC_SEGWIT;
-export const BTC_PURPOSE_P2SH_P2WPKH =
-  BIP_CONSTANTS.PURPOSES.BTC_WRAPPED_SEGWIT;
+export const BTC_PURPOSE_P2SH_P2WPKH = BIP_CONSTANTS.PURPOSES.BTC_WRAPPED_SEGWIT;
 export const BTC_PURPOSE_P2PKH = BIP_CONSTANTS.PURPOSES.BTC_LEGACY;
 export const BTC_COIN = BIP_CONSTANTS.COINS.BTC;
 export const BTC_TESTNET_COIN = BIP_CONSTANTS.COINS.BTC_TESTNET;
 export const ETH_COIN = BIP_CONSTANTS.COINS.ETH;
-export const REUSABLE_KEY =
-  '3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca';
+export const REUSABLE_KEY = '3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca';
 
-export function setupTestClient(
-  env = getEnv() as any,
-  stateData?: any,
-): Client {
+export function setupTestClient(env = getEnv() as any, stateData?: any): Client {
   if (stateData) {
     return new Client({ stateData });
   }
@@ -184,15 +166,7 @@ export function _get_btc_addr(pubkey, purpose, network) {
   return obj.address;
 }
 
-export function _start_tx_builder(
-  wallet,
-  recipient,
-  value,
-  fee,
-  inputs,
-  network,
-  purpose,
-) {
+export function _start_tx_builder(wallet, recipient, value, fee, inputs, network, purpose) {
   const tx = new bitcoin.Transaction();
   // Match serialization logic (version 2) used by device and serializer
   tx.version = 2;
@@ -204,9 +178,7 @@ export function _start_tx_builder(
     const networkIdx = network === bitcoin.networks.testnet ? 1 : 0;
     const path = buildPath([purpose, harden(networkIdx), harden(0), 1, 0]);
     const btc_0_change = wallet.derivePath(path);
-    const btc_0_change_pub = ECPair.fromPublicKey(
-      btc_0_change.publicKey,
-    ).publicKey;
+    const btc_0_change_pub = ECPair.fromPublicKey(btc_0_change.publicKey).publicKey;
     const changeAddr = _get_btc_addr(btc_0_change_pub, purpose, network);
     const changeScript = bitcoin.address.toOutputScript(changeAddr, network);
     tx.addOutput(changeScript, changeValue);
@@ -217,8 +189,7 @@ export function _start_tx_builder(
   inputs.forEach((input) => {
     const hashLE = Buffer.from(input.hash, 'hex').reverse();
     tx.addInput(hashLE, input.idx);
-    const coin =
-      network === bitcoin.networks.testnet ? BTC_TESTNET_COIN : BTC_COIN;
+    const coin = network === bitcoin.networks.testnet ? BTC_TESTNET_COIN : BTC_COIN;
     const path = buildPath([purpose, coin, harden(0), 0, input.signerIdx]);
     const keyPair = wallet.derivePath(path);
     const pubkeyBuf = Buffer.from(keyPair.publicKey);
@@ -237,68 +208,25 @@ function _build_sighashes(txb_or_tx, purpose) {
   const isLegacy = purpose === BTC_PURPOSE_P2PKH;
   if (txb.inputsMeta) {
     txb.inputsMeta.forEach((meta, i) => {
-      hashes.push(
-        isLegacy
-          ? txb.tx.hashForSignature(i, meta.scriptCode, SIGHASH_ALL)
-          : txb.tx.hashForWitnessV0(
-              i,
-              meta.scriptCode,
-              meta.value,
-              SIGHASH_ALL,
-            ),
-      );
+      hashes.push(isLegacy ? txb.tx.hashForSignature(i, meta.scriptCode, SIGHASH_ALL) : txb.tx.hashForWitnessV0(i, meta.scriptCode, meta.value, SIGHASH_ALL));
     });
   } else {
     // Fallback for prior structure (should not be used)
     txb.__inputs.forEach((input, i) => {
-      hashes.push(
-        isLegacy
-          ? txb.__tx.hashForSignature(i, input.signScript, SIGHASH_ALL)
-          : txb.__tx.hashForWitnessV0(
-              i,
-              input.signScript,
-              input.value,
-              SIGHASH_ALL,
-            ),
-      );
+      hashes.push(isLegacy ? txb.__tx.hashForSignature(i, input.signScript, SIGHASH_ALL) : txb.__tx.hashForWitnessV0(i, input.signScript, input.value, SIGHASH_ALL));
     });
   }
   return hashes;
 }
 
-function _get_reference_sighashes(
-  wallet,
-  recipient,
-  value,
-  fee,
-  inputs,
-  isTestnet,
-  purpose,
-) {
-  const network = isTestnet
-    ? bitcoin.networks.testnet
-    : bitcoin.networks.bitcoin;
-  const built = _start_tx_builder(
-    wallet,
-    recipient,
-    value,
-    fee,
-    inputs,
-    network,
-    purpose,
-  );
+function _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestnet, purpose) {
+  const network = isTestnet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
+  const built = _start_tx_builder(wallet, recipient, value, fee, inputs, network, purpose);
   // built has shape { tx, inputsMeta }
   return _build_sighashes(built, purpose);
 }
 
-function _btc_tx_request_builder(
-  inputs,
-  recipient,
-  value,
-  fee,
-  isTestnet,
-  purpose,
-) {
+function _btc_tx_request_builder(inputs, recipient, value, fee, isTestnet, purpose) {
   const currencyIdx = isTestnet ? BTC_TESTNET_COIN : BTC_COIN;
   const txData = {
     prevOuts: [] as any[],
@@ -336,13 +264,7 @@ export function stripDER(derSig) {
 function _get_signing_keys(wallet, inputs, isTestnet, purpose) {
   const currencyIdx = isTestnet ? 1 : 0;
   return inputs.map((input) => {
-    const path = buildPath([
-      purpose,
-      harden(currencyIdx),
-      harden(0),
-      0,
-      input.signerIdx,
-    ]);
+    const path = buildPath([purpose, harden(currencyIdx), harden(0), 0, input.signerIdx]);
     const node = wallet.derivePath(path);
     const priv = Buffer.from(node.privateKey);
     const key = secp256k1.keyFromPrivate(priv);
@@ -365,8 +287,7 @@ function _generate_btc_address(isTestnet, purpose, rand) {
     priv.writeUInt32BE(Math.floor(rand.quick() * 2 ** 32), j * 4);
   }
   const keyPair = ECPair.fromPrivateKey(priv);
-  const network =
-    isTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
+  const network = isTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
   return _get_btc_addr(keyPair.publicKey, purpose, network);
 }
 
@@ -375,32 +296,11 @@ export function setup_btc_sig_test(opts, wallet, inputs, rand) {
   const recipient = _generate_btc_address(isTestnet, recipientPurpose, rand);
   const sumInputs = _getSumInputs(inputs);
   const fee = Math.floor(rand.quick() * 50000);
-  const _value =
-    useChange === true ? Math.floor(rand.quick() * sumInputs) : sumInputs;
+  const _value = useChange === true ? Math.floor(rand.quick() * sumInputs) : sumInputs;
   const value = _value - fee;
-  const sigHashes = _get_reference_sighashes(
-    wallet,
-    recipient,
-    value,
-    fee,
-    inputs,
-    isTestnet,
-    spenderPurpose,
-  );
-  const signingKeys = _get_signing_keys(
-    wallet,
-    inputs,
-    isTestnet,
-    spenderPurpose,
-  );
-  const txReq = _btc_tx_request_builder(
-    inputs,
-    recipient,
-    value,
-    fee,
-    isTestnet,
-    spenderPurpose,
-  );
+  const sigHashes = _get_reference_sighashes(wallet, recipient, value, fee, inputs, isTestnet, spenderPurpose);
+  const signingKeys = _get_signing_keys(wallet, inputs, isTestnet, spenderPurpose);
+  const txReq = _btc_tx_request_builder(inputs, recipient, value, fee, isTestnet, spenderPurpose);
   return {
     sigHashes,
     signingKeys,
@@ -518,9 +418,7 @@ export const copyBuffer = (x) => {
 // Convert a set of indices to a human readable bip32 path
 export const stringifyPath = (parent) => {
   const convert = (parent) => {
-    return parent >= HARDENED_OFFSET
-      ? `${parent - HARDENED_OFFSET}'`
-      : `${parent}`;
+    return parent >= HARDENED_OFFSET ? `${parent - HARDENED_OFFSET}'` : `${parent}`;
   };
   if (parent.idx) {
     // BIP32 style encoding
@@ -607,8 +505,7 @@ export const validateBTCAddresses = (resp, jobData, seed, useTestnet?) => {
   expect(resp.count).toEqual(jobData.count);
   const wallet = bip32.fromSeed(seed);
   const path = JSON.parse(JSON.stringify(jobData.path));
-  const network =
-    useTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
+  const network = useTestnet === true ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
   for (let i = 0; i < jobData.count; i++) {
     path.idx[jobData.iterIdx] = jobData.path.idx[jobData.iterIdx] + i;
     // Validate the address
@@ -657,12 +554,7 @@ export const validateETHAddresses = (resp, jobData, seed) => {
   }
 };
 
-export const validateDerivedPublicKeys = (
-  pubKeys,
-  firstPath,
-  seed,
-  flag?: number,
-) => {
+export const validateDerivedPublicKeys = (pubKeys, firstPath, seed, flag?: number) => {
   const wallet = bip32.fromSeed(seed);
   // We assume the keys were derived in sequential order
   pubKeys.forEach((pub, i) => {
@@ -671,23 +563,16 @@ export const validateDerivedPublicKeys = (
     if (flag === Constants.GET_ADDR_FLAGS.ED25519_PUB) {
       // ED25519 requires its own derivation
       const key = deriveED25519Key(path, seed);
-      expect(pub.toString('hex')).toEqualElseLog(
-        key.pub.toString('hex'),
-        'Exported ED25519 pubkey incorrect',
-      );
+      expect(pub.toString('hex')).toEqualElseLog(key.pub.toString('hex'), 'Exported ED25519 pubkey incorrect');
     } else {
       // Otherwise this is a SECP256K1 pubkey
       const priv = wallet.derivePath(getPathStr(path)).privateKey;
-      expect(pub.toString('hex')).toEqualElseLog(
-        secp256k1.keyFromPrivate(priv).getPublic().encode('hex', false),
-        'Exported SECP256K1 pubkey incorrect',
-      );
+      expect(pub.toString('hex')).toEqualElseLog(secp256k1.keyFromPrivate(priv).getPublic().encode('hex', false), 'Exported SECP256K1 pubkey incorrect');
     }
   });
 };
 
-export const ethPersonalSignMsg = (msg) =>
-  `\u0019Ethereum Signed Message:\n${String(msg.length)}${msg}`;
+export const ethPersonalSignMsg = (msg) => `\u0019Ethereum Signed Message:\n${String(msg.length)}${msg}`;
 
 //---------------------------------------------------
 // Sign Transaction helpers
@@ -762,18 +647,12 @@ export const deserializeSignTxJobResult = (res: any) => {
     _off += 4;
     o.signerPath.addr = _o.readUInt32LE(_off);
     _off += 4;
-    o.pubkey = secp256k1.keyFromPublic(
-      _o.slice(_off, _off + 65).toString('hex'),
-      'hex',
-    );
+    o.pubkey = secp256k1.keyFromPublic(_o.slice(_off, _off + 65).toString('hex'), 'hex');
     _off += PK_LEN;
     // We get back a DER signature in 74 bytes, but not all the bytes are necessarily
     // used. The second byte contains the DER sig length, so we need to use that.
     const derLen = _o[_off + 1];
-    o.sig = Buffer.from(
-      _o.slice(_off, _off + 2 + derLen).toString('hex'),
-      'hex',
-    );
+    o.sig = Buffer.from(_o.slice(_off, _off + 2 + derLen).toString('hex'), 'hex');
     getTxResult.outputs.push(o);
   }
 
@@ -855,14 +734,11 @@ export const buildRandomEip712Object = (randInt) => {
   }
   function getRandomName(upperCase = false, sz = 20) {
     const name = randStr(sz);
-    if (upperCase === true)
-      return `${name.slice(0, 1).toUpperCase()}${name.slice(1)}`;
+    if (upperCase === true) return `${name.slice(0, 1).toUpperCase()}${name.slice(1)}`;
     return name;
   }
   function getRandomEIP712Type(customTypes: any[] = []) {
-    const types = Object.keys(customTypes).concat(
-      Object.keys(ethMsgProtocol.TYPED_DATA.typeCodes),
-    );
+    const types = Object.keys(customTypes).concat(Object.keys(ethMsgProtocol.TYPED_DATA.typeCodes));
     return {
       name: getRandomName(),
       type: types[randInt(types.length)],
@@ -1001,25 +877,15 @@ export const validateGenericSig = (seed, sig, payloadBuf, req, pubkey?) => {
       r: normalizeSigComponent(sig.r).toString('hex'),
       s: normalizeSigComponent(sig.s).toString('hex'),
     };
-    expect(key.verify(hash, normalizedSig)).toEqualElseLog(
-      true,
-      'Signature failed verification.',
-    );
+    expect(key.verify(hash, normalizedSig)).toEqualElseLog(true, 'Signature failed verification.');
   } else if (curveType === CURVES.ED25519) {
     if (hashType !== HASHES.NONE) {
       throw new Error('Bad params');
     }
     const { pub } = deriveED25519Key(signerPath, seed);
-    const signature = Buffer.concat([
-      normalizeSigComponent(sig.r),
-      normalizeSigComponent(sig.s),
-    ]);
+    const signature = Buffer.concat([normalizeSigComponent(sig.r), normalizeSigComponent(sig.s)]);
     const edPublicKey = pubkey ? normalizeSigComponent(pubkey) : pub;
-    const isValid = nacl.sign.detached.verify(
-      new Uint8Array(payloadBuf),
-      new Uint8Array(signature),
-      new Uint8Array(edPublicKey),
-    );
+    const isValid = nacl.sign.detached.verify(new Uint8Array(payloadBuf), new Uint8Array(signature), new Uint8Array(edPublicKey));
     expect(isValid).toEqualElseLog(true, 'Signature failed verification.');
   } else {
     throw new Error('Bad params');
@@ -1069,9 +935,7 @@ export function toBuffer(data: string | number | Buffer | Uint8Array): Buffer {
   }
   if (typeof data === 'string') {
     const trimmed = data.trim();
-    const isHex =
-      trimmed.startsWith('0x') ||
-      (/^[0-9a-fA-F]+$/.test(trimmed) && trimmed.length % 2 === 0);
+    const isHex = trimmed.startsWith('0x') || (/^[0-9a-fA-F]+$/.test(trimmed) && trimmed.length % 2 === 0);
     return isHex ? ensureHexBuffer(trimmed) : Buffer.from(trimmed, 'utf8');
   }
   throw new Error('Unsupported data type');
@@ -1081,24 +945,16 @@ export function toUint8Array(data: Buffer): Uint8Array {
   return new Uint8Array(data.buffer, data.byteOffset, data.length);
 }
 
-export function ensureHash32(
-  message: string | number | Buffer | Uint8Array,
-): Uint8Array {
+export function ensureHash32(message: string | number | Buffer | Uint8Array): Uint8Array {
   const msgBuffer = toBuffer(message);
-  const digest =
-    msgBuffer.length === 32
-      ? msgBuffer
-      : Buffer.from(Hash.keccak256(msgBuffer));
+  const digest = msgBuffer.length === 32 ? msgBuffer : Buffer.from(Hash.keccak256(msgBuffer));
   if (digest.length !== 32) {
     throw new Error('Failed to derive 32-byte hash for signature validation.');
   }
   return toUint8Array(digest);
 }
 
-export function validateSig(
-  resp: any,
-  message: string | number | Buffer | Uint8Array,
-) {
+export function validateSig(resp: any, message: string | number | Buffer | Uint8Array) {
   if (!resp.sig?.r || !resp.sig?.s || !resp.pubkey) {
     throw new Error('Missing signature components');
   }
@@ -1108,20 +964,11 @@ export function validateSig(
   const hash = ensureHash32(message);
 
   const pubkeyInput = toBuffer(resp.pubkey);
-  const normalizedPubkey =
-    pubkeyInput.length === 64
-      ? Buffer.concat([Buffer.from([0x04]), pubkeyInput])
-      : pubkeyInput;
-  const isCompressed =
-    normalizedPubkey.length === 33 &&
-    (normalizedPubkey[0] === 0x02 || normalizedPubkey[0] === 0x03);
+  const normalizedPubkey = pubkeyInput.length === 64 ? Buffer.concat([Buffer.from([0x04]), pubkeyInput]) : pubkeyInput;
+  const isCompressed = normalizedPubkey.length === 33 && (normalizedPubkey[0] === 0x02 || normalizedPubkey[0] === 0x03);
 
-  const recoveredA = Buffer.from(
-    ecdsaRecover(rs, 0, hash, isCompressed),
-  ).toString('hex');
-  const recoveredB = Buffer.from(
-    ecdsaRecover(rs, 1, hash, isCompressed),
-  ).toString('hex');
+  const recoveredA = Buffer.from(ecdsaRecover(rs, 0, hash, isCompressed)).toString('hex');
+  const recoveredB = Buffer.from(ecdsaRecover(rs, 1, hash, isCompressed)).toString('hex');
   const expected = normalizedPubkey.toString('hex');
   if (expected !== recoveredA && expected !== recoveredB) {
     throw new Error('Signature did not validate.');
@@ -1145,15 +992,10 @@ export const compressPubKey = (pub) => {
 function _stripTrailingCommas(input: string): string {
   // Use non-backtracking pattern to avoid ReDoS vulnerability
   // Unrolled loop for multi-line comments: \/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/
-  return input.replace(
-    /,([\s]*(?:\/\/[^\n]*\n[\s]*|\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/[\s]*)*)([}\]])/g,
-    '$1$2',
-  );
+  return input.replace(/,([\s]*(?:\/\/[^\n]*\n[\s]*|\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/[\s]*)*)([}\]])/g, '$1$2');
 }
 
 export const getTestVectors = () => {
-  const raw = readFileSync(
-    `${process.cwd()}/src/__test__/vectors.jsonc`,
-  ).toString();
+  const raw = readFileSync(`${process.cwd()}/src/__test__/vectors.jsonc`).toString();
   return jsonc.parse(_stripTrailingCommas(raw));
 };
