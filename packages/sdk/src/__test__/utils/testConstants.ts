@@ -1,4 +1,4 @@
-import { mnemonicToSeedSync } from 'bip39';
+import { mnemonicToSeedSync } from 'bip39'
 /**
  * Common test constants used across the GridPlus SDK test suite
  *
@@ -12,12 +12,11 @@ import { mnemonicToSeedSync } from 'bip39';
  * This mnemonic is used across multiple test files to ensure consistent
  * test behavior and deterministic results.
  */
-export const TEST_MNEMONIC =
-  'test test test test test test test test test test test junk';
+export const TEST_MNEMONIC = 'test test test test test test test test test test test junk'
 
 /**
  * Shared seed derived from TEST_MNEMONIC
  *
  * Consumers can reuse this to avoid re-deriving the seed in each test.
  */
-export const TEST_SEED = mnemonicToSeedSync(TEST_MNEMONIC);
+export const TEST_SEED = mnemonicToSeedSync(TEST_MNEMONIC)

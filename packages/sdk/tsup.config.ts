@@ -1,31 +1,33 @@
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { writeFileSync } from 'node:fs';
 import { defineConfig } from 'tsup';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(
-  readFileSync(resolve(__dirname, 'package.json'), 'utf-8'),
-);
-
-const external = Object.keys({
-  ...(pkg.dependencies ?? {}),
-  ...(pkg.peerDependencies ?? {}),
-});
+const esmWrapper = `// ESM wrapper - loads the CJS bundle
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const cjs = require('./index.cjs');
+export const Calldata = cjs.Calldata;
+export const Client = cjs.Client;
+export const Constants = cjs.Constants;
+export const Utils = cjs.Utils;
+export * from './index.cjs';
+export default cjs;
+`;
 
 export default defineConfig({
   entry: ['src/index.ts'],
   outDir: './dist',
-  format: ['esm', 'cjs'],
+  format: ['cjs'],
   target: 'node20',
+  platform: 'node',
   sourcemap: true,
   clean: true,
   bundle: true,
   dts: true,
   silent: true,
-  outExtension: ({ format }) => ({
-    js: format === 'esm' ? '.mjs' : '.cjs',
-  }),
-  external,
+  noExternal: [/.*/],
   tsconfig: './tsconfig.build.json',
+  onSuccess: async () => {
+    writeFileSync('./dist/index.mjs', esmWrapper);
+    console.log('Generated ESM wrapper: dist/index.mjs');
+  },
 });

@@ -1,9 +1,9 @@
-import type { Client } from '../client';
+import type { Client } from '../client'
 
 export interface FetchActiveWalletRequestFunctionParams {
-  client: Client;
+	client: Client
 }
 
 export interface ValidatedFetchActiveWalletRequest {
-  sharedSecret: Buffer;
+	sharedSecret: Buffer
 }

@@ -1,99 +1,99 @@
 // Re-export everything from client.ts
-export * from './client';
+export * from './client'
 
 // Re-export everything from addKvRecords.ts
-export * from './addKvRecords';
+export * from './addKvRecords'
 
 // Re-export everything from connect.ts
-export * from './connect';
+export * from './connect'
 
 // Re-export everything from fetchActiveWallet.ts
-export * from './fetchActiveWallet';
+export * from './fetchActiveWallet'
 
 // Re-export everything from fetchEncData.ts
-export * from './fetchEncData';
+export * from './fetchEncData'
 
 // Re-export everything from firmware.ts
-export * from './firmware';
+export * from './firmware'
 
 // Re-export everything from getAddresses.ts
-export * from './getAddresses';
+export * from './getAddresses'
 
 // Re-export everything from getKvRecords.ts
-export * from './getKvRecords';
+export * from './getKvRecords'
 
 // Re-export everything from messages.ts
-export * from './messages';
+export * from './messages'
 
 // Re-export everything from pair.ts
-export * from './pair';
+export * from './pair'
 
 // Re-export everything from removeKvRecords.ts
-export * from './removeKvRecords';
+export * from './removeKvRecords'
 
 // Re-export everything from secureMessages.ts
-export * from './secureMessages';
+export * from './secureMessages'
 
 // Re-export everything from shared.ts
-export * from './shared';
+export * from './shared'
 
 // Re-export everything from sign.ts
-export * from './sign';
+export * from './sign'
 
 // Re-export everything from utils.ts
-export * from './utils';
+export * from './utils'
 
 // We don't need to export from vitest.d.ts as it's a declaration file for Vitest
 
 // Exports from client.ts
 export type {
-  Currency,
-  SigningPath,
-  SignData,
-  SigningRequestResponse,
-  TransactionPayload,
-  Wallet,
-  ActiveWallets,
-  RequestParams,
-  ClientStateData,
-} from './client';
+	Currency,
+	SigningPath,
+	SignData,
+	SigningRequestResponse,
+	TransactionPayload,
+	Wallet,
+	ActiveWallets,
+	RequestParams,
+	ClientStateData,
+} from './client'
 
 // Exports from addKvRecords.ts
 export type {
-  AddKvRecordsRequestParams,
-  AddKvRecordsRequestFunctionParams,
-} from './addKvRecords';
+	AddKvRecordsRequestParams,
+	AddKvRecordsRequestFunctionParams,
+} from './addKvRecords'
 
 // Exports from fetchEncData.ts
 export type {
-  EIP2335KeyExportReq,
-  FetchEncDataRequest,
-  FetchEncDataRequestFunctionParams,
-  EIP2335KeyExportData,
-} from './fetchEncData';
+	EIP2335KeyExportReq,
+	FetchEncDataRequest,
+	FetchEncDataRequestFunctionParams,
+	EIP2335KeyExportData,
+} from './fetchEncData'
 
 // Exports from getKvRecords.ts
 export type {
-  GetKvRecordsRequestParams,
-  GetKvRecordsRequestFunctionParams,
-  AddressTag,
-  GetKvRecordsData,
-} from './getKvRecords';
+	GetKvRecordsRequestParams,
+	GetKvRecordsRequestFunctionParams,
+	AddressTag,
+	GetKvRecordsData,
+} from './getKvRecords'
 
 // Exports from removeKvRecords.ts
 export type {
-  RemoveKvRecordsRequestParams,
-  RemoveKvRecordsRequestFunctionParams,
-} from './removeKvRecords';
+	RemoveKvRecordsRequestParams,
+	RemoveKvRecordsRequestFunctionParams,
+} from './removeKvRecords'
 
 // Exports from shared.ts
 export type {
-  KVRecords,
-  EncrypterParams,
-  KeyPair,
-  WalletPath,
-  DecryptedResponse,
-} from './shared';
+	KVRecords,
+	EncrypterParams,
+	KeyPair,
+	WalletPath,
+	DecryptedResponse,
+} from './shared'
 
 // Note: We don't export from vitest.d.ts as it's a declaration file for Vitest
 

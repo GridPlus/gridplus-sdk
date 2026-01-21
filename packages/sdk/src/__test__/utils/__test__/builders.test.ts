@@ -1,17 +1,13 @@
-import {
-  buildEvmReq,
-  buildRandomVectors,
-  getFwVersionsList,
-} from '../builders';
+import { buildEvmReq, buildRandomVectors, getFwVersionsList } from '../builders'
 
 describe('building', () => {
-  test('should test client', () => {
-    expect(getFwVersionsList()).toMatchSnapshot();
-  });
+	test('should test client', () => {
+		expect(getFwVersionsList()).toMatchSnapshot()
+	})
 
-  test('RANDOM_VEC', () => {
-    const RANDOM_VEC = buildRandomVectors(10);
-    expect(RANDOM_VEC).toMatchInlineSnapshot(`
+	test('RANDOM_VEC', () => {
+		const RANDOM_VEC = buildRandomVectors(10)
+		expect(RANDOM_VEC).toMatchInlineSnapshot(`
       [
         "9f2c1f8",
         "334e3bf5",
@@ -24,16 +20,16 @@ describe('building', () => {
         "1121991",
         "2851e10c",
       ]
-    `);
-  });
+    `)
+	})
 
-  test('buildEvmReq', () => {
-    const testObj = buildEvmReq({
-      common: 'test',
-      data: { payload: 'test' },
-      txData: { data: 'test', type: undefined },
-    });
-    expect(testObj).toMatchInlineSnapshot(`
+	test('buildEvmReq', () => {
+		const testObj = buildEvmReq({
+			common: 'test',
+			data: { payload: 'test' },
+			txData: { data: 'test', type: undefined },
+		})
+		expect(testObj).toMatchInlineSnapshot(`
       {
         "common": "test",
         "data": {
@@ -60,6 +56,6 @@ describe('building', () => {
           "value": 100,
         },
       }
-    `);
-  });
-});
+    `)
+	})
+})

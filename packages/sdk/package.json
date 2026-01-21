@@ -40,15 +40,15 @@
   ],
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./dist/index.d.cts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
     "./package.json": "./package.json"
   },
-  "types": "./dist/index.d.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/GridPlus/gridplus-sdk.git"
@@ -104,10 +104,10 @@
     "random-words": "^2.0.1",
     "readline-sync": "^1.4.10",
     "seedrandom": "^3.0.5",
+    "tiny-secp256k1": "^2.2.4",
     "tsup": "^8.5.0",
     "tsx": "^4.20.6",
     "tweetnacl": "^1.0.3",
-    "tiny-secp256k1": "^2.2.4",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
     "vite-plugin-dts": "^4.5.4",

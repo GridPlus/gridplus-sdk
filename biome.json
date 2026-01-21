@@ -1,85 +1,80 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.2.4/schema.json",
-  "vcs": {
-    "enabled": true,
-    "clientKind": "git",
-    "useIgnoreFile": true
-  },
-  "formatter": {
-    "enabled": true,
-    "formatWithErrors": false,
-    "indentStyle": "space",
-    "indentWidth": 2,
-    "lineEnding": "lf",
-    "lineWidth": 80,
-    "attributePosition": "auto"
-  },
-  "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true,
-      "complexity": {
-        "noForEach": "off"
-      },
-      "correctness": {
-        "noUnusedImports": {
-          "level": "error"
-        },
-        "noUnusedVariables": {
-          "level": "warn",
-          "fix": "none"
-        },
-        "noUnusedFunctionParameters": {
-          "level": "warn",
-          "fix": "none"
-        }
-      },
-      "style": {
-        "useConst": "error",
-        "noVar": "warn",
-        "noParameterAssign": "off",
-        "noUselessElse": "off",
-        "noUnusedTemplateLiteral": "error",
-        "useAsConstAssertion": "error",
-        "useDefaultParameterLast": "error",
-        "useEnumInitializers": "error",
-        "useSingleVarDeclarator": "error",
-        "useNumberNamespace": "error",
-        "noInferrableTypes": "error",
-        "noNonNullAssertion": "off"
-      },
-      "performance": {
-        "noAccumulatingSpread": "warn"
-      },
-      "suspicious": {
-        "noExplicitAny": "off",
-        "noDoubleEquals": "error",
-        "noImplicitAnyLet": "off",
-        "noConfusingVoidType": "off",
-        "noControlCharactersInRegex": "off",
-        "noAssignInExpressions": "warn"
-      }
-    }
-  },
-  "organizeImports": {
-    "enabled": false
-  },
-  "files": {
-    "ignoreUnknown": true,
-    "include": ["packages/*/src/**"],
-    "ignore": ["**/dist/**", "**/node_modules/**", "**/coverage/**"]
-  },
-  "javascript": {
-    "formatter": {
-      "jsxQuoteStyle": "double",
-      "quoteProperties": "asNeeded",
-      "trailingCommas": "all",
-      "semicolons": "always",
-      "arrowParentheses": "always",
-      "bracketSpacing": true,
-      "bracketSameLine": false,
-      "quoteStyle": "single",
-      "attributePosition": "auto"
-    }
-  }
+	"$schema": "https://biomejs.dev/schemas/2.2.4/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"formatter": {
+		"enabled": true,
+		"formatWithErrors": false,
+		"indentStyle": "tab",
+		"indentWidth": 2,
+		"lineEnding": "lf",
+		"lineWidth": 240,
+		"attributePosition": "auto"
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"complexity": {
+				"noForEach": "warn"
+			},
+			"correctness": {
+				"noUnusedImports": {
+					"level": "error"
+				},
+				"noUnusedVariables": {
+					"level": "warn",
+					"fix": "none"
+				},
+				"noUnusedFunctionParameters": {
+					"level": "warn",
+					"fix": "none"
+				}
+			},
+			"style": {
+				"noParameterAssign": "warn",
+				"noNonNullAssertion": "error",
+				"noUselessElse": "warn",
+				"noUnusedTemplateLiteral": "error",
+				"useAsConstAssertion": "error",
+				"useDefaultParameterLast": "error",
+				"useEnumInitializers": "error",
+				"useSingleVarDeclarator": "error",
+				"useNumberNamespace": "error",
+				"noInferrableTypes": "error"
+			},
+			"performance": {
+				"noAccumulatingSpread": "warn"
+			},
+			"suspicious": {
+				"noArrayIndexKey": "warn",
+				"noAssignInExpressions": "warn",
+				"noExplicitAny": "warn"
+			}
+		}
+	},
+	"organizeImports": {
+		"enabled": false
+	},
+	"files": {
+		"ignoreUnknown": true,
+		"include": ["packages/*/src/**"],
+		"ignore": ["**/dist/**", "**/node_modules/**", "**/coverage/**"]
+	},
+	"javascript": {
+		"formatter": {
+			"jsxQuoteStyle": "double",
+			"quoteProperties": "asNeeded",
+			"trailingCommas": "all",
+			"semicolons": "asNeeded",
+			"arrowParentheses": "always",
+			"bracketSpacing": true,
+			"bracketSameLine": false,
+			"quoteStyle": "single",
+			"attributePosition": "auto"
+		}
+	}
 }
