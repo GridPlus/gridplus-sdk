@@ -21,6 +21,7 @@ export interface GenericSigningData {
   encodingTypes: {
     NONE: typeof EXTERNAL.SIGNING.ENCODINGS.NONE;
     SOLANA: typeof EXTERNAL.SIGNING.ENCODINGS.SOLANA;
+    COSMOS?: typeof EXTERNAL.SIGNING.ENCODINGS.COSMOS;
     EVM?: typeof EXTERNAL.SIGNING.ENCODINGS.EVM;
   };
 }

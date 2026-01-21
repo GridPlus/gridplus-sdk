@@ -74,6 +74,7 @@ export enum LatticeSignCurve {
 export enum LatticeSignEncoding {
   none = 1,
   solana = 2,
+  cosmos = 3,
   evm = 4,
   eth_deposit = 5,
   eip7702_auth = 6,
