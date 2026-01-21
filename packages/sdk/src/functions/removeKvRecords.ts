@@ -1,14 +1,25 @@
-import { LatticeSecureEncryptedRequestType, encryptedSecureRequest } from '../protocol';
+import {
+  LatticeSecureEncryptedRequestType,
+  encryptedSecureRequest,
+} from '../protocol';
 import { validateConnectedClient } from '../shared/validators';
-import type { FirmwareConstants, RemoveKvRecordsRequestFunctionParams } from '../types';
+import type {
+  FirmwareConstants,
+  RemoveKvRecordsRequestFunctionParams,
+} from '../types';
 
 /**
  * `removeKvRecords` takes in an array of ids and sends a request to remove them from the Lattice.
  * @category Lattice
  * @returns A callback with an error or null.
  */
-export async function removeKvRecords({ client, type: _type, ids: _ids }: RemoveKvRecordsRequestFunctionParams): Promise<Buffer> {
-  const { url, sharedSecret, ephemeralPub, fwConstants } = validateConnectedClient(client);
+export async function removeKvRecords({
+  client,
+  type: _type,
+  ids: _ids,
+}: RemoveKvRecordsRequestFunctionParams): Promise<Buffer> {
+  const { url, sharedSecret, ephemeralPub, fwConstants } =
+    validateConnectedClient(client);
 
   const { type, ids } = validateRemoveKvRequest({
     fwConstants,
@@ -53,7 +64,9 @@ export const validateRemoveKvRequest = ({
     throw new Error('You must include one or more `ids` to removed.');
   }
   if (ids.length > fwConstants.kvRemoveMaxNum) {
-    throw new Error(`Only up to ${fwConstants.kvRemoveMaxNum} records may be removed at once.`);
+    throw new Error(
+      `Only up to ${fwConstants.kvRemoveMaxNum} records may be removed at once.`,
+    );
   }
   if (type !== 0 && !type) {
     throw new Error('You must specify a type.');

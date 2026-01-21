@@ -9,7 +9,13 @@ import type { Client } from '../../../client';
 
 const prng = getPrng();
 const numIter = getNumIter();
-const DEFAULT_SIGNER = [HARDENED_OFFSET + 44, HARDENED_OFFSET + 60, HARDENED_OFFSET, 0, 0];
+const DEFAULT_SIGNER = [
+  HARDENED_OFFSET + 44,
+  HARDENED_OFFSET + 60,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
 
 describe('[Unformatted]', () => {
   let client: Client;
@@ -30,7 +36,8 @@ describe('[Unformatted]', () => {
 
   it('Should test pre-hashed messages', async () => {
     const fwConstants = client.getFwConstants();
-    const { extraDataFrameSz, extraDataMaxFrames, genericSigning } = fwConstants;
+    const { extraDataFrameSz, extraDataMaxFrames, genericSigning } =
+      fwConstants;
     const { baseDataSz } = genericSigning;
     // Max size that won't be prehashed
     const maxSz = baseDataSz + extraDataMaxFrames * extraDataFrameSz;
@@ -123,7 +130,9 @@ describe('[Unformatted]', () => {
         hashType: Constants.SIGNING.HASHES.KECCAK256,
       },
     };
-    const respLegacy = await client.sign(legacyReq as Parameters<typeof client.sign>[0]);
+    const respLegacy = await client.sign(
+      legacyReq as Parameters<typeof client.sign>[0],
+    );
 
     const genSigR = (respGeneric.sig?.r as Buffer)?.toString('hex') ?? '';
     const genSigS = (respGeneric.sig?.s as Buffer)?.toString('hex') ?? '';
@@ -132,7 +141,10 @@ describe('[Unformatted]', () => {
 
     const genSig = `${genSigR}${genSigS}`;
     const legSig = `${legSigR}${legSigS}`;
-    expect(genSig).toEqualElseLog(legSig, 'Legacy and generic requests produced different sigs.');
+    expect(genSig).toEqualElseLog(
+      legSig,
+      'Legacy and generic requests produced different sigs.',
+    );
   });
 
   for (let i = 0; i < numIter; i++) {

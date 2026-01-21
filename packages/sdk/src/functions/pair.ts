@@ -1,4 +1,7 @@
-import { LatticeSecureEncryptedRequestType, encryptedSecureRequest } from '../protocol';
+import {
+  LatticeSecureEncryptedRequestType,
+  encryptedSecureRequest,
+} from '../protocol';
 import { getPubKeyBytes } from '../shared/utilities';
 import { validateConnectedClient } from '../shared/validators';
 import type { KeyPair, PairRequestParams } from '../types';
@@ -11,8 +14,12 @@ import { generateAppSecret, toPaddedDER } from '../util';
  * @category Lattice
  * @returns The active wallet object.
  */
-export async function pair({ client, pairingSecret }: PairRequestParams): Promise<boolean> {
-  const { url, sharedSecret, ephemeralPub, appName, key } = validateConnectedClient(client);
+export async function pair({
+  client,
+  pairingSecret,
+}: PairRequestParams): Promise<boolean> {
+  const { url, sharedSecret, ephemeralPub, appName, key } =
+    validateConnectedClient(client);
   const data = encodePairRequest({ pairingSecret, key, appName });
 
   const { newEphemeralPub } = await encryptedSecureRequest({
@@ -51,7 +58,11 @@ export const encodePairRequest = ({
     // (RESP_ERR_PAIR_FAIL)
     nameBuf.write(appName);
   }
-  const hash = generateAppSecret(pubKeyBytes, nameBuf, Buffer.from(pairingSecret));
+  const hash = generateAppSecret(
+    pubKeyBytes,
+    nameBuf,
+    Buffer.from(pairingSecret),
+  );
   const sig = key.sign(hash);
   const derSig = toPaddedDER(sig);
   const payload = Buffer.concat([nameBuf, derSig]);

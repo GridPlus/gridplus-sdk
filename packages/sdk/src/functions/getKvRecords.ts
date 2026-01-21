@@ -1,9 +1,22 @@
-import { LatticeSecureEncryptedRequestType, encryptedSecureRequest } from '../protocol';
+import {
+  LatticeSecureEncryptedRequestType,
+  encryptedSecureRequest,
+} from '../protocol';
 import { validateConnectedClient } from '../shared/validators';
-import type { FirmwareConstants, GetKvRecordsData, GetKvRecordsRequestFunctionParams } from '../types';
+import type {
+  FirmwareConstants,
+  GetKvRecordsData,
+  GetKvRecordsRequestFunctionParams,
+} from '../types';
 
-export async function getKvRecords({ client, type: _type, n: _n, start: _start }: GetKvRecordsRequestFunctionParams): Promise<GetKvRecordsData> {
-  const { url, sharedSecret, ephemeralPub, fwConstants } = validateConnectedClient(client);
+export async function getKvRecords({
+  client,
+  type: _type,
+  n: _n,
+  start: _start,
+}: GetKvRecordsRequestFunctionParams): Promise<GetKvRecordsData> {
+  const { url, sharedSecret, ephemeralPub, fwConstants } =
+    validateConnectedClient(client);
 
   const { type, n, start } = validateGetKvRequest({
     type: _type,
@@ -47,7 +60,9 @@ export const validateGetKvRequest = ({
     throw new Error('You must request at least one record.');
   }
   if (n > fwConstants.kvActionMaxNum) {
-    throw new Error(`You may only request up to ${fwConstants.kvActionMaxNum} records at once.`);
+    throw new Error(
+      `You may only request up to ${fwConstants.kvActionMaxNum} records at once.`,
+    );
   }
   if (type !== 0 && !type) {
     throw new Error('You must specify a type.');
@@ -75,13 +90,20 @@ export const encodeGetKvRecordsRequest = ({
   return payload;
 };
 
-export const decodeGetKvRecordsResponse = (data: Buffer, fwConstants: FirmwareConstants) => {
+export const decodeGetKvRecordsResponse = (
+  data: Buffer,
+  fwConstants: FirmwareConstants,
+) => {
   let off = 0;
   const nTotal = data.readUInt32BE(off);
   off += 4;
-  const nFetched = Number.parseInt(data.slice(off, off + 1).toString('hex'), 16);
+  const nFetched = Number.parseInt(
+    data.slice(off, off + 1).toString('hex'),
+    16,
+  );
   off += 1;
-  if (nFetched > fwConstants.kvActionMaxNum) throw new Error('Too many records fetched. Firmware error.');
+  if (nFetched > fwConstants.kvActionMaxNum)
+    throw new Error('Too many records fetched. Firmware error.');
   const records: any = [];
   for (let i = 0; i < nFetched; i++) {
     const r: any = {};
@@ -89,7 +111,8 @@ export const decodeGetKvRecordsResponse = (data: Buffer, fwConstants: FirmwareCo
     off += 4;
     r.type = data.readUInt32BE(off);
     off += 4;
-    r.caseSensitive = Number.parseInt(data.slice(off, off + 1).toString('hex'), 16) === 1;
+    r.caseSensitive =
+      Number.parseInt(data.slice(off, off + 1).toString('hex'), 16) === 1;
     off += 1;
     const keySz = Number.parseInt(data.slice(off, off + 1).toString('hex'), 16);
     off += 1;

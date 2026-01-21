@@ -7,7 +7,12 @@ import { buildGenericSigningMsgRequest } from '../genericSigning';
 import type { Currency, FirmwareConstants, RequestParams } from '../types';
 import { fetchWithTimeout, parseLattice1Response } from '../util';
 import { LatticeResponseError } from './errors';
-import { isDeviceBusy, isInvalidEphemeralId, isWrongWallet, shouldUseEVMLegacyConverter } from './predicates';
+import {
+  isDeviceBusy,
+  isInvalidEphemeralId,
+  isWrongWallet,
+  shouldUseEVMLegacyConverter,
+} from './predicates';
 import { validateRequestError } from './validators';
 
 export const buildTransaction = ({
@@ -30,13 +35,19 @@ export const buildTransaction = ({
   // general signing requests for newer firmware versions. EIP1559 and EIP155 legacy
   // requests will convert, but others may not.
   if (currency === 'ETH' && shouldUseEVMLegacyConverter(fwConstants)) {
-    console.log('Using the legacy ETH signing path. This will soon be deprecated. ' + 'Please switch to general signing request.');
+    console.log(
+      'Using the legacy ETH signing path. This will soon be deprecated. ' +
+        'Please switch to general signing request.',
+    );
     let payload: Buffer | undefined;
     try {
       payload = ethereum.convertEthereumTransactionToGenericRequest(data);
     } catch (err) {
       console.error('Failed to convert legacy Ethereum transaction:', err);
-      throw new Error('Could not convert legacy request. Please switch to a general signing ' + 'request. See gridplus-sdk docs for more information.');
+      throw new Error(
+        'Could not convert legacy request. Please switch to a general signing ' +
+          'request. See gridplus-sdk docs for more information.',
+      );
     }
     data = {
       fwConstants,
@@ -73,7 +84,11 @@ export const buildTransaction = ({
   };
 };
 
-export const request = async ({ url, payload, timeout = 60000 }: RequestParams) => {
+export const request = async ({
+  url,
+  payload,
+  timeout = 60000,
+}: RequestParams) => {
   return fetchWithTimeout(url, {
     method: 'POST',
     body: JSON.stringify({ data: payload }),
@@ -92,7 +107,9 @@ export const request = async ({ url, payload, timeout = 60000 }: RequestParams) 
         throw new Error(`Error code ${body.status}: ${body.message}`);
       }
 
-      const { data, errorMessage, responseCode } = parseLattice1Response(body.message);
+      const { data, errorMessage, responseCode } = parseLattice1Response(
+        body.message,
+      );
 
       if (errorMessage || responseCode) {
         throw new LatticeResponseError(responseCode, errorMessage);
@@ -157,7 +174,10 @@ export const retryWrapper = async ({
       if ((errorMessage || responseCode) && retries) {
         if (isDeviceBusy(responseCode)) {
           await sleep(3000);
-        } else if (isWrongWallet(responseCode) && !client.skipRetryOnWrongWallet) {
+        } else if (
+          isWrongWallet(responseCode) &&
+          !client.skipRetryOnWrongWallet
+        ) {
           await client.fetchActiveWallet();
         } else if (isInvalidEphemeralId(responseCode)) {
           await client.connect(client.deviceId);

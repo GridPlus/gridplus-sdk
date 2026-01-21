@@ -1,8 +1,20 @@
 import { http, HttpResponse } from 'msw';
-import { fourbyteResponse0c49ccbe, fourbyteResponse0x6a761202, fourbyteResponse0x38ed1739, fourbyteResponse0xa9059cbb, fourbyteResponseac9650d8, fourbyteResponsefc6f7865 } from './4byte';
+import {
+  fourbyteResponse0c49ccbe,
+  fourbyteResponse0x6a761202,
+  fourbyteResponse0x38ed1739,
+  fourbyteResponse0xa9059cbb,
+  fourbyteResponseac9650d8,
+  fourbyteResponsefc6f7865,
+} from './4byte';
 import addKvRecordsResponse from './addKvRecords.json';
 import connectResponse from './connect.json';
-import { etherscanResponse0x06412d7e, etherscanResponse0x7a250d56, etherscanResponse0xa0b86991, etherscanResponse0xc36442b6 } from './etherscan';
+import {
+  etherscanResponse0x06412d7e,
+  etherscanResponse0x7a250d56,
+  etherscanResponse0xa0b86991,
+  etherscanResponse0xc36442b6,
+} from './etherscan';
 import fetchActiveWalletResponse from './fetchActiveWallet.json';
 import getAddressesResponse from './getAddresses.json';
 import getKvRecordsResponse from './getKvRecords.json';

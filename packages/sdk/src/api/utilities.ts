@@ -1,6 +1,11 @@
 import { Client } from '../client';
 import { EXTERNAL, HARDENED_OFFSET } from '../constants';
-import { getFunctionQueue, loadClient, saveClient, setFunctionQueue } from './state';
+import {
+  getFunctionQueue,
+  loadClient,
+  saveClient,
+  setFunctionQueue,
+} from './state';
 
 /**
  * `queue` is a function that wraps all functional API calls. It limits the number of concurrent
@@ -49,7 +54,9 @@ const decodeClientData = (clientData: string) => {
   return Buffer.from(clientData, 'base64').toString();
 };
 
-export const buildSaveClientFn = (setStoredClient: (clientData: string | null) => Promise<void>) => {
+export const buildSaveClientFn = (
+  setStoredClient: (clientData: string | null) => Promise<void>,
+) => {
   return async (clientData: string | null) => {
     if (!clientData) return;
     const encodedData = encodeClientData(clientData);
@@ -81,7 +88,12 @@ export const getStartPath = (
   return startPath;
 };
 
-export const isEIP712Payload = (payload: any) => typeof payload !== 'string' && 'types' in payload && 'domain' in payload && 'primaryType' in payload && 'message' in payload;
+export const isEIP712Payload = (payload: any) =>
+  typeof payload !== 'string' &&
+  'types' in payload &&
+  'domain' in payload &&
+  'primaryType' in payload &&
+  'message' in payload;
 
 export function parseDerivationPath(path: string): number[] {
   if (!path) return [];
@@ -94,7 +106,8 @@ export function parseDerivationPathComponents(components: string[]): number[] {
     const lowerPart = part.toLowerCase();
     if (lowerPart === 'x') return 0; // Wildcard
     if (lowerPart === "x'") return HARDENED_OFFSET; // Hardened wildcard
-    if (part.endsWith("'")) return Number.parseInt(part.slice(0, -1)) + HARDENED_OFFSET;
+    if (part.endsWith("'"))
+      return Number.parseInt(part.slice(0, -1)) + HARDENED_OFFSET;
     const val = Number.parseInt(part);
     if (Number.isNaN(val)) {
       throw new Error(`Invalid part in derivation path: ${part}`);

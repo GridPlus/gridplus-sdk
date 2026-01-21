@@ -1,5 +1,11 @@
 import { execSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -53,7 +59,9 @@ const runNodeCheck = (args: string[]) => {
     throw result.error;
   }
   if (result.status !== 0) {
-    throw new Error(`Node command failed (${result.status}):\n${result.stderr || result.stdout}`);
+    throw new Error(
+      `Node command failed (${result.status}):\n${result.stderr || result.stdout}`,
+    );
   }
 };
 

@@ -1,5 +1,17 @@
-import { LatticeEncDataSchema, LatticeGetAddressesFlag, LatticeSignBlsDst, LatticeSignCurve, LatticeSignEncoding, LatticeSignHash } from './protocol/latticeConstants';
-import type { ActiveWallets, FirmwareArr, FirmwareConstants, WalletPath } from './types/index.js';
+import {
+  LatticeEncDataSchema,
+  LatticeGetAddressesFlag,
+  LatticeSignBlsDst,
+  LatticeSignCurve,
+  LatticeSignEncoding,
+  LatticeSignHash,
+} from './protocol/latticeConstants';
+import type {
+  ActiveWallets,
+  FirmwareArr,
+  FirmwareConstants,
+  WalletPath,
+} from './types/index.js';
 
 /**
  * Externally exported constants used for building requests
@@ -270,7 +282,12 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
   };
   function gte(v: Buffer, exp: FirmwareArr): boolean {
     // Note that `v` fields come in as [fix|minor|major]
-    return v[2] > exp[0] || (v[2] === exp[0] && v[1] > exp[1]) || (v[2] === exp[0] && v[1] === exp[1] && v[0] > exp[2]) || (v[2] === exp[0] && v[1] === exp[1] && v[0] === exp[2]);
+    return (
+      v[2] > exp[0] ||
+      (v[2] === exp[0] && v[1] > exp[1]) ||
+      (v[2] === exp[0] && v[1] === exp[1] && v[0] > exp[2]) ||
+      (v[2] === exp[0] && v[1] === exp[1] && v[0] === exp[2])
+    );
   }
   // Very old legacy versions do not give a version number
   const legacy = v.length === 0;
@@ -395,7 +412,10 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
       SOLANA: EXTERNAL.SIGNING.ENCODINGS.SOLANA,
     };
     // Supported flags for `getAddresses`
-    c.getAddressFlags = [EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB, EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB];
+    c.getAddressFlags = [
+      EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB,
+      EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB,
+    ];
     // We updated the max number of params in EIP712 types
     c.eip712MaxTypeParams = 36;
   }
@@ -426,7 +446,8 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
   // V0.17.0 added support for BLS12-381-G1 pubkeys and G2 sigs
   if (!legacy && gte(v, [0, 17, 0])) {
     c.getAddressFlags.push(EXTERNAL.GET_ADDR_FLAGS.BLS12_381_G1_PUB);
-    c.genericSigning.encodingTypes.ETH_DEPOSIT = EXTERNAL.SIGNING.ENCODINGS.ETH_DEPOSIT;
+    c.genericSigning.encodingTypes.ETH_DEPOSIT =
+      EXTERNAL.SIGNING.ENCODINGS.ETH_DEPOSIT;
   }
 
   // --- V0.18.X ---
@@ -448,7 +469,8 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
 const ASCII_REGEX = /^[\u0000-\u007F]+$/;
 
 /** @internal */
-const EXTERNAL_NETWORKS_BY_CHAIN_ID_URL = 'https://gridplus.github.io/chains/chains.json';
+const EXTERNAL_NETWORKS_BY_CHAIN_ID_URL =
+  'https://gridplus.github.io/chains/chains.json';
 
 /** @internal - Max number of addresses to fetch */
 const MAX_ADDR = 10;
@@ -502,25 +524,67 @@ export const DEFAULT_ACTIVE_WALLETS: ActiveWallets = {
 };
 
 /** @internal */
-export const DEFAULT_ETH_DERIVATION: WalletPath = [HARDENED_OFFSET + 44, HARDENED_OFFSET + 60, HARDENED_OFFSET, 0, 0];
+export const DEFAULT_ETH_DERIVATION: WalletPath = [
+  HARDENED_OFFSET + 44,
+  HARDENED_OFFSET + 60,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
 
 /** @internal */
-export const BTC_LEGACY_DERIVATION = [HARDENED_OFFSET + 44, HARDENED_OFFSET + 0, HARDENED_OFFSET, 0, 0];
+export const BTC_LEGACY_DERIVATION = [
+  HARDENED_OFFSET + 44,
+  HARDENED_OFFSET + 0,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
 
 /** @internal */
-export const BTC_LEGACY_CHANGE_DERIVATION = [HARDENED_OFFSET + 44, HARDENED_OFFSET + 0, HARDENED_OFFSET, 0, 0];
+export const BTC_LEGACY_CHANGE_DERIVATION = [
+  HARDENED_OFFSET + 44,
+  HARDENED_OFFSET + 0,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
 
 /** @internal */
-export const BTC_SEGWIT_DERIVATION = [HARDENED_OFFSET + 84, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0];
+export const BTC_SEGWIT_DERIVATION = [
+  HARDENED_OFFSET + 84,
+  HARDENED_OFFSET,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
 
 /** @internal */
-export const BTC_SEGWIT_CHANGE_DERIVATION = [HARDENED_OFFSET + 84, HARDENED_OFFSET, HARDENED_OFFSET, 1, 0];
+export const BTC_SEGWIT_CHANGE_DERIVATION = [
+  HARDENED_OFFSET + 84,
+  HARDENED_OFFSET,
+  HARDENED_OFFSET,
+  1,
+  0,
+];
 
 /** @internal */
-export const BTC_WRAPPED_SEGWIT_DERIVATION = [HARDENED_OFFSET + 49, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0];
+export const BTC_WRAPPED_SEGWIT_DERIVATION = [
+  HARDENED_OFFSET + 49,
+  HARDENED_OFFSET,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
 
 /** @internal */
-export const BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION = [HARDENED_OFFSET + 49, HARDENED_OFFSET, HARDENED_OFFSET, 0, 0];
+export const BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION = [
+  HARDENED_OFFSET + 49,
+  HARDENED_OFFSET,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
 
 /**
  * Derivation path for Bitcoin legacy xpub (BIP44).
@@ -553,13 +617,29 @@ export const BTC_WRAPPED_SEGWIT_YPUB_PATH = "49'/0'/0'";
 export const BTC_SEGWIT_ZPUB_PATH = "84'/0'/0'";
 
 /** @internal */
-export const SOLANA_DERIVATION = [HARDENED_OFFSET + 44, HARDENED_OFFSET + 501, HARDENED_OFFSET, HARDENED_OFFSET];
+export const SOLANA_DERIVATION = [
+  HARDENED_OFFSET + 44,
+  HARDENED_OFFSET + 501,
+  HARDENED_OFFSET,
+  HARDENED_OFFSET,
+];
 
 /** @internal */
-export const LEDGER_LIVE_DERIVATION = [HARDENED_OFFSET + 49, HARDENED_OFFSET + 60, HARDENED_OFFSET, 0, 0];
+export const LEDGER_LIVE_DERIVATION = [
+  HARDENED_OFFSET + 49,
+  HARDENED_OFFSET + 60,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
 
 /** @internal */
-export const LEDGER_LEGACY_DERIVATION = [HARDENED_OFFSET + 49, HARDENED_OFFSET + 60, HARDENED_OFFSET, 0];
+export const LEDGER_LEGACY_DERIVATION = [
+  HARDENED_OFFSET + 49,
+  HARDENED_OFFSET + 60,
+  HARDENED_OFFSET,
+  0,
+];
 
 export {
   ASCII_REGEX,

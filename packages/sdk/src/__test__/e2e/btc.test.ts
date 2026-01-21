@@ -16,7 +16,13 @@ import BIP32Factory, { type BIP32Interface } from 'bip32';
 import * as ecc from 'tiny-secp256k1';
 import type { Client } from '../../client';
 import { getPrng, getTestnet } from '../utils/getters';
-import { BTC_PURPOSE_P2PKH, BTC_PURPOSE_P2SH_P2WPKH, BTC_PURPOSE_P2WPKH, setup_btc_sig_test, stripDER } from '../utils/helpers';
+import {
+  BTC_PURPOSE_P2PKH,
+  BTC_PURPOSE_P2SH_P2WPKH,
+  BTC_PURPOSE_P2WPKH,
+  setup_btc_sig_test,
+  stripDER,
+} from '../utils/helpers';
 import { setupClient } from '../utils/setup';
 import { TEST_SEED } from '../utils/testConstants';
 
@@ -53,11 +59,20 @@ async function testSign({ txReq, signingKeys, sigHashes, client }: any) {
   for (let i = 0; i < len; i++) {
     const sig = stripDER(tx.sigs?.[i]);
     const verification = signingKeys[i].verify(sigHashes[i], sig);
-    expect(verification).toEqualElseLog(true, `Signature validation failed for priv=${signingKeys[i].privateKey.toString('hex')}, ` + `hash=${sigHashes[i].toString('hex')}, sig=${sig.toString('hex')}`);
+    expect(verification).toEqualElseLog(
+      true,
+      `Signature validation failed for priv=${signingKeys[i].privateKey.toString('hex')}, ` +
+        `hash=${sigHashes[i].toString('hex')}, sig=${sig.toString('hex')}`,
+    );
   }
 }
 
-async function runTestSet(opts: any, wallet: BIP32Interface | null, inputsSlice: InputObj[], client) {
+async function runTestSet(
+  opts: any,
+  wallet: BIP32Interface | null,
+  inputsSlice: InputObj[],
+  client,
+) {
   expect(wallet).not.toEqualElseLog(null, 'Wallet not available');
   if (TEST_TESTNET) {
     // Testnet + change

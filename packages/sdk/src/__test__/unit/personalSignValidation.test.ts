@@ -12,15 +12,23 @@ describe('Personal Sign Validation - Issue Fix', () => {
 
   it('should correctly validate personal message signature', () => {
     // Create a test private key and derive public key
-    const privateKey = Buffer.from('0101010101010101010101010101010101010101010101010101010101010101', 'hex');
+    const privateKey = Buffer.from(
+      '0101010101010101010101010101010101010101010101010101010101010101',
+      'hex',
+    );
     const publicKey = secp256k1.publicKeyCreate(privateKey, false);
 
     // Create a test message
     const message = Buffer.from('Test message', 'utf8');
 
     // Build personal sign prefix and hash
-    const prefix = Buffer.from(`\u0019Ethereum Signed Message:\n${message.length.toString()}`, 'utf-8');
-    const messageHash = Buffer.from(Hash.keccak256(Buffer.concat([prefix, message])));
+    const prefix = Buffer.from(
+      `\u0019Ethereum Signed Message:\n${message.length.toString()}`,
+      'utf-8',
+    );
+    const messageHash = Buffer.from(
+      Hash.keccak256(Buffer.concat([prefix, message])),
+    );
 
     // Sign the message
     const sigObj = secp256k1.ecdsaSign(messageHash, privateKey);
@@ -34,7 +42,9 @@ describe('Personal Sign Validation - Issue Fix', () => {
     // Get the Ethereum address from the public key
     // This matches what the firmware returns
     const pubkeyWithoutPrefix = publicKey.slice(1); // Remove 0x04 prefix
-    const addressBuffer = Buffer.from(Hash.keccak256(pubkeyWithoutPrefix)).slice(-20);
+    const addressBuffer = Buffer.from(
+      Hash.keccak256(pubkeyWithoutPrefix),
+    ).slice(-20);
 
     // This is the function that was failing before the fix
     // It should now correctly add the recovery parameter
@@ -45,7 +55,9 @@ describe('Personal Sign Validation - Issue Fix', () => {
 
     // Verify the signature has a valid v value (27 or 28)
     expect(result.v).toBeDefined();
-    const vValue = Buffer.isBuffer(result.v) ? result.v.readUInt8(0) : Number(result.v);
+    const vValue = Buffer.isBuffer(result.v)
+      ? result.v.readUInt8(0)
+      : Number(result.v);
     expect([27, 28]).toContain(vValue);
 
     // Verify r and s are buffers of correct length
@@ -83,11 +95,19 @@ describe('Personal Sign Validation - Issue Fix', () => {
     const payloadBuffer = Buffer.from(testPayload.slice(2), 'hex');
 
     // Build personal sign hash
-    const prefix = Buffer.from(`\u0019Ethereum Signed Message:\n${payloadBuffer.length.toString()}`, 'utf-8');
-    const messageHash = Buffer.from(Hash.keccak256(Buffer.concat([prefix, payloadBuffer])));
+    const prefix = Buffer.from(
+      `\u0019Ethereum Signed Message:\n${payloadBuffer.length.toString()}`,
+      'utf-8',
+    );
+    const messageHash = Buffer.from(
+      Hash.keccak256(Buffer.concat([prefix, payloadBuffer])),
+    );
 
     // Create a valid signature for this message
-    const privateKey = Buffer.from('0101010101010101010101010101010101010101010101010101010101010101', 'hex');
+    const privateKey = Buffer.from(
+      '0101010101010101010101010101010101010101010101010101010101010101',
+      'hex',
+    );
     const publicKey = secp256k1.publicKeyCreate(privateKey, false);
     const sigObj = secp256k1.ecdsaSign(messageHash, privateKey);
 
@@ -98,7 +118,9 @@ describe('Personal Sign Validation - Issue Fix', () => {
 
     // Get address from public key
     const pubkeyWithoutPrefix = publicKey.slice(1);
-    const addressBuffer = Buffer.from(Hash.keccak256(pubkeyWithoutPrefix)).slice(-20);
+    const addressBuffer = Buffer.from(
+      Hash.keccak256(pubkeyWithoutPrefix),
+    ).slice(-20);
 
     // This should NOT throw with the fix in place
     expect(() => {

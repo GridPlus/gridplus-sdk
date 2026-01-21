@@ -1,8 +1,21 @@
 import { EXTERNAL } from '../../constants';
-import { encodeAddKvRecordsRequest, encodeGetAddressesRequest, encodeGetKvRecordsRequest, encodePairRequest, encodeRemoveKvRecordsRequest, encodeSignRequest } from '../../functions';
+import {
+  encodeAddKvRecordsRequest,
+  encodeGetAddressesRequest,
+  encodeGetKvRecordsRequest,
+  encodePairRequest,
+  encodeRemoveKvRecordsRequest,
+  encodeSignRequest,
+} from '../../functions';
 import { buildTransaction } from '../../shared/functions';
 import { getP256KeyPair } from '../../util';
-import { buildFirmwareConstants, buildGetAddressesObject, buildSignObject, buildWallet, getFwVersionsList } from '../utils/builders';
+import {
+  buildFirmwareConstants,
+  buildGetAddressesObject,
+  buildSignObject,
+  buildWallet,
+  getFwVersionsList,
+} from '../utils/builders';
 
 describe('encoders', () => {
   let mockRandom: any;
@@ -57,19 +70,22 @@ describe('encoders', () => {
   });
 
   describe('sign', () => {
-    test.each(getFwVersionsList())('should test sign encoder with firmware v%d.%d.%d', (major, minor, patch) => {
-      const fwVersion = Buffer.from([patch, minor, major]);
-      const txObj = buildSignObject(fwVersion);
-      const tx = buildTransaction(txObj);
-      const req = {
-        ...txObj,
-        ...tx,
-        wallet: buildWallet(),
-      };
-      const { payload } = encodeSignRequest(req);
-      const payloadAsString = payload.toString('hex');
-      expect(payloadAsString).toMatchSnapshot();
-    });
+    test.each(getFwVersionsList())(
+      'should test sign encoder with firmware v%d.%d.%d',
+      (major, minor, patch) => {
+        const fwVersion = Buffer.from([patch, minor, major]);
+        const txObj = buildSignObject(fwVersion);
+        const tx = buildTransaction(txObj);
+        const req = {
+          ...txObj,
+          ...tx,
+          wallet: buildWallet(),
+        };
+        const { payload } = encodeSignRequest(req);
+        const payloadAsString = payload.toString('hex');
+        expect(payloadAsString).toMatchSnapshot();
+      },
+    );
   });
 
   describe('KvRecords', () => {

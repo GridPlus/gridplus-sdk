@@ -6,7 +6,8 @@ export interface GetKvRecordsRequestParams {
   start?: number;
 }
 
-export interface GetKvRecordsRequestFunctionParams extends GetKvRecordsRequestParams {
+export interface GetKvRecordsRequestFunctionParams
+  extends GetKvRecordsRequestParams {
   client: Client;
 }
 

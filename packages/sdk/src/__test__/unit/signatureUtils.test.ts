@@ -7,7 +7,10 @@ describe('getYParity', () => {
   // Helper function to create a valid signature
   const createValidSignature = (messageHash: Buffer) => {
     // Create a deterministic private key for testing
-    const privateKey = Buffer.from('0101010101010101010101010101010101010101010101010101010101010101', 'hex');
+    const privateKey = Buffer.from(
+      '0101010101010101010101010101010101010101010101010101010101010101',
+      'hex',
+    );
 
     // Sign the message
     const sigObj = secp256k1.ecdsaSign(messageHash, privateKey);
@@ -28,7 +31,8 @@ describe('getYParity', () => {
   describe('Simple signature format', () => {
     it('should handle simple format with Buffer inputs', () => {
       const messageHash = randomBytes(32);
-      const { signature, publicKey, recovery } = createValidSignature(messageHash);
+      const { signature, publicKey, recovery } =
+        createValidSignature(messageHash);
 
       const yParity = getYParity({
         messageHash,
@@ -42,7 +46,8 @@ describe('getYParity', () => {
 
     it('should handle simple format with hex string inputs', () => {
       const messageHash = randomBytes(32);
-      const { signature, publicKey, recovery } = createValidSignature(messageHash);
+      const { signature, publicKey, recovery } =
+        createValidSignature(messageHash);
 
       const yParity = getYParity({
         messageHash: `0x${messageHash.toString('hex')}`,
@@ -58,7 +63,10 @@ describe('getYParity', () => {
 
     it('should handle simple format with compressed public key', () => {
       const messageHash = randomBytes(32);
-      const privateKey = Buffer.from('0101010101010101010101010101010101010101010101010101010101010101', 'hex');
+      const privateKey = Buffer.from(
+        '0101010101010101010101010101010101010101010101010101010101010101',
+        'hex',
+      );
 
       const sigObj = secp256k1.ecdsaSign(messageHash, privateKey);
       const compressedPubkey = secp256k1.publicKeyCreate(privateKey, true);
@@ -77,7 +85,8 @@ describe('getYParity', () => {
 
     it('should handle mixed format inputs', () => {
       const messageHash = randomBytes(32);
-      const { signature, publicKey, recovery } = createValidSignature(messageHash);
+      const { signature, publicKey, recovery } =
+        createValidSignature(messageHash);
 
       const yParity = getYParity({
         messageHash: messageHash.toString('hex'), // No 0x prefix
@@ -129,7 +138,8 @@ describe('getYParity', () => {
         getMessageToSign: () => messageData,
       };
 
-      const { signature, publicKey, recovery } = createValidSignature(messageData);
+      const { signature, publicKey, recovery } =
+        createValidSignature(messageData);
 
       const resp = {
         sig: signature,
@@ -149,7 +159,9 @@ describe('getYParity', () => {
       const messageHash = new Uint8Array(32);
       messageHash.fill(42);
 
-      const { signature, publicKey, recovery } = createValidSignature(Buffer.from(messageHash));
+      const { signature, publicKey, recovery } = createValidSignature(
+        Buffer.from(messageHash),
+      );
 
       const resp = {
         sig: {
@@ -172,7 +184,9 @@ describe('getYParity', () => {
       for (let i = 0; i < 32; i++) {
         hash[i] = Math.floor(Math.random() * 256);
       }
-      const { signature, publicKey, recovery } = createValidSignature(Buffer.from(hash));
+      const { signature, publicKey, recovery } = createValidSignature(
+        Buffer.from(hash),
+      );
 
       const resp = {
         sig: signature,
@@ -186,7 +200,8 @@ describe('getYParity', () => {
     it('should hash non-32-byte inputs', () => {
       const shortData = randomBytes(20);
       const expectedHash = Buffer.from(Hash.keccak256(shortData));
-      const { signature, publicKey, recovery } = createValidSignature(expectedHash);
+      const { signature, publicKey, recovery } =
+        createValidSignature(expectedHash);
 
       const resp = {
         sig: signature,
@@ -201,19 +216,25 @@ describe('getYParity', () => {
   describe('Error handling', () => {
     it('should throw error if legacy format missing response', () => {
       const tx = randomBytes(32);
-      expect(() => getYParity(tx)).toThrow('Response with sig and pubkey required for legacy format');
+      expect(() => getYParity(tx)).toThrow(
+        'Response with sig and pubkey required for legacy format',
+      );
     });
 
     it('should throw error if response missing sig', () => {
       const tx = randomBytes(32);
       const resp = { pubkey: randomBytes(65) };
-      expect(() => getYParity(tx, resp)).toThrow('Response with sig and pubkey required for legacy format');
+      expect(() => getYParity(tx, resp)).toThrow(
+        'Response with sig and pubkey required for legacy format',
+      );
     });
 
     it('should throw error if response missing pubkey', () => {
       const tx = randomBytes(32);
       const resp = { sig: { r: randomBytes(32), s: randomBytes(32) } };
-      expect(() => getYParity(tx, resp)).toThrow('Response with sig and pubkey required for legacy format');
+      expect(() => getYParity(tx, resp)).toThrow(
+        'Response with sig and pubkey required for legacy format',
+      );
     });
 
     it('should throw error if recovery fails', () => {
@@ -227,7 +248,9 @@ describe('getYParity', () => {
           signature,
           publicKey,
         }),
-      ).toThrow('Failed to recover Y parity. Bad signature or transaction data.');
+      ).toThrow(
+        'Failed to recover Y parity. Bad signature or transaction data.',
+      );
     });
 
     it('should throw error with invalid signature', () => {
@@ -255,10 +278,14 @@ describe('getYParity', () => {
       const MAGIC = Buffer.from([0x05]);
 
       // This would normally use RLP.encode but we'll create a test message
-      const message = Buffer.concat([MAGIC, Buffer.from('test_rlp_encoded_data', 'utf8')]);
+      const message = Buffer.concat([
+        MAGIC,
+        Buffer.from('test_rlp_encoded_data', 'utf8'),
+      ]);
 
       const messageHash = Buffer.from(Hash.keccak256(message));
-      const { signature, publicKey, recovery } = createValidSignature(messageHash);
+      const { signature, publicKey, recovery } =
+        createValidSignature(messageHash);
 
       // Test both Buffer format (as returned by device)
       const yParity1 = getYParity({
@@ -305,8 +332,13 @@ describe('getYParity', () => {
 
       // Try multiple messages until we get one with y-parity 1
       for (let i = 0; i < 100; i++) {
-        const messageHash = Buffer.from(Hash.keccak256(Buffer.from(`test message ${i}`)));
-        const privateKey = Buffer.from('0101010101010101010101010101010101010101010101010101010101010101', 'hex');
+        const messageHash = Buffer.from(
+          Hash.keccak256(Buffer.from(`test message ${i}`)),
+        );
+        const privateKey = Buffer.from(
+          '0101010101010101010101010101010101010101010101010101010101010101',
+          'hex',
+        );
 
         const sigObj = secp256k1.ecdsaSign(messageHash, privateKey);
 
@@ -337,7 +369,12 @@ describe('getV function', () => {
   // Helper to create a valid signature
   const createValidSignature = (messageHash: Buffer, privateKey?: Buffer) => {
     // Use deterministic key if not provided
-    const privKey = privateKey || Buffer.from('0101010101010101010101010101010101010101010101010101010101010101', 'hex');
+    const privKey =
+      privateKey ||
+      Buffer.from(
+        '0101010101010101010101010101010101010101010101010101010101010101',
+        'hex',
+      );
 
     const sigObj = secp256k1.ecdsaSign(messageHash, privKey);
     const publicKey = secp256k1.publicKeyCreate(privKey, false);
@@ -354,7 +391,10 @@ describe('getV function', () => {
 
   it('should handle unsigned legacy transaction with valid signature', () => {
     // A simple unsigned legacy transaction
-    const unsignedTxRLP = Buffer.from('e9808504a817c800825208943535353535353535353535353535353535353535880de0b6b3a764000080', 'hex');
+    const unsignedTxRLP = Buffer.from(
+      'e9808504a817c800825208943535353535353535353535353535353535353535880de0b6b3a764000080',
+      'hex',
+    );
 
     // Hash the transaction
     const hash = Buffer.from(Hash.keccak256(unsignedTxRLP));
@@ -374,8 +414,14 @@ describe('getV function', () => {
 
     const mockResp = {
       sig: {
-        r: Buffer.from('134f5038e0e6a96741e17a82c8df13e9dc10c3b0e9e956cf7dcf21e1e3b73f9f', 'hex'),
-        s: Buffer.from('638cf1b1f9dd5e6e8e6b9a8e6e8e6b9a8e6e8e6b9a8e6e8e6b9a8e6e8e6b9a8', 'hex'),
+        r: Buffer.from(
+          '134f5038e0e6a96741e17a82c8df13e9dc10c3b0e9e956cf7dcf21e1e3b73f9f',
+          'hex',
+        ),
+        s: Buffer.from(
+          '638cf1b1f9dd5e6e8e6b9a8e6e8e6b9a8e6e8e6b9a8e6e8e6b9a8e6e8e6b9a8',
+          'hex',
+        ),
       },
       // This is a fake pubkey, so recovery will fail
       pubkey: Buffer.from(`04${'1'.repeat(128)}`, 'hex'),
@@ -385,7 +431,8 @@ describe('getV function', () => {
   });
 
   it('should throw error when signature is invalid', () => {
-    const txHex = '0xe9808504a817c800825208943535353535353535353535353535353535353535880de0b6b3a764000080';
+    const txHex =
+      '0xe9808504a817c800825208943535353535353535353535353535353535353535880de0b6b3a764000080';
 
     const mockResp = {
       sig: {

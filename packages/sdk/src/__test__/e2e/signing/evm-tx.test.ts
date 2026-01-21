@@ -8,7 +8,13 @@
 
 import { setupClient } from '../../utils/setup';
 import { signAndCompareTransaction } from '../../utils/viemComparison';
-import { EDGE_CASE_TEST_VECTORS, EIP1559_TEST_VECTORS, EIP2930_TEST_VECTORS, EIP7702_TEST_VECTORS, LEGACY_VECTORS } from './vectors';
+import {
+  EDGE_CASE_TEST_VECTORS,
+  EIP1559_TEST_VECTORS,
+  EIP2930_TEST_VECTORS,
+  EIP7702_TEST_VECTORS,
+  LEGACY_VECTORS,
+} from './vectors';
 
 describe('EVM Transaction Signing - Unified Test Suite', () => {
   beforeAll(async () => {

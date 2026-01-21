@@ -4,13 +4,22 @@ import { type TypedTransaction, createTx } from '@ethereumjs/tx';
 import { generate as randomWords } from 'random-words';
 import { Constants } from '../..';
 import { Client } from '../../client';
-import { CURRENCIES, HARDENED_OFFSET, getFwVersionConst } from '../../constants';
+import {
+  CURRENCIES,
+  HARDENED_OFFSET,
+  getFwVersionConst,
+} from '../../constants';
 import type { Currency, SignRequestParams, SigningPath } from '../../types';
 import type { FirmwareConstants } from '../../types/firmware';
 import { randomBytes } from '../../util';
 import { MSG_PAYLOAD_METADATA_SZ } from './constants';
 import { getN, getPrng } from './getters';
-import { BTC_PURPOSE_P2PKH, ETH_COIN, buildRandomEip712Object, getTestVectors } from './helpers';
+import {
+  BTC_PURPOSE_P2PKH,
+  ETH_COIN,
+  buildRandomEip712Object,
+  getTestVectors,
+} from './helpers';
 
 const prng = getPrng();
 
@@ -66,7 +75,10 @@ export const buildFirmwareConstants = (...overrides: any) => {
 };
 
 export const buildWallet = (overrides?) => ({
-  uid: Buffer.from('162b56efe561c12bc93f703dc7026b3ec3d53923270c9259e2b08015fb9defd2', 'hex'),
+  uid: Buffer.from(
+    '162b56efe561c12bc93f703dc7026b3ec3d53923270c9259e2b08015fb9defd2',
+    'hex',
+  ),
   capabilities: 1,
   external: true,
   ...overrides,
@@ -101,10 +113,14 @@ export const buildSignObject = (fwVersion, overrides?) => {
 };
 
 export const buildSharedSecret = () => {
-  return Buffer.from([89, 60, 130, 80, 168, 252, 34, 136, 230, 71, 230, 158, 51, 13, 239, 237, 6, 246, 71, 232, 232, 175, 193, 106, 106, 185, 38, 1, 163, 14, 225, 101]);
+  return Buffer.from([
+    89, 60, 130, 80, 168, 252, 34, 136, 230, 71, 230, 158, 51, 13, 239, 237, 6,
+    246, 71, 232, 232, 175, 193, 106, 106, 185, 38, 1, 163, 14, 225, 101,
+  ]);
 };
 
-export const getNumIter = (n: number | string | undefined = getN()) => (n ? Number.parseInt(`${n}`) : 5);
+export const getNumIter = (n: number | string | undefined = getN()) =>
+  n ? Number.parseInt(`${n}`) : 5;
 
 /** Generate a bunch of random test vectors using the PRNG */
 export const buildRandomVectors = (n: number | string | undefined = getN()) => {
@@ -118,7 +134,13 @@ export const buildRandomVectors = (n: number | string | undefined = getN()) => {
   return RANDOM_VEC;
 };
 
-export const DEFAULT_SIGNER = [BTC_PURPOSE_P2PKH, ETH_COIN, HARDENED_OFFSET, 0, 0];
+export const DEFAULT_SIGNER = [
+  BTC_PURPOSE_P2PKH,
+  ETH_COIN,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
 
 export const buildTx = (data: `0x${string}` = '0xdeadbeef') => {
   return createTx(
@@ -141,7 +163,10 @@ export const buildTx = (data: `0x${string}` = '0xdeadbeef') => {
   );
 };
 
-export const buildEthSignRequest = async (client: Client, txDataOverrides?: any): Promise<any> => {
+export const buildEthSignRequest = async (
+  client: Client,
+  txDataOverrides?: any,
+): Promise<any> => {
   if (client.getFwVersion()?.major === 0 && client.getFwVersion()?.minor < 15) {
     console.warn('Please update firmware. Skipping ETH signing tests.');
     return;
@@ -174,7 +199,9 @@ export const buildEthSignRequest = async (client: Client, txDataOverrides?: any)
       encodingType: Constants.SIGNING.ENCODINGS.EVM,
     },
   };
-  const maxDataSz = fwConstants.ethMaxDataSz + fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
+  const maxDataSz =
+    fwConstants.ethMaxDataSz +
+    fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
   return {
     fwConstants,
     signerPath,
@@ -196,7 +223,10 @@ export const buildTxReq = (tx: TypedTransaction) => ({
   },
 });
 
-export const buildMsgReq = (payload = 'hello ethereum', protocol: 'signPersonal' | 'eip712' = 'signPersonal') => ({
+export const buildMsgReq = (
+  payload = 'hello ethereum',
+  protocol: 'signPersonal' | 'eip712' = 'signPersonal',
+) => ({
   currency: 'ETH_MSG' as const,
   data: {
     signerPath: DEFAULT_SIGNER,
@@ -250,10 +280,12 @@ export const buildEncDefs = (vectors: any) => {
   });
 
   // The calldata is already in hex format, we just need to ensure it has 0x prefix
-  const encDefsCalldata = vectors.canonicalNames.map((_: string, idx: number) => {
-    const calldata = `0x${idx.toString(16).padStart(8, '0')}`;
-    return calldata;
-  });
+  const encDefsCalldata = vectors.canonicalNames.map(
+    (_: string, idx: number) => {
+      const calldata = `0x${idx.toString(16).padStart(8, '0')}`;
+      return calldata;
+    },
+  );
 
   return { encDefs, encDefsCalldata };
 };
@@ -276,7 +308,17 @@ export function buildRandomMsg(type, client: Client) {
   }
 }
 
-export function buildEthMsgReq(payload: any, protocol: 'signPersonal' | 'eip712', signerPath = [BTC_PURPOSE_P2PKH, ETH_COIN, HARDENED_OFFSET, 0, 0] as SigningPath): SignRequestParams {
+export function buildEthMsgReq(
+  payload: any,
+  protocol: 'signPersonal' | 'eip712',
+  signerPath = [
+    BTC_PURPOSE_P2PKH,
+    ETH_COIN,
+    HARDENED_OFFSET,
+    0,
+    0,
+  ] as SigningPath,
+): SignRequestParams {
   return {
     currency: CURRENCIES.ETH_MSG,
     data: {

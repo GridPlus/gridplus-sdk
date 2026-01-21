@@ -33,7 +33,8 @@ describe('fetchCalldataDecoder', () => {
   });
 
   test('decode proxy calldata', async () => {
-    const data = '0xa9059cbb0000000000000000000000004ffbf741b0a64e8bd1f9d89fc9b5584cc5227b700000000000000000000000000000000000000000000000000000003052aacdb8';
+    const data =
+      '0xa9059cbb0000000000000000000000004ffbf741b0a64e8bd1f9d89fc9b5584cc5227b700000000000000000000000000000000000000000000000000000003052aacdb8';
     const to = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
     const decoded = await fetchCalldataDecoder(data, to, '1');
     expect(decoded).toMatchSnapshot();
@@ -97,7 +98,8 @@ describe('fetchCalldataDecoder', () => {
 
   // TODO: add api key to fix this test
   test.skip('decode Celo calldata', async () => {
-    const data = '0xf2fde38b000000000000000000000000b538e8dcd297450bdef46222f3ceb33bb1e921b3';
+    const data =
+      '0xf2fde38b000000000000000000000000b538e8dcd297450bdef46222f3ceb33bb1e921b3';
     const to = '0x96d59127ccd1c0e3749e733ee04f0dfbd2f808c8';
     const decoded = await fetchCalldataDecoder(data, to, '42220');
     expect(decoded).toMatchSnapshot();

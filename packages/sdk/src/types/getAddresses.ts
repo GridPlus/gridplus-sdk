@@ -7,6 +7,7 @@ export interface GetAddressesRequestParams {
   iterIdx?: number;
 }
 
-export interface GetAddressesRequestFunctionParams extends GetAddressesRequestParams {
+export interface GetAddressesRequestFunctionParams
+  extends GetAddressesRequestParams {
   client: Client;
 }

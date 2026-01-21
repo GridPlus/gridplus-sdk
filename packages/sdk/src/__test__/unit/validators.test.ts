@@ -1,7 +1,20 @@
 import { normalizeToViemTransaction } from '../../ethereum';
-import { validateAddKvRequest, validateConnectRequest, validateGetAddressesRequest, validateGetKvRequest, validateRemoveKvRequest } from '../../functions';
-import { isValid4ByteResponse, isValidBlockExplorerResponse } from '../../shared/validators';
-import { buildGetAddressesObject, buildValidateConnectObject, buildValidateRequestObject } from '../utils/builders';
+import {
+  validateAddKvRequest,
+  validateConnectRequest,
+  validateGetAddressesRequest,
+  validateGetKvRequest,
+  validateRemoveKvRequest,
+} from '../../functions';
+import {
+  isValid4ByteResponse,
+  isValidBlockExplorerResponse,
+} from '../../shared/validators';
+import {
+  buildGetAddressesObject,
+  buildValidateConnectObject,
+  buildValidateRequestObject,
+} from '../utils/builders';
 
 describe('validators', () => {
   describe('connect', () => {
@@ -29,7 +42,10 @@ describe('validators', () => {
     test('encodeGetAddressesRequest should throw with invalid startPath', () => {
       const startPath = [0x80000000 + 44, 0x80000000 + 60, 0, 0, 0, 0, 0];
       const fwVersion = Buffer.from([0, 0, 0]);
-      const testEncodingFunction = () => validateGetAddressesRequest(buildGetAddressesObject({ startPath, fwVersion }));
+      const testEncodingFunction = () =>
+        validateGetAddressesRequest(
+          buildGetAddressesObject({ startPath, fwVersion }),
+        );
       expect(testEncodingFunction).toThrowError();
     });
   });
@@ -76,7 +92,9 @@ describe('validators', () => {
 
       test('should throw errors on validation failure', () => {
         const validateRemoveKvBundle: any = buildValidateRequestObject({});
-        expect(() => validateRemoveKvRequest(validateRemoveKvBundle)).toThrowError();
+        expect(() =>
+          validateRemoveKvRequest(validateRemoveKvBundle),
+        ).toThrowError();
       });
     });
   });
@@ -93,7 +111,8 @@ describe('validators', () => {
 
       test('should validate as false bad data', () => {
         const response: any = {
-          result: 'Max rate limit reached, please use API Key for higher rate limit',
+          result:
+            'Max rate limit reached, please use API Key for higher rate limit',
         };
         expect(isValidBlockExplorerResponse(response)).toBe(false);
       });
@@ -131,7 +150,9 @@ describe('validators', () => {
           to: `0x${'1'.repeat(40)}`,
           value: '1000000000000000000',
           chainId: 1,
-          authorizationList: [{ chainId: 1, address: `0x${'2'.repeat(40)}`, nonce: 0 }],
+          authorizationList: [
+            { chainId: 1, address: `0x${'2'.repeat(40)}`, nonce: 0 },
+          ],
           gasPrice: '15000000000',
         };
 

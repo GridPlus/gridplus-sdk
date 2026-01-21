@@ -41,7 +41,9 @@ export async function setupClient() {
   if (!isPaired) {
     if (!pairingSecret) {
       if (process.env.CI) {
-        throw new Error('Pairing secret is required. If simulator is running, set PAIRING_SECRET environment variable.');
+        throw new Error(
+          'Pairing secret is required. If simulator is running, set PAIRING_SECRET environment variable.',
+        );
       }
       pairingSecret = question('Enter pairing secret:');
       if (!pairingSecret) {

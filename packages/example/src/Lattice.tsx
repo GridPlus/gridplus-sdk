@@ -1,5 +1,14 @@
 import { useState } from 'react';
-import { addAddressTags, fetchAddressTags, fetchAddresses, fetchLedgerLiveAddresses, removeAddressTags, sign, signMessage, type AddressTag } from 'gridplus-sdk';
+import {
+  addAddressTags,
+  fetchAddressTags,
+  fetchAddresses,
+  fetchLedgerLiveAddresses,
+  removeAddressTags,
+  sign,
+  signMessage,
+  type AddressTag,
+} from 'gridplus-sdk';
 import { Button } from './Button';
 
 interface LatticeProps {

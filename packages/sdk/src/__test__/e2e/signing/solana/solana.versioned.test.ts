@@ -6,7 +6,18 @@
  * Running with a different mnemonic will cause test failures due to
  * incorrect key derivations and signature mismatches.
  */
-import { AddressLookupTableProgram, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction, type TransactionInstruction, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
+import {
+  AddressLookupTableProgram,
+  Connection,
+  Keypair,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  type TransactionInstruction,
+  TransactionMessage,
+  VersionedTransaction,
+} from '@solana/web3.js';
 import { fetchSolanaAddresses, signSolanaTx } from '../../../..';
 import { setupClient } from '../../../utils/setup';
 
@@ -125,9 +136,13 @@ describe('solana.versioned', () => {
     });
 
     // Create a VersionedTransaction from the serialized data
-    const versionedTransaction = VersionedTransaction.deserialize(serializedTransaction);
+    const versionedTransaction = VersionedTransaction.deserialize(
+      serializedTransaction,
+    );
 
-    const signedTx = await signSolanaTx(Buffer.from(versionedTransaction.serialize()));
+    const signedTx = await signSolanaTx(
+      Buffer.from(versionedTransaction.serialize()),
+    );
     expect(signedTx).toBeTruthy();
   });
 
@@ -135,17 +150,21 @@ describe('solana.versioned', () => {
     const payer = Keypair.generate();
     await requestAirdrop(payer.publicKey, 1);
 
-    const [transactionInstruction, pubkey] = await AddressLookupTableProgram.createLookupTable({
-      payer: payer.publicKey,
-      authority: payer.publicKey,
-      recentSlot: await SOLANA_RPC.getSlot(),
-    });
+    const [transactionInstruction, pubkey] =
+      await AddressLookupTableProgram.createLookupTable({
+        payer: payer.publicKey,
+        authority: payer.publicKey,
+        recentSlot: await SOLANA_RPC.getSlot(),
+      });
 
     await AddressLookupTableProgram.extendLookupTable({
       payer: payer.publicKey,
       authority: payer.publicKey,
       lookupTable: pubkey,
-      addresses: [DESTINATION_WALLET_1.publicKey, DESTINATION_WALLET_2.publicKey],
+      addresses: [
+        DESTINATION_WALLET_1.publicKey,
+        DESTINATION_WALLET_2.publicKey,
+      ],
     });
 
     const messageV0 = new TransactionMessage({

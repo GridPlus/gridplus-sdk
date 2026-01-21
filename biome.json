@@ -11,7 +11,6 @@
     "indentStyle": "space",
     "indentWidth": 2,
     "lineEnding": "lf",
-    "lineWidth": 240,
     "attributePosition": "auto"
   },
   "linter": {

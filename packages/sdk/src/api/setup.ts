@@ -50,7 +50,9 @@ export const setup = async (params: SetupParameters): Promise<boolean> => {
   setSaveClient(buildSaveClientFn(params.setStoredClient));
 
   if ('deviceId' in params && 'password' in params && 'name' in params) {
-    const privKey = params.appSecret || Utils.generateAppSecret(params.deviceId, params.password, params.name);
+    const privKey =
+      params.appSecret ||
+      Utils.generateAppSecret(params.deviceId, params.password, params.name);
     const client = new Client({
       deviceId: params.deviceId,
       privKey,

@@ -4,13 +4,27 @@
  */
 import { v4 as uuidV4 } from 'uuid';
 import { EXTERNAL } from '../constants';
-import { LatticeSecureEncryptedRequestType, encryptedSecureRequest } from '../protocol';
+import {
+  LatticeSecureEncryptedRequestType,
+  encryptedSecureRequest,
+} from '../protocol';
 import { getPathStr } from '../shared/utilities';
-import { validateConnectedClient, validateStartPath, validateWallet } from '../shared/validators';
-import type { EIP2335KeyExportData, EIP2335KeyExportReq, FetchEncDataRequestFunctionParams, FirmwareVersion, Wallet } from '../types';
+import {
+  validateConnectedClient,
+  validateStartPath,
+  validateWallet,
+} from '../shared/validators';
+import type {
+  EIP2335KeyExportData,
+  EIP2335KeyExportReq,
+  FetchEncDataRequestFunctionParams,
+  FirmwareVersion,
+  Wallet,
+} from '../types';
 
 const { ENC_DATA } = EXTERNAL;
-const ENC_DATA_ERR_STR = 'Unknown encrypted data export type requested. Exiting.';
+const ENC_DATA_ERR_STR =
+  'Unknown encrypted data export type requested. Exiting.';
 const ENC_DATA_REQ_DATA_SZ = 1025;
 const ENC_DATA_RESP_SZ = {
   EIP2335: {
@@ -22,8 +36,13 @@ const ENC_DATA_RESP_SZ = {
   },
 } as const;
 
-export async function fetchEncData({ client, schema, params }: FetchEncDataRequestFunctionParams): Promise<Buffer> {
-  const { url, sharedSecret, ephemeralPub, fwVersion } = validateConnectedClient(client);
+export async function fetchEncData({
+  client,
+  schema,
+  params,
+}: FetchEncDataRequestFunctionParams): Promise<Buffer> {
+  const { url, sharedSecret, ephemeralPub, fwVersion } =
+    validateConnectedClient(client);
   const activeWallet = validateWallet(client.getActiveWallet());
   validateFetchEncDataRequest({ params });
 
@@ -71,7 +90,9 @@ export const encodeFetchEncDataRequest = ({
 }) => {
   // Check firmware version
   if (fwVersion.major < 1 && fwVersion.minor < 17) {
-    throw new Error('Firmware version >=v0.17.0 is required for encrypted data export.');
+    throw new Error(
+      'Firmware version >=v0.17.0 is required for encrypted data export.',
+    );
   }
   // Update params depending on what type of data is being exported
   if (schema === ENC_DATA.SCHEMAS.BLS_KEYSTORE_EIP2335_PBKDF_V4) {
@@ -129,7 +150,9 @@ export const decodeFetchEncData = ({
     const dataSz = data.readUInt32LE(off);
     off += 4;
     if (dataSz !== expectedSz) {
-      throw new Error('Invalid data returned from Lattice. Expected EIP2335 data.');
+      throw new Error(
+        'Invalid data returned from Lattice. Expected EIP2335 data.',
+      );
     }
     respData.iterations = data.readUInt32LE(off);
     off += 4;
@@ -149,7 +172,10 @@ export const decodeFetchEncData = ({
   }
 };
 
-const formatEIP2335ExportData = (resp: EIP2335KeyExportData, path: number[]): Buffer => {
+const formatEIP2335ExportData = (
+  resp: EIP2335KeyExportData,
+  path: number[],
+): Buffer => {
   try {
     const { iterations, salt, checksum, iv, cipherText, pubkey } = resp;
     return Buffer.from(

@@ -3,7 +3,12 @@
  * calldata decoder info is packed into the request, it is used to decode the calldata in the
  * request. It is optional.
  */
-import { getNestedCalldata, parseCanonicalName, parseSolidityJSONABI, replaceNestedDefs } from './evm';
+import {
+  getNestedCalldata,
+  parseCanonicalName,
+  parseSolidityJSONABI,
+  replaceNestedDefs,
+} from './evm';
 
 export const CALLDATA = {
   EVM: {

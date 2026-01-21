@@ -1,13 +1,22 @@
-import { LatticeSecureEncryptedRequestType, encryptedSecureRequest } from '../../protocol';
+import {
+  LatticeSecureEncryptedRequestType,
+  encryptedSecureRequest,
+} from '../../protocol';
 import type { TestRequestPayload } from '../../types';
 
 /**
  * `test` takes a data object with a testID and a payload, and sends them to the device.
  * @category Lattice
  */
-export const testRequest = async ({ payload, testID, client }: TestRequestPayload) => {
+export const testRequest = async ({
+  payload,
+  testID,
+  client,
+}: TestRequestPayload) => {
   if (!payload) {
-    throw new Error('First argument must contain `testID` and `payload` fields.');
+    throw new Error(
+      'First argument must contain `testID` and `payload` fields.',
+    );
   }
   const sharedSecret = client.sharedSecret;
   const ephemeralPub = client.ephemeralPub;

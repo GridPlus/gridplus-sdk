@@ -2,7 +2,15 @@ import type { UInt4 } from 'bitwise/types';
 import isEmpty from 'lodash/isEmpty.js';
 import type { Client } from '../client';
 import { ASCII_REGEX, EMPTY_WALLET_UID, MAX_ADDR } from '../constants';
-import type { ActiveWallets, FirmwareConstants, FirmwareVersion, KVRecords, KeyPair, LatticeError, Wallet } from '../types';
+import type {
+  ActiveWallets,
+  FirmwareConstants,
+  FirmwareVersion,
+  KVRecords,
+  KeyPair,
+  LatticeError,
+  Wallet,
+} from '../types';
 import { isUInt4 } from '../util';
 
 export const validateIsUInt4 = (n?: number) => {
@@ -26,14 +34,17 @@ export const validateStartPath = (startPath?: number[]) => {
   if (!startPath) {
     throw new Error('Start path is required');
   }
-  if (startPath.length < 1 || startPath.length > 5) throw new Error('Path must include between 1 and 5 indices');
+  if (startPath.length < 1 || startPath.length > 5)
+    throw new Error('Path must include between 1 and 5 indices');
 
   return startPath;
 };
 
 export const validateDeviceId = (deviceId?: string) => {
   if (!deviceId) {
-    throw new Error('No device ID has been stored. Please connect with your device ID first.');
+    throw new Error(
+      'No device ID has been stored. Please connect with your device ID first.',
+    );
   }
   return deviceId;
 };
@@ -43,7 +54,9 @@ export const validateAppName = (name?: string) => {
     throw new Error('Name is required.');
   }
   if (name.length < 5 || name.length > 24) {
-    throw new Error('Invalid length for name provided. Must be 5-24 characters.');
+    throw new Error(
+      'Invalid length for name provided. Must be 5-24 characters.',
+    );
   }
   return name;
 };
@@ -85,7 +98,11 @@ export const validateFwVersion = (fwVersion?: FirmwareVersion) => {
   if (!fwVersion) {
     throw new Error('Firmware version does not exist. Please reconnect.');
   }
-  if (typeof fwVersion.fix !== 'number' || typeof fwVersion.minor !== 'number' || typeof fwVersion.major !== 'number') {
+  if (
+    typeof fwVersion.fix !== 'number' ||
+    typeof fwVersion.minor !== 'number' ||
+    typeof fwVersion.major !== 'number'
+  ) {
     throw new Error('Firmware version improperly formatted. Please reconnect.');
   }
   return fwVersion;
@@ -94,7 +111,9 @@ export const validateFwVersion = (fwVersion?: FirmwareVersion) => {
 export const validateRequestError = (err: LatticeError) => {
   const isTimeout = err.code === 'ECONNABORTED' && err.errno === 'ETIME';
   if (isTimeout) {
-    throw new Error('Timeout waiting for device. Please ensure it is connected to the internet and try again in a minute.');
+    throw new Error(
+      'Timeout waiting for device. Please ensure it is connected to the internet and try again in a minute.',
+    );
   }
   throw new Error(`Failed to make request to device:\n${err.message}`);
 };
@@ -129,7 +148,9 @@ export const validateConnectedClient = (client: Client) => {
 
 export const validateEphemeralPub = (ephemeralPub?: KeyPair) => {
   if (!ephemeralPub) {
-    throw new Error('`ephemeralPub` (ephemeral public key) is required. Please reconnect.');
+    throw new Error(
+      '`ephemeralPub` (ephemeral public key) is required. Please reconnect.',
+    );
   }
   return ephemeralPub;
 };
@@ -149,28 +170,52 @@ export const validateKey = (key?: KeyPair) => {
 };
 
 export const validateActiveWallets = (activeWallets?: ActiveWallets) => {
-  if (!activeWallets || (activeWallets?.internal?.uid?.equals(EMPTY_WALLET_UID) && activeWallets?.external?.uid?.equals(EMPTY_WALLET_UID))) {
+  if (
+    !activeWallets ||
+    (activeWallets?.internal?.uid?.equals(EMPTY_WALLET_UID) &&
+      activeWallets?.external?.uid?.equals(EMPTY_WALLET_UID))
+  ) {
     throw new Error('No active wallet.');
   }
   return activeWallets;
 };
 
-export const validateKvRecords = (records?: KVRecords, fwConstants?: FirmwareConstants) => {
+export const validateKvRecords = (
+  records?: KVRecords,
+  fwConstants?: FirmwareConstants,
+) => {
   if (!fwConstants || !fwConstants.kvActionsAllowed) {
     throw new Error('Unsupported. Please update firmware.');
   } else if (typeof records !== 'object' || Object.keys(records).length < 1) {
-    throw new Error('One or more key-value mapping must be provided in `records` param.');
+    throw new Error(
+      'One or more key-value mapping must be provided in `records` param.',
+    );
   } else if (Object.keys(records).length > fwConstants.kvActionMaxNum) {
-    throw new Error(`Too many keys provided. Please only provide up to ${fwConstants.kvActionMaxNum}.`);
+    throw new Error(
+      `Too many keys provided. Please only provide up to ${fwConstants.kvActionMaxNum}.`,
+    );
   }
   return records;
 };
 
-export const validateKvRecord = ({ key, val }: KVRecords, fwConstants: FirmwareConstants) => {
-  if (typeof key !== 'string' || String(key).length > fwConstants.kvKeyMaxStrSz) {
-    throw new Error(`Key ${key} too large. Must be <=${fwConstants.kvKeyMaxStrSz} characters.`);
-  } else if (typeof val !== 'string' || String(val).length > fwConstants.kvValMaxStrSz) {
-    throw new Error(`Value ${val} too large. Must be <=${fwConstants.kvValMaxStrSz} characters.`);
+export const validateKvRecord = (
+  { key, val }: KVRecords,
+  fwConstants: FirmwareConstants,
+) => {
+  if (
+    typeof key !== 'string' ||
+    String(key).length > fwConstants.kvKeyMaxStrSz
+  ) {
+    throw new Error(
+      `Key ${key} too large. Must be <=${fwConstants.kvKeyMaxStrSz} characters.`,
+    );
+  } else if (
+    typeof val !== 'string' ||
+    String(val).length > fwConstants.kvValMaxStrSz
+  ) {
+    throw new Error(
+      `Value ${val} too large. Must be <=${fwConstants.kvValMaxStrSz} characters.`,
+    );
   } else if (String(key).length === 0 || String(val).length === 0) {
     throw new Error('Keys and values must be >0 characters.');
   } else if (!ASCII_REGEX.test(key) || !ASCII_REGEX.test(val)) {
