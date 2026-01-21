@@ -3,11 +3,12 @@
   "private": true,
   "packageManager": "pnpm@10.6.2",
   "scripts": {
-    "build": "turbo run build --filter=gridplus-sdk",
-    "test": "turbo run test --filter=gridplus-sdk",
-    "lint": "turbo run lint --filter=gridplus-sdk",
-    "lint:fix": "turbo run lint:fix --filter=gridplus-sdk",
-    "typecheck": "turbo run typecheck --filter=gridplus-sdk",
+    "build": "turbo run build --filter=gridplus-sdk --filter=@gridplus/btc",
+    "test": "turbo run test --filter=gridplus-sdk --filter=@gridplus/btc",
+    "test-unit": "turbo run test-unit --filter=gridplus-sdk --filter=@gridplus/btc",
+    "lint": "turbo run lint --filter=gridplus-sdk --filter=@gridplus/btc",
+    "lint:fix": "turbo run lint:fix --filter=gridplus-sdk --filter=@gridplus/btc",
+    "typecheck": "turbo run typecheck --filter=gridplus-sdk --filter=@gridplus/btc",
     "e2e": "turbo run e2e --filter=gridplus-sdk",
     "docs:build": "pnpm --filter gridplus-sdk-docs run build",
     "docs:start": "pnpm --filter gridplus-sdk-docs run start"

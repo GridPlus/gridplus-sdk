@@ -28,6 +28,7 @@
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.4.0",
     "@tsconfig/docusaurus": "^2.0.3",
+    "@types/node": "^22.0.0",
     "docusaurus-plugin-typedoc": "~1.0.1",
     "typedoc": "~0.25.13",
     "typedoc-plugin-markdown": "~4.0.1",

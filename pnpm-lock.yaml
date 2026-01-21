@@ -15,6 +15,28 @@ importers:
         specifier: ^2.3.0
         version: 2.7.4
 
+  packages/btc:
+    dependencies:
+      bs58check:
+        specifier: ^4.0.0
+        version: 4.0.0
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^1.9.0
+        version: 1.9.4
+      '@types/node':
+        specifier: ^24.10.4
+        version: 24.10.4
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@microsoft/api-extractor@7.55.2(@types/node@24.10.4))(jiti@1.21.7)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      vitest:
+        specifier: 3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.10.4)(jiti@1.21.7)(msw@2.12.7(@types/node@24.10.4)(typescript@5.9.3))(terser@5.44.1)(tsx@4.21.0)
+
   packages/docs:
     dependencies:
       '@docusaurus/core':
@@ -51,6 +73,9 @@ importers:
       '@tsconfig/docusaurus':
         specifier: ^2.0.3
         version: 2.0.7
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.7
       docusaurus-plugin-typedoc:
         specifier: ~1.0.1
         version: 1.0.5(typedoc-plugin-markdown@4.0.3(typedoc@0.25.13(typescript@5.9.3)))
@@ -115,6 +140,9 @@ importers:
       '@ethereumjs/tx':
         specifier: ^10.0.0
         version: 10.1.0
+      '@gridplus/btc':
+        specifier: workspace:*
+        version: link:../btc
       '@metamask/eth-sig-util':
         specifier: ^8.2.0
         version: 8.2.0
@@ -2587,6 +2615,9 @@ packages:
 
   '@types/node@17.0.45':
     resolution: {integrity: sha512-w+tIMs3rq2afQdsPJlODhoUEKzFP1ayaoyl1CcnwtIlsVe7K7bA1NGm4s3PraqTLlXnbIN84zuBlxBWo1u9BLw==}
+
+  '@types/node@22.19.7':
+    resolution: {integrity: sha512-MciR4AKGHWl7xwxkBa6xUGxQJ4VBOmPTF7sL+iGzuahOFaO0jHCsuEfS80pan1ef4gWId1oWOweIhrDEYLuaOw==}
 
   '@types/node@24.10.4':
     resolution: {integrity: sha512-vnDVpYPMzs4wunl27jHrfmwojOGKya0xyM3sH+UE5iv5uPS6vX7UIoh6m+vQc5LGBq52HBKPIn/zcSZVzeDEZg==}
@@ -7457,6 +7488,9 @@ packages:
   unbzip2-stream@1.4.3:
     resolution: {integrity: sha512-mlExGW4w71ebDJviH16lQLtZS32VKqsSfk80GCfUlwT/4/hNRFsoscrF/c++9xinkMzECL1uL9DDwXqFWkruPg==}
 
+  undici-types@6.21.0:
+    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+
   undici-types@7.16.0:
     resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
 
@@ -11031,6 +11065,10 @@ snapshots:
   '@types/node@12.20.55': {}
 
   '@types/node@17.0.45': {}
+
+  '@types/node@22.19.7':
+    dependencies:
+      undici-types: 6.21.0
 
   '@types/node@24.10.4':
     dependencies:
@@ -17038,6 +17076,8 @@ snapshots:
       buffer: 5.7.1
       through: 2.3.8
     optional: true
+
+  undici-types@6.21.0: {}
 
   undici-types@7.16.0: {}
 
