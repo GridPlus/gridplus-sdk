@@ -1,22 +1,22 @@
-import { type LatticeResponseCode, ProtocolConstants } from '../protocol'
+import { type LatticeResponseCode, ProtocolConstants } from '../protocol';
 
 const buildLatticeResponseErrorMessage = ({
   responseCode,
   errorMessage,
 }: {
-  responseCode?: LatticeResponseCode
-  errorMessage?: string
+  responseCode?: LatticeResponseCode;
+  errorMessage?: string;
 }) => {
-  const msg: string[] = []
+  const msg: string[] = [];
   if (responseCode) {
-    msg.push(`${ProtocolConstants.responseMsg[responseCode]}`)
+    msg.push(`${ProtocolConstants.responseMsg[responseCode]}`);
   }
   if (errorMessage) {
-    msg.push('Error Message: ')
-    msg.push(errorMessage)
+    msg.push('Error Message: ');
+    msg.push(errorMessage);
   }
-  return msg.join('\n')
-}
+  return msg.join('\n');
+};
 
 export class LatticeResponseError extends Error {
   constructor(
@@ -26,10 +26,10 @@ export class LatticeResponseError extends Error {
     const message = buildLatticeResponseErrorMessage({
       responseCode,
       errorMessage,
-    })
-    super(message)
-    this.name = 'LatticeResponseError'
-    this.responseCode = responseCode
-    this.errorMessage = errorMessage
+    });
+    super(message);
+    this.name = 'LatticeResponseError';
+    this.responseCode = responseCode;
+    this.errorMessage = errorMessage;
   }
 }

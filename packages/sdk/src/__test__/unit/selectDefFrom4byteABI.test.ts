@@ -1,14 +1,14 @@
-import { selectDefFrom4byteABI } from '../../util'
+import { selectDefFrom4byteABI } from '../../util';
 
 describe('selectDefFrom4byteAbi', () => {
   beforeAll(() => {
     // Disable this mock to restore console logs when testing
-    console.warn = vi.fn()
-  })
+    console.warn = vi.fn();
+  });
 
   afterAll(() => {
-    vi.clearAllMocks()
-  })
+    vi.clearAllMocks();
+  });
 
   test('select correct result', () => {
     const result = [
@@ -35,10 +35,10 @@ describe('selectDefFrom4byteAbi', () => {
         id: 171806,
         text_signature: 'swapToken',
       },
-    ]
-    const selector = '0x38ed1739'
-    expect(selectDefFrom4byteABI(result, selector)).toMatchSnapshot()
-  })
+    ];
+    const selector = '0x38ed1739';
+    expect(selectDefFrom4byteABI(result, selector)).toMatchSnapshot();
+  });
 
   test('handle no match', () => {
     const result = [
@@ -49,10 +49,10 @@ describe('selectDefFrom4byteAbi', () => {
         id: 171806,
         text_signature: 'swapToken',
       },
-    ]
-    const selector = '0x38ed1739'
-    expect(() => selectDefFrom4byteABI(result, selector)).toThrowError()
-  })
+    ];
+    const selector = '0x38ed1739';
+    expect(() => selectDefFrom4byteABI(result, selector)).toThrowError();
+  });
 
   test('handle no selector', () => {
     const result = [
@@ -63,20 +63,20 @@ describe('selectDefFrom4byteAbi', () => {
         id: 171806,
         text_signature: 'swapToken',
       },
-    ]
-    const selector = undefined
-    expect(() => selectDefFrom4byteABI(result, selector)).toThrowError()
-  })
+    ];
+    const selector = undefined;
+    expect(() => selectDefFrom4byteABI(result, selector)).toThrowError();
+  });
 
   test('handle no result', () => {
-    const result = undefined
-    const selector = '0x38ed1739'
-    expect(() => selectDefFrom4byteABI(result, selector)).toThrowError()
-  })
+    const result = undefined;
+    const selector = '0x38ed1739';
+    expect(() => selectDefFrom4byteABI(result, selector)).toThrowError();
+  });
 
   test('handle bad data', () => {
-    const result = []
-    const selector = ''
-    expect(() => selectDefFrom4byteABI(result, selector)).toThrowError()
-  })
-})
+    const result = [];
+    const selector = '';
+    expect(() => selectDefFrom4byteABI(result, selector)).toThrowError();
+  });
+});

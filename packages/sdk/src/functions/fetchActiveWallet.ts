@@ -1,16 +1,16 @@
-import { EMPTY_WALLET_UID } from '../constants'
+import { EMPTY_WALLET_UID } from '../constants';
 import {
   LatticeSecureEncryptedRequestType,
   encryptedSecureRequest,
-} from '../protocol'
+} from '../protocol';
 import {
   validateActiveWallets,
   validateConnectedClient,
-} from '../shared/validators'
+} from '../shared/validators';
 import type {
   ActiveWallets,
   FetchActiveWalletRequestFunctionParams,
-} from '../types'
+} from '../types';
 
 /**
  * Fetch the active wallet in the device.
@@ -22,7 +22,7 @@ import type {
 export async function fetchActiveWallet({
   client,
 }: FetchActiveWalletRequestFunctionParams): Promise<ActiveWallets> {
-  const { url, sharedSecret, ephemeralPub } = validateConnectedClient(client)
+  const { url, sharedSecret, ephemeralPub } = validateConnectedClient(client);
 
   const { decryptedData, newEphemeralPub } = await encryptedSecureRequest({
     data: Buffer.alloc(0),
@@ -30,17 +30,17 @@ export async function fetchActiveWallet({
     sharedSecret,
     ephemeralPub,
     url,
-  })
+  });
 
-  const activeWallets = decodeFetchActiveWalletResponse(decryptedData)
-  const validActiveWallets = validateActiveWallets(activeWallets)
+  const activeWallets = decodeFetchActiveWalletResponse(decryptedData);
+  const validActiveWallets = validateActiveWallets(activeWallets);
 
   client.mutate({
     ephemeralPub: newEphemeralPub,
     activeWallets: validActiveWallets,
-  })
+  });
 
-  return validActiveWallets
+  return validActiveWallets;
 }
 
 export const decodeFetchActiveWalletResponse = (data: Buffer) => {
@@ -48,7 +48,7 @@ export const decodeFetchActiveWalletResponse = (data: Buffer) => {
   // active wallet of the device and we should save it. If the external wallet is blank, it means
   // there is no card present and we should save and use the interal wallet. If both wallets are
   // empty, it means the device still needs to be set up.
-  const walletDescriptorLen = 71
+  const walletDescriptorLen = 71;
   // Internal first
   const activeWallets: ActiveWallets = {
     internal: {
@@ -63,16 +63,16 @@ export const decodeFetchActiveWalletResponse = (data: Buffer) => {
       name: Buffer.alloc(0),
       capabilities: 0,
     },
-  }
-  let off = 0
-  activeWallets.internal.uid = data.slice(off, off + 32)
-  activeWallets.internal.capabilities = data.readUInt32BE(off + 32)
-  activeWallets.internal.name = data.slice(off + 36, off + walletDescriptorLen)
+  };
+  let off = 0;
+  activeWallets.internal.uid = data.slice(off, off + 32);
+  activeWallets.internal.capabilities = data.readUInt32BE(off + 32);
+  activeWallets.internal.name = data.slice(off + 36, off + walletDescriptorLen);
   // Offset the first item
-  off += walletDescriptorLen
+  off += walletDescriptorLen;
   // External
-  activeWallets.external.uid = data.slice(off, off + 32)
-  activeWallets.external.capabilities = data.readUInt32BE(off + 32)
-  activeWallets.external.name = data.slice(off + 36, off + walletDescriptorLen)
-  return activeWallets
-}
+  activeWallets.external.uid = data.slice(off, off + 32);
+  activeWallets.external.capabilities = data.readUInt32BE(off + 32);
+  activeWallets.external.name = data.slice(off + 36, off + walletDescriptorLen);
+  return activeWallets;
+};

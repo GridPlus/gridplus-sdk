@@ -1,11 +1,11 @@
 import {
   LatticeSecureEncryptedRequestType,
   encryptedSecureRequest,
-} from '../protocol'
-import { getPubKeyBytes } from '../shared/utilities'
-import { validateConnectedClient } from '../shared/validators'
-import type { KeyPair, PairRequestParams } from '../types'
-import { generateAppSecret, toPaddedDER } from '../util'
+} from '../protocol';
+import { getPubKeyBytes } from '../shared/utilities';
+import { validateConnectedClient } from '../shared/validators';
+import type { KeyPair, PairRequestParams } from '../types';
+import { generateAppSecret, toPaddedDER } from '../util';
 
 /**
  * If a pairing secret is provided, `pair` uses it to sign a hash of the public key, name, and
@@ -19,8 +19,8 @@ export async function pair({
   pairingSecret,
 }: PairRequestParams): Promise<boolean> {
   const { url, sharedSecret, ephemeralPub, appName, key } =
-    validateConnectedClient(client)
-  const data = encodePairRequest({ pairingSecret, key, appName })
+    validateConnectedClient(client);
+  const data = encodePairRequest({ pairingSecret, key, appName });
 
   const { newEphemeralPub } = await encryptedSecureRequest({
     data,
@@ -28,15 +28,15 @@ export async function pair({
     sharedSecret,
     ephemeralPub,
     url,
-  })
+  });
 
   client.mutate({
     ephemeralPub: newEphemeralPub,
     isPaired: true,
-  })
+  });
 
-  await client.fetchActiveWallet()
-  return client.hasActiveWallet()
+  await client.fetchActiveWallet();
+  return client.hasActiveWallet();
 }
 
 export const encodePairRequest = ({
@@ -44,27 +44,27 @@ export const encodePairRequest = ({
   pairingSecret,
   appName,
 }: {
-  key: KeyPair
-  pairingSecret: string
-  appName: string
+  key: KeyPair;
+  pairingSecret: string;
+  appName: string;
 }) => {
   // Build the payload data
-  const pubKeyBytes = getPubKeyBytes(key)
-  const nameBuf = Buffer.alloc(25)
+  const pubKeyBytes = getPubKeyBytes(key);
+  const nameBuf = Buffer.alloc(25);
   if (pairingSecret.length > 0) {
     // If a pairing secret of zero length is passed in, it usually indicates we want to cancel
     // the pairing attempt. In this case we pass a zero-length name buffer so the firmware can
     // know not to draw the error screen. Note that we still expect an error to come back
     // (RESP_ERR_PAIR_FAIL)
-    nameBuf.write(appName)
+    nameBuf.write(appName);
   }
   const hash = generateAppSecret(
     pubKeyBytes,
     nameBuf,
     Buffer.from(pairingSecret),
-  )
-  const sig = key.sign(hash)
-  const derSig = toPaddedDER(sig)
-  const payload = Buffer.concat([nameBuf, derSig])
-  return payload
-}
+  );
+  const sig = key.sign(hash);
+  const derSig = toPaddedDER(sig);
+  const payload = Buffer.concat([nameBuf, derSig]);
+  return payload;
+};

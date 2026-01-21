@@ -69,7 +69,7 @@ export const etherscanResponse0xa0b86991 = [
     name: 'Upgraded',
     type: 'event',
   },
-]
+];
 
 export const etherscanResponse0x7a250d56 = [
   {
@@ -1043,7 +1043,7 @@ export const etherscanResponse0x7a250d56 = [
     stateMutability: 'payable',
     type: 'receive',
   },
-]
+];
 
 export const etherscanResponse0xc36442b6 = [
   {
@@ -2267,7 +2267,7 @@ export const etherscanResponse0xc36442b6 = [
     stateMutability: 'payable',
     type: 'receive',
   },
-]
+];
 
 export const etherscanResponse0x06412d7e = [
   {
@@ -2871,4 +2871,4 @@ export const etherscanResponse0x06412d7e = [
     type: 'function',
   },
   { stateMutability: 'payable', type: 'receive' },
-]
+];

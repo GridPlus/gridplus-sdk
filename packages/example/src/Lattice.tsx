@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState } from 'react';
 import {
   addAddressTags,
   fetchAddressTags,
@@ -8,23 +8,23 @@ import {
   sign,
   signMessage,
   type AddressTag,
-} from 'gridplus-sdk'
-import { Button } from './Button'
+} from 'gridplus-sdk';
+import { Button } from './Button';
 
 interface LatticeProps {
-  label: string
+  label: string;
 }
 
 export const Lattice = ({ label }: LatticeProps) => {
-  const [addresses, setAddresses] = useState<string[]>([])
-  const [addressTags, setAddressTags] = useState<AddressTag[]>([])
-  const [ledgerAddresses, setLedgerAddresses] = useState<string[]>([])
+  const [addresses, setAddresses] = useState<string[]>([]);
+  const [addressTags, setAddressTags] = useState<AddressTag[]>([]);
+  const [ledgerAddresses, setLedgerAddresses] = useState<string[]>([]);
 
   // Example EIP-1559 transaction payload using raw hex format
   const getTxPayload = (): `0x${string}` => {
     // Pre-serialized EIP-1559 transaction for example purposes
-    return '0x02f8620180843b9aca00843b9aca0082c350940000000000000000000000000000000000000000880de0b6b3a764000080c0'
-  }
+    return '0x02f8620180843b9aca00843b9aca0082c350940000000000000000000000000000000000000000880de0b6b3a764000080c0';
+  };
 
   return (
     <div
@@ -39,14 +39,14 @@ export const Lattice = ({ label }: LatticeProps) => {
       <h2>{label}</h2>
       <Button
         onClick={async () => {
-          await sign(getTxPayload())
+          await sign(getTxPayload());
         }}
       >
         Sign
       </Button>
       <Button
         onClick={async () => {
-          await signMessage('test message')
+          await signMessage('test message');
         }}
       >
         Sign Message
@@ -62,34 +62,34 @@ export const Lattice = ({ label }: LatticeProps) => {
       </div>
       <Button
         onClick={async () => {
-          const addresses = await fetchAddresses()
-          setAddresses(addresses)
+          const addresses = await fetchAddresses();
+          setAddresses(addresses);
         }}
       >
         Fetch Addresses
       </Button>
       <Button
         onClick={async () => {
-          await addAddressTags([{ test: 'test' }])
-          const addressTags = await fetchAddressTags()
-          setAddressTags(addressTags)
+          await addAddressTags([{ test: 'test' }]);
+          const addressTags = await fetchAddressTags();
+          setAddressTags(addressTags);
         }}
       >
         Add Address Tag
       </Button>
       <Button
         onClick={async () => {
-          const fetchedAddressTags = await fetchAddressTags()
-          setAddressTags(fetchedAddressTags)
+          const fetchedAddressTags = await fetchAddressTags();
+          setAddressTags(fetchedAddressTags);
         }}
       >
         Fetch Address Tags
       </Button>
       <Button
         onClick={async () => {
-          await removeAddressTags(addressTags)
-          const fetchedAddressTags = await fetchAddressTags()
-          setAddressTags(fetchedAddressTags)
+          await removeAddressTags(addressTags);
+          const fetchedAddressTags = await fetchAddressTags();
+          setAddressTags(fetchedAddressTags);
         }}
       >
         Remove Address Tags
@@ -115,12 +115,12 @@ export const Lattice = ({ label }: LatticeProps) => {
       </div>
       <Button
         onClick={async () => {
-          const ledgerAddresses = await fetchLedgerLiveAddresses()
-          setLedgerAddresses(ledgerAddresses)
+          const ledgerAddresses = await fetchLedgerLiveAddresses();
+          setLedgerAddresses(ledgerAddresses);
         }}
       >
         Fetch Ledger Addresses
       </Button>
     </div>
-  )
-}
+  );
+};

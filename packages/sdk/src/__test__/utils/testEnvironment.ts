@@ -1,6 +1,6 @@
-import * as dotenv from 'dotenv'
+import * as dotenv from 'dotenv';
 
-dotenv.config()
+dotenv.config();
 
 expect.extend({
   toEqualElseLog(received: unknown, expected: unknown, message?: string) {
@@ -8,6 +8,6 @@ expect.extend({
       pass: received === expected,
       message: () =>
         message ?? `Expected ${String(received)} to equal ${String(expected)}`,
-    }
+    };
   },
-})
+});

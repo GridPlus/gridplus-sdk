@@ -1,54 +1,54 @@
-import { useCallback, useEffect, useState } from 'react'
-import { getClient, pair, setup } from 'gridplus-sdk'
-import './App.css'
-import { Lattice } from './Lattice'
+import { useCallback, useEffect, useState } from 'react';
+import { getClient, pair, setup } from 'gridplus-sdk';
+import './App.css';
+import { Lattice } from './Lattice';
 
 function App() {
-  const [label, setLabel] = useState('No Device')
+  const [label, setLabel] = useState('No Device');
 
   const getStoredClient = useCallback(
     async () => window.localStorage.getItem('storedClient') || '',
     [],
-  )
+  );
 
   const setStoredClient = useCallback(async (storedClient: string | null) => {
-    if (!storedClient) return
-    window.localStorage.setItem('storedClient', storedClient)
+    if (!storedClient) return;
+    window.localStorage.setItem('storedClient', storedClient);
 
-    const client = await getClient()
-    setLabel(client?.getDeviceId() || 'No Device')
-  }, [])
+    const client = await getClient();
+    setLabel(client?.getDeviceId() || 'No Device');
+  }, []);
 
   useEffect(() => {
     const initClient = async () => {
-      const storedClient = await getStoredClient()
+      const storedClient = await getStoredClient();
       if (storedClient) {
-        await setup({ getStoredClient, setStoredClient })
+        await setup({ getStoredClient, setStoredClient });
       }
-    }
-    initClient()
-  }, [getStoredClient, setStoredClient])
+    };
+    initClient();
+  }, [getStoredClient, setStoredClient]);
 
   const submitInit = (e: any) => {
-    e.preventDefault()
-    const deviceId = e.currentTarget[0].value
-    const password = e.currentTarget[1].value
-    const name = e.currentTarget[2].value
+    e.preventDefault();
+    const deviceId = e.currentTarget[0].value;
+    const password = e.currentTarget[1].value;
+    const name = e.currentTarget[2].value;
     setup({
       deviceId,
       password,
       name,
       getStoredClient,
       setStoredClient,
-    })
-  }
+    });
+  };
 
   const submitPair = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+    e.preventDefault();
     // @ts-expect-error - bad html types
-    const pairingCode = e.currentTarget[0].value.toUpperCase()
-    pair(pairingCode)
-  }
+    const pairingCode = e.currentTarget[0].value.toUpperCase();
+    pair(pairingCode);
+  };
 
   return (
     <div className="App">
@@ -97,7 +97,7 @@ function App() {
         <Lattice label={label} />
       </div>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

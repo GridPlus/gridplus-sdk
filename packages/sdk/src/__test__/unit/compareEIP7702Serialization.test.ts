@@ -1,10 +1,10 @@
-import { Hash } from 'ox'
-import { parseEther, serializeTransaction, toHex } from 'viem'
-import { serializeEIP7702Transaction } from '../../ethereum'
+import { Hash } from 'ox';
+import { parseEther, serializeTransaction, toHex } from 'viem';
+import { serializeEIP7702Transaction } from '../../ethereum';
 import type {
   EIP7702AuthListTransactionRequest as EIP7702AuthListTransaction,
   EIP7702AuthTransactionRequest as EIP7702AuthTransaction,
-} from '../../types'
+} from '../../types';
 
 describe('EIP7702 Transaction Serialization Comparison', () => {
   /**
@@ -31,7 +31,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         r: '0x0000000000000000000000000000000000000000000000000000000000000001',
         s: '0x0000000000000000000000000000000000000000000000000000000000000002',
       },
-    }
+    };
 
     // Convert to Viem's transaction format
     const viemTx = {
@@ -57,17 +57,17 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
           },
         },
       ],
-    }
+    };
 
     // Serialize using our implementation
-    const ourSerialized = serializeEIP7702Transaction(tx)
+    const ourSerialized = serializeEIP7702Transaction(tx);
 
     // Serialize using Viem
-    const viemSerialized = serializeTransaction(viemTx as any)
+    const viemSerialized = serializeTransaction(viemTx as any);
 
     // Output raw serialized data for debugging
-    console.log('Our serialized (minimal):', ourSerialized)
-    console.log('Viem serialized (minimal):', viemSerialized)
+    console.log('Our serialized (minimal):', ourSerialized);
+    console.log('Viem serialized (minimal):', viemSerialized);
 
     // Output serialized by byte
     console.log(
@@ -76,18 +76,18 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         .toString('hex')
         .match(/.{1,2}/g)
         ?.join(' '),
-    )
+    );
     console.log(
       'Viem bytes:',
       Buffer.from(viemSerialized.slice(2), 'hex')
         .toString('hex')
         .match(/.{1,2}/g)
         ?.join(' '),
-    )
+    );
 
     // Compare the serialized transactions
-    expect(ourSerialized).toEqual(viemSerialized)
-  })
+    expect(ourSerialized).toEqual(viemSerialized);
+  });
 
   /**
    * Test case comparing our implementation of EIP-7702 transaction serialization with Viem's implementation
@@ -116,7 +116,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         r: '0x1111111111111111111111111111111111111111111111111111111111111111',
         s: '0x2222222222222222222222222222222222222222222222222222222222222222',
       },
-    }
+    };
 
     // Convert to Viem's transaction format
     const viemTx = {
@@ -142,27 +142,27 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
           },
         },
       ],
-    }
+    };
 
     // Serialize using our implementation
-    const ourSerialized = serializeEIP7702Transaction(tx)
+    const ourSerialized = serializeEIP7702Transaction(tx);
 
     // Serialize using Viem
-    const viemSerialized = serializeTransaction(viemTx as any)
+    const viemSerialized = serializeTransaction(viemTx as any);
 
     // Compute hashes for comparison
-    const ourHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex'))).toString('hex')}`
-    const viemHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex'))).toString('hex')}`
+    const ourHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex'))).toString('hex')}`;
+    const viemHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex'))).toString('hex')}`;
 
     // Output for debugging
-    console.log('Our serialized:', ourSerialized)
-    console.log('Viem serialized:', viemSerialized)
-    console.log('Our hash:', ourHash)
-    console.log('Viem hash:', viemHash)
+    console.log('Our serialized:', ourSerialized);
+    console.log('Viem serialized:', viemSerialized);
+    console.log('Our hash:', ourHash);
+    console.log('Viem hash:', viemHash);
 
     // Compare the serialized transactions
-    expect(ourSerialized).toEqual(viemSerialized)
-  })
+    expect(ourSerialized).toEqual(viemSerialized);
+  });
 
   /**
    * Test case for serializing an EIP-7702 authorization list transaction (type 5)
@@ -198,7 +198,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
           s: '0x4444444444444444444444444444444444444444444444444444444444444444',
         },
       ],
-    }
+    };
 
     // Convert to Viem's transaction format
     const viemTx = {
@@ -234,27 +234,27 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
           },
         },
       ],
-    }
+    };
 
     // Serialize using our implementation
-    const ourSerialized = serializeEIP7702Transaction(tx)
+    const ourSerialized = serializeEIP7702Transaction(tx);
 
     // Serialize using Viem
-    const viemSerialized = serializeTransaction(viemTx as any)
+    const viemSerialized = serializeTransaction(viemTx as any);
 
     // Compute hashes for comparison
-    const ourHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex'))).toString('hex')}`
-    const viemHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex'))).toString('hex')}`
+    const ourHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex'))).toString('hex')}`;
+    const viemHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex'))).toString('hex')}`;
 
     // Output for debugging
-    console.log('Our serialized (auth list):', ourSerialized)
-    console.log('Viem serialized (auth list):', viemSerialized)
-    console.log('Our hash (auth list):', ourHash)
-    console.log('Viem hash (auth list):', viemHash)
+    console.log('Our serialized (auth list):', ourSerialized);
+    console.log('Viem serialized (auth list):', viemSerialized);
+    console.log('Our hash (auth list):', ourHash);
+    console.log('Viem hash (auth list):', viemHash);
 
     // Compare the serialized transactions
-    expect(ourSerialized).toEqual(viemSerialized)
-  })
+    expect(ourSerialized).toEqual(viemSerialized);
+  });
 
   /**
    * Test case using realistic transaction values
@@ -281,7 +281,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         r: '0x0000000000000000000000000000000000000000000000000000000000000001',
         s: '0x0000000000000000000000000000000000000000000000000000000000000002',
       },
-    }
+    };
 
     // Convert to Viem's transaction format
     const viemTx = {
@@ -307,27 +307,27 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
           },
         },
       ],
-    }
+    };
 
     // Serialize using our implementation
-    const ourSerialized = serializeEIP7702Transaction(tx)
+    const ourSerialized = serializeEIP7702Transaction(tx);
 
     // Serialize using Viem
-    const viemSerialized = serializeTransaction(viemTx as any)
+    const viemSerialized = serializeTransaction(viemTx as any);
 
     // Compute hashes for comparison
-    const ourHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex'))).toString('hex')}`
-    const viemHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex'))).toString('hex')}`
+    const ourHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex'))).toString('hex')}`;
+    const viemHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex'))).toString('hex')}`;
 
     // Output for debugging
-    console.log('Our serialized (realistic):', ourSerialized)
-    console.log('Viem serialized (realistic):', viemSerialized)
-    console.log('Our hash (realistic):', ourHash)
-    console.log('Viem hash (realistic):', viemHash)
+    console.log('Our serialized (realistic):', ourSerialized);
+    console.log('Viem serialized (realistic):', viemSerialized);
+    console.log('Our hash (realistic):', ourHash);
+    console.log('Viem hash (realistic):', viemHash);
 
     // Compare the serialized transactions
-    expect(ourSerialized).toEqual(viemSerialized)
-  })
+    expect(ourSerialized).toEqual(viemSerialized);
+  });
 
   /**
    * Test case with contract auth (when authorization has nonce)
@@ -353,7 +353,7 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
         r: '0x1111111111111111111111111111111111111111111111111111111111111111',
         s: '0x2222222222222222222222222222222222222222222222222222222222222222',
       },
-    }
+    };
 
     // Convert to Viem's transaction format
     const viemTx = {
@@ -379,25 +379,25 @@ describe('EIP7702 Transaction Serialization Comparison', () => {
           },
         },
       ],
-    }
+    };
 
     // Serialize using our implementation
-    const ourSerialized = serializeEIP7702Transaction(tx)
+    const ourSerialized = serializeEIP7702Transaction(tx);
 
     // Serialize using Viem
-    const viemSerialized = serializeTransaction(viemTx as any)
+    const viemSerialized = serializeTransaction(viemTx as any);
 
     // Compute hashes for comparison
-    const ourHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex'))).toString('hex')}`
-    const viemHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex'))).toString('hex')}`
+    const ourHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(ourSerialized.slice(2), 'hex'))).toString('hex')}`;
+    const viemHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(viemSerialized.slice(2), 'hex'))).toString('hex')}`;
 
     // Output for debugging
-    console.log('Our serialized (contract auth):', ourSerialized)
-    console.log('Viem serialized (contract auth):', viemSerialized)
-    console.log('Our hash (contract auth):', ourHash)
-    console.log('Viem hash (contract auth):', viemHash)
+    console.log('Our serialized (contract auth):', ourSerialized);
+    console.log('Viem serialized (contract auth):', viemSerialized);
+    console.log('Our hash (contract auth):', ourHash);
+    console.log('Viem hash (contract auth):', viemHash);
 
     // Compare the serialized transactions
-    expect(ourSerialized).toEqual(viemSerialized)
-  })
-})
+    expect(ourSerialized).toEqual(viemSerialized);
+  });
+});

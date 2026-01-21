@@ -16,87 +16,93 @@
  *        CMakeLists.txt file (for dev units)
  */
 
-import { HARDENED_OFFSET } from '../../constants'
-import type { SigningPath } from '../../types'
-import { randomBytes } from '../../util'
-import { buildEthMsgReq, buildRandomMsg } from '../utils/builders'
-import { runEthMsg } from '../utils/runners'
-import { setupClient } from '../utils/setup'
-import type { Client } from '../../client'
+import { HARDENED_OFFSET } from '../../constants';
+import type { SigningPath } from '../../types';
+import { randomBytes } from '../../util';
+import { buildEthMsgReq, buildRandomMsg } from '../utils/builders';
+import { runEthMsg } from '../utils/runners';
+import { setupClient } from '../utils/setup';
+import type { Client } from '../../client';
 
 describe('ETH Messages', () => {
-  let client: Client
+  let client: Client;
 
   beforeAll(async () => {
-    client = await setupClient()
-  })
+    client = await setupClient();
+  });
 
   describe('Test ETH personalSign', () => {
     it('Should throw error when message contains non-ASCII characters', async () => {
-      const protocol = 'signPersonal'
-      const msg = '⚠️'
-      const msg2 = 'ASCII plus ⚠️'
+      const protocol = 'signPersonal';
+      const msg = '⚠️';
+      const msg2 = 'ASCII plus ⚠️';
       await expect(client.sign(buildEthMsgReq(msg, protocol))).rejects.toThrow(
         /Lattice can only display ASCII/,
-      )
+      );
       await expect(client.sign(buildEthMsgReq(msg2, protocol))).rejects.toThrow(
         /Lattice can only display ASCII/,
-      )
-    })
+      );
+    });
 
     it('Should test ASCII buffers', async () => {
       await runEthMsg(
         buildEthMsgReq(Buffer.from('i am an ascii buffer'), 'signPersonal'),
         client,
-      )
+      );
       await runEthMsg(
         buildEthMsgReq(Buffer.from('{\n\ttest: foo\n}'), 'signPersonal'),
         client,
-      )
-    })
+      );
+    });
 
     it('Should test hex buffers', async () => {
       await runEthMsg(
         buildEthMsgReq(Buffer.from('abcdef', 'hex'), 'signPersonal'),
         client,
-      )
-    })
+      );
+    });
 
     it('Should test a message that needs to be prehashed', async () => {
-      await runEthMsg(buildEthMsgReq(randomBytes(4000), 'signPersonal'), client)
-    })
+      await runEthMsg(
+        buildEthMsgReq(randomBytes(4000), 'signPersonal'),
+        client,
+      );
+    });
 
     it('Msg: sign_personal boundary conditions and auto-rejected requests', async () => {
-      const protocol = 'signPersonal'
-      const fwConstants = client.getFwConstants()
+      const protocol = 'signPersonal';
+      const fwConstants = client.getFwConstants();
       // `personal_sign` requests have a max size smaller than other requests because a header
       // is displayed in the text region of the screen. The size of this is captured
       // by `fwConstants.personalSignHeaderSz`.
       const maxMsgSz =
         fwConstants.ethMaxMsgSz +
         fwConstants.personalSignHeaderSz +
-        fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz
-      const maxValid = `0x${randomBytes(maxMsgSz).toString('hex')}`
-      const minInvalid = `0x${randomBytes(maxMsgSz + 1).toString('hex')}`
-      const zeroInvalid = '0x'
+        fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
+      const maxValid = `0x${randomBytes(maxMsgSz).toString('hex')}`;
+      const minInvalid = `0x${randomBytes(maxMsgSz + 1).toString('hex')}`;
+      const zeroInvalid = '0x';
       // The largest non-hardened index which will take the most chars to print
-      const x = HARDENED_OFFSET - 1
+      const x = HARDENED_OFFSET - 1;
       // Okay sooo this is a bit awkward. We have to use a known coin_type here (e.g. ETH)
       // or else firmware will return an error, but the maxSz is based on the max length
       // of a path, which is larger than we can actually print.
       // I guess all this tests is that the first one is shown in plaintext while the second
       // one (which is too large) gets prehashed.
-      const largeSignPath = [x, HARDENED_OFFSET + 60, x, x, x] as SigningPath
-      await runEthMsg(buildEthMsgReq(maxValid, protocol, largeSignPath), client)
+      const largeSignPath = [x, HARDENED_OFFSET + 60, x, x, x] as SigningPath;
+      await runEthMsg(
+        buildEthMsgReq(maxValid, protocol, largeSignPath),
+        client,
+      );
       await runEthMsg(
         buildEthMsgReq(minInvalid, protocol, largeSignPath),
         client,
-      )
+      );
       // Using a zero length payload should auto-reject
       await expect(
         client.sign(buildEthMsgReq(zeroInvalid, protocol)),
-      ).rejects.toThrow(/Invalid Request/)
-    })
+      ).rejects.toThrow(/Invalid Request/);
+    });
 
     describe(`Test ${5} random payloads`, () => {
       for (let i = 0; i < 5; i++) {
@@ -107,11 +113,11 @@ describe('ETH Messages', () => {
               'signPersonal',
             ),
             client,
-          )
-        })
+          );
+        });
       }
-    })
-  })
+    });
+  });
 
   describe('Test ETH EIP712', () => {
     it('Should test a message that needs to be prehashed', async () => {
@@ -137,9 +143,9 @@ describe('ETH Messages', () => {
           action: 'dYdX STARK Key',
           onlySignOn: randomBytes(4000).toString('hex'),
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test an example from Blur NFT w/ 0 fees', async () => {
       const msg = {
@@ -199,9 +205,9 @@ describe('ETH Messages', () => {
             // { rate: 1, recipient: '0x00000000006411739da1c40b106f8511de5d1fac'}
           ],
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test simple dydx example', async () => {
       const msg = {
@@ -226,9 +232,9 @@ describe('ETH Messages', () => {
           action: 'dYdX STARK Key',
           onlySignOn: 'https://trade.dydx.exchange',
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test a Loopring message with non-standard numerical type', async () => {
       const msg = {
@@ -266,9 +272,9 @@ describe('ETH Messages', () => {
           validUntil: 1631655383,
           nonce: 0,
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test Vertex message', async () => {
       const msg = {
@@ -302,9 +308,9 @@ describe('ETH Messages', () => {
           expiration: '4611687701117784255',
           nonce: '1764428860167815857',
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test a large 1inch transaction', async () => {
       const msg = {
@@ -394,9 +400,9 @@ describe('ETH Messages', () => {
             },
           ],
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test an example with 0 values', async () => {
       const msg = {
@@ -425,9 +431,9 @@ describe('ETH Messages', () => {
           owner: '0x56626bd0d646ce9da4a12403b2c1ba00fb9e1c43',
           testArray: [],
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test canonical EIP712 example', async () => {
       const msg = {
@@ -466,9 +472,9 @@ describe('ETH Messages', () => {
           },
           contents: 'foobar',
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test canonical EIP712 example with 2nd level nesting', async () => {
       const msg = {
@@ -517,9 +523,9 @@ describe('ETH Messages', () => {
           },
           contents: 'foobar',
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test canonical EIP712 example with 3rd level nesting', async () => {
       const msg = {
@@ -578,9 +584,9 @@ describe('ETH Messages', () => {
           },
           contents: 'foobar',
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test canonical EIP712 example with 3rd level nesting and params in a different order', async () => {
       const msg = {
@@ -639,9 +645,9 @@ describe('ETH Messages', () => {
             },
           },
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test a payload with an array type', async () => {
       const msg = {
@@ -685,9 +691,9 @@ describe('ETH Messages', () => {
             },
           ],
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test multiple array types', async () => {
       const msg = {
@@ -743,9 +749,9 @@ describe('ETH Messages', () => {
           dummy: 52,
           integerArray: [1, 2, 3],
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test a nested array', async () => {
       const msg = {
@@ -786,9 +792,9 @@ describe('ETH Messages', () => {
             },
           ],
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test a nested array of custom type', async () => {
       const msg = {
@@ -859,9 +865,9 @@ describe('ETH Messages', () => {
             },
           ],
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test a bunch of EIP712 data types', async () => {
       const msg = {
@@ -935,9 +941,9 @@ describe('ETH Messages', () => {
           BOOL: true,
           ADDRESS: '0x078a8d6eba928e7ea787ed48f71c5936aed4625d',
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test a payload with a nested type in multiple nesting levels', async () => {
       const msg = {
@@ -985,9 +991,9 @@ describe('ETH Messages', () => {
             },
           },
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test a payload that requires use of extraData frames', async () => {
       const msg = {
@@ -1047,9 +1053,9 @@ describe('ETH Messages', () => {
           contents:
             'stupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimesstupidlylongstringthatshouldstretchintomultiplepageswhencopiedmanytimes',
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test a message with very large types', async () => {
       const msg = {
@@ -1206,9 +1212,9 @@ describe('ETH Messages', () => {
           salt: '35033335384310326785897317545538185126505283328747281434561962939625063440824',
           nonce: 0,
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Should test random edge case #1', async () => {
       // This was a randomly generated payload which caused an edge case.
@@ -1289,9 +1295,9 @@ describe('ETH Messages', () => {
           },
           drift_patch_cable_bi: '0xb4',
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     it('Signs long primary types', async () => {
       const msg = {
@@ -1348,9 +1354,9 @@ describe('ETH Messages', () => {
           nonce: 1718376161247,
           type: 'approveAgent',
         },
-      }
-      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client)
-    })
+      };
+      await runEthMsg(buildEthMsgReq(msg, 'eip712'), client);
+    });
 
     describe('test 5 random payloads', () => {
       for (let i = 0; i < 5; i++) {
@@ -1358,9 +1364,9 @@ describe('ETH Messages', () => {
           await runEthMsg(
             buildEthMsgReq(buildRandomMsg('eip712', client), 'eip712'),
             client,
-          )
-        })
+          );
+        });
       }
-    })
-  })
-})
+    });
+  });
+});

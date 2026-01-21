@@ -1,7 +1,7 @@
 import {
   deserializeObjectWithBuffers,
   serializeObjectWithBuffers,
-} from '../serializers'
+} from '../serializers';
 
 describe('serializers', () => {
   test('serialize obj', () => {
@@ -12,8 +12,8 @@ describe('serializers', () => {
         d: 2,
         e: Buffer.from('test'),
       },
-    }
-    const serialized = serializeObjectWithBuffers(obj)
+    };
+    const serialized = serializeObjectWithBuffers(obj);
     expect(serialized).toMatchInlineSnapshot(`
       {
         "a": 1,
@@ -29,8 +29,8 @@ describe('serializers', () => {
           },
         },
       }
-    `)
-  })
+    `);
+  });
 
   test('deserialize obj', () => {
     const obj = {
@@ -46,9 +46,9 @@ describe('serializers', () => {
           value: '74657374',
         },
       },
-    }
+    };
 
-    const serialized = deserializeObjectWithBuffers(obj)
+    const serialized = deserializeObjectWithBuffers(obj);
     expect(serialized).toMatchInlineSnapshot(`
       {
         "a": 1,
@@ -74,6 +74,6 @@ describe('serializers', () => {
           },
         },
       }
-    `)
-  })
-})
+    `);
+  });
+});

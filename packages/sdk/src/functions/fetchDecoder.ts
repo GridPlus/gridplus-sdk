@@ -1,8 +1,8 @@
-import { validateConnectedClient } from '../shared/validators'
+import { validateConnectedClient } from '../shared/validators';
 
-import { getClient } from '../api'
-import type { TransactionRequest } from '../types'
-import { fetchCalldataDecoder } from '../util'
+import { getClient } from '../api';
+import type { TransactionRequest } from '../types';
+import { fetchCalldataDecoder } from '../util';
 
 /**
  * `fetchDecoder` fetches the ABI for a given contract address and chain ID.
@@ -15,23 +15,23 @@ export async function fetchDecoder({
   chainId,
 }: TransactionRequest): Promise<Buffer | undefined> {
   try {
-    const client = await getClient()
-    validateConnectedClient(client)
+    const client = await getClient();
+    validateConnectedClient(client);
 
-    const fwVersion = client.getFwVersion()
+    const fwVersion = client.getFwVersion();
     const supportsDecoderRecursion =
-      fwVersion.major > 0 || fwVersion.minor >= 16
+      fwVersion.major > 0 || fwVersion.minor >= 16;
 
     const { def } = await fetchCalldataDecoder(
       data,
       to,
       chainId,
       supportsDecoderRecursion,
-    )
+    );
 
-    return def
+    return def;
   } catch (error) {
-    console.warn('Failed to fetch ABI:', error)
-    return undefined
+    console.warn('Failed to fetch ABI:', error);
+    return undefined;
   }
 }

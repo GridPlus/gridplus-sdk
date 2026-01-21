@@ -1,10 +1,10 @@
-import { Hash } from 'ox'
-import { parseEther, toHex } from 'viem'
-import { serializeEIP7702Transaction } from '../../ethereum'
+import { Hash } from 'ox';
+import { parseEther, toHex } from 'viem';
+import { serializeEIP7702Transaction } from '../../ethereum';
 import type {
   EIP7702AuthListTransactionRequest,
   EIP7702AuthTransactionRequest,
-} from '../../types'
+} from '../../types';
 
 describe('EIP-7702 Transaction Serialization', () => {
   /**
@@ -39,26 +39,26 @@ describe('EIP-7702 Transaction Serialization', () => {
         r: '0xbfa71d3b2c96bd4f573ee8e2b0da387999eb521b8c09f68499f4ed528cbeeb40',
         s: '0x171bb6415a3ff1207ddf5314aa05ffc168bd82f3abd0c8a7c91ef22ff58c4698',
       },
-    }
+    };
 
     // Serialize the transaction
-    const serialized = serializeEIP7702Transaction(tx)
+    const serialized = serializeEIP7702Transaction(tx);
 
     // Compute the keccak256 hash of the serialized transaction
-    const txHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(serialized.slice(2), 'hex'))).toString('hex')}`
+    const txHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(serialized.slice(2), 'hex'))).toString('hex')}`;
 
     // Store the serialized value for debugging
-    console.log('Serialized transaction:', serialized)
-    console.log('Transaction hash:', txHash)
+    console.log('Serialized transaction:', serialized);
+    console.log('Transaction hash:', txHash);
 
     // Store the expected serialized form (can be replaced with actual expected value)
     // For now we'll assert that serialization produces consistent results
-    const initialRun = serializeEIP7702Transaction(tx)
-    expect(serialized).toEqual(initialRun)
+    const initialRun = serializeEIP7702Transaction(tx);
+    expect(serialized).toEqual(initialRun);
 
     // Ensure the serialized transaction starts with the transaction type (0x04)
-    expect(serialized.startsWith('0x04')).toBe(true)
-  })
+    expect(serialized.startsWith('0x04')).toBe(true);
+  });
 
   /**
    * Test case for serializing an EIP-7702 authorization list transaction (type 5).
@@ -96,26 +96,26 @@ describe('EIP-7702 Transaction Serialization', () => {
           s: '0x7e03cfbc948cf6b8c4cd946d511b3ea1c4c64e8c70e0259573183ef22d565034',
         },
       ],
-    }
+    };
 
     // Serialize the transaction
-    const serialized = serializeEIP7702Transaction(tx)
+    const serialized = serializeEIP7702Transaction(tx);
 
     // Compute the keccak256 hash of the serialized transaction
-    const txHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(serialized.slice(2), 'hex'))).toString('hex')}`
+    const txHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(serialized.slice(2), 'hex'))).toString('hex')}`;
 
     // Store the serialized value for debugging
-    console.log('Serialized auth list transaction:', serialized)
-    console.log('Transaction hash:', txHash)
+    console.log('Serialized auth list transaction:', serialized);
+    console.log('Transaction hash:', txHash);
 
     // Store the expected serialized form (can be replaced with actual expected value)
     // For now we'll assert that serialization produces consistent results
-    const initialRun = serializeEIP7702Transaction(tx)
-    expect(serialized).toEqual(initialRun)
+    const initialRun = serializeEIP7702Transaction(tx);
+    expect(serialized).toEqual(initialRun);
 
     // Ensure the serialized transaction starts with the transaction type (0x05)
-    expect(serialized.startsWith('0x04')).toBe(true)
-  })
+    expect(serialized.startsWith('0x04')).toBe(true);
+  });
 
   /**
    * Test case for comparing serialization against a known good hash.
@@ -148,25 +148,25 @@ describe('EIP-7702 Transaction Serialization', () => {
         r: '0x7afecf0fa2f0c5f3cee3bf477dc4b0787afaecf5c8b0e2f7ec6c47c893bb06f0',
         s: '0x2e019bd0bb7b96a5beb6f92c63bc7d72f19f6b960d50f8b1c0c4f6bc690e95f4',
       },
-    }
+    };
 
     // Serialize the transaction
-    const serialized = serializeEIP7702Transaction(tx)
+    const serialized = serializeEIP7702Transaction(tx);
 
     // Compute the keccak256 hash of the serialized transaction
-    const txHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(serialized.slice(2), 'hex'))).toString('hex')}`
+    const txHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(serialized.slice(2), 'hex'))).toString('hex')}`;
 
-    console.log('Reference serialized transaction:', serialized)
-    console.log('Reference transaction hash:', txHash)
+    console.log('Reference serialized transaction:', serialized);
+    console.log('Reference transaction hash:', txHash);
 
     // The expected hash would be provided by a reference implementation
     // For now,. I will assert consistency across multiple serializations
-    const secondRun = serializeEIP7702Transaction(tx)
-    expect(serialized).toEqual(secondRun)
+    const secondRun = serializeEIP7702Transaction(tx);
+    expect(serialized).toEqual(secondRun);
 
     // Store the hash for future reference - this can be replaced with a
     // verified correct hash once available from a reference implementation
-    const knownGoodHash = txHash
-    expect(txHash).toEqual(knownGoodHash)
-  })
-})
+    const knownGoodHash = txHash;
+    expect(txHash).toEqual(knownGoodHash);
+  });
+});

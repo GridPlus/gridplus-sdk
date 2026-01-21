@@ -3,13 +3,13 @@ import {
   SignTypedDataVersion,
   TypedDataUtils,
   type TypedMessage,
-} from '@metamask/eth-sig-util'
-import { ecsign, privateToAddress } from 'ethereumjs-util'
-import { mnemonicToAccount } from 'viem/accounts'
-import { HARDENED_OFFSET } from '../../constants'
-import ethereum from '../../ethereum'
-import { DEFAULT_SIGNER, buildFirmwareConstants } from '../utils/builders'
-import { TEST_MNEMONIC } from '../utils/testConstants'
+} from '@metamask/eth-sig-util';
+import { ecsign, privateToAddress } from 'ethereumjs-util';
+import { mnemonicToAccount } from 'viem/accounts';
+import { HARDENED_OFFSET } from '../../constants';
+import ethereum from '../../ethereum';
+import { DEFAULT_SIGNER, buildFirmwareConstants } from '../utils/builders';
+import { TEST_MNEMONIC } from '../utils/testConstants';
 
 const typedData: TypedMessage<MessageTypes> = {
   types: {
@@ -27,54 +27,60 @@ const typedData: TypedMessage<MessageTypes> = {
     target: 'Ethereum',
     born: 2015,
   },
-}
+};
 
 describe('validateEthereumMsgResponse', () => {
   it('recovers expected signature for EIP712 payload', () => {
-    const account = mnemonicToAccount(TEST_MNEMONIC)
-    const hdKey = account.getHdKey()
-    if (!hdKey.privateKey) throw new Error('No private key')
-    const priv = Buffer.from(hdKey.privateKey)
-    const signer = privateToAddress(priv)
-    const digest = TypedDataUtils.eip712Hash(typedData, SignTypedDataVersion.V4)
-    const sig = ecsign(Buffer.from(digest), priv)
-    const fwConstants = buildFirmwareConstants()
+    const account = mnemonicToAccount(TEST_MNEMONIC);
+    const hdKey = account.getHdKey();
+    if (!hdKey.privateKey) throw new Error('No private key');
+    const priv = Buffer.from(hdKey.privateKey);
+    const signer = privateToAddress(priv);
+    const digest = TypedDataUtils.eip712Hash(
+      typedData,
+      SignTypedDataVersion.V4,
+    );
+    const sig = ecsign(Buffer.from(digest), priv);
+    const fwConstants = buildFirmwareConstants();
     const request = ethereum.buildEthereumMsgRequest({
       signerPath: DEFAULT_SIGNER,
       protocol: 'eip712',
       payload: JSON.parse(JSON.stringify(typedData)),
       fwConstants,
-    })
+    });
     const result = ethereum.validateEthereumMsgResponse(
       {
         signer: `0x${signer.toString('hex')}`,
         sig: { r: Buffer.from(sig.r), s: Buffer.from(sig.s) },
       },
       request,
-    )
+    );
 
-    expect(result.v.toString('hex')).toBe('1c')
-  })
+    expect(result.v.toString('hex')).toBe('1c');
+  });
 
   it('validates response using buildEthereumMsgRequest request context', () => {
-    const fwConstants = buildFirmwareConstants()
-    const signerPath = [...DEFAULT_SIGNER]
-    signerPath[2] = HARDENED_OFFSET
+    const fwConstants = buildFirmwareConstants();
+    const signerPath = [...DEFAULT_SIGNER];
+    signerPath[2] = HARDENED_OFFSET;
 
     const request = ethereum.buildEthereumMsgRequest({
       signerPath,
       protocol: 'eip712',
       payload: JSON.parse(JSON.stringify(typedData)),
       fwConstants,
-    })
+    });
 
-    const account = mnemonicToAccount(TEST_MNEMONIC)
-    const hdKey = account.getHdKey()
-    if (!hdKey.privateKey) throw new Error('No private key')
-    const priv = Buffer.from(hdKey.privateKey)
-    const signer = privateToAddress(priv)
-    const digest = TypedDataUtils.eip712Hash(typedData, SignTypedDataVersion.V4)
-    const sig = ecsign(Buffer.from(digest), priv)
+    const account = mnemonicToAccount(TEST_MNEMONIC);
+    const hdKey = account.getHdKey();
+    if (!hdKey.privateKey) throw new Error('No private key');
+    const priv = Buffer.from(hdKey.privateKey);
+    const signer = privateToAddress(priv);
+    const digest = TypedDataUtils.eip712Hash(
+      typedData,
+      SignTypedDataVersion.V4,
+    );
+    const sig = ecsign(Buffer.from(digest), priv);
 
     const result = ethereum.validateEthereumMsgResponse(
       {
@@ -82,8 +88,8 @@ describe('validateEthereumMsgResponse', () => {
         sig: { r: Buffer.from(sig.r), s: Buffer.from(sig.s) },
       },
       request,
-    )
+    );
 
-    expect(result.v.toString('hex')).toBe('1c')
-  })
-})
+    expect(result.v.toString('hex')).toBe('1c');
+  });
+});

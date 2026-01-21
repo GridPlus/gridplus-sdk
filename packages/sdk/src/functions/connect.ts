@@ -1,17 +1,17 @@
-import { ProtocolConstants, connectSecureRequest } from '../protocol'
-import { doesFetchWalletsOnLoad } from '../shared/predicates'
-import { getSharedSecret, parseWallets } from '../shared/utilities'
+import { ProtocolConstants, connectSecureRequest } from '../protocol';
+import { doesFetchWalletsOnLoad } from '../shared/predicates';
+import { getSharedSecret, parseWallets } from '../shared/utilities';
 import {
   validateBaseUrl,
   validateDeviceId,
   validateKey,
-} from '../shared/validators'
+} from '../shared/validators';
 import type {
   ActiveWallets,
   ConnectRequestFunctionParams,
   KeyPair,
-} from '../types'
-import { aes256_decrypt, getP256KeyPairFromPub } from '../util'
+} from '../types';
+import { aes256_decrypt, getP256KeyPairFromPub } from '../util';
 
 export async function connect({
   client,
@@ -22,19 +22,19 @@ export async function connect({
     // @ts-expect-error - private access
     key: client.key,
     baseUrl: client.baseUrl,
-  })
+  });
 
-  const url = `${baseUrl}/${deviceId}`
+  const url = `${baseUrl}/${deviceId}`;
 
   const respPayloadData = await connectSecureRequest({
     url,
     pubkey: client.publicKey,
-  })
+  });
 
   // Decode response data params.
   // Response payload data is *not* encrypted.
   const { isPaired, fwVersion, activeWallets, ephemeralPub } =
-    await decodeConnectResponse(respPayloadData, key)
+    await decodeConnectResponse(respPayloadData, key);
 
   // Update client state with response data
 
@@ -45,19 +45,19 @@ export async function connect({
     isPaired,
     fwVersion,
     activeWallets,
-  })
+  });
 
   // If we are paired and are on older firmware (<0.14.1), we need a
   // follow up request to sync wallet state.
   if (isPaired && !doesFetchWalletsOnLoad(client.getFwVersion())) {
-    await client.fetchActiveWallet()
+    await client.fetchActiveWallet();
   }
 
   // Return flag indicating whether we are paired or not.
   // If we are *not* already paired, the Lattice is now in
   // pairing mode and expects a `finalizePairing` encrypted
   // request as a follow up.
-  return isPaired
+  return isPaired;
 }
 
 export const validateConnectRequest = ({
@@ -65,24 +65,24 @@ export const validateConnectRequest = ({
   key,
   baseUrl,
 }: {
-  deviceId?: string
-  key?: KeyPair
-  baseUrl?: string
+  deviceId?: string;
+  key?: KeyPair;
+  baseUrl?: string;
 }): {
-  deviceId: string
-  key: KeyPair
-  baseUrl: string
+  deviceId: string;
+  key: KeyPair;
+  baseUrl: string;
 } => {
-  const validDeviceId = validateDeviceId(deviceId)
-  const validKey = validateKey(key)
-  const validBaseUrl = validateBaseUrl(baseUrl)
+  const validDeviceId = validateDeviceId(deviceId);
+  const validKey = validateKey(key);
+  const validBaseUrl = validateBaseUrl(baseUrl);
 
   return {
     deviceId: validDeviceId,
     key: validKey,
     baseUrl: validBaseUrl,
-  }
-}
+  };
+};
 
 /**
  * `decodeConnectResponse` will call `StartPairingMode` on the device, which gives the user 60 seconds to
@@ -98,44 +98,44 @@ export const decodeConnectResponse = (
   response: Buffer,
   key: KeyPair,
 ): {
-  isPaired: boolean
-  fwVersion: Buffer
-  activeWallets: ActiveWallets | undefined
-  ephemeralPub: KeyPair
+  isPaired: boolean;
+  fwVersion: Buffer;
+  activeWallets: ActiveWallets | undefined;
+  ephemeralPub: KeyPair;
 } => {
-  let off = 0
+  let off = 0;
   const isPaired =
-    response.readUInt8(off) === ProtocolConstants.pairingStatus.paired
-  off++
+    response.readUInt8(off) === ProtocolConstants.pairingStatus.paired;
+  off++;
   // If we are already paired, we get the next ephemeral key
-  const pub = response.slice(off, off + 65).toString('hex')
-  off += 65 // Set the public key
-  const ephemeralPub = getP256KeyPairFromPub(pub)
+  const pub = response.slice(off, off + 65).toString('hex');
+  off += 65; // Set the public key
+  const ephemeralPub = getP256KeyPairFromPub(pub);
   // Grab the firmware version (will be 0-length for older fw versions) It is of format
   // |fix|minor|major|reserved|
-  const fwVersion = response.slice(off, off + 4)
-  off += 4
+  const fwVersion = response.slice(off, off + 4);
+  off += 4;
 
   // If we are already paired, the response will include some encrypted data about the current
   // wallets This data was added in Lattice firmware v0.14.1
   if (isPaired) {
     //TODO && this._fwVersionGTE(0, 14, 1)) {
     // Later versions of firmware added wallet info
-    const encWalletData = response.slice(off, off + 160)
-    off += 160
-    const sharedSecret = getSharedSecret(key, ephemeralPub)
-    const decWalletData = aes256_decrypt(encWalletData, sharedSecret)
+    const encWalletData = response.slice(off, off + 160);
+    off += 160;
+    const sharedSecret = getSharedSecret(key, ephemeralPub);
+    const decWalletData = aes256_decrypt(encWalletData, sharedSecret);
     // Sanity check to make sure the last part of the decrypted data is empty. The last 2 bytes
     // are AES padding
     if (
       decWalletData[decWalletData.length - 2] !== 0 ||
       decWalletData[decWalletData.length - 1] !== 0
     ) {
-      throw new Error('Failed to connect to Lattice.')
+      throw new Error('Failed to connect to Lattice.');
     }
-    const activeWallets = parseWallets(decWalletData)
-    return { isPaired, fwVersion, activeWallets, ephemeralPub }
+    const activeWallets = parseWallets(decWalletData);
+    return { isPaired, fwVersion, activeWallets, ephemeralPub };
   }
   // return the state of our pairing
-  return { isPaired, fwVersion, activeWallets: undefined, ephemeralPub }
-}
+  return { isPaired, fwVersion, activeWallets: undefined, ephemeralPub };
+};

@@ -33,12 +33,12 @@
  * that a hardware wallet needs to handle correctly.
  */
 
-import type { TransactionSerializable } from 'viem'
+import type { TransactionSerializable } from 'viem';
 
 export interface TestVector {
-  name: string
-  tx: TransactionSerializable
-  category?: string
+  name: string;
+  tx: TransactionSerializable;
+  category?: string;
 }
 
 // =============================================================================
@@ -116,7 +116,7 @@ export const LEGACY_VECTORS: TestVector[] = [
     },
     category: 'polygon',
   },
-]
+];
 
 // =============================================================================
 // EIP-1559 TRANSACTION VECTORS (Fee Market)
@@ -210,7 +210,7 @@ export const EIP1559_TEST_VECTORS: TestVector[] = [
     },
     category: 'polygon',
   },
-]
+];
 
 // =============================================================================
 // EIP-2930 TRANSACTION VECTORS (Access Lists)
@@ -323,7 +323,7 @@ export const EIP2930_TEST_VECTORS: TestVector[] = [
     },
     category: 'defi-complex',
   },
-]
+];
 
 // =============================================================================
 // EIP-7702 TRANSACTION VECTORS (Account Abstraction)
@@ -411,7 +411,7 @@ export const EIP7702_TEST_VECTORS: TestVector[] = [
     },
     category: 'high-value-auth',
   },
-]
+];
 
 // =============================================================================
 // EDGE CASES & BOUNDARY CONDITIONS
@@ -713,7 +713,7 @@ export const EDGE_CASE_TEST_VECTORS: TestVector[] = [
     },
     category: 'eip1559-with-access-list',
   },
-]
+];
 
 // =============================================================================
 // COMPREHENSIVE DETERMINISTIC TEST VECTORS
@@ -782,7 +782,7 @@ export const DERIVATION_PATH_VECTORS: TestVector[] = [
     },
     category: 'derivation-path-1',
   },
-]
+];
 
 /**
  * Test specific network configurations that are commonly used
@@ -833,7 +833,7 @@ export const NETWORK_SPECIFIC_VECTORS: TestVector[] = [
     },
     category: 'sepolia',
   },
-]
+];
 
 /**
  * Test payload size boundaries to ensure proper handling of large transactions
@@ -914,7 +914,7 @@ export const PAYLOAD_SIZE_VECTORS: TestVector[] = [
     },
     category: 'very-large-data',
   },
-]
+];
 
 /**
  * Comprehensive boundary condition test vectors
@@ -979,7 +979,7 @@ export const BOUNDARY_CONDITION_VECTORS: TestVector[] = [
     },
     category: 'max-gas',
   },
-]
+];
 
 /**
  * Test specific transaction patterns from real-world usage
@@ -1030,7 +1030,7 @@ export const REAL_WORLD_PATTERN_VECTORS: TestVector[] = [
     },
     category: 'multi-send',
   },
-]
+];
 
 /**
  * All comprehensive test vectors combined for easy access
@@ -1046,7 +1046,7 @@ export const ALL_COMPREHENSIVE_VECTORS: TestVector[] = [
   ...PAYLOAD_SIZE_VECTORS,
   ...BOUNDARY_CONDITION_VECTORS,
   ...REAL_WORLD_PATTERN_VECTORS,
-]
+];
 
 /**
  * Get vectors by category for targeted testing
@@ -1054,24 +1054,24 @@ export const ALL_COMPREHENSIVE_VECTORS: TestVector[] = [
 export function getVectorsByCategory(category: string): TestVector[] {
   return ALL_COMPREHENSIVE_VECTORS.filter(
     (vector) => vector.category === category,
-  )
+  );
 }
 
 /**
  * Get a specific number of vectors from each transaction type for balanced testing
  */
 export function getBalancedTestVectors(perType = 3): TestVector[] {
-  const legacyVectors = LEGACY_VECTORS.slice(0, perType)
-  const eip1559Vectors = EIP1559_TEST_VECTORS.slice(0, perType)
-  const eip2930Vectors = EIP2930_TEST_VECTORS.slice(0, perType)
-  const eip7702Vectors = EIP7702_TEST_VECTORS.slice(0, perType)
+  const legacyVectors = LEGACY_VECTORS.slice(0, perType);
+  const eip1559Vectors = EIP1559_TEST_VECTORS.slice(0, perType);
+  const eip2930Vectors = EIP2930_TEST_VECTORS.slice(0, perType);
+  const eip7702Vectors = EIP7702_TEST_VECTORS.slice(0, perType);
 
   return [
     ...legacyVectors,
     ...eip1559Vectors,
     ...eip2930Vectors,
     ...eip7702Vectors,
-  ]
+  ];
 }
 
 /**
@@ -1082,7 +1082,7 @@ export function getBoundaryTestVectors(): TestVector[] {
     ...BOUNDARY_CONDITION_VECTORS,
     ...EDGE_CASE_TEST_VECTORS,
     ...PAYLOAD_SIZE_VECTORS,
-  ]
+  ];
 }
 
 /**
@@ -1093,5 +1093,5 @@ export function getNetworkTestVectors(): TestVector[] {
     ...NETWORK_SPECIFIC_VECTORS,
     // Add some edge cases with different networks
     ...EDGE_CASE_TEST_VECTORS.filter((v) => v.category?.includes('chain')),
-  ]
+  ];
 }

@@ -1,35 +1,39 @@
-import { Common, Hardfork, Mainnet } from '@ethereumjs/common'
-import { RLP } from '@ethereumjs/rlp'
-import { type TypedTransaction, createTx } from '@ethereumjs/tx'
-import { generate as randomWords } from 'random-words'
-import { Constants } from '../..'
-import { Client } from '../../client'
-import { CURRENCIES, HARDENED_OFFSET, getFwVersionConst } from '../../constants'
-import type { Currency, SignRequestParams, SigningPath } from '../../types'
-import type { FirmwareConstants } from '../../types/firmware'
-import { randomBytes } from '../../util'
-import { MSG_PAYLOAD_METADATA_SZ } from './constants'
-import { getN, getPrng } from './getters'
+import { Common, Hardfork, Mainnet } from '@ethereumjs/common';
+import { RLP } from '@ethereumjs/rlp';
+import { type TypedTransaction, createTx } from '@ethereumjs/tx';
+import { generate as randomWords } from 'random-words';
+import { Constants } from '../..';
+import { Client } from '../../client';
+import {
+  CURRENCIES,
+  HARDENED_OFFSET,
+  getFwVersionConst,
+} from '../../constants';
+import type { Currency, SignRequestParams, SigningPath } from '../../types';
+import type { FirmwareConstants } from '../../types/firmware';
+import { randomBytes } from '../../util';
+import { MSG_PAYLOAD_METADATA_SZ } from './constants';
+import { getN, getPrng } from './getters';
 import {
   BTC_PURPOSE_P2PKH,
   ETH_COIN,
   buildRandomEip712Object,
   getTestVectors,
-} from './helpers'
+} from './helpers';
 
-const prng = getPrng()
+const prng = getPrng();
 
 export const getFwVersionsList = () => {
-  const arr: number[][] = []
+  const arr: number[][] = [];
   Array.from({ length: 1 }, (x, i) => {
     Array.from({ length: 10 }, (y, j) => {
       Array.from({ length: 5 }, (z, k) => {
-        arr.push([i, j + 10, k])
-      })
-    })
-  })
-  return arr
-}
+        arr.push([i, j + 10, k]);
+      });
+    });
+  });
+  return arr;
+};
 
 export const buildFirmwareConstants = (...overrides: any) => {
   return {
@@ -67,8 +71,8 @@ export const buildFirmwareConstants = (...overrides: any) => {
     reqMaxDataSz: 1678,
     varAddrPathSzAllowed: true,
     ...overrides,
-  } as FirmwareConstants
-}
+  } as FirmwareConstants;
+};
 
 export const buildWallet = (overrides?) => ({
   uid: Buffer.from(
@@ -78,7 +82,7 @@ export const buildWallet = (overrides?) => ({
   capabilities: 1,
   external: true,
   ...overrides,
-})
+});
 
 export const buildGetAddressesObject = (overrides?) => ({
   startPath: [0x80000000 + 44, 0x80000000 + 60, 0x80000000, 0, 0],
@@ -87,10 +91,10 @@ export const buildGetAddressesObject = (overrides?) => ({
   fwConstants: buildFirmwareConstants(),
   wallet: buildWallet(),
   ...overrides,
-})
+});
 
 export const buildSignObject = (fwVersion, overrides?) => {
-  const fwConstants = getFwVersionConst(fwVersion)
+  const fwConstants = getFwVersionConst(fwVersion);
   return {
     data: {
       to: '0xc0c8f96C2fE011cc96770D2e37CfbfeAFB585F0e',
@@ -105,30 +109,30 @@ export const buildSignObject = (fwVersion, overrides?) => {
     currency: CURRENCIES.ETH as Currency,
     fwConstants,
     ...overrides,
-  }
-}
+  };
+};
 
 export const buildSharedSecret = () => {
   return Buffer.from([
     89, 60, 130, 80, 168, 252, 34, 136, 230, 71, 230, 158, 51, 13, 239, 237, 6,
     246, 71, 232, 232, 175, 193, 106, 106, 185, 38, 1, 163, 14, 225, 101,
-  ])
-}
+  ]);
+};
 
 export const getNumIter = (n: number | string | undefined = getN()) =>
-  n ? Number.parseInt(`${n}`) : 5
+  n ? Number.parseInt(`${n}`) : 5;
 
 /** Generate a bunch of random test vectors using the PRNG */
 export const buildRandomVectors = (n: number | string | undefined = getN()) => {
-  const numIter = getNumIter(n)
+  const numIter = getNumIter(n);
 
   // Generate a bunch of random test vectors using the PRNG
-  const RANDOM_VEC: any[] = []
+  const RANDOM_VEC: any[] = [];
   for (let i = 0; i < numIter; i++) {
-    RANDOM_VEC.push(Math.floor(1000000000 * prng.quick()).toString(16))
+    RANDOM_VEC.push(Math.floor(1000000000 * prng.quick()).toString(16));
   }
-  return RANDOM_VEC
-}
+  return RANDOM_VEC;
+};
 
 export const DEFAULT_SIGNER = [
   BTC_PURPOSE_P2PKH,
@@ -136,7 +140,7 @@ export const DEFAULT_SIGNER = [
   HARDENED_OFFSET,
   0,
   0,
-]
+];
 
 export const buildTx = (data: `0x${string}` = '0xdeadbeef') => {
   return createTx(
@@ -156,24 +160,24 @@ export const buildTx = (data: `0x${string}` = '0xdeadbeef') => {
         hardfork: Hardfork.London,
       }),
     },
-  )
-}
+  );
+};
 
 export const buildEthSignRequest = async (
   client: Client,
   txDataOverrides?: any,
 ): Promise<any> => {
   if (client.getFwVersion()?.major === 0 && client.getFwVersion()?.minor < 15) {
-    console.warn('Please update firmware. Skipping ETH signing tests.')
-    return
+    console.warn('Please update firmware. Skipping ETH signing tests.');
+    return;
   }
 
-  const fwConstants = client.getFwConstants()
-  const signerPath = [BTC_PURPOSE_P2PKH, ETH_COIN, HARDENED_OFFSET, 0, 0]
+  const fwConstants = client.getFwConstants();
+  const signerPath = [BTC_PURPOSE_P2PKH, ETH_COIN, HARDENED_OFFSET, 0, 0];
   const common = new Common({
     chain: Mainnet,
     hardfork: Hardfork.London,
-  })
+  });
   const txData = {
     type: 2,
     maxFeePerGas: 1200000000,
@@ -184,8 +188,8 @@ export const buildEthSignRequest = async (
     value: 1000000000000,
     data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
     ...txDataOverrides,
-  }
-  const tx = createTx(txData, { common })
+  };
+  const tx = createTx(txData, { common });
   const req = {
     data: {
       signerPath,
@@ -194,10 +198,10 @@ export const buildEthSignRequest = async (
       hashType: Constants.SIGNING.HASHES.KECCAK256,
       encodingType: Constants.SIGNING.ENCODINGS.EVM,
     },
-  }
+  };
   const maxDataSz =
     fwConstants.ethMaxDataSz +
-    fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz
+    fwConstants.extraDataMaxFrames * fwConstants.extraDataFrameSz;
   return {
     fwConstants,
     signerPath,
@@ -206,8 +210,8 @@ export const buildEthSignRequest = async (
     tx,
     req,
     maxDataSz,
-  }
-}
+  };
+};
 
 export const buildTxReq = (tx: TypedTransaction) => ({
   data: {
@@ -217,7 +221,7 @@ export const buildTxReq = (tx: TypedTransaction) => ({
     hashType: Constants.SIGNING.HASHES.KECCAK256,
     encodingType: Constants.SIGNING.ENCODINGS.EVM,
   },
-})
+});
 
 export const buildMsgReq = (
   payload = 'hello ethereum',
@@ -231,18 +235,18 @@ export const buildMsgReq = (
     curveType: Constants.SIGNING.CURVES.SECP256K1,
     hashType: Constants.SIGNING.HASHES.KECCAK256,
   },
-})
+});
 
 export const buildEvmReq = (overrides?: {
-  data?: any
-  txData?: any
-  common?: any
+  data?: any;
+  txData?: any;
+  common?: any;
 }) => {
-  let chainInfo = null
+  let chainInfo = null;
   if (overrides?.common) {
-    chainInfo = overrides.common
+    chainInfo = overrides.common;
   } else {
-    chainInfo = new Common({ chain: Mainnet, hardfork: Hardfork.London })
+    chainInfo = new Common({ chain: Mainnet, hardfork: Hardfork.London });
   }
   const req = {
     data: {
@@ -265,42 +269,42 @@ export const buildEvmReq = (overrides?: {
       ...overrides?.txData,
     },
     common: chainInfo,
-  }
-  return req
-}
+  };
+  return req;
+};
 
 export const buildEncDefs = (vectors: any) => {
   const encDefs = vectors.canonicalNames.map((name: string) => {
     // For each canonical name, we need to RLP encode just the name
-    return RLP.encode([name])
-  })
+    return RLP.encode([name]);
+  });
 
   // The calldata is already in hex format, we just need to ensure it has 0x prefix
   const encDefsCalldata = vectors.canonicalNames.map(
     (_: string, idx: number) => {
-      const calldata = `0x${idx.toString(16).padStart(8, '0')}`
-      return calldata
+      const calldata = `0x${idx.toString(16).padStart(8, '0')}`;
+      return calldata;
     },
-  )
+  );
 
-  return { encDefs, encDefsCalldata }
-}
+  return { encDefs, encDefsCalldata };
+};
 
 export function buildRandomMsg(type, client: Client) {
   function randInt(n: number) {
-    return Math.floor(n * prng.quick())
+    return Math.floor(n * prng.quick());
   }
 
   if (type === 'signPersonal') {
     // A random string will do
-    const isHexStr = randInt(2) > 0
-    const fwConstants = client.getFwConstants()
-    const L = randInt(fwConstants.ethMaxDataSz - MSG_PAYLOAD_METADATA_SZ)
-    if (isHexStr) return `0x${randomBytes(L).toString('hex')}`
+    const isHexStr = randInt(2) > 0;
+    const fwConstants = client.getFwConstants();
+    const L = randInt(fwConstants.ethMaxDataSz - MSG_PAYLOAD_METADATA_SZ);
+    if (isHexStr) return `0x${randomBytes(L).toString('hex')}`;
     // Get L hex bytes (represented with a string with 2*L chars)
-    else return randomWords({ exactly: L, join: ' ' }).slice(0, L) // Get L ASCII characters (bytes)
+    else return randomWords({ exactly: L, join: ' ' }).slice(0, L); // Get L ASCII characters (bytes)
   } else if (type === 'eip712') {
-    return buildRandomEip712Object(randInt)
+    return buildRandomEip712Object(randInt);
   }
 }
 
@@ -324,7 +328,7 @@ export function buildEthMsgReq(
       payload,
       protocol,
     },
-  }
+  };
 }
 
 export const buildValidateConnectObject = (overrides?) => ({
@@ -332,25 +336,25 @@ export const buildValidateConnectObject = (overrides?) => ({
   key: 'test',
   baseUrl: 'https://www.test.com',
   ...overrides,
-})
+});
 
 export const buildValidateRequestObject = (overrides?) => {
-  const fwConstants = buildFirmwareConstants()
+  const fwConstants = buildFirmwareConstants();
   return {
     fwConstants,
     ...overrides,
-  }
-}
+  };
+};
 
 // Most of the endpoint validators (for encrypted requests)
 // will require a connected client instance.
 export function buildMockConnectedClient(opts) {
-  const _stateData = JSON.parse(getTestVectors().dehydratedClientState)
+  const _stateData = JSON.parse(getTestVectors().dehydratedClientState);
   const stateData = {
     ..._stateData,
     ...opts,
-  }
+  };
   return new Client({
     stateData: JSON.stringify(stateData),
-  })
+  });
 }

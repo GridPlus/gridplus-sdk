@@ -4,8 +4,8 @@ import {
   decodeGetAddressesResponse,
   decodeGetKvRecordsResponse,
   decodeSignResponse,
-} from '../../functions'
-import type { DecodeSignResponseParams } from '../../types'
+} from '../../functions';
+import type { DecodeSignResponseParams } from '../../types';
 import {
   clientKeyPair,
   connectDecoderData,
@@ -19,20 +19,20 @@ import {
   signBitcoinRequest,
   signGenericDecoderData,
   signGenericRequest,
-} from './__mocks__/decoderData'
+} from './__mocks__/decoderData';
 
 describe('decoders', () => {
   test('connect', () => {
     expect(
       decodeConnectResponse(connectDecoderData, clientKeyPair),
-    ).toMatchSnapshot()
-  })
+    ).toMatchSnapshot();
+  });
 
   test('getAddresses', () => {
     expect(
       decodeGetAddressesResponse(getAddressesDecoderData, getAddressesFlag),
-    ).toMatchSnapshot()
-  })
+    ).toMatchSnapshot();
+  });
 
   test('sign - bitcoin', () => {
     const params: DecodeSignResponseParams = {
@@ -40,18 +40,18 @@ describe('decoders', () => {
       request: signBitcoinRequest,
       isGeneric: false,
       currency: 'BTC',
-    }
-    expect(decodeSignResponse(params)).toMatchSnapshot()
-  })
+    };
+    expect(decodeSignResponse(params)).toMatchSnapshot();
+  });
 
   test('sign - generic', () => {
     const params: DecodeSignResponseParams = {
       data: signGenericDecoderData,
       request: signGenericRequest,
       isGeneric: true,
-    }
-    expect(decodeSignResponse(params)).toMatchSnapshot()
-  })
+    };
+    expect(decodeSignResponse(params)).toMatchSnapshot();
+  });
 
   test('getKvRecords', () => {
     expect(
@@ -59,8 +59,8 @@ describe('decoders', () => {
         getKvRecordsDecoderData,
         decoderTestsFwConstants,
       ),
-    ).toMatchSnapshot()
-  })
+    ).toMatchSnapshot();
+  });
 
   test('fetchEncryptedData', () => {
     // This test is different than the others because one part of the data is
@@ -69,9 +69,9 @@ describe('decoders', () => {
     const decoded = decodeFetchEncData({
       data: fetchEncryptedDataDecoderData,
       ...fetchEncryptedDataRequest,
-    })
-    const decodedDerp = JSON.parse(decoded.toString())
-    decodedDerp.uuid = '00000000-0000-0000-0000-000000000000'
-    expect(Buffer.from(JSON.stringify(decodedDerp))).toMatchSnapshot()
-  })
-})
+    });
+    const decodedDerp = JSON.parse(decoded.toString());
+    decodedDerp.uuid = '00000000-0000-0000-0000-000000000000';
+    expect(Buffer.from(JSON.stringify(decodedDerp))).toMatchSnapshot();
+  });
+});

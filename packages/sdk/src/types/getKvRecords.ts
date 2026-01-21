@@ -1,26 +1,26 @@
-import type { Client } from '../client'
+import type { Client } from '../client';
 
 export interface GetKvRecordsRequestParams {
-  type?: number
-  n?: number
-  start?: number
+  type?: number;
+  n?: number;
+  start?: number;
 }
 
 export interface GetKvRecordsRequestFunctionParams
   extends GetKvRecordsRequestParams {
-  client: Client
+  client: Client;
 }
 
 export type AddressTag = {
-  caseSensitive: boolean
-  id: number
-  key: string
-  type: number
-  val: string
-}
+  caseSensitive: boolean;
+  id: number;
+  key: string;
+  type: number;
+  val: string;
+};
 
 export interface GetKvRecordsData {
-  records: AddressTag[]
-  fetched: number
-  total: number
+  records: AddressTag[];
+  fetched: number;
+  total: number;
 }

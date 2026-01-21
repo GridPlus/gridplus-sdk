@@ -134,4 +134,4 @@ export const ABI_TEST_VECTORS = [
     },
     category: 'complex-params',
   },
-]
+];

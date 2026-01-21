@@ -5,13 +5,13 @@ import {
   LatticeSignCurve,
   LatticeSignEncoding,
   LatticeSignHash,
-} from './protocol/latticeConstants'
+} from './protocol/latticeConstants';
 import type {
   ActiveWallets,
   FirmwareArr,
   FirmwareConstants,
   WalletPath,
-} from './types/index.js'
+} from './types/index.js';
 
 /**
  * Externally exported constants used for building requests
@@ -70,7 +70,7 @@ export const EXTERNAL = {
       VOLUNTARY_EXIT: Buffer.from('04000000', 'hex'),
     },
   },
-} as const
+} as const;
 
 //===============================
 // INTERNAL CONSTANTS
@@ -79,14 +79,14 @@ export const EXTERNAL = {
 const addressSizes = {
   BTC: 20, // 20 byte pubkeyhash
   ETH: 20, // 20 byte address not including 0x prefix
-} as const
+} as const;
 
 /** @internal */
 const CURRENCIES = {
   ETH: 'ETH',
   BTC: 'BTC',
   ETH_MSG: 'ETH_MSG',
-} as const
+} as const;
 
 /** @internal */
 // THIS NEEDS TO BE A PROTOCOL CONSTANT TOO
@@ -97,10 +97,10 @@ const signingSchema = {
   ETH_MSG: 3,
   EXTRA_DATA: 4,
   GENERAL_SIGNING: 5,
-} as const
+} as const;
 
 /** @internal */
-const HARDENED_OFFSET = 0x80000000 // Hardened offset
+const HARDENED_OFFSET = 0x80000000; // Hardened offset
 
 /** @internal */
 const BIP_CONSTANTS = {
@@ -115,22 +115,22 @@ const BIP_CONSTANTS = {
     BTC: HARDENED_OFFSET,
     BTC_TESTNET: HARDENED_OFFSET + 1,
   },
-} as const
+} as const;
 
 /** @internal For all HSM-bound requests */
-const REQUEST_TYPE_BYTE = 0x02
+const REQUEST_TYPE_BYTE = 0x02;
 
 /** @internal */
-const VERSION_BYTE = 1
+const VERSION_BYTE = 1;
 
 /** @internal ChainId value to signify larger chainID is in data buffer */
-const HANDLE_LARGER_CHAIN_ID = 255
+const HANDLE_LARGER_CHAIN_ID = 255;
 
 /** @internal Max number of bytes to contain larger chainID in data buffer */
-const MAX_CHAIN_ID_BYTES = 8
+const MAX_CHAIN_ID_BYTES = 8;
 
 /** @internal */
-const BASE_URL = 'https://signing.gridpl.us'
+const BASE_URL = 'https://signing.gridpl.us';
 
 /** @internal */
 const EIP712_ABI_LATTICE_FW_TYPE_MAP = {
@@ -235,7 +235,7 @@ const EIP712_ABI_LATTICE_FW_TYPE_MAP = {
   bytes32: 100,
   bytes: 101,
   string: 102,
-}
+};
 
 /** @internal */
 const ETH_ABI_LATTICE_FW_TYPE_MAP = {
@@ -257,7 +257,7 @@ const ETH_ABI_LATTICE_FW_TYPE_MAP = {
   tuple15: 117,
   tuple16: 118,
   tuple17: 119, // Firmware currently cannot support tuples larger than this
-}
+};
 
 /** @internal */
 const ethMsgProtocol = {
@@ -271,7 +271,7 @@ const ethMsgProtocol = {
     rawDataMaxLen: 1629, // Max size of raw data payload in bytes
     typeCodes: EIP712_ABI_LATTICE_FW_TYPE_MAP, // Enum indices of data types in Lattice firmware
   },
-}
+};
 
 /** @internal */
 function getFwVersionConst(v: Buffer): FirmwareConstants {
@@ -279,7 +279,7 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
     extraDataFrameSz: 0,
     extraDataMaxFrames: 0,
     genericSigning: {} as any,
-  }
+  };
   function gte(v: Buffer, exp: FirmwareArr): boolean {
     // Note that `v` fields come in as [fix|minor|major]
     return (
@@ -287,10 +287,10 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
       (v[2] === exp[0] && v[1] > exp[1]) ||
       (v[2] === exp[0] && v[1] === exp[1] && v[0] > exp[2]) ||
       (v[2] === exp[0] && v[1] === exp[1] && v[0] === exp[2])
-    )
+    );
   }
   // Very old legacy versions do not give a version number
-  const legacy = v.length === 0
+  const legacy = v.length === 0;
 
   // BASE FIELDS
   //--------------------------------------
@@ -299,19 +299,19 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
   // are captured here
   if (!legacy && gte(v, [0, 10, 4])) {
     // >=0.10.3
-    c.reqMaxDataSz = 1678
-    c.ethMaxGasPrice = 20000000000000 // 20000 gwei
-    c.addrFlagsAllowed = true
+    c.reqMaxDataSz = 1678;
+    c.ethMaxGasPrice = 20000000000000; // 20000 gwei
+    c.addrFlagsAllowed = true;
   } else if (!legacy && gte(v, [0, 10, 0])) {
     // >=0.10.0
-    c.reqMaxDataSz = 1678
-    c.ethMaxGasPrice = 20000000000000 // 20000 gwei
-    c.addrFlagsAllowed = true
+    c.reqMaxDataSz = 1678;
+    c.ethMaxGasPrice = 20000000000000; // 20000 gwei
+    c.addrFlagsAllowed = true;
   } else {
     // Legacy or <0.10.0
-    c.reqMaxDataSz = 1152
-    c.ethMaxGasPrice = 500000000000 // 500 gwei
-    c.addrFlagsAllowed = false
+    c.reqMaxDataSz = 1152;
+    c.ethMaxGasPrice = 500000000000; // 500 gwei
+    c.addrFlagsAllowed = false;
   }
   // These transformations apply to all versions. The subtraction
   // of 128 bytes accounts for metadata and is for legacy reasons.
@@ -319,11 +319,11 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
   // NOTE: Non-legacy ETH txs (e.g. EIP1559) will shrink
   // this number.
   // See `ETH_BASE_TX_MAX_DATA_SZ` and `ETH_MAX_BASE_MSG_SZ` in firmware
-  c.ethMaxDataSz = c.reqMaxDataSz - 128
-  c.ethMaxMsgSz = c.ethMaxDataSz
+  c.ethMaxDataSz = c.reqMaxDataSz - 128;
+  c.ethMaxMsgSz = c.ethMaxDataSz;
   // Max number of params in an EIP712 type. This was added to firmware
   // to avoid blowing stack size.
-  c.eip712MaxTypeParams = 18
+  c.eip712MaxTypeParams = 18;
 
   // -----
   // EXTRA FIELDS ADDED IN LATER FIRMWARE VERSIONS
@@ -333,23 +333,23 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
   // V0.10.4 introduced the ability to send signing requests over multiple
   // data frames (i.e. in multiple requests)
   if (!legacy && gte(v, [0, 10, 4])) {
-    c.extraDataFrameSz = 1500 // 1500 bytes per frame of extraData allowed
-    c.extraDataMaxFrames = 1 // 1 frame of extraData allowed
+    c.extraDataFrameSz = 1500; // 1500 bytes per frame of extraData allowed
+    c.extraDataMaxFrames = 1; // 1 frame of extraData allowed
   }
   // V0.10.5 added the ability to use flexible address path sizes, which
   // changes the `getAddress` API. It also added support for EIP712
   if (!legacy && gte(v, [0, 10, 5])) {
-    c.varAddrPathSzAllowed = true
-    c.eip712Supported = true
+    c.varAddrPathSzAllowed = true;
+    c.eip712Supported = true;
   }
   // V0.10.8 allows a user to sign a prehashed transaction if the payload
   // is too big
   if (!legacy && gte(v, [0, 10, 8])) {
-    c.prehashAllowed = true
+    c.prehashAllowed = true;
   }
   // V0.10.10 allows a user to sign a prehashed ETH message if payload too big
   if (!legacy && gte(v, [0, 10, 10])) {
-    c.ethMsgPreHashAllowed = true
+    c.ethMsgPreHashAllowed = true;
   }
 
   // --- 0.11.X ---
@@ -358,10 +358,10 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
     c.allowedEthTxTypes = [
       1, // eip2930
       2, // eip1559
-    ]
+    ];
     // This version added extra data fields to the ETH tx
-    c.ethMaxDataSz -= 10
-    c.ethMaxMsgSz = c.ethMaxDataSz
+    c.ethMaxDataSz -= 10;
+    c.ethMaxMsgSz = c.ethMaxDataSz;
   }
   // V0.11.2 changed how messages are displayed. For personal_sign messages
   // we now write the header (`Signer: <path>`) into the main body of the screen.
@@ -369,7 +369,7 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
   // EIP712 messages because in the latter case there is no header
   // Note that `<path>` has max size of 62 bytes (`m/X/X/...`)
   if (!legacy && gte(v, [0, 11, 2])) {
-    c.personalSignHeaderSz = 72
+    c.personalSignHeaderSz = 72;
   }
 
   // --- V0.12.X ---
@@ -377,20 +377,20 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
   // records. For the purposes of this SDK, we only hook into one type of kv
   // file: address names.
   if (!legacy && gte(v, [0, 12, 0])) {
-    c.kvActionsAllowed = true
-    c.kvKeyMaxStrSz = 63
-    c.kvValMaxStrSz = 63
-    c.kvActionMaxNum = 10
-    c.kvRemoveMaxNum = 100
+    c.kvActionsAllowed = true;
+    c.kvKeyMaxStrSz = 63;
+    c.kvValMaxStrSz = 63;
+    c.kvActionMaxNum = 10;
+    c.kvRemoveMaxNum = 100;
   }
 
   // --- V0.13.X ---
   // V0.13.0 added native segwit addresses and fixed a bug in exporting
   // legacy bitcoin addresses
   if (!legacy && gte(v, [0, 13, 0])) {
-    c.allowBtcLegacyAndSegwitAddrs = true
+    c.allowBtcLegacyAndSegwitAddrs = true;
     // Random address to be used when trying to deploy a contract
-    c.contractDeployKey = '0x08002e0fec8e6acf00835f43c9764f7364fa3f42'
+    c.contractDeployKey = '0x08002e0fec8e6acf00835f43c9764f7364fa3f42';
   }
 
   // --- V0.14.X ---
@@ -398,26 +398,26 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
   // and generic signing functionality
   if (!legacy && gte(v, [0, 14, 0])) {
     // Size of `category` buffer. Inclusive of null terminator byte.
-    c.abiCategorySz = 32
-    c.abiMaxRmv = 200 // Max number of ABI defs that can be removed with
+    c.abiCategorySz = 32;
+    c.abiMaxRmv = 200; // Max number of ABI defs that can be removed with
     // a single request
     // See `sizeof(GenericSigningRequest_t)` in firmware
-    c.genericSigning.baseReqSz = 1552
+    c.genericSigning.baseReqSz = 1552;
     // See `GENERIC_SIGNING_BASE_MSG_SZ` in firmware
-    c.genericSigning.baseDataSz = 1519
-    c.genericSigning.hashTypes = EXTERNAL.SIGNING.HASHES
-    c.genericSigning.curveTypes = EXTERNAL.SIGNING.CURVES
+    c.genericSigning.baseDataSz = 1519;
+    c.genericSigning.hashTypes = EXTERNAL.SIGNING.HASHES;
+    c.genericSigning.curveTypes = EXTERNAL.SIGNING.CURVES;
     c.genericSigning.encodingTypes = {
       NONE: EXTERNAL.SIGNING.ENCODINGS.NONE,
       SOLANA: EXTERNAL.SIGNING.ENCODINGS.SOLANA,
-    }
+    };
     // Supported flags for `getAddresses`
     c.getAddressFlags = [
       EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB,
       EXTERNAL.GET_ADDR_FLAGS.SECP256K1_PUB,
-    ]
+    ];
     // We updated the max number of params in EIP712 types
-    c.eip712MaxTypeParams = 36
+    c.eip712MaxTypeParams = 36;
   }
   // DEPRECATED
   // V0.14.1 Added the Terra decoder
@@ -428,26 +428,26 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
   // --- V0.15.X ---
   // V0.15.0 added an EVM decoder and removed the legacy ETH signing pathway
   if (!legacy && gte(v, [0, 15, 0])) {
-    c.genericSigning.encodingTypes.EVM = EXTERNAL.SIGNING.ENCODINGS.EVM
+    c.genericSigning.encodingTypes.EVM = EXTERNAL.SIGNING.ENCODINGS.EVM;
     // We now use the general signing data field as the base
     // Note that we have NOT removed the ETH_MSG type so we should
     // not change ethMaxMsgSz
-    c.ethMaxDataSz = 1550 - 31
+    c.ethMaxDataSz = 1550 - 31;
     // Max buffer size for get/add decoder requests
-    c.maxDecoderBufSz = 1600
+    c.maxDecoderBufSz = 1600;
     // Code used to write a calldata decoder
     c.genericSigning.calldataDecoding = {
       reserved: 2895728,
       maxSz: 1024,
-    }
+    };
   }
 
   // --- V0.17.X ---
   // V0.17.0 added support for BLS12-381-G1 pubkeys and G2 sigs
   if (!legacy && gte(v, [0, 17, 0])) {
-    c.getAddressFlags.push(EXTERNAL.GET_ADDR_FLAGS.BLS12_381_G1_PUB)
+    c.getAddressFlags.push(EXTERNAL.GET_ADDR_FLAGS.BLS12_381_G1_PUB);
     c.genericSigning.encodingTypes.ETH_DEPOSIT =
-      EXTERNAL.SIGNING.ENCODINGS.ETH_DEPOSIT
+      EXTERNAL.SIGNING.ENCODINGS.ETH_DEPOSIT;
   }
 
   // --- V0.18.X ---
@@ -458,22 +458,22 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
       ...c.genericSigning.encodingTypes,
       EIP7702_AUTH: EXTERNAL.SIGNING.ENCODINGS.EIP7702_AUTH,
       EIP7702_AUTH_LIST: EXTERNAL.SIGNING.ENCODINGS.EIP7702_AUTH_LIST,
-    }
+    };
   }
 
-  return c
+  return c;
 }
 
 /** @internal */
 // biome-ignore lint/suspicious/noControlCharactersInRegex: Intentional - matching ASCII range
-const ASCII_REGEX = /^[\u0000-\u007F]+$/
+const ASCII_REGEX = /^[\u0000-\u007F]+$/;
 
 /** @internal */
 const EXTERNAL_NETWORKS_BY_CHAIN_ID_URL =
-  'https://gridplus.github.io/chains/chains.json'
+  'https://gridplus.github.io/chains/chains.json';
 
 /** @internal - Max number of addresses to fetch */
-const MAX_ADDR = 10
+const MAX_ADDR = 10;
 
 /** @internal */
 const NETWORKS_BY_CHAIN_ID = {
@@ -502,10 +502,10 @@ const NETWORKS_BY_CHAIN_ID = {
     baseUrl: 'https://api.snowtrace.io',
     apiRoute: 'api?module=contract&action=getabi',
   },
-}
+};
 
 /** @internal */
-export const EMPTY_WALLET_UID = Buffer.alloc(32)
+export const EMPTY_WALLET_UID = Buffer.alloc(32);
 
 /** @internal */
 export const DEFAULT_ACTIVE_WALLETS: ActiveWallets = {
@@ -521,7 +521,7 @@ export const DEFAULT_ACTIVE_WALLETS: ActiveWallets = {
     name: Buffer.alloc(0),
     capabilities: 0,
   },
-}
+};
 
 /** @internal */
 export const DEFAULT_ETH_DERIVATION: WalletPath = [
@@ -530,7 +530,7 @@ export const DEFAULT_ETH_DERIVATION: WalletPath = [
   HARDENED_OFFSET,
   0,
   0,
-]
+];
 
 /** @internal */
 export const BTC_LEGACY_DERIVATION = [
@@ -539,7 +539,7 @@ export const BTC_LEGACY_DERIVATION = [
   HARDENED_OFFSET,
   0,
   0,
-]
+];
 
 /** @internal */
 export const BTC_LEGACY_CHANGE_DERIVATION = [
@@ -548,7 +548,7 @@ export const BTC_LEGACY_CHANGE_DERIVATION = [
   HARDENED_OFFSET,
   0,
   0,
-]
+];
 
 /** @internal */
 export const BTC_SEGWIT_DERIVATION = [
@@ -557,7 +557,7 @@ export const BTC_SEGWIT_DERIVATION = [
   HARDENED_OFFSET,
   0,
   0,
-]
+];
 
 /** @internal */
 export const BTC_SEGWIT_CHANGE_DERIVATION = [
@@ -566,7 +566,7 @@ export const BTC_SEGWIT_CHANGE_DERIVATION = [
   HARDENED_OFFSET,
   1,
   0,
-]
+];
 
 /** @internal */
 export const BTC_WRAPPED_SEGWIT_DERIVATION = [
@@ -575,7 +575,7 @@ export const BTC_WRAPPED_SEGWIT_DERIVATION = [
   HARDENED_OFFSET,
   0,
   0,
-]
+];
 
 /** @internal */
 export const BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION = [
@@ -584,7 +584,7 @@ export const BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION = [
   HARDENED_OFFSET,
   0,
   0,
-]
+];
 
 /**
  * Derivation path for Bitcoin legacy xpub (BIP44).
@@ -594,7 +594,7 @@ export const BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION = [
  *   flag: LatticeGetAddressesFlag.secp256k1Xpub
  * });
  */
-export const BTC_LEGACY_XPUB_PATH = "44'/0'/0'"
+export const BTC_LEGACY_XPUB_PATH = "44'/0'/0'";
 
 /**
  * Derivation path for Bitcoin wrapped segwit ypub (BIP49).
@@ -604,7 +604,7 @@ export const BTC_LEGACY_XPUB_PATH = "44'/0'/0'"
  *   flag: LatticeGetAddressesFlag.secp256k1Xpub
  * });
  */
-export const BTC_WRAPPED_SEGWIT_YPUB_PATH = "49'/0'/0'"
+export const BTC_WRAPPED_SEGWIT_YPUB_PATH = "49'/0'/0'";
 
 /**
  * Derivation path for Bitcoin native segwit zpub (BIP84).
@@ -614,7 +614,7 @@ export const BTC_WRAPPED_SEGWIT_YPUB_PATH = "49'/0'/0'"
  *   flag: LatticeGetAddressesFlag.secp256k1Xpub
  * });
  */
-export const BTC_SEGWIT_ZPUB_PATH = "84'/0'/0'"
+export const BTC_SEGWIT_ZPUB_PATH = "84'/0'/0'";
 
 /** @internal */
 export const SOLANA_DERIVATION = [
@@ -622,7 +622,7 @@ export const SOLANA_DERIVATION = [
   HARDENED_OFFSET + 501,
   HARDENED_OFFSET,
   HARDENED_OFFSET,
-]
+];
 
 /** @internal */
 export const LEDGER_LIVE_DERIVATION = [
@@ -631,7 +631,7 @@ export const LEDGER_LIVE_DERIVATION = [
   HARDENED_OFFSET,
   0,
   0,
-]
+];
 
 /** @internal */
 export const LEDGER_LEGACY_DERIVATION = [
@@ -639,7 +639,7 @@ export const LEDGER_LEGACY_DERIVATION = [
   HARDENED_OFFSET + 60,
   HARDENED_OFFSET,
   0,
-]
+];
 
 export {
   ASCII_REGEX,
@@ -660,4 +660,4 @@ export {
   MAX_CHAIN_ID_BYTES,
   ETH_ABI_LATTICE_FW_TYPE_MAP,
   EXTERNAL as PUBLIC,
-}
+};

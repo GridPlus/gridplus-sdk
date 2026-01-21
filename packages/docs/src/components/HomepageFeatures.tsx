@@ -1,11 +1,11 @@
-import clsx from 'clsx'
-import styles from './HomepageFeatures.module.css'
+import clsx from 'clsx';
+import styles from './HomepageFeatures.module.css';
 
 type FeatureItem = {
-  title: string
-  image: string
-  description: JSX.Element
-}
+  title: string;
+  image: string;
+  description: JSX.Element;
+};
 
 const FeatureList: FeatureItem[] = [
   {
@@ -38,7 +38,7 @@ const FeatureList: FeatureItem[] = [
       </>
     ),
   },
-]
+];
 
 function Feature({ title, image, description }: FeatureItem) {
   return (
@@ -51,7 +51,7 @@ function Feature({ title, image, description }: FeatureItem) {
         <p>{description}</p>
       </div>
     </div>
-  )
+  );
 }
 
 export default function HomepageFeatures(): JSX.Element {
@@ -65,5 +65,5 @@ export default function HomepageFeatures(): JSX.Element {
         </div>
       </div>
     </section>
-  )
+  );
 }

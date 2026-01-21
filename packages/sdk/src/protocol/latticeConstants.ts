@@ -201,4 +201,4 @@ export const ProtocolConstants = {
       },
     },
   },
-} as const
+} as const;

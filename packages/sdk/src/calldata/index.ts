@@ -8,7 +8,7 @@ import {
   parseCanonicalName,
   parseSolidityJSONABI,
   replaceNestedDefs,
-} from './evm'
+} from './evm';
 
 export const CALLDATA = {
   EVM: {
@@ -22,4 +22,4 @@ export const CALLDATA = {
       replaceNestedDefs,
     },
   },
-}
+};

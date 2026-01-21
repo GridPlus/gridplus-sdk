@@ -6,20 +6,20 @@
  * Running with a different mnemonic will cause test failures due to
  * incorrect key derivations and signature mismatches.
  */
-import { Constants } from '../../../..'
-import type { Client } from '../../../../client'
-import { setupClient } from '../../../utils/setup'
-import { dexlabProgram, raydiumProgram } from './__mocks__/programs'
+import { Constants } from '../../../..';
+import type { Client } from '../../../../client';
+import { setupClient } from '../../../utils/setup';
+import { dexlabProgram, raydiumProgram } from './__mocks__/programs';
 
 describe('Solana Programs', () => {
-  let client: Client
+  let client: Client;
 
   beforeAll(async () => {
-    client = await setupClient()
-  })
+    client = await setupClient();
+  });
 
   it('should sign Dexlab program', async () => {
-    const payload = dexlabProgram
+    const payload = dexlabProgram;
     const signedMessage = await client.sign({
       data: {
         signerPath: [0x80000000 + 44, 0x80000000 + 501, 0x80000000],
@@ -28,12 +28,12 @@ describe('Solana Programs', () => {
         encodingType: Constants.SIGNING.ENCODINGS.SOLANA,
         payload,
       },
-    })
-    expect(signedMessage).toBeTruthy()
-  })
+    });
+    expect(signedMessage).toBeTruthy();
+  });
 
   it('should sign Raydium program', async () => {
-    const payload = raydiumProgram
+    const payload = raydiumProgram;
     const signedMessage = await client.sign({
       data: {
         signerPath: [0x80000000 + 44, 0x80000000 + 501, 0x80000000],
@@ -42,7 +42,7 @@ describe('Solana Programs', () => {
         encodingType: Constants.SIGNING.ENCODINGS.SOLANA,
         payload,
       },
-    })
-    expect(signedMessage).toBeTruthy()
-  })
-})
+    });
+    expect(signedMessage).toBeTruthy();
+  });
+});

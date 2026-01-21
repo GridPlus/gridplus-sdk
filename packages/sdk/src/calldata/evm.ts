@@ -1,5 +1,5 @@
-import { Hash } from 'ox'
-import { decodeAbiParameters, parseAbiParameters } from 'viem'
+import { Hash } from 'ox';
+import { decodeAbiParameters, parseAbiParameters } from 'viem';
 /**
  * Look through an ABI definition to see if there is a function that matches the signature provided.
  * @param sig    a 0x-prefixed hex string containing 4 bytes of info
@@ -11,21 +11,21 @@ export const parseSolidityJSONABI = (
   sig: string,
   abi: any[],
 ): { def: EVMDef } => {
-  sig = coerceSig(sig)
+  sig = coerceSig(sig);
   // Find the first match in the ABI
   const match = abi
     .filter((item) => item.type === 'function')
     .find((item) => {
-      const def = parseDef(item)
-      const funcSig = getFuncSig(def.canonicalName)
-      return funcSig === sig
-    })
+      const def = parseDef(item);
+      const funcSig = getFuncSig(def.canonicalName);
+      return funcSig === sig;
+    });
   if (match) {
-    const def = parseDef(match).def
-    return { def }
+    const def = parseDef(match).def;
+    return { def };
   }
-  throw new Error('Unable to find matching function in ABI')
-}
+  throw new Error('Unable to find matching function in ABI');
+};
 
 /**
  * Convert a canonical name into an ABI definition that can be included with calldata to a general
@@ -36,28 +36,28 @@ export const parseSolidityJSONABI = (
  * @public
  */
 export const parseCanonicalName = (sig: string, name: string) => {
-  sig = coerceSig(sig)
+  sig = coerceSig(sig);
   if (sig !== getFuncSig(name)) {
-    throw new Error('Name does not match provided sig.')
+    throw new Error('Name does not match provided sig.');
   }
-  const def = []
+  const def = [];
   // Get the function name
-  const paramStart = name.indexOf('(')
+  const paramStart = name.indexOf('(');
   if (paramStart < 0) {
-    throw new Error(BAD_CANONICAL_ERR)
+    throw new Error(BAD_CANONICAL_ERR);
   }
-  def.push(name.slice(0, paramStart))
-  name = name.slice(paramStart + 1)
-  let paramDef = []
+  def.push(name.slice(0, paramStart));
+  name = name.slice(paramStart + 1);
+  let paramDef = [];
   while (name.length > 1) {
     // scan until the terminating ')'
-    const typeStr = popTypeStrFromCanonical(name)
-    paramDef = paramDef.concat(parseTypeStr(typeStr))
-    name = name.slice(typeStr.length + 1)
+    const typeStr = popTypeStrFromCanonical(name);
+    paramDef = paramDef.concat(parseTypeStr(typeStr));
+    name = name.slice(typeStr.length + 1);
   }
-  const parsedParamDef = parseParamDef(paramDef)
-  return def.concat(parsedParamDef)
-}
+  const parsedParamDef = parseParamDef(paramDef);
+  return def.concat(parsedParamDef);
+};
 
 /**
  * Pull out nested calldata which may correspond to nested ABI definitions.
@@ -71,29 +71,29 @@ export const parseCanonicalName = (sig: string, name: string) => {
  *            checked as a possible nested def
  */
 export const getNestedCalldata = (def, calldata) => {
-  const possibleNestedDefs = []
+  const possibleNestedDefs = [];
   // Skip past first item, which is the function name
-  const defParams = def.slice(1)
-  const strParams = getParamStrNames(defParams)
-  const hexStr = `0x${calldata.slice(4).toString('hex')}` as `0x${string}`
+  const defParams = def.slice(1);
+  const strParams = getParamStrNames(defParams);
+  const hexStr = `0x${calldata.slice(4).toString('hex')}` as `0x${string}`;
   // Convert strParams to viem's format
   const viemParams = strParams.map((type) => {
     // Convert tuple format from 'tuple(uint256,uint128)' to '(uint256,uint128)'
     if (type.startsWith('tuple(')) {
-      return type.replace('tuple', '')
+      return type.replace('tuple', '');
     }
-    return type
-  })
+    return type;
+  });
 
-  const abiParams = parseAbiParameters(viemParams.join(','))
-  const decoded = decodeAbiParameters(abiParams, hexStr)
+  const abiParams = parseAbiParameters(viemParams.join(','));
+  const decoded = decodeAbiParameters(abiParams, hexStr);
 
   function couldBeNestedDef(x) {
-    return (x.length - 4) % 32 === 0
+    return (x.length - 4) % 32 === 0;
   }
   decoded.forEach((paramData, i) => {
     if (isBytesType(defParams[i])) {
-      let nestedDefIsPossible = true
+      let nestedDefIsPossible = true;
       if (isBytesArrItem(defParams[i])) {
         // `bytes[]` type. Decode all underlying `bytes` items and
         // do size checks on those.
@@ -109,19 +109,19 @@ export const getNestedCalldata = (def, calldata) => {
               typeof nestedParamDatum !== 'string' ||
               !nestedParamDatum.startsWith('0x')
             ) {
-              nestedDefIsPossible = false
-              return
+              nestedDefIsPossible = false;
+              return;
             }
             const nestedParamDatumBuf = Buffer.from(
               nestedParamDatum.slice(2),
               'hex',
-            )
+            );
             if (!couldBeNestedDef(nestedParamDatumBuf)) {
-              nestedDefIsPossible = false
+              nestedDefIsPossible = false;
             }
-          })
+          });
         } else {
-          nestedDefIsPossible = false
+          nestedDefIsPossible = false;
         }
       } else if (isBytesItem(defParams[i])) {
         // Regular `bytes` type - perform size check
@@ -129,26 +129,26 @@ export const getNestedCalldata = (def, calldata) => {
           typeof paramData !== 'string' ||
           !(paramData as string).startsWith('0x')
         ) {
-          nestedDefIsPossible = false
+          nestedDefIsPossible = false;
         } else {
-          const data = paramData as string
-          const paramDataBuf = Buffer.from(data.slice(2), 'hex')
-          nestedDefIsPossible = couldBeNestedDef(paramDataBuf)
+          const data = paramData as string;
+          const paramDataBuf = Buffer.from(data.slice(2), 'hex');
+          nestedDefIsPossible = couldBeNestedDef(paramDataBuf);
         }
       } else {
         // Unknown `bytes` item type
-        nestedDefIsPossible = false
+        nestedDefIsPossible = false;
       }
       // If the data could contain a nested def (determined based on
       // data size of the item), add the paramData to the return array.
-      possibleNestedDefs.push(nestedDefIsPossible ? paramData : null)
+      possibleNestedDefs.push(nestedDefIsPossible ? paramData : null);
     } else {
       // No nested defs for non-bytes types
-      possibleNestedDefs.push(null)
+      possibleNestedDefs.push(null);
     }
-  })
-  return possibleNestedDefs
-}
+  });
+  return possibleNestedDefs;
+};
 
 /**
  * If applicable, update decoder data to represent nested
@@ -162,22 +162,22 @@ export const getNestedCalldata = (def, calldata) => {
  */
 export const replaceNestedDefs = (def, nestedDefs) => {
   for (let i = 0; i < nestedDefs.length; i++) {
-    const isArrItem = isBytesArrItem(def[1 + i])
-    const isItem = isBytesItem(def[1 + i])
+    const isArrItem = isBytesArrItem(def[1 + i]);
+    const isItem = isBytesItem(def[1 + i]);
     if (nestedDefs[i] !== null && (isArrItem || isItem)) {
       // Update the def item type to indicate it will hold
       // one or more nested definitions
-      def[1 + i][1] = EVM_TYPES.indexOf('nestedDef')
+      def[1 + i][1] = EVM_TYPES.indexOf('nestedDef');
       // Add nested def(s) in in an array. If this is an array
       // item it means the nestedDefs should already be in an
       // array. Otherwise we need to wrap the single nested
       // def in an array to keep the data type consistent.
-      const defs = isArrItem ? nestedDefs[i] : [nestedDefs[i]]
-      def[1 + i] = def[1 + i].concat([defs])
+      const defs = isArrItem ? nestedDefs[i] : [nestedDefs[i]];
+      def[1 + i] = def[1 + i].concat([defs]);
     }
   }
-  return def
-}
+  return def;
+};
 
 /**
  * Convert a canonical name to a function selector (a.k.a. "sig")
@@ -186,7 +186,7 @@ export const replaceNestedDefs = (def, nestedDefs) => {
 function getFuncSig(canonicalName: string): string {
   return `0x${Buffer.from(Hash.keccak256(Buffer.from(canonicalName)))
     .toString('hex')
-    .slice(0, 8)}`
+    .slice(0, 8)}`;
 }
 
 /**
@@ -194,12 +194,12 @@ function getFuncSig(canonicalName: string): string {
  */
 function coerceSig(sig: string): string {
   if (typeof sig !== 'string' || (sig.length !== 10 && sig.length !== 8)) {
-    throw new Error('`sig` must be a hex string with 4 bytes of data.')
+    throw new Error('`sig` must be a hex string with 4 bytes of data.');
   }
   if (sig.length === 8) {
-    sig = `0x${sig}`
+    sig = `0x${sig}`;
   }
-  return sig
+  return sig;
 }
 
 /**
@@ -211,30 +211,30 @@ function coerceSig(sig: string): string {
  * @internal
  */
 function getParamStrNames(defParams) {
-  const strNames = []
+  const strNames = [];
   for (let i = 0; i < defParams.length; i++) {
-    const param = defParams[i]
-    let s = EVM_TYPES[param[1]]
+    const param = defParams[i];
+    let s = EVM_TYPES[param[1]];
     if (param[2]) {
-      s = `${s}${param[2] * 8}`
+      s = `${s}${param[2] * 8}`;
     }
     if (param[3].length > 0) {
       param[3].forEach((d) => {
         if (param[3][d] === 0) {
-          s = `${s}[]`
+          s = `${s}[]`;
         } else {
-          s = `${s}[${param[3][d]}]`
+          s = `${s}[${param[3][d]}]`;
         }
-      })
+      });
     }
     if (param[4]) {
       // Tuple - get nested type names
-      const nested = getParamStrNames(param[4])
-      s = `${s}(${nested.join(',')})`
+      const nested = getParamStrNames(param[4]);
+      s = `${s}(${nested.join(',')})`;
     }
-    strNames.push(s)
+    strNames.push(s);
   }
-  return strNames
+  return strNames;
 }
 
 /**
@@ -244,15 +244,15 @@ function getParamStrNames(defParams) {
  */
 function popTypeStrFromCanonical(subName: string): string {
   if (isTuple(subName)) {
-    return getTupleName(subName)
+    return getTupleName(subName);
   } else if (subName.indexOf(',') > -1) {
     // Normal non-tuple param
-    return subName.slice(0, subName.indexOf(','))
+    return subName.slice(0, subName.indexOf(','));
   } else if (subName.indexOf(')') > -1) {
     // Last non-tuple param in the name
-    return subName.slice(0, subName.indexOf(')'))
+    return subName.slice(0, subName.indexOf(')'));
   }
-  throw new Error(BAD_CANONICAL_ERR)
+  throw new Error(BAD_CANONICAL_ERR);
 }
 
 /**
@@ -263,32 +263,32 @@ function popTypeStrFromCanonical(subName: string): string {
 function parseTypeStr(typeStr: string): any[] {
   // Non-tuples can be decoded without worrying about recursion
   if (!isTuple(typeStr)) {
-    return [parseBasicTypeStr(typeStr)]
+    return [parseBasicTypeStr(typeStr)];
   }
   // Tuples may require recursion
   const param: EVMParamInfo = {
     szBytes: 0,
     typeIdx: EVM_TYPES.indexOf('tuple'),
     arraySzs: [],
-  }
+  };
   // Get the full tuple param name and separate out the array stuff
-  let typeStrLessArr = getTupleName(typeStr, false)
-  const typeStrArr = typeStr.slice(typeStrLessArr.length)
-  param.arraySzs = getArraySzs(typeStrArr)
+  let typeStrLessArr = getTupleName(typeStr, false);
+  const typeStrArr = typeStr.slice(typeStrLessArr.length);
+  param.arraySzs = getArraySzs(typeStrArr);
   // Slice off the leading paren
-  typeStrLessArr = typeStrLessArr.slice(1)
+  typeStrLessArr = typeStrLessArr.slice(1);
   // Parse each nested param
-  let paramArr = []
+  let paramArr = [];
   while (typeStrLessArr.length > 0) {
-    const subType = popTypeStrFromCanonical(typeStrLessArr)
-    typeStrLessArr = typeStrLessArr.slice(subType.length + 1)
-    paramArr = paramArr.concat(parseTypeStr(subType))
+    const subType = popTypeStrFromCanonical(typeStrLessArr);
+    typeStrLessArr = typeStrLessArr.slice(subType.length + 1);
+    paramArr = paramArr.concat(parseTypeStr(subType));
   }
   // There must be at least one sub-param in the tuple
   if (!paramArr.length) {
-    throw new Error(BAD_CANONICAL_ERR)
+    throw new Error(BAD_CANONICAL_ERR);
   }
-  return [param, paramArr]
+  return [param, paramArr];
 }
 
 /**
@@ -300,28 +300,28 @@ function parseBasicTypeStr(typeStr: string): EVMParamInfo {
     szBytes: 0,
     typeIdx: 0,
     arraySzs: [],
-  }
-  let found = false
+  };
+  let found = false;
   EVM_TYPES.forEach((t, i) => {
     if (typeStr.indexOf(t) > -1 && !found) {
-      param.typeIdx = i
-      param.arraySzs = getArraySzs(typeStr)
+      param.typeIdx = i;
+      param.arraySzs = getArraySzs(typeStr);
       const arrStart =
-        param.arraySzs.length > 0 ? typeStr.indexOf('[') : typeStr.length
-      const typeStrNum = typeStr.slice(t.length, arrStart)
+        param.arraySzs.length > 0 ? typeStr.indexOf('[') : typeStr.length;
+      const typeStrNum = typeStr.slice(t.length, arrStart);
       if (Number.parseInt(typeStrNum)) {
-        param.szBytes = Number.parseInt(typeStrNum) / 8
+        param.szBytes = Number.parseInt(typeStrNum) / 8;
         if (param.szBytes > 32) {
-          throw new Error(BAD_CANONICAL_ERR)
+          throw new Error(BAD_CANONICAL_ERR);
         }
       }
-      found = true
+      found = true;
     }
-  })
+  });
   if (!found) {
-    throw new Error(BAD_CANONICAL_ERR)
+    throw new Error(BAD_CANONICAL_ERR);
   }
-  return param
+  return param;
 }
 
 /**
@@ -337,16 +337,16 @@ function parseDef(
 ): EVMDef {
   // Function name. Can be an empty string.
   if (!recursed) {
-    const nameStr = item.name || ''
-    def.push(nameStr)
-    canonicalName += nameStr
+    const nameStr = item.name || '';
+    def.push(nameStr);
+    canonicalName += nameStr;
   }
   // Loop through params
   if (item.inputs) {
-    canonicalName += '('
+    canonicalName += '(';
     item.inputs.forEach((input) => {
       // Convert the input to a flat param that we can serialize
-      const flatParam = getFlatParam(input)
+      const flatParam = getFlatParam(input);
       if (input.type.indexOf('tuple') > -1 && input.components) {
         // For tuples we need to recurse
         const recursed = parseDef(
@@ -354,26 +354,26 @@ function parseDef(
           canonicalName,
           [],
           true,
-        )
-        canonicalName = recursed.canonicalName
+        );
+        canonicalName = recursed.canonicalName;
         // Add brackets if this is a tuple array and also add a comma
-        canonicalName += `${input.type.slice(5)},`
-        flatParam.push(recursed.def)
+        canonicalName += `${input.type.slice(5)},`;
+        flatParam.push(recursed.def);
       } else {
-        canonicalName += input.type
-        canonicalName += ','
+        canonicalName += input.type;
+        canonicalName += ',';
       }
-      def.push(flatParam)
-    })
+      def.push(flatParam);
+    });
     // Take off the last comma. Note that we do not want to slice if the last param was a tuple,
     // since we want to keep that `)`
     if (canonicalName[canonicalName.length - 1] === ',') {
-      canonicalName = canonicalName.slice(0, canonicalName.length - 1)
+      canonicalName = canonicalName.slice(0, canonicalName.length - 1);
     }
     // Add the closing parens
-    canonicalName += ')'
+    canonicalName += ')';
   }
-  return { def, canonicalName }
+  return { def, canonicalName };
 }
 
 /**
@@ -383,13 +383,13 @@ function parseDef(
  * @internal
  */
 function parseParamDef(def: any[], prefix = ''): any[] {
-  const parsedDef = []
-  let numTuples = 0
+  const parsedDef = [];
+  let numTuples = 0;
   def.forEach((param, i) => {
     if (Array.isArray(param)) {
       // Arrays indicate nested params inside a tuple and always come after the initial tuple type
       // info. Recurse to parse nested tuple params and append them to the most recent.
-      parsedDef[parsedDef.length - 1].push(parseParamDef(param, `${i}-`))
+      parsedDef[parsedDef.length - 1].push(parseParamDef(param, `${i}-`));
     } else {
       // If this is not tuple info, add the flat param info to the def
       parsedDef.push([
@@ -397,14 +397,14 @@ function parseParamDef(def: any[], prefix = ''): any[] {
         param.typeIdx,
         param.szBytes,
         param.arraySzs,
-      ])
+      ]);
     }
     // Tuple
     if (param.typeIdx === EVM_TYPES.indexOf('tuple')) {
-      numTuples += 1
+      numTuples += 1;
     }
-  })
-  return parsedDef
+  });
+  return parsedDef;
 }
 
 /**
@@ -413,14 +413,14 @@ function parseParamDef(def: any[], prefix = ''): any[] {
  */
 function getFlatParam(input): any[] {
   if (!input.type) {
-    throw new Error('No type in input')
+    throw new Error('No type in input');
   }
-  const param = [input.name]
-  const { typeIdx, szBytes, arraySzs } = getParamTypeInfo(input.type)
-  param.push(typeIdx)
-  param.push(szBytes)
-  param.push(arraySzs)
-  return param
+  const param = [input.name];
+  const { typeIdx, szBytes, arraySzs } = getParamTypeInfo(input.type);
+  param.push(typeIdx);
+  param.push(szBytes);
+  param.push(arraySzs);
+  return param;
 }
 
 /**
@@ -439,30 +439,30 @@ function getParamTypeInfo(type: string): EVMParamInfo {
     szBytes: 0,
     typeIdx: 0,
     arraySzs: [],
-  }
-  let baseType: string | undefined
+  };
+  let baseType: string | undefined;
   EVM_TYPES.forEach((t, i) => {
     if (type.indexOf(t) > -1 && !baseType) {
-      baseType = t
-      param.typeIdx = i
+      baseType = t;
+      param.typeIdx = i;
     }
-  })
+  });
   // Get the array size, if any
-  param.arraySzs = getArraySzs(type)
+  param.arraySzs = getArraySzs(type);
   // Determine where to search for expanded size
-  const szIdx = param.arraySzs.length > 0 ? type.indexOf('[') : type.length
+  const szIdx = param.arraySzs.length > 0 ? type.indexOf('[') : type.length;
   if (['uint', 'int', 'bytes'].indexOf(baseType) > -1) {
     // If this can have a fixed size, capture that
-    const szBits = Number.parseInt(type.slice(baseType.length, szIdx)) || 0
+    const szBits = Number.parseInt(type.slice(baseType.length, szIdx)) || 0;
     if (szBits > 256) {
-      throw new Error('Invalid param size')
+      throw new Error('Invalid param size');
     }
-    param.szBytes = szBits / 8
+    param.szBytes = szBits / 8;
   } else {
     // No fixed size in the type
-    param.szBytes = 0
+    param.szBytes = 0;
   }
-  return param
+  return param;
 }
 
 /**
@@ -472,73 +472,73 @@ function getParamTypeInfo(type: string): EVMParamInfo {
  */
 function getArraySzs(type: string): number[] {
   if (typeof type !== 'string') {
-    throw new Error('Invalid type')
+    throw new Error('Invalid type');
   }
-  const szs = []
-  let t1 = type
+  const szs = [];
+  let t1 = type;
   while (t1.length > 0) {
-    const openIdx = t1.indexOf('[')
+    const openIdx = t1.indexOf('[');
     if (openIdx < 0) {
-      return szs
+      return szs;
     }
-    const t2 = t1.slice(openIdx)
-    const closeIdx = t2.indexOf(']')
+    const t2 = t1.slice(openIdx);
+    const closeIdx = t2.indexOf(']');
     if (closeIdx < 0) {
-      throw new Error('Bad param type')
+      throw new Error('Bad param type');
     }
-    const t3 = t2.slice(1, closeIdx)
+    const t3 = t2.slice(1, closeIdx);
     if (t3.length === 0) {
       // Variable size
-      szs.push(0)
+      szs.push(0);
     } else {
       // Fixed size
-      szs.push(Number.parseInt(t3))
+      szs.push(Number.parseInt(t3));
     }
-    t1 = t2.slice(closeIdx + 1)
+    t1 = t2.slice(closeIdx + 1);
   }
-  return szs
+  return szs;
 }
 
 /** @internal */
 function getTupleName(name, withArr = true) {
-  let brackets = 0
-  let addedFirstBracket = false
+  let brackets = 0;
+  let addedFirstBracket = false;
   for (let i = 0; i < name.length; i++) {
     if (name[i] === '(') {
-      brackets += 1
-      addedFirstBracket = true
+      brackets += 1;
+      addedFirstBracket = true;
     } else if (name[i] === ')') {
-      brackets -= 1
+      brackets -= 1;
     }
     let canBreak =
-      name[i + 1] === ',' || name[i + 1] === ')' || i === name.length - 1
+      name[i + 1] === ',' || name[i + 1] === ')' || i === name.length - 1;
     if (!withArr && name[i + 1] === '[') {
-      canBreak = true
+      canBreak = true;
     }
     if (!brackets && addedFirstBracket && canBreak) {
-      return name.slice(0, i + 1)
+      return name.slice(0, i + 1);
     }
   }
-  throw new Error(BAD_CANONICAL_ERR)
+  throw new Error(BAD_CANONICAL_ERR);
 }
 
 /** @internal */
 function isTuple(type: string): boolean {
-  return type[0] === '('
+  return type[0] === '(';
 }
 
 /** @internal */
 function isBytesType(param) {
-  return EVM_TYPES[param[1]] === 'bytes'
+  return EVM_TYPES[param[1]] === 'bytes';
 }
 function isBytesItem(param) {
-  return isBytesType(param) && param[3].length === 0
+  return isBytesType(param) && param[3].length === 0;
 }
 function isBytesArrItem(param) {
-  return isBytesType(param) && param[3].length === 1 && param[3][0] === 0
+  return isBytesType(param) && param[3].length === 1 && param[3][0] === 0;
 }
 
-const BAD_CANONICAL_ERR = 'Could not parse canonical function name.'
+const BAD_CANONICAL_ERR = 'Could not parse canonical function name.';
 const EVM_TYPES = [
   null,
   'address',
@@ -549,15 +549,15 @@ const EVM_TYPES = [
   'string',
   'tuple',
   'nestedDef',
-]
+];
 
 type EVMParamInfo = {
-  szBytes: number
-  typeIdx: number
-  arraySzs: number[]
-}
+  szBytes: number;
+  typeIdx: number;
+  arraySzs: number[];
+};
 
 type EVMDef = {
-  canonicalName: string
-  def: any
-}
+  canonicalName: string;
+  def: any;
+};

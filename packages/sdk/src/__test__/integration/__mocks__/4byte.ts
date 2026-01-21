@@ -29,7 +29,7 @@ export const fourbyteResponse0xa9059cbb = {
       text_signature: 'func_2093253501(bytes)',
     },
   ],
-}
+};
 
 export const fourbyteResponse0x38ed1739 = {
   results: [
@@ -42,7 +42,7 @@ export const fourbyteResponse0x38ed1739 = {
         'swapExactTokensForTokens(uint256,uint256,address[],address,uint256)',
     },
   ],
-}
+};
 
 export const fourbyteResponseac9650d8 = {
   results: [
@@ -54,7 +54,7 @@ export const fourbyteResponseac9650d8 = {
       bytes_signature: '¬\x96PØ',
     },
   ],
-}
+};
 
 export const fourbyteResponse0c49ccbe = {
   results: [
@@ -67,7 +67,7 @@ export const fourbyteResponse0c49ccbe = {
       bytes_signature: '\\fIÌ¾',
     },
   ],
-}
+};
 
 export const fourbyteResponsefc6f7865 = {
   results: [
@@ -79,7 +79,7 @@ export const fourbyteResponsefc6f7865 = {
       bytes_signature: 'üoxe',
     },
   ],
-}
+};
 
 export const fourbyteResponse0x6a761202 = {
   results: [
@@ -92,4 +92,4 @@ export const fourbyteResponse0x6a761202 = {
       bytes_signature: 'jv\\u0012\\u0002',
     },
   ],
-}
+};

@@ -1,28 +1,28 @@
-import { Hash } from 'ox'
-import type { Client } from '..'
-import bitcoin from '../bitcoin'
-import { EXTERNAL } from '../constants'
-import ethereum from '../ethereum'
-import { buildGenericSigningMsgRequest } from '../genericSigning'
-import type { Currency, FirmwareConstants, RequestParams } from '../types'
-import { fetchWithTimeout, parseLattice1Response } from '../util'
-import { LatticeResponseError } from './errors'
+import { Hash } from 'ox';
+import type { Client } from '..';
+import bitcoin from '../bitcoin';
+import { EXTERNAL } from '../constants';
+import ethereum from '../ethereum';
+import { buildGenericSigningMsgRequest } from '../genericSigning';
+import type { Currency, FirmwareConstants, RequestParams } from '../types';
+import { fetchWithTimeout, parseLattice1Response } from '../util';
+import { LatticeResponseError } from './errors';
 import {
   isDeviceBusy,
   isInvalidEphemeralId,
   isWrongWallet,
   shouldUseEVMLegacyConverter,
-} from './predicates'
-import { validateRequestError } from './validators'
+} from './predicates';
+import { validateRequestError } from './validators';
 
 export const buildTransaction = ({
   data,
   currency,
   fwConstants,
 }: {
-  data: any
-  currency?: Currency
-  fwConstants: FirmwareConstants
+  data: any;
+  currency?: Currency;
+  fwConstants: FirmwareConstants;
 }) => {
   // All transaction requests must be put into the same sized buffer. This comes from
   // sizeof(GpTransactionRequest_t), but note we remove the 2-byte schemaId since it is not
@@ -38,16 +38,16 @@ export const buildTransaction = ({
     console.log(
       'Using the legacy ETH signing path. This will soon be deprecated. ' +
         'Please switch to general signing request.',
-    )
-    let payload: Buffer | undefined
+    );
+    let payload: Buffer | undefined;
     try {
-      payload = ethereum.convertEthereumTransactionToGenericRequest(data)
+      payload = ethereum.convertEthereumTransactionToGenericRequest(data);
     } catch (err) {
-      console.error('Failed to convert legacy Ethereum transaction:', err)
+      console.error('Failed to convert legacy Ethereum transaction:', err);
       throw new Error(
         'Could not convert legacy request. Please switch to a general signing ' +
           'request. See gridplus-sdk docs for more information.',
-      )
+      );
     }
     data = {
       fwConstants,
@@ -56,33 +56,33 @@ export const buildTransaction = ({
       hashType: EXTERNAL.SIGNING.HASHES.KECCAK256,
       signerPath: data.signerPath,
       payload,
-    }
+    };
     return {
       requestData: buildGenericSigningMsgRequest({ ...data, fwConstants }),
       isGeneric: true,
-    }
+    };
   } else if (currency === 'ETH') {
     // Legacy signing pathway -- should deprecate in the future
     return {
       requestData: ethereum.buildEthereumTxRequest({ ...data, fwConstants }),
       isGeneric: false,
-    }
+    };
   } else if (currency === 'ETH_MSG') {
     return {
       requestData: ethereum.buildEthereumMsgRequest({ ...data, fwConstants }),
       isGeneric: false,
-    }
+    };
   } else if (currency === 'BTC') {
     return {
       requestData: bitcoin.buildBitcoinTxRequest({ ...data, fwConstants }),
       isGeneric: false,
-    }
+    };
   }
   return {
     requestData: buildGenericSigningMsgRequest({ ...data, fwConstants }),
     isGeneric: true,
-  }
-}
+  };
+};
 
 export const request = async ({
   url,
@@ -102,28 +102,28 @@ export const request = async ({
     .then((body) => {
       // Handle formatting or generic HTTP errors
       if (!body || !body.message) {
-        throw new Error('Invalid response')
+        throw new Error('Invalid response');
       } else if (body.status !== 200) {
-        throw new Error(`Error code ${body.status}: ${body.message}`)
+        throw new Error(`Error code ${body.status}: ${body.message}`);
       }
 
       const { data, errorMessage, responseCode } = parseLattice1Response(
         body.message,
-      )
+      );
 
       if (errorMessage || responseCode) {
-        throw new LatticeResponseError(responseCode, errorMessage)
+        throw new LatticeResponseError(responseCode, errorMessage);
       }
 
-      return data
-    })
-}
+      return data;
+    });
+};
 
 /**
  * `sleep()` returns a Promise that resolves after a given number of milliseconds.
  */
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -141,8 +141,8 @@ export const buildRetryWrapper = (client: Client, retries: number) => {
       params: { ...params, client },
       retries,
       client,
-    })
-}
+    });
+};
 
 /**
  * Retries a function call if the error message or response code is present and the number of
@@ -159,30 +159,30 @@ export const retryWrapper = async ({
   retries,
   client,
 }: {
-  fn: (...args: any[]) => Promise<any>
-  params: any
-  retries: number
-  client: any
+  fn: (...args: any[]) => Promise<any>;
+  params: any;
+  retries: number;
+  client: any;
 }) => {
   return fn({ ...params }).catch(async (err: Error) => {
     if (err instanceof LatticeResponseError) {
       /** `string` returned from the Lattice if there's an error */
-      const errorMessage = err.errorMessage
+      const errorMessage = err.errorMessage;
       /** `number` returned from the Lattice if there's an error */
-      const responseCode = err.responseCode
+      const responseCode = err.responseCode;
 
       if ((errorMessage || responseCode) && retries) {
         if (isDeviceBusy(responseCode)) {
-          await sleep(3000)
+          await sleep(3000);
         } else if (
           isWrongWallet(responseCode) &&
           !client.skipRetryOnWrongWallet
         ) {
-          await client.fetchActiveWallet()
+          await client.fetchActiveWallet();
         } else if (isInvalidEphemeralId(responseCode)) {
-          await client.connect(client.deviceId)
+          await client.connect(client.deviceId);
         } else {
-          throw err
+          throw err;
         }
 
         return retryWrapper({
@@ -190,12 +190,12 @@ export const retryWrapper = async ({
           params,
           retries: retries - 1,
           client,
-        })
+        });
       }
     }
-    throw err
-  })
-}
+    throw err;
+  });
+};
 
 /**
  * Get the ephemeral id, which is the first 4 bytes of the shared secret generated from the local
@@ -205,6 +205,6 @@ export const retryWrapper = async ({
  */
 export const getEphemeralId = (sharedSecret: Buffer) => {
   // EphemId is the first 4 bytes of the hash of the shared secret
-  const hash = Buffer.from(Hash.sha256(sharedSecret))
-  return Number.parseInt(hash.slice(0, 4).toString('hex'), 16)
-}
+  const hash = Buffer.from(Hash.sha256(sharedSecret));
+  return Number.parseInt(hash.slice(0, 4).toString('hex'), 16);
+};

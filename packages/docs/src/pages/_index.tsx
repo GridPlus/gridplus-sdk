@@ -1,17 +1,17 @@
-import type React from 'react'
-import Link from '@docusaurus/Link'
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext'
-import Layout, { type Props as LayoutProps } from '@theme/Layout'
-import clsx from 'clsx'
-import styles from './index.module.css'
+import type React from 'react';
+import Link from '@docusaurus/Link';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
+import Layout, { type Props as LayoutProps } from '@theme/Layout';
+import clsx from 'clsx';
+import styles from './index.module.css';
 
 interface ExtendedLayoutProps extends LayoutProps {
-  title?: string
-  description?: string
+  title?: string;
+  description?: string;
 }
 
 function HomepageHeader() {
-  const { siteConfig } = useDocusaurusContext()
+  const { siteConfig } = useDocusaurusContext();
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className="container">
@@ -27,12 +27,12 @@ function HomepageHeader() {
         </div>
       </div>
     </header>
-  )
+  );
 }
 
 export default function Home(): JSX.Element {
-  const { siteConfig } = useDocusaurusContext()
-  const ExtendedLayout = Layout as React.ComponentType<ExtendedLayoutProps>
+  const { siteConfig } = useDocusaurusContext();
+  const ExtendedLayout = Layout as React.ComponentType<ExtendedLayoutProps>;
   return (
     <ExtendedLayout
       title={`Hello from ${siteConfig.title}`}
@@ -41,5 +41,5 @@ export default function Home(): JSX.Element {
       <HomepageHeader />
       <main>{/* <HomepageFeatures /> */}</main>
     </ExtendedLayout>
-  )
+  );
 }

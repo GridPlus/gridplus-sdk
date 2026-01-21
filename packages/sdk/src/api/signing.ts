@@ -1,5 +1,5 @@
-import { RLP } from '@ethereumjs/rlp'
-import { Hash } from 'ox'
+import { RLP } from '@ethereumjs/rlp';
+import { Hash } from 'ox';
 import {
   type Address,
   type Authorization,
@@ -7,8 +7,8 @@ import {
   type TransactionSerializable,
   type TransactionSerializableEIP7702,
   serializeTransaction,
-} from 'viem'
-import { Constants } from '..'
+} from 'viem';
+import { Constants } from '..';
 import {
   BTC_LEGACY_DERIVATION,
   BTC_SEGWIT_DERIVATION,
@@ -16,8 +16,8 @@ import {
   CURRENCIES,
   DEFAULT_ETH_DERIVATION,
   SOLANA_DERIVATION,
-} from '../constants'
-import { fetchDecoder } from '../functions/fetchDecoder'
+} from '../constants';
+import { fetchDecoder } from '../functions/fetchDecoder';
 import type {
   BitcoinSignPayload,
   EIP712MessagePayload,
@@ -25,47 +25,47 @@ import type {
   SignRequestParams,
   SigningPayload,
   TransactionRequest,
-} from '../types'
-import { getYParity } from '../util'
-import { isEIP712Payload, queue } from './utilities'
+} from '../types';
+import { getYParity } from '../util';
+import { isEIP712Payload, queue } from './utilities';
 
 // Define the authorization request type based on Viem's structure
 type AuthorizationRequest = {
-  chainId: number
-  nonce: number
-} & ({ address: Address } | { contractAddress: Address })
+  chainId: number;
+  nonce: number;
+} & ({ address: Address } | { contractAddress: Address });
 
 /**
  * Sign a transaction using Viem-compatible transaction types
  */
-type RawTransaction = Hex | Uint8Array | Buffer
+type RawTransaction = Hex | Uint8Array | Buffer;
 
 export const sign = async (
   transaction: TransactionSerializable | RawTransaction,
   overrides?: Omit<SignRequestParams, 'data'>,
 ): Promise<SignData> => {
-  const isRaw = isRawTransaction(transaction)
+  const isRaw = isRawTransaction(transaction);
   const serializedTx = isRaw
     ? normalizeRawTransaction(transaction)
-    : serializeTransaction(transaction as TransactionSerializable)
+    : serializeTransaction(transaction as TransactionSerializable);
 
   // Determine the encoding type based on transaction type
   let encodingType:
     | typeof Constants.SIGNING.ENCODINGS.EVM
     | typeof Constants.SIGNING.ENCODINGS.EIP7702_AUTH
     | typeof Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST =
-    Constants.SIGNING.ENCODINGS.EVM
+    Constants.SIGNING.ENCODINGS.EVM;
   if (!isRaw && (transaction as TransactionSerializable).type === 'eip7702') {
-    const eip7702Tx = transaction as TransactionSerializableEIP7702
+    const eip7702Tx = transaction as TransactionSerializableEIP7702;
     const hasAuthList =
-      eip7702Tx.authorizationList && eip7702Tx.authorizationList.length > 0
+      eip7702Tx.authorizationList && eip7702Tx.authorizationList.length > 0;
     encodingType = hasAuthList
       ? Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST
-      : Constants.SIGNING.ENCODINGS.EIP7702_AUTH
+      : Constants.SIGNING.ENCODINGS.EIP7702_AUTH;
   }
 
   // Only fetch decoder if we have the required fields
-  let decoder: Buffer | undefined
+  let decoder: Buffer | undefined;
   if (
     !isRaw &&
     'data' in (transaction as TransactionSerializable) &&
@@ -76,7 +76,7 @@ export const sign = async (
       data: (transaction as TransactionSerializable).data,
       to: (transaction as TransactionSerializable).to,
       chainId: (transaction as TransactionSerializable).chainId,
-    } as TransactionRequest)
+    } as TransactionRequest);
   }
 
   const payload: SigningPayload = {
@@ -86,10 +86,10 @@ export const sign = async (
     encodingType,
     payload: serializedTx,
     decoder,
-  }
+  };
 
-  return queue((client) => client.sign({ data: payload, ...overrides }))
-}
+  return queue((client) => client.sign({ data: payload, ...overrides }));
+};
 
 /**
  * Sign a message with support for EIP-712 typed data and const assertions
@@ -109,15 +109,15 @@ export function signMessage(
     hashType: Constants.SIGNING.HASHES.KECCAK256,
     protocol: isEIP712Payload(payload) ? 'eip712' : 'signPersonal',
     payload: payload as SigningPayload<Record<string, unknown>>['payload'],
-  }
+  };
 
   const tx: SignRequestParams = {
     data: basePayload as SignRequestParams['data'],
     currency: overrides?.currency ?? CURRENCIES.ETH_MSG,
     ...(overrides ?? {}),
-  }
+  };
 
-  return queue((client) => client.sign(tx))
+  return queue((client) => client.sign(tx));
 }
 
 function isRawTransaction(
@@ -127,14 +127,14 @@ function isRawTransaction(
     typeof value === 'string' ||
     value instanceof Uint8Array ||
     Buffer.isBuffer(value)
-  )
+  );
 }
 
 function normalizeRawTransaction(tx: RawTransaction): Hex | Buffer {
   if (typeof tx === 'string') {
-    return tx.startsWith('0x') ? (tx as Hex) : (`0x${tx}` as Hex)
+    return tx.startsWith('0x') ? (tx as Hex) : (`0x${tx}` as Hex);
   }
-  return Buffer.from(tx)
+  return Buffer.from(tx);
 }
 
 /**
@@ -147,20 +147,20 @@ export const signAuthorization = async (
 ): Promise<Authorization> => {
   // EIP-7702 authorization message is: MAGIC || rlp([chain_id, address, nonce])
   // MAGIC = 0x05 per EIP-7702 spec
-  const MAGIC = Buffer.from([0x05])
+  const MAGIC = Buffer.from([0x05]);
 
   // Handle the address/contractAddress alias
   const address =
     'address' in authorization
       ? authorization.address
-      : authorization.contractAddress
+      : authorization.contractAddress;
 
   const message = Buffer.concat([
     MAGIC,
     Buffer.from(
       RLP.encode([authorization.chainId, address, authorization.nonce]),
     ),
-  ])
+  ]);
 
   const payload: SigningPayload = {
     signerPath: DEFAULT_ETH_DERIVATION,
@@ -168,26 +168,26 @@ export const signAuthorization = async (
     hashType: Constants.SIGNING.HASHES.KECCAK256,
     encodingType: Constants.SIGNING.ENCODINGS.EIP7702_AUTH,
     payload: message,
-  }
+  };
 
   // Get the signature with all components
   const response = await queue((client) =>
     client.sign({ data: payload, ...overrides }),
-  )
+  );
 
   // Extract signature components if they exist
   if (response.sig && response.pubkey) {
     // Calculate the correct y-parity value
-    const messageHash = Buffer.from(Hash.keccak256(message))
-    const yParity = getYParity(messageHash, response.sig, response.pubkey)
+    const messageHash = Buffer.from(Hash.keccak256(message));
+    const yParity = getYParity(messageHash, response.sig, response.pubkey);
 
     // Handle both Buffer and string formats for r and s
     const rValue = Buffer.isBuffer(response.sig.r)
       ? `0x${response.sig.r.toString('hex')}`
-      : response.sig.r
+      : response.sig.r;
     const sValue = Buffer.isBuffer(response.sig.s)
       ? `0x${response.sig.s.toString('hex')}`
-      : response.sig.s
+      : response.sig.s;
 
     // Create a complete Authorization object with all required signature components
     const result: Authorization = {
@@ -197,13 +197,13 @@ export const signAuthorization = async (
       yParity,
       r: rValue as Hex,
       s: sValue as Hex,
-    }
+    };
 
-    return result
+    return result;
   }
 
-  throw new Error('Failed to get signature from device')
-}
+  throw new Error('Failed to get signature from device');
+};
 
 /**
  * Sign an EIP-7702 transaction using Viem-compatible types
@@ -211,7 +211,7 @@ export const signAuthorization = async (
 export const signAuthorizationList = async (
   tx: TransactionSerializableEIP7702,
 ): Promise<SignData> => {
-  const serializedTx = serializeTransaction(tx)
+  const serializedTx = serializeTransaction(tx);
 
   const payload: SigningPayload = {
     signerPath: DEFAULT_ETH_DERIVATION,
@@ -219,13 +219,13 @@ export const signAuthorizationList = async (
     hashType: Constants.SIGNING.HASHES.KECCAK256,
     encodingType: Constants.SIGNING.ENCODINGS.EIP7702_AUTH_LIST,
     payload: serializedTx,
-  }
+  };
 
-  const signedPayload = await queue((client) => client.sign({ data: payload }))
+  const signedPayload = await queue((client) => client.sign({ data: payload }));
 
   // Return the SignData structure from Lattice, not the converted signature
-  return signedPayload
-}
+  return signedPayload;
+};
 
 export const signBtcLegacyTx = async (
   payload: BitcoinSignPayload,
@@ -236,9 +236,9 @@ export const signBtcLegacyTx = async (
       ...payload,
     },
     currency: CURRENCIES.BTC,
-  }
-  return queue((client) => client.sign(tx))
-}
+  };
+  return queue((client) => client.sign(tx));
+};
 
 export const signBtcSegwitTx = async (
   payload: BitcoinSignPayload,
@@ -249,9 +249,9 @@ export const signBtcSegwitTx = async (
       ...payload,
     },
     currency: CURRENCIES.BTC,
-  }
-  return queue((client) => client.sign(tx))
-}
+  };
+  return queue((client) => client.sign(tx));
+};
 
 export const signBtcWrappedSegwitTx = async (
   payload: BitcoinSignPayload,
@@ -262,9 +262,9 @@ export const signBtcWrappedSegwitTx = async (
       ...payload,
     },
     currency: CURRENCIES.BTC,
-  }
-  return queue((client) => client.sign(tx))
-}
+  };
+  return queue((client) => client.sign(tx));
+};
 
 export const signSolanaTx = async (
   payload: Buffer,
@@ -279,6 +279,6 @@ export const signSolanaTx = async (
       payload,
       ...overrides,
     },
-  }
-  return queue((client) => client.sign(tx))
-}
+  };
+  return queue((client) => client.sign(tx));
+};

@@ -5,14 +5,14 @@
  * Each vector contains domain, types, primaryType, and message data.
  */
 
-import type { EIP712TestMessage } from '../../utils/viemComparison'
+import type { EIP712TestMessage } from '../../utils/viemComparison';
 
 // Mock contract address for EIP-712 domain
-const MOCK_CONTRACT_ADDRESS = '0x1234567890123456789012345678901234567890'
+const MOCK_CONTRACT_ADDRESS = '0x1234567890123456789012345678901234567890';
 
 export const EIP712_MESSAGE_VECTORS: Array<{
-  name: string
-  message: EIP712TestMessage
+  name: string;
+  message: EIP712TestMessage;
 }> = [
   {
     name: 'Negative Amount - Basic negative integer',
@@ -318,4 +318,4 @@ export const EIP712_MESSAGE_VECTORS: Array<{
       },
     },
   },
-]
+];
