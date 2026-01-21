@@ -1,8 +1,8 @@
 export {}
 declare global {
-	namespace Vi {
-		interface JestAssertion {
-			toEqualElseLog(a: any, msg: string): any
-		}
-	}
+  namespace Vi {
+    interface JestAssertion {
+      toEqualElseLog(a: any, msg: string): any
+    }
+  }
 }

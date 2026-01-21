@@ -1,10 +1,10 @@
 import { Client } from '../client'
 import { EXTERNAL, HARDENED_OFFSET } from '../constants'
 import {
-	getFunctionQueue,
-	loadClient,
-	saveClient,
-	setFunctionQueue,
+  getFunctionQueue,
+  loadClient,
+  saveClient,
+  setFunctionQueue,
 } from './state'
 
 /**
@@ -17,108 +17,108 @@ import {
  * @internal
  */
 export const queue = async (fn: (client: Client) => Promise<any>) => {
-	const client = await loadClient()
-	if (!client) throw new Error('Client not initialized')
-	if (!getFunctionQueue()) {
-		setFunctionQueue(Promise.resolve())
-	}
-	setFunctionQueue(
-		getFunctionQueue().then(
-			async () =>
-				await fn(client)
-					.catch((err) => {
-						// Empty the queue if any function call fails
-						setFunctionQueue(Promise.resolve())
-						throw err
-					})
-					.then((returnValue) => {
-						saveClient(client.getStateData())
-						return returnValue
-					}),
-		),
-	)
-	return getFunctionQueue()
+  const client = await loadClient()
+  if (!client) throw new Error('Client not initialized')
+  if (!getFunctionQueue()) {
+    setFunctionQueue(Promise.resolve())
+  }
+  setFunctionQueue(
+    getFunctionQueue().then(
+      async () =>
+        await fn(client)
+          .catch((err) => {
+            // Empty the queue if any function call fails
+            setFunctionQueue(Promise.resolve())
+            throw err
+          })
+          .then((returnValue) => {
+            saveClient(client.getStateData())
+            return returnValue
+          }),
+    ),
+  )
+  return getFunctionQueue()
 }
 
 export const getClient = async (): Promise<Client> => {
-	const client = loadClient ? await loadClient() : undefined
-	if (!client) throw new Error('Client not initialized')
-	return client
+  const client = loadClient ? await loadClient() : undefined
+  if (!client) throw new Error('Client not initialized')
+  return client
 }
 
 const encodeClientData = (clientData: string) => {
-	return Buffer.from(clientData).toString('base64')
+  return Buffer.from(clientData).toString('base64')
 }
 
 const decodeClientData = (clientData: string) => {
-	return Buffer.from(clientData, 'base64').toString()
+  return Buffer.from(clientData, 'base64').toString()
 }
 
 export const buildSaveClientFn = (
-	setStoredClient: (clientData: string | null) => Promise<void>,
+  setStoredClient: (clientData: string | null) => Promise<void>,
 ) => {
-	return async (clientData: string | null) => {
-		if (!clientData) return
-		const encodedData = encodeClientData(clientData)
-		await setStoredClient(encodedData)
-	}
+  return async (clientData: string | null) => {
+    if (!clientData) return
+    const encodedData = encodeClientData(clientData)
+    await setStoredClient(encodedData)
+  }
 }
 
 export const buildLoadClientFn = (getStoredClient: () => Promise<string>) => {
-	return async () => {
-		const clientData = await getStoredClient()
-		if (!clientData) return undefined
-		const stateData = decodeClientData(clientData)
-		if (!stateData) return undefined
-		const client = new Client({ stateData })
-		if (!client) throw new Error('Client not initialized')
-		return client
-	}
+  return async () => {
+    const clientData = await getStoredClient()
+    if (!clientData) return undefined
+    const stateData = decodeClientData(clientData)
+    if (!stateData) return undefined
+    const client = new Client({ stateData })
+    if (!client) throw new Error('Client not initialized')
+    return client
+  }
 }
 
 export const getStartPath = (
-	defaultStartPath: number[],
-	addressIndex = 0, // The value to increment `defaultStartPath`
-	pathIndex = 4, // Which index in `defaultStartPath` array to increment
+  defaultStartPath: number[],
+  addressIndex = 0, // The value to increment `defaultStartPath`
+  pathIndex = 4, // Which index in `defaultStartPath` array to increment
 ): number[] => {
-	const startPath = [...defaultStartPath]
-	if (addressIndex > 0) {
-		startPath[pathIndex] = defaultStartPath[pathIndex] + addressIndex
-	}
-	return startPath
+  const startPath = [...defaultStartPath]
+  if (addressIndex > 0) {
+    startPath[pathIndex] = defaultStartPath[pathIndex] + addressIndex
+  }
+  return startPath
 }
 
 export const isEIP712Payload = (payload: any) =>
-	typeof payload !== 'string' &&
-	'types' in payload &&
-	'domain' in payload &&
-	'primaryType' in payload &&
-	'message' in payload
+  typeof payload !== 'string' &&
+  'types' in payload &&
+  'domain' in payload &&
+  'primaryType' in payload &&
+  'message' in payload
 
 export function parseDerivationPath(path: string): number[] {
-	if (!path) return []
-	const components = path.split('/').filter(Boolean)
-	return parseDerivationPathComponents(components)
+  if (!path) return []
+  const components = path.split('/').filter(Boolean)
+  return parseDerivationPathComponents(components)
 }
 
 export function parseDerivationPathComponents(components: string[]): number[] {
-	return components.map((part) => {
-		const lowerPart = part.toLowerCase()
-		if (lowerPart === 'x') return 0 // Wildcard
-		if (lowerPart === "x'") return HARDENED_OFFSET // Hardened wildcard
-		if (part.endsWith("'"))
-			return Number.parseInt(part.slice(0, -1)) + HARDENED_OFFSET
-		const val = Number.parseInt(part)
-		if (Number.isNaN(val)) {
-			throw new Error(`Invalid part in derivation path: ${part}`)
-		}
-		return val
-	})
+  return components.map((part) => {
+    const lowerPart = part.toLowerCase()
+    if (lowerPart === 'x') return 0 // Wildcard
+    if (lowerPart === "x'") return HARDENED_OFFSET // Hardened wildcard
+    if (part.endsWith("'"))
+      return Number.parseInt(part.slice(0, -1)) + HARDENED_OFFSET
+    const val = Number.parseInt(part)
+    if (Number.isNaN(val)) {
+      throw new Error(`Invalid part in derivation path: ${part}`)
+    }
+    return val
+  })
 }
 
 export function getFlagFromPath(path: number[]): number | undefined {
-	if (path.length >= 2 && path[1] === 501 + HARDENED_OFFSET) {
-		return EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB // SOLANA
-	}
-	return undefined
+  if (path.length >= 2 && path[1] === 501 + HARDENED_OFFSET) {
+    return EXTERNAL.GET_ADDR_FLAGS.ED25519_PUB // SOLANA
+  }
+  return undefined
 }

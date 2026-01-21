@@ -1,235 +1,235 @@
 // Constant test vectors for various things
 {
-	"evm": {
-		// We use these vectors to test just-in-type calldata decoding for EVM transactions.
-		// The relevant protocol is Ethereum ABI serdes: https://docs.soliditylang.org/en/develop/abi-spec.html
-		"calldata": {
-			// Public transactions interacting with contracts. We use these
-			// to simulate a production environment of fetching ABI data and adding
-			// decoding info to the request.
-			"publicTxHashes": [
-				{
-					"chainID": 137,
-					"hash": "0xd19a9bf70da20c10faf4d4355940cca8a5db91fa6cc1d258d6660d475d36616d",
-					// If you look at this example on Polygonscan, you'll notice the function being
-					// called is not actually available in the source code of the contract...
-					// So we needed to add a param to skip that test.
-					"skipBlockExplorerReq": true
-				},
-				//  swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] path,
-				//  address to, uint256 deadline)
-				{
-					"chainID": 1,
-					"hash": "0xeee0752109c6d31038bab6c2b0a3e3857e8bffb9c229de71f0196fda6fb28a5e"
-				},
-				//  remove_liquidity_one_coin(uint256 _token_amount, int128 i, uint256 _min_amount)
-				{
-					"chainID": 1,
-					"hash": "0xa6173b4890303e12ca1b195ea4a04d8891b0d83768b734d2ecdb9c6dd9d828c4"
-				},
-				//  atomicMatch_(address[14],uint256[18],uint8[8],bytes,bytes,bytes,bytes,bytes,bytes,
-				//  uint8[2],bytes32[5])
-				// this one is too large for 1 frame
-				// "0x92c82aad37a925e3aabe3d603109a5e65993aa2615c4b2278c3d355d9d433dff",
-				//  exactInput((bytes,address,uint256,uint256,uint256))
-				{
-					"chainID": 1,
-					"hash": "0xee9710119c13dba6fe2de240ef1e24a2489e98d9c7dd5881e2901056764ee234"
-				},
-				//  exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))
-				{
-					"chainID": 1,
-					"hash": "0xc33308ca105630b99a0c24ddde4f4506aa4115ec6f1a25f1138f3bd8cfa32b49"
-				},
-				//  proveAndClaimWithResolver(bytes,(bytes,bytes)[],bytes,address,address)
-				{
-					"chainID": 1,
-					"hash": "0xe15e6205c6696d444fc426468defdf08e89a0f5b3b8a17c68428f7aeefd53ca1"
-				},
-				// bulkTransfer(((uint8,address,uint256,uint256)[],address,bool)[],bytes32)
-				{
-					"chainID": 1,
-					"hash": "0x6f0ba3cb3c08e0ee443e4b7a78e1397413762e63287e348829c18f287c5a457f"
-				},
-				// RECURSIVE DEFS
-				// multicall(bytes[])
-				{
-					"chainID": 1,
-					"hash": "0xf4c48f0300acb2982fe8861ffd9291634115a33dc4107a66b4f9f43efb66896b"
-				},
-				// execTransaction(address,uint256,(disperseTokenSimple(address,address[],uint256[])),uint8,uint256,uint256,uint256,address,address,bytes)
-				{
-					"chainID": 1,
-					"hash": "0xb6349347a1dec402c59cd94c5715513af7ecf3e532376f2a5a47c99ee224de2a"
-				},
-				// execTransaction(address,uint256,(multicall(bytes[])),uint8,uint256,uint256,uint256,address,address,bytes)
-				{
-					"chainID": 1,
-					"hash": "0x2af244a02066c0a8e3998d247e071a03cd38ecbec60f93ddf63da0dce3932f86"
-				}
-			],
-			// These are canonical ABI definitions that we use to test more unusual function types.
-			// The names are parsed and dummy data is filled in (see helpers in ./evm.ts).
-			// The accompanying tests also have some helpful print lines which are commented out
-			// by default but are useful for debugging.
-			// The purpose of these is to ensure all (most) ABI structures can be decoded.
-			// A few of these towards the end are not supported but they are such edge cases that
-			// it's not worth worrying about them for now.
-			"canonicalNames": [
-				// ---
-				// Test a few vectors we alredy checked with Etherscan
-				// ---
-				"swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
-				"proveAndClaimWithResolver((bytes,bytes)[])",
-				"proveAndClaimWithResolver(bytes,(bytes,bytes)[])",
-				"proveAndClaimWithResolver(bytes,(bytes,bytes)[],bytes,address,address)",
-				"remove_liquidity_one_coin(uint256,int128,uint256)",
-				// ---
-				// Made up vectors that should all decode
-				// ---
-				"multidimArr(uint256[][],bool)",
-				"multidimArr(uint256[2][])",
-				"multidimArr(uint256[][2])",
-				"multidimArr(uint256[2],bool)",
-				"multidimArr(uint256[2][2],bool)",
-				"multidimArr(uint256[2][2][2],bool)",
-				"multidimArr(uint256[2][2],bool)",
-				"multidimArr(uint256[][][],bool)",
-				"multidimArr(bool,uint256[],bool)",
-				"multidimArr(bytes,uint256[][],bool)",
-				"singleTup((uint256,uint256))",
-				"singleTup((uint256[]))",
-				"singleTup((uint256[],bool))",
-				"singleTup((bool,bool,uint[],uint256))",
-				"singleTup((uint256[1],uint256[]))",
-				"singleTup((bytes,uint256))",
-				"singleTup((bytes,uint256)[])",
-				"singleTup((uint256,uint256)[])",
-				"singleTup((uint256,uint256)[2])",
-				"singleTup((uint256[2],uint256))",
-				"singleTup((uint256,uint256)[2])",
-				"singleTup((uint256,uint256)[],bytes)",
-				"singleTup((uint256,uint256)[][],bytes)",
-				"singleTup((uint256,uint256)[2][],bytes)",
-				"singleTup((uint256,uint256)[][2],bytes)",
-				"singleTup((uint256,uint256)[2],bytes)",
-				"singleTup(bytes[],(uint256,uint256)[2],bytes)",
-				"singleTup(bytes[2],(uint256,uint256)[2],bytes)",
-				"singleTup((uint256,uint256)[2],bytes)",
-				"singleTup((uint256,uint256)[2][2],bytes)",
-				"singleTup((uint256,uint256)[2][2][2],bytes)",
-				"singleTup((uint256),bool)",
-				"singleTup(bytes,(bytes),bool)",
-				"singleTup((uint256,bool),bool)",
-				"singleTup((uint256,bool),bytes)",
-				"singleTup(bytes,(uint256),bool)",
-				"singleTup(bytes,(bytes),bool)",
-				"singleTup(bool,(uint256,bytes),bytes)",
-				"singleTup((uint256,uint256)[],bool)",
-				"singleTup((bytes)[],bool)",
-				"singleTup((bytes)[1],bool)",
-				"multiTup((uint256,uint256)[],(bool))",
-				"multiTup((uint256,uint256)[2],(bool))",
-				"multiTup((uint256)[2],(bool)[])",
-				"multiTup((uint256)[2],(bool)[2])",
-				"multiTup((uint256)[],(bool))",
-				"multiTup((uint256)[],(bool)[2])",
-				"multiTup((uint256,uint256)[],(bool)[])",
-				"multiTup((uint256,uint256)[2],(bool)[])",
-				"multiTup((uint256)[2][2],(bool)[2][2])",
-				"multiTup((uint256)[2][],(bool)[2][])",
-				"multiTup((uint256)[2][],(bool)[][])",
-				"multiTup((uint256)[][],(bool)[2][])",
-				"multiTup((uint256)[][],(bool)[][])",
-				"multiTup((uint256)[][],(bool)[2][2])",
-				"multiTup((uint256)[2][2],(bool)[][])",
-				"nestedTup(uint256,(bytes)[1],bool)",
-				"nestedTup((uint256,(bool,address),bool))",
-				"nestedTup((uint256,(bool,bytes),bool))",
-				"nestedTup(bool,(uint256,(bool,bytes),bool))",
-				"nestedTup(bytes,(uint256,(bool,bytes),bool))",
-				"nestedTup(bytes,(uint256,(bool,bytes)[],bool))",
-				"nestedTup(bool,(uint256,(bool,bytes),bool)[])",
-				"nestedTup(bytes,(uint256,(bool,bytes)[][],bool)[])",
-				"nestedTup(bytes,(uint256,(bool)[2],bool))",
-				"nestedTup((uint256,(bytes[])[2],uint256))",
-				"nestedTup((uint256,(bytes[2])[2],uint256))",
-				"nestedTup((uint256,(bytes[2])[],uint256))",
-				"nestedTup((uint256,(bytes[])[],uint256))",
-				"nestedTup((uint256,(bytes)[2],bool))",
-				"nestedTup((bytes,(bytes)[2],bool))",
-				"nestedTup(bytes,(uint256,(bool)[2],bool))",
-				"nestedTup(bytes,(uint256,(bytes)[2],bool))"
-				// ---
-				// Extreme edge cases that do not currently decode
-				// ---
-				// "nestedTup(((bytes)[1],bool))", // does not decode
-				// "nestedTup(((bytes)[2],bool))", // does not decode
-				// "nestedTup(bytes,(uint256,(bool,bytes)[2],bool))", // does not decode
-				// "nestedTup(bytes,(uint256,(bool,bytes)[2],bool))", // does not decode
-				// "nestedTup(bytes,(uint256,(bool,bytes)[2],bool)[])", // does not decode
-				// "nestedTup(bytes,(uint256,(bool,bytes)[2],bool)[2])", // does not decode
-				// "nestedTup(bytes,(uint256,(bool,bytes)[][],bool)[2][])", // too large
-			]
-		}
-	},
-	"ethDeposit": {
-		"mnemonic": "winner much erosion weird rubber onion diagram mandate assist fluid slush theory",
-		"depositData": [
-			{
-				"depositPath": [12381, 3600, 0, 0, 0],
-				"eth1WithdrawalKey": "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5",
-				"blsWithdrawalRef": {
-					"pubkey": "b77d6918d5edb4073a4ea4408073b698f00df478ff2726cdb8190e3be1fe5496f22b089f6ae4cf7cafaccb74683be5e4",
-					"withdrawal_credentials": "001cdf4c156742da500ed24475b8afd9a8b5a06f3a7ce8521bd3a23d6982ad7a",
-					"amount": 32000000000,
-					"signature": "8313af52b8822e9d8e66718e37eb8f14ca4cf25b7ab727dd9858c55667dd2a7fdbec9ed16c50911fbfee50eaeda76e1a026ebbf141b050ea94b203ff6b45d175cc33be26d65795e8cff02373ae68a2c3c94c261a0a7b45a897c5f4cead8cbf6e",
-					"deposit_message_root": "011f25b8a533635297ca36c97320aeb2644d7784f16b6dc668dc5acf3f17751c",
-					"deposit_data_root": "aa95cc7b31056cbc524fb82bc5641f60a0f3592bf960bdc875d24b332cd730ca",
-					"fork_version": "00000000",
-					"network_name": "mainnet",
-					"deposit_cli_version": "2.3.0"
-				},
-				"eth1WithdrawalRef": {
-					"pubkey": "b77d6918d5edb4073a4ea4408073b698f00df478ff2726cdb8190e3be1fe5496f22b089f6ae4cf7cafaccb74683be5e4",
-					"withdrawal_credentials": "01000000000000000000000095222290dd7278aa3ddd389cc1e1d165cc4bafe5",
-					"amount": 32000000000,
-					"signature": "88dc6055732e97a2cd4524b658ef62f67daf12f03b0334fd72de4feeb7c44c681fb39ec6a27aee8d3a458a63642ef75711966581ec9dac56572973511c993560c52855d261e47476f970ffd76868c56e9a4d0f37bf23f05268ff73ddb686efeb",
-					"deposit_message_root": "e2b6b2dbc2f1a9cdd4a111f396c009490c67dfa08582c7c4ea18379adde6148f",
-					"deposit_data_root": "603160dc42fe11f2e2c057c85179cc008dd64c9d11ae20b8ffc9a5ceecece847",
-					"fork_version": "00000000",
-					"network_name": "mainnet",
-					"deposit_cli_version": "2.3.0"
-				}
-			},
-			{
-				"depositPath": [12381, 3600, 1, 0, 0],
-				"eth1WithdrawalKey": "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5",
-				"blsWithdrawalRef": {
-					"pubkey": "a0aa536f68981cb705e506036e40b4373f67e10ff66f64835d63ffb3ca5e5eeea5396b2569315b060f0b90a2862a740c",
-					"withdrawal_credentials": "00783f5f1c25faa1282bbd1be67c0da48e5fbb9a21cf7bb95819b37a9a545429",
-					"amount": 32000000000,
-					"signature": "a54d6e949f359aaa9c5ec7ea078bff59a8a747ff8c1518963434d0090ee53dd4c87540d9cd7456a370b3db9d29491abe0413eda2384affa87c7b377b995ad617f5dc4c420593066a8b83345956b44ca0235344d1478e8500f9731dfae7128f4c",
-					"deposit_message_root": "3bd64fca376ba66a9b7428872f143e6e222e411af05401eba760722683a2cd47",
-					"deposit_data_root": "2dd6d49609584c73ec12194cb9a5f39841b6854e04e0df043bdb9eaa5b65bb86",
-					"fork_version": "00000000",
-					"network_name": "mainnet",
-					"deposit_cli_version": "2.3.0"
-				},
-				"eth1WithdrawalRef": {
-					"pubkey": "a0aa536f68981cb705e506036e40b4373f67e10ff66f64835d63ffb3ca5e5eeea5396b2569315b060f0b90a2862a740c",
-					"withdrawal_credentials": "01000000000000000000000095222290dd7278aa3ddd389cc1e1d165cc4bafe5",
-					"amount": 32000000000,
-					"signature": "b1e98e44f1a8a550afeeaac839f93e74d07651c1fa1d12cf857787e20939d346f44a41997682b93a7d51267f77bd979406a7e42c4531abd23ee0d65e1ccc5432313714c1abd92fbebbbde798a9e6b875b4f59cb7a76d7d07094b66e102918248",
-					"deposit_message_root": "f4b94882da58e71f4557620c35b2c16c975b50093ae9a8041aaa67e840aba9aa",
-					"deposit_data_root": "1cc71b9a34ef5730154985c36ac2f9e4f9017959c144e9083d0e8f79311eed59",
-					"fork_version": "00000000",
-					"network_name": "mainnet",
-					"deposit_cli_version": "2.3.0"
-				}
-			}
-		]
-	},
-	// Dehydrated state for unit/integration tests
-	"dehydratedClientState": "{\"activeWallets\":{\"internal\":{\"uid\":\"162b56efe561c12bc93f703dc7026b3ec3d53923270c9259e2b08015fb9defd2\"},\"external\":{\"uid\":\"0000000000000000000000000000000000000000000000000000000000000000\"}},\"ephemeralPub\":\"04627c74680bee7907c07fdea2bde0ab1ac17c95213f379ccc1dce87f3586babe8ba0ed02688fd5539a54ea1b7b8ab0860d1853006f55f22a2e3ea4e190a17ab30\",\"fwVersion\":\"00110000\",\"deviceId\":\"Cd3dtg\",\"name\":\"SDK Test\",\"baseUrl\":\"https: //signing.gridpl.us\",\"privKey\":\"3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca\",\"retryCount\":3,\"timeout\":120000}"
+  "evm": {
+    // We use these vectors to test just-in-type calldata decoding for EVM transactions.
+    // The relevant protocol is Ethereum ABI serdes: https://docs.soliditylang.org/en/develop/abi-spec.html
+    "calldata": {
+      // Public transactions interacting with contracts. We use these
+      // to simulate a production environment of fetching ABI data and adding
+      // decoding info to the request.
+      "publicTxHashes": [
+        {
+          "chainID": 137,
+          "hash": "0xd19a9bf70da20c10faf4d4355940cca8a5db91fa6cc1d258d6660d475d36616d",
+          // If you look at this example on Polygonscan, you'll notice the function being
+          // called is not actually available in the source code of the contract...
+          // So we needed to add a param to skip that test.
+          "skipBlockExplorerReq": true
+        },
+        //  swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] path,
+        //  address to, uint256 deadline)
+        {
+          "chainID": 1,
+          "hash": "0xeee0752109c6d31038bab6c2b0a3e3857e8bffb9c229de71f0196fda6fb28a5e"
+        },
+        //  remove_liquidity_one_coin(uint256 _token_amount, int128 i, uint256 _min_amount)
+        {
+          "chainID": 1,
+          "hash": "0xa6173b4890303e12ca1b195ea4a04d8891b0d83768b734d2ecdb9c6dd9d828c4"
+        },
+        //  atomicMatch_(address[14],uint256[18],uint8[8],bytes,bytes,bytes,bytes,bytes,bytes,
+        //  uint8[2],bytes32[5])
+        // this one is too large for 1 frame
+        // "0x92c82aad37a925e3aabe3d603109a5e65993aa2615c4b2278c3d355d9d433dff",
+        //  exactInput((bytes,address,uint256,uint256,uint256))
+        {
+          "chainID": 1,
+          "hash": "0xee9710119c13dba6fe2de240ef1e24a2489e98d9c7dd5881e2901056764ee234"
+        },
+        //  exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))
+        {
+          "chainID": 1,
+          "hash": "0xc33308ca105630b99a0c24ddde4f4506aa4115ec6f1a25f1138f3bd8cfa32b49"
+        },
+        //  proveAndClaimWithResolver(bytes,(bytes,bytes)[],bytes,address,address)
+        {
+          "chainID": 1,
+          "hash": "0xe15e6205c6696d444fc426468defdf08e89a0f5b3b8a17c68428f7aeefd53ca1"
+        },
+        // bulkTransfer(((uint8,address,uint256,uint256)[],address,bool)[],bytes32)
+        {
+          "chainID": 1,
+          "hash": "0x6f0ba3cb3c08e0ee443e4b7a78e1397413762e63287e348829c18f287c5a457f"
+        },
+        // RECURSIVE DEFS
+        // multicall(bytes[])
+        {
+          "chainID": 1,
+          "hash": "0xf4c48f0300acb2982fe8861ffd9291634115a33dc4107a66b4f9f43efb66896b"
+        },
+        // execTransaction(address,uint256,(disperseTokenSimple(address,address[],uint256[])),uint8,uint256,uint256,uint256,address,address,bytes)
+        {
+          "chainID": 1,
+          "hash": "0xb6349347a1dec402c59cd94c5715513af7ecf3e532376f2a5a47c99ee224de2a"
+        },
+        // execTransaction(address,uint256,(multicall(bytes[])),uint8,uint256,uint256,uint256,address,address,bytes)
+        {
+          "chainID": 1,
+          "hash": "0x2af244a02066c0a8e3998d247e071a03cd38ecbec60f93ddf63da0dce3932f86"
+        }
+      ],
+      // These are canonical ABI definitions that we use to test more unusual function types.
+      // The names are parsed and dummy data is filled in (see helpers in ./evm.ts).
+      // The accompanying tests also have some helpful print lines which are commented out
+      // by default but are useful for debugging.
+      // The purpose of these is to ensure all (most) ABI structures can be decoded.
+      // A few of these towards the end are not supported but they are such edge cases that
+      // it's not worth worrying about them for now.
+      "canonicalNames": [
+        // ---
+        // Test a few vectors we alredy checked with Etherscan
+        // ---
+        "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
+        "proveAndClaimWithResolver((bytes,bytes)[])",
+        "proveAndClaimWithResolver(bytes,(bytes,bytes)[])",
+        "proveAndClaimWithResolver(bytes,(bytes,bytes)[],bytes,address,address)",
+        "remove_liquidity_one_coin(uint256,int128,uint256)",
+        // ---
+        // Made up vectors that should all decode
+        // ---
+        "multidimArr(uint256[][],bool)",
+        "multidimArr(uint256[2][])",
+        "multidimArr(uint256[][2])",
+        "multidimArr(uint256[2],bool)",
+        "multidimArr(uint256[2][2],bool)",
+        "multidimArr(uint256[2][2][2],bool)",
+        "multidimArr(uint256[2][2],bool)",
+        "multidimArr(uint256[][][],bool)",
+        "multidimArr(bool,uint256[],bool)",
+        "multidimArr(bytes,uint256[][],bool)",
+        "singleTup((uint256,uint256))",
+        "singleTup((uint256[]))",
+        "singleTup((uint256[],bool))",
+        "singleTup((bool,bool,uint[],uint256))",
+        "singleTup((uint256[1],uint256[]))",
+        "singleTup((bytes,uint256))",
+        "singleTup((bytes,uint256)[])",
+        "singleTup((uint256,uint256)[])",
+        "singleTup((uint256,uint256)[2])",
+        "singleTup((uint256[2],uint256))",
+        "singleTup((uint256,uint256)[2])",
+        "singleTup((uint256,uint256)[],bytes)",
+        "singleTup((uint256,uint256)[][],bytes)",
+        "singleTup((uint256,uint256)[2][],bytes)",
+        "singleTup((uint256,uint256)[][2],bytes)",
+        "singleTup((uint256,uint256)[2],bytes)",
+        "singleTup(bytes[],(uint256,uint256)[2],bytes)",
+        "singleTup(bytes[2],(uint256,uint256)[2],bytes)",
+        "singleTup((uint256,uint256)[2],bytes)",
+        "singleTup((uint256,uint256)[2][2],bytes)",
+        "singleTup((uint256,uint256)[2][2][2],bytes)",
+        "singleTup((uint256),bool)",
+        "singleTup(bytes,(bytes),bool)",
+        "singleTup((uint256,bool),bool)",
+        "singleTup((uint256,bool),bytes)",
+        "singleTup(bytes,(uint256),bool)",
+        "singleTup(bytes,(bytes),bool)",
+        "singleTup(bool,(uint256,bytes),bytes)",
+        "singleTup((uint256,uint256)[],bool)",
+        "singleTup((bytes)[],bool)",
+        "singleTup((bytes)[1],bool)",
+        "multiTup((uint256,uint256)[],(bool))",
+        "multiTup((uint256,uint256)[2],(bool))",
+        "multiTup((uint256)[2],(bool)[])",
+        "multiTup((uint256)[2],(bool)[2])",
+        "multiTup((uint256)[],(bool))",
+        "multiTup((uint256)[],(bool)[2])",
+        "multiTup((uint256,uint256)[],(bool)[])",
+        "multiTup((uint256,uint256)[2],(bool)[])",
+        "multiTup((uint256)[2][2],(bool)[2][2])",
+        "multiTup((uint256)[2][],(bool)[2][])",
+        "multiTup((uint256)[2][],(bool)[][])",
+        "multiTup((uint256)[][],(bool)[2][])",
+        "multiTup((uint256)[][],(bool)[][])",
+        "multiTup((uint256)[][],(bool)[2][2])",
+        "multiTup((uint256)[2][2],(bool)[][])",
+        "nestedTup(uint256,(bytes)[1],bool)",
+        "nestedTup((uint256,(bool,address),bool))",
+        "nestedTup((uint256,(bool,bytes),bool))",
+        "nestedTup(bool,(uint256,(bool,bytes),bool))",
+        "nestedTup(bytes,(uint256,(bool,bytes),bool))",
+        "nestedTup(bytes,(uint256,(bool,bytes)[],bool))",
+        "nestedTup(bool,(uint256,(bool,bytes),bool)[])",
+        "nestedTup(bytes,(uint256,(bool,bytes)[][],bool)[])",
+        "nestedTup(bytes,(uint256,(bool)[2],bool))",
+        "nestedTup((uint256,(bytes[])[2],uint256))",
+        "nestedTup((uint256,(bytes[2])[2],uint256))",
+        "nestedTup((uint256,(bytes[2])[],uint256))",
+        "nestedTup((uint256,(bytes[])[],uint256))",
+        "nestedTup((uint256,(bytes)[2],bool))",
+        "nestedTup((bytes,(bytes)[2],bool))",
+        "nestedTup(bytes,(uint256,(bool)[2],bool))",
+        "nestedTup(bytes,(uint256,(bytes)[2],bool))"
+        // ---
+        // Extreme edge cases that do not currently decode
+        // ---
+        // "nestedTup(((bytes)[1],bool))", // does not decode
+        // "nestedTup(((bytes)[2],bool))", // does not decode
+        // "nestedTup(bytes,(uint256,(bool,bytes)[2],bool))", // does not decode
+        // "nestedTup(bytes,(uint256,(bool,bytes)[2],bool))", // does not decode
+        // "nestedTup(bytes,(uint256,(bool,bytes)[2],bool)[])", // does not decode
+        // "nestedTup(bytes,(uint256,(bool,bytes)[2],bool)[2])", // does not decode
+        // "nestedTup(bytes,(uint256,(bool,bytes)[][],bool)[2][])", // too large
+      ]
+    }
+  },
+  "ethDeposit": {
+    "mnemonic": "winner much erosion weird rubber onion diagram mandate assist fluid slush theory",
+    "depositData": [
+      {
+        "depositPath": [12381, 3600, 0, 0, 0],
+        "eth1WithdrawalKey": "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5",
+        "blsWithdrawalRef": {
+          "pubkey": "b77d6918d5edb4073a4ea4408073b698f00df478ff2726cdb8190e3be1fe5496f22b089f6ae4cf7cafaccb74683be5e4",
+          "withdrawal_credentials": "001cdf4c156742da500ed24475b8afd9a8b5a06f3a7ce8521bd3a23d6982ad7a",
+          "amount": 32000000000,
+          "signature": "8313af52b8822e9d8e66718e37eb8f14ca4cf25b7ab727dd9858c55667dd2a7fdbec9ed16c50911fbfee50eaeda76e1a026ebbf141b050ea94b203ff6b45d175cc33be26d65795e8cff02373ae68a2c3c94c261a0a7b45a897c5f4cead8cbf6e",
+          "deposit_message_root": "011f25b8a533635297ca36c97320aeb2644d7784f16b6dc668dc5acf3f17751c",
+          "deposit_data_root": "aa95cc7b31056cbc524fb82bc5641f60a0f3592bf960bdc875d24b332cd730ca",
+          "fork_version": "00000000",
+          "network_name": "mainnet",
+          "deposit_cli_version": "2.3.0"
+        },
+        "eth1WithdrawalRef": {
+          "pubkey": "b77d6918d5edb4073a4ea4408073b698f00df478ff2726cdb8190e3be1fe5496f22b089f6ae4cf7cafaccb74683be5e4",
+          "withdrawal_credentials": "01000000000000000000000095222290dd7278aa3ddd389cc1e1d165cc4bafe5",
+          "amount": 32000000000,
+          "signature": "88dc6055732e97a2cd4524b658ef62f67daf12f03b0334fd72de4feeb7c44c681fb39ec6a27aee8d3a458a63642ef75711966581ec9dac56572973511c993560c52855d261e47476f970ffd76868c56e9a4d0f37bf23f05268ff73ddb686efeb",
+          "deposit_message_root": "e2b6b2dbc2f1a9cdd4a111f396c009490c67dfa08582c7c4ea18379adde6148f",
+          "deposit_data_root": "603160dc42fe11f2e2c057c85179cc008dd64c9d11ae20b8ffc9a5ceecece847",
+          "fork_version": "00000000",
+          "network_name": "mainnet",
+          "deposit_cli_version": "2.3.0"
+        }
+      },
+      {
+        "depositPath": [12381, 3600, 1, 0, 0],
+        "eth1WithdrawalKey": "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5",
+        "blsWithdrawalRef": {
+          "pubkey": "a0aa536f68981cb705e506036e40b4373f67e10ff66f64835d63ffb3ca5e5eeea5396b2569315b060f0b90a2862a740c",
+          "withdrawal_credentials": "00783f5f1c25faa1282bbd1be67c0da48e5fbb9a21cf7bb95819b37a9a545429",
+          "amount": 32000000000,
+          "signature": "a54d6e949f359aaa9c5ec7ea078bff59a8a747ff8c1518963434d0090ee53dd4c87540d9cd7456a370b3db9d29491abe0413eda2384affa87c7b377b995ad617f5dc4c420593066a8b83345956b44ca0235344d1478e8500f9731dfae7128f4c",
+          "deposit_message_root": "3bd64fca376ba66a9b7428872f143e6e222e411af05401eba760722683a2cd47",
+          "deposit_data_root": "2dd6d49609584c73ec12194cb9a5f39841b6854e04e0df043bdb9eaa5b65bb86",
+          "fork_version": "00000000",
+          "network_name": "mainnet",
+          "deposit_cli_version": "2.3.0"
+        },
+        "eth1WithdrawalRef": {
+          "pubkey": "a0aa536f68981cb705e506036e40b4373f67e10ff66f64835d63ffb3ca5e5eeea5396b2569315b060f0b90a2862a740c",
+          "withdrawal_credentials": "01000000000000000000000095222290dd7278aa3ddd389cc1e1d165cc4bafe5",
+          "amount": 32000000000,
+          "signature": "b1e98e44f1a8a550afeeaac839f93e74d07651c1fa1d12cf857787e20939d346f44a41997682b93a7d51267f77bd979406a7e42c4531abd23ee0d65e1ccc5432313714c1abd92fbebbbde798a9e6b875b4f59cb7a76d7d07094b66e102918248",
+          "deposit_message_root": "f4b94882da58e71f4557620c35b2c16c975b50093ae9a8041aaa67e840aba9aa",
+          "deposit_data_root": "1cc71b9a34ef5730154985c36ac2f9e4f9017959c144e9083d0e8f79311eed59",
+          "fork_version": "00000000",
+          "network_name": "mainnet",
+          "deposit_cli_version": "2.3.0"
+        }
+      }
+    ]
+  },
+  // Dehydrated state for unit/integration tests
+  "dehydratedClientState": "{\"activeWallets\":{\"internal\":{\"uid\":\"162b56efe561c12bc93f703dc7026b3ec3d53923270c9259e2b08015fb9defd2\"},\"external\":{\"uid\":\"0000000000000000000000000000000000000000000000000000000000000000\"}},\"ephemeralPub\":\"04627c74680bee7907c07fdea2bde0ab1ac17c95213f379ccc1dce87f3586babe8ba0ed02688fd5539a54ea1b7b8ab0860d1853006f55f22a2e3ea4e190a17ab30\",\"fwVersion\":\"00110000\",\"deviceId\":\"Cd3dtg\",\"name\":\"SDK Test\",\"baseUrl\":\"https: //signing.gridpl.us\",\"privKey\":\"3fb53b677f73e4d2b8c89c303f6f6b349f0075ad88ea126cb9f6632085815dca\",\"retryCount\":3,\"timeout\":120000}"
 }

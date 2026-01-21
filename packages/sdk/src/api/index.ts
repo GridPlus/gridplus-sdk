@@ -7,9 +7,9 @@ export * from './wallets'
 export * from './setup'
 
 export {
-	BTC_LEGACY_XPUB_PATH,
-	BTC_WRAPPED_SEGWIT_YPUB_PATH,
-	BTC_SEGWIT_ZPUB_PATH,
+  BTC_LEGACY_XPUB_PATH,
+  BTC_WRAPPED_SEGWIT_YPUB_PATH,
+  BTC_SEGWIT_ZPUB_PATH,
 } from '../constants'
 
 export type { AddressTag } from '../types'

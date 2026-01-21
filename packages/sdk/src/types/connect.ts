@@ -1,9 +1,9 @@
 import type { Client } from '../client'
 
 export interface ConnectRequestParams {
-	id: string
+  id: string
 }
 
 export interface ConnectRequestFunctionParams extends ConnectRequestParams {
-	client: Client
+  client: Client
 }

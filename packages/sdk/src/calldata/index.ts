@@ -4,22 +4,22 @@
  * request. It is optional.
  */
 import {
-	getNestedCalldata,
-	parseCanonicalName,
-	parseSolidityJSONABI,
-	replaceNestedDefs,
+  getNestedCalldata,
+  parseCanonicalName,
+  parseSolidityJSONABI,
+  replaceNestedDefs,
 } from './evm'
 
 export const CALLDATA = {
-	EVM: {
-		type: 1,
-		parsers: {
-			parseSolidityJSONABI,
-			parseCanonicalName,
-		},
-		processors: {
-			getNestedCalldata,
-			replaceNestedDefs,
-		},
-	},
+  EVM: {
+    type: 1,
+    parsers: {
+      parseSolidityJSONABI,
+      parseCanonicalName,
+    },
+    processors: {
+      getNestedCalldata,
+      replaceNestedDefs,
+    },
+  },
 }

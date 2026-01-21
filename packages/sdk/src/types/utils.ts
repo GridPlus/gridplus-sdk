@@ -1,34 +1,34 @@
 import type { Client } from '../client'
 
 export interface TestRequestPayload {
-	payload: Buffer
-	testID: number
-	client: Client
+  payload: Buffer
+  testID: number
+  client: Client
 }
 
 export interface EthDepositInfo {
-	networkName: string
-	forkVersion: Buffer
-	validatorsRoot: Buffer
+  networkName: string
+  forkVersion: Buffer
+  validatorsRoot: Buffer
 }
 
 export interface EthDepositDataReq {
-	// (optional) BLS withdrawal key or ETH1 withdrawal address
-	withdrawalKey?: Buffer | string
-	// Amount to be deposited in GWei (10**9 wei)
-	amountGwei: number
-	// Info about the chain we are using.
-	// You probably shouldn't change this unless you know what you're doing.
-	info: EthDepositInfo
-	// In order to be compatible with Ethereum's online launchpad, you need
-	// to set the CLI version. Obviously we are not using the CLI here but
-	// we are following the protocol outlined in v2.3.0.
-	depositCliVersion: string
+  // (optional) BLS withdrawal key or ETH1 withdrawal address
+  withdrawalKey?: Buffer | string
+  // Amount to be deposited in GWei (10**9 wei)
+  amountGwei: number
+  // Info about the chain we are using.
+  // You probably shouldn't change this unless you know what you're doing.
+  info: EthDepositInfo
+  // In order to be compatible with Ethereum's online launchpad, you need
+  // to set the CLI version. Obviously we are not using the CLI here but
+  // we are following the protocol outlined in v2.3.0.
+  depositCliVersion: string
 }
 
 export interface EthDepositDataResp {
-	// Validator's pubkey as a hex string
-	pubkey: string
-	// JSON encoded deposit data
-	depositData: string
+  // Validator's pubkey as a hex string
+  pubkey: string
+  // JSON encoded deposit data
+  depositData: string
 }

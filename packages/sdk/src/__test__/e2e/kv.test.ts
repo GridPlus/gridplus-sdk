@@ -23,245 +23,245 @@ const RANDOM_TAG = 'Test Address Name'
 let _numStartingRecords = 0
 let _fetchedRecords: unknown[] = []
 const ETH_REQ = {
-	currency: 'ETH',
-	data: {
-		signerPath: DEFAULT_SIGNER,
-		nonce: '0x02',
-		gasPrice: '0x1fe5d61a00',
-		gasLimit: '0x034e97',
-		to: RANDOM_ADDR,
-		value: '0x01cba1761f7ab9870c',
-		data: null,
-		chainId: 4,
-	},
+  currency: 'ETH',
+  data: {
+    signerPath: DEFAULT_SIGNER,
+    nonce: '0x02',
+    gasPrice: '0x1fe5d61a00',
+    gasLimit: '0x034e97',
+    to: RANDOM_ADDR,
+    value: '0x01cba1761f7ab9870c',
+    data: null,
+    chainId: 4,
+  },
 }
 
 describe('key-value', () => {
-	let client: Client
+  let client: Client
 
-	beforeAll(async () => {
-		client = await setupClient()
-	})
+  beforeAll(async () => {
+    client = await setupClient()
+  })
 
-	it('Should ask if the user wants to reset state', async () => {
-		let answer = 'Y'
-		if (process.env.CI !== '1') {
-			answer = question(
-				'Do you want to clear all kv records and start anew? (Y/N) ',
-			)
-		} else {
-			answer = 'Y'
-		}
-		if (answer.toUpperCase() === 'Y') {
-			const batchSize = 10
-			let lastTotal: number | null = null
-			let iterations = 0
+  it('Should ask if the user wants to reset state', async () => {
+    let answer = 'Y'
+    if (process.env.CI !== '1') {
+      answer = question(
+        'Do you want to clear all kv records and start anew? (Y/N) ',
+      )
+    } else {
+      answer = 'Y'
+    }
+    if (answer.toUpperCase() === 'Y') {
+      const batchSize = 10
+      let lastTotal: number | null = null
+      let iterations = 0
 
-			while (iterations < 100) {
-				iterations += 1
-				const data = await client.getKvRecords({ n: batchSize, start: 0 })
-				console.log('[getKvRecords] data:', JSON.stringify(data, null, 2))
+      while (iterations < 100) {
+        iterations += 1
+        const data = await client.getKvRecords({ n: batchSize, start: 0 })
+        console.log('[getKvRecords] data:', JSON.stringify(data, null, 2))
 
-				const { records = [], total = 0 } = data
-				if (!records.length || total === 0) {
-					break
-				}
+        const { records = [], total = 0 } = data
+        if (!records.length || total === 0) {
+          break
+        }
 
-				if (lastTotal !== null && total >= lastTotal) {
-					console.warn(
-						'[kv.test] KV cleanup halted to avoid infinite loop (no progress detected).',
-					)
-					break
-				}
+        if (lastTotal !== null && total >= lastTotal) {
+          console.warn(
+            '[kv.test] KV cleanup halted to avoid infinite loop (no progress detected).',
+          )
+          break
+        }
 
-				const ids = records
-					.slice(0, batchSize)
-					.map((record: any) => (record?.id ?? '').toString())
-					.filter((id: string) => id.length > 0)
+        const ids = records
+          .slice(0, batchSize)
+          .map((record: any) => (record?.id ?? '').toString())
+          .filter((id: string) => id.length > 0)
 
-				if (!ids.length) {
-					break
-				}
+        if (!ids.length) {
+          break
+        }
 
-				await client.removeKvRecords({ type: 0, ids })
-				if (total <= ids.length) {
-					break
-				}
+        await client.removeKvRecords({ type: 0, ids })
+        if (total <= ids.length) {
+          break
+        }
 
-				lastTotal = total
-			}
-		}
-	})
+        lastTotal = total
+      }
+    }
+  })
 
-	it('Should make a request to an unknown address', async () => {
-		await client.sign(ETH_REQ as unknown as SignRequestParams).catch((err) => {
-			expect(err.message).toContain(
-				ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined],
-			)
-		})
-	})
+  it('Should make a request to an unknown address', async () => {
+    await client.sign(ETH_REQ as unknown as SignRequestParams).catch((err) => {
+      expect(err.message).toContain(
+        ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined],
+      )
+    })
+  })
 
-	it('Should get the initial set of records', async () => {
-		const resp = await client.getKvRecords({ n: 2, start: 0 })
-		_numStartingRecords = resp.total
-	})
+  it('Should get the initial set of records', async () => {
+    const resp = await client.getKvRecords({ n: 2, start: 0 })
+    _numStartingRecords = resp.total
+  })
 
-	it('Should add some key value records', async () => {
-		const records = {
-			[UNISWAP_ADDR]: UNISWAP_TAG,
-			[RANDOM_ADDR]: RANDOM_TAG,
-		}
-		await client.addKvRecords({ records, caseSensitive: false, type: 0 })
-	})
+  it('Should add some key value records', async () => {
+    const records = {
+      [UNISWAP_ADDR]: UNISWAP_TAG,
+      [RANDOM_ADDR]: RANDOM_TAG,
+    }
+    await client.addKvRecords({ records, caseSensitive: false, type: 0 })
+  })
 
-	it('Should fail to add records with unicode characters', async () => {
-		const badKey = { '0x🔥🦍': 'Muh name' }
-		const badVal = { UNISWAP_ADDR: 'val🔥🦍' }
-		await expect(client.addKvRecords({ records: badKey })).rejects.toThrow(
-			'Unicode characters are not supported.',
-		)
-		await expect(client.addKvRecords({ records: badVal })).rejects.toThrow(
-			'Unicode characters are not supported.',
-		)
-	})
+  it('Should fail to add records with unicode characters', async () => {
+    const badKey = { '0x🔥🦍': 'Muh name' }
+    const badVal = { UNISWAP_ADDR: 'val🔥🦍' }
+    await expect(client.addKvRecords({ records: badKey })).rejects.toThrow(
+      'Unicode characters are not supported.',
+    )
+    await expect(client.addKvRecords({ records: badVal })).rejects.toThrow(
+      'Unicode characters are not supported.',
+    )
+  })
 
-	it('Should fail to add zero length keys and values', async () => {
-		const badKey = { '': 'Muh name' }
-		const badVal = { UNISWAP_ADDR: '' }
-		await expect(client.addKvRecords({ records: badKey })).rejects.toThrow(
-			'Keys and values must be >0 characters.',
-		)
-		await expect(client.addKvRecords({ records: badVal })).rejects.toThrow(
-			'Keys and values must be >0 characters.',
-		)
-	})
+  it('Should fail to add zero length keys and values', async () => {
+    const badKey = { '': 'Muh name' }
+    const badVal = { UNISWAP_ADDR: '' }
+    await expect(client.addKvRecords({ records: badKey })).rejects.toThrow(
+      'Keys and values must be >0 characters.',
+    )
+    await expect(client.addKvRecords({ records: badVal })).rejects.toThrow(
+      'Keys and values must be >0 characters.',
+    )
+  })
 
-	it('Should fetch the newly created records', async () => {
-		const opts = {
-			n: 2,
-			start: _numStartingRecords,
-		}
-		const resp = await client.getKvRecords(opts)
-		const { records, total, fetched } = resp
-		_fetchedRecords = records
-		expect(total).toEqual(fetched + _numStartingRecords)
-		expect(records.length).toEqual(fetched)
-		expect(records.length).toEqual(2)
-	})
+  it('Should fetch the newly created records', async () => {
+    const opts = {
+      n: 2,
+      start: _numStartingRecords,
+    }
+    const resp = await client.getKvRecords(opts)
+    const { records, total, fetched } = resp
+    _fetchedRecords = records
+    expect(total).toEqual(fetched + _numStartingRecords)
+    expect(records.length).toEqual(fetched)
+    expect(records.length).toEqual(2)
+  })
 
-	it('Should make a request to an address which is now known', async () => {
-		await client.sign(ETH_REQ as unknown as SignRequestParams)
-	})
+  it('Should make a request to an address which is now known', async () => {
+    await client.sign(ETH_REQ as unknown as SignRequestParams)
+  })
 
-	it('Should make an EIP712 request that uses the record', async () => {
-		const msg = {
-			types: {
-				EIP712Domain: [
-					{ name: 'name', type: 'string' },
-					{ name: 'verifyingContract', type: 'address' },
-				],
-				Test: [
-					{ name: 'owner', type: 'string' },
-					{ name: 'ownerAddr', type: 'address' },
-				],
-			},
-			domain: {
-				name: 'A Message',
-				verifyingContract: RANDOM_ADDR,
-			},
-			primaryType: 'Test',
-			message: {
-				owner: RANDOM_ADDR,
-				ownerAddr: RANDOM_ADDR,
-			},
-		}
-		const req = {
-			currency: 'ETH_MSG',
-			data: {
-				signerPath: [BTC_PURPOSE_P2PKH, ETH_COIN, HARDENED_OFFSET, 0, 0],
-				protocol: 'eip712',
-				payload: msg,
-			},
-		}
-		await client.sign(req as unknown as SignRequestParams)
-	})
+  it('Should make an EIP712 request that uses the record', async () => {
+    const msg = {
+      types: {
+        EIP712Domain: [
+          { name: 'name', type: 'string' },
+          { name: 'verifyingContract', type: 'address' },
+        ],
+        Test: [
+          { name: 'owner', type: 'string' },
+          { name: 'ownerAddr', type: 'address' },
+        ],
+      },
+      domain: {
+        name: 'A Message',
+        verifyingContract: RANDOM_ADDR,
+      },
+      primaryType: 'Test',
+      message: {
+        owner: RANDOM_ADDR,
+        ownerAddr: RANDOM_ADDR,
+      },
+    }
+    const req = {
+      currency: 'ETH_MSG',
+      data: {
+        signerPath: [BTC_PURPOSE_P2PKH, ETH_COIN, HARDENED_OFFSET, 0, 0],
+        protocol: 'eip712',
+        payload: msg,
+      },
+    }
+    await client.sign(req as unknown as SignRequestParams)
+  })
 
-	it('Should make a request with calldata', async () => {
-		// TODO: Add decoder data
-		const req = JSON.parse(JSON.stringify(ETH_REQ))
-		req.data.data = `0x23b872dd00000000000000000000000057974eb88e50cc61049b44e43e90d3bc40fa61c0000000000000000000000000${RANDOM_ADDR.slice(2)}000000000000000000000000000000000000000000000000000000000000270f`
-		await client.sign(req)
-	})
+  it('Should make a request with calldata', async () => {
+    // TODO: Add decoder data
+    const req = JSON.parse(JSON.stringify(ETH_REQ))
+    req.data.data = `0x23b872dd00000000000000000000000057974eb88e50cc61049b44e43e90d3bc40fa61c0000000000000000000000000${RANDOM_ADDR.slice(2)}000000000000000000000000000000000000000000000000000000000000270f`
+    await client.sign(req)
+  })
 
-	it('Should remove key value records', async () => {
-		const idsToRemove: any[] = []
-		_fetchedRecords.forEach((r: any) => {
-			idsToRemove.push(r.id)
-		})
-		await client.removeKvRecords({ ids: idsToRemove })
-	})
+  it('Should remove key value records', async () => {
+    const idsToRemove: any[] = []
+    _fetchedRecords.forEach((r: any) => {
+      idsToRemove.push(r.id)
+    })
+    await client.removeKvRecords({ ids: idsToRemove })
+  })
 
-	it('Should confirm the records we recently added are removed', async () => {
-		const opts = {
-			n: 1,
-			start: _numStartingRecords,
-		}
-		const resp = await client.getKvRecords(opts)
-		const { records, total, fetched } = resp
-		expect(total).toEqual(_numStartingRecords)
-		expect(fetched).toEqual(0)
-		expect(records.length).toEqual(0)
-	})
+  it('Should confirm the records we recently added are removed', async () => {
+    const opts = {
+      n: 1,
+      start: _numStartingRecords,
+    }
+    const resp = await client.getKvRecords(opts)
+    const { records, total, fetched } = resp
+    expect(total).toEqual(_numStartingRecords)
+    expect(fetched).toEqual(0)
+    expect(records.length).toEqual(0)
+  })
 
-	it('Should add the same record with case sensitivity', async () => {
-		const records = {
-			[RANDOM_ADDR]: 'Test Address Name',
-		}
-		await client.addKvRecords({
-			records,
-			caseSensitive: true,
-			type: 0,
-		})
-	})
+  it('Should add the same record with case sensitivity', async () => {
+    const records = {
+      [RANDOM_ADDR]: 'Test Address Name',
+    }
+    await client.addKvRecords({
+      records,
+      caseSensitive: true,
+      type: 0,
+    })
+  })
 
-	it('Should make another request to make sure case sensitivity is enforced', async () => {
-		await client.sign(ETH_REQ as unknown as SignRequestParams).catch((err) => {
-			expect(err.message).toContain(
-				ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined],
-			)
-		})
-	})
+  it('Should make another request to make sure case sensitivity is enforced', async () => {
+    await client.sign(ETH_REQ as unknown as SignRequestParams).catch((err) => {
+      expect(err.message).toContain(
+        ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined],
+      )
+    })
+  })
 
-	it('Should get the id of the newly added record', async () => {
-		const opts = {
-			n: 1,
-			start: _numStartingRecords,
-		}
-		const resp: any = await client.getKvRecords(opts)
-		const { records, total, fetched } = resp
-		expect(total).toEqual(_numStartingRecords + 1)
-		expect(fetched).toEqual(1)
-		expect(records.length).toEqual(1)
-		_fetchedRecords = records
-	})
+  it('Should get the id of the newly added record', async () => {
+    const opts = {
+      n: 1,
+      start: _numStartingRecords,
+    }
+    const resp: any = await client.getKvRecords(opts)
+    const { records, total, fetched } = resp
+    expect(total).toEqual(_numStartingRecords + 1)
+    expect(fetched).toEqual(1)
+    expect(records.length).toEqual(1)
+    _fetchedRecords = records
+  })
 
-	it('Should remove the new record', async () => {
-		const idsToRemove: any = []
-		_fetchedRecords.forEach((r: any) => {
-			idsToRemove.push(r.id)
-		})
-		await client.removeKvRecords({ ids: idsToRemove })
-	})
+  it('Should remove the new record', async () => {
+    const idsToRemove: any = []
+    _fetchedRecords.forEach((r: any) => {
+      idsToRemove.push(r.id)
+    })
+    await client.removeKvRecords({ ids: idsToRemove })
+  })
 
-	it('Should confirm there are no new records', async () => {
-		const opts = {
-			n: 1,
-			start: _numStartingRecords,
-		}
-		const resp: any = await client.getKvRecords(opts)
-		const { records, total, fetched } = resp
-		expect(total).toEqual(_numStartingRecords)
-		expect(fetched).toEqual(0)
-		expect(records.length).toEqual(0)
-	})
+  it('Should confirm there are no new records', async () => {
+    const opts = {
+      n: 1,
+      start: _numStartingRecords,
+    }
+    const resp: any = await client.getKvRecords(opts)
+    const { records, total, fetched } = resp
+    expect(total).toEqual(_numStartingRecords)
+    expect(fetched).toEqual(0)
+    expect(records.length).toEqual(0)
+  })
 })

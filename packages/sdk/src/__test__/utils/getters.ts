@@ -1,8 +1,8 @@
 import seedrandom from 'seedrandom'
 
 export const getEnv = () => {
-	if (!process.env) throw new Error('env cannot be found')
-	return process.env
+  if (!process.env) throw new Error('env cannot be found')
+  return process.env
 }
 export const getDeviceId = (): string => getEnv().DEVICE_ID ?? ''
 export const getN = (): number => Number.parseInt(getEnv().N ?? '5')
@@ -12,5 +12,5 @@ export const getEtherscanKey = (): string => getEnv().ETHERSCAN_KEY ?? ''
 export const getEncPw = (): string => getEnv().ENC_PW ?? null
 
 export const getPrng = (seed?: string) => {
-	return seedrandom(seed ? seed : getSeed())
+  return seedrandom(seed ? seed : getSeed())
 }

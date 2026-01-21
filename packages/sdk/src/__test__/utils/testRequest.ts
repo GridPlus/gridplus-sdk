@@ -1,6 +1,6 @@
 import {
-	LatticeSecureEncryptedRequestType,
-	encryptedSecureRequest,
+  LatticeSecureEncryptedRequestType,
+  encryptedSecureRequest,
 } from '../../protocol'
 import type { TestRequestPayload } from '../../types'
 
@@ -9,31 +9,31 @@ import type { TestRequestPayload } from '../../types'
  * @category Lattice
  */
 export const testRequest = async ({
-	payload,
-	testID,
-	client,
+  payload,
+  testID,
+  client,
 }: TestRequestPayload) => {
-	if (!payload) {
-		throw new Error(
-			'First argument must contain `testID` and `payload` fields.',
-		)
-	}
-	const sharedSecret = client.sharedSecret
-	const ephemeralPub = client.ephemeralPub
-	const url = client.url
+  if (!payload) {
+    throw new Error(
+      'First argument must contain `testID` and `payload` fields.',
+    )
+  }
+  const sharedSecret = client.sharedSecret
+  const ephemeralPub = client.ephemeralPub
+  const url = client.url
 
-	const TEST_DATA_SZ = 500
-	const data = Buffer.alloc(TEST_DATA_SZ + 6)
-	data.writeUInt32BE(testID, 0)
-	data.writeUInt16BE(payload.length, 4)
-	payload.copy(data, 6)
+  const TEST_DATA_SZ = 500
+  const data = Buffer.alloc(TEST_DATA_SZ + 6)
+  data.writeUInt32BE(testID, 0)
+  data.writeUInt16BE(payload.length, 4)
+  payload.copy(data, 6)
 
-	const { decryptedData } = await encryptedSecureRequest({
-		data,
-		requestType: LatticeSecureEncryptedRequestType.test,
-		sharedSecret,
-		ephemeralPub,
-		url,
-	})
-	return decryptedData
+  const { decryptedData } = await encryptedSecureRequest({
+    data,
+    requestType: LatticeSecureEncryptedRequestType.test,
+    sharedSecret,
+    ephemeralPub,
+    url,
+  })
+  return decryptedData
 }
