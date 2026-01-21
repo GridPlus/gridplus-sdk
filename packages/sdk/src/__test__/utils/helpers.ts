@@ -990,7 +990,12 @@ export const compressPubKey = (pub) => {
 }
 
 function _stripTrailingCommas(input: string): string {
-	return input.replace(/,\s*(?:(?:\/\/[^\n]*\n)|\/\*[\s\S]*?\*\/|\s)*([}\]])/g, '$1')
+	// Use non-backtracking pattern to avoid ReDoS vulnerability
+	// Unrolled loop for multi-line comments: \/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/
+	return input.replace(
+		/,([\s]*(?:\/\/[^\n]*\n[\s]*|\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/[\s]*)*)([}\]])/g,
+		'$1$2',
+	)
 }
 
 export const getTestVectors = () => {
