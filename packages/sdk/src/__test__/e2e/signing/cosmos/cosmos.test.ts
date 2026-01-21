@@ -8,7 +8,7 @@
  */
 import { createHash } from 'node:crypto';
 import { bech32 } from 'bech32';
-import { Constants, signCosmosDirect } from '../../../..';
+import { Constants, signCosmos } from '../../../..';
 import { COSMOS_DERIVATION } from '../../../../constants';
 import { setupClient } from '../../../utils/setup';
 import { deriveSECP256K1Key, validateGenericSig } from '../../../utils/helpers';
@@ -224,7 +224,7 @@ describe('[Cosmos]', () => {
     );
     if (!supportsCosmos) {
       console.warn(
-        '[Cosmos] Firmware does not support Cosmos encoding; skipping tests.',
+        '[Cosmos] Firmware v0.18.10+ is required for Cosmos encoding; skipping tests.',
       );
     }
     ({ pub } = deriveSECP256K1Key(COSMOS_DERIVATION, TEST_SEED));
@@ -246,7 +246,7 @@ describe('[Cosmos]', () => {
   };
 
   const signAndValidate = async (signDoc: Buffer) => {
-    const resp = await signCosmosDirect(signDoc);
+    const resp = await signCosmos(signDoc);
     expect(resp.sig).toBeTruthy();
 
     validateGenericSig(TEST_SEED, resp.sig, signDoc, {

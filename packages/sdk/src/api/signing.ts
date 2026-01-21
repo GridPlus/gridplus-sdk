@@ -284,7 +284,12 @@ export const signSolanaTx = async (
   return queue((client) => client.sign(tx));
 };
 
-export const signCosmosDirect = async (
+/**
+ * Sign a Cosmos SDK SignDoc payload.
+ * Supports SIGN_MODE_DIRECT (protobuf) and SIGN_MODE_LEGACY_AMINO_JSON (Amino JSON).
+ * Requires firmware v0.18.10+ for COSMOS encoding support.
+ */
+export const signCosmos = async (
   payload: Buffer,
   overrides?: SignRequestParams,
 ): Promise<SignData> => {
