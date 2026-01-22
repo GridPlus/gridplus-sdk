@@ -22,7 +22,7 @@ The properly formatted v value as Buffer or BN
 
 ### Source
 
-packages/sdk/src/util.ts:878
+packages/sdk/src/util.ts:873
 
 ***
 
@@ -52,7 +52,7 @@ Fetches calldata from a remote scanner based on the transaction's `chainId`
 
 ### Source
 
-packages/sdk/src/util.ts:628
+packages/sdk/src/util.ts:623
 
 ***
 
@@ -78,7 +78,7 @@ an application secret as a Buffer
 
 ### Source
 
-packages/sdk/src/util.ts:705
+packages/sdk/src/util.ts:700
 
 ***
 
@@ -103,7 +103,7 @@ BN object containing the `v` param
 
 ### Source
 
-packages/sdk/src/util.ts:732
+packages/sdk/src/util.ts:727
 
 ***
 
@@ -134,13 +134,13 @@ Usage:
 
 ### Source
 
-packages/sdk/src/util.ts:921
+packages/sdk/src/util.ts:916
 
 ***
 
 ## selectDefFrom4byteABI()
 
-> **selectDefFrom4byteABI**(`abiData`: `any`[], `selector`: `string`): `any`
+> **selectDefFrom4byteABI**(`abiData`: `any`[], `selector`: `string`): `unknown`[]
 
 Takes a list of ABI data objects and a selector, and returns the earliest ABI data object that
 matches the selector.
@@ -154,8 +154,8 @@ matches the selector.
 
 ### Returns
 
-`any`
+`unknown`[]
 
 ### Source
 
-packages/sdk/src/util.ts:392
+packages/sdk/src/util.ts:387

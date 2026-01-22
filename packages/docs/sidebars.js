@@ -25,6 +25,10 @@ const sidebars = {
       id: 'migration-v3-to-v4',
     },
     {
+      type: 'doc',
+      id: 'cli',
+    },
+    {
       type: 'category',
       label: 'Basic Functionality',
       collapsible: false,
