@@ -17,9 +17,9 @@
   "dependencies": {
     "gridplus-sdk": "workspace:*",
     "@gridplus/btc": "workspace:*",
+    "@inquirer/prompts": "^7.0.0",
     "lattice-eth2-utils": "^0.5.1",
     "commander": "^12.0.0",
-    "inquirer": "^12.0.0",
     "chalk": "^5.0.0",
     "ora": "^8.0.0",
     "dotenv": "^16.0.0"
