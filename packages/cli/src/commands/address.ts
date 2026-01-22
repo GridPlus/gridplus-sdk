@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import bs58 from 'bs58';
 import {
   fetchAddress,
   fetchAddressesByDerivationPath,
@@ -59,11 +60,15 @@ export const addressCommand = new Command('address')
 
       let addresses: string[];
 
+      // Strip "m/" prefix if present - SDK doesn't handle it
+      const cleanPath = (p: string) =>
+        p.startsWith('m/') ? p.slice(2) : p.startsWith('m') ? p.slice(1) : p;
+
       // If a specific derivation path is provided, use it
       if (path && typeof path === 'string' && !Number.isFinite(Number(path))) {
         info(`Fetching address at path: ${path}`);
         addresses = await withSpinner('Fetching addresses...', async () => {
-          return fetchAddressesByDerivationPath(path, {
+          return fetchAddressesByDerivationPath(cleanPath(path), {
             n: count,
             startPathIndex: startIndex,
           });
@@ -106,33 +111,39 @@ export const addressCommand = new Command('address')
           case 'solana':
             info('Fetching Solana addresses...');
             addresses = await withSpinner('Fetching addresses...', async () => {
-              return fetchSolanaAddresses({
+              const results = await fetchSolanaAddresses({
                 n: count,
                 startPathIndex: index,
+              });
+              // Convert Buffer responses to base58 Solana addresses
+              return results.map((addr: unknown) => {
+                if (typeof addr === 'string') return addr;
+                if (Buffer.isBuffer(addr)) return bs58.encode(addr);
+                if (
+                  addr &&
+                  typeof addr === 'object' &&
+                  'type' in addr &&
+                  (addr as { type: string }).type === 'Buffer' &&
+                  'data' in addr
+                ) {
+                  return bs58.encode(
+                    Buffer.from((addr as { data: number[] }).data),
+                  );
+                }
+                return String(addr);
               });
             });
             break;
           default:
             info('Fetching Ethereum addresses...');
-            if (count === 1) {
-              const addr = await withSpinner(
-                'Fetching address...',
-                async () => {
-                  return fetchAddress(index);
-                },
-              );
-              addresses = [addr];
-            } else {
-              addresses = await withSpinner(
-                'Fetching addresses...',
-                async () => {
-                  return fetchAddressesByDerivationPath("m/44'/60'/0'/0/x", {
-                    n: count,
-                    startPathIndex: index,
-                  });
-                },
-              );
-            }
+            addresses = await withSpinner('Fetching addresses...', async () => {
+              const results: string[] = [];
+              for (let i = 0; i < count; i++) {
+                const addr = await fetchAddress(index + i);
+                results.push(addr);
+              }
+              return results;
+            });
             break;
         }
       }

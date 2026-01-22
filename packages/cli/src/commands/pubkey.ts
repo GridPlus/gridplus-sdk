@@ -70,30 +70,55 @@ export const pubkeyCommand = new Command('pubkey')
       const derivationPath = path || DEFAULT_PATHS[keyType];
       const flag = PUBKEY_FLAGS[keyType];
 
+      // Strip "m/" prefix if present - SDK doesn't handle it
+      const cleanPath = (p: string) =>
+        p.startsWith('m/') ? p.slice(2) : p.startsWith('m') ? p.slice(1) : p;
+
       info(`Fetching ${keyType} public key(s) at path: ${derivationPath}`);
 
+      // Convert Buffer to hex string
+      const toHex = (val: unknown): string => {
+        if (typeof val === 'string') return val;
+        if (Buffer.isBuffer(val)) return `0x${val.toString('hex')}`;
+        if (
+          val &&
+          typeof val === 'object' &&
+          'type' in val &&
+          (val as { type: string }).type === 'Buffer' &&
+          'data' in val
+        ) {
+          return `0x${Buffer.from((val as { data: number[] }).data).toString('hex')}`;
+        }
+        return String(val);
+      };
+
       const pubkeys = await withSpinner('Fetching public keys...', async () => {
+        let results: unknown[];
+
         // For multiple keys, we need to handle the path with an index
         if (count > 1) {
           // Replace the last component with a wildcard if fetching multiple
-          const pathParts = derivationPath.split('/');
+          const pathParts = cleanPath(derivationPath).split('/');
           const lastPart = pathParts[pathParts.length - 1];
           if (!lastPart?.toLowerCase().includes('x')) {
             pathParts[pathParts.length - 1] = 'x';
           }
           const wildcardPath = pathParts.join('/');
-          return fetchAddressesByDerivationPath(wildcardPath, {
+          results = await fetchAddressesByDerivationPath(wildcardPath, {
             n: count,
             startPathIndex: startIndex,
             flag,
           });
+        } else {
+          // Single key
+          results = await fetchAddressesByDerivationPath(cleanPath(derivationPath), {
+            n: 1,
+            flag,
+          });
         }
 
-        // Single key
-        return fetchAddressesByDerivationPath(derivationPath, {
-          n: 1,
-          flag,
-        });
+        // Convert Buffer responses to hex strings
+        return results.map(toHex);
       });
 
       // Output results
