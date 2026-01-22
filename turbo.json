@@ -21,7 +21,18 @@
     },
     "e2e": {
       "dependsOn": ["build"],
-      "cache": false
+      "cache": false,
+      "passThroughEnv": [
+        "CI",
+        "DEBUG",
+        "DEBUG_SIGNING",
+        "DEVICE_ID",
+        "PASSWORD",
+        "PAIRING_SECRET",
+        "ENC_PW",
+        "APP_NAME",
+        "baseUrl"
+      ]
     }
   }
 }
