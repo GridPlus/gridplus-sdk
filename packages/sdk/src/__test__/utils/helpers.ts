@@ -20,8 +20,8 @@ import { Constants } from '../..';
 import { Client } from '../../client';
 import {
   BIP_CONSTANTS,
-  ethMsgProtocol,
   HARDENED_OFFSET,
+  ethMsgProtocol,
 } from '../../constants';
 import { ProtocolConstants } from '../../protocol';
 import { getPathStr } from '../../shared/utilities';
@@ -138,7 +138,7 @@ export function setupTestClient(
   // Separate check -- if we are connecting for the first time but want to be able
   // to reconnect quickly with the same device ID as an env var, we need to pair
   // with a reusable key
-  if (parseInt(env.REUSE_KEY) === 1) {
+  if (Number.parseInt(env.REUSE_KEY) === 1) {
     setup.privKey = Buffer.from(REUSABLE_KEY, 'hex');
   }
   // Initialize a global SDK client
@@ -224,7 +224,8 @@ export function _start_tx_builder(
     const pubkeyBuf = Buffer.from(keyPair.publicKey);
     const p2pkh = bitcoin.payments.p2pkh({ pubkey: pubkeyBuf, network });
     // For P2WPKH and P2SH-P2WPKH the BIP143 scriptCode is the standard P2PKH script
-    const scriptCode = p2pkh.output!;
+    if (!p2pkh.output) throw new Error('No P2PKH output');
+    const scriptCode = p2pkh.output;
     inputsMeta.push({ scriptCode, value: input.value });
   });
   return { tx, inputsMeta };
@@ -471,8 +472,8 @@ export const gpErrors = {
 //---------------------------------------------------
 export const getCodeMsg = (code, expected) => {
   if (code !== expected) {
-    let codeTxt = code,
-      expectedTxt = expected;
+    let codeTxt = code;
+    let expectedTxt = expected;
     Object.keys(gpErrors).forEach((key) => {
       if (code === gpErrors[key]) {
         codeTxt = key;
@@ -686,7 +687,7 @@ export const validateDerivedPublicKeys = (
 };
 
 export const ethPersonalSignMsg = (msg) =>
-  '\u0019Ethereum Signed Message:\n' + String(msg.length) + msg;
+  `\u0019Ethereum Signed Message:\n${String(msg.length)}${msg}`;
 
 //---------------------------------------------------
 // Sign Transaction helpers
@@ -845,7 +846,7 @@ export const serializeLoadSeedJobData = (data) => {
 //---------------------------------------------------
 export const buildRandomEip712Object = (randInt) => {
   function randStr(n) {
-    const words = wordlists['english'];
+    const words = wordlists.english;
     let s = '';
     while (s.length < n) {
       s += `${words?.[randInt(words?.length)]}_`;
@@ -869,17 +870,17 @@ export const buildRandomEip712Object = (randInt) => {
   }
   function getRandomEIP712Val(type) {
     if (type !== 'bytes' && type.slice(0, 5) === 'bytes') {
-      return `0x${randomBytes(parseInt(type.slice(5))).toString('hex')}`;
+      return `0x${randomBytes(Number.parseInt(type.slice(5))).toString('hex')}`;
     }
 
     if (type === 'uint' || type.indexOf('uint') === 0) {
-      const bits = parseInt(type.slice(4) || '256', 10);
+      const bits = Number.parseInt(type.slice(4) || '256', 10);
       const byteLength = Math.max(1, Math.ceil(bits / 8));
       return `0x${randomBytes(byteLength).toString('hex')}`;
     }
 
     if (type === 'int' || type.indexOf('int') === 0) {
-      const bits = parseInt(type.slice(3) || '256', 10);
+      const bits = Number.parseInt(type.slice(3) || '256', 10);
       const byteLength = Math.max(1, Math.ceil(bits / 8));
       const raw = randomBytes(byteLength).toString('hex');
       const modulus = 1n << BigInt(bits);
@@ -897,7 +898,7 @@ export const buildRandomEip712Object = (randInt) => {
       case 'string':
         return randStr(100);
       case 'bool':
-        return randInt(1) > 0 ? true : false;
+        return randInt(1) > 0;
       case 'address':
         return `0x${randomBytes(20).toString('hex')}`;
       default:
@@ -1035,7 +1036,7 @@ export const getSigStr = (resp: any, tx?: TypedTransaction) => {
   if (resp.sig.v !== undefined) {
     const vBuf = normalizeSigComponent(resp.sig.v);
     const vHex = vBuf.toString('hex');
-    let vInt = vHex ? parseInt(vHex, 16) : 0;
+    let vInt = vHex ? Number.parseInt(vHex, 16) : 0;
     if (!Number.isFinite(vInt)) {
       vInt = 0;
     }
@@ -1142,9 +1143,11 @@ export const compressPubKey = (pub) => {
 };
 
 function _stripTrailingCommas(input: string): string {
+  // Use non-backtracking pattern to avoid ReDoS vulnerability
+  // Unrolled loop for multi-line comments: \/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/
   return input.replace(
-    /,\s*(?:(?:\/\/[^\n]*\n)|\/\*[\s\S]*?\*\/|\s)*([}\]])/g,
-    '$1',
+    /,([\s]*(?:\/\/[^\n]*\n[\s]*|\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/[\s]*)*)([}\]])/g,
+    '$1$2',
   );
 }
 

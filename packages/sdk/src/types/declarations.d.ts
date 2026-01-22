@@ -21,7 +21,5 @@ declare module 'lodash/isEmpty.js' {
 
 // Add more flexible typing to reduce strict type checking for complex modules
 declare global {
-  interface NodeRequire {
-    (id: string): any;
-  }
+  type NodeRequire = (id: string) => any;
 }

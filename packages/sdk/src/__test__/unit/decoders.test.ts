@@ -5,7 +5,7 @@ import {
   decodeGetKvRecordsResponse,
   decodeSignResponse,
 } from '../../functions';
-import { DecodeSignResponseParams } from '../../types';
+import type { DecodeSignResponseParams } from '../../types';
 import {
   clientKeyPair,
   connectDecoderData,

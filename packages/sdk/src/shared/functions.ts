@@ -1,9 +1,10 @@
 import { Hash } from 'ox';
-import { Client } from '..';
+import type { Client } from '..';
 import bitcoin from '../bitcoin';
 import { EXTERNAL } from '../constants';
 import ethereum from '../ethereum';
 import { buildGenericSigningMsgRequest } from '../genericSigning';
+import type { Currency, FirmwareConstants, RequestParams } from '../types';
 import { fetchWithTimeout, parseLattice1Response } from '../util';
 import { LatticeResponseError } from './errors';
 import {
@@ -13,7 +14,6 @@ import {
   shouldUseEVMLegacyConverter,
 } from './predicates';
 import { validateRequestError } from './validators';
-import { Currency, FirmwareConstants, RequestParams } from '../types';
 
 export const buildTransaction = ({
   data,
@@ -39,7 +39,7 @@ export const buildTransaction = ({
       'Using the legacy ETH signing path. This will soon be deprecated. ' +
         'Please switch to general signing request.',
     );
-    let payload;
+    let payload: Buffer | undefined;
     try {
       payload = ethereum.convertEthereumTransactionToGenericRequest(data);
     } catch (err) {
@@ -206,5 +206,5 @@ export const retryWrapper = async ({
 export const getEphemeralId = (sharedSecret: Buffer) => {
   // EphemId is the first 4 bytes of the hash of the shared secret
   const hash = Buffer.from(Hash.sha256(sharedSecret));
-  return parseInt(hash.slice(0, 4).toString('hex'), 16);
+  return Number.parseInt(hash.slice(0, 4).toString('hex'), 16);
 };

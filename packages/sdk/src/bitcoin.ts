@@ -1,8 +1,8 @@
 // Util for Bitcoin-specific functionality
 import { bech32 } from 'bech32';
 import bs58check from 'bs58check';
-import { Hash } from 'ox';
 import { ripemd160 } from 'hash.js/lib/hash/ripemd.js';
+import { Hash } from 'ox';
 import { BIP_CONSTANTS } from './constants';
 import { LatticeSignSchema } from './protocol';
 const DEFAULT_SEQUENCE = 0xffffffff;
@@ -49,7 +49,7 @@ const BTC_SCRIPT_TYPE_P2WPKH_V0 = 0x04;
 //              already based on the number of inputs plus two outputs
 // `version`:   Transaction version of the inputs. All inputs must be of the same version!
 // `isSegwit`: a boolean which determines how we serialize the data and parameterize txb
-const buildBitcoinTxRequest = function (data) {
+const buildBitcoinTxRequest = (data) => {
   const { prevOuts, recipient, value, changePath, fee } = data;
   if (!changePath) throw new Error('No changePath provided.');
   if (changePath.length !== 5)
@@ -129,7 +129,7 @@ const buildBitcoinTxRequest = function (data) {
 // -- isSegwitSpend = true if the inputs are being spent using segwit
 //                    (NOTE: either ALL are being spent, or none are)
 // -- lockTime = Will probably always be 0
-const serializeTx = function (data) {
+const serializeTx = (data) => {
   const { inputs, outputs, lockTime = 0 } = data;
   let payload = Buffer.alloc(4);
   let off = 0;
@@ -212,7 +212,7 @@ const serializeTx = function (data) {
 };
 
 // Convert a pubkeyhash to a bitcoin base58check address with a version byte
-const getBitcoinAddress = function (pubkeyhash, version) {
+const getBitcoinAddress = (pubkeyhash, version) => {
   let bech32Prefix = null;
   let bech32Version = null;
   if (version === FMT_SEGWIT_NATIVE_V0) {
@@ -387,7 +387,8 @@ function writeUInt64LE(n, buf, off) {
 }
 
 function decodeAddress(address) {
-  let versionByte, pkh;
+  let versionByte: number | undefined;
+  let pkh: Buffer | undefined;
   try {
     // Attempt to base58 decode the address. This will work for older
     // P2PKH, P2SH, and P2SH-P2WPKH addresses
@@ -420,9 +421,7 @@ function decodeAddress(address) {
       if (bech32Dec.words.length !== 33) {
         const isP2wpsh = bech32Dec.words.length === 53;
         throw new Error(
-          `Unsupported address${
-            isP2wpsh ? ' (P2WSH not supported)' : ''
-          }: ${address}`,
+          `Unsupported address${isP2wpsh ? ' (P2WSH not supported)' : ''}: ${address}`,
         );
       }
 

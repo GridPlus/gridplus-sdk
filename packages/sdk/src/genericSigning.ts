@@ -1,3 +1,4 @@
+import { RLP } from '@ethereumjs/rlp';
 /**
 Generic signing module. Any payload can be sent to the Lattice and
 will be displayed in full (note that \n and \t characters will be
@@ -9,12 +10,11 @@ This payload should be coupled with:
 * Hash function to use on the message
 */
 import { Hash } from 'ox';
-import { RLP } from '@ethereumjs/rlp';
 import {
-  parseTransaction,
-  serializeTransaction,
   type Hex,
   type TransactionSerializable,
+  parseTransaction,
+  serializeTransaction,
 } from 'viem';
 // keccak256 now imported from ox via Hash module
 import { HARDENED_OFFSET } from './constants';
@@ -24,13 +24,13 @@ import {
   buildSignerPathBuf,
   existsIn,
   fixLen,
-  getYParity,
   getV,
+  getYParity,
   parseDER,
   splitFrames,
 } from './util';
 
-export const buildGenericSigningMsgRequest = function (req) {
+export const buildGenericSigningMsgRequest = (req) => {
   const {
     signerPath,
     curveType,
@@ -209,7 +209,7 @@ export const buildGenericSigningMsgRequest = function (req) {
   };
 };
 
-export const parseGenericSigningResponse = function (res, off, req) {
+export const parseGenericSigningResponse = (res, off, req) => {
   const parsed = {
     pubkey: null,
     sig: null,
@@ -436,11 +436,7 @@ function populateViemSignedTx(
   }
 }
 
-export const getEncodedPayload = function (
-  payload,
-  encoding,
-  allowedEncodings,
-) {
+export const getEncodedPayload = (payload, encoding, allowedEncodings) => {
   if (!encoding) {
     encoding = Constants.SIGNING.ENCODINGS.NONE;
   }
@@ -450,7 +446,7 @@ export const getEncodedPayload = function (
       'Encoding not supported by Lattice firmware. You may want to update.',
     );
   }
-  let payloadBuf;
+  let payloadBuf: Buffer;
   if (!payload) {
     throw new Error('No payload included');
   }

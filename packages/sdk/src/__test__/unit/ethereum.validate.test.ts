@@ -1,14 +1,14 @@
 import {
+  type MessageTypes,
   SignTypedDataVersion,
   TypedDataUtils,
-  type MessageTypes,
   type TypedMessage,
 } from '@metamask/eth-sig-util';
 import { ecsign, privateToAddress } from 'ethereumjs-util';
 import { mnemonicToAccount } from 'viem/accounts';
 import { HARDENED_OFFSET } from '../../constants';
 import ethereum from '../../ethereum';
-import { buildFirmwareConstants, DEFAULT_SIGNER } from '../utils/builders';
+import { DEFAULT_SIGNER, buildFirmwareConstants } from '../utils/builders';
 import { TEST_MNEMONIC } from '../utils/testConstants';
 
 const typedData: TypedMessage<MessageTypes> = {
@@ -32,7 +32,9 @@ const typedData: TypedMessage<MessageTypes> = {
 describe('validateEthereumMsgResponse', () => {
   it('recovers expected signature for EIP712 payload', () => {
     const account = mnemonicToAccount(TEST_MNEMONIC);
-    const priv = Buffer.from(account.getHdKey().privateKey!);
+    const hdKey = account.getHdKey();
+    if (!hdKey.privateKey) throw new Error('No private key');
+    const priv = Buffer.from(hdKey.privateKey);
     const signer = privateToAddress(priv);
     const digest = TypedDataUtils.eip712Hash(
       typedData,
@@ -70,7 +72,9 @@ describe('validateEthereumMsgResponse', () => {
     });
 
     const account = mnemonicToAccount(TEST_MNEMONIC);
-    const priv = Buffer.from(account.getHdKey().privateKey!);
+    const hdKey = account.getHdKey();
+    if (!hdKey.privateKey) throw new Error('No private key');
+    const priv = Buffer.from(hdKey.privateKey);
     const signer = privateToAddress(priv);
     const digest = TypedDataUtils.eip712Hash(
       typedData,

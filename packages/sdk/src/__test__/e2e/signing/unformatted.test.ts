@@ -1,10 +1,11 @@
 import { Constants } from '../../..';
+import { HARDENED_OFFSET } from '../../../constants';
 import { getNumIter } from '../../utils/builders';
+import { getPrng } from '../../utils/getters';
 import { ethPersonalSignMsg, prandomBuf } from '../../utils/helpers';
 import { runGeneric } from '../../utils/runners';
-import { HARDENED_OFFSET } from '../../../constants';
-import { getPrng } from '../../utils/getters';
 import { setupClient } from '../../utils/setup';
+import type { Client } from '../../../client';
 
 const prng = getPrng();
 const numIter = getNumIter();
@@ -17,7 +18,7 @@ const DEFAULT_SIGNER = [
 ];
 
 describe('[Unformatted]', () => {
-  let client;
+  let client: Client;
 
   beforeAll(async () => {
     client = await setupClient();
@@ -120,19 +121,23 @@ describe('[Unformatted]', () => {
 
     // Legacy request
     const legacyReq = {
-      currency: 'ETH_MSG',
+      currency: 'ETH_MSG' as const,
       data: {
         signerPath: req.data.signerPath,
         payload: msg,
-        protocol: 'signPersonal',
+        protocol: 'signPersonal' as const,
+        curveType: Constants.SIGNING.CURVES.SECP256K1,
+        hashType: Constants.SIGNING.HASHES.KECCAK256,
       },
     };
-    const respLegacy = await client.sign(legacyReq);
+    const respLegacy = await client.sign(
+      legacyReq as Parameters<typeof client.sign>[0],
+    );
 
-    const genSigR = respGeneric.sig?.r.toString('hex') ?? '';
-    const genSigS = respGeneric.sig?.s.toString('hex') ?? '';
-    const legSigR = respLegacy.sig?.r.toString('hex') ?? '';
-    const legSigS = respLegacy.sig?.s.toString('hex') ?? '';
+    const genSigR = (respGeneric.sig?.r as Buffer)?.toString('hex') ?? '';
+    const genSigS = (respGeneric.sig?.s as Buffer)?.toString('hex') ?? '';
+    const legSigR = (respLegacy.sig?.r as Buffer)?.toString('hex') ?? '';
+    const legSigS = (respLegacy.sig?.s as Buffer)?.toString('hex') ?? '';
 
     const genSig = `${genSigR}${genSigS}`;
     const legSig = `${legSigR}${legSigS}`;

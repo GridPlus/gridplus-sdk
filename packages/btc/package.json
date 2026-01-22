@@ -6,8 +6,9 @@
   "scripts": {
     "build": "tsup",
     "test": "vitest run ./src/__test__/unit",
-    "lint": "eslint src --config eslint.config.mjs",
-    "lint:fix": "eslint src --config eslint.config.mjs --fix"
+    "lint": "biome check src",
+    "lint:fix": "biome check --write src",
+    "typecheck": "tsc --noEmit"
   },
   "files": [
     "dist"
@@ -32,14 +33,8 @@
     "bs58check": "^4.0.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.36.0",
+    "@biomejs/biome": "^1.9.0",
     "@types/node": "^24.10.4",
-    "@typescript-eslint/eslint-plugin": "^8.44.1",
-    "@typescript-eslint/parser": "^8.44.1",
-    "eslint": "^9.36.0",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.4",
-    "prettier": "^3.6.2",
     "tsup": "^8.5.0",
     "typescript": "^5.9.2",
     "vitest": "3.2.4"

@@ -1,48 +1,48 @@
+import { RLP } from '@ethereumjs/rlp';
+import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
 // Utils for Ethereum transactions. This is effecitvely a shim of ethereumjs-util, which
 // does not have browser (or, by proxy, React-Native) support.
 import BN from 'bignumber.js';
-import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util';
+import cbor from 'cbor';
+import bdec from 'cbor-bigdecimal';
 import { Hash } from 'ox';
-import { RLP } from '@ethereumjs/rlp';
 import secp256k1 from 'secp256k1';
 import {
+  type Hex,
+  type TransactionSerializable,
+  hexToNumber,
+  serializeTransaction,
+} from 'viem';
+import {
   ASCII_REGEX,
+  EXTERNAL,
   HANDLE_LARGER_CHAIN_ID,
   MAX_CHAIN_ID_BYTES,
   ethMsgProtocol,
-  EXTERNAL,
 } from './constants';
+import { buildGenericSigningMsgRequest } from './genericSigning';
 import { LatticeSignSchema } from './protocol';
+import { type FlexibleTransaction, TransactionSchema } from './schemas';
+import {
+  type FirmwareConstants,
+  type SigningPath,
+  TRANSACTION_TYPE,
+  type TransactionRequest,
+} from './types';
 import {
   buildSignerPathBuf,
+  convertRecoveryToV,
   ensureHexBuffer,
   fixLen,
   isAsciiStr,
   splitFrames,
-  convertRecoveryToV,
 } from './util';
-import cbor from 'cbor';
-import bdec from 'cbor-bigdecimal';
-import {
-  TransactionSerializable,
-  serializeTransaction,
-  type Hex,
-  hexToNumber,
-} from 'viem';
-import {
-  type SigningPath,
-  type FirmwareConstants,
-  TransactionRequest,
-  TRANSACTION_TYPE,
-} from './types';
-import { buildGenericSigningMsgRequest } from './genericSigning';
-import { TransactionSchema, type FlexibleTransaction } from './schemas';
 
 const { ecdsaRecover } = secp256k1;
 
 bdec(cbor);
 
-const buildEthereumMsgRequest = function (input) {
+const buildEthereumMsgRequest = (input) => {
   if (!input.payload || !input.protocol || !input.signerPath)
     throw new Error(
       'You must provide `payload`, `signerPath`, and `protocol` arguments in the messsage request',
@@ -69,7 +69,7 @@ const buildEthereumMsgRequest = function (input) {
   }
 };
 
-const validateEthereumMsgResponse = function (res, req) {
+const validateEthereumMsgResponse = (res, req) => {
   const { signer, sig } = res;
   const { input, msg, prehash = null } = req;
   if (input.protocol === 'signPersonal') {
@@ -105,8 +105,8 @@ const validateEthereumMsgResponse = function (res, req) {
       input.payload.domain?.chainId || payloadForHashing.domain?.chainId;
     if (typeof chainId === 'string') {
       chainId = chainId.startsWith('0x')
-        ? parseInt(chainId, 16)
-        : parseInt(chainId, 10);
+        ? Number.parseInt(chainId, 16)
+        : Number.parseInt(chainId, 10);
     } else if (typeof chainId === 'bigint') {
       chainId = Number(chainId);
     }
@@ -233,7 +233,7 @@ const structuredCloneFn: StructuredCloneFn | null =
     ? (globalThis as { structuredClone: StructuredCloneFn }).structuredClone
     : null;
 
-const buildEthereumTxRequest = function (data) {
+const buildEthereumTxRequest = (data) => {
   try {
     let { chainId = 1 } = data;
     const { signerPath, eip155 = null, fwConstants, type = null } = data;
@@ -301,12 +301,13 @@ const buildEthereumTxRequest = function (data) {
     // Build the transaction buffer array
     const chainIdBytes = ensureHexBuffer(chainId);
     const nonceBytes = ensureHexBuffer(data.nonce);
-    let gasPriceBytes;
+    let gasPriceBytes: Buffer;
     const gasLimitBytes = ensureHexBuffer(data.gasLimit);
     // Handle contract deployment (indicated by `to` being `null`)
     // For contract deployment we write a 20-byte key to the request
     // buffer, which gets swapped for an empty buffer in firmware.
-    let toRlpElem, toBytes;
+    let toRlpElem: Buffer;
+    let toBytes: Buffer;
     if (isDeployment) {
       toRlpElem = Buffer.alloc(0);
       toBytes = ensureHexBuffer(contractDeployKey);
@@ -322,7 +323,8 @@ const buildEthereumTxRequest = function (data) {
       rawTx.push(chainIdBytes);
     }
     rawTx.push(nonceBytes);
-    let maxPriorityFeePerGasBytes, maxFeePerGasBytes;
+    let maxPriorityFeePerGasBytes: Buffer;
+    let maxFeePerGasBytes: Buffer;
     if (isEip1559) {
       if (!data.maxPriorityFeePerGas)
         throw new Error(
@@ -379,7 +381,7 @@ const buildEthereumTxRequest = function (data) {
     // NOTE: Originally we designed for a 1-byte chainID, but modern rollup chains use much larger
     // chainID values. To account for these, we will put the chainID into the `data` buffer if it
     // is >=255. Values up to UINT64_MAX will be allowed.
-    let chainIdBuf;
+    let chainIdBuf: Buffer;
     let chainIdBufSz = 0;
     if (useChainIdBuffer(chainId) === true) {
       chainIdBuf = getChainIdBuf(chainId);
@@ -480,9 +482,7 @@ const buildEthereumTxRequest = function (data) {
           (EXTRA_DATA_ALLOWED && totalSz > maxSzAllowed)
         )
           throw new Error(
-            `Data field too large (got ${dataBytes.length}; must be <=${
-              maxSzAllowed - chainIdExtraSz
-            } bytes)`,
+            `Data field too large (got ${dataBytes.length}; must be <=${maxSzAllowed - chainIdExtraSz} bytes)`,
           );
         // Split overflow data into extraData frames
         const frames = splitFrames(
@@ -549,7 +549,7 @@ function stripZeros(a) {
 
 // Given a 64-byte signature [r,s] we need to figure out the v value
 // and attah the full signature to the end of the transaction payload
-const buildEthRawTx = function (tx, sig, address) {
+const buildEthRawTx = (tx, sig, address) => {
   // RLP-encode the data we sent to the lattice
   const hash = Buffer.from(
     Hash.keccak256(get_rlp_encoded_preimage(tx.rawTx, tx.type)),
@@ -650,7 +650,7 @@ export function normalizeLatticeSignature(
       vValue = latticeResult.sig.v.readUInt32BE(Math.max(0, 4 - bufferLength));
     } else {
       // For very large buffers, read as hex and convert
-      vValue = parseInt(latticeResult.sig.v.toString('hex'), 16);
+      vValue = Number.parseInt(latticeResult.sig.v.toString('hex'), 16);
     }
   } else if (typeof latticeResult.sig.v === 'number') {
     vValue = latticeResult.sig.v;
@@ -680,22 +680,21 @@ export function normalizeLatticeSignature(
     };
 
     // For legacy transactions, remove the type field to ensure Viem treats it as legacy
-    delete result.type;
+    result.type = undefined;
 
     // Also remove any typed transaction fields that might confuse viem
-    delete result.maxFeePerGas;
-    delete result.maxPriorityFeePerGas;
-    delete result.accessList;
-    delete result.authorizationList;
+    result.maxFeePerGas = undefined;
+    result.maxPriorityFeePerGas = undefined;
+    result.accessList = undefined;
+    result.authorizationList = undefined;
 
     return result;
   }
 }
 
 // Convert an RLP-serialized transaction (plus signature) into a transaction hash
-const hashTransaction = function (serializedTx) {
-  return Hash.keccak256(Buffer.from(serializedTx, 'hex'));
-};
+const hashTransaction = (serializedTx) =>
+  Hash.keccak256(Buffer.from(serializedTx, 'hex'));
 
 // Returns address string given public key buffer
 function pubToAddrStr(pub) {
@@ -730,7 +729,7 @@ const chainIds = {
 // Get a buffer containing the chainId value.
 // Returns a 1, 2, 4, or 8 byte buffer with the chainId encoded in big endian
 function getChainIdBuf(chainId) {
-  let b;
+  let b: Buffer;
   // If our chainID is a hex string, we can convert it to a hex
   // buffer directly
   if (true === isValidChainIdHexNumStr(chainId)) b = ensureHexBuffer(chainId);
@@ -741,7 +740,7 @@ function getChainIdBuf(chainId) {
   // If this matches a u16, u32, or u64 size, return it now
   if (b.length <= 2 || b.length === 4 || b.length === 8) return b;
   // For other size buffers, we need to pack into u32 or u64 before returning;
-  let buf;
+  let buf: Buffer;
   if (b.length === 3) {
     buf = Buffer.alloc(4);
     buf.writeUInt32BE(chainId);
@@ -758,9 +757,6 @@ function chainUsesEIP155(chainID) {
     case 3: // ropsten
     case 4: // rinkeby
       return false;
-    case 1: // mainnet
-    case 42: // kovan
-    case 5: // goerli
     default:
       // all others should use eip155
       return true;
@@ -1077,7 +1073,7 @@ function parseEIP712Item(data, type, forJSParser = false) {
     }
   } else if (type.slice(0, 5) === 'bytes') {
     // Fixed sizes bytes need to be buffer type. We also add some sanity checks.
-    const nBytes = parseInt(type.slice(5));
+    const nBytes = Number.parseInt(type.slice(5));
     data = ensureHexBuffer(data);
     // Edge case to handle empty bytesN values
     if (data.length === 0) {
@@ -1213,9 +1209,9 @@ export const normalizeToViemTransaction = (
  * Convert Ethereum transaction to serialized bytes for generic signing.
  * Bridge function for firmware v0.15.0+ which removed legacy ETH signing paths.
  */
-const convertEthereumTransactionToGenericRequest = function (
+const convertEthereumTransactionToGenericRequest = (
   req: FlexibleTransaction,
-) {
+) => {
   // Use the unified normalization and serialization pipeline.
   // 1. Normalize the potentially varied input to a standard viem format.
   const viemTx = normalizeToViemTransaction(req);
@@ -1234,9 +1230,9 @@ type EthereumGenericSigningRequestParams = FlexibleTransaction & {
  * Build complete generic signing request for Ethereum transactions.
  * One-step function combining transaction conversion and generic signing setup.
  */
-export const buildEthereumGenericSigningRequest = function (
+export const buildEthereumGenericSigningRequest = (
   req: EthereumGenericSigningRequestParams,
-) {
+) => {
   const { fwConstants, signerPath, ...txData } = req;
 
   const payload = convertEthereumTransactionToGenericRequest(txData);
@@ -1354,7 +1350,7 @@ export function serializeEIP7702Transaction(tx: TransactionRequest): Hex {
           ? address.startsWith('0x')
             ? address
             : `0x${address}`
-          : `0x`;
+          : '0x';
 
       if (!addressStr || addressStr === '0x') {
         throw new Error(

@@ -1,4 +1,4 @@
-import { Client } from '../client';
+import type { Client } from '../client';
 
 export let saveClient: (clientData: string | null) => Promise<void>;
 

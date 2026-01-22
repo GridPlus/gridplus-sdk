@@ -1,5 +1,5 @@
+import { type Hex, getAddress, hexToBigInt, isAddress, isHex } from 'viem';
 import { z } from 'zod';
-import { type Hex, isHex, hexToBigInt, isAddress, getAddress } from 'viem';
 import { TRANSACTION_TYPE } from '../types';
 
 // Helper to handle various numeric inputs and convert them to BigInt.
@@ -248,13 +248,13 @@ export const TransactionSchema = z
     }
 
     // Remove fields that are not part of the final type
-    if (type !== 'legacy' && type !== 'eip2930') delete data.gasPrice;
+    if (type !== 'legacy' && type !== 'eip2930') data.gasPrice = undefined;
     if (type !== 'eip1559' && type !== 'eip7702') {
-      delete data.maxFeePerGas;
-      delete data.maxPriorityFeePerGas;
+      data.maxFeePerGas = undefined;
+      data.maxPriorityFeePerGas = undefined;
     }
-    delete data.gasLimit;
-    if (type !== 'eip7702') delete data.authorizationList;
+    data.gasLimit = undefined;
+    if (type !== 'eip7702') data.authorizationList = undefined;
 
     return data;
   });

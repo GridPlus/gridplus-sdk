@@ -1,5 +1,5 @@
-import { LatticeSecureMsgType, LatticeResponseCode } from '../protocol';
-import { LatticeMessageHeader } from './messages';
+import type { LatticeResponseCode, LatticeSecureMsgType } from '../protocol';
+import type { LatticeMessageHeader } from './messages';
 
 export interface LatticeSecureRequest {
   // Message header

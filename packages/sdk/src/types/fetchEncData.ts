@@ -1,4 +1,4 @@
-import { Client } from '../client';
+import type { Client } from '../client';
 
 export interface EIP2335KeyExportReq {
   path: number[];

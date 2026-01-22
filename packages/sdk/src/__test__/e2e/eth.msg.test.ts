@@ -17,20 +17,21 @@
  */
 
 import { HARDENED_OFFSET } from '../../constants';
-import { SigningPath } from '../../types';
+import type { SigningPath } from '../../types';
 import { randomBytes } from '../../util';
 import { buildEthMsgReq, buildRandomMsg } from '../utils/builders';
 import { runEthMsg } from '../utils/runners';
 import { setupClient } from '../utils/setup';
+import type { Client } from '../../client';
 
 describe('ETH Messages', () => {
-  let client;
+  let client: Client;
 
   beforeAll(async () => {
     client = await setupClient();
   });
 
-  describe('Test ETH personalSign', function () {
+  describe('Test ETH personalSign', () => {
     it('Should throw error when message contains non-ASCII characters', async () => {
       const protocol = 'signPersonal';
       const msg = '⚠️';
@@ -118,7 +119,7 @@ describe('ETH Messages', () => {
     });
   });
 
-  describe('Test ETH EIP712', function () {
+  describe('Test ETH EIP712', () => {
     it('Should test a message that needs to be prehashed', async () => {
       const msg = {
         types: {

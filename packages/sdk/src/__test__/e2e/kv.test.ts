@@ -1,4 +1,3 @@
-import { DEFAULT_SIGNER } from '../utils/builders';
 /**
  * Test kv (key-value) file functionality. These types of files are simple mappings
  * between a 64 byte key and a 64 byte value of any type. The main use case for these
@@ -7,9 +6,12 @@ import { DEFAULT_SIGNER } from '../utils/builders';
 import { question } from 'readline-sync';
 import { HARDENED_OFFSET } from '../../constants';
 import { LatticeResponseCode, ProtocolConstants } from '../../protocol';
+import { DEFAULT_SIGNER } from '../utils/builders';
 import { BTC_PURPOSE_P2PKH, ETH_COIN } from '../utils/helpers';
 
 import { setupClient } from '../utils/setup';
+import type { Client } from '../../client';
+import type { SignRequestParams } from '../../types';
 
 // Random address to test the screen with.
 // IMPORTANT NOTE: For Ethereum addresses you should always add the lower case variety since
@@ -19,7 +21,7 @@ const UNISWAP_TAG = 'Uniswap V2 Router';
 const RANDOM_ADDR = '0x30da3d7A865C934b389c919c737510054111AB3A';
 const RANDOM_TAG = 'Test Address Name';
 let _numStartingRecords = 0;
-let _fetchedRecords: any = [];
+let _fetchedRecords: unknown[] = [];
 const ETH_REQ = {
   currency: 'ETH',
   data: {
@@ -35,7 +37,7 @@ const ETH_REQ = {
 };
 
 describe('key-value', () => {
-  let client;
+  let client: Client;
 
   beforeAll(async () => {
     client = await setupClient();
@@ -92,7 +94,7 @@ describe('key-value', () => {
   });
 
   it('Should make a request to an unknown address', async () => {
-    await client.sign(ETH_REQ).catch((err) => {
+    await client.sign(ETH_REQ as unknown as SignRequestParams).catch((err) => {
       expect(err.message).toContain(
         ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined],
       );
@@ -148,7 +150,7 @@ describe('key-value', () => {
   });
 
   it('Should make a request to an address which is now known', async () => {
-    await client.sign(ETH_REQ);
+    await client.sign(ETH_REQ as unknown as SignRequestParams);
   });
 
   it('Should make an EIP712 request that uses the record', async () => {
@@ -181,15 +183,13 @@ describe('key-value', () => {
         payload: msg,
       },
     };
-    await client.sign(req);
+    await client.sign(req as unknown as SignRequestParams);
   });
 
   it('Should make a request with calldata', async () => {
     // TODO: Add decoder data
     const req = JSON.parse(JSON.stringify(ETH_REQ));
-    req.data.data = `0x23b872dd00000000000000000000000057974eb88e50cc61049b44e43e90d3bc40fa61c0000000000000000000000000${RANDOM_ADDR.slice(
-      2,
-    )}000000000000000000000000000000000000000000000000000000000000270f`;
+    req.data.data = `0x23b872dd00000000000000000000000057974eb88e50cc61049b44e43e90d3bc40fa61c0000000000000000000000000${RANDOM_ADDR.slice(2)}000000000000000000000000000000000000000000000000000000000000270f`;
     await client.sign(req);
   });
 
@@ -225,7 +225,7 @@ describe('key-value', () => {
   });
 
   it('Should make another request to make sure case sensitivity is enforced', async () => {
-    await client.sign(ETH_REQ).catch((err) => {
+    await client.sign(ETH_REQ as unknown as SignRequestParams).catch((err) => {
       expect(err.message).toContain(
         ProtocolConstants.responseMsg[LatticeResponseCode.userDeclined],
       );

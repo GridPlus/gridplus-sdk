@@ -99,7 +99,7 @@ export async function getXpubs(
  */
 export async function getAllXpubs(
   coinType: BtcCoinType = BTC_COIN_TYPES.MAINNET,
-  account: number = 0,
+  account = 0,
 ): Promise<{ xpub: string; ypub: string; zpub: string }> {
   const xpubs = await getXpubs({
     purposes: [BTC_PURPOSES.LEGACY, BTC_PURPOSES.WRAPPED, BTC_PURPOSES.NATIVE],
@@ -107,9 +107,13 @@ export async function getAllXpubs(
     account,
   });
 
-  return {
-    xpub: xpubs.get(BTC_PURPOSES.LEGACY)!,
-    ypub: xpubs.get(BTC_PURPOSES.WRAPPED)!,
-    zpub: xpubs.get(BTC_PURPOSES.NATIVE)!,
-  };
+  const xpub = xpubs.get(BTC_PURPOSES.LEGACY);
+  const ypub = xpubs.get(BTC_PURPOSES.WRAPPED);
+  const zpub = xpubs.get(BTC_PURPOSES.NATIVE);
+
+  if (!xpub || !ypub || !zpub) {
+    throw new Error('Failed to fetch all xpubs');
+  }
+
+  return { xpub, ypub, zpub };
 }

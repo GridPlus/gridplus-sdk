@@ -1,4 +1,4 @@
-import { Client } from '../client';
+import type { Client } from '../client';
 
 export interface GetAddressesRequestParams {
   startPath: number[];
@@ -7,6 +7,7 @@ export interface GetAddressesRequestParams {
   iterIdx?: number;
 }
 
-export interface GetAddressesRequestFunctionParams extends GetAddressesRequestParams {
+export interface GetAddressesRequestFunctionParams
+  extends GetAddressesRequestParams {
   client: Client;
 }

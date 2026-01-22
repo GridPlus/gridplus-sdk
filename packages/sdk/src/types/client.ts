@@ -1,18 +1,29 @@
-import { CURRENCIES } from '../constants';
-import { KeyPair } from './shared';
-import type { Address, Hash, Signature } from 'viem';
+import type { Address, Hash } from 'viem';
+import type { CURRENCIES } from '../constants';
+import type { KeyPair } from './shared';
 
 export type Currency = keyof typeof CURRENCIES;
 
 export type SigningPath = number[];
 
+/**
+ * Signature components as returned by the Lattice device.
+ * Values can be Buffer (raw) or string (hex) depending on context.
+ */
+export interface LatticeSignature {
+  r: Buffer | string;
+  s: Buffer | string;
+  v?: Buffer | string | number | bigint;
+}
+
 export interface SignData {
   tx?: string;
   txHash?: Hash;
   changeRecipient?: string;
-  sig?: Signature;
+  sig?: LatticeSignature;
   sigs?: Buffer[];
   signer?: Address;
+  pubkey?: Buffer;
   err?: string;
 }
 

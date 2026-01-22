@@ -15,11 +15,12 @@ import {
 import { Constants } from '../../../..';
 import { HARDENED_OFFSET } from '../../../../constants';
 import { ensureHexBuffer } from '../../../../util';
-import { setupClient } from '../../../utils/setup';
 import { getPrng } from '../../../utils/getters';
 import { deriveED25519Key, prandomBuf } from '../../../utils/helpers';
 import { runGeneric } from '../../../utils/runners';
+import { setupClient } from '../../../utils/setup';
 import { TEST_SEED } from '../../../utils/testConstants';
+import type { Client } from '../../../../client';
 
 //---------------------------------------
 // STATE DATA
@@ -33,7 +34,7 @@ const DEFAULT_SOLANA_SIGNER_PATH = [
 const prng = getPrng();
 
 describe('[Solana]', () => {
-  let client;
+  let client: Client;
 
   beforeAll(async () => {
     client = await setupClient();

@@ -1,15 +1,21 @@
 {
   "name": "gridplus-sdk-monorepo",
   "private": true,
+  "packageManager": "pnpm@10.6.2",
   "scripts": {
-    "build": "pnpm --filter @gridplus/btc run build && pnpm --filter gridplus-sdk run build",
-    "test": "pnpm --filter @gridplus/btc run build && pnpm --filter @gridplus/btc run test && pnpm --filter gridplus-sdk run test",
-    "test-unit": "pnpm --filter @gridplus/btc run build && pnpm --filter @gridplus/btc run test && pnpm --filter gridplus-sdk run test-unit",
-    "lint": "pnpm --filter @gridplus/btc run lint && pnpm --filter gridplus-sdk run lint",
-    "lint:fix": "pnpm --filter @gridplus/btc run lint:fix && pnpm --filter gridplus-sdk run lint:fix",
-    "e2e": "pnpm --filter gridplus-sdk run e2e",
+    "build": "turbo run build --filter=gridplus-sdk --filter=@gridplus/btc",
+    "test": "turbo run test --filter=gridplus-sdk --filter=@gridplus/btc",
+    "test-unit": "turbo run test-unit --filter=gridplus-sdk --filter=@gridplus/btc",
+    "lint": "turbo run lint --filter=gridplus-sdk --filter=@gridplus/btc",
+    "lint:fix": "turbo run lint:fix --filter=gridplus-sdk --filter=@gridplus/btc",
+    "typecheck": "turbo run typecheck --filter=gridplus-sdk --filter=@gridplus/btc",
+    "e2e": "turbo run e2e --filter=gridplus-sdk",
     "docs:build": "pnpm --filter gridplus-sdk-docs run build",
     "docs:start": "pnpm --filter gridplus-sdk-docs run start"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "turbo": "^2.3.0"
   },
   "engines": {
     "node": ">=20"

@@ -107,9 +107,9 @@ export function parseDerivationPathComponents(components: string[]): number[] {
     if (lowerPart === 'x') return 0; // Wildcard
     if (lowerPart === "x'") return HARDENED_OFFSET; // Hardened wildcard
     if (part.endsWith("'"))
-      return parseInt(part.slice(0, -1)) + HARDENED_OFFSET;
-    const val = parseInt(part);
-    if (isNaN(val)) {
+      return Number.parseInt(part.slice(0, -1)) + HARDENED_OFFSET;
+    const val = Number.parseInt(part);
+    if (Number.isNaN(val)) {
       throw new Error(`Invalid part in derivation path: ${part}`);
     }
     return val;

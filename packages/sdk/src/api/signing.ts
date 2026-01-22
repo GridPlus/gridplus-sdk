@@ -1,12 +1,12 @@
 import { RLP } from '@ethereumjs/rlp';
 import { Hash } from 'ox';
 import {
-  serializeTransaction,
   type Address,
   type Authorization,
   type Hex,
   type TransactionSerializable,
   type TransactionSerializableEIP7702,
+  serializeTransaction,
 } from 'viem';
 import { Constants } from '..';
 import {
@@ -18,12 +18,12 @@ import {
   SOLANA_DERIVATION,
 } from '../constants';
 import { fetchDecoder } from '../functions/fetchDecoder';
-import {
+import type {
   BitcoinSignPayload,
   EIP712MessagePayload,
   SignData,
-  SigningPayload,
   SignRequestParams,
+  SigningPayload,
   TransactionRequest,
 } from '../types';
 import { getYParity } from '../util';

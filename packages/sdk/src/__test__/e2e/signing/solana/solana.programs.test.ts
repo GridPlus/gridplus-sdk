@@ -7,11 +7,12 @@
  * incorrect key derivations and signature mismatches.
  */
 import { Constants } from '../../../..';
+import type { Client } from '../../../../client';
 import { setupClient } from '../../../utils/setup';
 import { dexlabProgram, raydiumProgram } from './__mocks__/programs';
 
 describe('Solana Programs', () => {
-  let client;
+  let client: Client;
 
   beforeAll(async () => {
     client = await setupClient();

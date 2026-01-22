@@ -6,10 +6,10 @@ import {
   LatticeSignEncoding,
   LatticeSignHash,
 } from './protocol/latticeConstants';
-import {
-  FirmwareConstants,
-  FirmwareArr,
+import type {
   ActiveWallets,
+  FirmwareArr,
+  FirmwareConstants,
   WalletPath,
 } from './types/index.js';
 
@@ -465,8 +465,8 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
 }
 
 /** @internal */
-// eslint-disable-next-line no-control-regex
-const ASCII_REGEX = /^[\x00-\x7F]+$/;
+// biome-ignore lint/suspicious/noControlCharactersInRegex: Intentional - matching ASCII range
+const ASCII_REGEX = /^[\u0000-\u007F]+$/;
 
 /** @internal */
 const EXTERNAL_NETWORKS_BY_CHAIN_ID_URL =

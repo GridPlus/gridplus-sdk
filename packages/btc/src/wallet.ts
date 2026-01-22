@@ -18,7 +18,7 @@ import { HARDENED_OFFSET } from './constants';
  * @throws Error if the value cannot be parsed to a valid integer
  */
 function safeParseInt(value: string, fieldName: string): number {
-  const parsed = parseInt(value, 10);
+  const parsed = Number.parseInt(value, 10);
   if (Number.isNaN(parsed)) {
     throw new Error(
       `Invalid ${fieldName}: expected numeric string but received "${value}"`,

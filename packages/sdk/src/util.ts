@@ -1,16 +1,16 @@
+import { Buffer } from 'node:buffer';
 // Static utility functions
 import { RLP } from '@ethereumjs/rlp';
 import aes from 'aes-js';
 import BigNum from 'bignumber.js';
 import { BN } from 'bn.js';
-import { Buffer } from 'buffer';
 import crc32 from 'crc-32';
 import elliptic from 'elliptic';
-import { Hash } from 'ox';
 import inRange from 'lodash/inRange.js';
 import isInteger from 'lodash/isInteger.js';
+import { Hash } from 'ox';
 import secp256k1 from 'secp256k1';
-import { parseTransaction, type Hex } from 'viem';
+import { type Hex, parseTransaction } from 'viem';
 
 const EC = elliptic.ec;
 const { ecdsaRecover } = secp256k1;
@@ -27,7 +27,7 @@ import {
   isValid4ByteResponse,
   isValidBlockExplorerResponse,
 } from './shared/validators';
-import { FirmwareConstants } from './types';
+import type { FirmwareConstants } from './types';
 
 const { COINS, PURPOSES } = BIP_CONSTANTS;
 let ec: any;
@@ -37,11 +37,13 @@ let ec: any;
 //--------------------------------------------------
 
 /** @internal Parse a response from the Lattice1 */
-export const parseLattice1Response = function (r: string): {
+export const parseLattice1Response = (
+  r: string,
+): {
   errorMessage?: string;
   responseCode?: number;
   data?: Buffer;
-} {
+} => {
   const parsed: {
     errorMessage: string | null;
     data: Buffer | null;
@@ -102,7 +104,7 @@ export const parseLattice1Response = function (r: string): {
 };
 
 /** @internal */
-export const checksum = function (x: Buffer): number {
+export const checksum = (x: Buffer): number => {
   // crc32 returns a signed integer - need to cast it to unsigned
   // Note that this uses the default 0xedb88320 polynomial
   return crc32.buf(x) >>> 0; // Need this to be a uint, hence the bit shift
@@ -111,7 +113,7 @@ export const checksum = function (x: Buffer): number {
 // Get a 74-byte padded DER-encoded signature buffer
 // `sig` must be the signature output from elliptic.js
 /** @internal */
-export const toPaddedDER = function (sig: any): Buffer {
+export const toPaddedDER = (sig: any): Buffer => {
   // We use 74 as the maximum length of a DER signature. All sigs must
   // be right-padded with zeros so that this can be a fixed size field
   const b = Buffer.alloc(74);
@@ -124,10 +126,10 @@ export const toPaddedDER = function (sig: any): Buffer {
 // TRANSACTION UTILS
 //--------------------------------------------------
 /** @internal */
-export const isValidAssetPath = function (
+export const isValidAssetPath = (
   path: number[],
   fwConstants: FirmwareConstants,
-): boolean {
+): boolean => {
   const allowedPurposes = [
     PURPOSES.ETH,
     PURPOSES.BTC_LEGACY,
@@ -158,7 +160,7 @@ export const isValidAssetPath = function (
 };
 
 /** @internal */
-export const splitFrames = function (data: Buffer, frameSz: number): Buffer[] {
+export const splitFrames = (data: Buffer, frameSz: number): Buffer[] => {
   const frames = [];
   const n = Math.ceil(data.length / frameSz);
   let off = 0;
@@ -179,10 +181,10 @@ function isBase10NumStr(x: string): boolean {
 }
 
 /** @internal Ensure a param is represented by a buffer */
-export const ensureHexBuffer = function (
+export const ensureHexBuffer = (
   x: string | number | bigint | Buffer,
   zeroIsNull = true,
-): Buffer {
+): Buffer => {
   try {
     const isZeroNumber = typeof x === 'number' && x === 0;
     const isZeroBigInt = typeof x === 'bigint' && x === 0n;
@@ -215,7 +217,7 @@ export const ensureHexBuffer = function (
 };
 
 /** @internal */
-export const fixLen = function (msg: Buffer, length: number): Buffer {
+export const fixLen = (msg: Buffer, length: number): Buffer => {
   const buf = Buffer.alloc(length);
   if (msg.length < length) {
     msg.copy(buf, length - msg.length);
@@ -228,7 +230,7 @@ export const fixLen = function (msg: Buffer, length: number): Buffer {
 // CRYPTO UTILS
 //--------------------------------------------------
 /** @internal */
-export const aes256_encrypt = function (data: Buffer, key: Buffer): Buffer {
+export const aes256_encrypt = (data: Buffer, key: Buffer): Buffer => {
   const iv = Buffer.from(ProtocolConstants.aesIv);
   const aesCbc = new aes.ModeOfOperation.cbc(key, iv);
   const paddedData =
@@ -237,7 +239,7 @@ export const aes256_encrypt = function (data: Buffer, key: Buffer): Buffer {
 };
 
 /** @internal */
-export const aes256_decrypt = function (data: Buffer, key: Buffer): Buffer {
+export const aes256_decrypt = (data: Buffer, key: Buffer): Buffer => {
   const iv = Buffer.from(ProtocolConstants.aesIv);
   const aesCbc = new aes.ModeOfOperation.cbc(key, iv);
   return Buffer.from(aesCbc.decrypt(data));
@@ -245,7 +247,7 @@ export const aes256_decrypt = function (data: Buffer, key: Buffer): Buffer {
 
 // Decode a DER signature. Returns signature object {r, s } or null if there is an error
 /** @internal */
-export const parseDER = function (sigBuf: Buffer) {
+export const parseDER = (sigBuf: Buffer) => {
   if (sigBuf[0] !== 0x30 || sigBuf[2] !== 0x02)
     throw new Error('Failed to decode DER signature');
   let off = 3;
@@ -262,13 +264,13 @@ export const parseDER = function (sigBuf: Buffer) {
 };
 
 /** @internal */
-export const getP256KeyPair = function (priv: Buffer | string): any {
+export const getP256KeyPair = (priv: Buffer | string): any => {
   if (ec === undefined) ec = new EC('p256');
   return ec.keyFromPrivate(priv, 'hex');
 };
 
 /** @internal */
-export const getP256KeyPairFromPub = function (pub: Buffer | string): any {
+export const getP256KeyPairFromPub = (pub: Buffer | string): any => {
   if (ec === undefined) ec = new EC('p256');
   // Convert Buffer to hex string if needed
   const pubHex = Buffer.isBuffer(pub) ? pub.toString('hex') : pub;
@@ -276,10 +278,10 @@ export const getP256KeyPairFromPub = function (pub: Buffer | string): any {
 };
 
 /** @internal */
-export const buildSignerPathBuf = function (
+export const buildSignerPathBuf = (
   signerPath: number[],
   varAddrPathSzAllowed: boolean,
-): Buffer {
+): Buffer => {
   const buf = Buffer.alloc(24);
   let off = 0;
   if (varAddrPathSzAllowed && signerPath.length > 5)
@@ -302,10 +304,7 @@ export const buildSignerPathBuf = function (
 // OTHER UTILS
 //--------------------------------------------------
 /** @internal */
-export const isAsciiStr = function (
-  str: string,
-  allowFormatChars = false,
-): boolean {
+export const isAsciiStr = (str: string, allowFormatChars = false): boolean => {
   if (typeof str !== 'string') {
     return false;
   }
@@ -325,15 +324,11 @@ export const isAsciiStr = function (
 };
 
 /** @internal Check if a value exists in an object. Only checks first level of keys. */
-export const existsIn = function <T>(
-  val: T,
-  obj: { [key: string]: T },
-): boolean {
-  return Object.keys(obj).some((key) => obj[key] === val);
-};
+export const existsIn = <T>(val: T, obj: { [key: string]: T }): boolean =>
+  Object.keys(obj).some((key) => obj[key] === val);
 
 /** @internal Create a buffer of size `n` and fill it with random data */
-export const randomBytes = function (n: number): Buffer {
+export const randomBytes = (n: number): Buffer => {
   const buf = Buffer.alloc(n);
   for (let i = 0; i < n; i++) {
     buf[i] = Math.round(Math.random() * 255);
@@ -393,7 +388,7 @@ export function selectDefFrom4byteABI(abiData: any[], selector: string) {
   if (abiData.length > 1) {
     console.warn('WARNING: There are multiple results. Using the first one.');
   }
-  let def;
+  let def: unknown[] | undefined;
   abiData
     .sort((a, b) => {
       const aTime = new Date(a.created_at).getTime();
@@ -475,7 +470,7 @@ async function fetchSupportedChainData(
   return fetchAndCache(url)
     .then((res) => res.json())
     .then((body) => {
-      if (body && body.result) {
+      if (body?.result) {
         try {
           return JSON.parse(body.result);
         } catch {
@@ -498,7 +493,7 @@ async function fetch4byteData(selector: string): Promise<any> {
   return await fetch(url)
     .then((res) => res.json())
     .then((body) => {
-      if (body && body.results) {
+      if (body?.results) {
         return body.results;
       } else {
         throw new Error('No results found');
@@ -729,7 +724,7 @@ export const generateAppSecret = (
  * @param resp - Lattice response with sig and pubkey
  * @returns BN object containing the `v` param
  */
-export const getV = function (tx: any, resp: any) {
+export const getV = (tx: any, resp: any) => {
   let chainId: string | undefined;
   let hash: Uint8Array;
   let type: string | number | undefined;
@@ -875,10 +870,10 @@ export const getV = function (tx: any, resp: any) {
  * @param txData - Transaction data containing chainId, useEIP155, and type
  * @returns The properly formatted v value as Buffer or BN
  */
-export const convertRecoveryToV = function (
+export const convertRecoveryToV = (
   recovery: number,
   txData: any = {},
-): Buffer | InstanceType<typeof BN> {
+): Buffer | InstanceType<typeof BN> => {
   const { chainId, useEIP155, type } = txData;
 
   // For typed transactions (EIP-2930, EIP-1559, EIP-7702), we want the recoveryParam (0 or 1)
@@ -918,7 +913,7 @@ export const convertRecoveryToV = function (
  * @param publicKey - Expected public key
  * @returns 0 or 1 for the y-parity value
  */
-export const getYParity = function (
+export const getYParity = (
   messageHash:
     | Buffer
     | Uint8Array
@@ -927,7 +922,7 @@ export const getYParity = function (
     | any,
   signature?: { r: any; s: any } | any,
   publicKey?: Buffer | Uint8Array | string,
-): number {
+): number => {
   // Handle legacy object format for backward compatibility
   if (
     typeof messageHash === 'object' &&
@@ -942,7 +937,7 @@ export const getYParity = function (
   }
 
   // Handle legacy transaction format for backward compatibility
-  if (signature && signature.sig && signature.pubkey && !publicKey) {
+  if (signature?.sig && signature.pubkey && !publicKey) {
     return getYParity(messageHash, signature.sig, signature.pubkey);
   }
 
@@ -1008,9 +1003,7 @@ export const getYParity = function (
       if (Buffer.from(recovered).equals(pubkeyBuf)) {
         return recovery;
       }
-    } catch {
-      continue;
-    }
+    } catch {}
   }
 
   throw new Error(

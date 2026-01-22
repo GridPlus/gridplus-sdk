@@ -1,4 +1,4 @@
-import { LatticeMsgType } from '../protocol';
+import type { LatticeMsgType } from '../protocol';
 
 export interface LatticeMessageHeader {
   // Protocol version. Should always be 0x01

@@ -1,5 +1,5 @@
 import { HARDENED_OFFSET } from '../constants';
-import { KeyPair, ActiveWallets, FirmwareVersion } from '../types';
+import type { ActiveWallets, FirmwareVersion, KeyPair } from '../types';
 
 /**
  * Get 64 bytes representing the public key This is the uncompressed key without the leading 04
@@ -99,7 +99,7 @@ export const isFWSupported = (
  * Convert a set of BIP39 path indices to a string
  * @param path - Set of indices
  */
-export const getPathStr = function (path) {
+export const getPathStr = (path) => {
   let pathStr = 'm';
   path.forEach((idx) => {
     if (idx >= HARDENED_OFFSET) {

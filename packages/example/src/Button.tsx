@@ -1,6 +1,11 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 
-export const Button = ({ onClick, children }) => {
+interface ButtonProps {
+  onClick: () => Promise<void>;
+  children: ReactNode;
+}
+
+export const Button = ({ onClick, children }: ButtonProps) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleOnClick = () => {
@@ -8,7 +13,7 @@ export const Button = ({ onClick, children }) => {
     onClick().finally(() => setIsLoading(false));
   };
   return (
-    <button onClick={handleOnClick} disabled={isLoading}>
+    <button type="button" onClick={handleOnClick} disabled={isLoading}>
       {children}
     </button>
   );

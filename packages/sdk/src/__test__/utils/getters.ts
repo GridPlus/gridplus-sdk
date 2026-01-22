@@ -4,12 +4,12 @@ export const getEnv = () => {
   if (!process.env) throw new Error('env cannot be found');
   return process.env;
 };
-export const getDeviceId = (): string => getEnv()['DEVICE_ID'] ?? '';
-export const getN = (): number => parseInt(getEnv()['N'] ?? '5');
-export const getSeed = (): string => getEnv()['SEED'] ?? 'myrandomseed';
-export const getTestnet = (): string => getEnv()['TESTNET'] ?? '';
-export const getEtherscanKey = (): string => getEnv()['ETHERSCAN_KEY'] ?? '';
-export const getEncPw = (): string => getEnv()['ENC_PW'] ?? null;
+export const getDeviceId = (): string => getEnv().DEVICE_ID ?? '';
+export const getN = (): number => Number.parseInt(getEnv().N ?? '5');
+export const getSeed = (): string => getEnv().SEED ?? 'myrandomseed';
+export const getTestnet = (): string => getEnv().TESTNET ?? '';
+export const getEtherscanKey = (): string => getEnv().ETHERSCAN_KEY ?? '';
+export const getEncPw = (): string => getEnv().ENC_PW ?? null;
 
 export const getPrng = (seed?: string) => {
   return seedrandom(seed ? seed : getSeed());

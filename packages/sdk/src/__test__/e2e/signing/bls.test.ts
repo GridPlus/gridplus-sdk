@@ -25,14 +25,17 @@ import { getPublicKey, sign } from '@noble/bls12-381';
 import { deriveSeedTree } from 'bls12-381-keygen';
 import { question } from 'readline-sync';
 
+import type { Client } from '../../../client';
 import { Constants } from '../../../index';
 import { getPathStr } from '../../../shared/utilities';
-import { setupClient } from '../../utils/setup';
 import { getEncPw } from '../../utils/getters';
 import { buildPath } from '../../utils/helpers';
+import { setupClient } from '../../utils/setup';
 import { TEST_SEED } from '../../utils/testConstants';
 
-let client, encPw, supportsBLS;
+let client: Client;
+let encPw: string | undefined;
+let supportsBLS: boolean | undefined;
 const DEPOSIT_PATH = [12381, 3600, 0, 0, 0];
 const WITHDRAWAL_PATH = [12381, 3600, 0, 0];
 // Number of signers to test for each of deposit and withdrawal paths
@@ -52,32 +55,30 @@ describe('[BLS keys]', () => {
     }
 
     // Check if firmware supports BLS (requires >= 0.17.0)
-    const fwVersion = client.fwVersion;
-    const versionStr =
-      fwVersion && fwVersion.length >= 3
-        ? `${fwVersion[2]}.${fwVersion[1]}.${fwVersion[0]}`
-        : 'unknown';
+    const fwVersion = client.getFwVersion();
+    const versionStr = fwVersion
+      ? `${fwVersion.major}.${fwVersion.minor}.${fwVersion.fix}`
+      : 'unknown';
 
     console.log(`\n[BLS Test] Firmware version: ${versionStr}`);
-    console.log(`[BLS Test] Raw fwVersion buffer:`, fwVersion);
+    console.log('[BLS Test] Raw fwVersion:', fwVersion);
 
     const fwConstants = client.getFwConstants();
-    console.log(`[BLS Test] getAddressFlags:`, fwConstants?.getAddressFlags);
+    console.log('[BLS Test] getAddressFlags:', fwConstants?.getAddressFlags);
     console.log(
-      `[BLS Test] BLS12_381_G1_PUB constant:`,
+      '[BLS Test] BLS12_381_G1_PUB constant:',
       Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB,
     );
 
     supportsBLS = fwConstants?.getAddressFlags?.includes(
-      Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB,
+      Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB as number,
     );
 
     console.log(`[BLS Test] supportsBLS: ${supportsBLS}\n`);
 
     if (!supportsBLS) {
       console.warn(
-        `\nSkipping BLS tests: Firmware version ${versionStr} does not support BLS operations.\n` +
-          `BLS support requires firmware version >= 0.17.0\n`,
+        `\nSkipping BLS tests: Firmware version ${versionStr} does not support BLS operations.\nBLS support requires firmware version >= 0.17.0\n`,
       );
     }
   });
@@ -94,7 +95,7 @@ describe('[BLS keys]', () => {
         c: 999, // if this is not specified, the default value will be used
       },
     };
-    let encData;
+    let encData: unknown;
     // Test custom iteration count (c)
     encData = await client.fetchEncryptedData(req);
     await validateExportedKeystore(KNOWN_SEED, req.params.path, encPw, encData);
@@ -114,9 +115,7 @@ describe('[BLS keys]', () => {
 
   for (let i = 0; i < N_TEST_SIGS; i++) {
     describe(`[Validate Derived Signature #${i + 1}/${N_TEST_SIGS}]`, () => {
-      it(`Should validate derivation and signing at deposit index #${
-        i + 1
-      }`, async (ctx) => {
+      it(`Should validate derivation and signing at deposit index #${i + 1}`, async (ctx) => {
         if (!supportsBLS) {
           ctx.skip();
           return;
@@ -126,9 +125,7 @@ describe('[BLS keys]', () => {
         await testBLSDerivationAndSig(KNOWN_SEED, depositPath);
       });
 
-      it(`Should validate derivation and signing at withdrawal index #${
-        i + 1
-      }`, async (ctx) => {
+      it(`Should validate derivation and signing at withdrawal index #${i + 1}`, async (ctx) => {
         if (!supportsBLS) {
           ctx.skip();
           return;
@@ -144,11 +141,12 @@ describe('[BLS keys]', () => {
 //=========================================================
 // INTERNAL HELPERS
 //=========================================================
-async function getBLSPub(startPath) {
+async function getBLSPub(startPath: number[]) {
   const pubs = await client.getAddresses({
     startPath,
+    n: 1,
     flag: Constants.GET_ADDR_FLAGS.BLS12_381_G1_PUB,
-  });
+  } as Parameters<typeof client.getAddresses>[0]);
   return pubs[0];
 }
 
@@ -182,10 +180,9 @@ async function testBLSDerivationAndSig(seed, signerPath) {
     refPubStr,
     'Lattice signature returned wrong pubkey',
   );
-  expect(latticeSig.sig.toString('hex')).to.equal(
-    refSigStr,
-    'Signature mismatch',
-  );
+  expect(
+    Buffer.from(latticeSig.sig as unknown as Buffer).toString('hex'),
+  ).to.equal(refSigStr, 'Signature mismatch');
 }
 async function validateExportedKeystore(seed, path, pw, expKeystoreBuffer) {
   const exportedKeystore = JSON.parse(expKeystoreBuffer.toString());

@@ -1,27 +1,33 @@
-import { useEffect, useState } from 'react';
-import { getClient, pair, setup } from '../../src/api/index';
+import { useCallback, useEffect, useState } from 'react';
+import { getClient, pair, setup } from 'gridplus-sdk';
 import './App.css';
 import { Lattice } from './Lattice';
 
 function App() {
   const [label, setLabel] = useState('No Device');
 
-  const getStoredClient = () =>
-    window.localStorage.getItem('storedClient') || '';
+  const getStoredClient = useCallback(
+    async () => window.localStorage.getItem('storedClient') || '',
+    [],
+  );
 
-  const setStoredClient = (storedClient: string | null) => {
+  const setStoredClient = useCallback(async (storedClient: string | null) => {
     if (!storedClient) return;
     window.localStorage.setItem('storedClient', storedClient);
 
-    const client = getClient();
+    const client = await getClient();
     setLabel(client?.getDeviceId() || 'No Device');
-  };
+  }, []);
 
   useEffect(() => {
-    if (getStoredClient()) {
-      setup({ getStoredClient, setStoredClient });
-    }
-  }, []);
+    const initClient = async () => {
+      const storedClient = await getStoredClient();
+      if (storedClient) {
+        await setup({ getStoredClient, setStoredClient });
+      }
+    };
+    initClient();
+  }, [getStoredClient, setStoredClient]);
 
   const submitInit = (e: any) => {
     e.preventDefault();

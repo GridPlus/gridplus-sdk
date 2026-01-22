@@ -16,12 +16,12 @@ import {
   SOLANA_DERIVATION,
 } from '../constants';
 import { LatticeGetAddressesFlag } from '../protocol/latticeConstants';
-import { GetAddressesRequestParams, WalletPath } from '../types';
+import type { GetAddressesRequestParams, WalletPath } from '../types';
 import {
+  getFlagFromPath,
   getStartPath,
   parseDerivationPathComponents,
   queue,
-  getFlagFromPath,
 } from './utilities';
 
 type FetchAddressesParams = {

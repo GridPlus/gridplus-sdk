@@ -1,10 +1,10 @@
-import {
-  EIP7702AuthTransactionRequest,
-  EIP7702AuthListTransactionRequest,
-} from '../../types';
-import { serializeEIP7702Transaction } from '../../ethereum';
-import { parseEther, toHex } from 'viem';
 import { Hash } from 'ox';
+import { parseEther, toHex } from 'viem';
+import { serializeEIP7702Transaction } from '../../ethereum';
+import type {
+  EIP7702AuthListTransactionRequest,
+  EIP7702AuthTransactionRequest,
+} from '../../types';
 
 describe('EIP-7702 Transaction Serialization', () => {
   /**
@@ -45,11 +45,7 @@ describe('EIP-7702 Transaction Serialization', () => {
     const serialized = serializeEIP7702Transaction(tx);
 
     // Compute the keccak256 hash of the serialized transaction
-    const txHash =
-      '0x' +
-      Buffer.from(
-        Hash.keccak256(Buffer.from(serialized.slice(2), 'hex')),
-      ).toString('hex');
+    const txHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(serialized.slice(2), 'hex'))).toString('hex')}`;
 
     // Store the serialized value for debugging
     console.log('Serialized transaction:', serialized);
@@ -106,11 +102,7 @@ describe('EIP-7702 Transaction Serialization', () => {
     const serialized = serializeEIP7702Transaction(tx);
 
     // Compute the keccak256 hash of the serialized transaction
-    const txHash =
-      '0x' +
-      Buffer.from(
-        Hash.keccak256(Buffer.from(serialized.slice(2), 'hex')),
-      ).toString('hex');
+    const txHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(serialized.slice(2), 'hex'))).toString('hex')}`;
 
     // Store the serialized value for debugging
     console.log('Serialized auth list transaction:', serialized);
@@ -162,11 +154,7 @@ describe('EIP-7702 Transaction Serialization', () => {
     const serialized = serializeEIP7702Transaction(tx);
 
     // Compute the keccak256 hash of the serialized transaction
-    const txHash =
-      '0x' +
-      Buffer.from(
-        Hash.keccak256(Buffer.from(serialized.slice(2), 'hex')),
-      ).toString('hex');
+    const txHash = `0x${Buffer.from(Hash.keccak256(Buffer.from(serialized.slice(2), 'hex'))).toString('hex')}`;
 
     console.log('Reference serialized transaction:', serialized);
     console.log('Reference transaction hash:', txHash);

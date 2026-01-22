@@ -11,9 +11,9 @@ import {
   validateStartPath,
   validateWallet,
 } from '../shared/validators';
-import {
-  GetAddressesRequestFunctionParams,
+import type {
   FirmwareConstants,
+  GetAddressesRequestFunctionParams,
   Wallet,
 } from '../types';
 import { isValidAssetPath } from '../util';
@@ -200,12 +200,11 @@ export const decodeGetAddressesResponse = (
       // Return the UTF-8 representation
       const len = addrBytes.indexOf(0); // First 0 is the null terminator
       if (len > 0) {
-        // Clean control characters from the string before adding to array
         const cleanStr = addrBytes
           .slice(0, len)
           .toString()
-          // eslint-disable-next-line no-control-regex
-          .replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+          // biome-ignore lint/suspicious/noControlCharactersInRegex: Intentional - stripping control characters
+          .replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
         addrs.push(cleanStr);
       }
     }

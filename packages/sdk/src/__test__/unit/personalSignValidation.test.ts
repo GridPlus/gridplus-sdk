@@ -1,4 +1,4 @@
-import { Buffer } from 'buffer';
+import { Buffer } from 'node:buffer';
 import { Hash } from 'ox';
 import secp256k1 from 'secp256k1';
 import { addRecoveryParam } from '../../ethereum';

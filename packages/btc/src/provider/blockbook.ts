@@ -152,7 +152,7 @@ export class BlockbookProvider implements BtcProvider {
         `Fee estimation failed: invalid response format for ${blocks} blocks`,
       );
     }
-    const btcPerKb = parseFloat(response.result);
+    const btcPerKb = Number.parseFloat(response.result);
     if (Number.isNaN(btcPerKb) || btcPerKb <= 0) {
       throw new Error(
         `Fee estimation failed: invalid fee rate "${response.result}" for ${blocks} blocks`,

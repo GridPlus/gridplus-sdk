@@ -1,41 +1,29 @@
-import { Chain, Common, Hardfork } from '@ethereumjs/common';
-import { TransactionFactory } from '@ethereumjs/tx';
 import { useState } from 'react';
 import {
   addAddressTags,
-  fetchAddresses,
   fetchAddressTags,
+  fetchAddresses,
   fetchLedgerLiveAddresses,
   removeAddressTags,
   sign,
   signMessage,
-} from '../../src/api';
+  type AddressTag,
+} from 'gridplus-sdk';
 import { Button } from './Button';
 
-export const Lattice = ({ label }) => {
-  const [addresses, setAddresses] = useState<string[]>([]);
-  const [addressTags, setAddressTags] = useState<{ id: string }[]>([]);
-  const [ledgerAddresses, setLedgerAddresses] = useState<any>([]);
+interface LatticeProps {
+  label: string;
+}
 
-  const getTxPayload = () => {
-    const txData = {
-      type: 1,
-      maxFeePerGas: 1200000000,
-      maxPriorityFeePerGas: 1200000000,
-      nonce: 0,
-      gasLimit: 50000,
-      to: '0xe242e54155b1abc71fc118065270cecaaf8b7768',
-      value: 1000000000000,
-      data: '0x17e914679b7e160613be4f8c2d3203d236286d74eb9192f6d6f71b9118a42bb033ccd8e8',
-      gasPrice: 1200000000,
-    };
-    const common = new Common({
-      chain: Chain.Mainnet,
-      hardfork: Hardfork.London,
-    });
-    const tx = TransactionFactory.fromTxData(txData, { common });
-    const payload = tx.getMessageToSign(false);
-    return payload;
+export const Lattice = ({ label }: LatticeProps) => {
+  const [addresses, setAddresses] = useState<string[]>([]);
+  const [addressTags, setAddressTags] = useState<AddressTag[]>([]);
+  const [ledgerAddresses, setLedgerAddresses] = useState<string[]>([]);
+
+  // Example EIP-1559 transaction payload using raw hex format
+  const getTxPayload = (): `0x${string}` => {
+    // Pre-serialized EIP-1559 transaction for example purposes
+    return '0x02f8620180843b9aca00843b9aca0082c350940000000000000000000000000000000000000000880de0b6b3a764000080c0';
   };
 
   return (
@@ -49,8 +37,20 @@ export const Lattice = ({ label }) => {
       }}
     >
       <h2>{label}</h2>
-      <Button onClick={() => sign(getTxPayload())}>Sign</Button>
-      <Button onClick={() => signMessage('test message')}>Sign Message</Button>
+      <Button
+        onClick={async () => {
+          await sign(getTxPayload());
+        }}
+      >
+        Sign
+      </Button>
+      <Button
+        onClick={async () => {
+          await signMessage('test message');
+        }}
+      >
+        Sign Message
+      </Button>
 
       <div>
         <h3>Addresses</h3>
@@ -97,7 +97,7 @@ export const Lattice = ({ label }) => {
       <div>
         <h3>Address Tags</h3>
         <ul>
-          {addressTags?.map((tag: any) => (
+          {addressTags?.map((tag) => (
             <li key={tag.key}>
               {tag.key}: {tag.val}
             </li>
@@ -108,7 +108,7 @@ export const Lattice = ({ label }) => {
       <div>
         <h3>Ledger Addresses</h3>
         <ul>
-          {ledgerAddresses?.map((ledgerAddress: any) => (
+          {ledgerAddresses?.map((ledgerAddress) => (
             <li key={ledgerAddress}>{ledgerAddress}</li>
           ))}
         </ul>

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "test": {
+      "dependsOn": ["build"],
+      "outputs": []
+    },
+    "lint": {
+      "outputs": []
+    },
+    "lint:fix": {
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "e2e": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "passThroughEnv": [
+        "CI",
+        "DEBUG",
+        "DEBUG_SIGNING",
+        "DEVICE_ID",
+        "PASSWORD",
+        "PAIRING_SECRET",
+        "ENC_PW",
+        "APP_NAME",
+        "baseUrl"
+      ]
+    }
+  }
+}
