@@ -16,6 +16,20 @@ export interface CliConfig {
   defaultAppName: string;
 }
 
+/**
+ * Simulator configuration defaults
+ */
+export const SIMULATOR_DEFAULTS = {
+  /** Default URL for lattice-simulator */
+  baseUrl: 'http://127.0.0.1:3000',
+  /** Default device ID for simulator */
+  deviceId: 'SD0001',
+  /** Default password for simulator */
+  password: '12345678',
+  /** Default pairing secret for simulator */
+  pairingSecret: '12345678',
+} as const;
+
 const DEFAULT_CONFIG: CliConfig = {
   outputFormat: 'human',
   defaultNetwork: 'mainnet',

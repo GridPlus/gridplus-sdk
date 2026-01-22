@@ -111,10 +111,13 @@ export const pubkeyCommand = new Command('pubkey')
           });
         } else {
           // Single key
-          results = await fetchAddressesByDerivationPath(cleanPath(derivationPath), {
-            n: 1,
-            flag,
-          });
+          results = await fetchAddressesByDerivationPath(
+            cleanPath(derivationPath),
+            {
+              n: 1,
+              flag,
+            },
+          );
         }
 
         // Convert Buffer responses to hex strings

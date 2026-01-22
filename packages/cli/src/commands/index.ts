@@ -5,4 +5,5 @@ export { pubkeyCommand } from './pubkey.js';
 export { setupCommand } from './setup.js';
 export { signCommand } from './sign.js';
 export { signMessageCommand } from './sign-message.js';
+export { simulatorCommand } from './simulator.js';
 export { blsChangeCommand, depositDataCommand } from './eth2/index.js';

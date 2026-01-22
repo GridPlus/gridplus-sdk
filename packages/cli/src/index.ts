@@ -9,6 +9,7 @@ import {
   setupCommand,
   signCommand,
   signMessageCommand,
+  simulatorCommand,
 } from './commands/index.js';
 
 export const program = new Command()
@@ -20,6 +21,7 @@ export const program = new Command()
 program.addCommand(setupCommand);
 program.addCommand(connectCommand);
 program.addCommand(pairCommand);
+program.addCommand(simulatorCommand);
 
 // Register address/key commands
 program.addCommand(addressCommand);

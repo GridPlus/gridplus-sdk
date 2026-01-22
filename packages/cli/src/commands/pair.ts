@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { pair, setup } from 'gridplus-sdk';
 import {
+  SIMULATOR_DEFAULTS,
   error,
   getStoredClient,
   hasSession,
@@ -15,7 +16,11 @@ import {
 export const pairCommand = new Command('pair')
   .description('Pair with a Lattice device using a pairing code')
   .argument('[code]', 'Pairing code from device (or will prompt)')
-  .action(async (code) => {
+  .option(
+    '-s, --simulator',
+    'Use simulator pairing secret (auto-pair with simulator)',
+  )
+  .action(async (code, options) => {
     try {
       // Check if we have a saved session
       if (!hasSession()) {
@@ -29,11 +34,20 @@ export const pairCommand = new Command('pair')
         process.exit(1);
       }
 
-      // Get pairing code
-      const pairingCode = code || (await promptPairingCode());
+      const isSimulator =
+        options.simulator === true || session.isSimulator === true;
 
-      info('Initiating pairing with your Lattice device...');
-      info('Please confirm the pairing request on your device screen.');
+      // Get pairing code (use simulator default if --simulator flag or session is simulator)
+      const pairingCode = isSimulator
+        ? SIMULATOR_DEFAULTS.pairingSecret
+        : code || (await promptPairingCode());
+
+      if (isSimulator) {
+        info('Initiating pairing with lattice-simulator...');
+      } else {
+        info('Initiating pairing with your Lattice device...');
+        info('Please confirm the pairing request on your device screen.');
+      }
 
       // Initialize the SDK with stored credentials
       await withSpinner('Setting up connection...', async () => {
@@ -50,7 +64,11 @@ export const pairCommand = new Command('pair')
 
       if (isPaired) {
         success('Pairing successful!');
-        info('Your CLI is now paired with your Lattice device.');
+        if (isSimulator) {
+          info('Your CLI is now paired with the simulator.');
+        } else {
+          info('Your CLI is now paired with your Lattice device.');
+        }
         info('You can now use commands like "gp address" and "gp sign".');
       } else {
         error('Pairing failed. Please try again.');

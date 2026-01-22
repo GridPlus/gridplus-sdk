@@ -11,6 +11,8 @@ export interface SessionData {
   name: string;
   appSecret: string;
   clientData?: string;
+  /** Flag indicating if this session is connected to a simulator */
+  isSimulator?: boolean;
 }
 
 const SESSION_DIR = join(homedir(), '.gridplus');

@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { Utils, setup } from 'gridplus-sdk';
 import {
+  SIMULATOR_DEFAULTS,
   error,
   getStoredClient,
   info,
@@ -21,25 +22,42 @@ export const setupCommand = new Command('setup')
   .option('-p, --password <password>', 'Device password (skip prompt)')
   .option('-n, --name <name>', 'App name shown on device')
   .option('--base-url <url>', 'Custom base URL for Lattice relay')
+  .option(
+    '-s, --simulator',
+    'Use simulator defaults (localhost:3000, SD0001, etc.)',
+  )
   .action(async (options) => {
     try {
-      info('Setting up GridPlus Lattice connection...');
+      const isSimulator = options.simulator === true;
 
-      // Get device ID
-      const deviceId = options.deviceId || (await promptDeviceId());
+      if (isSimulator) {
+        info('Setting up connection to lattice-simulator...');
+      } else {
+        info('Setting up GridPlus Lattice connection...');
+      }
 
-      // Get password
-      const password = options.password || (await promptPassword());
+      // Get device ID (use simulator default if --simulator flag)
+      const deviceId = isSimulator
+        ? SIMULATOR_DEFAULTS.deviceId
+        : options.deviceId || (await promptDeviceId());
+
+      // Get password (use simulator default if --simulator flag)
+      const password = isSimulator
+        ? SIMULATOR_DEFAULTS.password
+        : options.password || (await promptPassword());
 
       // Get app name
-      const name = options.name || (await promptAppName());
+      const name =
+        options.name || (isSimulator ? 'GridPlus CLI' : await promptAppName());
 
       // Generate app secret from credentials
       const appSecret = Utils.generateAppSecret(deviceId, password, name);
       const appSecretHex = appSecret.toString('hex');
 
-      // Determine base URL
-      const baseUrl = options.baseUrl || 'https://signing.gridpl.us';
+      // Determine base URL (use simulator default if --simulator flag)
+      const baseUrl = isSimulator
+        ? SIMULATOR_DEFAULTS.baseUrl
+        : options.baseUrl || 'https://signing.gridpl.us';
 
       // Save session data first so the SDK callbacks can use it
       saveSession({
@@ -47,6 +65,7 @@ export const setupCommand = new Command('setup')
         baseUrl,
         name,
         appSecret: appSecretHex,
+        isSimulator,
       });
 
       // Try to connect using the SDK
@@ -70,7 +89,11 @@ export const setupCommand = new Command('setup')
         info('You can now use other commands to interact with your Lattice.');
       } else {
         success('Device connected but not yet paired.');
-        info('Run "gp pair" to complete pairing with your device.');
+        if (isSimulator) {
+          info('Run "gp pair --simulator" to auto-pair with the simulator.');
+        } else {
+          info('Run "gp pair" to complete pairing with your device.');
+        }
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
