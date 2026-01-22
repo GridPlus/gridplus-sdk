@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@10.6.2",
   "scripts": {
-    "build": "turbo run build --filter=gridplus-sdk --filter=@gridplus/btc",
+    "build": "turbo run build --filter=gridplus-sdk --filter=@gridplus/btc --filter=@gridplus/cli",
     "test": "turbo run test --filter=gridplus-sdk --filter=@gridplus/btc",
     "test-unit": "turbo run test-unit --filter=gridplus-sdk --filter=@gridplus/btc",
     "lint": "turbo run lint --filter=gridplus-sdk --filter=@gridplus/btc",

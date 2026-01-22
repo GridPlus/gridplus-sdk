@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.2.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -21,17 +21,9 @@
         "noForEach": "warn"
       },
       "correctness": {
-        "noUnusedImports": {
-          "level": "error"
-        },
-        "noUnusedVariables": {
-          "level": "warn",
-          "fix": "none"
-        },
-        "noUnusedFunctionParameters": {
-          "level": "warn",
-          "fix": "none"
-        }
+        "noUnusedImports": "error",
+        "noUnusedVariables": "warn",
+        "noUnusedFunctionParameters": "warn"
       },
       "style": {
         "noParameterAssign": "warn",
@@ -60,7 +52,6 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "include": ["packages/*/src/**"],
     "ignore": ["**/dist/**", "**/node_modules/**", "**/coverage/**"]
   },
   "javascript": {
