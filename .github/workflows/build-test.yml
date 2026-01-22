@@ -99,7 +99,7 @@ jobs:
             sleep 1
           done
 
-      - name: Run SDK e2e tests with simulator
+      - name: Run SDK e2e tests and CLI tests with simulator
         if: env.INTERNAL_EVENT == 'true'
         working-directory: ${{ github.workspace }}
         env:
@@ -111,7 +111,26 @@ jobs:
           PAIRING_SECRET: '12345678'
           ENC_PW: '12345678'
           APP_NAME: 'lattice-manager'
-        run: pnpm run e2e -- --reporter=basic
+        run: |
+          # Run SDK e2e tests and CLI tests in parallel
+          pnpm run e2e -- --reporter=basic &
+          E2E_PID=$!
+
+          # Run CLI smoke tests
+          ./packages/cli/dist/bin/gridplus.js simulator setup
+          ./packages/cli/dist/bin/gridplus.js address
+          ./packages/cli/dist/bin/gridplus.js address --count 3
+          ./packages/cli/dist/bin/gridplus.js address --type btc-segwit
+          ./packages/cli/dist/bin/gridplus.js address --type solana
+          ./packages/cli/dist/bin/gridplus.js pubkey
+          ./packages/cli/dist/bin/gridplus.js address --json
+          echo "CLI tests passed!"
+
+          # Wait for e2e tests to complete
+          wait $E2E_PID
+          E2E_EXIT=$?
+
+          exit $E2E_EXIT
 
       - name: Show simulator logs on failure
         if: failure() && env.INTERNAL_EVENT == 'true'
