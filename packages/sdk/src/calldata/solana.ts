@@ -15,8 +15,14 @@
 /**
  * Read a compact-u16 from a buffer at the given offset.
  *
- * Solana uses compact-u16 encoding for array lengths in the transaction wire format.
- * This is a variable-length encoding that uses 1-3 bytes.
+ * Solana uses compact-u16 encoding (also called "shortvec") for array lengths
+ * in the transaction wire format. This is a variable-length little-endian
+ * encoding that uses 1-3 bytes where each byte's high bit indicates continuation.
+ *
+ * Encoding:
+ * - Byte 0: low 7 bits of value (bits 0-6), bit 7 is continuation flag
+ * - Byte 1: next 7 bits of value (bits 7-13), bit 7 is continuation flag
+ * - Byte 2: final 2 bits of value (bits 14-15)
  *
  * @param buffer - The buffer to read from
  * @param offset - The byte offset to start reading
@@ -30,22 +36,34 @@ export function readCompactU16(
   if (offset >= buffer.length) {
     throw new Error('Buffer underflow reading compact-u16');
   }
+
   const first = buffer[offset];
-  if (first < 0x80) {
+  // If high bit is clear, this is a single-byte value (0-127)
+  if ((first & 0x80) === 0) {
     return [first, 1];
   }
+
+  // Need second byte
   if (offset + 1 >= buffer.length) {
     throw new Error('Buffer underflow reading compact-u16 (2 bytes)');
   }
   const second = buffer[offset + 1];
-  if (first < 0xc0) {
-    return [((first & 0x7f) << 7) | second, 2];
+
+  // If second byte's high bit is clear, this is a two-byte value
+  // Little-endian: first byte has low 7 bits, second byte has next 7 bits
+  if ((second & 0x80) === 0) {
+    return [(first & 0x7f) | ((second & 0x7f) << 7), 2];
   }
+
+  // Need third byte for values > 16383
   if (offset + 2 >= buffer.length) {
     throw new Error('Buffer underflow reading compact-u16 (3 bytes)');
   }
   const third = buffer[offset + 2];
-  return [((first & 0x3f) << 14) | (second << 7) | third, 3];
+
+  // Little-endian: combine all three bytes
+  // Note: third byte only uses low 2 bits for u16 (max 65535)
+  return [(first & 0x7f) | ((second & 0x7f) << 7) | ((third & 0x03) << 14), 3];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -80,13 +98,9 @@ export function decodeTransaction(transaction: string): DecodedTransaction {
         ? Buffer.from(transaction, 'base64')
         : Uint8Array.from(atob(transaction), (c) => c.charCodeAt(0));
 
-    // Validate it's valid base64 by checking round-trip
-    const reEncoded =
-      typeof Buffer !== 'undefined'
-        ? (decoded as Buffer).toString('base64')
-        : btoa(String.fromCharCode(...decoded));
-
-    if (reEncoded === transaction) {
+    // Validate we got reasonable bytes (Solana transactions are typically 200-1232 bytes)
+    // A minimal transaction is at least ~100 bytes, max is 1232 bytes
+    if (decoded.length >= 100 && decoded.length <= 1232) {
       return {
         encoding: 'base64',
         bytes: new Uint8Array(decoded),
