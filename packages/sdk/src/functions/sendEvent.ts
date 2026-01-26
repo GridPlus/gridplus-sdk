@@ -15,10 +15,6 @@ const MESSAGE_LENGTH_BYTES = 2;
 const MAX_MESSAGE_BYTES = 1703;
 const EVENT_PAYLOAD_BYTES =
   EVENT_TYPE_BYTES + EVENT_ID_BYTES + MESSAGE_LENGTH_BYTES + MAX_MESSAGE_BYTES;
-const EVENT_TYPE_OFFSET = 0;
-const EVENT_ID_OFFSET = EVENT_TYPE_OFFSET + EVENT_TYPE_BYTES;
-const MESSAGE_LENGTH_OFFSET = EVENT_ID_OFFSET + EVENT_ID_BYTES;
-const MESSAGE_OFFSET = MESSAGE_LENGTH_OFFSET + MESSAGE_LENGTH_BYTES;
 
 const parseEventId = (eventId: string): Buffer => {
   if (!validateUuid(eventId)) {
@@ -59,17 +55,17 @@ const encodeEventPayload = ({
 
   const payload = Buffer.alloc(EVENT_PAYLOAD_BYTES);
   const eventIdBytes = parseEventId(eventId);
-  payload[EVENT_TYPE_OFFSET] = eventType;
-  eventIdBytes.copy(payload, EVENT_ID_OFFSET);
-  payload.writeUInt16LE(msgBytes.length, MESSAGE_LENGTH_OFFSET);
-  msgBytes.copy(payload, MESSAGE_OFFSET);
+  payload[0] = eventType;
+  eventIdBytes.copy(payload, EVENT_TYPE_BYTES);
+  payload.writeUInt16LE(msgBytes.length, EVENT_TYPE_BYTES + EVENT_ID_BYTES);
+  msgBytes.copy(
+    payload,
+    EVENT_TYPE_BYTES + EVENT_ID_BYTES + MESSAGE_LENGTH_BYTES,
+  );
   return payload;
 };
 
-/**
- * Send a simple event payload to the device firmware.
- * @category Lattice
- */
+/** Send an event payload to device firmware. */
 export const sendEvent = async ({
   client,
   eventType,
@@ -87,14 +83,9 @@ export const sendEvent = async ({
     url,
   });
 
-  client.mutate({
-    ephemeralPub: newEphemeralPub,
-  });
+  client.mutate({ ephemeralPub: newEphemeralPub });
 
-  const status = decryptedData[0] ?? 0;
-  return { status };
+  return { status: decryptedData[0] ?? 0 };
 };
 
-export const __private__ = {
-  encodeEventPayload,
-};
+export const __private__ = { encodeEventPayload };
