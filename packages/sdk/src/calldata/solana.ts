@@ -23,26 +23,29 @@
  * @returns Tuple of [value, bytesRead]
  * @throws Error if buffer is too short
  */
-export function readCompactU16(buffer: Uint8Array, offset: number): [number, number] {
-	if (offset >= buffer.length) {
-		throw new Error('Buffer underflow reading compact-u16')
-	}
-	const first = buffer[offset]
-	if (first < 0x80) {
-		return [first, 1]
-	}
-	if (offset + 1 >= buffer.length) {
-		throw new Error('Buffer underflow reading compact-u16 (2 bytes)')
-	}
-	const second = buffer[offset + 1]
-	if (first < 0xc0) {
-		return [((first & 0x7f) << 7) | second, 2]
-	}
-	if (offset + 2 >= buffer.length) {
-		throw new Error('Buffer underflow reading compact-u16 (3 bytes)')
-	}
-	const third = buffer[offset + 2]
-	return [((first & 0x3f) << 14) | (second << 7) | third, 3]
+export function readCompactU16(
+  buffer: Uint8Array,
+  offset: number,
+): [number, number] {
+  if (offset >= buffer.length) {
+    throw new Error('Buffer underflow reading compact-u16');
+  }
+  const first = buffer[offset];
+  if (first < 0x80) {
+    return [first, 1];
+  }
+  if (offset + 1 >= buffer.length) {
+    throw new Error('Buffer underflow reading compact-u16 (2 bytes)');
+  }
+  const second = buffer[offset + 1];
+  if (first < 0xc0) {
+    return [((first & 0x7f) << 7) | second, 2];
+  }
+  if (offset + 2 >= buffer.length) {
+    throw new Error('Buffer underflow reading compact-u16 (3 bytes)');
+  }
+  const third = buffer[offset + 2];
+  return [((first & 0x3f) << 14) | (second << 7) | third, 3];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,10 +56,10 @@ export function readCompactU16(buffer: Uint8Array, offset: number): [number, num
  * Result of decoding a Solana transaction.
  */
 export interface DecodedTransaction {
-	/** The original encoding format detected */
-	encoding: 'base64' | 'base58'
-	/** The decoded transaction bytes */
-	bytes: Uint8Array
+  /** The original encoding format detected */
+  encoding: 'base64' | 'base58';
+  /** The decoded transaction bytes */
+  bytes: Uint8Array;
 }
 
 /**
@@ -69,26 +72,34 @@ export interface DecodedTransaction {
  * @throws Error if decoding fails
  */
 export function decodeTransaction(transaction: string): DecodedTransaction {
-	// Try base64 first (more common for WalletConnect)
-	try {
-		// Use Buffer in Node.js environment, atob in browser
-		const decoded = typeof Buffer !== 'undefined' ? Buffer.from(transaction, 'base64') : Uint8Array.from(atob(transaction), (c) => c.charCodeAt(0))
+  // Try base64 first (more common for WalletConnect)
+  try {
+    // Use Buffer in Node.js environment, atob in browser
+    const decoded =
+      typeof Buffer !== 'undefined'
+        ? Buffer.from(transaction, 'base64')
+        : Uint8Array.from(atob(transaction), (c) => c.charCodeAt(0));
 
-		// Validate it's valid base64 by checking round-trip
-		const reEncoded = typeof Buffer !== 'undefined' ? (decoded as Buffer).toString('base64') : btoa(String.fromCharCode(...decoded))
+    // Validate it's valid base64 by checking round-trip
+    const reEncoded =
+      typeof Buffer !== 'undefined'
+        ? (decoded as Buffer).toString('base64')
+        : btoa(String.fromCharCode(...decoded));
 
-		if (reEncoded === transaction) {
-			return {
-				encoding: 'base64',
-				bytes: new Uint8Array(decoded),
-			}
-		}
-	} catch {
-		// Fall through to base58
-	}
+    if (reEncoded === transaction) {
+      return {
+        encoding: 'base64',
+        bytes: new Uint8Array(decoded),
+      };
+    }
+  } catch {
+    // Fall through to base58
+  }
 
-	// Try base58 - requires external bs58 library, caller should handle
-	throw new Error('Transaction is not valid base64. Use decodeTransactionBase58 for base58 encoded transactions.')
+  // Try base58 - requires external bs58 library, caller should handle
+  throw new Error(
+    'Transaction is not valid base64. Use decodeTransactionBase58 for base58 encoded transactions.',
+  );
 }
 
 /**
@@ -101,10 +112,10 @@ export function decodeTransaction(transaction: string): DecodedTransaction {
  * @returns Decoded transaction with encoding metadata
  */
 export function fromBase58Bytes(decodedBytes: Uint8Array): DecodedTransaction {
-	return {
-		encoding: 'base58',
-		bytes: decodedBytes,
-	}
+  return {
+    encoding: 'base58',
+    bytes: decodedBytes,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -115,14 +126,14 @@ export function fromBase58Bytes(decodedBytes: Uint8Array): DecodedTransaction {
  * Parsed Solana transaction structure.
  */
 export interface ParsedTransaction {
-	/** Number of signature slots in the transaction */
-	numSignatures: number
-	/** Byte offset where signatures start (after compact-u16 count) */
-	signaturesOffset: number
-	/** Byte offset where the message starts */
-	messageOffset: number
-	/** The message bytes (what gets signed) */
-	messageBytes: Uint8Array
+  /** Number of signature slots in the transaction */
+  numSignatures: number;
+  /** Byte offset where signatures start (after compact-u16 count) */
+  signaturesOffset: number;
+  /** Byte offset where the message starts */
+  messageOffset: number;
+  /** The message bytes (what gets signed) */
+  messageBytes: Uint8Array;
 }
 
 /**
@@ -139,27 +150,31 @@ export interface ParsedTransaction {
  * @returns Parsed transaction with message bytes and metadata
  * @throws Error if transaction format is invalid
  */
-export function extractMessageFromTransaction(txBytes: Uint8Array): ParsedTransaction {
-	const [numSignatures, sigCountBytes] = readCompactU16(txBytes, 0)
+export function extractMessageFromTransaction(
+  txBytes: Uint8Array,
+): ParsedTransaction {
+  const [numSignatures, sigCountBytes] = readCompactU16(txBytes, 0);
 
-	// Signatures section starts after the compact-u16 count
-	const signaturesOffset = sigCountBytes
+  // Signatures section starts after the compact-u16 count
+  const signaturesOffset = sigCountBytes;
 
-	// Message starts after all signatures (64 bytes each)
-	const messageOffset = sigCountBytes + numSignatures * 64
+  // Message starts after all signatures (64 bytes each)
+  const messageOffset = sigCountBytes + numSignatures * 64;
 
-	if (messageOffset > txBytes.length) {
-		throw new Error(`Invalid transaction: message offset ${messageOffset} exceeds buffer length ${txBytes.length}`)
-	}
+  if (messageOffset > txBytes.length) {
+    throw new Error(
+      `Invalid transaction: message offset ${messageOffset} exceeds buffer length ${txBytes.length}`,
+    );
+  }
 
-	const messageBytes = txBytes.subarray(messageOffset)
+  const messageBytes = txBytes.subarray(messageOffset);
 
-	return {
-		numSignatures,
-		signaturesOffset,
-		messageOffset,
-		messageBytes,
-	}
+  return {
+    numSignatures,
+    signaturesOffset,
+    messageOffset,
+    messageBytes,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -178,27 +193,35 @@ export function extractMessageFromTransaction(txBytes: Uint8Array): ParsedTransa
  * @returns New transaction bytes with signature injected
  * @throws Error if signature index is out of bounds or signature is wrong size
  */
-export function injectSignature(txBytes: Uint8Array, signature: Uint8Array, signatureIndex = 0): Uint8Array {
-	if (signature.length !== 64) {
-		throw new Error(`Invalid signature length: expected 64 bytes, got ${signature.length}`)
-	}
+export function injectSignature(
+  txBytes: Uint8Array,
+  signature: Uint8Array,
+  signatureIndex = 0,
+): Uint8Array {
+  if (signature.length !== 64) {
+    throw new Error(
+      `Invalid signature length: expected 64 bytes, got ${signature.length}`,
+    );
+  }
 
-	const [numSignatures, sigCountBytes] = readCompactU16(txBytes, 0)
+  const [numSignatures, sigCountBytes] = readCompactU16(txBytes, 0);
 
-	if (signatureIndex >= numSignatures) {
-		throw new Error(`Signature index ${signatureIndex} out of bounds (${numSignatures} signature slots)`)
-	}
+  if (signatureIndex >= numSignatures) {
+    throw new Error(
+      `Signature index ${signatureIndex} out of bounds (${numSignatures} signature slots)`,
+    );
+  }
 
-	// Create a copy to avoid mutating the original
-	const signedTx = new Uint8Array(txBytes)
+  // Create a copy to avoid mutating the original
+  const signedTx = new Uint8Array(txBytes);
 
-	// Calculate where this signature should be written
-	const signatureOffset = sigCountBytes + signatureIndex * 64
+  // Calculate where this signature should be written
+  const signatureOffset = sigCountBytes + signatureIndex * 64;
 
-	// Copy signature bytes into the transaction
-	signedTx.set(signature, signatureOffset)
+  // Copy signature bytes into the transaction
+  signedTx.set(signature, signatureOffset);
 
-	return signedTx
+  return signedTx;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -214,27 +237,31 @@ export function injectSignature(txBytes: Uint8Array, signature: Uint8Array, sign
  * @returns Normalized 32-byte public key, or null if conversion fails
  */
 export function toEd25519Bytes(entry: unknown): Uint8Array | null {
-	if (entry instanceof Uint8Array) {
-		return entry.slice(0, 32)
-	}
+  if (entry instanceof Uint8Array) {
+    return entry.slice(0, 32);
+  }
 
-	// Handle Buffer (Node.js)
-	if (typeof Buffer !== 'undefined' && Buffer.isBuffer(entry)) {
-		return new Uint8Array(entry.slice(0, 32))
-	}
+  // Handle Buffer (Node.js)
+  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(entry)) {
+    return new Uint8Array(entry.slice(0, 32));
+  }
 
-	if (typeof entry === 'string') {
-		const hex = entry.startsWith('0x') ? entry.slice(2) : /^[0-9a-fA-F]+$/.test(entry) ? entry : ''
-		if (hex.length >= 64) {
-			const out = new Uint8Array(32)
-			for (let i = 0; i < 32; i++) {
-				out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16)
-			}
-			return out
-		}
-	}
+  if (typeof entry === 'string') {
+    const hex = entry.startsWith('0x')
+      ? entry.slice(2)
+      : /^[0-9a-fA-F]+$/.test(entry)
+        ? entry
+        : '';
+    if (hex.length >= 64) {
+      const out = new Uint8Array(32);
+      for (let i = 0; i < 32; i++) {
+        out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+      }
+      return out;
+    }
+  }
 
-	return null
+  return null;
 }
 
 /**
@@ -245,10 +272,10 @@ export function toEd25519Bytes(entry: unknown): Uint8Array | null {
  * @returns Hex string representation
  */
 export function bytesToHex(bytes: Uint8Array, prefix = true): string {
-	const hex = Array.from(bytes)
-		.map((b) => b.toString(16).padStart(2, '0'))
-		.join('')
-	return prefix ? `0x${hex}` : hex
+  const hex = Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  return prefix ? `0x${hex}` : hex;
 }
 
 /**
@@ -259,16 +286,16 @@ export function bytesToHex(bytes: Uint8Array, prefix = true): string {
  * @throws Error if hex string is invalid
  */
 export function hexToBytes(hex: string): Uint8Array {
-	const normalized = hex.startsWith('0x') ? hex.slice(2) : hex
-	if (normalized.length % 2 !== 0) {
-		throw new Error('Hex string must have even length')
-	}
-	if (!/^[0-9a-fA-F]*$/.test(normalized)) {
-		throw new Error('Invalid hex characters')
-	}
-	const bytes = new Uint8Array(normalized.length / 2)
-	for (let i = 0; i < bytes.length; i++) {
-		bytes[i] = Number.parseInt(normalized.slice(i * 2, i * 2 + 2), 16)
-	}
-	return bytes
+  const normalized = hex.startsWith('0x') ? hex.slice(2) : hex;
+  if (normalized.length % 2 !== 0) {
+    throw new Error('Hex string must have even length');
+  }
+  if (!/^[0-9a-fA-F]*$/.test(normalized)) {
+    throw new Error('Invalid hex characters');
+  }
+  const bytes = new Uint8Array(normalized.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = Number.parseInt(normalized.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
 }

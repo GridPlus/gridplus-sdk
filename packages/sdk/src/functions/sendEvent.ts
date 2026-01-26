@@ -4,7 +4,10 @@ import {
 } from '../protocol';
 import { parse as parseUuid, validate as validateUuid } from 'uuid';
 import { validateConnectedClient } from '../shared/validators';
-import type { SendEventRequestFunctionParams, SendEventResponse } from '../types';
+import type {
+  SendEventRequestFunctionParams,
+  SendEventResponse,
+} from '../types';
 
 const EVENT_TYPE_BYTES = 1;
 const EVENT_ID_BYTES = 16;

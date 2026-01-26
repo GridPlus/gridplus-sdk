@@ -108,7 +108,8 @@ export class Client {
     /** Function to set the stored client data */
     setStoredClient?: (clientData: string | null) => Promise<void>;
   }) {
-    const retryOverride = typeof retryCount === 'number' ? retryCount : undefined;
+    const retryOverride =
+      typeof retryCount === 'number' ? retryCount : undefined;
     this.name = name || 'Unknown';
     this.baseUrl = baseUrl || BASE_URL;
     this.deviceId = deviceId;

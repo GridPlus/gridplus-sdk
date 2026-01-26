@@ -77,7 +77,12 @@ export const EXTERNAL = {
   // Standard derivation paths for various chains
   DERIVATION_PATHS: {
     /** Solana: m/44'/501'/0'/0' - Ed25519 curve */
-    SOLANA: [HARDENED + 44, HARDENED + 501, HARDENED, HARDENED] as readonly number[],
+    SOLANA: [
+      HARDENED + 44,
+      HARDENED + 501,
+      HARDENED,
+      HARDENED,
+    ] as readonly number[],
     /** Ethereum: m/44'/60'/0'/0/0 - secp256k1 curve */
     ETH: [HARDENED + 44, HARDENED + 60, HARDENED, 0, 0] as readonly number[],
   },

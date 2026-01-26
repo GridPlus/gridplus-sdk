@@ -7,9 +7,9 @@ import { aes256_encrypt, checksum, getP256KeyPair } from '../../util';
 import { request } from '../../shared/functions';
 
 vi.mock('../../shared/functions', async () => {
-  const actual = await vi.importActual<
-    typeof import('../../shared/functions')
-  >('../../shared/functions');
+  const actual = await vi.importActual<typeof import('../../shared/functions')>(
+    '../../shared/functions',
+  );
   return {
     ...actual,
     request: vi.fn(),
