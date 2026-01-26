@@ -62,8 +62,7 @@ describe('Solana utilities', () => {
     test('should reject base58 transaction that would decode to valid length if treated as base64', () => {
       // Create a string with length not divisible by 4 (invalid base64 padding)
       // This simulates a base58 string that would fail the round-trip check
-      const fakeBase58 =
-        'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijk123456789'.repeat(5) + 'ABC';
+      const fakeBase58 = `${'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijk123456789'.repeat(5)}ABC`;
 
       expect(() => decodeTransaction(fakeBase58)).toThrow(/not valid base64/);
     });
@@ -162,7 +161,7 @@ describe('Solana utilities', () => {
     });
 
     test('should parse valid 0x-prefixed hex string', () => {
-      const hex = '0x' + 'b'.repeat(64);
+      const hex = `0x${'b'.repeat(64)}`;
       const result = toEd25519Bytes(hex);
 
       expect(result).not.toBeNull();
@@ -171,7 +170,7 @@ describe('Solana utilities', () => {
     });
 
     test('should truncate longer hex string to 32 bytes', () => {
-      const longHex = '0x' + 'c'.repeat(128);
+      const longHex = `0x${'c'.repeat(128)}`;
       const result = toEd25519Bytes(longHex);
 
       expect(result).not.toBeNull();
