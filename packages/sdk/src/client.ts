@@ -108,13 +108,14 @@ export class Client {
     /** Function to set the stored client data */
     setStoredClient?: (clientData: string | null) => Promise<void>;
   }) {
+    const retryOverride = typeof retryCount === 'number' ? retryCount : undefined;
     this.name = name || 'Unknown';
     this.baseUrl = baseUrl || BASE_URL;
     this.deviceId = deviceId;
     this.isPaired = false;
     this.activeWallets = DEFAULT_ACTIVE_WALLETS;
     this.timeout = timeout || 60000;
-    this.retryCount = retryCount || 3;
+    this.retryCount = retryOverride ?? 3;
     this.skipRetryOnWrongWallet = skipRetryOnWrongWallet || false;
     this.privKey = privKey || randomBytes(32);
     this.key = getP256KeyPair(this.privKey);
@@ -126,6 +127,10 @@ export class Client {
     /** The user may pass in state data to rehydrate a session that was previously cached */
     if (stateData) {
       this.unpackAndApplyStateData(stateData);
+    }
+    if (retryOverride !== undefined) {
+      this.retryCount = retryOverride;
+      this.retryWrapper = buildRetryWrapper(this, this.retryCount);
     }
   }
 
