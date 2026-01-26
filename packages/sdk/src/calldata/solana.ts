@@ -39,24 +39,64 @@ export interface DecodedTransaction {
   bytes: Uint8Array;
 }
 
-/** Decode base64 transaction. Throws if invalid. */
-export function decodeTransaction(transaction: string): DecodedTransaction {
-  try {
-    const decoded =
-      typeof Buffer !== 'undefined'
-        ? Buffer.from(transaction, 'base64')
-        : Uint8Array.from(atob(transaction), (c) => c.charCodeAt(0));
+/**
+ * Validates that a string is strictly valid base64 encoding.
+ * Base58 strings (common Solana RPC format) will be rejected since base58
+ * uses a different alphabet that would decode to garbage if treated as base64.
+ * @param input - The string to validate
+ * @returns true if the string is valid base64, false otherwise
+ */
+function isValidBase64(input: string): boolean {
+  // Base64 must have length divisible by 4 (with padding)
+  if (input.length % 4 !== 0) {
+    return false;
+  }
 
-    // Solana txs are 100-1232 bytes
-    if (decoded.length >= 100 && decoded.length <= 1232) {
-      return { encoding: 'base64', bytes: new Uint8Array(decoded) };
+  // Check for valid base64 characters: A-Z, a-z, 0-9, +, /, and = for padding
+  // This explicitly rejects base58-only chars that aren't in base64
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(input)) {
+    return false;
+  }
+
+  // Round-trip validation: decode and re-encode to verify integrity
+  try {
+    if (typeof Buffer !== 'undefined') {
+      const decoded = Buffer.from(input, 'base64');
+      const reencoded = decoded.toString('base64');
+      return reencoded === input;
     }
+    const decoded = atob(input);
+    const reencoded = btoa(decoded);
+    return reencoded === input;
   } catch {
-    // Fall through
+    return false;
+  }
+}
+
+/**
+ * Decode base64 transaction. Throws if invalid.
+ * @throws Error if the input is not valid base64 or decoded length is outside 100-1232 bytes
+ */
+export function decodeTransaction(transaction: string): DecodedTransaction {
+  // Validate base64 strictly before decoding to reject base58 inputs
+  if (!isValidBase64(transaction)) {
+    throw new Error(
+      'Transaction is not valid base64. Use fromBase58Bytes for base58.',
+    );
+  }
+
+  const decoded =
+    typeof Buffer !== 'undefined'
+      ? Buffer.from(transaction, 'base64')
+      : Uint8Array.from(atob(transaction), (c) => c.charCodeAt(0));
+
+  // Solana txs are 100-1232 bytes
+  if (decoded.length >= 100 && decoded.length <= 1232) {
+    return { encoding: 'base64', bytes: new Uint8Array(decoded) };
   }
 
   throw new Error(
-    'Transaction is not valid base64. Use fromBase58Bytes for base58.',
+    `Decoded transaction length ${decoded.length} is outside valid Solana range (100-1232 bytes).`,
   );
 }
 
@@ -117,13 +157,25 @@ export function injectSignature(
   return signedTx;
 }
 
-/** Convert raw Ed25519 pubkey to 32-byte Uint8Array. */
+/**
+ * Convert raw Ed25519 pubkey to 32-byte Uint8Array.
+ * @param entry - The input to convert (Uint8Array, Buffer, or hex string)
+ * @returns A 32-byte Uint8Array, or null if the input is invalid or too short
+ */
 export function toEd25519Bytes(entry: unknown): Uint8Array | null {
   if (entry instanceof Uint8Array) {
+    // Reject inputs shorter than 32 bytes to prevent malformed keys
+    if (entry.length < 32) {
+      return null;
+    }
     return entry.slice(0, 32);
   }
 
   if (typeof Buffer !== 'undefined' && Buffer.isBuffer(entry)) {
+    // Reject inputs shorter than 32 bytes to prevent malformed keys
+    if (entry.length < 32) {
+      return null;
+    }
     return new Uint8Array(entry.slice(0, 32));
   }
 
