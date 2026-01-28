@@ -61,7 +61,7 @@ export interface ActiveWallets {
 
 export interface RequestParams {
   url: string;
-  payload: unknown;
+  payload: any;
   timeout?: number;
   retries?: number;
 }

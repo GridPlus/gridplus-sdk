@@ -7,7 +7,8 @@ import type {
   TypedData,
   TypedDataDefinition,
 } from 'viem';
-import type { Currency, SigningPath } from './index';
+import type { Currency } from './constants';
+import type { SigningPath } from './client';
 import type { FirmwareConstants } from './firmware';
 import type { Wallet } from './client';
 

@@ -1,6 +1,6 @@
 import type { TypedData } from 'viem';
 import type { Client } from '../client';
-import type { SigningPayload, BitcoinSignPayload, SignRequestParams } from '@gridplus/types';
+import type { SignRequestParams } from '@gridplus/types';
 
 /**
  * Re-export sign types from @gridplus/types
