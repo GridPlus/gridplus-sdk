@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@esbuild-plugins/node-globals-polyfill": "^0.1.1",
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
     "@ethereumjs/common": "^3.0.2",
     "@ethereumjs/tx": "^4.0.2",
     "buffer": "^6.0.3",
