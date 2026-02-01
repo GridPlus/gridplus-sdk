@@ -24,7 +24,7 @@ jobs:
       INTERNAL_EVENT: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: pnpm/action-setup@v4
 
@@ -55,7 +55,7 @@ jobs:
 
       - name: Checkout lattice-simulator
         if: env.INTERNAL_EVENT == 'true'
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: GridPlus/lattice-simulator
           path: lattice-simulator
