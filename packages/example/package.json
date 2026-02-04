@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@esbuild-plugins/node-globals-polyfill": "^0.1.1",
-    "@ethereumjs/common": "^3.0.2",
+    "@ethereumjs/common": "^10.1.1",
     "@ethereumjs/tx": "^4.0.2",
     "buffer": "^6.0.3",
     "gridplus-sdk": "workspace:*",
