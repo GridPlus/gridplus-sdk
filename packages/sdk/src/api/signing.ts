@@ -13,6 +13,7 @@ import {
   BTC_LEGACY_DERIVATION,
   BTC_SEGWIT_DERIVATION,
   BTC_WRAPPED_SEGWIT_DERIVATION,
+  COSMOS_DERIVATION,
   CURRENCIES,
   DEFAULT_ETH_DERIVATION,
   SOLANA_DERIVATION,
@@ -276,6 +277,28 @@ export const signSolanaTx = async (
       curveType: Constants.SIGNING.CURVES.ED25519,
       hashType: Constants.SIGNING.HASHES.NONE,
       encodingType: Constants.SIGNING.ENCODINGS.SOLANA,
+      payload,
+      ...overrides,
+    },
+  };
+  return queue((client) => client.sign(tx));
+};
+
+/**
+ * Sign a Cosmos SDK SignDoc payload.
+ * Supports SIGN_MODE_DIRECT (protobuf) and SIGN_MODE_LEGACY_AMINO_JSON (Amino JSON).
+ * Requires firmware v0.18.10+ for COSMOS encoding support.
+ */
+export const signCosmos = async (
+  payload: Buffer,
+  overrides?: SignRequestParams,
+): Promise<SignData> => {
+  const tx = {
+    data: {
+      signerPath: COSMOS_DERIVATION,
+      curveType: Constants.SIGNING.CURVES.SECP256K1,
+      hashType: Constants.SIGNING.HASHES.SHA256,
+      encodingType: Constants.SIGNING.ENCODINGS.COSMOS,
       payload,
       ...overrides,
     },

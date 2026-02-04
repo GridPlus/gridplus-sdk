@@ -189,6 +189,9 @@ importers:
       '@gridplus/btc':
         specifier: workspace:*
         version: link:../btc
+      '@gridplus/types':
+        specifier: workspace:*
+        version: link:../types
       '@metamask/eth-sig-util':
         specifier: ^8.2.0
         version: 8.2.0
@@ -349,6 +352,31 @@ importers:
       vitest:
         specifier: 3.2.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.10.4)(jiti@1.21.7)(msw@2.12.7(@types/node@24.10.4)(typescript@5.9.3))(terser@5.44.1)(tsx@4.21.0)
+
+  packages/types:
+    dependencies:
+      elliptic:
+        specifier: 6.6.1
+        version: 6.6.1
+      viem:
+        specifier: ^2.37.8
+        version: 2.43.5(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.5)
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^1.9.0
+        version: 1.9.4
+      '@types/elliptic':
+        specifier: ^6.4.18
+        version: 6.4.18
+      '@types/node':
+        specifier: ^24.10.4
+        version: 24.10.4
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@microsoft/api-extractor@7.55.2(@types/node@24.10.4))(jiti@1.21.7)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
 
 packages:
 
@@ -11359,7 +11387,7 @@ snapshots:
 
   '@scure/bip32@1.7.0':
     dependencies:
-      '@noble/curves': 1.9.1
+      '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 

@@ -40,6 +40,7 @@ export const EXTERNAL = {
     ENCODINGS: {
       NONE: LatticeSignEncoding.none,
       SOLANA: LatticeSignEncoding.solana,
+      COSMOS: LatticeSignEncoding.cosmos,
       EVM: LatticeSignEncoding.evm,
       ETH_DEPOSIT: LatticeSignEncoding.eth_deposit,
       EIP7702_AUTH: LatticeSignEncoding.eip7702_auth,
@@ -81,12 +82,8 @@ const addressSizes = {
   ETH: 20, // 20 byte address not including 0x prefix
 } as const;
 
-/** @internal */
-const CURRENCIES = {
-  ETH: 'ETH',
-  BTC: 'BTC',
-  ETH_MSG: 'ETH_MSG',
-} as const;
+/** @internal - Re-export from @gridplus/types */
+export { CURRENCIES } from '@gridplus/types';
 
 /** @internal */
 // THIS NEEDS TO BE A PROTOCOL CONSTANT TOO
@@ -461,6 +458,15 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
     };
   }
 
+  // --- V0.18.10 ---
+  // V0.18.10 added Cosmos (SIGN_MODE_DIRECT) decoding for generic signing
+  if (!legacy && gte(v, [0, 18, 10])) {
+    c.genericSigning.encodingTypes = {
+      ...c.genericSigning.encodingTypes,
+      COSMOS: EXTERNAL.SIGNING.ENCODINGS.COSMOS,
+    };
+  }
+
   return c;
 }
 
@@ -625,6 +631,15 @@ export const SOLANA_DERIVATION = [
 ];
 
 /** @internal */
+export const COSMOS_DERIVATION = [
+  HARDENED_OFFSET + 44,
+  HARDENED_OFFSET + 118,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
+
+/** @internal */
 export const LEDGER_LIVE_DERIVATION = [
   HARDENED_OFFSET + 49,
   HARDENED_OFFSET + 60,
@@ -646,7 +661,6 @@ export {
   getFwVersionConst,
   BIP_CONSTANTS,
   BASE_URL,
-  CURRENCIES,
   MAX_ADDR,
   NETWORKS_BY_CHAIN_ID,
   EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
