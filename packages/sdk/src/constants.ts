@@ -82,12 +82,8 @@ const addressSizes = {
   ETH: 20, // 20 byte address not including 0x prefix
 } as const;
 
-/** @internal */
-const CURRENCIES = {
-  ETH: 'ETH',
-  BTC: 'BTC',
-  ETH_MSG: 'ETH_MSG',
-} as const;
+/** @internal - Re-export from @gridplus/types */
+export { CURRENCIES } from '@gridplus/types';
 
 /** @internal */
 // THIS NEEDS TO BE A PROTOCOL CONSTANT TOO
@@ -665,7 +661,6 @@ export {
   getFwVersionConst,
   BIP_CONSTANTS,
   BASE_URL,
-  CURRENCIES,
   MAX_ADDR,
   NETWORKS_BY_CHAIN_ID,
   EXTERNAL_NETWORKS_BY_CHAIN_ID_URL,
