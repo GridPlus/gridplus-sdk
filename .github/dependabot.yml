@@ -18,6 +18,15 @@ updates:
         applies-to: security-updates
         patterns:
           - '*'
+    # Ignore packages in non-core workspace packages
+    ignore:
+      # Ignore deps that are only used in example/docs/cli packages
+      - dependency-name: '@vitejs/plugin-react'
+      - dependency-name: '@esbuild-plugins/node-globals-polyfill'
+      - dependency-name: 'typedoc'
+      - dependency-name: 'typedoc-plugin-markdown'
+      - dependency-name: 'docusaurus*'
+      - dependency-name: '@docusaurus/*'
 
   # GitHub Actions - monthly
   - package-ecosystem: 'github-actions'
