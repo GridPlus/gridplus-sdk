@@ -11,7 +11,7 @@
   "dependencies": {
     "@esbuild-plugins/node-globals-polyfill": "^0.1.1",
     "@ethereumjs/common": "^3.0.2",
-    "@ethereumjs/tx": "^4.0.2",
+    "@ethereumjs/tx": "^10.1.1",
     "buffer": "^6.0.3",
     "gridplus-sdk": "workspace:*",
     "react": "^18.2.0",
