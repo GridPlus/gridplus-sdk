@@ -34,6 +34,7 @@ export interface GenericSigningData {
   encodingTypes: {
     NONE: typeof LatticeSignEncoding.none;
     SOLANA: typeof LatticeSignEncoding.solana;
+    COSMOS?: typeof LatticeSignEncoding.cosmos;
     EVM?: typeof LatticeSignEncoding.evm;
   };
 }

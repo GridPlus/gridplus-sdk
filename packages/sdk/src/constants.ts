@@ -40,6 +40,7 @@ export const EXTERNAL = {
     ENCODINGS: {
       NONE: LatticeSignEncoding.none,
       SOLANA: LatticeSignEncoding.solana,
+      COSMOS: LatticeSignEncoding.cosmos,
       EVM: LatticeSignEncoding.evm,
       ETH_DEPOSIT: LatticeSignEncoding.eth_deposit,
       EIP7702_AUTH: LatticeSignEncoding.eip7702_auth,
@@ -457,6 +458,15 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
     };
   }
 
+  // --- V0.18.10 ---
+  // V0.18.10 added Cosmos (SIGN_MODE_DIRECT) decoding for generic signing
+  if (!legacy && gte(v, [0, 18, 10])) {
+    c.genericSigning.encodingTypes = {
+      ...c.genericSigning.encodingTypes,
+      COSMOS: EXTERNAL.SIGNING.ENCODINGS.COSMOS,
+    };
+  }
+
   return c;
 }
 
@@ -618,6 +628,15 @@ export const SOLANA_DERIVATION = [
   HARDENED_OFFSET + 501,
   HARDENED_OFFSET,
   HARDENED_OFFSET,
+];
+
+/** @internal */
+export const COSMOS_DERIVATION = [
+  HARDENED_OFFSET + 44,
+  HARDENED_OFFSET + 118,
+  HARDENED_OFFSET,
+  0,
+  0,
 ];
 
 /** @internal */
