@@ -14,9 +14,11 @@ export type {
   BtcNetwork,
   XpubPrefix,
   ScriptType,
+  BtcAddressFormat,
   XpubOptions,
   XpubsOptions,
   PreviousOutput,
+  BitcoinSignPayload,
   WalletUtxo,
   WalletSummary,
   WalletSnapshot,
@@ -65,3 +67,26 @@ export type {
   FeeRates,
   PagingOptions,
 } from './provider/types';
+
+// Asset module
+export { btc } from './asset';
+export type {
+  AssetCapabilities,
+  AssetModule,
+  Account,
+  GetAccountsParams,
+  GetAddressParams,
+  GetPublicKeyParams,
+  SignRequest,
+  SignResult,
+} from '@gridplus/asset-core';
+
+export type {
+  BtcAdapter,
+  BtcAdapterOptions,
+  BtcGetAccountsParams,
+  BtcGetAddressParams,
+  BtcGetPublicKeyParams,
+  BtcSignRequest,
+  Signer,
+} from './asset';
