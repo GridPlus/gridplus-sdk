@@ -51,7 +51,7 @@ jobs:
 
       - name: Release a nightly build
         if: env.INTERNAL_EVENT == 'true'
-        run: pnpx pkg-pr-new publish ./packages/sdk
+        run: pnpx pkg-pr-new publish ./packages/btc ./packages/sdk
 
       - name: Checkout lattice-simulator
         if: env.INTERNAL_EVENT == 'true'
