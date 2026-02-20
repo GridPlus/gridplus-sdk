@@ -41,11 +41,13 @@ function getLatticeSolanaConstants(
   context: DeviceContext,
 ): LatticeSolanaContext['constants'] {
   const constants = (context as LatticeSolanaContext).constants;
+  const hasNumber = (value: unknown): value is number =>
+    typeof value === 'number' && Number.isFinite(value);
   if (
-    !constants?.EXTERNAL?.GET_ADDR_FLAGS?.ED25519_PUB ||
-    !constants?.EXTERNAL?.SIGNING?.CURVES?.ED25519 ||
-    !constants?.EXTERNAL?.SIGNING?.HASHES?.NONE ||
-    !constants?.EXTERNAL?.SIGNING?.ENCODINGS?.SOLANA
+    !hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.ED25519_PUB) ||
+    !hasNumber(constants?.EXTERNAL?.SIGNING?.CURVES?.ED25519) ||
+    !hasNumber(constants?.EXTERNAL?.SIGNING?.HASHES?.NONE) ||
+    !hasNumber(constants?.EXTERNAL?.SIGNING?.ENCODINGS?.SOLANA)
   ) {
     throw new Error('Lattice Solana signer requires EXTERNAL constants');
   }

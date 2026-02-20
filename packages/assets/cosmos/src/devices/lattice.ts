@@ -40,11 +40,13 @@ function getLatticeCosmosConstants(
   context: DeviceContext,
 ): LatticeCosmosContext['constants'] {
   const constants = (context as LatticeCosmosContext).constants;
+  const hasNumber = (value: unknown): value is number =>
+    typeof value === 'number' && Number.isFinite(value);
   if (
-    !constants?.EXTERNAL?.GET_ADDR_FLAGS?.SECP256K1_PUB ||
-    !constants?.EXTERNAL?.SIGNING?.CURVES?.SECP256K1 ||
-    !constants?.EXTERNAL?.SIGNING?.HASHES?.SHA256 ||
-    !constants?.EXTERNAL?.SIGNING?.ENCODINGS?.COSMOS
+    !hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.SECP256K1_PUB) ||
+    !hasNumber(constants?.EXTERNAL?.SIGNING?.CURVES?.SECP256K1) ||
+    !hasNumber(constants?.EXTERNAL?.SIGNING?.HASHES?.SHA256) ||
+    !hasNumber(constants?.EXTERNAL?.SIGNING?.ENCODINGS?.COSMOS)
   ) {
     throw new Error('Lattice Cosmos signer requires EXTERNAL constants');
   }

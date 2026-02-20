@@ -68,11 +68,13 @@ type LatticeEvmContext = DeviceContext & {
 function getLatticeEvmContext(context: DeviceContext): LatticeEvmContext {
   const typed = context as LatticeEvmContext;
   const constants = typed.constants;
+  const hasNumber = (value: unknown): value is number =>
+    typeof value === 'number' && Number.isFinite(value);
   if (
-    !constants?.EXTERNAL?.GET_ADDR_FLAGS?.SECP256K1_PUB ||
-    !constants?.EXTERNAL?.SIGNING?.CURVES?.SECP256K1 ||
-    !constants?.EXTERNAL?.SIGNING?.HASHES?.KECCAK256 ||
-    !constants?.EXTERNAL?.SIGNING?.ENCODINGS?.EVM ||
+    !hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.SECP256K1_PUB) ||
+    !hasNumber(constants?.EXTERNAL?.SIGNING?.CURVES?.SECP256K1) ||
+    !hasNumber(constants?.EXTERNAL?.SIGNING?.HASHES?.KECCAK256) ||
+    !hasNumber(constants?.EXTERNAL?.SIGNING?.ENCODINGS?.EVM) ||
     !constants?.CURRENCIES?.ETH_MSG
   ) {
     throw new Error(
