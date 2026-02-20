@@ -100,3 +100,148 @@ export type AssetModule<
   create: (signer: TSigner, options?: TOptions) => TAdapter;
   utils: Record<string, unknown>;
 };
+
+export type DeviceId = 'lattice' | (string & {});
+export type AssetKey = `${string}:${DeviceId}`;
+
+export type DeviceContext = {
+  queue: <T>(fn: (client: unknown) => Promise<T>) => Promise<T>;
+  getClient: () => Promise<unknown>;
+  constants: Record<string, unknown>;
+  services?: Record<string, unknown>;
+};
+
+export type AssetPlugin<
+  TContext = DeviceContext,
+  TSignRequest = SignRequest,
+  TAdapter extends AssetAdapter<TSignRequest> = AssetAdapter<TSignRequest>,
+  TOptions = unknown,
+  TSigner extends Signer<TSignRequest> = Signer<TSignRequest>,
+> = {
+  assetId: string;
+  device: DeviceId;
+  module: AssetModule<TSignRequest, TAdapter, TOptions, TSigner>;
+  createSigner: (context: TContext) => Promise<TSigner> | TSigner;
+  createAdapter?: (
+    context: TContext,
+    signer: TSigner,
+    options?: TOptions,
+  ) => Promise<TAdapter> | TAdapter;
+};
+
+export type AssetRegistryResolveOptions = {
+  device?: DeviceId;
+  defaultDevice?: DeviceId;
+};
+
+export type AssetRegistryOptions = {
+  onDuplicate?: 'throw' | 'replace';
+};
+
+export type AssetRegistry<TContext = DeviceContext> = {
+  register: (plugin: AssetPlugin<TContext>) => void;
+  unregister: (assetId: string, device?: DeviceId) => boolean;
+  get: (assetId: string, device: DeviceId) => AssetPlugin<TContext> | undefined;
+  list: () => AssetPlugin<TContext>[];
+  has: (assetId: string, device?: DeviceId) => boolean;
+  resolve: (
+    assetId: string,
+    options?: AssetRegistryResolveOptions,
+  ) => AssetPlugin<TContext> | undefined;
+};
+
+export const toAssetKey = (assetId: string, device: DeviceId): AssetKey =>
+  `${assetId}:${device}`;
+
+export const isAssetModule = (value: unknown): value is AssetModule => {
+  if (!value || typeof value !== 'object') return false;
+  const mod = value as AssetModule;
+  return (
+    typeof mod.id === 'string' &&
+    typeof mod.name === 'string' &&
+    typeof mod.coinType === 'number' &&
+    Array.isArray(mod.defaultPath) &&
+    typeof mod.create === 'function'
+  );
+};
+
+export const isAssetPlugin = (value: unknown): value is AssetPlugin => {
+  if (!value || typeof value !== 'object') return false;
+  const plugin = value as AssetPlugin;
+  return (
+    typeof plugin.assetId === 'string' &&
+    typeof plugin.device === 'string' &&
+    isAssetModule(plugin.module) &&
+    typeof plugin.createSigner === 'function'
+  );
+};
+
+export function createAssetRegistry<TContext = DeviceContext>(
+  options: AssetRegistryOptions = {},
+): AssetRegistry<TContext> {
+  const store = new Map<AssetKey, AssetPlugin<TContext>>();
+  const onDuplicate = options.onDuplicate ?? 'throw';
+
+  const register = (plugin: AssetPlugin<TContext>) => {
+    if (!isAssetPlugin(plugin)) {
+      throw new Error('Invalid asset plugin');
+    }
+    if (plugin.module.id !== plugin.assetId) {
+      throw new Error(
+        `Asset plugin mismatch: assetId (${plugin.assetId}) must equal module.id (${plugin.module.id})`,
+      );
+    }
+    const key = toAssetKey(plugin.assetId, plugin.device);
+    if (store.has(key) && onDuplicate === 'throw') {
+      throw new Error(`Asset plugin already registered for key: ${key}`);
+    }
+    store.set(key, plugin);
+  };
+
+  const unregister = (assetId: string, device?: DeviceId): boolean => {
+    if (device) {
+      return store.delete(toAssetKey(assetId, device));
+    }
+    const keys = [...store.keys()].filter((key) => key.startsWith(`${assetId}:`));
+    keys.forEach((key) => store.delete(key));
+    return keys.length > 0;
+  };
+
+  const get = (assetId: string, device: DeviceId) =>
+    store.get(toAssetKey(assetId, device));
+
+  const list = () => [...store.values()];
+
+  const has = (assetId: string, device?: DeviceId) => {
+    if (device) return store.has(toAssetKey(assetId, device));
+    return [...store.keys()].some((key) => key.startsWith(`${assetId}:`));
+  };
+
+  const resolve = (
+    assetId: string,
+    opts: AssetRegistryResolveOptions = {},
+  ): AssetPlugin<TContext> | undefined => {
+    if (opts.device) {
+      return get(assetId, opts.device);
+    }
+    if (opts.defaultDevice) {
+      const preferred = get(assetId, opts.defaultDevice);
+      if (preferred) return preferred;
+    }
+    const candidates = list().filter((plugin) => plugin.assetId === assetId);
+    if (candidates.length === 0) return undefined;
+    if (candidates.length === 1) return candidates[0];
+    const lattice = candidates.find((plugin) => plugin.device === 'lattice');
+    if (lattice) return lattice;
+    return undefined;
+  };
+
+  return {
+    register,
+    unregister,
+    get,
+    list,
+    has,
+    resolve,
+  };
+}

@@ -28,6 +28,13 @@
     "url": "https://github.com/GridPlus/gridplus-sdk.git",
     "directory": "packages/assets/cosmos"
   },
+  "gridplus": {
+    "assetPlugin": {
+      "assetId": "cosmos",
+      "device": "lattice",
+      "export": "latticePlugin"
+    }
+  },
   "dependencies": {
     "@gridplus/asset-core": "workspace:*",
     "@noble/hashes": "^1.8.0",

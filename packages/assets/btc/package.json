@@ -29,6 +29,13 @@
     "url": "https://github.com/GridPlus/gridplus-sdk.git",
     "directory": "packages/assets/btc"
   },
+  "gridplus": {
+    "assetPlugin": {
+      "assetId": "btc",
+      "device": "lattice",
+      "export": "latticePlugin"
+    }
+  },
   "dependencies": {
     "@gridplus/asset-core": "workspace:*",
     "bs58check": "^4.0.0"

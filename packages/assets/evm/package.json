@@ -28,6 +28,13 @@
     "url": "https://github.com/GridPlus/gridplus-sdk.git",
     "directory": "packages/assets/evm"
   },
+  "gridplus": {
+    "assetPlugin": {
+      "assetId": "evm",
+      "device": "lattice",
+      "export": "latticePlugin"
+    }
+  },
   "dependencies": {
     "@gridplus/asset-core": "workspace:*",
     "viem": "^2.37.8"

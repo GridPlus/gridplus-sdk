@@ -10,14 +10,12 @@ import {
 } from 'viem';
 import { Constants } from '..';
 import {
-  BTC_LEGACY_DERIVATION,
-  BTC_SEGWIT_DERIVATION,
-  BTC_WRAPPED_SEGWIT_DERIVATION,
   COSMOS_DERIVATION,
   CURRENCIES,
   DEFAULT_ETH_DERIVATION,
   SOLANA_DERIVATION,
 } from '../constants';
+import { useAsset } from '../assets';
 import { fetchDecoder } from '../functions/fetchDecoder';
 import type {
   BitcoinSignPayload,
@@ -40,6 +38,29 @@ type AuthorizationRequest = {
  * Sign a transaction using Viem-compatible transaction types
  */
 type RawTransaction = Hex | Uint8Array | Buffer;
+
+function toHex(bytes: Uint8Array): Hex {
+  return `0x${Buffer.from(bytes).toString('hex')}` as Hex;
+}
+
+function toLatticeSignature(sig: {
+  bytes: Uint8Array;
+  r?: Uint8Array;
+  s?: Uint8Array;
+  v?: number | bigint;
+}) {
+  const r =
+    sig.r ?? (sig.bytes.length >= 32 ? sig.bytes.slice(0, 32) : undefined);
+  const s =
+    sig.s ??
+    (sig.bytes.length >= 64 ? sig.bytes.slice(32, 64) : undefined);
+  if (!r || !s) return undefined;
+  return {
+    r: toHex(r),
+    s: toHex(s),
+    ...(sig.v !== undefined ? { v: sig.v } : {}),
+  };
+}
 
 export const sign = async (
   transaction: TransactionSerializable | RawTransaction,
@@ -231,57 +252,83 @@ export const signAuthorizationList = async (
 export const signBtcLegacyTx = async (
   payload: BitcoinSignPayload,
 ): Promise<SignData> => {
-  const tx = {
-    data: {
-      signerPath: BTC_LEGACY_DERIVATION,
-      ...payload,
-    },
-    currency: CURRENCIES.BTC,
+  const adapter = await useAsset<any>('btc');
+  const result = await adapter.sign({
+    kind: 'transaction',
+    payload,
+    options: { format: 'legacy' },
+  });
+  return {
+    tx:
+      typeof result.signedPayload === 'string'
+        ? result.signedPayload
+        : undefined,
+    txHash: result.txHash as Hex | undefined,
+    changeRecipient: result.metadata?.changeRecipient as string | undefined,
+    sigs: result.metadata?.sigs as Buffer[] | undefined,
   };
-  return queue((client) => client.sign(tx));
 };
 
 export const signBtcSegwitTx = async (
   payload: BitcoinSignPayload,
 ): Promise<SignData> => {
-  const tx = {
-    data: {
-      signerPath: BTC_SEGWIT_DERIVATION,
-      ...payload,
-    },
-    currency: CURRENCIES.BTC,
+  const adapter = await useAsset<any>('btc');
+  const result = await adapter.sign({
+    kind: 'transaction',
+    payload,
+    options: { format: 'native' },
+  });
+  return {
+    tx:
+      typeof result.signedPayload === 'string'
+        ? result.signedPayload
+        : undefined,
+    txHash: result.txHash as Hex | undefined,
+    changeRecipient: result.metadata?.changeRecipient as string | undefined,
+    sigs: result.metadata?.sigs as Buffer[] | undefined,
   };
-  return queue((client) => client.sign(tx));
 };
 
 export const signBtcWrappedSegwitTx = async (
   payload: BitcoinSignPayload,
 ): Promise<SignData> => {
-  const tx = {
-    data: {
-      signerPath: BTC_WRAPPED_SEGWIT_DERIVATION,
-      ...payload,
-    },
-    currency: CURRENCIES.BTC,
+  const adapter = await useAsset<any>('btc');
+  const result = await adapter.sign({
+    kind: 'transaction',
+    payload,
+    options: { format: 'wrapped' },
+  });
+  return {
+    tx:
+      typeof result.signedPayload === 'string'
+        ? result.signedPayload
+        : undefined,
+    txHash: result.txHash as Hex | undefined,
+    changeRecipient: result.metadata?.changeRecipient as string | undefined,
+    sigs: result.metadata?.sigs as Buffer[] | undefined,
   };
-  return queue((client) => client.sign(tx));
 };
 
 export const signSolanaTx = async (
   payload: Buffer,
   overrides?: SignRequestParams,
 ): Promise<SignData> => {
-  const tx = {
-    data: {
-      signerPath: SOLANA_DERIVATION,
-      curveType: Constants.SIGNING.CURVES.ED25519,
-      hashType: Constants.SIGNING.HASHES.NONE,
-      encodingType: Constants.SIGNING.ENCODINGS.SOLANA,
-      payload,
-      ...overrides,
-    },
+  const signerPath =
+    ((overrides as any)?.data?.signerPath as number[] | undefined) ??
+    ((overrides as any)?.signerPath as number[] | undefined) ??
+    SOLANA_DERIVATION;
+
+  const adapter = await useAsset<any>('solana');
+  const result = await adapter.sign({
+    kind: 'transaction',
+    payload,
+    options: { path: signerPath },
+  });
+
+  return {
+    sig: toLatticeSignature(result.signature),
+    pubkey: result.publicKey ? Buffer.from(result.publicKey) : undefined,
   };
-  return queue((client) => client.sign(tx));
 };
 
 /**
@@ -293,15 +340,21 @@ export const signCosmos = async (
   payload: Buffer,
   overrides?: SignRequestParams,
 ): Promise<SignData> => {
-  const tx = {
-    data: {
-      signerPath: COSMOS_DERIVATION,
-      curveType: Constants.SIGNING.CURVES.SECP256K1,
-      hashType: Constants.SIGNING.HASHES.SHA256,
-      encodingType: Constants.SIGNING.ENCODINGS.COSMOS,
-      payload,
-      ...overrides,
-    },
+  const signerPath =
+    ((overrides as any)?.data?.signerPath as number[] | undefined) ??
+    ((overrides as any)?.signerPath as number[] | undefined) ??
+    COSMOS_DERIVATION;
+  const mode = (overrides as any)?.data?.mode ?? (overrides as any)?.mode;
+
+  const adapter = await useAsset<any>('cosmos');
+  const result = await adapter.sign({
+    kind: 'transaction',
+    payload,
+    options: { path: signerPath, mode },
+  });
+
+  return {
+    sig: toLatticeSignature(result.signature),
+    pubkey: result.publicKey ? Buffer.from(result.publicKey) : undefined,
   };
-  return queue((client) => client.sign(tx));
 };

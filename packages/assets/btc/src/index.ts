@@ -70,6 +70,7 @@ export type {
 
 // Asset module
 export { btc } from './asset';
+export { createLatticeBtcSigner, latticePlugin } from './devices/lattice';
 export type {
   AssetCapabilities,
   AssetModule,

@@ -28,6 +28,13 @@
     "url": "https://github.com/GridPlus/gridplus-sdk.git",
     "directory": "packages/assets/solana"
   },
+  "gridplus": {
+    "assetPlugin": {
+      "assetId": "solana",
+      "device": "lattice",
+      "export": "latticePlugin"
+    }
+  },
   "dependencies": {
     "@gridplus/asset-core": "workspace:*",
     "@scure/base": "^1.2.6"

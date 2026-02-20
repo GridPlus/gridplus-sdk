@@ -1,4 +1,16 @@
 import { Utils } from '..';
+import {
+  isAssetPlugin,
+  type AssetPlugin,
+  type DeviceId,
+} from '@gridplus/asset-core';
+import {
+  configureAssetRuntime,
+  discoverAndRegisterAssets,
+  getAsset,
+  registerAssetPlugin,
+  unregisterAsset,
+} from '../assets';
 import { Client } from '../client';
 import { loadClient, saveClient, setLoadClient, setSaveClient } from './state';
 import { buildLoadClientFn, buildSaveClientFn, queue } from './utilities';
@@ -12,20 +24,58 @@ import { buildLoadClientFn, buildSaveClientFn, queue } from './utilities';
  * @prop {Function} SetupParameters.getStoredClient - a function that returns the stored client data
  * @prop {Function} SetupParameters.setStoredClient - a function that stores the client data
  */
+type SetupBaseParameters = {
+  getStoredClient: () => Promise<string>;
+  setStoredClient: (clientData: string | null) => Promise<void>;
+  autoRegisterAssets?: boolean;
+  defaultDevice?: DeviceId;
+  assetPlugins?: AssetPlugin<any>[];
+};
+
 type SetupParameters =
   | {
       deviceId: string;
       password: string;
       name: string;
       appSecret?: string;
-      getStoredClient: () => Promise<string>;
-      setStoredClient: (clientData: string | null) => Promise<void>;
       baseUrl?: string;
+    } & SetupBaseParameters
+  | SetupBaseParameters;
+
+const registerConfiguredAssetPlugins = (
+  assetPlugins?: AssetPlugin<any>[],
+): void => {
+  if (!assetPlugins || assetPlugins.length === 0) return;
+  const seenPluginKeys = new Set<string>();
+
+  assetPlugins.forEach((plugin, index) => {
+    if (!isAssetPlugin(plugin)) {
+      throw new Error(
+        `Invalid asset plugin in setup().assetPlugins at index ${index}.`,
+      );
     }
-  | {
-      getStoredClient: () => Promise<string>;
-      setStoredClient: (clientData: string | null) => Promise<void>;
-    };
+
+    const pluginKey = `${plugin.assetId}:${plugin.device}`;
+    if (seenPluginKeys.has(pluginKey)) {
+      throw new Error(
+        `Duplicate asset plugin key in setup().assetPlugins: "${pluginKey}".`,
+      );
+    }
+    seenPluginKeys.add(pluginKey);
+
+    try {
+      if (getAsset(plugin.assetId, plugin.device)) {
+        unregisterAsset(plugin.assetId, plugin.device);
+      }
+      registerAssetPlugin(plugin);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Failed to register setup asset plugin "${pluginKey}": ${message}`,
+      );
+    }
+  });
+};
 
 /**
  * `setup` initializes the Client and executes `connect()` if necessary. It returns a promise that
@@ -48,6 +98,16 @@ export const setup = async (params: SetupParameters): Promise<boolean> => {
 
   if (!params.setStoredClient) throw new Error('Client data setter required');
   setSaveClient(buildSaveClientFn(params.setStoredClient));
+
+  configureAssetRuntime({
+    autoRegisterAssets: params.autoRegisterAssets ?? true,
+    defaultDevice: params.defaultDevice ?? 'lattice',
+    resetCache: true,
+  });
+  if (params.autoRegisterAssets !== false) {
+    await discoverAndRegisterAssets({ force: true });
+  }
+  registerConfiguredAssetPlugins(params.assetPlugins);
 
   if ('deviceId' in params && 'password' in params && 'name' in params) {
     const privKey =
