@@ -202,7 +202,9 @@ export function createAssetRegistry<TContext = DeviceContext>(
     if (device) {
       return store.delete(toAssetKey(assetId, device));
     }
-    const keys = [...store.keys()].filter((key) => key.startsWith(`${assetId}:`));
+    const keys = [...store.keys()].filter((key) =>
+      key.startsWith(`${assetId}:`),
+    );
     keys.forEach((key) => store.delete(key));
     return keys.length > 0;
   };

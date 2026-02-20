@@ -75,12 +75,16 @@ function getLatticeEvmContext(context: DeviceContext): LatticeEvmContext {
     !constants?.EXTERNAL?.SIGNING?.ENCODINGS?.EVM ||
     !constants?.CURRENCIES?.ETH_MSG
   ) {
-    throw new Error('Lattice EVM signer requires EXTERNAL and CURRENCIES constants');
+    throw new Error(
+      'Lattice EVM signer requires EXTERNAL and CURRENCIES constants',
+    );
   }
   return typed;
 }
 
-function isRawEvmTx(value: TransactionSerializable | EvmRawTransaction): value is EvmRawTransaction {
+function isRawEvmTx(
+  value: TransactionSerializable | EvmRawTransaction,
+): value is EvmRawTransaction {
   return (
     typeof value === 'string' ||
     value instanceof Uint8Array ||
@@ -95,7 +99,10 @@ function normalizeRawEvmTx(tx: EvmRawTransaction): Hex | Buffer {
   return Buffer.from(tx);
 }
 
-function getEvmEncodingType(tx: TransactionSerializable, EXTERNAL: LatticeEvmContext['constants']['EXTERNAL']): number {
+function getEvmEncodingType(
+  tx: TransactionSerializable,
+  EXTERNAL: LatticeEvmContext['constants']['EXTERNAL'],
+): number {
   if ((tx as any).type === 'eip7702') {
     const eip7702 = tx as TransactionSerializableEIP7702;
     const hasAuthList =
@@ -125,7 +132,10 @@ export function createLatticeEvmSigner(
       }
       return addr;
     },
-    getPublicKey: async (path: DerivationPath, opts?: unknown): Promise<PublicKey> => {
+    getPublicKey: async (
+      path: DerivationPath,
+      opts?: unknown,
+    ): Promise<PublicKey> => {
       const res = (await queue((client: any) =>
         client.getAddresses({
           startPath: path,
@@ -158,7 +168,10 @@ export function createLatticeEvmSigner(
 
         const encodingType = isRaw
           ? EXTERNAL.SIGNING.ENCODINGS.EVM
-          : getEvmEncodingType(request.payload as TransactionSerializable, EXTERNAL);
+          : getEvmEncodingType(
+              request.payload as TransactionSerializable,
+              EXTERNAL,
+            );
 
         let decoder: Buffer | undefined;
         const fetchDecoder = services?.fetchDecoder;
@@ -182,14 +195,19 @@ export function createLatticeEvmSigner(
           decoder,
         };
 
-        const res = await queue((client: any) => client.sign({ data: signPayload }));
+        const res = await queue((client: any) =>
+          client.sign({ data: signPayload }),
+        );
         const sig = (res as any).sig ?? {};
         const { signature } = buildSigResultFromRsv(sig);
         const pubkey = (res as any).pubkey
-          ? compressSecp256k1Pubkey(new Uint8Array(Buffer.from((res as any).pubkey)))
+          ? compressSecp256k1Pubkey(
+              new Uint8Array(Buffer.from((res as any).pubkey)),
+            )
           : undefined;
 
-        const signedPayload = (res as any).viemTx ?? (res as any).tx ?? undefined;
+        const signedPayload =
+          (res as any).viemTx ?? (res as any).tx ?? undefined;
         const txHash =
           typeof signedPayload === 'string' && isHexString(signedPayload)
             ? (`0x${Buffer.from(Hash.keccak256(toBuffer(signedPayload))).toString('hex')}` as string)
@@ -253,7 +271,9 @@ export function createLatticeEvmSigner(
         };
       }
 
-      throw new Error(`Unsupported EVM sign request kind: ${(request as any).kind}`);
+      throw new Error(
+        `Unsupported EVM sign request kind: ${(request as any).kind}`,
+      );
     },
   };
 }

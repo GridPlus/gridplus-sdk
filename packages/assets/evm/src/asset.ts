@@ -7,7 +7,6 @@ import type {
   GetAccountsParams,
   GetAddressParams,
   GetPublicKeyParams,
-  PublicKey,
   SignResult,
   Signer as CoreSigner,
 } from '@gridplus/asset-core';
@@ -169,7 +168,11 @@ export const evm: AssetModule<EvmSignRequest, EvmAdapter, EvmAdapterOptions> = {
       const addresses: Address[] = [];
       for (let i = 0; i < count; i += 1) {
         const path = resolvePath(
-          { accountIndex: options?.accountIndex ?? 0, change: params.change ?? options?.change ?? 0, addressIndex: startIndex + i },
+          {
+            accountIndex: options?.accountIndex ?? 0,
+            change: params.change ?? options?.change ?? 0,
+            addressIndex: startIndex + i,
+          },
           options,
         );
         addresses.push(await signer.getAddress(path));
@@ -179,7 +182,9 @@ export const evm: AssetModule<EvmSignRequest, EvmAdapter, EvmAdapterOptions> = {
 
     const getPublicKey = async (params: EvmGetPublicKeyParams = {}) => {
       const path = resolvePath(params, options);
-      return signer.getPublicKey(path, { compressed: params.compressed ?? true });
+      return signer.getPublicKey(path, {
+        compressed: params.compressed ?? true,
+      });
     };
 
     const getAccount = async (params: EvmGetAddressParams = {}) => {
@@ -193,7 +198,8 @@ export const evm: AssetModule<EvmSignRequest, EvmAdapter, EvmAdapterOptions> = {
 
     const sign = async (request: EvmSignRequest): Promise<SignResult> => {
       // Ensure a path is always attached for signers that need it.
-      const path = (request as any).options?.path ?? resolvePath(undefined, options);
+      const path =
+        (request as any).options?.path ?? resolvePath(undefined, options);
       const next = {
         ...request,
         options: { ...(request as any).options, path },

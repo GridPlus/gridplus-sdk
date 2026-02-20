@@ -8,7 +8,12 @@ import type {
 } from '@gridplus/asset-core';
 import { BTC_COIN_TYPES, BTC_PURPOSES, HARDENED_OFFSET } from '../constants';
 import { format } from '../slip132';
-import type { BtcCoinType, BtcPurpose, XpubOptions, XpubsOptions } from '../types';
+import type {
+  BtcCoinType,
+  BtcPurpose,
+  XpubOptions,
+  XpubsOptions,
+} from '../types';
 import {
   btc,
   type BtcAdapter,
@@ -36,10 +41,16 @@ type LatticeBtcContext = DeviceContext & {
   };
 };
 
-function getLatticeBtcConstants(context: DeviceContext): LatticeBtcContext['constants'] {
-  const constants = context.constants as LatticeBtcContext['constants'] | undefined;
+function getLatticeBtcConstants(
+  context: DeviceContext,
+): LatticeBtcContext['constants'] {
+  const constants = context.constants as
+    | LatticeBtcContext['constants']
+    | undefined;
   if (!constants?.EXTERNAL?.GET_ADDR_FLAGS || !constants?.CURRENCIES?.BTC) {
-    throw new Error('Lattice BTC signer requires EXTERNAL and CURRENCIES constants');
+    throw new Error(
+      'Lattice BTC signer requires EXTERNAL and CURRENCIES constants',
+    );
   }
   return constants;
 }
@@ -122,8 +133,14 @@ export function createLatticeBtcSigner(context: DeviceContext): BtcSigner {
     return format(xpub, purpose, network);
   };
 
-  const getXpubs = async (options: XpubsOptions): Promise<Map<BtcPurpose, string>> => {
-    const { purposes, coinType = BTC_COIN_TYPES.MAINNET, account = 0 } = options;
+  const getXpubs = async (
+    options: XpubsOptions,
+  ): Promise<Map<BtcPurpose, string>> => {
+    const {
+      purposes,
+      coinType = BTC_COIN_TYPES.MAINNET,
+      account = 0,
+    } = options;
     const results = new Map<BtcPurpose, string>();
     for (const purpose of purposes) {
       results.set(purpose, await getXpub({ purpose, coinType, account }));
@@ -136,7 +153,11 @@ export function createLatticeBtcSigner(context: DeviceContext): BtcSigner {
     account = 0,
   ): Promise<{ xpub: string; ypub: string; zpub: string }> => {
     const xpubs = await getXpubs({
-      purposes: [BTC_PURPOSES.LEGACY, BTC_PURPOSES.WRAPPED, BTC_PURPOSES.NATIVE],
+      purposes: [
+        BTC_PURPOSES.LEGACY,
+        BTC_PURPOSES.WRAPPED,
+        BTC_PURPOSES.NATIVE,
+      ],
       coinType,
       account,
     });

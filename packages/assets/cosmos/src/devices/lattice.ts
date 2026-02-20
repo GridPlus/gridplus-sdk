@@ -36,7 +36,9 @@ type LatticeCosmosContext = DeviceContext & {
   };
 };
 
-function getLatticeCosmosConstants(context: DeviceContext): LatticeCosmosContext['constants'] {
+function getLatticeCosmosConstants(
+  context: DeviceContext,
+): LatticeCosmosContext['constants'] {
   const constants = (context as LatticeCosmosContext).constants;
   if (
     !constants?.EXTERNAL?.GET_ADDR_FLAGS?.SECP256K1_PUB ||
@@ -49,7 +51,9 @@ function getLatticeCosmosConstants(context: DeviceContext): LatticeCosmosContext
   return constants;
 }
 
-export function createLatticeCosmosSigner(context: DeviceContext): CosmosSigner {
+export function createLatticeCosmosSigner(
+  context: DeviceContext,
+): CosmosSigner {
   const { queue } = context;
   const { EXTERNAL } = getLatticeCosmosConstants(context);
 
@@ -60,7 +64,10 @@ export function createLatticeCosmosSigner(context: DeviceContext): CosmosSigner 
         'Cosmos addresses must be derived from pubkey (use @gridplus/cosmos adapter)',
       );
     },
-    getPublicKey: async (path: DerivationPath, opts?: unknown): Promise<PublicKey> => {
+    getPublicKey: async (
+      path: DerivationPath,
+      opts?: unknown,
+    ): Promise<PublicKey> => {
       const res = (await queue((client: any) =>
         client.getAddresses({
           startPath: path,
@@ -81,7 +88,9 @@ export function createLatticeCosmosSigner(context: DeviceContext): CosmosSigner 
     },
     sign: async (request: CosmosSignRequest): Promise<SignResult> => {
       if (request.kind !== 'transaction') {
-        throw new Error(`Unsupported Cosmos sign request kind: ${request.kind}`);
+        throw new Error(
+          `Unsupported Cosmos sign request kind: ${request.kind}`,
+        );
       }
       const path = (request as any).options?.path as DerivationPath | undefined;
       if (!path || path.length < 2) {
@@ -96,12 +105,16 @@ export function createLatticeCosmosSigner(context: DeviceContext): CosmosSigner 
         payload: Buffer.from(request.payload as any),
       };
 
-      const res = await queue((client: any) => client.sign({ data: signPayload }));
+      const res = await queue((client: any) =>
+        client.sign({ data: signPayload }),
+      );
       const sig = (res as any).sig ?? {};
       const { signature } = buildSigResultFromRsv(sig);
 
       const pubkey = (res as any).pubkey
-        ? compressSecp256k1Pubkey(new Uint8Array(Buffer.from((res as any).pubkey)))
+        ? compressSecp256k1Pubkey(
+            new Uint8Array(Buffer.from((res as any).pubkey)),
+          )
         : undefined;
 
       return {

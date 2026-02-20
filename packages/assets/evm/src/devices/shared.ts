@@ -30,11 +30,18 @@ export function compressSecp256k1Pubkey(pubkey: Uint8Array): Uint8Array {
   return pubkey;
 }
 
-export function parseHexBytes(value: unknown, expectedLen?: number): Uint8Array {
+export function parseHexBytes(
+  value: unknown,
+  expectedLen?: number,
+): Uint8Array {
   if (typeof value === 'string') {
     const hex = value.startsWith('0x') ? value.slice(2) : value;
     const buf = Buffer.from(hex, 'hex');
-    if (expectedLen !== undefined && buf.length !== expectedLen && buf.length < expectedLen) {
+    if (
+      expectedLen !== undefined &&
+      buf.length !== expectedLen &&
+      buf.length < expectedLen
+    ) {
       const out = Buffer.alloc(expectedLen);
       buf.copy(out, expectedLen - buf.length);
       return new Uint8Array(out);
@@ -71,6 +78,8 @@ export function buildSigResultFromRsv(sig: {
   }
 
   const bytes =
-    r && s ? new Uint8Array(Buffer.concat([Buffer.from(r), Buffer.from(s)])) : new Uint8Array();
+    r && s
+      ? new Uint8Array(Buffer.concat([Buffer.from(r), Buffer.from(s)]))
+      : new Uint8Array();
   return { signature: { bytes, r, s, v } };
 }

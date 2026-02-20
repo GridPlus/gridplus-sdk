@@ -1,6 +1,6 @@
-export { solana } from "./asset";
-export { addressToPubkey, buildPath, pubkeyToAddress } from "./asset";
-export { createLatticeSolanaSigner, latticePlugin } from "./devices/lattice";
+export { solana } from './asset';
+export { addressToPubkey, buildPath, pubkeyToAddress } from './asset';
+export { createLatticeSolanaSigner, latticePlugin } from './devices/lattice';
 
 export type {
   Signer,
@@ -9,4 +9,4 @@ export type {
   SolanaGetAddressParams,
   SolanaGetPublicKeyParams,
   SolanaSignRequest,
-} from "./asset";
+} from './asset';

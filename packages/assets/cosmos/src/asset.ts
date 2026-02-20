@@ -105,7 +105,12 @@ const pubkeyToBech32Address = (pubkeyCompressed: Uint8Array, hrp: string) => {
 };
 
 const resolvePath = (
-  params?: { path?: DerivationPath; accountIndex?: number; change?: number; addressIndex?: number },
+  params?: {
+    path?: DerivationPath;
+    accountIndex?: number;
+    change?: number;
+    addressIndex?: number;
+  },
   options?: CosmosAdapterOptions,
 ): DerivationPath => {
   if (params?.path) return params.path;
@@ -134,10 +139,14 @@ export const cosmos: AssetModule<
     getPublicKey: true,
   },
   create: (signer: Signer, options?: CosmosAdapterOptions): CosmosAdapter => {
-    const getPublicKey = async (params: CosmosGetPublicKeyParams = {}) : Promise<PublicKey> => {
+    const getPublicKey = async (
+      params: CosmosGetPublicKeyParams = {},
+    ): Promise<PublicKey> => {
       const path = resolvePath(params, options);
       const wantCompressed = params.compressed ?? true;
-      const pk = await signer.getPublicKey(path, { compressed: wantCompressed });
+      const pk = await signer.getPublicKey(path, {
+        compressed: wantCompressed,
+      });
       return wantCompressed ? compressSecp256k1Pubkey(pk) : pk;
     };
 

@@ -1,8 +1,4 @@
-import {
-  BTC_COIN_TYPES,
-  BTC_PURPOSES,
-  HARDENED_OFFSET,
-} from './constants';
+import { BTC_COIN_TYPES, BTC_PURPOSES, HARDENED_OFFSET } from './constants';
 import type {
   BtcAddressFormat,
   BtcCoinType,
@@ -142,7 +138,13 @@ const resolvePath = (
   params?: BtcGetAddressParams,
   options?: BtcAdapterOptions,
 ): DerivationPath => {
-  return buildPath(resolvePurpose(params, options), resolveCoinType(params, options), resolveAccountIndex(params, options), resolveChange(params, options), resolveAddressIndex(params));
+  return buildPath(
+    resolvePurpose(params, options),
+    resolveCoinType(params, options),
+    resolveAccountIndex(params, options),
+    resolveChange(params, options),
+    resolveAddressIndex(params),
+  );
 };
 
 export const btc: AssetModule<
@@ -171,7 +173,9 @@ export const btc: AssetModule<
     getXpub: true,
   },
   create: (signer: Signer, options: BtcAdapterOptions = {}): BtcAdapter => {
-    const getAddress = async (params: BtcGetAddressParams = {}): Promise<Address> => {
+    const getAddress = async (
+      params: BtcGetAddressParams = {},
+    ): Promise<Address> => {
       const path = resolvePath(params, options);
       return signer.getAddress(path, { format: params.format });
     };
@@ -191,7 +195,10 @@ export const btc: AssetModule<
       const startIndex = params.startIndex ?? 0;
       const addresses: Address[] = [];
       for (let i = 0; i < (params.count ?? 1); i += 1) {
-        const path = resolvePath({ ...params, addressIndex: startIndex + i, purpose, format }, options);
+        const path = resolvePath(
+          { ...params, addressIndex: startIndex + i, purpose, format },
+          options,
+        );
         addresses.push(await getAddress({ ...params, path, format }));
       }
       return addresses;

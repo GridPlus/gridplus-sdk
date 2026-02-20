@@ -10,14 +10,14 @@ import type {
   GetPublicKeyParams,
   PublicKey,
   SignResult,
-} from "@gridplus/asset-core";
-import { base58 } from "@scure/base";
+} from '@gridplus/asset-core';
+import { base58 } from '@scure/base';
 
 const HARDENED_OFFSET = 0x80000000;
 const SOLANA_COIN_TYPE = 501;
 
 export type SolanaSignRequest = {
-  kind: "transaction";
+  kind: 'transaction';
   /** Typically a Solana message bytes (compiled message), not a full transaction. */
   payload: Uint8Array | Buffer;
   options?: { path?: DerivationPath };
@@ -25,13 +25,13 @@ export type SolanaSignRequest = {
 
 export type Signer = CoreSigner<SolanaSignRequest>;
 
-export type SolanaGetAddressParams = Omit<GetAddressParams, "addressIndex"> & {
+export type SolanaGetAddressParams = Omit<GetAddressParams, 'addressIndex'> & {
   includePublicKey?: boolean;
 };
 
 export type SolanaGetPublicKeyParams = Omit<
   GetPublicKeyParams,
-  "addressIndex" | "compressed"
+  'addressIndex' | 'compressed'
 >;
 
 export type SolanaAdapterOptions = {
@@ -104,10 +104,10 @@ export const solana: AssetModule<
   SolanaAdapter,
   SolanaAdapterOptions
 > = {
-  id: "solana",
-  name: "Solana",
+  id: 'solana',
+  name: 'Solana',
   coinType: SOLANA_COIN_TYPE,
-  curve: "ed25519",
+  curve: 'ed25519',
   defaultPath: buildPath(0, 0),
   supports: {
     signTransaction: true,
