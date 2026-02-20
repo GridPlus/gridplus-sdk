@@ -85,6 +85,9 @@ importers:
       '@gridplus/asset-core':
         specifier: workspace:*
         version: link:../asset-core
+      ox:
+        specifier: ^0.9.7
+        version: 0.9.17(typescript@5.9.3)(zod@4.3.5)
       viem:
         specifier: ^2.37.8
         version: 2.43.5(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.5)
