@@ -5,16 +5,16 @@ import type {
   DeviceContext,
   PublicKey,
   SignResult,
-} from '@gridplus/asset-core';
+} from "@gridplus/asset-core";
 import {
-  pubkeyToAddress,
-  solana,
-  type Signer as SolanaSigner,
   type SolanaAdapter,
   type SolanaAdapterOptions,
   type SolanaSignRequest,
-} from '../asset';
-import { buildSigResultFromRsv, toBuffer } from './shared';
+  type Signer as SolanaSigner,
+  pubkeyToAddress,
+  solana,
+} from "../asset";
+import { buildSigResultFromRsv, toBuffer } from "./shared";
 
 type LatticeSolanaContext = DeviceContext & {
   constants: {
@@ -37,7 +37,9 @@ type LatticeSolanaContext = DeviceContext & {
   };
 };
 
-function getLatticeSolanaConstants(context: DeviceContext): LatticeSolanaContext['constants'] {
+function getLatticeSolanaConstants(
+  context: DeviceContext,
+): LatticeSolanaContext["constants"] {
   const constants = (context as LatticeSolanaContext).constants;
   if (
     !constants?.EXTERNAL?.GET_ADDR_FLAGS?.ED25519_PUB ||
@@ -45,12 +47,14 @@ function getLatticeSolanaConstants(context: DeviceContext): LatticeSolanaContext
     !constants?.EXTERNAL?.SIGNING?.HASHES?.NONE ||
     !constants?.EXTERNAL?.SIGNING?.ENCODINGS?.SOLANA
   ) {
-    throw new Error('Lattice Solana signer requires EXTERNAL constants');
+    throw new Error("Lattice Solana signer requires EXTERNAL constants");
   }
   return constants;
 }
 
-export function createLatticeSolanaSigner(context: DeviceContext): SolanaSigner {
+export function createLatticeSolanaSigner(
+  context: DeviceContext,
+): SolanaSigner {
   const { queue } = context;
   const { EXTERNAL } = getLatticeSolanaConstants(context);
 
@@ -63,7 +67,7 @@ export function createLatticeSolanaSigner(context: DeviceContext): SolanaSigner 
       }),
     )) as any[];
     const pub = res?.[0];
-    if (!pub) throw new Error('Device did not return a public key');
+    if (!pub) throw new Error("Device did not return a public key");
     const pubBytes = Buffer.from(pub);
     return new Uint8Array(pubBytes.slice(0, 32));
   };
@@ -74,12 +78,12 @@ export function createLatticeSolanaSigner(context: DeviceContext): SolanaSigner 
   };
 
   const sign = async (request: SolanaSignRequest): Promise<SignResult> => {
-    if (request.kind !== 'transaction') {
+    if (request.kind !== "transaction") {
       throw new Error(`Unsupported Solana sign request kind: ${request.kind}`);
     }
     const path = (request as any).options?.path as DerivationPath | undefined;
     if (!path || path.length < 2) {
-      throw new Error('Solana sign request missing signer path');
+      throw new Error("Solana sign request missing signer path");
     }
 
     const signPayload = {
@@ -90,7 +94,9 @@ export function createLatticeSolanaSigner(context: DeviceContext): SolanaSigner 
       payload: toBuffer(request.payload as any),
     };
 
-    const res = await queue((client: any) => client.sign({ data: signPayload }));
+    const res = await queue((client: any) =>
+      client.sign({ data: signPayload }),
+    );
     const sig = (res as any).sig ?? {};
     const { signature } = buildSigResultFromRsv(sig);
 
@@ -119,7 +125,7 @@ export const latticePlugin: AssetPlugin<
   SolanaSigner
 > = {
   assetId: solana.id,
-  device: 'lattice',
+  device: "lattice",
   module: solana,
   createSigner: createLatticeSolanaSigner,
 };

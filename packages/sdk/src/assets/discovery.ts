@@ -15,7 +15,10 @@ export async function discoverAndRegisterAssets(
         registered += 1;
       }
     } catch (err) {
-      if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+      if (
+        typeof console !== 'undefined' &&
+        typeof console.warn === 'function'
+      ) {
         const message = err instanceof Error ? err.message : String(err);
         console.warn(
           `[asset-discovery] Failed to register plugin ${plugin.assetId}:${plugin.device}: ${message}`,

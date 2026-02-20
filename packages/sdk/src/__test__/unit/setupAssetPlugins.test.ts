@@ -24,10 +24,7 @@ const mockAdapter: AssetAdapter = {
   sign: async () => ({ signature: { bytes: new Uint8Array([2]) } }),
 };
 
-const buildPlugin = (
-  assetId: string,
-  device: string,
-): AssetPlugin<any> => {
+const buildPlugin = (assetId: string, device: string): AssetPlugin<any> => {
   const module: AssetModule = {
     id: assetId,
     name: `test-${assetId}`,
@@ -96,7 +93,9 @@ describe('setup assetPlugins', () => {
       }),
     ).rejects.toThrow('Client not initialized');
 
-    expect(getAsset(assetId, device)?.createSigner).toBe(duplicatePlugin.createSigner);
+    expect(getAsset(assetId, device)?.createSigner).toBe(
+      duplicatePlugin.createSigner,
+    );
   });
 
   test('rejects duplicate keys inside setup assetPlugins input', async () => {

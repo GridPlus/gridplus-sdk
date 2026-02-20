@@ -52,8 +52,7 @@ function toLatticeSignature(sig: {
   const r =
     sig.r ?? (sig.bytes.length >= 32 ? sig.bytes.slice(0, 32) : undefined);
   const s =
-    sig.s ??
-    (sig.bytes.length >= 64 ? sig.bytes.slice(32, 64) : undefined);
+    sig.s ?? (sig.bytes.length >= 64 ? sig.bytes.slice(32, 64) : undefined);
   if (!r || !s) return undefined;
   return {
     r: toHex(r),

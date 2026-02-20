@@ -38,7 +38,8 @@ let discoveryPromise: Promise<number> | null = null;
 let cacheGeneration = 0;
 const cache = new Map<string, CachedAsset>();
 
-const toCacheKey = (assetId: string, device: DeviceId) => `${assetId}:${device}`;
+const toCacheKey = (assetId: string, device: DeviceId) =>
+  `${assetId}:${device}`;
 
 // Adapter options become part of cache identity; bigints are normalized for stable keys.
 const stringifyAdapterOptions = (options: unknown): string => {
@@ -63,7 +64,9 @@ async function runDiscovery(): Promise<number> {
   return discoverAssets(registerDiscoveredPlugin);
 }
 
-export function configureAssetRuntime(options: ConfigureAssetRuntimeOptions = {}): void {
+export function configureAssetRuntime(
+  options: ConfigureAssetRuntimeOptions = {},
+): void {
   if (options.defaultDevice) {
     defaultDevice = options.defaultDevice;
   }
@@ -84,9 +87,7 @@ export function getDefaultDevice(): DeviceId {
   return defaultDevice;
 }
 
-export function registerAssetPlugin(
-  plugin: AssetPlugin<any>,
-): void {
+export function registerAssetPlugin(plugin: AssetPlugin<any>): void {
   registry.register(plugin as AssetPlugin<SdkDeviceContext>);
 }
 

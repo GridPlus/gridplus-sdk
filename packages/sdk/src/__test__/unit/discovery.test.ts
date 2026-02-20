@@ -1,7 +1,8 @@
 import { discoverAndRegisterAssets } from '../../assets/discovery';
 import { DEFAULT_ASSET_PLUGINS } from '../../assets/defaultManifest';
 
-const getPluginKey = (assetId: string, device: string) => `${assetId}:${device}`;
+const getPluginKey = (assetId: string, device: string) =>
+  `${assetId}:${device}`;
 
 describe('asset discovery', () => {
   test('registers built-in plugins and is idempotent with duplicate-aware registry', async () => {

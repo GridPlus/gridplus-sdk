@@ -33,13 +33,13 @@ type SetupBaseParameters = {
 };
 
 type SetupParameters =
-  | {
+  | ({
       deviceId: string;
       password: string;
       name: string;
       appSecret?: string;
       baseUrl?: string;
-    } & SetupBaseParameters
+    } & SetupBaseParameters)
   | SetupBaseParameters;
 
 const registerConfiguredAssetPlugins = (

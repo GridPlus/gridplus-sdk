@@ -3,21 +3,21 @@ import type {
   Address,
   AssetAdapter,
   AssetModule,
+  Signer as CoreSigner,
   DerivationPath,
   GetAccountsParams,
   GetAddressParams,
   GetPublicKeyParams,
   PublicKey,
   SignResult,
-  Signer as CoreSigner,
-} from '@gridplus/asset-core';
-import { base58 } from '@scure/base';
+} from "@gridplus/asset-core";
+import { base58 } from "@scure/base";
 
 const HARDENED_OFFSET = 0x80000000;
 const SOLANA_COIN_TYPE = 501;
 
 export type SolanaSignRequest = {
-  kind: 'transaction';
+  kind: "transaction";
   /** Typically a Solana message bytes (compiled message), not a full transaction. */
   payload: Uint8Array | Buffer;
   options?: { path?: DerivationPath };
@@ -25,13 +25,13 @@ export type SolanaSignRequest = {
 
 export type Signer = CoreSigner<SolanaSignRequest>;
 
-export type SolanaGetAddressParams = Omit<GetAddressParams, 'addressIndex'> & {
+export type SolanaGetAddressParams = Omit<GetAddressParams, "addressIndex"> & {
   includePublicKey?: boolean;
 };
 
 export type SolanaGetPublicKeyParams = Omit<
   GetPublicKeyParams,
-  'addressIndex' | 'compressed'
+  "addressIndex" | "compressed"
 >;
 
 export type SolanaAdapterOptions = {
@@ -48,7 +48,10 @@ export type SolanaAdapter = AssetAdapter<
   Account
 >;
 
-export const buildPath = (accountIndex: number, change: number): DerivationPath => {
+export const buildPath = (
+  accountIndex: number,
+  change: number,
+): DerivationPath => {
   return [
     44 + HARDENED_OFFSET,
     SOLANA_COIN_TYPE + HARDENED_OFFSET,
@@ -101,10 +104,10 @@ export const solana: AssetModule<
   SolanaAdapter,
   SolanaAdapterOptions
 > = {
-  id: 'solana',
-  name: 'Solana',
+  id: "solana",
+  name: "Solana",
   coinType: SOLANA_COIN_TYPE,
-  curve: 'ed25519',
+  curve: "ed25519",
   defaultPath: buildPath(0, 0),
   supports: {
     signTransaction: true,
@@ -163,7 +166,9 @@ export const solana: AssetModule<
         const publicKey = params.includePublicKey
           ? await signer.getPublicKey(path)
           : undefined;
-        const address = publicKey ? pubkeyToAddress(publicKey) : await getAddress({ path });
+        const address = publicKey
+          ? pubkeyToAddress(publicKey)
+          : await getAddress({ path });
         accounts.push({ address, publicKey, path, index: accountIndex });
       }
       return accounts;
@@ -197,4 +202,3 @@ export const solana: AssetModule<
     normalizeAddress,
   },
 };
-
