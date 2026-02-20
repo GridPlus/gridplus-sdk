@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@gridplus/asset-core": "workspace:*",
+    "ox": "^0.9.7",
     "viem": "^2.37.8"
   },
   "devDependencies": {
