@@ -55,7 +55,7 @@
     "url": "https://github.com/GridPlus/gridplus-sdk.git"
   },
   "dependencies": {
-    "@gridplus/asset-core": "workspace:*",
+    "@gridplus/chain-core": "workspace:*",
     "@gridplus/btc": "workspace:*",
     "@gridplus/cosmos": "workspace:*",
     "@gridplus/evm": "workspace:*",

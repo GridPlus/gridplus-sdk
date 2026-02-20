@@ -1,16 +1,16 @@
 import { Utils } from '..';
 import {
-  isAssetPlugin,
-  type AssetPlugin,
+  isChainPlugin,
+  type ChainPlugin,
   type DeviceId,
-} from '@gridplus/asset-core';
+} from '@gridplus/chain-core';
 import {
-  configureAssetRuntime,
-  discoverAndRegisterAssets,
-  getAsset,
-  registerAssetPlugin,
-  unregisterAsset,
-} from '../assets';
+  configureChainRuntime,
+  discoverAndRegisterChains,
+  getChain,
+  registerChainPlugin,
+  unregisterChain,
+} from '../chains';
 import { Client } from '../client';
 import { loadClient, saveClient, setLoadClient, setSaveClient } from './state';
 import { buildLoadClientFn, buildSaveClientFn, queue } from './utilities';
@@ -27,9 +27,9 @@ import { buildLoadClientFn, buildSaveClientFn, queue } from './utilities';
 type SetupBaseParameters = {
   getStoredClient: () => Promise<string>;
   setStoredClient: (clientData: string | null) => Promise<void>;
-  autoRegisterAssets?: boolean;
+  autoRegisterChains?: boolean;
   defaultDevice?: DeviceId;
-  assetPlugins?: AssetPlugin<any>[];
+  chainPlugins?: ChainPlugin<any>[];
 };
 
 type SetupParameters =
@@ -42,36 +42,36 @@ type SetupParameters =
     } & SetupBaseParameters)
   | SetupBaseParameters;
 
-const registerConfiguredAssetPlugins = (
-  assetPlugins?: AssetPlugin<any>[],
+const registerConfiguredChainPlugins = (
+  chainPlugins?: ChainPlugin<any>[],
 ): void => {
-  if (!assetPlugins || assetPlugins.length === 0) return;
+  if (!chainPlugins || chainPlugins.length === 0) return;
   const seenPluginKeys = new Set<string>();
 
-  assetPlugins.forEach((plugin, index) => {
-    if (!isAssetPlugin(plugin)) {
+  chainPlugins.forEach((plugin, index) => {
+    if (!isChainPlugin(plugin)) {
       throw new Error(
-        `Invalid asset plugin in setup().assetPlugins at index ${index}.`,
+        `Invalid chain plugin in setup().chainPlugins at index ${index}.`,
       );
     }
 
-    const pluginKey = `${plugin.assetId}:${plugin.device}`;
+    const pluginKey = `${plugin.chainId}:${plugin.device}`;
     if (seenPluginKeys.has(pluginKey)) {
       throw new Error(
-        `Duplicate asset plugin key in setup().assetPlugins: "${pluginKey}".`,
+        `Duplicate chain plugin key in setup().chainPlugins: "${pluginKey}".`,
       );
     }
     seenPluginKeys.add(pluginKey);
 
     try {
-      if (getAsset(plugin.assetId, plugin.device)) {
-        unregisterAsset(plugin.assetId, plugin.device);
+      if (getChain(plugin.chainId, plugin.device)) {
+        unregisterChain(plugin.chainId, plugin.device);
       }
-      registerAssetPlugin(plugin);
+      registerChainPlugin(plugin);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       throw new Error(
-        `Failed to register setup asset plugin "${pluginKey}": ${message}`,
+        `Failed to register setup chain plugin "${pluginKey}": ${message}`,
       );
     }
   });
@@ -99,15 +99,15 @@ export const setup = async (params: SetupParameters): Promise<boolean> => {
   if (!params.setStoredClient) throw new Error('Client data setter required');
   setSaveClient(buildSaveClientFn(params.setStoredClient));
 
-  configureAssetRuntime({
-    autoRegisterAssets: params.autoRegisterAssets ?? true,
+  configureChainRuntime({
+    autoRegisterChains: params.autoRegisterChains ?? true,
     defaultDevice: params.defaultDevice ?? 'lattice',
     resetCache: true,
   });
-  if (params.autoRegisterAssets !== false) {
-    await discoverAndRegisterAssets({ force: true });
+  if (params.autoRegisterChains !== false) {
+    await discoverAndRegisterChains({ force: true });
   }
-  registerConfiguredAssetPlugins(params.assetPlugins);
+  registerConfiguredChainPlugins(params.chainPlugins);
 
   if ('deviceId' in params && 'password' in params && 'name' in params) {
     const privKey =

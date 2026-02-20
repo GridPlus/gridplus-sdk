@@ -3,12 +3,12 @@
   "private": true,
   "packageManager": "pnpm@10.6.2",
   "scripts": {
-    "build": "turbo run build --filter=gridplus-sdk --filter=@gridplus/asset-core --filter=@gridplus/btc --filter=@gridplus/cosmos --filter=@gridplus/evm --filter=@gridplus/solana --filter=@gridplus/types",
+    "build": "turbo run build --filter=gridplus-sdk --filter=@gridplus/chain-core --filter=@gridplus/btc --filter=@gridplus/cosmos --filter=@gridplus/evm --filter=@gridplus/solana --filter=@gridplus/types",
     "test": "turbo run test --filter=gridplus-sdk --filter=@gridplus/btc",
     "test-unit": "turbo run test-unit --filter=gridplus-sdk --filter=@gridplus/btc",
-    "lint": "turbo run lint --filter=gridplus-sdk --filter=@gridplus/asset-core --filter=@gridplus/btc --filter=@gridplus/cosmos --filter=@gridplus/evm --filter=@gridplus/solana --filter=@gridplus/types",
-    "lint:fix": "turbo run lint:fix --filter=gridplus-sdk --filter=@gridplus/asset-core --filter=@gridplus/btc --filter=@gridplus/cosmos --filter=@gridplus/evm --filter=@gridplus/solana --filter=@gridplus/types",
-    "typecheck": "turbo run typecheck --filter=gridplus-sdk --filter=@gridplus/asset-core --filter=@gridplus/btc --filter=@gridplus/cosmos --filter=@gridplus/evm --filter=@gridplus/solana --filter=@gridplus/types",
+    "lint": "turbo run lint --filter=gridplus-sdk --filter=@gridplus/chain-core --filter=@gridplus/btc --filter=@gridplus/cosmos --filter=@gridplus/evm --filter=@gridplus/solana --filter=@gridplus/types",
+    "lint:fix": "turbo run lint:fix --filter=gridplus-sdk --filter=@gridplus/chain-core --filter=@gridplus/btc --filter=@gridplus/cosmos --filter=@gridplus/evm --filter=@gridplus/solana --filter=@gridplus/types",
+    "typecheck": "turbo run typecheck --filter=gridplus-sdk --filter=@gridplus/chain-core --filter=@gridplus/btc --filter=@gridplus/cosmos --filter=@gridplus/evm --filter=@gridplus/solana --filter=@gridplus/types",
     "e2e": "turbo run e2e --filter=gridplus-sdk",
     "docs:build": "pnpm --filter gridplus-sdk-docs run build",
     "docs:start": "pnpm --filter gridplus-sdk-docs run start"

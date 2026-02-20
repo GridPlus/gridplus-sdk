@@ -1,42 +1,42 @@
-import { discoverAndRegisterAssets } from '../../assets/discovery';
-import { DEFAULT_ASSET_PLUGINS } from '../../assets/defaultManifest';
+import { discoverAndRegisterChains } from '../../chains/discovery';
+import { DEFAULT_CHAIN_PLUGINS } from '../../chains/defaultManifest';
 
-const getPluginKey = (assetId: string, device: string) =>
-  `${assetId}:${device}`;
+const getPluginKey = (chainId: string, device: string) =>
+  `${chainId}:${device}`;
 
-describe('asset discovery', () => {
+describe('chain discovery', () => {
   test('registers built-in plugins and is idempotent with duplicate-aware registry', async () => {
     const registeredKeys = new Set<string>();
-    const register = (plugin: (typeof DEFAULT_ASSET_PLUGINS)[number]) => {
-      const key = getPluginKey(plugin.assetId, plugin.device);
+    const register = (plugin: (typeof DEFAULT_CHAIN_PLUGINS)[number]) => {
+      const key = getPluginKey(plugin.chainId, plugin.device);
       if (registeredKeys.has(key)) return false;
       registeredKeys.add(key);
       return true;
     };
 
-    const firstCount = await discoverAndRegisterAssets(register);
-    const secondCount = await discoverAndRegisterAssets(register);
+    const firstCount = await discoverAndRegisterChains(register);
+    const secondCount = await discoverAndRegisterChains(register);
 
-    expect(firstCount).toBe(DEFAULT_ASSET_PLUGINS.length);
+    expect(firstCount).toBe(DEFAULT_CHAIN_PLUGINS.length);
     expect(secondCount).toBe(0);
   });
 
   test('warns and continues when a plugin registration throws', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const firstPluginKey = getPluginKey(
-      DEFAULT_ASSET_PLUGINS[0].assetId,
-      DEFAULT_ASSET_PLUGINS[0].device,
+      DEFAULT_CHAIN_PLUGINS[0].chainId,
+      DEFAULT_CHAIN_PLUGINS[0].device,
     );
 
-    const count = await discoverAndRegisterAssets((plugin) => {
-      const key = getPluginKey(plugin.assetId, plugin.device);
+    const count = await discoverAndRegisterChains((plugin) => {
+      const key = getPluginKey(plugin.chainId, plugin.device);
       if (key === firstPluginKey) {
         throw new Error('boom');
       }
       return true;
     });
 
-    expect(count).toBe(DEFAULT_ASSET_PLUGINS.length - 1);
+    expect(count).toBe(DEFAULT_CHAIN_PLUGINS.length - 1);
     expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
   });

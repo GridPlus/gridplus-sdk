@@ -12,7 +12,7 @@ import {
   MAX_ADDR,
   SOLANA_DERIVATION,
 } from '../constants';
-import { useAsset } from '../assets';
+import { useChain } from '../chains';
 import type { GetAddressesRequestParams, WalletPath } from '../types';
 import {
   getFlagFromPath,
@@ -85,7 +85,7 @@ function createFetchBtcAddressesFunction(derivationPath: number[]) {
       startPathIndex: 0,
     },
   ) => {
-    const adapter = await useAsset<any>('btc', {
+    const adapter = await useChain<any>('btc', {
       adapterOptions: {
         purpose,
         coinType,
@@ -123,7 +123,7 @@ export const fetchSolanaAddresses = async (
     startPathIndex: 0,
   },
 ) => {
-  const adapter = await useAsset<any>('solana');
+  const adapter = await useChain<any>('solana');
   return adapter.getAddresses({
     startIndex: startPathIndex,
     count: n,
@@ -255,7 +255,7 @@ export async function fetchAddressesByDerivationPath(
  * @returns xpub string
  */
 export async function fetchBtcXpub(): Promise<string> {
-  const adapter = await useAsset<any>('btc');
+  const adapter = await useChain<any>('btc');
   return adapter.getXpub({ purpose: 44 });
 }
 
@@ -264,7 +264,7 @@ export async function fetchBtcXpub(): Promise<string> {
  * @returns ypub string
  */
 export async function fetchBtcYpub(): Promise<string> {
-  const adapter = await useAsset<any>('btc');
+  const adapter = await useChain<any>('btc');
   return adapter.getXpub({ purpose: 49 });
 }
 
@@ -273,6 +273,6 @@ export async function fetchBtcYpub(): Promise<string> {
  * @returns zpub string
  */
 export async function fetchBtcZpub(): Promise<string> {
-  const adapter = await useAsset<any>('btc');
+  const adapter = await useChain<any>('btc');
   return adapter.getXpub({ purpose: 84 });
 }

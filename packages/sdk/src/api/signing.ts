@@ -15,7 +15,7 @@ import {
   DEFAULT_ETH_DERIVATION,
   SOLANA_DERIVATION,
 } from '../constants';
-import { useAsset } from '../assets';
+import { useChain } from '../chains';
 import { fetchDecoder } from '../functions/fetchDecoder';
 import type {
   BitcoinSignPayload,
@@ -251,7 +251,7 @@ export const signAuthorizationList = async (
 export const signBtcLegacyTx = async (
   payload: BitcoinSignPayload,
 ): Promise<SignData> => {
-  const adapter = await useAsset<any>('btc');
+  const adapter = await useChain<any>('btc');
   const result = await adapter.sign({
     kind: 'transaction',
     payload,
@@ -271,7 +271,7 @@ export const signBtcLegacyTx = async (
 export const signBtcSegwitTx = async (
   payload: BitcoinSignPayload,
 ): Promise<SignData> => {
-  const adapter = await useAsset<any>('btc');
+  const adapter = await useChain<any>('btc');
   const result = await adapter.sign({
     kind: 'transaction',
     payload,
@@ -291,7 +291,7 @@ export const signBtcSegwitTx = async (
 export const signBtcWrappedSegwitTx = async (
   payload: BitcoinSignPayload,
 ): Promise<SignData> => {
-  const adapter = await useAsset<any>('btc');
+  const adapter = await useChain<any>('btc');
   const result = await adapter.sign({
     kind: 'transaction',
     payload,
@@ -317,7 +317,7 @@ export const signSolanaTx = async (
     ((overrides as any)?.signerPath as number[] | undefined) ??
     SOLANA_DERIVATION;
 
-  const adapter = await useAsset<any>('solana');
+  const adapter = await useChain<any>('solana');
   const result = await adapter.sign({
     kind: 'transaction',
     payload,
@@ -345,7 +345,7 @@ export const signCosmos = async (
     COSMOS_DERIVATION;
   const mode = (overrides as any)?.data?.mode ?? (overrides as any)?.mode;
 
-  const adapter = await useAsset<any>('cosmos');
+  const adapter = await useChain<any>('cosmos');
   const result = await adapter.sign({
     kind: 'transaction',
     payload,

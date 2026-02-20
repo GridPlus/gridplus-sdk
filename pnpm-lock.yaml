@@ -15,26 +15,11 @@ importers:
         specifier: ^2.3.0
         version: 2.7.4
 
-  packages/assets/asset-core:
-    devDependencies:
-      '@biomejs/biome':
-        specifier: ^1.9.0
-        version: 1.9.4
-      '@types/node':
-        specifier: ^24.10.4
-        version: 24.10.4
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@microsoft/api-extractor@7.55.2(@types/node@24.10.4))(jiti@1.21.7)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/assets/btc:
+  packages/chains/btc:
     dependencies:
-      '@gridplus/asset-core':
+      '@gridplus/chain-core':
         specifier: workspace:*
-        version: link:../asset-core
+        version: link:../chain-core
       bs58check:
         specifier: ^4.0.0
         version: 4.0.0
@@ -55,11 +40,26 @@ importers:
         specifier: 3.2.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.10.4)(jiti@1.21.7)(msw@2.12.7(@types/node@24.10.4)(typescript@5.9.3))(terser@5.44.1)(tsx@4.21.0)
 
-  packages/assets/cosmos:
+  packages/chains/chain-core:
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^1.9.0
+        version: 1.9.4
+      '@types/node':
+        specifier: ^24.10.4
+        version: 24.10.4
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@microsoft/api-extractor@7.55.2(@types/node@24.10.4))(jiti@1.21.7)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/chains/cosmos:
     dependencies:
-      '@gridplus/asset-core':
+      '@gridplus/chain-core':
         specifier: workspace:*
-        version: link:../asset-core
+        version: link:../chain-core
       '@noble/hashes':
         specifier: ^1.8.0
         version: 1.8.0
@@ -80,11 +80,11 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/assets/evm:
+  packages/chains/evm:
     dependencies:
-      '@gridplus/asset-core':
+      '@gridplus/chain-core':
         specifier: workspace:*
-        version: link:../asset-core
+        version: link:../chain-core
       ox:
         specifier: ^0.9.7
         version: 0.9.17(typescript@5.9.3)(zod@4.3.5)
@@ -105,11 +105,11 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/assets/solana:
+  packages/chains/solana:
     dependencies:
-      '@gridplus/asset-core':
+      '@gridplus/chain-core':
         specifier: workspace:*
-        version: link:../asset-core
+        version: link:../chain-core
       '@scure/base':
         specifier: ^1.2.6
         version: 1.2.6
@@ -230,21 +230,21 @@ importers:
       '@ethereumjs/tx':
         specifier: ^10.0.0
         version: 10.1.0
-      '@gridplus/asset-core':
-        specifier: workspace:*
-        version: link:../assets/asset-core
       '@gridplus/btc':
         specifier: workspace:*
-        version: link:../assets/btc
+        version: link:../chains/btc
+      '@gridplus/chain-core':
+        specifier: workspace:*
+        version: link:../chains/chain-core
       '@gridplus/cosmos':
         specifier: workspace:*
-        version: link:../assets/cosmos
+        version: link:../chains/cosmos
       '@gridplus/evm':
         specifier: workspace:*
-        version: link:../assets/evm
+        version: link:../chains/evm
       '@gridplus/solana':
         specifier: workspace:*
-        version: link:../assets/solana
+        version: link:../chains/solana
       '@gridplus/types':
         specifier: workspace:*
         version: link:../types
