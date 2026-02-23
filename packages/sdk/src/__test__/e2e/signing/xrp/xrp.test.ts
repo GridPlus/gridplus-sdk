@@ -4,7 +4,6 @@ import { ecdsaVerify } from 'secp256k1';
 import { fetchXrpAddresses, signXrp } from '../../../..';
 import { ensureHexBuffer } from '../../../../util';
 import { setupClient } from '../../../utils/setup';
-import type { Client } from '../../../../client';
 
 // XRPL Payment preimage copied byte-for-byte from firmware test vector:
 // `lattice-firmware/lattice_firmware/src/currencies/currency_tests.c`
@@ -52,6 +51,8 @@ const XRP_OFFER_CANCEL_PREIMAGE = Buffer.from(
 const sha512half = (msg: Buffer) =>
   createHash('sha512').update(msg).digest().subarray(0, 32);
 const XRP_E2E_TIMEOUT_MS = Number(process.env.XRP_E2E_TIMEOUT_MS ?? 180000);
+const XRP_E2E_TIMEOUT_PADDING_MS = 10000;
+const XRP_E2E_TEST_TIMEOUT_MS = XRP_E2E_TIMEOUT_MS + XRP_E2E_TIMEOUT_PADDING_MS;
 
 const assertValidXrpSignature = async (payload: Buffer) => {
   const resp = await signXrp(payload);
@@ -70,7 +71,6 @@ const assertValidXrpSignature = async (payload: Buffer) => {
 };
 
 describe('[XRP]', () => {
-  let client: Client;
   let supportsXrp = true;
 
   beforeAll(async () => {
@@ -88,7 +88,7 @@ describe('[XRP]', () => {
     );
     console.info(`[XRP] Test payload hex: ${XRP_PAYMENT_SIGN_PREIMAGE_HEX}`);
 
-    client = await setupClient();
+    const client = await setupClient();
     if (Number.isFinite(XRP_E2E_TIMEOUT_MS) && XRP_E2E_TIMEOUT_MS > 0) {
       client.timeout = XRP_E2E_TIMEOUT_MS;
     }
@@ -135,7 +135,7 @@ describe('[XRP]', () => {
       }
       await assertValidXrpSignature(XRP_PAYMENT_SIGN_PREIMAGE);
     },
-    XRP_E2E_TIMEOUT_MS + 10000,
+    XRP_E2E_TEST_TIMEOUT_MS,
   );
 
   it(
@@ -147,7 +147,7 @@ describe('[XRP]', () => {
       }
       await assertValidXrpSignature(XRP_OFFER_CREATE_XRP_XRP_PREIMAGE);
     },
-    XRP_E2E_TIMEOUT_MS + 10000,
+    XRP_E2E_TEST_TIMEOUT_MS,
   );
 
   it(
@@ -159,7 +159,7 @@ describe('[XRP]', () => {
       }
       await assertValidXrpSignature(XRP_OFFER_CREATE_IOU_XRP_PREIMAGE);
     },
-    XRP_E2E_TIMEOUT_MS + 10000,
+    XRP_E2E_TEST_TIMEOUT_MS,
   );
 
   it(
@@ -171,7 +171,7 @@ describe('[XRP]', () => {
       }
       await assertValidXrpSignature(XRP_OFFER_CANCEL_PREIMAGE);
     },
-    XRP_E2E_TIMEOUT_MS + 10000,
+    XRP_E2E_TEST_TIMEOUT_MS,
   );
 
   it(
@@ -193,6 +193,6 @@ describe('[XRP]', () => {
       const derivedAddress = pubkeyToAddress(pubkey);
       expect(derivedAddress).toEqual(address);
     },
-    XRP_E2E_TIMEOUT_MS + 10000,
+    XRP_E2E_TEST_TIMEOUT_MS,
   );
 });

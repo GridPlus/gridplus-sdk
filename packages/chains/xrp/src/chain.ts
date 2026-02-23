@@ -14,6 +14,9 @@ import type {
 import { ripemd160 } from '@noble/hashes/ripemd160';
 import { sha256 } from '@noble/hashes/sha256';
 import { base58xrp } from '@scure/base';
+import { compressSecp256k1Pubkey } from './shared';
+
+export { compressSecp256k1Pubkey };
 
 const HARDENED_OFFSET = 0x80000000;
 const XRP_COIN_TYPE = 144;
@@ -69,22 +72,6 @@ export const buildPath = (
     addressIndex,
   ];
 };
-
-export function compressSecp256k1Pubkey(pubkey: Uint8Array): Uint8Array {
-  if (pubkey.length === 33 && (pubkey[0] === 0x02 || pubkey[0] === 0x03)) {
-    return pubkey;
-  }
-  if (pubkey.length === 65 && pubkey[0] === 0x04) {
-    const x = pubkey.slice(1, 33);
-    const yLastByte = pubkey[64];
-    const prefix = yLastByte % 2 === 0 ? 0x02 : 0x03;
-    const out = new Uint8Array(33);
-    out[0] = prefix;
-    out.set(x, 1);
-    return out;
-  }
-  return pubkey;
-}
 
 function sha256d(data: Uint8Array): Uint8Array {
   return sha256(sha256(data));
