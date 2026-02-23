@@ -32,6 +32,7 @@
     "e2e-sign-evm-tx": "vitest run ./src/__test__/e2e/signing/evm-tx.test.ts",
     "e2e-sign-solana": "vitest run ./src/__test__/e2e/signing/solana*",
     "e2e-sign-cosmos": "vitest run ./src/__test__/e2e/signing/cosmos*",
+    "e2e-sign-xrp": "vitest run ./src/__test__/e2e/signing/xrp*",
     "e2e-sign-unformatted": "vitest run ./src/__test__/e2e/signing/unformatted.test.ts",
     "e2e-api": "vitest run ./src/__test__/e2e/api.test.ts",
     "e2e-sign-eip712": "vitest run ./src/__test__/e2e/signing/eip712-msg.test.ts"
@@ -60,6 +61,7 @@
     "@gridplus/cosmos": "workspace:*",
     "@gridplus/evm": "workspace:*",
     "@gridplus/solana": "workspace:*",
+    "@gridplus/xrp": "workspace:*",
     "@gridplus/types": "workspace:*",
     "@ethereumjs/common": "^10.0.0",
     "@ethereumjs/rlp": "^10.0.0",

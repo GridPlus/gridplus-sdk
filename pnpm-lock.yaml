@@ -127,6 +127,31 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/chains/xrp:
+    dependencies:
+      '@gridplus/chain-core':
+        specifier: workspace:*
+        version: link:../chain-core
+      '@noble/hashes':
+        specifier: ^1.8.0
+        version: 1.8.0
+      '@scure/base':
+        specifier: ^1.2.6
+        version: 1.2.6
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^1.9.0
+        version: 1.9.4
+      '@types/node':
+        specifier: ^24.10.4
+        version: 24.10.4
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@microsoft/api-extractor@7.55.2(@types/node@24.10.4))(jiti@1.21.7)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/docs:
     dependencies:
       '@docusaurus/core':
@@ -248,6 +273,9 @@ importers:
       '@gridplus/types':
         specifier: workspace:*
         version: link:../types
+      '@gridplus/xrp':
+        specifier: workspace:*
+        version: link:../chains/xrp
       '@metamask/eth-sig-util':
         specifier: ^8.2.0
         version: 8.2.0

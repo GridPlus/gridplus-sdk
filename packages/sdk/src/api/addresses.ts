@@ -11,6 +11,7 @@ import {
   LEDGER_LIVE_DERIVATION,
   MAX_ADDR,
   SOLANA_DERIVATION,
+  XRP_DERIVATION,
 } from '../constants';
 import { useChain } from '../chains';
 import type { GetAddressesRequestParams, WalletPath } from '../types';
@@ -128,6 +129,25 @@ export const fetchSolanaAddresses = async (
     startIndex: startPathIndex,
     count: n,
     change: SOLANA_DERIVATION[3] - HARDENED_OFFSET,
+  });
+};
+
+export const fetchXrpAddresses = async (
+  { n, startPathIndex }: FetchAddressesParams = {
+    n: MAX_ADDR,
+    startPathIndex: 0,
+  },
+) => {
+  const adapter = await useChain<any>('xrp', {
+    adapterOptions: {
+      accountIndex: XRP_DERIVATION[2] - HARDENED_OFFSET,
+      change: XRP_DERIVATION[3],
+    },
+  });
+  return adapter.getAddresses({
+    startIndex: startPathIndex,
+    count: n,
+    change: XRP_DERIVATION[3],
   });
 };
 

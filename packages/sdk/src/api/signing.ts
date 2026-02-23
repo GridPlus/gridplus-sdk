@@ -14,6 +14,7 @@ import {
   CURRENCIES,
   DEFAULT_ETH_DERIVATION,
   SOLANA_DERIVATION,
+  XRP_DERIVATION,
 } from '../constants';
 import { useChain } from '../chains';
 import { fetchDecoder } from '../functions/fetchDecoder';
@@ -350,6 +351,32 @@ export const signCosmos = async (
     kind: 'transaction',
     payload,
     options: { path: signerPath, mode },
+  });
+
+  return {
+    sig: toLatticeSignature(result.signature),
+    pubkey: result.publicKey ? Buffer.from(result.publicKey) : undefined,
+  };
+};
+
+/**
+ * Sign an XRPL transaction signing preimage.
+ * The payload should be the exact bytes to sign (typically `STX\\0` + canonical XRPL serialization).
+ */
+export const signXrp = async (
+  payload: Buffer | Uint8Array,
+  overrides?: SignRequestParams,
+): Promise<SignData> => {
+  const signerPath =
+    ((overrides as any)?.data?.signerPath as number[] | undefined) ??
+    ((overrides as any)?.signerPath as number[] | undefined) ??
+    XRP_DERIVATION;
+
+  const adapter = await useChain<any>('xrp');
+  const result = await adapter.sign({
+    kind: 'transaction',
+    payload,
+    options: { path: signerPath },
   });
 
   return {

@@ -12,6 +12,7 @@ describe('default chain manifest', () => {
         'evm:lattice',
         'solana:lattice',
         'cosmos:lattice',
+        'xrp:lattice',
       ]),
     );
   });

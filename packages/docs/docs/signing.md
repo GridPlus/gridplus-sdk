@@ -175,6 +175,7 @@ The SDK automatically detects and applies the appropriate encoding:
 | ERC20 Transfer   | Token, Recipient, Amount  | `EVM` with ABI |
 | Contract Call    | Function name, Parameters | `EVM` with ABI |
 | Solana Transfer  | From, To, Lamports        | `SOLANA`       |
+| XRP Transaction  | XRP payment fields        | `XRP`          |
 | Bitcoin          | Inputs, Outputs, Fee      | `BTC`          |
 | Raw Message      | Hex or ASCII display      | `NONE`         |
 
@@ -554,4 +555,15 @@ const payload = {
 
 const result = await signSolanaTx(payload);
 // Returns: { tx, txHash, sigs }
+```
+
+## XRP
+
+Use `signXrp` for XRPL signing preimages.
+
+```ts
+import { signXrp } from 'gridplus-sdk/api/signing';
+
+// XRPL signing preimage bytes: STX\\0 + canonical serialized transaction
+const result = await signXrp(xrplPreimageBytes);
 ```

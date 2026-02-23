@@ -25,6 +25,7 @@ export interface GenericSigningData {
     NONE: typeof LatticeSignHash.none;
     KECCAK256: typeof LatticeSignHash.keccak256;
     SHA256: typeof LatticeSignHash.sha256;
+    SHA512HALF?: typeof LatticeSignHash.sha512half;
   };
   curveTypes: {
     SECP256K1: typeof LatticeSignCurve.secp256k1;
@@ -36,6 +37,7 @@ export interface GenericSigningData {
     SOLANA: typeof LatticeSignEncoding.solana;
     COSMOS?: typeof LatticeSignEncoding.cosmos;
     EVM?: typeof LatticeSignEncoding.evm;
+    XRP?: typeof LatticeSignEncoding.xrp;
   };
 }
 

@@ -136,7 +136,7 @@ export const isValidAssetPath = (
     PURPOSES.BTC_WRAPPED_SEGWIT,
     PURPOSES.BTC_SEGWIT,
   ];
-  const allowedCoins = [COINS.ETH, COINS.BTC, COINS.BTC_TESTNET];
+  const allowedCoins = [COINS.ETH, COINS.BTC, COINS.BTC_TESTNET, COINS.XRP];
   // These coin types were given to us by MyCrypto. They should be allowed, but we expect
   // an Ethereum-type address with these coin types.
   // These all use SLIP44: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
@@ -155,7 +155,7 @@ export const isValidAssetPath = (
   return (
     allowedPurposes.indexOf(path[0]) >= 0 &&
     (allowedCoins.indexOf(path[1]) >= 0 ||
-      allowedMyCryptoCoins.indexOf(path[1] - HARDENED_OFFSET) > 0)
+      allowedMyCryptoCoins.indexOf(path[1] - HARDENED_OFFSET) >= 0)
   );
 };
 

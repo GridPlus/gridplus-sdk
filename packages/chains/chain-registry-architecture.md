@@ -23,11 +23,12 @@ flowchart LR
       CoreRegistry["createChainRegistry()\nChainPlugin + DeviceId + resolve()"]
     end
 
-    subgraph Chains["@gridplus/{btc,evm,solana,cosmos}"]
+    subgraph Chains["@gridplus/{btc,evm,solana,cosmos,xrp}"]
       Btc["btc/src/devices/lattice.ts\nlatticePlugin"]
       Evm["evm/src/devices/lattice.ts\nlatticePlugin"]
       Sol["solana/src/devices/lattice.ts\nlatticePlugin"]
       Cos["cosmos/src/devices/lattice.ts\nlatticePlugin"]
+      Xrp["xrp/src/devices/lattice.ts\nlatticePlugin"]
       Cadix["future: */src/devices/cadix.ts\ncadixPlugin"]
     end
 
@@ -36,6 +37,7 @@ flowchart LR
     Manifest --> Evm
     Manifest --> Sol
     Manifest --> Cos
+    Manifest --> Xrp
     CustomReg --> Cadix
 
     Registry --> Plugin["resolved plugin (chainId:device)"]
@@ -137,3 +139,4 @@ stateDiagram-v2
 - `packages/chains/evm/src/devices/lattice.ts`
 - `packages/chains/solana/src/devices/lattice.ts`
 - `packages/chains/cosmos/src/devices/lattice.ts`
+- `packages/chains/xrp/src/devices/lattice.ts`
