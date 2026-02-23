@@ -113,7 +113,9 @@ export function createLatticeXrpSigner(context: DeviceContext): XrpSigner {
       payload: toBuffer(request.payload as any),
     };
 
-    const res = await queue((client: any) => client.sign({ data: signPayload }));
+    const res = await queue((client: any) =>
+      client.sign({ data: signPayload }),
+    );
     const sig = (res as any).sig ?? {};
     const { signature } = buildSigResultFromRsv(sig);
 

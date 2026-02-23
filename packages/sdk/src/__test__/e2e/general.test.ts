@@ -41,6 +41,13 @@ const id = getDeviceId();
 describe('General', () => {
   let client: Client;
 
+  const expectErrorMessage = (err: unknown) => {
+    if (!(err instanceof Error)) {
+      throw err;
+    }
+    expect(err.message).not.toEqual(null);
+  };
+
   beforeAll(async () => {
     client = await setupClient();
   });
@@ -104,8 +111,8 @@ describe('General', () => {
       addrData.startPath[0] = BTC_PURPOSE_P2WPKH;
       await client.getAddresses(addrData);
       throw new Error(null);
-    } catch (err: any) {
-      expect(err.message).not.toEqual(null);
+    } catch (err: unknown) {
+      expectErrorMessage(err);
     }
     // Switch to BTC coin. Should work now.
     addrData.startPath[1] = BTC_COIN;
@@ -127,8 +134,8 @@ describe('General', () => {
     addrData.startPath[0] = 0; // Purpose 0 -- undefined
     try {
       addrs = (await client.getAddresses(addrData)) as string[];
-    } catch (err: any) {
-      expect(err.message).not.toEqual(null);
+    } catch (err: unknown) {
+      expectErrorMessage(err);
     }
     addrData.startPath[0] = BTC_PURPOSE_P2SH_P2WPKH;
 
@@ -137,8 +144,8 @@ describe('General', () => {
     try {
       addrs = (await client.getAddresses(addrData)) as string[];
       throw new Error(null);
-    } catch (err: any) {
-      expect(err.message).not.toEqual(null);
+    } catch (err: unknown) {
+      expectErrorMessage(err);
     }
     addrData.startPath[1] = BTC_COIN;
     // Too many addresses (n>10)
@@ -146,8 +153,8 @@ describe('General', () => {
     try {
       addrs = (await client.getAddresses(addrData)) as string[];
       throw new Error(null);
-    } catch (err: any) {
-      expect(err.message).not.toEqual(null);
+    } catch (err: unknown) {
+      expectErrorMessage(err);
     }
   });
 
@@ -175,7 +182,7 @@ describe('General', () => {
       await client.sign(req);
     });
 
-    it('should sign bad transactions', async (ctx: any) => {
+    it('should sign bad transactions', async (ctx) => {
       if (process.env.CI === '1') {
         ctx.skip();
         return;
