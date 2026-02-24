@@ -11,12 +11,10 @@ import type {
   SignResult,
   Signer as CoreSigner,
 } from '@gridplus/chain-core';
+import { compressSecp256k1Pubkey } from '@gridplus/chain-core';
 import { ripemd160 } from '@noble/hashes/ripemd160';
 import { sha256 } from '@noble/hashes/sha256';
 import { base58xrp } from '@scure/base';
-import { compressSecp256k1Pubkey } from './shared';
-
-export { compressSecp256k1Pubkey };
 
 const HARDENED_OFFSET = 0x80000000;
 const XRP_COIN_TYPE = 144;
