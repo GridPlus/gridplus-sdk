@@ -138,6 +138,7 @@ const resolvePath = (
   params?: BtcGetAddressParams,
   options?: BtcAdapterOptions,
 ): DerivationPath => {
+  if (params?.path) return params.path;
   return buildPath(
     resolvePurpose(params, options),
     resolveCoinType(params, options),
