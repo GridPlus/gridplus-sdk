@@ -1,4 +1,16 @@
 import { Utils } from '..';
+import {
+  isChainPlugin,
+  type ChainPlugin,
+  type DeviceId,
+} from '@gridplus/chain-core';
+import {
+  configureChainRuntime,
+  discoverAndRegisterChains,
+  getChain,
+  registerChainPlugin,
+  unregisterChain,
+} from '../chains';
 import { Client } from '../client';
 import { loadClient, saveClient, setLoadClient, setSaveClient } from './state';
 import { buildLoadClientFn, buildSaveClientFn, queue } from './utilities';
@@ -12,20 +24,58 @@ import { buildLoadClientFn, buildSaveClientFn, queue } from './utilities';
  * @prop {Function} SetupParameters.getStoredClient - a function that returns the stored client data
  * @prop {Function} SetupParameters.setStoredClient - a function that stores the client data
  */
+type SetupBaseParameters = {
+  getStoredClient: () => Promise<string>;
+  setStoredClient: (clientData: string | null) => Promise<void>;
+  autoRegisterChains?: boolean;
+  defaultDevice?: DeviceId;
+  chainPlugins?: ChainPlugin<any>[];
+};
+
 type SetupParameters =
-  | {
+  | ({
       deviceId: string;
       password: string;
       name: string;
       appSecret?: string;
-      getStoredClient: () => Promise<string>;
-      setStoredClient: (clientData: string | null) => Promise<void>;
       baseUrl?: string;
+    } & SetupBaseParameters)
+  | SetupBaseParameters;
+
+const registerConfiguredChainPlugins = (
+  chainPlugins?: ChainPlugin<any>[],
+): void => {
+  if (!chainPlugins || chainPlugins.length === 0) return;
+  const seenPluginKeys = new Set<string>();
+
+  chainPlugins.forEach((plugin, index) => {
+    if (!isChainPlugin(plugin)) {
+      throw new Error(
+        `Invalid chain plugin in setup().chainPlugins at index ${index}.`,
+      );
     }
-  | {
-      getStoredClient: () => Promise<string>;
-      setStoredClient: (clientData: string | null) => Promise<void>;
-    };
+
+    const pluginKey = `${plugin.chainId}:${plugin.device}`;
+    if (seenPluginKeys.has(pluginKey)) {
+      throw new Error(
+        `Duplicate chain plugin key in setup().chainPlugins: "${pluginKey}".`,
+      );
+    }
+    seenPluginKeys.add(pluginKey);
+
+    try {
+      if (getChain(plugin.chainId, plugin.device)) {
+        unregisterChain(plugin.chainId, plugin.device);
+      }
+      registerChainPlugin(plugin);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Failed to register setup chain plugin "${pluginKey}": ${message}`,
+      );
+    }
+  });
+};
 
 /**
  * `setup` initializes the Client and executes `connect()` if necessary. It returns a promise that
@@ -48,6 +98,16 @@ export const setup = async (params: SetupParameters): Promise<boolean> => {
 
   if (!params.setStoredClient) throw new Error('Client data setter required');
   setSaveClient(buildSaveClientFn(params.setStoredClient));
+
+  configureChainRuntime({
+    autoRegisterChains: params.autoRegisterChains ?? true,
+    defaultDevice: params.defaultDevice ?? 'lattice',
+    resetCache: true,
+  });
+  if (params.autoRegisterChains !== false) {
+    await discoverAndRegisterChains({ force: true });
+  }
+  registerConfiguredChainPlugins(params.chainPlugins);
 
   if ('deviceId' in params && 'password' in params && 'name' in params) {
     const privKey =

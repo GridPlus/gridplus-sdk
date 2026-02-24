@@ -1,13 +1,10 @@
 import {
   BTC_LEGACY_CHANGE_DERIVATION,
   BTC_LEGACY_DERIVATION,
-  BTC_LEGACY_XPUB_PATH,
   BTC_SEGWIT_CHANGE_DERIVATION,
   BTC_SEGWIT_DERIVATION,
-  BTC_SEGWIT_ZPUB_PATH,
   BTC_WRAPPED_SEGWIT_CHANGE_DERIVATION,
   BTC_WRAPPED_SEGWIT_DERIVATION,
-  BTC_WRAPPED_SEGWIT_YPUB_PATH,
   DEFAULT_ETH_DERIVATION,
   HARDENED_OFFSET,
   LEDGER_LEGACY_DERIVATION,
@@ -15,7 +12,7 @@ import {
   MAX_ADDR,
   SOLANA_DERIVATION,
 } from '../constants';
-import { LatticeGetAddressesFlag } from '../protocol/latticeConstants';
+import { useChain } from '../chains';
 import type { GetAddressesRequestParams, WalletPath } from '../types';
 import {
   getFlagFromPath,
@@ -78,15 +75,27 @@ export const fetchAddress = async (
 };
 
 function createFetchBtcAddressesFunction(derivationPath: number[]) {
+  const purpose = derivationPath[0] - HARDENED_OFFSET;
+  const coinType = derivationPath[1] - HARDENED_OFFSET;
+  const change = derivationPath[3] ?? 0;
+
   return async (
     { n, startPathIndex }: FetchAddressesParams = {
       n: MAX_ADDR,
       startPathIndex: 0,
     },
   ) => {
-    return fetchAddresses({
-      startPath: getStartPath(derivationPath, startPathIndex),
-      n,
+    const adapter = await useChain<any>('btc', {
+      adapterOptions: {
+        purpose,
+        coinType,
+        change,
+      },
+    });
+    return adapter.getAddresses({
+      startIndex: startPathIndex,
+      count: n,
+      change,
     });
   };
 }
@@ -114,10 +123,11 @@ export const fetchSolanaAddresses = async (
     startPathIndex: 0,
   },
 ) => {
-  return fetchAddresses({
-    startPath: getStartPath(SOLANA_DERIVATION, startPathIndex, 2),
-    n,
-    flag: 4,
+  const adapter = await useChain<any>('solana');
+  return adapter.getAddresses({
+    startIndex: startPathIndex,
+    count: n,
+    change: SOLANA_DERIVATION[3] - HARDENED_OFFSET,
   });
 };
 
@@ -245,10 +255,8 @@ export async function fetchAddressesByDerivationPath(
  * @returns xpub string
  */
 export async function fetchBtcXpub(): Promise<string> {
-  const result = await fetchAddressesByDerivationPath(BTC_LEGACY_XPUB_PATH, {
-    flag: LatticeGetAddressesFlag.secp256k1Xpub,
-  });
-  return result[0];
+  const adapter = await useChain<any>('btc');
+  return adapter.getXpub({ purpose: 44 });
 }
 
 /**
@@ -256,13 +264,8 @@ export async function fetchBtcXpub(): Promise<string> {
  * @returns ypub string
  */
 export async function fetchBtcYpub(): Promise<string> {
-  const result = await fetchAddressesByDerivationPath(
-    BTC_WRAPPED_SEGWIT_YPUB_PATH,
-    {
-      flag: LatticeGetAddressesFlag.secp256k1Xpub,
-    },
-  );
-  return result[0];
+  const adapter = await useChain<any>('btc');
+  return adapter.getXpub({ purpose: 49 });
 }
 
 /**
@@ -270,8 +273,6 @@ export async function fetchBtcYpub(): Promise<string> {
  * @returns zpub string
  */
 export async function fetchBtcZpub(): Promise<string> {
-  const result = await fetchAddressesByDerivationPath(BTC_SEGWIT_ZPUB_PATH, {
-    flag: LatticeGetAddressesFlag.secp256k1Xpub,
-  });
-  return result[0];
+  const adapter = await useChain<any>('btc');
+  return adapter.getXpub({ purpose: 84 });
 }

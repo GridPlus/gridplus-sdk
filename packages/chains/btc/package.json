@@ -1,0 +1,54 @@
+{
+  "name": "@gridplus/btc",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "BTC utilities for GridPlus SDK - SLIP-132, network inference, transaction building, wallet utilities",
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run ./src/__test__/unit",
+    "lint": "biome check src",
+    "lint:fix": "biome check --write src",
+    "typecheck": "tsc --noEmit"
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GridPlus/gridplus-sdk.git",
+    "directory": "packages/chains/btc"
+  },
+  "gridplus": {
+    "chainPlugin": {
+      "chainId": "btc",
+      "device": "lattice",
+      "export": "latticePlugin"
+    }
+  },
+  "dependencies": {
+    "@gridplus/chain-core": "workspace:*",
+    "bs58check": "^4.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "@types/node": "^24.10.4",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "3.2.4"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
+}

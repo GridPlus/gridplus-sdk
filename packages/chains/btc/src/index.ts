@@ -14,9 +14,11 @@ export type {
   BtcNetwork,
   XpubPrefix,
   ScriptType,
+  BtcAddressFormat,
   XpubOptions,
   XpubsOptions,
   PreviousOutput,
+  BitcoinSignPayload,
   WalletUtxo,
   WalletSummary,
   WalletSnapshot,
@@ -65,3 +67,27 @@ export type {
   FeeRates,
   PagingOptions,
 } from './provider/types';
+
+// Chain module
+export { btc } from './chain';
+export { createLatticeBtcSigner, latticePlugin } from './devices/lattice';
+export type {
+  ChainCapabilities,
+  ChainModule,
+  Account,
+  GetAccountsParams,
+  GetAddressParams,
+  GetPublicKeyParams,
+  SignRequest,
+  SignResult,
+} from '@gridplus/chain-core';
+
+export type {
+  BtcAdapter,
+  BtcAdapterOptions,
+  BtcGetAccountsParams,
+  BtcGetAddressParams,
+  BtcGetPublicKeyParams,
+  BtcSignRequest,
+  Signer,
+} from './chain';

@@ -3,6 +3,7 @@ export type BtcCoinType = 0 | 1;
 export type BtcNetwork = 'mainnet' | 'testnet' | 'regtest';
 export type XpubPrefix = 'xpub' | 'ypub' | 'zpub' | 'tpub' | 'upub' | 'vpub';
 export type ScriptType = 'p2pkh' | 'p2sh-p2wpkh' | 'p2wpkh';
+export type BtcAddressFormat = 'legacy' | 'wrapped' | 'native';
 
 export interface XpubOptions {
   purpose: BtcPurpose;
@@ -22,6 +23,15 @@ export interface PreviousOutput {
   value: number;
   index: number;
   signerPath: number[];
+}
+
+/** Transaction payload for device signing */
+export interface BitcoinSignPayload {
+  prevOuts: PreviousOutput[];
+  recipient: string;
+  value: number;
+  fee: number;
+  changePath: number[];
 }
 
 /** Wallet UTXO with derivation info */
