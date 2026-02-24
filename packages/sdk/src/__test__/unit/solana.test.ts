@@ -94,16 +94,14 @@ describe('Solana utilities', () => {
       expect(result?.[0]).toBe(42);
     });
 
-    test('should truncate 64-byte Uint8Array to 32 bytes', () => {
+    test('should return null for Uint8Array longer than 32 bytes', () => {
       const longKey = new Uint8Array(64);
       for (let i = 0; i < 64; i++) {
         longKey[i] = i;
       }
       const result = toEd25519Bytes(longKey);
 
-      expect(result).not.toBeNull();
-      expect(result?.length).toBe(32);
-      expect(result?.[31]).toBe(31);
+      expect(result).toBeNull();
     });
 
     test('should return null for Uint8Array shorter than 32 bytes', () => {
@@ -136,12 +134,20 @@ describe('Solana utilities', () => {
       expect(result?.[0]).toBe(0xab);
     });
 
-    test('should truncate longer Buffer to 32 bytes', () => {
+    test('should return a detached copy for Buffer input', () => {
+      const validBuffer = Buffer.alloc(32, 0xab);
+      const result = toEd25519Bytes(validBuffer);
+
+      expect(result).not.toBeNull();
+      validBuffer[0] = 0xff;
+      expect(result?.[0]).toBe(0xab);
+    });
+
+    test('should return null for Buffer longer than 32 bytes', () => {
       const longBuffer = Buffer.alloc(48, 0xcd);
       const result = toEd25519Bytes(longBuffer);
 
-      expect(result).not.toBeNull();
-      expect(result?.length).toBe(32);
+      expect(result).toBeNull();
     });
 
     test('should return null for Buffer shorter than 32 bytes', () => {
@@ -169,12 +175,11 @@ describe('Solana utilities', () => {
       expect(result?.[0]).toBe(0xbb);
     });
 
-    test('should truncate longer hex string to 32 bytes', () => {
+    test('should return null for hex string longer than 64 chars (32 bytes)', () => {
       const longHex = `0x${'c'.repeat(128)}`;
       const result = toEd25519Bytes(longHex);
 
-      expect(result).not.toBeNull();
-      expect(result?.length).toBe(32);
+      expect(result).toBeNull();
     });
 
     test('should return null for hex string shorter than 64 chars (32 bytes)', () => {
@@ -187,6 +192,20 @@ describe('Solana utilities', () => {
     test('should return null for non-hex string', () => {
       const notHex = 'not-a-valid-hex-string-at-all-xyz';
       const result = toEd25519Bytes(notHex);
+
+      expect(result).toBeNull();
+    });
+
+    test('should return null for 0x-prefixed non-hex string', () => {
+      const notHex = `0x${'zz'.repeat(32)}`;
+      const result = toEd25519Bytes(notHex);
+
+      expect(result).toBeNull();
+    });
+
+    test('should return null for 0x-prefixed hex string with invalid nibble', () => {
+      const invalidNibble = `0x0${'a'.repeat(62)}g`;
+      const result = toEd25519Bytes(invalidNibble);
 
       expect(result).toBeNull();
     });

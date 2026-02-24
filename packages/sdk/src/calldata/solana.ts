@@ -160,38 +160,33 @@ export function injectSignature(
 /**
  * Convert raw Ed25519 pubkey to 32-byte Uint8Array.
  * @param entry - The input to convert (Uint8Array, Buffer, or hex string)
- * @returns A 32-byte Uint8Array, or null if the input is invalid or too short
+ * @returns A 32-byte Uint8Array, or null if the input is invalid or not exactly 32 bytes
  */
 export function toEd25519Bytes(entry: unknown): Uint8Array | null {
-  if (entry instanceof Uint8Array) {
-    // Reject inputs shorter than 32 bytes to prevent malformed keys
-    if (entry.length < 32) {
+  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(entry)) {
+    if (entry.length !== 32) {
       return null;
     }
-    return entry.slice(0, 32);
+    return new Uint8Array(entry);
   }
 
-  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(entry)) {
-    // Reject inputs shorter than 32 bytes to prevent malformed keys
-    if (entry.length < 32) {
+  if (entry instanceof Uint8Array) {
+    if (entry.length !== 32) {
       return null;
     }
-    return new Uint8Array(entry.slice(0, 32));
+    return new Uint8Array(entry);
   }
 
   if (typeof entry === 'string') {
-    const hex = entry.startsWith('0x')
-      ? entry.slice(2)
-      : /^[0-9a-fA-F]+$/.test(entry)
-        ? entry
-        : '';
-    if (hex.length >= 64) {
-      const out = new Uint8Array(32);
-      for (let i = 0; i < 32; i++) {
-        out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-      }
-      return out;
+    const hex = entry.startsWith('0x') ? entry.slice(2) : entry;
+    if (hex.length !== 64 || !/^[0-9a-fA-F]+$/.test(hex)) {
+      return null;
     }
+    const out = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) {
+      out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    }
+    return out;
   }
 
   return null;
