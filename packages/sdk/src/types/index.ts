@@ -28,6 +28,9 @@ export * from './messages';
 // Re-export everything from pair.ts
 export * from './pair';
 
+// Re-export everything from event.ts
+export * from './event';
+
 // Re-export everything from removeKvRecords.ts
 export * from './removeKvRecords';
 

@@ -15,6 +15,7 @@ import {
   pair,
   removeKvRecords,
   sign,
+  sendEvent,
 } from './functions/index';
 import { buildRetryWrapper } from './shared/functions';
 import { getPubKeyBytes } from './shared/utilities';
@@ -30,6 +31,8 @@ import type {
   RemoveKvRecordsRequestParams,
   SignData,
   SignRequestParams,
+  SendEventParams,
+  SendEventResponse,
 } from './types';
 import { getP256KeyPair, getP256KeyPairFromPub, randomBytes } from './util';
 
@@ -105,13 +108,15 @@ export class Client {
     /** Function to set the stored client data */
     setStoredClient?: (clientData: string | null) => Promise<void>;
   }) {
+    const retryOverride =
+      typeof retryCount === 'number' ? retryCount : undefined;
     this.name = name || 'Unknown';
     this.baseUrl = baseUrl || BASE_URL;
     this.deviceId = deviceId;
     this.isPaired = false;
     this.activeWallets = DEFAULT_ACTIVE_WALLETS;
     this.timeout = timeout || 60000;
-    this.retryCount = retryCount || 3;
+    this.retryCount = retryOverride ?? 3;
     this.skipRetryOnWrongWallet = skipRetryOnWrongWallet || false;
     this.privKey = privKey || randomBytes(32);
     this.key = getP256KeyPair(this.privKey);
@@ -123,6 +128,11 @@ export class Client {
     /** The user may pass in state data to rehydrate a session that was previously cached */
     if (stateData) {
       this.unpackAndApplyStateData(stateData);
+      // Preserve explicit constructor override when state hydration provided a different retry count.
+      if (retryOverride !== undefined) {
+        this.retryCount = retryOverride;
+        this.retryWrapper = buildRetryWrapper(this, this.retryCount);
+      }
     }
   }
 
@@ -259,6 +269,18 @@ export class Client {
     ids = [],
   }: RemoveKvRecordsRequestParams): Promise<Buffer> {
     return this.retryWrapper(removeKvRecords, { type, ids });
+  }
+
+  /**
+   * Send a simple message to the device firmware.
+   * @category Lattice
+   */
+  public async sendEvent({
+    eventType,
+    eventId,
+    message,
+  }: SendEventParams): Promise<SendEventResponse> {
+    return this.retryWrapper(sendEvent, { eventType, eventId, message });
   }
 
   /**

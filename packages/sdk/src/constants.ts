@@ -13,6 +13,9 @@ import type {
   WalletPath,
 } from './types/index.js';
 
+/** @internal Hardened offset for BIP32 derivation paths */
+const HARDENED = 0x80000000;
+
 /**
  * Externally exported constants used for building requests
  * @public
@@ -70,6 +73,18 @@ export const EXTERNAL = {
       DEPOSIT: Buffer.from('03000000', 'hex'),
       VOLUNTARY_EXIT: Buffer.from('04000000', 'hex'),
     },
+  },
+  // Standard derivation paths for various chains
+  DERIVATION_PATHS: {
+    /** Solana: m/44'/501'/0'/0' - Ed25519 curve */
+    SOLANA: [
+      HARDENED + 44,
+      HARDENED + 501,
+      HARDENED,
+      HARDENED,
+    ] as readonly number[],
+    /** Ethereum: m/44'/60'/0'/0/0 - secp256k1 curve */
+    ETH: [HARDENED + 44, HARDENED + 60, HARDENED, 0, 0] as readonly number[],
   },
 } as const;
 

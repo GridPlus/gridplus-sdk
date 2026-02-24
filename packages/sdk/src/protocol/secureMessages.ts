@@ -132,8 +132,13 @@ export async function encryptedSecureRequest({
     payload: msg,
   });
 
-  // Deserialize the response payload data
-  if (resp.length !== szs.payload.response.encrypted - 1) {
+  // Deserialize the response payload data. Accept both legacy and compact sizes.
+  const legacyResponseSize = szs.payload.response.encrypted - 1;
+  const compactResponseSize = szs.data.response.encrypted.encryptedData;
+  if (
+    resp.length !== legacyResponseSize &&
+    resp.length !== compactResponseSize
+  ) {
     throw new Error('Wrong Lattice response message size.');
   }
 
