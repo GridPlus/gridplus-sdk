@@ -128,10 +128,11 @@ export class Client {
     /** The user may pass in state data to rehydrate a session that was previously cached */
     if (stateData) {
       this.unpackAndApplyStateData(stateData);
-    }
-    if (retryOverride !== undefined) {
-      this.retryCount = retryOverride;
-      this.retryWrapper = buildRetryWrapper(this, this.retryCount);
+      // Preserve explicit constructor override when state hydration provided a different retry count.
+      if (retryOverride !== undefined) {
+        this.retryCount = retryOverride;
+        this.retryWrapper = buildRetryWrapper(this, this.retryCount);
+      }
     }
   }
 

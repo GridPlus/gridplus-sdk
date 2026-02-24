@@ -75,13 +75,6 @@ export type {
   EIP2335KeyExportData,
 } from './fetchEncData';
 
-// Exports from message.ts
-export type {
-  SendEventParams,
-  SendEventRequestFunctionParams,
-  SendEventResponse,
-} from './event';
-
 // Exports from getKvRecords.ts
 export type {
   GetKvRecordsRequestParams,
