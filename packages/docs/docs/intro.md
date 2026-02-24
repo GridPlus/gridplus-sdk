@@ -243,6 +243,7 @@ import {
   fetchBtcSegwitAddresses, // Bitcoin P2WPKH (bc1...)
   fetchBtcWrappedSegwitAddresses, // Bitcoin P2SH-P2WPKH (3...)
   fetchSolanaAddresses, // Solana addresses
+  fetchXrpAddresses, // XRP classic addresses (r...)
 } from 'gridplus-sdk/api/addresses';
 
 // Each returns an array of address strings
@@ -251,6 +252,7 @@ const btcLegacy = await fetchBtcLegacyAddresses(5);
 const btcSegwit = await fetchBtcSegwitAddresses(5);
 const btcWrapped = await fetchBtcWrappedSegwitAddresses(5);
 const solana = await fetchSolanaAddresses(5);
+const xrp = await fetchXrpAddresses({ n: 5, startPathIndex: 0 });
 ```
 
 ### Step 4: Signing Transactions

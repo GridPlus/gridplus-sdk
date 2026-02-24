@@ -34,6 +34,7 @@ export const EXTERNAL = {
       NONE: LatticeSignHash.none,
       KECCAK256: LatticeSignHash.keccak256,
       SHA256: LatticeSignHash.sha256,
+      SHA512HALF: LatticeSignHash.sha512half,
     },
     CURVES: {
       SECP256K1: LatticeSignCurve.secp256k1,
@@ -48,6 +49,7 @@ export const EXTERNAL = {
       ETH_DEPOSIT: LatticeSignEncoding.eth_deposit,
       EIP7702_AUTH: LatticeSignEncoding.eip7702_auth,
       EIP7702_AUTH_LIST: LatticeSignEncoding.eip7702_auth_list,
+      XRP: LatticeSignEncoding.xrp,
     },
     BLS_DST: {
       BLS_DST_NUL: LatticeSignBlsDst.NUL,
@@ -126,6 +128,7 @@ const BIP_CONSTANTS = {
     ETH: HARDENED_OFFSET + 60,
     BTC: HARDENED_OFFSET,
     BTC_TESTNET: HARDENED_OFFSET + 1,
+    XRP: HARDENED_OFFSET + 144,
   },
 } as const;
 
@@ -417,7 +420,11 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
     c.genericSigning.baseReqSz = 1552;
     // See `GENERIC_SIGNING_BASE_MSG_SZ` in firmware
     c.genericSigning.baseDataSz = 1519;
-    c.genericSigning.hashTypes = EXTERNAL.SIGNING.HASHES;
+    c.genericSigning.hashTypes = {
+      NONE: EXTERNAL.SIGNING.HASHES.NONE,
+      KECCAK256: EXTERNAL.SIGNING.HASHES.KECCAK256,
+      SHA256: EXTERNAL.SIGNING.HASHES.SHA256,
+    };
     c.genericSigning.curveTypes = EXTERNAL.SIGNING.CURVES;
     c.genericSigning.encodingTypes = {
       NONE: EXTERNAL.SIGNING.ENCODINGS.NONE,
@@ -474,11 +481,17 @@ function getFwVersionConst(v: Buffer): FirmwareConstants {
   }
 
   // --- V0.18.10 ---
-  // V0.18.10 added Cosmos (SIGN_MODE_DIRECT) decoding for generic signing
+  // V0.18.10 added Cosmos and XRP decoding for generic signing.
+  // It also added SHA512Half for XRP transaction hashes.
   if (!legacy && gte(v, [0, 18, 10])) {
+    c.genericSigning.hashTypes = {
+      ...c.genericSigning.hashTypes,
+      SHA512HALF: EXTERNAL.SIGNING.HASHES.SHA512HALF,
+    };
     c.genericSigning.encodingTypes = {
       ...c.genericSigning.encodingTypes,
       COSMOS: EXTERNAL.SIGNING.ENCODINGS.COSMOS,
+      XRP: EXTERNAL.SIGNING.ENCODINGS.XRP,
     };
   }
 
@@ -649,6 +662,15 @@ export const SOLANA_DERIVATION = [
 export const COSMOS_DERIVATION = [
   HARDENED_OFFSET + 44,
   HARDENED_OFFSET + 118,
+  HARDENED_OFFSET,
+  0,
+  0,
+];
+
+/** @internal */
+export const XRP_DERIVATION = [
+  HARDENED_OFFSET + 44,
+  HARDENED_OFFSET + 144,
   HARDENED_OFFSET,
   0,
   0,

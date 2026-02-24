@@ -37,6 +37,10 @@ const sidebars = {
           type: 'doc',
           id: 'signing',
         },
+        {
+          type: 'doc',
+          id: 'chain-modules',
+        },
       ],
     },
     {

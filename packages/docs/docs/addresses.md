@@ -119,6 +119,17 @@ Extended public keys (XPUB/YPUB/ZPUB) allow you to derive addresses without the 
 **Security note**: XPUB/YPUB/ZPUB reveal all public keys and addresses for an account. Share these carefully.
 :::
 
+## ✕ XRP Addresses
+
+XRP uses BIP44 coin type `144'` (`m/44'/144'/0'/0/0` by default).
+
+```ts
+import { fetchXrpAddresses } from 'gridplus-sdk/api/addresses';
+
+// Classic XRP addresses (r...)
+const addrs = await fetchXrpAddresses({ n: 5, startPathIndex: 0 });
+```
+
 ## 🗝️ Public Keys
 
 In addition to formatted addresses, the Lattice can return public keys on any supported curve for any BIP32 derivation path.

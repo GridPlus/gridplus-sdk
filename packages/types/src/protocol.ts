@@ -68,6 +68,7 @@ export enum LatticeSignHash {
   none = 0,
   keccak256 = 1,
   sha256 = 2,
+  sha512half = 3,
 }
 
 export enum LatticeSignCurve {
@@ -84,6 +85,7 @@ export enum LatticeSignEncoding {
   eth_deposit = 5,
   eip7702_auth = 6,
   eip7702_auth_list = 7,
+  xrp = 8,
 }
 
 export enum LatticeSignBlsDst {
