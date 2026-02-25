@@ -1,12 +1,12 @@
 import {
+  compareFirmwareVersions,
   createPrimitiveRegistry,
   type ChainPlugin,
+  type FirmwareVersionTuple,
   type PrimitiveDefinition,
   type PrimitiveRequirement,
 } from '@gridplus/chain-core';
 import { EXTERNAL } from '../constants';
-
-type FirmwareVersionTuple = [number, number, number];
 
 const registry = createPrimitiveRegistry();
 let seeded = false;
@@ -37,15 +37,6 @@ const isPrimitiveRequirement = (
     req.name.trim().length > 0 &&
     isFirmwareVersionTuple(req.minFirmware)
   );
-};
-
-const compareFirmwareVersions = (
-  current: FirmwareVersionTuple,
-  required: FirmwareVersionTuple,
-): number => {
-  if (current[0] !== required[0]) return current[0] - required[0];
-  if (current[1] !== required[1]) return current[1] - required[1];
-  return current[2] - required[2];
 };
 
 const getPluginPrimitiveDefinitions = (

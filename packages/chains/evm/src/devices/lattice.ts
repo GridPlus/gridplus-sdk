@@ -1,11 +1,14 @@
-import type {
-  Address,
-  ChainPlugin,
-  DerivationPath,
-  DeviceContext,
-  PrimitiveKind,
-  PublicKey,
-  SignResult,
+import {
+  getFirmwareVersion,
+  isAtLeastFirmware,
+  type Address,
+  type ChainPlugin,
+  type DerivationPath,
+  type DeviceContext,
+  type FirmwareVersionTuple,
+  type PrimitiveKind,
+  type PublicKey,
+  type SignResult,
 } from '@gridplus/chain-core';
 import { Hash } from 'ox';
 import {
@@ -90,54 +93,32 @@ function normalizeRawEvmTx(tx: EvmRawTransaction): Hex | Buffer {
   return Buffer.from(tx);
 }
 
+type EvmEncodingCodes = {
+  evm: number;
+  eip7702Auth: number;
+  eip7702AuthList: number;
+};
+
 function getEvmEncodingType(
   tx: TransactionSerializable,
-  resolvePrimitive: LatticeEvmContext['resolvePrimitive'],
+  encodings: EvmEncodingCodes,
 ): number {
   if ((tx as any).type === 'eip7702') {
     const eip7702 = tx as TransactionSerializableEIP7702;
     const hasAuthList =
       eip7702.authorizationList && eip7702.authorizationList.length > 0;
-    return hasAuthList
-      ? resolvePrimitive('encoding', 'EIP7702_AUTH_LIST')
-      : resolvePrimitive('encoding', 'EIP7702_AUTH');
+    return hasAuthList ? encodings.eip7702AuthList : encodings.eip7702Auth;
   }
-  return resolvePrimitive('encoding', 'EVM');
+  return encodings.evm;
 }
 
-const EIP7702_MIN_FIRMWARE: [number, number, number] = [0, 18, 0];
-
-const getFirmwareVersion = (client: unknown): [number, number, number] => {
-  const maybeClient = client as {
-    getFwVersion?: () => { major?: unknown; minor?: unknown; fix?: unknown };
-  };
-  if (typeof maybeClient?.getFwVersion !== 'function') return [0, 0, 0];
-  const fw = maybeClient.getFwVersion();
-  const normalize = (value: unknown): number =>
-    typeof value === 'number' && Number.isFinite(value)
-      ? Math.max(0, Math.trunc(value))
-      : 0;
-  return [normalize(fw?.major), normalize(fw?.minor), normalize(fw?.fix)];
-};
-
-const isAtLeastFirmware = (
-  current: [number, number, number],
-  minimum: [number, number, number],
-): boolean => {
-  if (current[0] !== minimum[0]) return current[0] > minimum[0];
-  if (current[1] !== minimum[1]) return current[1] > minimum[1];
-  return current[2] >= minimum[2];
-};
+const EIP7702_MIN_FIRMWARE: FirmwareVersionTuple = [0, 18, 0];
 
 const assertEip7702FirmwareSupport = async (
   context: DeviceContext,
-  resolvePrimitive: LatticeEvmContext['resolvePrimitive'],
+  eip7702Encodings: Set<number>,
   encodingType: number,
 ): Promise<void> => {
-  const eip7702Encodings = new Set<number>([
-    resolvePrimitive('encoding', 'EIP7702_AUTH'),
-    resolvePrimitive('encoding', 'EIP7702_AUTH_LIST'),
-  ]);
   if (!eip7702Encodings.has(encodingType)) return;
   const client = await context.getClient();
   const fwVersion = getFirmwareVersion(client);
@@ -157,6 +138,15 @@ export function createLatticeEvmSigner(
   const { EXTERNAL, CURRENCIES } = latticeContext.constants;
   const curveSecp256k1 = resolvePrimitive('curve', 'SECP256K1');
   const hashKeccak256 = resolvePrimitive('hash', 'KECCAK256');
+  const encodings: EvmEncodingCodes = {
+    evm: resolvePrimitive('encoding', 'EVM'),
+    eip7702Auth: resolvePrimitive('encoding', 'EIP7702_AUTH'),
+    eip7702AuthList: resolvePrimitive('encoding', 'EIP7702_AUTH_LIST'),
+  };
+  const eip7702Encodings = new Set<number>([
+    encodings.eip7702Auth,
+    encodings.eip7702AuthList,
+  ]);
 
   return {
     getAddress: async (path: DerivationPath): Promise<Address> => {
@@ -204,14 +194,14 @@ export function createLatticeEvmSigner(
           : serializeTransaction(request.payload as TransactionSerializable);
 
         const encodingType = isRaw
-          ? resolvePrimitive('encoding', 'EVM')
+          ? encodings.evm
           : getEvmEncodingType(
               request.payload as TransactionSerializable,
-              resolvePrimitive,
+              encodings,
             );
         await assertEip7702FirmwareSupport(
           latticeContext,
-          resolvePrimitive,
+          eip7702Encodings,
           encodingType,
         );
 

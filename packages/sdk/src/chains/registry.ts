@@ -1,5 +1,6 @@
 import {
   createChainRegistry,
+  getFirmwareVersion,
   type ChainPlugin,
   type DeviceId,
 } from '@gridplus/chain-core';
@@ -57,35 +58,6 @@ const stringifyAdapterOptions = (options: unknown): string => {
   } catch {
     return `__opaque__:${String(options)}`;
   }
-};
-
-type FirmwareVersionTuple = [number, number, number];
-
-type FirmwareVersionSource = {
-  getFwVersion?: () => {
-    major?: unknown;
-    minor?: unknown;
-    fix?: unknown;
-  };
-};
-
-const normalizeFirmwarePart = (value: unknown): number => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
-  return Math.max(0, Math.trunc(value));
-};
-
-const getFirmwareVersion = (client: unknown): FirmwareVersionTuple => {
-  const maybeClient = client as FirmwareVersionSource;
-  if (typeof maybeClient?.getFwVersion !== 'function') {
-    return [0, 0, 0];
-  }
-
-  const fw = maybeClient.getFwVersion();
-  return [
-    normalizeFirmwarePart(fw?.major),
-    normalizeFirmwarePart(fw?.minor),
-    normalizeFirmwarePart(fw?.fix),
-  ];
 };
 
 const registerDiscoveredPlugin = (plugin: ChainPlugin<any>): boolean => {

@@ -11,7 +11,6 @@ export {
 } from './registry';
 export {
   ensurePrimitivesSeeded,
-  getPrimitiveRegistry,
   preflightPluginPrimitives,
   registerPluginPrimitives,
   validatePluginPrimitiveRequirements,
