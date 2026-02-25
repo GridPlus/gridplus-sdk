@@ -33,6 +33,25 @@ export type ChainCapabilities = {
   getXpub?: boolean;
 };
 
+export type PrimitiveKind = 'hash' | 'curve' | 'encoding';
+
+export type PrimitiveDefinition = {
+  kind: PrimitiveKind;
+  name: string;
+  code: number;
+};
+
+export type PrimitiveRequirement = {
+  kind: PrimitiveKind;
+  name: string;
+  minFirmware: [number, number, number];
+};
+
+export type PluginPrimitives = {
+  definitions?: PrimitiveDefinition[];
+  requirements?: PrimitiveRequirement[];
+};
+
 export type GetAddressParams = {
   path?: DerivationPath;
   accountIndex?: number;
@@ -127,6 +146,7 @@ export type ChainPlugin<
     signer: TSigner,
     options?: TOptions,
   ) => Promise<TAdapter> | TAdapter;
+  primitives?: PluginPrimitives;
 };
 
 export type ChainRegistryResolveOptions = {
@@ -247,6 +267,12 @@ export function createChainRegistry<TContext = DeviceContext>(
     resolve,
   };
 }
+
+export {
+  createPrimitiveRegistry,
+  PrimitiveConflictError,
+  type PrimitiveRegistry,
+} from './primitiveRegistry';
 
 // ---------------------------------------------------------------------------
 // Shared chain utilities

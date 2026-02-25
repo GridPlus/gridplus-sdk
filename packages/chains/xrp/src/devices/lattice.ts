@@ -3,6 +3,7 @@ import type {
   ChainPlugin,
   DerivationPath,
   DeviceContext,
+  PrimitiveKind,
   PublicKey,
   SignResult,
 } from '@gridplus/chain-core';
@@ -21,48 +22,40 @@ import {
 } from './shared';
 
 type LatticeXrpContext = DeviceContext & {
+  resolvePrimitive: (kind: PrimitiveKind, name: string) => number;
   constants: {
     EXTERNAL: {
       GET_ADDR_FLAGS: {
         SECP256K1_PUB: number;
       };
-      SIGNING: {
-        CURVES: {
-          SECP256K1: number;
-        };
-        HASHES: {
-          SHA512HALF: number;
-        };
-        ENCODINGS: {
-          XRP: number;
-        };
-      };
     };
   };
 };
 
-function getLatticeXrpConstants(
+function getLatticeXrpContext(
   context: DeviceContext,
-): LatticeXrpContext['constants'] {
-  const constants = (context as LatticeXrpContext).constants;
+): LatticeXrpContext {
+  const typed = context as LatticeXrpContext;
+  const constants = typed.constants;
   const hasNumber = (value: unknown): value is number =>
     typeof value === 'number' && Number.isFinite(value);
+  if (typeof typed.resolvePrimitive !== 'function') {
+    throw new Error('Lattice XRP signer requires primitive resolver');
+  }
 
-  if (
-    !hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.SECP256K1_PUB) ||
-    !hasNumber(constants?.EXTERNAL?.SIGNING?.CURVES?.SECP256K1) ||
-    !hasNumber(constants?.EXTERNAL?.SIGNING?.HASHES?.SHA512HALF) ||
-    !hasNumber(constants?.EXTERNAL?.SIGNING?.ENCODINGS?.XRP)
-  ) {
+  if (!hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.SECP256K1_PUB)) {
     throw new Error('Lattice XRP signer requires EXTERNAL constants');
   }
 
-  return constants;
+  return typed;
 }
 
 export function createLatticeXrpSigner(context: DeviceContext): XrpSigner {
-  const { queue } = context;
-  const { EXTERNAL } = getLatticeXrpConstants(context);
+  const { queue, resolvePrimitive, constants } = getLatticeXrpContext(context);
+  const { EXTERNAL } = constants;
+  const curveSecp256k1 = resolvePrimitive('curve', 'SECP256K1');
+  const hashSha512Half = resolvePrimitive('hash', 'SHA512HALF');
+  const encodingXrp = resolvePrimitive('encoding', 'XRP');
 
   const getPublicKey = async (
     path: DerivationPath,
@@ -107,9 +100,9 @@ export function createLatticeXrpSigner(context: DeviceContext): XrpSigner {
 
     const signPayload = {
       signerPath: path,
-      curveType: EXTERNAL.SIGNING.CURVES.SECP256K1,
-      hashType: EXTERNAL.SIGNING.HASHES.SHA512HALF,
-      encodingType: EXTERNAL.SIGNING.ENCODINGS.XRP,
+      curveType: curveSecp256k1,
+      hashType: hashSha512Half,
+      encodingType: encodingXrp,
       payload: toBuffer(request.payload as any),
     };
 
@@ -149,4 +142,11 @@ export const latticePlugin: ChainPlugin<
   device: 'lattice',
   module: xrp,
   createSigner: createLatticeXrpSigner,
+  primitives: {
+    requirements: [
+      { kind: 'curve', name: 'SECP256K1', minFirmware: [0, 14, 0] },
+      { kind: 'hash', name: 'SHA512HALF', minFirmware: [0, 18, 10] },
+      { kind: 'encoding', name: 'XRP', minFirmware: [0, 18, 10] },
+    ],
+  },
 };

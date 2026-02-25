@@ -9,6 +9,13 @@ export {
   unregisterChain,
   useChain,
 } from './registry';
+export {
+  ensurePrimitivesSeeded,
+  getPrimitiveRegistry,
+  preflightPluginPrimitives,
+  registerPluginPrimitives,
+  validatePluginPrimitiveRequirements,
+} from './primitives';
 
 export type {
   ChainKey,
@@ -18,6 +25,10 @@ export type {
   ChainRegistryResolveOptions,
   DeviceContext,
   DeviceId,
+  PluginPrimitives,
+  PrimitiveDefinition,
+  PrimitiveKind,
+  PrimitiveRequirement,
 } from '@gridplus/chain-core';
 
 export type { SdkDeviceContext } from './context';

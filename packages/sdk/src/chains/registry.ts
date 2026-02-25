@@ -5,6 +5,12 @@ import {
 } from '@gridplus/chain-core';
 import { createDeviceContext, type SdkDeviceContext } from './context';
 import { discoverAndRegisterChains as discoverChains } from './discovery';
+import {
+  ensurePrimitivesSeeded,
+  preflightPluginPrimitives,
+  registerPluginPrimitives,
+  validatePluginPrimitiveRequirements,
+} from './primitives';
 
 type ConfigureChainRuntimeOptions = {
   autoRegisterChains?: boolean;
@@ -53,9 +59,38 @@ const stringifyAdapterOptions = (options: unknown): string => {
   }
 };
 
+type FirmwareVersionTuple = [number, number, number];
+
+type FirmwareVersionSource = {
+  getFwVersion?: () => {
+    major?: unknown;
+    minor?: unknown;
+    fix?: unknown;
+  };
+};
+
+const normalizeFirmwarePart = (value: unknown): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+  return Math.max(0, Math.trunc(value));
+};
+
+const getFirmwareVersion = (client: unknown): FirmwareVersionTuple => {
+  const maybeClient = client as FirmwareVersionSource;
+  if (typeof maybeClient?.getFwVersion !== 'function') {
+    return [0, 0, 0];
+  }
+
+  const fw = maybeClient.getFwVersion();
+  return [
+    normalizeFirmwarePart(fw?.major),
+    normalizeFirmwarePart(fw?.minor),
+    normalizeFirmwarePart(fw?.fix),
+  ];
+};
+
 const registerDiscoveredPlugin = (plugin: ChainPlugin<any>): boolean => {
   if (registry.has(plugin.chainId, plugin.device)) return false;
-  registry.register(plugin as ChainPlugin<SdkDeviceContext>);
+  registerChainPlugin(plugin);
   return true;
 };
 
@@ -88,7 +123,20 @@ export function getDefaultDevice(): DeviceId {
 }
 
 export function registerChainPlugin(plugin: ChainPlugin<any>): void {
-  registry.register(plugin as ChainPlugin<SdkDeviceContext>);
+  ensurePrimitivesSeeded();
+  preflightPluginPrimitives(plugin);
+
+  let chainRegistered = false;
+  try {
+    registry.register(plugin as ChainPlugin<SdkDeviceContext>);
+    chainRegistered = true;
+    registerPluginPrimitives(plugin);
+  } catch (err) {
+    if (chainRegistered) {
+      registry.unregister(plugin.chainId, plugin.device);
+    }
+    throw err;
+  }
 }
 
 export function unregisterChain(chainId: string, device?: DeviceId): boolean {
@@ -151,6 +199,14 @@ export async function useChain<TAdapter = unknown, TAdapterOptions = unknown>(
   // Signer is created once per (chain, device) generation and reused by adapters.
   if (!cached || cached.generation !== cacheGeneration) {
     const context = createDeviceContext();
+    if (resolved.primitives?.requirements?.length) {
+      const client = await context.getClient();
+      const fwVersion = getFirmwareVersion(client);
+      validatePluginPrimitiveRequirements(
+        resolved as ChainPlugin<any>,
+        fwVersion,
+      );
+    }
     const signer = await resolved.createSigner(context);
     cached = {
       generation: cacheGeneration,
