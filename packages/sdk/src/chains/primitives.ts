@@ -1,7 +1,9 @@
 import {
   compareFirmwareVersions,
   createPrimitiveRegistry,
+  toChainKey,
   type ChainPlugin,
+  type DeviceId,
   type FirmwareVersionTuple,
   type PrimitiveDefinition,
   type PrimitiveRequirement,
@@ -10,6 +12,48 @@ import { EXTERNAL } from '../constants';
 
 const registry = createPrimitiveRegistry();
 let seeded = false;
+const pluginDefinitionsByKey = new Map<string, PrimitiveDefinition[]>();
+
+const getBuiltinPrimitiveDefinitions = (): PrimitiveDefinition[] => {
+  const definitions: PrimitiveDefinition[] = [];
+
+  Object.entries(EXTERNAL.SIGNING.HASHES).forEach(([name, code]) => {
+    definitions.push({ kind: 'hash', name, code });
+  });
+  Object.entries(EXTERNAL.SIGNING.CURVES).forEach(([name, code]) => {
+    definitions.push({ kind: 'curve', name, code });
+  });
+  Object.entries(EXTERNAL.SIGNING.ENCODINGS).forEach(([name, code]) => {
+    definitions.push({ kind: 'encoding', name, code });
+  });
+
+  return definitions;
+};
+
+const cloneDefinitions = (
+  definitions: PrimitiveDefinition[],
+): PrimitiveDefinition[] =>
+  definitions.map((definition) => ({
+    kind: definition.kind,
+    name: definition.name,
+    code: definition.code,
+  }));
+
+const toPluginPrimitiveKey = (chainId: string, device: DeviceId): string =>
+  toChainKey(chainId, device);
+
+const rebuildRegistryFromTrackedPrimitives = (): void => {
+  registry.reset();
+  seeded = false;
+  ensurePrimitivesSeeded();
+
+  const sortedKeys = [...pluginDefinitionsByKey.keys()].sort();
+  sortedKeys.forEach((key) => {
+    const definitions = pluginDefinitionsByKey.get(key);
+    if (!definitions || definitions.length === 0) return;
+    registry.register(definitions);
+  });
+};
 
 const isFirmwareVersionTuple = (
   value: unknown,
@@ -78,19 +122,7 @@ export function getPrimitiveRegistry() {
 
 export function ensurePrimitivesSeeded(): void {
   if (seeded) return;
-  const definitions: PrimitiveDefinition[] = [];
-
-  Object.entries(EXTERNAL.SIGNING.HASHES).forEach(([name, code]) => {
-    definitions.push({ kind: 'hash', name, code });
-  });
-  Object.entries(EXTERNAL.SIGNING.CURVES).forEach(([name, code]) => {
-    definitions.push({ kind: 'curve', name, code });
-  });
-  Object.entries(EXTERNAL.SIGNING.ENCODINGS).forEach(([name, code]) => {
-    definitions.push({ kind: 'encoding', name, code });
-  });
-
-  registry.register(definitions);
+  registry.register(getBuiltinPrimitiveDefinitions());
   seeded = true;
 }
 
@@ -108,8 +140,31 @@ export function registerPluginPrimitives(plugin: ChainPlugin<any>): void {
   ensurePrimitivesSeeded();
 
   const definitions = getPluginPrimitiveDefinitions(plugin);
-  if (definitions.length === 0) return;
+  const pluginKey = toPluginPrimitiveKey(plugin.chainId, plugin.device);
+  if (definitions.length === 0) {
+    pluginDefinitionsByKey.delete(pluginKey);
+    return;
+  }
   registry.register(definitions);
+  pluginDefinitionsByKey.set(pluginKey, cloneDefinitions(definitions));
+}
+
+export function unregisterPluginPrimitives(
+  chainId: string,
+  device?: DeviceId,
+): void {
+  if (!seeded) return;
+
+  const keysToDelete = device
+    ? [toPluginPrimitiveKey(chainId, device)]
+    : [...pluginDefinitionsByKey.keys()].filter((key) =>
+        key.startsWith(`${chainId}:`),
+      );
+
+  if (keysToDelete.length === 0) return;
+
+  keysToDelete.forEach((key) => pluginDefinitionsByKey.delete(key));
+  rebuildRegistryFromTrackedPrimitives();
 }
 
 export function validatePluginPrimitiveRequirements(
@@ -141,5 +196,6 @@ export function validatePluginPrimitiveRequirements(
 
 export function resetPrimitiveRegistry(): void {
   registry.reset();
+  pluginDefinitionsByKey.clear();
   seeded = false;
 }

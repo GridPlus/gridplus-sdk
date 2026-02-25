@@ -17,29 +17,70 @@ import {
 } from '../chain';
 import { buildSigResultFromRsv, toBuffer } from './shared';
 
-type LatticeSolanaContext = DeviceContext & {
-  resolvePrimitive: (kind: PrimitiveKind, name: string) => number;
+type PrimitiveCodeMaps = {
+  HASHES?: Record<string, number>;
+  CURVES?: Record<string, number>;
+  ENCODINGS?: Record<string, number>;
+};
+
+type LatticeSolanaContextInput = DeviceContext & {
+  resolvePrimitive?: (kind: PrimitiveKind, name: string) => number;
   constants: {
     EXTERNAL: {
       GET_ADDR_FLAGS: {
         ED25519_PUB: number;
       };
+      SIGNING?: PrimitiveCodeMaps;
     };
   };
 };
 
+type LatticeSolanaContext = DeviceContext & {
+  resolvePrimitive: (kind: PrimitiveKind, name: string) => number;
+  constants: LatticeSolanaContextInput['constants'];
+};
+
+const hasNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+const getPrimitiveFromConstants = (
+  signing: PrimitiveCodeMaps | undefined,
+  kind: PrimitiveKind,
+  name: string,
+): number | undefined => {
+  const byKind: Record<PrimitiveKind, Record<string, number> | undefined> = {
+    hash: signing?.HASHES,
+    curve: signing?.CURVES,
+    encoding: signing?.ENCODINGS,
+  };
+  const code = byKind[kind]?.[name];
+  return hasNumber(code) ? code : undefined;
+};
+
 function getLatticeSolanaContext(context: DeviceContext): LatticeSolanaContext {
-  const typed = context as LatticeSolanaContext;
+  const typed = context as LatticeSolanaContextInput;
   const constants = typed.constants;
-  const hasNumber = (value: unknown): value is number =>
-    typeof value === 'number' && Number.isFinite(value);
-  if (typeof typed.resolvePrimitive !== 'function') {
-    throw new Error('Lattice Solana signer requires primitive resolver');
-  }
+  const resolvePrimitive = (kind: PrimitiveKind, name: string): number => {
+    if (typeof typed.resolvePrimitive === 'function') {
+      return typed.resolvePrimitive(kind, name);
+    }
+    const fromConstants = getPrimitiveFromConstants(
+      constants?.EXTERNAL?.SIGNING,
+      kind,
+      name,
+    );
+    if (fromConstants !== undefined) return fromConstants;
+    throw new Error(
+      `Lattice Solana signer requires resolvePrimitive() or EXTERNAL.SIGNING mapping for ${kind}:${name}.`,
+    );
+  };
   if (!hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.ED25519_PUB)) {
     throw new Error('Lattice Solana signer requires EXTERNAL constants');
   }
-  return typed;
+  return {
+    ...typed,
+    resolvePrimitive,
+  };
 }
 
 export function createLatticeSolanaSigner(

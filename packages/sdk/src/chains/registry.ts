@@ -10,6 +10,7 @@ import {
   ensurePrimitivesSeeded,
   preflightPluginPrimitives,
   registerPluginPrimitives,
+  unregisterPluginPrimitives,
   validatePluginPrimitiveRequirements,
 } from './primitives';
 
@@ -106,6 +107,7 @@ export function registerChainPlugin(plugin: ChainPlugin<any>): void {
   } catch (err) {
     if (chainRegistered) {
       registry.unregister(plugin.chainId, plugin.device);
+      unregisterPluginPrimitives(plugin.chainId, plugin.device);
     }
     throw err;
   }
@@ -114,7 +116,11 @@ export function registerChainPlugin(plugin: ChainPlugin<any>): void {
 export function unregisterChain(chainId: string, device?: DeviceId): boolean {
   cacheGeneration += 1;
   cache.clear();
-  return registry.unregister(chainId, device);
+  const unregistered = registry.unregister(chainId, device);
+  if (unregistered) {
+    unregisterPluginPrimitives(chainId, device);
+  }
+  return unregistered;
 }
 
 export function listChains(): ChainPlugin<SdkDeviceContext>[] {

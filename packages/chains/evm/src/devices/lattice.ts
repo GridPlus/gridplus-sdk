@@ -36,13 +36,20 @@ export type LatticeEvmSignerOptions = {
   fetchEvmDecoder?: boolean;
 };
 
-type LatticeEvmContext = DeviceContext & {
-  resolvePrimitive: (kind: PrimitiveKind, name: string) => number;
+type PrimitiveCodeMaps = {
+  HASHES?: Record<string, number>;
+  CURVES?: Record<string, number>;
+  ENCODINGS?: Record<string, number>;
+};
+
+type LatticeEvmContextInput = DeviceContext & {
+  resolvePrimitive?: (kind: PrimitiveKind, name: string) => number;
   constants: {
     EXTERNAL: {
       GET_ADDR_FLAGS: {
         SECP256K1_PUB: number;
       };
+      SIGNING?: PrimitiveCodeMaps;
     };
     CURRENCIES: {
       ETH_MSG: string;
@@ -57,14 +64,46 @@ type LatticeEvmContext = DeviceContext & {
   };
 };
 
+type LatticeEvmContext = DeviceContext & {
+  resolvePrimitive: (kind: PrimitiveKind, name: string) => number;
+  constants: LatticeEvmContextInput['constants'];
+  services?: LatticeEvmContextInput['services'];
+};
+
+const hasNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+const getPrimitiveFromConstants = (
+  signing: PrimitiveCodeMaps | undefined,
+  kind: PrimitiveKind,
+  name: string,
+): number | undefined => {
+  const byKind: Record<PrimitiveKind, Record<string, number> | undefined> = {
+    hash: signing?.HASHES,
+    curve: signing?.CURVES,
+    encoding: signing?.ENCODINGS,
+  };
+  const code = byKind[kind]?.[name];
+  return hasNumber(code) ? code : undefined;
+};
+
 function getLatticeEvmContext(context: DeviceContext): LatticeEvmContext {
-  const typed = context as LatticeEvmContext;
+  const typed = context as LatticeEvmContextInput;
   const constants = typed.constants;
-  const hasNumber = (value: unknown): value is number =>
-    typeof value === 'number' && Number.isFinite(value);
-  if (typeof typed.resolvePrimitive !== 'function') {
-    throw new Error('Lattice EVM signer requires primitive resolver');
-  }
+  const resolvePrimitive = (kind: PrimitiveKind, name: string): number => {
+    if (typeof typed.resolvePrimitive === 'function') {
+      return typed.resolvePrimitive(kind, name);
+    }
+    const fromConstants = getPrimitiveFromConstants(
+      constants?.EXTERNAL?.SIGNING,
+      kind,
+      name,
+    );
+    if (fromConstants !== undefined) return fromConstants;
+    throw new Error(
+      `Lattice EVM signer requires resolvePrimitive() or EXTERNAL.SIGNING mapping for ${kind}:${name}.`,
+    );
+  };
   if (
     !hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.SECP256K1_PUB) ||
     !constants?.CURRENCIES?.ETH_MSG
@@ -73,7 +112,10 @@ function getLatticeEvmContext(context: DeviceContext): LatticeEvmContext {
       'Lattice EVM signer requires EXTERNAL and CURRENCIES constants',
     );
   }
-  return typed;
+  return {
+    ...typed,
+    resolvePrimitive,
+  };
 }
 
 function isRawEvmTx(
@@ -93,33 +135,26 @@ function normalizeRawEvmTx(tx: EvmRawTransaction): Hex | Buffer {
   return Buffer.from(tx);
 }
 
-type EvmEncodingCodes = {
-  evm: number;
-  eip7702Auth: number;
-  eip7702AuthList: number;
-};
-
 function getEvmEncodingType(
   tx: TransactionSerializable,
-  encodings: EvmEncodingCodes,
+  resolvePrimitive: (kind: PrimitiveKind, name: string) => number,
 ): number {
   if ((tx as any).type === 'eip7702') {
     const eip7702 = tx as TransactionSerializableEIP7702;
     const hasAuthList =
       eip7702.authorizationList && eip7702.authorizationList.length > 0;
-    return hasAuthList ? encodings.eip7702AuthList : encodings.eip7702Auth;
+    return hasAuthList
+      ? resolvePrimitive('encoding', 'EIP7702_AUTH_LIST')
+      : resolvePrimitive('encoding', 'EIP7702_AUTH');
   }
-  return encodings.evm;
+  return resolvePrimitive('encoding', 'EVM');
 }
 
 const EIP7702_MIN_FIRMWARE: FirmwareVersionTuple = [0, 18, 0];
 
 const assertEip7702FirmwareSupport = async (
   context: DeviceContext,
-  eip7702Encodings: Set<number>,
-  encodingType: number,
 ): Promise<void> => {
-  if (!eip7702Encodings.has(encodingType)) return;
   const client = await context.getClient();
   const fwVersion = getFirmwareVersion(client);
   if (!isAtLeastFirmware(fwVersion, EIP7702_MIN_FIRMWARE)) {
@@ -138,15 +173,7 @@ export function createLatticeEvmSigner(
   const { EXTERNAL, CURRENCIES } = latticeContext.constants;
   const curveSecp256k1 = resolvePrimitive('curve', 'SECP256K1');
   const hashKeccak256 = resolvePrimitive('hash', 'KECCAK256');
-  const encodings: EvmEncodingCodes = {
-    evm: resolvePrimitive('encoding', 'EVM'),
-    eip7702Auth: resolvePrimitive('encoding', 'EIP7702_AUTH'),
-    eip7702AuthList: resolvePrimitive('encoding', 'EIP7702_AUTH_LIST'),
-  };
-  const eip7702Encodings = new Set<number>([
-    encodings.eip7702Auth,
-    encodings.eip7702AuthList,
-  ]);
+  const encodingEvm = resolvePrimitive('encoding', 'EVM');
 
   return {
     getAddress: async (path: DerivationPath): Promise<Address> => {
@@ -194,16 +221,14 @@ export function createLatticeEvmSigner(
           : serializeTransaction(request.payload as TransactionSerializable);
 
         const encodingType = isRaw
-          ? encodings.evm
+          ? encodingEvm
           : getEvmEncodingType(
               request.payload as TransactionSerializable,
-              encodings,
+              resolvePrimitive,
             );
-        await assertEip7702FirmwareSupport(
-          latticeContext,
-          eip7702Encodings,
-          encodingType,
-        );
+        if (!isRaw && (request.payload as any).type === 'eip7702') {
+          await assertEip7702FirmwareSupport(latticeContext);
+        }
 
         let decoder: Buffer | undefined;
         const fetchDecoder = services?.fetchDecoder;

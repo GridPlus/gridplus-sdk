@@ -21,31 +21,72 @@ import {
   toBuffer,
 } from './shared';
 
-type LatticeXrpContext = DeviceContext & {
-  resolvePrimitive: (kind: PrimitiveKind, name: string) => number;
+type PrimitiveCodeMaps = {
+  HASHES?: Record<string, number>;
+  CURVES?: Record<string, number>;
+  ENCODINGS?: Record<string, number>;
+};
+
+type LatticeXrpContextInput = DeviceContext & {
+  resolvePrimitive?: (kind: PrimitiveKind, name: string) => number;
   constants: {
     EXTERNAL: {
       GET_ADDR_FLAGS: {
         SECP256K1_PUB: number;
       };
+      SIGNING?: PrimitiveCodeMaps;
     };
   };
 };
 
+type LatticeXrpContext = DeviceContext & {
+  resolvePrimitive: (kind: PrimitiveKind, name: string) => number;
+  constants: LatticeXrpContextInput['constants'];
+};
+
+const hasNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+const getPrimitiveFromConstants = (
+  signing: PrimitiveCodeMaps | undefined,
+  kind: PrimitiveKind,
+  name: string,
+): number | undefined => {
+  const byKind: Record<PrimitiveKind, Record<string, number> | undefined> = {
+    hash: signing?.HASHES,
+    curve: signing?.CURVES,
+    encoding: signing?.ENCODINGS,
+  };
+  const code = byKind[kind]?.[name];
+  return hasNumber(code) ? code : undefined;
+};
+
 function getLatticeXrpContext(context: DeviceContext): LatticeXrpContext {
-  const typed = context as LatticeXrpContext;
+  const typed = context as LatticeXrpContextInput;
   const constants = typed.constants;
-  const hasNumber = (value: unknown): value is number =>
-    typeof value === 'number' && Number.isFinite(value);
-  if (typeof typed.resolvePrimitive !== 'function') {
-    throw new Error('Lattice XRP signer requires primitive resolver');
-  }
+  const resolvePrimitive = (kind: PrimitiveKind, name: string): number => {
+    if (typeof typed.resolvePrimitive === 'function') {
+      return typed.resolvePrimitive(kind, name);
+    }
+    const fromConstants = getPrimitiveFromConstants(
+      constants?.EXTERNAL?.SIGNING,
+      kind,
+      name,
+    );
+    if (fromConstants !== undefined) return fromConstants;
+    throw new Error(
+      `Lattice XRP signer requires resolvePrimitive() or EXTERNAL.SIGNING mapping for ${kind}:${name}.`,
+    );
+  };
 
   if (!hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.SECP256K1_PUB)) {
     throw new Error('Lattice XRP signer requires EXTERNAL constants');
   }
 
-  return typed;
+  return {
+    ...typed,
+    resolvePrimitive,
+  };
 }
 
 export function createLatticeXrpSigner(context: DeviceContext): XrpSigner {

@@ -115,6 +115,27 @@ describe('chain runtime primitive integration', () => {
     expect(primitiveRegistry.resolve('encoding', 'DUP_B')).toBeUndefined();
   });
 
+  test('unregisterChain removes plugin-owned primitive definitions', () => {
+    registerChainPlugin(
+      buildPlugin('chain-a', {
+        definitions: [{ kind: 'encoding', name: 'REPLACE_ME', code: 301 }],
+      }),
+    );
+
+    const primitiveRegistry = getPrimitiveRegistry();
+    expect(primitiveRegistry.resolve('encoding', 'REPLACE_ME')).toBe(301);
+
+    expect(unregisterChain('chain-a', 'lattice')).toBe(true);
+    expect(primitiveRegistry.resolve('encoding', 'REPLACE_ME')).toBeUndefined();
+
+    registerChainPlugin(
+      buildPlugin('chain-a', {
+        definitions: [{ kind: 'encoding', name: 'REPLACE_ME', code: 302 }],
+      }),
+    );
+    expect(primitiveRegistry.resolve('encoding', 'REPLACE_ME')).toBe(302);
+  });
+
   test('useChain enforces primitive minFirmware requirements', async () => {
     configureChainRuntime({
       autoRegisterChains: false,
