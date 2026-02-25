@@ -15,8 +15,8 @@ describe('chain context primitive resolution', () => {
 
   test('resolvePrimitive throws for unknown primitive', () => {
     const context = createDeviceContext();
-    expect(() =>
-      context.resolvePrimitive('encoding', 'UNKNOWN_CHAIN'),
-    ).toThrow('Primitive not found');
+    expect(() => context.resolvePrimitive('encoding', 'UNKNOWN_CHAIN')).toThrow(
+      'Primitive not found',
+    );
   });
 });

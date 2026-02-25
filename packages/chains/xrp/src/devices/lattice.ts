@@ -32,9 +32,7 @@ type LatticeXrpContext = DeviceContext & {
   };
 };
 
-function getLatticeXrpContext(
-  context: DeviceContext,
-): LatticeXrpContext {
+function getLatticeXrpContext(context: DeviceContext): LatticeXrpContext {
   const typed = context as LatticeXrpContext;
   const constants = typed.constants;
   const hasNumber = (value: unknown): value is number =>

@@ -28,9 +28,7 @@ type LatticeSolanaContext = DeviceContext & {
   };
 };
 
-function getLatticeSolanaContext(
-  context: DeviceContext,
-): LatticeSolanaContext {
+function getLatticeSolanaContext(context: DeviceContext): LatticeSolanaContext {
   const typed = context as LatticeSolanaContext;
   const constants = typed.constants;
   const hasNumber = (value: unknown): value is number =>
@@ -38,9 +36,7 @@ function getLatticeSolanaContext(
   if (typeof typed.resolvePrimitive !== 'function') {
     throw new Error('Lattice Solana signer requires primitive resolver');
   }
-  if (
-    !hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.ED25519_PUB)
-  ) {
+  if (!hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.ED25519_PUB)) {
     throw new Error('Lattice Solana signer requires EXTERNAL constants');
   }
   return typed;
@@ -49,9 +45,8 @@ function getLatticeSolanaContext(
 export function createLatticeSolanaSigner(
   context: DeviceContext,
 ): SolanaSigner {
-  const { queue, resolvePrimitive, constants } = getLatticeSolanaContext(
-    context,
-  );
+  const { queue, resolvePrimitive, constants } =
+    getLatticeSolanaContext(context);
   const { EXTERNAL } = constants;
   const curveEd25519 = resolvePrimitive('curve', 'ED25519');
   const hashNone = resolvePrimitive('hash', 'NONE');

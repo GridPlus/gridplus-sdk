@@ -137,7 +137,9 @@ describe('chain runtime primitive integration', () => {
         }) as any,
     );
 
-    await expect(useChain('req-chain')).rejects.toThrow('Please update firmware');
+    await expect(useChain('req-chain')).rejects.toThrow(
+      'Please update firmware',
+    );
   });
 
   test('useChain succeeds when firmware satisfies requirements', async () => {

@@ -130,7 +130,11 @@ describe('sdk primitives module', () => {
   test('validatePluginPrimitiveRequirements throws for missing primitive mapping', () => {
     const plugin = buildPlugin('custom-chain', {
       requirements: [
-        { kind: 'encoding', name: 'UNREGISTERED_CHAIN', minFirmware: [0, 20, 0] },
+        {
+          kind: 'encoding',
+          name: 'UNREGISTERED_CHAIN',
+          minFirmware: [0, 20, 0],
+        },
       ],
     });
 

@@ -27,9 +27,7 @@ type LatticeCosmosContext = DeviceContext & {
   };
 };
 
-function getLatticeCosmosContext(
-  context: DeviceContext,
-): LatticeCosmosContext {
+function getLatticeCosmosContext(context: DeviceContext): LatticeCosmosContext {
   const typed = context as LatticeCosmosContext;
   const constants = typed.constants;
   const hasNumber = (value: unknown): value is number =>
@@ -37,9 +35,7 @@ function getLatticeCosmosContext(
   if (typeof typed.resolvePrimitive !== 'function') {
     throw new Error('Lattice Cosmos signer requires primitive resolver');
   }
-  if (
-    !hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.SECP256K1_PUB)
-  ) {
+  if (!hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.SECP256K1_PUB)) {
     throw new Error('Lattice Cosmos signer requires EXTERNAL constants');
   }
   return typed;
@@ -48,9 +44,8 @@ function getLatticeCosmosContext(
 export function createLatticeCosmosSigner(
   context: DeviceContext,
 ): CosmosSigner {
-  const { queue, resolvePrimitive, constants } = getLatticeCosmosContext(
-    context,
-  );
+  const { queue, resolvePrimitive, constants } =
+    getLatticeCosmosContext(context);
   const { EXTERNAL } = constants;
   const curveSecp256k1 = resolvePrimitive('curve', 'SECP256K1');
   const hashSha256 = resolvePrimitive('hash', 'SHA256');
