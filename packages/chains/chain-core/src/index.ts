@@ -33,6 +33,25 @@ export type ChainCapabilities = {
   getXpub?: boolean;
 };
 
+export type SigningComponentKind = 'hash' | 'curve' | 'encoding';
+
+export type SigningComponentDefinition = {
+  kind: SigningComponentKind;
+  name: string;
+  code: number;
+};
+
+export type SigningComponentRequirement = {
+  kind: SigningComponentKind;
+  name: string;
+  minFirmware: [number, number, number];
+};
+
+export type ChainSigningSuite = {
+  definitions?: SigningComponentDefinition[];
+  requirements?: SigningComponentRequirement[];
+};
+
 export type GetAddressParams = {
   path?: DerivationPath;
   accountIndex?: number;
@@ -127,6 +146,7 @@ export type ChainPlugin<
     signer: TSigner,
     options?: TOptions,
   ) => Promise<TAdapter> | TAdapter;
+  signingSuite?: ChainSigningSuite;
 };
 
 export type ChainRegistryResolveOptions = {
@@ -247,6 +267,56 @@ export function createChainRegistry<TContext = DeviceContext>(
     resolve,
   };
 }
+
+export {
+  createSigningComponentRegistry,
+  SigningComponentConflictError,
+  type SigningComponentRegistry,
+} from './signingComponentRegistry';
+
+// ---------------------------------------------------------------------------
+// Firmware version utilities
+// ---------------------------------------------------------------------------
+
+export type FirmwareVersionTuple = [number, number, number];
+
+const normalizeFirmwarePart = (value: unknown): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+  return Math.max(0, Math.trunc(value));
+};
+
+export const getFirmwareVersion = (client: unknown): FirmwareVersionTuple => {
+  const maybeClient = client as {
+    getFwVersion?: () => {
+      major?: unknown;
+      minor?: unknown;
+      fix?: unknown;
+    };
+  };
+  if (typeof maybeClient?.getFwVersion !== 'function') {
+    return [0, 0, 0];
+  }
+  const fw = maybeClient.getFwVersion();
+  return [
+    normalizeFirmwarePart(fw?.major),
+    normalizeFirmwarePart(fw?.minor),
+    normalizeFirmwarePart(fw?.fix),
+  ];
+};
+
+export const compareFirmwareVersions = (
+  current: FirmwareVersionTuple,
+  required: FirmwareVersionTuple,
+): number => {
+  if (current[0] !== required[0]) return current[0] - required[0];
+  if (current[1] !== required[1]) return current[1] - required[1];
+  return current[2] - required[2];
+};
+
+export const isAtLeastFirmware = (
+  current: FirmwareVersionTuple,
+  minimum: FirmwareVersionTuple,
+): boolean => compareFirmwareVersions(current, minimum) >= 0;
 
 // ---------------------------------------------------------------------------
 // Shared chain utilities

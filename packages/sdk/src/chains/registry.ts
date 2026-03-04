@@ -1,10 +1,18 @@
 import {
   createChainRegistry,
+  getFirmwareVersion,
   type ChainPlugin,
   type DeviceId,
 } from '@gridplus/chain-core';
 import { createDeviceContext, type SdkDeviceContext } from './context';
 import { discoverAndRegisterChains as discoverChains } from './discovery';
+import {
+  ensureSigningComponentsSeeded,
+  preflightPluginSigningComponents,
+  registerPluginSigningComponents,
+  unregisterPluginSigningComponents,
+  validatePluginSigningRequirements,
+} from './signingComponents';
 
 type ConfigureChainRuntimeOptions = {
   autoRegisterChains?: boolean;
@@ -55,7 +63,7 @@ const stringifyAdapterOptions = (options: unknown): string => {
 
 const registerDiscoveredPlugin = (plugin: ChainPlugin<any>): boolean => {
   if (registry.has(plugin.chainId, plugin.device)) return false;
-  registry.register(plugin as ChainPlugin<SdkDeviceContext>);
+  registerChainPlugin(plugin);
   return true;
 };
 
@@ -88,13 +96,31 @@ export function getDefaultDevice(): DeviceId {
 }
 
 export function registerChainPlugin(plugin: ChainPlugin<any>): void {
-  registry.register(plugin as ChainPlugin<SdkDeviceContext>);
+  ensureSigningComponentsSeeded();
+  preflightPluginSigningComponents(plugin);
+
+  let chainRegistered = false;
+  try {
+    registry.register(plugin as ChainPlugin<SdkDeviceContext>);
+    chainRegistered = true;
+    registerPluginSigningComponents(plugin);
+  } catch (err) {
+    if (chainRegistered) {
+      registry.unregister(plugin.chainId, plugin.device);
+      unregisterPluginSigningComponents(plugin.chainId, plugin.device);
+    }
+    throw err;
+  }
 }
 
 export function unregisterChain(chainId: string, device?: DeviceId): boolean {
   cacheGeneration += 1;
   cache.clear();
-  return registry.unregister(chainId, device);
+  const unregistered = registry.unregister(chainId, device);
+  if (unregistered) {
+    unregisterPluginSigningComponents(chainId, device);
+  }
+  return unregistered;
 }
 
 export function listChains(): ChainPlugin<SdkDeviceContext>[] {
@@ -151,6 +177,14 @@ export async function useChain<TAdapter = unknown, TAdapterOptions = unknown>(
   // Signer is created once per (chain, device) generation and reused by adapters.
   if (!cached || cached.generation !== cacheGeneration) {
     const context = createDeviceContext();
+    if (resolved.signingSuite?.requirements?.length) {
+      const client = await context.getClient();
+      const fwVersion = getFirmwareVersion(client);
+      validatePluginSigningRequirements(
+        resolved as ChainPlugin<any>,
+        fwVersion,
+      );
+    }
     const signer = await resolved.createSigner(context);
     cached = {
       generation: cacheGeneration,

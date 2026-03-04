@@ -1,10 +1,14 @@
-import type {
-  Address,
-  ChainPlugin,
-  DerivationPath,
-  DeviceContext,
-  PublicKey,
-  SignResult,
+import {
+  getFirmwareVersion,
+  isAtLeastFirmware,
+  type Address,
+  type ChainPlugin,
+  type DerivationPath,
+  type DeviceContext,
+  type FirmwareVersionTuple,
+  type SigningComponentKind,
+  type PublicKey,
+  type SignResult,
 } from '@gridplus/chain-core';
 import { Hash } from 'ox';
 import {
@@ -32,25 +36,23 @@ export type LatticeEvmSignerOptions = {
   fetchEvmDecoder?: boolean;
 };
 
-type LatticeEvmContext = DeviceContext & {
+type SigningComponentCodes = {
+  HASHES?: Record<string, number>;
+  CURVES?: Record<string, number>;
+  ENCODINGS?: Record<string, number>;
+};
+
+type LatticeEvmContextInput = DeviceContext & {
+  resolveSigningComponent?: (
+    kind: SigningComponentKind,
+    name: string,
+  ) => number;
   constants: {
     EXTERNAL: {
       GET_ADDR_FLAGS: {
         SECP256K1_PUB: number;
       };
-      SIGNING: {
-        CURVES: {
-          SECP256K1: number;
-        };
-        HASHES: {
-          KECCAK256: number;
-        };
-        ENCODINGS: {
-          EVM: number;
-          EIP7702_AUTH: number;
-          EIP7702_AUTH_LIST: number;
-        };
-      };
+      SIGNING?: SigningComponentCodes;
     };
     CURRENCIES: {
       ETH_MSG: string;
@@ -65,23 +67,64 @@ type LatticeEvmContext = DeviceContext & {
   };
 };
 
+type LatticeEvmContext = DeviceContext & {
+  resolveSigningComponent: (kind: SigningComponentKind, name: string) => number;
+  constants: LatticeEvmContextInput['constants'];
+  services?: LatticeEvmContextInput['services'];
+};
+
+const hasNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+const getSigningComponentFromConstants = (
+  signing: SigningComponentCodes | undefined,
+  kind: SigningComponentKind,
+  name: string,
+): number | undefined => {
+  const byKind: Record<
+    SigningComponentKind,
+    Record<string, number> | undefined
+  > = {
+    hash: signing?.HASHES,
+    curve: signing?.CURVES,
+    encoding: signing?.ENCODINGS,
+  };
+  const code = byKind[kind]?.[name];
+  return hasNumber(code) ? code : undefined;
+};
+
 function getLatticeEvmContext(context: DeviceContext): LatticeEvmContext {
-  const typed = context as LatticeEvmContext;
+  const typed = context as LatticeEvmContextInput;
   const constants = typed.constants;
-  const hasNumber = (value: unknown): value is number =>
-    typeof value === 'number' && Number.isFinite(value);
+  const resolveSigningComponent = (
+    kind: SigningComponentKind,
+    name: string,
+  ): number => {
+    if (typeof typed.resolveSigningComponent === 'function') {
+      return typed.resolveSigningComponent(kind, name);
+    }
+    const fromConstants = getSigningComponentFromConstants(
+      constants?.EXTERNAL?.SIGNING,
+      kind,
+      name,
+    );
+    if (fromConstants !== undefined) return fromConstants;
+    throw new Error(
+      `Lattice EVM signer requires resolveSigningComponent() or EXTERNAL.SIGNING mapping for ${kind}:${name}.`,
+    );
+  };
   if (
     !hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.SECP256K1_PUB) ||
-    !hasNumber(constants?.EXTERNAL?.SIGNING?.CURVES?.SECP256K1) ||
-    !hasNumber(constants?.EXTERNAL?.SIGNING?.HASHES?.KECCAK256) ||
-    !hasNumber(constants?.EXTERNAL?.SIGNING?.ENCODINGS?.EVM) ||
     !constants?.CURRENCIES?.ETH_MSG
   ) {
     throw new Error(
       'Lattice EVM signer requires EXTERNAL and CURRENCIES constants',
     );
   }
-  return typed;
+  return {
+    ...typed,
+    resolveSigningComponent,
+  };
 }
 
 function isRawEvmTx(
@@ -103,25 +146,43 @@ function normalizeRawEvmTx(tx: EvmRawTransaction): Hex | Buffer {
 
 function getEvmEncodingType(
   tx: TransactionSerializable,
-  EXTERNAL: LatticeEvmContext['constants']['EXTERNAL'],
+  resolveSigningComponent: (kind: SigningComponentKind, name: string) => number,
 ): number {
   if ((tx as any).type === 'eip7702') {
     const eip7702 = tx as TransactionSerializableEIP7702;
     const hasAuthList =
       eip7702.authorizationList && eip7702.authorizationList.length > 0;
     return hasAuthList
-      ? EXTERNAL.SIGNING.ENCODINGS.EIP7702_AUTH_LIST
-      : EXTERNAL.SIGNING.ENCODINGS.EIP7702_AUTH;
+      ? resolveSigningComponent('encoding', 'EIP7702_AUTH_LIST')
+      : resolveSigningComponent('encoding', 'EIP7702_AUTH');
   }
-  return EXTERNAL.SIGNING.ENCODINGS.EVM;
+  return resolveSigningComponent('encoding', 'EVM');
 }
+
+const EIP7702_MIN_FIRMWARE: FirmwareVersionTuple = [0, 18, 0];
+
+const assertEip7702FirmwareSupport = async (
+  context: DeviceContext,
+): Promise<void> => {
+  const client = await context.getClient();
+  const fwVersion = getFirmwareVersion(client);
+  if (!isAtLeastFirmware(fwVersion, EIP7702_MIN_FIRMWARE)) {
+    throw new Error(
+      `EIP-7702 signing requires firmware ${EIP7702_MIN_FIRMWARE.join('.')} or newer. Device firmware: ${fwVersion.join('.')}.`,
+    );
+  }
+};
 
 export function createLatticeEvmSigner(
   context: DeviceContext,
   options: LatticeEvmSignerOptions = {},
 ): EvmSigner {
-  const { queue, services } = getLatticeEvmContext(context);
-  const { EXTERNAL, CURRENCIES } = getLatticeEvmContext(context).constants;
+  const latticeContext = getLatticeEvmContext(context);
+  const { queue, services, resolveSigningComponent } = latticeContext;
+  const { EXTERNAL, CURRENCIES } = latticeContext.constants;
+  const curveSecp256k1 = resolveSigningComponent('curve', 'SECP256K1');
+  const hashKeccak256 = resolveSigningComponent('hash', 'KECCAK256');
+  const encodingEvm = resolveSigningComponent('encoding', 'EVM');
 
   return {
     getAddress: async (path: DerivationPath): Promise<Address> => {
@@ -169,11 +230,14 @@ export function createLatticeEvmSigner(
           : serializeTransaction(request.payload as TransactionSerializable);
 
         const encodingType = isRaw
-          ? EXTERNAL.SIGNING.ENCODINGS.EVM
+          ? encodingEvm
           : getEvmEncodingType(
               request.payload as TransactionSerializable,
-              EXTERNAL,
+              resolveSigningComponent,
             );
+        if (!isRaw && (request.payload as any).type === 'eip7702') {
+          await assertEip7702FirmwareSupport(latticeContext);
+        }
 
         let decoder: Buffer | undefined;
         const fetchDecoder = services?.fetchDecoder;
@@ -190,8 +254,8 @@ export function createLatticeEvmSigner(
 
         const signPayload = {
           signerPath: path,
-          curveType: EXTERNAL.SIGNING.CURVES.SECP256K1,
-          hashType: EXTERNAL.SIGNING.HASHES.KECCAK256,
+          curveType: curveSecp256k1,
+          hashType: hashKeccak256,
           encodingType,
           payload,
           decoder,
@@ -232,8 +296,8 @@ export function createLatticeEvmSigner(
           client.sign({
             data: {
               signerPath: path,
-              curveType: EXTERNAL.SIGNING.CURVES.SECP256K1,
-              hashType: EXTERNAL.SIGNING.HASHES.KECCAK256,
+              curveType: curveSecp256k1,
+              hashType: hashKeccak256,
               payload: request.payload as any,
               protocol,
             },
@@ -255,8 +319,8 @@ export function createLatticeEvmSigner(
           client.sign({
             data: {
               signerPath: path,
-              curveType: EXTERNAL.SIGNING.CURVES.SECP256K1,
-              hashType: EXTERNAL.SIGNING.HASHES.KECCAK256,
+              curveType: curveSecp256k1,
+              hashType: hashKeccak256,
               payload: request.payload as any,
               protocol: 'eip712',
             },
@@ -291,4 +355,11 @@ export const latticePlugin: ChainPlugin<
   device: 'lattice',
   module: evm,
   createSigner: (context) => createLatticeEvmSigner(context),
+  signingSuite: {
+    requirements: [
+      { kind: 'curve', name: 'SECP256K1', minFirmware: [0, 14, 0] },
+      { kind: 'hash', name: 'KECCAK256', minFirmware: [0, 14, 0] },
+      { kind: 'encoding', name: 'EVM', minFirmware: [0, 15, 0] },
+    ],
+  },
 };

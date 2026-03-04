@@ -2,6 +2,7 @@ import type {
   ChainAdapter,
   ChainModule,
   ChainPlugin,
+  ChainSigningSuite,
   Signer,
 } from '@gridplus/chain-core';
 import { setup } from '../../api/setup';
@@ -10,6 +11,10 @@ import {
   DEFAULT_CHAIN_PLUGIN_KEYS,
   DEFAULT_CHAIN_PLUGINS,
 } from '../../chains/defaultManifest';
+import {
+  getSigningComponentRegistry,
+  resetSigningComponentRegistry,
+} from '../../chains/signingComponents';
 
 const mockSigner: Signer = {
   getAddress: async () => 'custom',
@@ -24,7 +29,11 @@ const mockAdapter: ChainAdapter = {
   sign: async () => ({ signature: { bytes: new Uint8Array([2]) } }),
 };
 
-const buildPlugin = (chainId: string, device: string): ChainPlugin<any> => {
+const buildPlugin = (
+  chainId: string,
+  device: string,
+  signingSuite?: ChainSigningSuite,
+): ChainPlugin<any> => {
   const module: ChainModule = {
     id: chainId,
     name: `test-${chainId}`,
@@ -47,6 +56,7 @@ const buildPlugin = (chainId: string, device: string): ChainPlugin<any> => {
     device,
     module,
     createSigner: async () => mockSigner,
+    signingSuite,
   };
 };
 
@@ -58,6 +68,7 @@ const setupParamsBase = {
 
 describe('setup chainPlugins', () => {
   afterEach(() => {
+    resetSigningComponentRegistry();
     unregisterChain('unit-test-chain', 'unit-test-device');
     DEFAULT_CHAIN_PLUGIN_KEYS.forEach((key) => {
       const [chainId, device] = key.split(':');
@@ -119,5 +130,21 @@ describe('setup chainPlugins', () => {
         chainPlugins: [{} as ChainPlugin<any>],
       }),
     ).rejects.toThrow('Invalid chain plugin in setup().chainPlugins');
+  });
+
+  test('registerChainPlugin works without setup and lazily seeds builtins', () => {
+    const customPlugin = buildPlugin('unit-test-chain', 'unit-test-device', {
+      definitions: [{ kind: 'encoding', name: 'TESTCHAIN', code: 99 }],
+      requirements: [
+        { kind: 'encoding', name: 'TESTCHAIN', minFirmware: [0, 14, 0] },
+      ],
+    });
+
+    registerChainPlugin(customPlugin);
+
+    const registry = getSigningComponentRegistry();
+    expect(registry.resolve('encoding', 'TESTCHAIN')).toBe(99);
+    expect(registry.resolve('encoding', 'EVM')).toBeDefined();
+    expect(getChain('unit-test-chain', 'unit-test-device')).toBeDefined();
   });
 });

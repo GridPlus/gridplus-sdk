@@ -3,6 +3,7 @@ import type {
   ChainPlugin,
   DerivationPath,
   DeviceContext,
+  SigningComponentKind,
   PublicKey,
   SignResult,
 } from '@gridplus/chain-core';
@@ -20,49 +21,90 @@ import {
   toBuffer,
 } from './shared';
 
-type LatticeXrpContext = DeviceContext & {
+type SigningComponentCodes = {
+  HASHES?: Record<string, number>;
+  CURVES?: Record<string, number>;
+  ENCODINGS?: Record<string, number>;
+};
+
+type LatticeXrpContextInput = DeviceContext & {
+  resolveSigningComponent?: (
+    kind: SigningComponentKind,
+    name: string,
+  ) => number;
   constants: {
     EXTERNAL: {
       GET_ADDR_FLAGS: {
         SECP256K1_PUB: number;
       };
-      SIGNING: {
-        CURVES: {
-          SECP256K1: number;
-        };
-        HASHES: {
-          SHA512HALF: number;
-        };
-        ENCODINGS: {
-          XRP: number;
-        };
-      };
+      SIGNING?: SigningComponentCodes;
     };
   };
 };
 
-function getLatticeXrpConstants(
-  context: DeviceContext,
-): LatticeXrpContext['constants'] {
-  const constants = (context as LatticeXrpContext).constants;
-  const hasNumber = (value: unknown): value is number =>
-    typeof value === 'number' && Number.isFinite(value);
+type LatticeXrpContext = DeviceContext & {
+  resolveSigningComponent: (kind: SigningComponentKind, name: string) => number;
+  constants: LatticeXrpContextInput['constants'];
+};
 
-  if (
-    !hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.SECP256K1_PUB) ||
-    !hasNumber(constants?.EXTERNAL?.SIGNING?.CURVES?.SECP256K1) ||
-    !hasNumber(constants?.EXTERNAL?.SIGNING?.HASHES?.SHA512HALF) ||
-    !hasNumber(constants?.EXTERNAL?.SIGNING?.ENCODINGS?.XRP)
-  ) {
+const hasNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+const getSigningComponentFromConstants = (
+  signing: SigningComponentCodes | undefined,
+  kind: SigningComponentKind,
+  name: string,
+): number | undefined => {
+  const byKind: Record<
+    SigningComponentKind,
+    Record<string, number> | undefined
+  > = {
+    hash: signing?.HASHES,
+    curve: signing?.CURVES,
+    encoding: signing?.ENCODINGS,
+  };
+  const code = byKind[kind]?.[name];
+  return hasNumber(code) ? code : undefined;
+};
+
+function getLatticeXrpContext(context: DeviceContext): LatticeXrpContext {
+  const typed = context as LatticeXrpContextInput;
+  const constants = typed.constants;
+  const resolveSigningComponent = (
+    kind: SigningComponentKind,
+    name: string,
+  ): number => {
+    if (typeof typed.resolveSigningComponent === 'function') {
+      return typed.resolveSigningComponent(kind, name);
+    }
+    const fromConstants = getSigningComponentFromConstants(
+      constants?.EXTERNAL?.SIGNING,
+      kind,
+      name,
+    );
+    if (fromConstants !== undefined) return fromConstants;
+    throw new Error(
+      `Lattice XRP signer requires resolveSigningComponent() or EXTERNAL.SIGNING mapping for ${kind}:${name}.`,
+    );
+  };
+
+  if (!hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.SECP256K1_PUB)) {
     throw new Error('Lattice XRP signer requires EXTERNAL constants');
   }
 
-  return constants;
+  return {
+    ...typed,
+    resolveSigningComponent,
+  };
 }
 
 export function createLatticeXrpSigner(context: DeviceContext): XrpSigner {
-  const { queue } = context;
-  const { EXTERNAL } = getLatticeXrpConstants(context);
+  const { queue, resolveSigningComponent, constants } =
+    getLatticeXrpContext(context);
+  const { EXTERNAL } = constants;
+  const curveSecp256k1 = resolveSigningComponent('curve', 'SECP256K1');
+  const hashSha512Half = resolveSigningComponent('hash', 'SHA512HALF');
+  const encodingXrp = resolveSigningComponent('encoding', 'XRP');
 
   const getPublicKey = async (
     path: DerivationPath,
@@ -107,9 +149,9 @@ export function createLatticeXrpSigner(context: DeviceContext): XrpSigner {
 
     const signPayload = {
       signerPath: path,
-      curveType: EXTERNAL.SIGNING.CURVES.SECP256K1,
-      hashType: EXTERNAL.SIGNING.HASHES.SHA512HALF,
-      encodingType: EXTERNAL.SIGNING.ENCODINGS.XRP,
+      curveType: curveSecp256k1,
+      hashType: hashSha512Half,
+      encodingType: encodingXrp,
       payload: toBuffer(request.payload as any),
     };
 
@@ -149,4 +191,11 @@ export const latticePlugin: ChainPlugin<
   device: 'lattice',
   module: xrp,
   createSigner: createLatticeXrpSigner,
+  signingSuite: {
+    requirements: [
+      { kind: 'curve', name: 'SECP256K1', minFirmware: [0, 14, 0] },
+      { kind: 'hash', name: 'SHA512HALF', minFirmware: [0, 18, 10] },
+      { kind: 'encoding', name: 'XRP', minFirmware: [0, 18, 10] },
+    ],
+  },
 };

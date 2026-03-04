@@ -1,8 +1,12 @@
-import type { DeviceContext } from '@gridplus/chain-core';
+import type { DeviceContext, SigningComponentKind } from '@gridplus/chain-core';
 import { CURRENCIES } from '@gridplus/types';
 import { getClient, queue } from '../api/utilities';
 import { EXTERNAL } from '../constants';
 import { fetchDecoder } from '../functions/fetchDecoder';
+import {
+  ensureSigningComponentsSeeded,
+  getSigningComponentRegistry,
+} from './signingComponents';
 
 export type SdkDeviceContext = DeviceContext & {
   constants: {
@@ -12,9 +16,10 @@ export type SdkDeviceContext = DeviceContext & {
   services: {
     fetchDecoder: typeof fetchDecoder;
   };
+  resolveSigningComponent: (kind: SigningComponentKind, name: string) => number;
 };
 
-// Bridges SDK runtime primitives into the generic chain-core DeviceContext shape.
+// Bridges SDK runtime signing components into the generic chain-core DeviceContext shape.
 export const createDeviceContext = (): SdkDeviceContext => ({
   queue,
   getClient,
@@ -24,5 +29,9 @@ export const createDeviceContext = (): SdkDeviceContext => ({
   },
   services: {
     fetchDecoder,
+  },
+  resolveSigningComponent: (kind, name) => {
+    ensureSigningComponentsSeeded();
+    return getSigningComponentRegistry().resolveOrThrow(kind, name);
   },
 });

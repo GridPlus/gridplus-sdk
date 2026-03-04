@@ -3,6 +3,7 @@ import type {
   ChainPlugin,
   DerivationPath,
   DeviceContext,
+  SigningComponentKind,
   PublicKey,
   SignResult,
 } from '@gridplus/chain-core';
@@ -16,49 +17,90 @@ import {
 } from '../chain';
 import { buildSigResultFromRsv, toBuffer } from './shared';
 
-type LatticeSolanaContext = DeviceContext & {
+type SigningComponentCodes = {
+  HASHES?: Record<string, number>;
+  CURVES?: Record<string, number>;
+  ENCODINGS?: Record<string, number>;
+};
+
+type LatticeSolanaContextInput = DeviceContext & {
+  resolveSigningComponent?: (
+    kind: SigningComponentKind,
+    name: string,
+  ) => number;
   constants: {
     EXTERNAL: {
       GET_ADDR_FLAGS: {
         ED25519_PUB: number;
       };
-      SIGNING: {
-        CURVES: {
-          ED25519: number;
-        };
-        HASHES: {
-          NONE: number;
-        };
-        ENCODINGS: {
-          SOLANA: number;
-        };
-      };
+      SIGNING?: SigningComponentCodes;
     };
   };
 };
 
-function getLatticeSolanaConstants(
-  context: DeviceContext,
-): LatticeSolanaContext['constants'] {
-  const constants = (context as LatticeSolanaContext).constants;
-  const hasNumber = (value: unknown): value is number =>
-    typeof value === 'number' && Number.isFinite(value);
-  if (
-    !hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.ED25519_PUB) ||
-    !hasNumber(constants?.EXTERNAL?.SIGNING?.CURVES?.ED25519) ||
-    !hasNumber(constants?.EXTERNAL?.SIGNING?.HASHES?.NONE) ||
-    !hasNumber(constants?.EXTERNAL?.SIGNING?.ENCODINGS?.SOLANA)
-  ) {
+type LatticeSolanaContext = DeviceContext & {
+  resolveSigningComponent: (kind: SigningComponentKind, name: string) => number;
+  constants: LatticeSolanaContextInput['constants'];
+};
+
+const hasNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+const getSigningComponentFromConstants = (
+  signing: SigningComponentCodes | undefined,
+  kind: SigningComponentKind,
+  name: string,
+): number | undefined => {
+  const byKind: Record<
+    SigningComponentKind,
+    Record<string, number> | undefined
+  > = {
+    hash: signing?.HASHES,
+    curve: signing?.CURVES,
+    encoding: signing?.ENCODINGS,
+  };
+  const code = byKind[kind]?.[name];
+  return hasNumber(code) ? code : undefined;
+};
+
+function getLatticeSolanaContext(context: DeviceContext): LatticeSolanaContext {
+  const typed = context as LatticeSolanaContextInput;
+  const constants = typed.constants;
+  const resolveSigningComponent = (
+    kind: SigningComponentKind,
+    name: string,
+  ): number => {
+    if (typeof typed.resolveSigningComponent === 'function') {
+      return typed.resolveSigningComponent(kind, name);
+    }
+    const fromConstants = getSigningComponentFromConstants(
+      constants?.EXTERNAL?.SIGNING,
+      kind,
+      name,
+    );
+    if (fromConstants !== undefined) return fromConstants;
+    throw new Error(
+      `Lattice Solana signer requires resolveSigningComponent() or EXTERNAL.SIGNING mapping for ${kind}:${name}.`,
+    );
+  };
+  if (!hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.ED25519_PUB)) {
     throw new Error('Lattice Solana signer requires EXTERNAL constants');
   }
-  return constants;
+  return {
+    ...typed,
+    resolveSigningComponent,
+  };
 }
 
 export function createLatticeSolanaSigner(
   context: DeviceContext,
 ): SolanaSigner {
-  const { queue } = context;
-  const { EXTERNAL } = getLatticeSolanaConstants(context);
+  const { queue, resolveSigningComponent, constants } =
+    getLatticeSolanaContext(context);
+  const { EXTERNAL } = constants;
+  const curveEd25519 = resolveSigningComponent('curve', 'ED25519');
+  const hashNone = resolveSigningComponent('hash', 'NONE');
+  const encodingSolana = resolveSigningComponent('encoding', 'SOLANA');
 
   const getPublicKey = async (path: DerivationPath): Promise<PublicKey> => {
     const res = (await queue((client: any) =>
@@ -90,9 +132,9 @@ export function createLatticeSolanaSigner(
 
     const signPayload = {
       signerPath: path,
-      curveType: EXTERNAL.SIGNING.CURVES.ED25519,
-      hashType: EXTERNAL.SIGNING.HASHES.NONE,
-      encodingType: EXTERNAL.SIGNING.ENCODINGS.SOLANA,
+      curveType: curveEd25519,
+      hashType: hashNone,
+      encodingType: encodingSolana,
       payload: toBuffer(request.payload as any),
     };
 
@@ -130,4 +172,11 @@ export const latticePlugin: ChainPlugin<
   device: 'lattice',
   module: solana,
   createSigner: createLatticeSolanaSigner,
+  signingSuite: {
+    requirements: [
+      { kind: 'curve', name: 'ED25519', minFirmware: [0, 14, 0] },
+      { kind: 'hash', name: 'NONE', minFirmware: [0, 14, 0] },
+      { kind: 'encoding', name: 'SOLANA', minFirmware: [0, 14, 0] },
+    ],
+  },
 };

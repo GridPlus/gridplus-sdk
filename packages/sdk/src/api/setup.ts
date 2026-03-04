@@ -7,6 +7,7 @@ import {
 import {
   configureChainRuntime,
   discoverAndRegisterChains,
+  ensureSigningComponentsSeeded,
   getChain,
   registerChainPlugin,
   unregisterChain,
@@ -99,6 +100,7 @@ export const setup = async (params: SetupParameters): Promise<boolean> => {
   if (!params.setStoredClient) throw new Error('Client data setter required');
   setSaveClient(buildSaveClientFn(params.setStoredClient));
 
+  ensureSigningComponentsSeeded();
   configureChainRuntime({
     autoRegisterChains: params.autoRegisterChains ?? true,
     defaultDevice: params.defaultDevice ?? 'lattice',

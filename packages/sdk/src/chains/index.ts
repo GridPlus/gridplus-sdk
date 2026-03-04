@@ -9,6 +9,12 @@ export {
   unregisterChain,
   useChain,
 } from './registry';
+export {
+  ensureSigningComponentsSeeded,
+  preflightPluginSigningComponents,
+  registerPluginSigningComponents,
+  validatePluginSigningRequirements,
+} from './signingComponents';
 
 export type {
   ChainKey,
@@ -16,8 +22,12 @@ export type {
   ChainRegistry,
   ChainRegistryOptions,
   ChainRegistryResolveOptions,
+  ChainSigningSuite,
   DeviceContext,
   DeviceId,
+  SigningComponentDefinition,
+  SigningComponentKind,
+  SigningComponentRequirement,
 } from '@gridplus/chain-core';
 
 export type { SdkDeviceContext } from './context';
