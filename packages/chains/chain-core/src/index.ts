@@ -33,23 +33,23 @@ export type ChainCapabilities = {
   getXpub?: boolean;
 };
 
-export type PrimitiveKind = 'hash' | 'curve' | 'encoding';
+export type SigningComponentKind = 'hash' | 'curve' | 'encoding';
 
-export type PrimitiveDefinition = {
-  kind: PrimitiveKind;
+export type SigningComponentDefinition = {
+  kind: SigningComponentKind;
   name: string;
   code: number;
 };
 
-export type PrimitiveRequirement = {
-  kind: PrimitiveKind;
+export type SigningComponentRequirement = {
+  kind: SigningComponentKind;
   name: string;
   minFirmware: [number, number, number];
 };
 
-export type PluginPrimitives = {
-  definitions?: PrimitiveDefinition[];
-  requirements?: PrimitiveRequirement[];
+export type ChainSigningSuite = {
+  definitions?: SigningComponentDefinition[];
+  requirements?: SigningComponentRequirement[];
 };
 
 export type GetAddressParams = {
@@ -146,7 +146,7 @@ export type ChainPlugin<
     signer: TSigner,
     options?: TOptions,
   ) => Promise<TAdapter> | TAdapter;
-  primitives?: PluginPrimitives;
+  signingSuite?: ChainSigningSuite;
 };
 
 export type ChainRegistryResolveOptions = {
@@ -269,10 +269,10 @@ export function createChainRegistry<TContext = DeviceContext>(
 }
 
 export {
-  createPrimitiveRegistry,
-  PrimitiveConflictError,
-  type PrimitiveRegistry,
-} from './primitiveRegistry';
+  createSigningComponentRegistry,
+  SigningComponentConflictError,
+  type SigningComponentRegistry,
+} from './signingComponentRegistry';
 
 // ---------------------------------------------------------------------------
 // Firmware version utilities

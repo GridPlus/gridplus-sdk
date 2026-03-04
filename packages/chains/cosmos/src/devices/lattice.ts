@@ -3,7 +3,7 @@ import type {
   ChainPlugin,
   DerivationPath,
   DeviceContext,
-  PrimitiveKind,
+  SigningComponentKind,
   PublicKey,
   SignResult,
 } from '@gridplus/chain-core';
@@ -16,38 +16,38 @@ import {
 } from '../chain';
 import { buildSigResultFromRsv, compressSecp256k1Pubkey } from './shared';
 
-type PrimitiveCodeMaps = {
+type SigningComponentCodes = {
   HASHES?: Record<string, number>;
   CURVES?: Record<string, number>;
   ENCODINGS?: Record<string, number>;
 };
 
 type LatticeCosmosContextInput = DeviceContext & {
-  resolvePrimitive?: (kind: PrimitiveKind, name: string) => number;
+  resolveSigningComponent?: (kind: SigningComponentKind, name: string) => number;
   constants: {
     EXTERNAL: {
       GET_ADDR_FLAGS: {
         SECP256K1_PUB: number;
       };
-      SIGNING?: PrimitiveCodeMaps;
+      SIGNING?: SigningComponentCodes;
     };
   };
 };
 
 type LatticeCosmosContext = DeviceContext & {
-  resolvePrimitive: (kind: PrimitiveKind, name: string) => number;
+  resolveSigningComponent: (kind: SigningComponentKind, name: string) => number;
   constants: LatticeCosmosContextInput['constants'];
 };
 
 const hasNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
-const getPrimitiveFromConstants = (
-  signing: PrimitiveCodeMaps | undefined,
-  kind: PrimitiveKind,
+const getSigningComponentFromConstants = (
+  signing: SigningComponentCodes | undefined,
+  kind: SigningComponentKind,
   name: string,
 ): number | undefined => {
-  const byKind: Record<PrimitiveKind, Record<string, number> | undefined> = {
+  const byKind: Record<SigningComponentKind, Record<string, number> | undefined> = {
     hash: signing?.HASHES,
     curve: signing?.CURVES,
     encoding: signing?.ENCODINGS,
@@ -59,18 +59,18 @@ const getPrimitiveFromConstants = (
 function getLatticeCosmosContext(context: DeviceContext): LatticeCosmosContext {
   const typed = context as LatticeCosmosContextInput;
   const constants = typed.constants;
-  const resolvePrimitive = (kind: PrimitiveKind, name: string): number => {
-    if (typeof typed.resolvePrimitive === 'function') {
-      return typed.resolvePrimitive(kind, name);
+  const resolveSigningComponent = (kind: SigningComponentKind, name: string): number => {
+    if (typeof typed.resolveSigningComponent === 'function') {
+      return typed.resolveSigningComponent(kind, name);
     }
-    const fromConstants = getPrimitiveFromConstants(
+    const fromConstants = getSigningComponentFromConstants(
       constants?.EXTERNAL?.SIGNING,
       kind,
       name,
     );
     if (fromConstants !== undefined) return fromConstants;
     throw new Error(
-      `Lattice Cosmos signer requires resolvePrimitive() or EXTERNAL.SIGNING mapping for ${kind}:${name}.`,
+      `Lattice Cosmos signer requires resolveSigningComponent() or EXTERNAL.SIGNING mapping for ${kind}:${name}.`,
     );
   };
   if (!hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.SECP256K1_PUB)) {
@@ -78,19 +78,19 @@ function getLatticeCosmosContext(context: DeviceContext): LatticeCosmosContext {
   }
   return {
     ...typed,
-    resolvePrimitive,
+    resolveSigningComponent,
   };
 }
 
 export function createLatticeCosmosSigner(
   context: DeviceContext,
 ): CosmosSigner {
-  const { queue, resolvePrimitive, constants } =
+  const { queue, resolveSigningComponent, constants } =
     getLatticeCosmosContext(context);
   const { EXTERNAL } = constants;
-  const curveSecp256k1 = resolvePrimitive('curve', 'SECP256K1');
-  const hashSha256 = resolvePrimitive('hash', 'SHA256');
-  const encodingCosmos = resolvePrimitive('encoding', 'COSMOS');
+  const curveSecp256k1 = resolveSigningComponent('curve', 'SECP256K1');
+  const hashSha256 = resolveSigningComponent('hash', 'SHA256');
+  const encodingCosmos = resolveSigningComponent('encoding', 'COSMOS');
 
   return {
     getAddress: async (path: DerivationPath): Promise<Address> => {
@@ -174,7 +174,7 @@ export const latticePlugin: ChainPlugin<
   device: 'lattice',
   module: cosmos,
   createSigner: createLatticeCosmosSigner,
-  primitives: {
+  signingSuite: {
     requirements: [
       { kind: 'curve', name: 'SECP256K1', minFirmware: [0, 14, 0] },
       { kind: 'hash', name: 'SHA256', minFirmware: [0, 14, 0] },

@@ -7,12 +7,12 @@ import {
 import { createDeviceContext, type SdkDeviceContext } from './context';
 import { discoverAndRegisterChains as discoverChains } from './discovery';
 import {
-  ensurePrimitivesSeeded,
-  preflightPluginPrimitives,
-  registerPluginPrimitives,
-  unregisterPluginPrimitives,
-  validatePluginPrimitiveRequirements,
-} from './primitives';
+  ensureSigningComponentsSeeded,
+  preflightPluginSigningComponents,
+  registerPluginSigningComponents,
+  unregisterPluginSigningComponents,
+  validatePluginSigningRequirements,
+} from './signingComponents';
 
 type ConfigureChainRuntimeOptions = {
   autoRegisterChains?: boolean;
@@ -96,18 +96,18 @@ export function getDefaultDevice(): DeviceId {
 }
 
 export function registerChainPlugin(plugin: ChainPlugin<any>): void {
-  ensurePrimitivesSeeded();
-  preflightPluginPrimitives(plugin);
+  ensureSigningComponentsSeeded();
+  preflightPluginSigningComponents(plugin);
 
   let chainRegistered = false;
   try {
     registry.register(plugin as ChainPlugin<SdkDeviceContext>);
     chainRegistered = true;
-    registerPluginPrimitives(plugin);
+    registerPluginSigningComponents(plugin);
   } catch (err) {
     if (chainRegistered) {
       registry.unregister(plugin.chainId, plugin.device);
-      unregisterPluginPrimitives(plugin.chainId, plugin.device);
+      unregisterPluginSigningComponents(plugin.chainId, plugin.device);
     }
     throw err;
   }
@@ -118,7 +118,7 @@ export function unregisterChain(chainId: string, device?: DeviceId): boolean {
   cache.clear();
   const unregistered = registry.unregister(chainId, device);
   if (unregistered) {
-    unregisterPluginPrimitives(chainId, device);
+    unregisterPluginSigningComponents(chainId, device);
   }
   return unregistered;
 }
@@ -177,10 +177,10 @@ export async function useChain<TAdapter = unknown, TAdapterOptions = unknown>(
   // Signer is created once per (chain, device) generation and reused by adapters.
   if (!cached || cached.generation !== cacheGeneration) {
     const context = createDeviceContext();
-    if (resolved.primitives?.requirements?.length) {
+    if (resolved.signingSuite?.requirements?.length) {
       const client = await context.getClient();
       const fwVersion = getFirmwareVersion(client);
-      validatePluginPrimitiveRequirements(
+      validatePluginSigningRequirements(
         resolved as ChainPlugin<any>,
         fwVersion,
       );

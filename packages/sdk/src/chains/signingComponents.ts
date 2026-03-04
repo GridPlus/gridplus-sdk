@@ -1,51 +1,54 @@
 import {
   compareFirmwareVersions,
-  createPrimitiveRegistry,
+  createSigningComponentRegistry,
   toChainKey,
   type ChainPlugin,
   type DeviceId,
   type FirmwareVersionTuple,
-  type PrimitiveDefinition,
-  type PrimitiveRequirement,
+  type SigningComponentDefinition,
+  type SigningComponentRequirement,
 } from '@gridplus/chain-core';
 import { EXTERNAL } from '../constants';
 
-const registry = createPrimitiveRegistry();
+const registry = createSigningComponentRegistry();
 let seeded = false;
-const pluginDefinitionsByKey = new Map<string, PrimitiveDefinition[]>();
+const pluginDefinitionsByKey = new Map<string, SigningComponentDefinition[]>();
 
-const getBuiltinPrimitiveDefinitions = (): PrimitiveDefinition[] => {
-  const definitions: PrimitiveDefinition[] = [];
+const getBuiltinSigningComponentDefinitions =
+  (): SigningComponentDefinition[] => {
+    const definitions: SigningComponentDefinition[] = [];
 
-  Object.entries(EXTERNAL.SIGNING.HASHES).forEach(([name, code]) => {
-    definitions.push({ kind: 'hash', name, code });
-  });
-  Object.entries(EXTERNAL.SIGNING.CURVES).forEach(([name, code]) => {
-    definitions.push({ kind: 'curve', name, code });
-  });
-  Object.entries(EXTERNAL.SIGNING.ENCODINGS).forEach(([name, code]) => {
-    definitions.push({ kind: 'encoding', name, code });
-  });
+    Object.entries(EXTERNAL.SIGNING.HASHES).forEach(([name, code]) => {
+      definitions.push({ kind: 'hash', name, code });
+    });
+    Object.entries(EXTERNAL.SIGNING.CURVES).forEach(([name, code]) => {
+      definitions.push({ kind: 'curve', name, code });
+    });
+    Object.entries(EXTERNAL.SIGNING.ENCODINGS).forEach(([name, code]) => {
+      definitions.push({ kind: 'encoding', name, code });
+    });
 
-  return definitions;
-};
+    return definitions;
+  };
 
 const cloneDefinitions = (
-  definitions: PrimitiveDefinition[],
-): PrimitiveDefinition[] =>
+  definitions: SigningComponentDefinition[],
+): SigningComponentDefinition[] =>
   definitions.map((definition) => ({
     kind: definition.kind,
     name: definition.name,
     code: definition.code,
   }));
 
-const toPluginPrimitiveKey = (chainId: string, device: DeviceId): string =>
-  toChainKey(chainId, device);
+const toPluginSigningComponentKey = (
+  chainId: string,
+  device: DeviceId,
+): string => toChainKey(chainId, device);
 
-const rebuildRegistryFromTrackedPrimitives = (): void => {
+const rebuildRegistryFromTrackedComponents = (): void => {
   registry.reset();
   seeded = false;
-  ensurePrimitivesSeeded();
+  ensureSigningComponentsSeeded();
 
   const sortedKeys = [...pluginDefinitionsByKey.keys()].sort();
   sortedKeys.forEach((key) => {
@@ -68,11 +71,11 @@ const isFirmwareVersionTuple = (
   );
 };
 
-const isPrimitiveRequirement = (
+const isSigningComponentRequirement = (
   requirement: unknown,
-): requirement is PrimitiveRequirement => {
+): requirement is SigningComponentRequirement => {
   if (!requirement || typeof requirement !== 'object') return false;
-  const req = requirement as PrimitiveRequirement;
+  const req = requirement as SigningComponentRequirement;
   const kind =
     req.kind === 'hash' || req.kind === 'curve' || req.kind === 'encoding';
   return (
@@ -83,64 +86,68 @@ const isPrimitiveRequirement = (
   );
 };
 
-const getPluginPrimitiveDefinitions = (
+const getPluginSigningComponentDefinitions = (
   plugin: ChainPlugin<any>,
-): PrimitiveDefinition[] => {
-  const definitions = plugin.primitives?.definitions;
+): SigningComponentDefinition[] => {
+  const definitions = plugin.signingSuite?.definitions;
   if (!definitions || !Array.isArray(definitions)) return [];
   return definitions;
 };
 
-const getPluginPrimitiveRequirements = (
+const getPluginSigningComponentRequirements = (
   plugin: ChainPlugin<any>,
-): PrimitiveRequirement[] => {
-  const requirements = plugin.primitives?.requirements;
+): SigningComponentRequirement[] => {
+  const requirements = plugin.signingSuite?.requirements;
   if (!requirements || !Array.isArray(requirements)) return [];
-  return requirements as PrimitiveRequirement[];
+  return requirements as SigningComponentRequirement[];
 };
 
 const validatePluginRequirementShape = (plugin: ChainPlugin<any>): void => {
-  const requirements = plugin.primitives?.requirements;
+  const requirements = plugin.signingSuite?.requirements;
   if (!requirements) return;
   if (!Array.isArray(requirements)) {
     throw new Error(
-      `Chain "${plugin.chainId}" has invalid primitive requirements: expected an array.`,
+      `Chain "${plugin.chainId}" has invalid signing component requirements: expected an array.`,
     );
   }
   requirements.forEach((requirement, index) => {
-    if (!isPrimitiveRequirement(requirement)) {
+    if (!isSigningComponentRequirement(requirement)) {
       throw new Error(
-        `Chain "${plugin.chainId}" has invalid primitive requirement at index ${index}.`,
+        `Chain "${plugin.chainId}" has invalid signing component requirement at index ${index}.`,
       );
     }
   });
 };
 
-export function getPrimitiveRegistry() {
+export function getSigningComponentRegistry() {
   return registry;
 }
 
-export function ensurePrimitivesSeeded(): void {
+export function ensureSigningComponentsSeeded(): void {
   if (seeded) return;
-  registry.register(getBuiltinPrimitiveDefinitions());
+  registry.register(getBuiltinSigningComponentDefinitions());
   seeded = true;
 }
 
-export function preflightPluginPrimitives(plugin: ChainPlugin<any>): void {
+export function preflightPluginSigningComponents(
+  plugin: ChainPlugin<any>,
+): void {
   validatePluginRequirementShape(plugin);
-  ensurePrimitivesSeeded();
+  ensureSigningComponentsSeeded();
 
-  const definitions = getPluginPrimitiveDefinitions(plugin);
+  const definitions = getPluginSigningComponentDefinitions(plugin);
   if (definitions.length === 0) return;
   registry.preflight(definitions);
 }
 
-export function registerPluginPrimitives(plugin: ChainPlugin<any>): void {
+export function registerPluginSigningComponents(
+  plugin: ChainPlugin<any>,
+): void {
   validatePluginRequirementShape(plugin);
-  ensurePrimitivesSeeded();
+  ensureSigningComponentsSeeded();
 
-  const definitions = getPluginPrimitiveDefinitions(plugin);
-  const pluginKey = toPluginPrimitiveKey(plugin.chainId, plugin.device);
+  const definitions = getPluginSigningComponentDefinitions(plugin);
+  const pluginKey = toPluginSigningComponentKey(plugin.chainId, plugin.device);
   if (definitions.length === 0) {
     pluginDefinitionsByKey.delete(pluginKey);
     return;
@@ -149,14 +156,14 @@ export function registerPluginPrimitives(plugin: ChainPlugin<any>): void {
   pluginDefinitionsByKey.set(pluginKey, cloneDefinitions(definitions));
 }
 
-export function unregisterPluginPrimitives(
+export function unregisterPluginSigningComponents(
   chainId: string,
   device?: DeviceId,
 ): void {
   if (!seeded) return;
 
   const keysToDelete = device
-    ? [toPluginPrimitiveKey(chainId, device)]
+    ? [toPluginSigningComponentKey(chainId, device)]
     : [...pluginDefinitionsByKey.keys()].filter((key) =>
         key.startsWith(`${chainId}:`),
       );
@@ -164,17 +171,17 @@ export function unregisterPluginPrimitives(
   if (keysToDelete.length === 0) return;
 
   keysToDelete.forEach((key) => pluginDefinitionsByKey.delete(key));
-  rebuildRegistryFromTrackedPrimitives();
+  rebuildRegistryFromTrackedComponents();
 }
 
-export function validatePluginPrimitiveRequirements(
+export function validatePluginSigningRequirements(
   plugin: ChainPlugin<any>,
   fwVersion: FirmwareVersionTuple,
 ): void {
   validatePluginRequirementShape(plugin);
-  ensurePrimitivesSeeded();
+  ensureSigningComponentsSeeded();
 
-  const requirements = getPluginPrimitiveRequirements(plugin);
+  const requirements = getPluginSigningComponentRequirements(plugin);
   if (requirements.length === 0) return;
 
   requirements.forEach((requirement) => {
@@ -194,7 +201,7 @@ export function validatePluginPrimitiveRequirements(
   });
 }
 
-export function resetPrimitiveRegistry(): void {
+export function resetSigningComponentRegistry(): void {
   registry.reset();
   pluginDefinitionsByKey.clear();
   seeded = false;

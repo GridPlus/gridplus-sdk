@@ -1,22 +1,28 @@
 import { createDeviceContext } from '../../chains/context';
-import { resetPrimitiveRegistry } from '../../chains/primitives';
+import { resetSigningComponentRegistry } from '../../chains/signingComponents';
 
-describe('chain context primitive resolution', () => {
+describe('chain context signing component resolution', () => {
   afterEach(() => {
-    resetPrimitiveRegistry();
+    resetSigningComponentRegistry();
   });
 
-  test('resolvePrimitive resolves seeded builtins', () => {
+  test('resolveSigningComponent resolves seeded builtins', () => {
     const context = createDeviceContext();
-    expect(context.resolvePrimitive('hash', 'KECCAK256')).toBeDefined();
-    expect(context.resolvePrimitive('curve', 'SECP256K1')).toBeDefined();
-    expect(context.resolvePrimitive('encoding', 'EVM')).toBeDefined();
+    expect(
+      context.resolveSigningComponent('hash', 'KECCAK256'),
+    ).toBeDefined();
+    expect(
+      context.resolveSigningComponent('curve', 'SECP256K1'),
+    ).toBeDefined();
+    expect(
+      context.resolveSigningComponent('encoding', 'EVM'),
+    ).toBeDefined();
   });
 
-  test('resolvePrimitive throws for unknown primitive', () => {
+  test('resolveSigningComponent throws for unknown signing component', () => {
     const context = createDeviceContext();
-    expect(() => context.resolvePrimitive('encoding', 'UNKNOWN_CHAIN')).toThrow(
-      'Primitive not found',
-    );
+    expect(() =>
+      context.resolveSigningComponent('encoding', 'UNKNOWN_CHAIN'),
+    ).toThrow('Signing component not found');
   });
 });

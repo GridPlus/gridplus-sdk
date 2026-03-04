@@ -2,7 +2,7 @@ import type {
   ChainAdapter,
   ChainModule,
   ChainPlugin,
-  PluginPrimitives,
+  ChainSigningSuite,
   Signer,
 } from '@gridplus/chain-core';
 import { setLoadClient } from '../../api/state';
@@ -14,9 +14,9 @@ import {
   useChain,
 } from '../../chains';
 import {
-  getPrimitiveRegistry,
-  resetPrimitiveRegistry,
-} from '../../chains/primitives';
+  getSigningComponentRegistry,
+  resetSigningComponentRegistry,
+} from '../../chains/signingComponents';
 
 const mockSigner: Signer = {
   getAddress: async () => 'mock',
@@ -33,7 +33,7 @@ const mockAdapter: ChainAdapter = {
 
 const buildPlugin = (
   chainId: string,
-  primitives?: PluginPrimitives,
+  signingSuite?: ChainSigningSuite,
 ): ChainPlugin<any> => {
   const module: ChainModule = {
     id: chainId,
@@ -57,17 +57,17 @@ const buildPlugin = (
     device: 'lattice',
     module,
     createSigner: async () => mockSigner,
-    primitives,
+    signingSuite,
   };
 };
 
-describe('chain runtime primitive integration', () => {
+describe('chain runtime signing component integration', () => {
   afterEach(() => {
     unregisterChain('chain-a', 'lattice');
     unregisterChain('chain-b', 'lattice');
     unregisterChain('dup-chain', 'lattice');
     unregisterChain('req-chain', 'lattice');
-    resetPrimitiveRegistry();
+    resetSigningComponentRegistry();
     configureChainRuntime({
       autoRegisterChains: true,
       defaultDevice: 'lattice',
@@ -76,7 +76,7 @@ describe('chain runtime primitive integration', () => {
     setLoadClient(async () => undefined);
   });
 
-  test('primitive conflict does not register conflicting chain', () => {
+  test('signing component conflict does not register conflicting chain', () => {
     registerChainPlugin(
       buildPlugin('chain-a', {
         definitions: [{ kind: 'encoding', name: 'TESTCHAIN', code: 99 }],
@@ -95,7 +95,7 @@ describe('chain runtime primitive integration', () => {
     expect(getChain('chain-b', 'lattice')).toBeUndefined();
   });
 
-  test('chain registration failure does not leave new primitive definitions', () => {
+  test('chain registration failure does not leave new signing component definitions', () => {
     registerChainPlugin(
       buildPlugin('dup-chain', {
         definitions: [{ kind: 'encoding', name: 'DUP_A', code: 201 }],
@@ -110,33 +110,41 @@ describe('chain runtime primitive integration', () => {
       ),
     ).toThrow('already registered');
 
-    const primitiveRegistry = getPrimitiveRegistry();
-    expect(primitiveRegistry.resolve('encoding', 'DUP_A')).toBe(201);
-    expect(primitiveRegistry.resolve('encoding', 'DUP_B')).toBeUndefined();
+    const signingComponentRegistry = getSigningComponentRegistry();
+    expect(signingComponentRegistry.resolve('encoding', 'DUP_A')).toBe(201);
+    expect(
+      signingComponentRegistry.resolve('encoding', 'DUP_B'),
+    ).toBeUndefined();
   });
 
-  test('unregisterChain removes plugin-owned primitive definitions', () => {
+  test('unregisterChain removes plugin-owned signing component definitions', () => {
     registerChainPlugin(
       buildPlugin('chain-a', {
         definitions: [{ kind: 'encoding', name: 'REPLACE_ME', code: 301 }],
       }),
     );
 
-    const primitiveRegistry = getPrimitiveRegistry();
-    expect(primitiveRegistry.resolve('encoding', 'REPLACE_ME')).toBe(301);
+    const signingComponentRegistry = getSigningComponentRegistry();
+    expect(signingComponentRegistry.resolve('encoding', 'REPLACE_ME')).toBe(
+      301,
+    );
 
     expect(unregisterChain('chain-a', 'lattice')).toBe(true);
-    expect(primitiveRegistry.resolve('encoding', 'REPLACE_ME')).toBeUndefined();
+    expect(
+      signingComponentRegistry.resolve('encoding', 'REPLACE_ME'),
+    ).toBeUndefined();
 
     registerChainPlugin(
       buildPlugin('chain-a', {
         definitions: [{ kind: 'encoding', name: 'REPLACE_ME', code: 302 }],
       }),
     );
-    expect(primitiveRegistry.resolve('encoding', 'REPLACE_ME')).toBe(302);
+    expect(signingComponentRegistry.resolve('encoding', 'REPLACE_ME')).toBe(
+      302,
+    );
   });
 
-  test('useChain enforces primitive minFirmware requirements', async () => {
+  test('useChain enforces signing component minFirmware requirements', async () => {
     configureChainRuntime({
       autoRegisterChains: false,
       defaultDevice: 'lattice',

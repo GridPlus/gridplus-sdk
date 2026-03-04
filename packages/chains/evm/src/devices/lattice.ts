@@ -6,7 +6,7 @@ import {
   type DerivationPath,
   type DeviceContext,
   type FirmwareVersionTuple,
-  type PrimitiveKind,
+  type SigningComponentKind,
   type PublicKey,
   type SignResult,
 } from '@gridplus/chain-core';
@@ -36,20 +36,20 @@ export type LatticeEvmSignerOptions = {
   fetchEvmDecoder?: boolean;
 };
 
-type PrimitiveCodeMaps = {
+type SigningComponentCodes = {
   HASHES?: Record<string, number>;
   CURVES?: Record<string, number>;
   ENCODINGS?: Record<string, number>;
 };
 
 type LatticeEvmContextInput = DeviceContext & {
-  resolvePrimitive?: (kind: PrimitiveKind, name: string) => number;
+  resolveSigningComponent?: (kind: SigningComponentKind, name: string) => number;
   constants: {
     EXTERNAL: {
       GET_ADDR_FLAGS: {
         SECP256K1_PUB: number;
       };
-      SIGNING?: PrimitiveCodeMaps;
+      SIGNING?: SigningComponentCodes;
     };
     CURRENCIES: {
       ETH_MSG: string;
@@ -65,7 +65,7 @@ type LatticeEvmContextInput = DeviceContext & {
 };
 
 type LatticeEvmContext = DeviceContext & {
-  resolvePrimitive: (kind: PrimitiveKind, name: string) => number;
+  resolveSigningComponent: (kind: SigningComponentKind, name: string) => number;
   constants: LatticeEvmContextInput['constants'];
   services?: LatticeEvmContextInput['services'];
 };
@@ -73,12 +73,12 @@ type LatticeEvmContext = DeviceContext & {
 const hasNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
-const getPrimitiveFromConstants = (
-  signing: PrimitiveCodeMaps | undefined,
-  kind: PrimitiveKind,
+const getSigningComponentFromConstants = (
+  signing: SigningComponentCodes | undefined,
+  kind: SigningComponentKind,
   name: string,
 ): number | undefined => {
-  const byKind: Record<PrimitiveKind, Record<string, number> | undefined> = {
+  const byKind: Record<SigningComponentKind, Record<string, number> | undefined> = {
     hash: signing?.HASHES,
     curve: signing?.CURVES,
     encoding: signing?.ENCODINGS,
@@ -90,18 +90,18 @@ const getPrimitiveFromConstants = (
 function getLatticeEvmContext(context: DeviceContext): LatticeEvmContext {
   const typed = context as LatticeEvmContextInput;
   const constants = typed.constants;
-  const resolvePrimitive = (kind: PrimitiveKind, name: string): number => {
-    if (typeof typed.resolvePrimitive === 'function') {
-      return typed.resolvePrimitive(kind, name);
+  const resolveSigningComponent = (kind: SigningComponentKind, name: string): number => {
+    if (typeof typed.resolveSigningComponent === 'function') {
+      return typed.resolveSigningComponent(kind, name);
     }
-    const fromConstants = getPrimitiveFromConstants(
+    const fromConstants = getSigningComponentFromConstants(
       constants?.EXTERNAL?.SIGNING,
       kind,
       name,
     );
     if (fromConstants !== undefined) return fromConstants;
     throw new Error(
-      `Lattice EVM signer requires resolvePrimitive() or EXTERNAL.SIGNING mapping for ${kind}:${name}.`,
+      `Lattice EVM signer requires resolveSigningComponent() or EXTERNAL.SIGNING mapping for ${kind}:${name}.`,
     );
   };
   if (
@@ -114,7 +114,7 @@ function getLatticeEvmContext(context: DeviceContext): LatticeEvmContext {
   }
   return {
     ...typed,
-    resolvePrimitive,
+    resolveSigningComponent,
   };
 }
 
@@ -137,17 +137,17 @@ function normalizeRawEvmTx(tx: EvmRawTransaction): Hex | Buffer {
 
 function getEvmEncodingType(
   tx: TransactionSerializable,
-  resolvePrimitive: (kind: PrimitiveKind, name: string) => number,
+  resolveSigningComponent: (kind: SigningComponentKind, name: string) => number,
 ): number {
   if ((tx as any).type === 'eip7702') {
     const eip7702 = tx as TransactionSerializableEIP7702;
     const hasAuthList =
       eip7702.authorizationList && eip7702.authorizationList.length > 0;
     return hasAuthList
-      ? resolvePrimitive('encoding', 'EIP7702_AUTH_LIST')
-      : resolvePrimitive('encoding', 'EIP7702_AUTH');
+      ? resolveSigningComponent('encoding', 'EIP7702_AUTH_LIST')
+      : resolveSigningComponent('encoding', 'EIP7702_AUTH');
   }
-  return resolvePrimitive('encoding', 'EVM');
+  return resolveSigningComponent('encoding', 'EVM');
 }
 
 const EIP7702_MIN_FIRMWARE: FirmwareVersionTuple = [0, 18, 0];
@@ -169,11 +169,11 @@ export function createLatticeEvmSigner(
   options: LatticeEvmSignerOptions = {},
 ): EvmSigner {
   const latticeContext = getLatticeEvmContext(context);
-  const { queue, services, resolvePrimitive } = latticeContext;
+  const { queue, services, resolveSigningComponent } = latticeContext;
   const { EXTERNAL, CURRENCIES } = latticeContext.constants;
-  const curveSecp256k1 = resolvePrimitive('curve', 'SECP256K1');
-  const hashKeccak256 = resolvePrimitive('hash', 'KECCAK256');
-  const encodingEvm = resolvePrimitive('encoding', 'EVM');
+  const curveSecp256k1 = resolveSigningComponent('curve', 'SECP256K1');
+  const hashKeccak256 = resolveSigningComponent('hash', 'KECCAK256');
+  const encodingEvm = resolveSigningComponent('encoding', 'EVM');
 
   return {
     getAddress: async (path: DerivationPath): Promise<Address> => {
@@ -224,7 +224,7 @@ export function createLatticeEvmSigner(
           ? encodingEvm
           : getEvmEncodingType(
               request.payload as TransactionSerializable,
-              resolvePrimitive,
+              resolveSigningComponent,
             );
         if (!isRaw && (request.payload as any).type === 'eip7702') {
           await assertEip7702FirmwareSupport(latticeContext);
@@ -346,7 +346,7 @@ export const latticePlugin: ChainPlugin<
   device: 'lattice',
   module: evm,
   createSigner: (context) => createLatticeEvmSigner(context),
-  primitives: {
+  signingSuite: {
     requirements: [
       { kind: 'curve', name: 'SECP256K1', minFirmware: [0, 14, 0] },
       { kind: 'hash', name: 'KECCAK256', minFirmware: [0, 14, 0] },

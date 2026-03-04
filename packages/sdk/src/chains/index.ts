@@ -10,11 +10,11 @@ export {
   useChain,
 } from './registry';
 export {
-  ensurePrimitivesSeeded,
-  preflightPluginPrimitives,
-  registerPluginPrimitives,
-  validatePluginPrimitiveRequirements,
-} from './primitives';
+  ensureSigningComponentsSeeded,
+  preflightPluginSigningComponents,
+  registerPluginSigningComponents,
+  validatePluginSigningRequirements,
+} from './signingComponents';
 
 export type {
   ChainKey,
@@ -22,12 +22,12 @@ export type {
   ChainRegistry,
   ChainRegistryOptions,
   ChainRegistryResolveOptions,
+  ChainSigningSuite,
   DeviceContext,
   DeviceId,
-  PluginPrimitives,
-  PrimitiveDefinition,
-  PrimitiveKind,
-  PrimitiveRequirement,
+  SigningComponentDefinition,
+  SigningComponentKind,
+  SigningComponentRequirement,
 } from '@gridplus/chain-core';
 
 export type { SdkDeviceContext } from './context';

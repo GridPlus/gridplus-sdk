@@ -2,7 +2,7 @@ import type {
   ChainAdapter,
   ChainModule,
   ChainPlugin,
-  PluginPrimitives,
+  ChainSigningSuite,
   Signer,
 } from '@gridplus/chain-core';
 import { setup } from '../../api/setup';
@@ -12,9 +12,9 @@ import {
   DEFAULT_CHAIN_PLUGINS,
 } from '../../chains/defaultManifest';
 import {
-  getPrimitiveRegistry,
-  resetPrimitiveRegistry,
-} from '../../chains/primitives';
+  getSigningComponentRegistry,
+  resetSigningComponentRegistry,
+} from '../../chains/signingComponents';
 
 const mockSigner: Signer = {
   getAddress: async () => 'custom',
@@ -32,7 +32,7 @@ const mockAdapter: ChainAdapter = {
 const buildPlugin = (
   chainId: string,
   device: string,
-  primitives?: PluginPrimitives,
+  signingSuite?: ChainSigningSuite,
 ): ChainPlugin<any> => {
   const module: ChainModule = {
     id: chainId,
@@ -56,7 +56,7 @@ const buildPlugin = (
     device,
     module,
     createSigner: async () => mockSigner,
-    primitives,
+    signingSuite,
   };
 };
 
@@ -68,7 +68,7 @@ const setupParamsBase = {
 
 describe('setup chainPlugins', () => {
   afterEach(() => {
-    resetPrimitiveRegistry();
+    resetSigningComponentRegistry();
     unregisterChain('unit-test-chain', 'unit-test-device');
     DEFAULT_CHAIN_PLUGIN_KEYS.forEach((key) => {
       const [chainId, device] = key.split(':');
@@ -142,7 +142,7 @@ describe('setup chainPlugins', () => {
 
     registerChainPlugin(customPlugin);
 
-    const registry = getPrimitiveRegistry();
+    const registry = getSigningComponentRegistry();
     expect(registry.resolve('encoding', 'TESTCHAIN')).toBe(99);
     expect(registry.resolve('encoding', 'EVM')).toBeDefined();
     expect(getChain('unit-test-chain', 'unit-test-device')).toBeDefined();

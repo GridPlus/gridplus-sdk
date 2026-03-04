@@ -3,7 +3,7 @@ import type {
   ChainPlugin,
   DerivationPath,
   DeviceContext,
-  PrimitiveKind,
+  SigningComponentKind,
   PublicKey,
   SignResult,
 } from '@gridplus/chain-core';
@@ -17,38 +17,38 @@ import {
 } from '../chain';
 import { buildSigResultFromRsv, toBuffer } from './shared';
 
-type PrimitiveCodeMaps = {
+type SigningComponentCodes = {
   HASHES?: Record<string, number>;
   CURVES?: Record<string, number>;
   ENCODINGS?: Record<string, number>;
 };
 
 type LatticeSolanaContextInput = DeviceContext & {
-  resolvePrimitive?: (kind: PrimitiveKind, name: string) => number;
+  resolveSigningComponent?: (kind: SigningComponentKind, name: string) => number;
   constants: {
     EXTERNAL: {
       GET_ADDR_FLAGS: {
         ED25519_PUB: number;
       };
-      SIGNING?: PrimitiveCodeMaps;
+      SIGNING?: SigningComponentCodes;
     };
   };
 };
 
 type LatticeSolanaContext = DeviceContext & {
-  resolvePrimitive: (kind: PrimitiveKind, name: string) => number;
+  resolveSigningComponent: (kind: SigningComponentKind, name: string) => number;
   constants: LatticeSolanaContextInput['constants'];
 };
 
 const hasNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
-const getPrimitiveFromConstants = (
-  signing: PrimitiveCodeMaps | undefined,
-  kind: PrimitiveKind,
+const getSigningComponentFromConstants = (
+  signing: SigningComponentCodes | undefined,
+  kind: SigningComponentKind,
   name: string,
 ): number | undefined => {
-  const byKind: Record<PrimitiveKind, Record<string, number> | undefined> = {
+  const byKind: Record<SigningComponentKind, Record<string, number> | undefined> = {
     hash: signing?.HASHES,
     curve: signing?.CURVES,
     encoding: signing?.ENCODINGS,
@@ -60,18 +60,18 @@ const getPrimitiveFromConstants = (
 function getLatticeSolanaContext(context: DeviceContext): LatticeSolanaContext {
   const typed = context as LatticeSolanaContextInput;
   const constants = typed.constants;
-  const resolvePrimitive = (kind: PrimitiveKind, name: string): number => {
-    if (typeof typed.resolvePrimitive === 'function') {
-      return typed.resolvePrimitive(kind, name);
+  const resolveSigningComponent = (kind: SigningComponentKind, name: string): number => {
+    if (typeof typed.resolveSigningComponent === 'function') {
+      return typed.resolveSigningComponent(kind, name);
     }
-    const fromConstants = getPrimitiveFromConstants(
+    const fromConstants = getSigningComponentFromConstants(
       constants?.EXTERNAL?.SIGNING,
       kind,
       name,
     );
     if (fromConstants !== undefined) return fromConstants;
     throw new Error(
-      `Lattice Solana signer requires resolvePrimitive() or EXTERNAL.SIGNING mapping for ${kind}:${name}.`,
+      `Lattice Solana signer requires resolveSigningComponent() or EXTERNAL.SIGNING mapping for ${kind}:${name}.`,
     );
   };
   if (!hasNumber(constants?.EXTERNAL?.GET_ADDR_FLAGS?.ED25519_PUB)) {
@@ -79,19 +79,19 @@ function getLatticeSolanaContext(context: DeviceContext): LatticeSolanaContext {
   }
   return {
     ...typed,
-    resolvePrimitive,
+    resolveSigningComponent,
   };
 }
 
 export function createLatticeSolanaSigner(
   context: DeviceContext,
 ): SolanaSigner {
-  const { queue, resolvePrimitive, constants } =
+  const { queue, resolveSigningComponent, constants } =
     getLatticeSolanaContext(context);
   const { EXTERNAL } = constants;
-  const curveEd25519 = resolvePrimitive('curve', 'ED25519');
-  const hashNone = resolvePrimitive('hash', 'NONE');
-  const encodingSolana = resolvePrimitive('encoding', 'SOLANA');
+  const curveEd25519 = resolveSigningComponent('curve', 'ED25519');
+  const hashNone = resolveSigningComponent('hash', 'NONE');
+  const encodingSolana = resolveSigningComponent('encoding', 'SOLANA');
 
   const getPublicKey = async (path: DerivationPath): Promise<PublicKey> => {
     const res = (await queue((client: any) =>
@@ -163,7 +163,7 @@ export const latticePlugin: ChainPlugin<
   device: 'lattice',
   module: solana,
   createSigner: createLatticeSolanaSigner,
-  primitives: {
+  signingSuite: {
     requirements: [
       { kind: 'curve', name: 'ED25519', minFirmware: [0, 14, 0] },
       { kind: 'hash', name: 'NONE', minFirmware: [0, 14, 0] },

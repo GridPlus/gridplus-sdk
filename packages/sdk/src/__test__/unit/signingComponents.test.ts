@@ -2,16 +2,16 @@ import type {
   ChainAdapter,
   ChainModule,
   ChainPlugin,
-  PluginPrimitives,
+  ChainSigningSuite,
   Signer,
 } from '@gridplus/chain-core';
 import {
-  ensurePrimitivesSeeded,
-  getPrimitiveRegistry,
-  registerPluginPrimitives,
-  resetPrimitiveRegistry,
-  validatePluginPrimitiveRequirements,
-} from '../../chains/primitives';
+  ensureSigningComponentsSeeded,
+  getSigningComponentRegistry,
+  registerPluginSigningComponents,
+  resetSigningComponentRegistry,
+  validatePluginSigningRequirements,
+} from '../../chains/signingComponents';
 
 const mockSigner: Signer = {
   getAddress: async () => 'mock',
@@ -28,7 +28,7 @@ const mockAdapter: ChainAdapter = {
 
 const buildPlugin = (
   chainId: string,
-  primitives?: PluginPrimitives,
+  signingSuite?: ChainSigningSuite,
 ): ChainPlugin<any> => {
   const module: ChainModule = {
     id: chainId,
@@ -52,26 +52,26 @@ const buildPlugin = (
     device: 'lattice',
     module,
     createSigner: async () => mockSigner,
-    primitives,
+    signingSuite,
   };
 };
 
-describe('sdk primitives module', () => {
+describe('sdk signing components module', () => {
   afterEach(() => {
-    resetPrimitiveRegistry();
+    resetSigningComponentRegistry();
   });
 
-  test('ensurePrimitivesSeeded is idempotent and registers builtins', () => {
-    ensurePrimitivesSeeded();
-    ensurePrimitivesSeeded();
+  test('ensureSigningComponentsSeeded is idempotent and registers builtins', () => {
+    ensureSigningComponentsSeeded();
+    ensureSigningComponentsSeeded();
 
-    const registry = getPrimitiveRegistry();
+    const registry = getSigningComponentRegistry();
     expect(registry.resolve('hash', 'KECCAK256')).toBeDefined();
     expect(registry.resolve('curve', 'SECP256K1')).toBeDefined();
     expect(registry.resolve('encoding', 'EVM')).toBeDefined();
   });
 
-  test('registerPluginPrimitives registers custom definitions', () => {
+  test('registerPluginSigningComponents registers custom definitions', () => {
     const plugin = buildPlugin('testchain', {
       definitions: [{ kind: 'encoding', name: 'TESTCHAIN', code: 99 }],
       requirements: [
@@ -79,12 +79,14 @@ describe('sdk primitives module', () => {
       ],
     });
 
-    registerPluginPrimitives(plugin);
-    expect(getPrimitiveRegistry().resolve('encoding', 'TESTCHAIN')).toBe(99);
+    registerPluginSigningComponents(plugin);
+    expect(
+      getSigningComponentRegistry().resolve('encoding', 'TESTCHAIN'),
+    ).toBe(99);
   });
 
-  test('registerPluginPrimitives fails on conflicts without partial commit', () => {
-    registerPluginPrimitives(
+  test('registerPluginSigningComponents fails on conflicts without partial commit', () => {
+    registerPluginSigningComponents(
       buildPlugin('chain-a', {
         definitions: [{ kind: 'encoding', name: 'TESTCHAIN', code: 99 }],
       }),
@@ -97,12 +99,14 @@ describe('sdk primitives module', () => {
       ],
     });
 
-    expect(() => registerPluginPrimitives(conflicting)).toThrow();
-    expect(getPrimitiveRegistry().resolve('hash', 'BLAKE2B')).toBeUndefined();
+    expect(() => registerPluginSigningComponents(conflicting)).toThrow();
+    expect(
+      getSigningComponentRegistry().resolve('hash', 'BLAKE2B'),
+    ).toBeUndefined();
   });
 
-  test('validatePluginPrimitiveRequirements passes when firmware requirement is met', () => {
-    ensurePrimitivesSeeded();
+  test('validatePluginSigningRequirements passes when firmware requirement is met', () => {
+    ensureSigningComponentsSeeded();
     const plugin = buildPlugin('cosmos-like', {
       requirements: [
         { kind: 'encoding', name: 'COSMOS', minFirmware: [0, 18, 10] },
@@ -110,12 +114,12 @@ describe('sdk primitives module', () => {
     });
 
     expect(() =>
-      validatePluginPrimitiveRequirements(plugin, [0, 19, 0]),
+      validatePluginSigningRequirements(plugin, [0, 19, 0]),
     ).not.toThrow();
   });
 
-  test('validatePluginPrimitiveRequirements throws when firmware requirement is unmet', () => {
-    ensurePrimitivesSeeded();
+  test('validatePluginSigningRequirements throws when firmware requirement is unmet', () => {
+    ensureSigningComponentsSeeded();
     const plugin = buildPlugin('cosmos-like', {
       requirements: [
         { kind: 'encoding', name: 'COSMOS', minFirmware: [0, 18, 10] },
@@ -123,11 +127,11 @@ describe('sdk primitives module', () => {
     });
 
     expect(() =>
-      validatePluginPrimitiveRequirements(plugin, [0, 18, 9]),
+      validatePluginSigningRequirements(plugin, [0, 18, 9]),
     ).toThrow('Please update firmware');
   });
 
-  test('validatePluginPrimitiveRequirements throws for missing primitive mapping', () => {
+  test('validatePluginSigningRequirements throws for missing signing component mapping', () => {
     const plugin = buildPlugin('custom-chain', {
       requirements: [
         {
@@ -139,21 +143,21 @@ describe('sdk primitives module', () => {
     });
 
     expect(() =>
-      validatePluginPrimitiveRequirements(plugin, [0, 20, 0]),
+      validatePluginSigningRequirements(plugin, [0, 20, 0]),
     ).toThrow('not registered');
   });
 
   test('rejects invalid requirement shape (fail-closed)', () => {
     const plugin = buildPlugin('invalid') as ChainPlugin<any>;
-    (plugin as any).primitives = {
+    (plugin as any).signingSuite = {
       requirements: [{ kind: 'hash', name: 'SHA256' }],
     };
 
-    expect(() => registerPluginPrimitives(plugin)).toThrow(
-      'invalid primitive requirement',
+    expect(() => registerPluginSigningComponents(plugin)).toThrow(
+      'invalid signing component requirement',
     );
     expect(() =>
-      validatePluginPrimitiveRequirements(plugin, [9, 9, 9]),
-    ).toThrow('invalid primitive requirement');
+      validatePluginSigningRequirements(plugin, [9, 9, 9]),
+    ).toThrow('invalid signing component requirement');
   });
 });

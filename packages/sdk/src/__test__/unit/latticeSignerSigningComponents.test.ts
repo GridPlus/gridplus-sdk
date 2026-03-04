@@ -2,27 +2,29 @@ import { createLatticeCosmosSigner } from '@gridplus/cosmos';
 import { createLatticeEvmSigner } from '@gridplus/evm';
 import { createLatticeSolanaSigner } from '@gridplus/solana';
 import { createLatticeXrpSigner } from '@gridplus/xrp';
-import type { PrimitiveKind } from '@gridplus/chain-core';
+import type { SigningComponentKind } from '@gridplus/chain-core';
 
-type PrimitiveMap = Record<string, number>;
+type SigningComponentMap = Record<string, number>;
 
 type MockContextOptions = {
-  primitives: PrimitiveMap;
+  signingComponents: SigningComponentMap;
   firmware?: [number, number, number];
   includeResolver?: boolean;
 };
 
-const primitiveKey = (kind: PrimitiveKind, name: string): string =>
-  `${kind}:${name}`;
+const signingComponentKey = (
+  kind: SigningComponentKind,
+  name: string,
+): string => `${kind}:${name}`;
 
-const buildSigningConstants = (primitives: PrimitiveMap) => {
+const buildSigningConstants = (signingComponents: SigningComponentMap) => {
   const signing = {
     HASHES: {} as Record<string, number>,
     CURVES: {} as Record<string, number>,
     ENCODINGS: {} as Record<string, number>,
   };
 
-  Object.entries(primitives).forEach(([key, code]) => {
+  Object.entries(signingComponents).forEach(([key, code]) => {
     const [kind, name] = key.split(':');
     if (!name) return;
     if (kind === 'hash') signing.HASHES[name] = code;
@@ -51,14 +53,16 @@ const buildMockContext = (options: MockContextOptions) => {
     getAddresses: vi.fn(async () => []),
   };
 
-  const resolvePrimitive = vi.fn((kind: PrimitiveKind, name: string) => {
-    const key = primitiveKey(kind, name);
-    const code = options.primitives[key];
-    if (code === undefined) {
-      throw new Error(`Missing primitive mapping for ${key}`);
-    }
-    return code;
-  });
+  const resolveSigningComponent = vi.fn(
+    (kind: SigningComponentKind, name: string) => {
+      const key = signingComponentKey(kind, name);
+      const code = options.signingComponents[key];
+      if (code === undefined) {
+        throw new Error(`Missing signing component mapping for ${key}`);
+      }
+      return code;
+    },
+  );
 
   const context: any = {
     queue: async <T>(fn: (client: unknown) => Promise<T>) => fn(client),
@@ -69,7 +73,7 @@ const buildMockContext = (options: MockContextOptions) => {
           SECP256K1_PUB: 1,
           ED25519_PUB: 2,
         },
-        SIGNING: buildSigningConstants(options.primitives),
+        SIGNING: buildSigningConstants(options.signingComponents),
       },
       CURRENCIES: {
         ETH_MSG: 'ETH_MSG',
@@ -78,14 +82,14 @@ const buildMockContext = (options: MockContextOptions) => {
     services: {},
   };
   if (includeResolver) {
-    context.resolvePrimitive = resolvePrimitive;
+    context.resolveSigningComponent = resolveSigningComponent;
   }
 
   return {
     context,
     client,
     signCalls,
-    resolvePrimitive,
+    resolveSigningComponent,
   };
 };
 
@@ -114,10 +118,10 @@ const buildEip7702AuthListTx = () => ({
   ],
 });
 
-describe('lattice signer primitive resolution', () => {
-  test('evm signer uses resolved primitive codes in sign payload', async () => {
+describe('lattice signer signing component resolution', () => {
+  test('evm signer uses resolved signing component codes in sign payload', async () => {
     const { context, signCalls } = buildMockContext({
-      primitives: {
+      signingComponents: {
         'curve:SECP256K1': 91,
         'hash:KECCAK256': 92,
         'encoding:EVM': 93,
@@ -139,9 +143,9 @@ describe('lattice signer primitive resolution', () => {
     expect(signCalls[0].data.encodingType).toBe(93);
   });
 
-  test('solana signer uses resolved primitive codes in sign payload', async () => {
+  test('solana signer uses resolved signing component codes in sign payload', async () => {
     const { context, signCalls } = buildMockContext({
-      primitives: {
+      signingComponents: {
         'curve:ED25519': 11,
         'hash:NONE': 12,
         'encoding:SOLANA': 13,
@@ -161,9 +165,9 @@ describe('lattice signer primitive resolution', () => {
     expect(signCalls[0].data.encodingType).toBe(13);
   });
 
-  test('cosmos signer uses resolved primitive codes in sign payload', async () => {
+  test('cosmos signer uses resolved signing component codes in sign payload', async () => {
     const { context, signCalls } = buildMockContext({
-      primitives: {
+      signingComponents: {
         'curve:SECP256K1': 21,
         'hash:SHA256': 22,
         'encoding:COSMOS': 23,
@@ -183,9 +187,9 @@ describe('lattice signer primitive resolution', () => {
     expect(signCalls[0].data.encodingType).toBe(23);
   });
 
-  test('xrp signer uses resolved primitive codes in sign payload', async () => {
+  test('xrp signer uses resolved signing component codes in sign payload', async () => {
     const { context, signCalls } = buildMockContext({
-      primitives: {
+      signingComponents: {
         'curve:SECP256K1': 31,
         'hash:SHA512HALF': 32,
         'encoding:XRP': 33,
@@ -205,9 +209,9 @@ describe('lattice signer primitive resolution', () => {
     expect(signCalls[0].data.encodingType).toBe(33);
   });
 
-  test('evm signer falls back to EXTERNAL.SIGNING when resolvePrimitive is missing', async () => {
+  test('evm signer falls back to EXTERNAL.SIGNING when resolveSigningComponent is missing', async () => {
     const { context, signCalls } = buildMockContext({
-      primitives: {
+      signingComponents: {
         'curve:SECP256K1': 61,
         'hash:KECCAK256': 62,
         'encoding:EVM': 63,
@@ -230,7 +234,7 @@ describe('lattice signer primitive resolution', () => {
 
   test('evm EIP-7702 signing fails below minimum firmware', async () => {
     const { context, client } = buildMockContext({
-      primitives: {
+      signingComponents: {
         'curve:SECP256K1': 41,
         'hash:KECCAK256': 42,
         'encoding:EVM': 43,
@@ -253,7 +257,7 @@ describe('lattice signer primitive resolution', () => {
 
   test('evm EIP-7702 signing succeeds at minimum firmware and uses EIP-7702 encoding', async () => {
     const { context, signCalls } = buildMockContext({
-      primitives: {
+      signingComponents: {
         'curve:SECP256K1': 51,
         'hash:KECCAK256': 52,
         'encoding:EVM': 53,
