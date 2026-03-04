@@ -8,15 +8,9 @@ describe('chain context signing component resolution', () => {
 
   test('resolveSigningComponent resolves seeded builtins', () => {
     const context = createDeviceContext();
-    expect(
-      context.resolveSigningComponent('hash', 'KECCAK256'),
-    ).toBeDefined();
-    expect(
-      context.resolveSigningComponent('curve', 'SECP256K1'),
-    ).toBeDefined();
-    expect(
-      context.resolveSigningComponent('encoding', 'EVM'),
-    ).toBeDefined();
+    expect(context.resolveSigningComponent('hash', 'KECCAK256')).toBeDefined();
+    expect(context.resolveSigningComponent('curve', 'SECP256K1')).toBeDefined();
+    expect(context.resolveSigningComponent('encoding', 'EVM')).toBeDefined();
   });
 
   test('resolveSigningComponent throws for unknown signing component', () => {

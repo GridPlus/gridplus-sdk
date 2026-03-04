@@ -43,7 +43,10 @@ type SigningComponentCodes = {
 };
 
 type LatticeEvmContextInput = DeviceContext & {
-  resolveSigningComponent?: (kind: SigningComponentKind, name: string) => number;
+  resolveSigningComponent?: (
+    kind: SigningComponentKind,
+    name: string,
+  ) => number;
   constants: {
     EXTERNAL: {
       GET_ADDR_FLAGS: {
@@ -78,7 +81,10 @@ const getSigningComponentFromConstants = (
   kind: SigningComponentKind,
   name: string,
 ): number | undefined => {
-  const byKind: Record<SigningComponentKind, Record<string, number> | undefined> = {
+  const byKind: Record<
+    SigningComponentKind,
+    Record<string, number> | undefined
+  > = {
     hash: signing?.HASHES,
     curve: signing?.CURVES,
     encoding: signing?.ENCODINGS,
@@ -90,7 +96,10 @@ const getSigningComponentFromConstants = (
 function getLatticeEvmContext(context: DeviceContext): LatticeEvmContext {
   const typed = context as LatticeEvmContextInput;
   const constants = typed.constants;
-  const resolveSigningComponent = (kind: SigningComponentKind, name: string): number => {
+  const resolveSigningComponent = (
+    kind: SigningComponentKind,
+    name: string,
+  ): number => {
     if (typeof typed.resolveSigningComponent === 'function') {
       return typed.resolveSigningComponent(kind, name);
     }

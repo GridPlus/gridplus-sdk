@@ -80,9 +80,9 @@ describe('sdk signing components module', () => {
     });
 
     registerPluginSigningComponents(plugin);
-    expect(
-      getSigningComponentRegistry().resolve('encoding', 'TESTCHAIN'),
-    ).toBe(99);
+    expect(getSigningComponentRegistry().resolve('encoding', 'TESTCHAIN')).toBe(
+      99,
+    );
   });
 
   test('registerPluginSigningComponents fails on conflicts without partial commit', () => {
@@ -126,9 +126,9 @@ describe('sdk signing components module', () => {
       ],
     });
 
-    expect(() =>
-      validatePluginSigningRequirements(plugin, [0, 18, 9]),
-    ).toThrow('Please update firmware');
+    expect(() => validatePluginSigningRequirements(plugin, [0, 18, 9])).toThrow(
+      'Please update firmware',
+    );
   });
 
   test('validatePluginSigningRequirements throws for missing signing component mapping', () => {
@@ -142,9 +142,9 @@ describe('sdk signing components module', () => {
       ],
     });
 
-    expect(() =>
-      validatePluginSigningRequirements(plugin, [0, 20, 0]),
-    ).toThrow('not registered');
+    expect(() => validatePluginSigningRequirements(plugin, [0, 20, 0])).toThrow(
+      'not registered',
+    );
   });
 
   test('rejects invalid requirement shape (fail-closed)', () => {
@@ -156,8 +156,8 @@ describe('sdk signing components module', () => {
     expect(() => registerPluginSigningComponents(plugin)).toThrow(
       'invalid signing component requirement',
     );
-    expect(() =>
-      validatePluginSigningRequirements(plugin, [9, 9, 9]),
-    ).toThrow('invalid signing component requirement');
+    expect(() => validatePluginSigningRequirements(plugin, [9, 9, 9])).toThrow(
+      'invalid signing component requirement',
+    );
   });
 });

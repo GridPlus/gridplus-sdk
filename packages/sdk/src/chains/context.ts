@@ -1,7 +1,4 @@
-import type {
-  DeviceContext,
-  SigningComponentKind,
-} from '@gridplus/chain-core';
+import type { DeviceContext, SigningComponentKind } from '@gridplus/chain-core';
 import { CURRENCIES } from '@gridplus/types';
 import { getClient, queue } from '../api/utilities';
 import { EXTERNAL } from '../constants';
@@ -19,10 +16,7 @@ export type SdkDeviceContext = DeviceContext & {
   services: {
     fetchDecoder: typeof fetchDecoder;
   };
-  resolveSigningComponent: (
-    kind: SigningComponentKind,
-    name: string,
-  ) => number;
+  resolveSigningComponent: (kind: SigningComponentKind, name: string) => number;
 };
 
 // Bridges SDK runtime signing components into the generic chain-core DeviceContext shape.

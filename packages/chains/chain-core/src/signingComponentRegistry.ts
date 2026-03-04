@@ -26,9 +26,7 @@ const createCodeMaps = (): SigningComponentReverseDefinitionMap => ({
   encoding: new Map<number, string>(),
 });
 
-const normalizeSigningComponentKind = (
-  kind: unknown,
-): SigningComponentKind => {
+const normalizeSigningComponentKind = (kind: unknown): SigningComponentKind => {
   if (kind === 'hash' || kind === 'curve' || kind === 'encoding') {
     return kind;
   }
@@ -101,10 +99,7 @@ export class SigningComponentConflictError extends Error {
 export type SigningComponentRegistry = {
   register: (definitions: SigningComponentDefinition[]) => void;
   preflight: (definitions: SigningComponentDefinition[]) => void;
-  resolve: (
-    kind: SigningComponentKind,
-    name: string,
-  ) => number | undefined;
+  resolve: (kind: SigningComponentKind, name: string) => number | undefined;
   resolveOrThrow: (kind: SigningComponentKind, name: string) => number;
   reverseResolve: (
     kind: SigningComponentKind,
@@ -179,10 +174,7 @@ export function createSigningComponentRegistry(): SigningComponentRegistry {
     return nameToCode[kind].get(normalizeSigningComponentName(name));
   };
 
-  const resolveOrThrow = (
-    kind: SigningComponentKind,
-    name: string,
-  ): number => {
+  const resolveOrThrow = (kind: SigningComponentKind, name: string): number => {
     const code = resolve(kind, name);
     if (code === undefined) {
       throw new Error(`Signing component not found: ${kind}:${name}`);
@@ -201,9 +193,7 @@ export function createSigningComponentRegistry(): SigningComponentRegistry {
     return resolve(kind, name) !== undefined;
   };
 
-  const list = (
-    kind?: SigningComponentKind,
-  ): SigningComponentDefinition[] => {
+  const list = (kind?: SigningComponentKind): SigningComponentDefinition[] => {
     const definitions: SigningComponentDefinition[] = [];
     const kinds = kind ? [kind] : SIGNING_COMPONENT_KINDS;
 
