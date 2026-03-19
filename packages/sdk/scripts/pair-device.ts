@@ -31,6 +31,7 @@ async function main() {
   console.log('GridPlus SDK Device Pairing Tool\n');
 
   try {
+    const baseUrl = process.env.baseUrl || 'https://signing.gridpl.us'
     // Get device configuration
     const deviceId = process.env.DEVICE_ID || question('Enter Device ID: ');
     const password =
@@ -53,6 +54,7 @@ async function main() {
       name,
       getStoredClient,
       setStoredClient,
+      baseUrl,
     });
 
     if (isPaired) {
