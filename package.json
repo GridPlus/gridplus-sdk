@@ -14,7 +14,7 @@
     "docs:start": "pnpm --filter gridplus-sdk-docs run start"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.0",
+    "@biomejs/biome": "^2.4.14",
     "turbo": "^2.3.0"
   },
   "engines": {

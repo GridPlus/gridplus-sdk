@@ -33,7 +33,7 @@
     "viem": "^2.37.8"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.0",
+    "@biomejs/biome": "^2.4.14",
     "@types/elliptic": "^6.4.18",
     "@types/node": "^24.10.4",
     "tsup": "^8.5.0",
