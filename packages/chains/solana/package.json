@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "@gridplus/chain-core": "workspace:*",
-    "@scure/base": "^1.2.6"
+    "@scure/base": "^2.2.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
